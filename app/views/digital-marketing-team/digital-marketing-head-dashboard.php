@@ -338,6 +338,63 @@
     </div>
   </div>
 
+  <!-- Contacted / Not Contacted Summary -->
+  <?php
+    $totalShown    = ($totalContacted ?? 0) + ($totalNotContacted ?? 0);
+    $contactedPct  = $totalShown > 0 ? round(($totalContacted / $totalShown) * 100) : 0;
+  ?>
+  <div class="row mb-4">
+    <div class="col-xl-3 col-sm-6 col-6 mb-2">
+      <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-dashboard?contact_status=contacted&date_age=<?= $date_age ?? 'all' ?>" class="text-decoration-none">
+        <div class="card border-0 shadow-sm" style="border-radius:12px; border-left:4px solid #28a745 !important;">
+          <div class="card-body py-3 px-4 d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:linear-gradient(135deg,#d4edda,#b8dfc5);border-radius:50%;display:flex;align-items:center;justify-content:center;">
+              <i class="bi bi-telephone-check-fill text-success fs-5"></i>
+            </div>
+            <div>
+              <div class="text-muted" style="font-size:.72rem;font-weight:600;letter-spacing:.05em;">CONTACTED</div>
+              <div style="font-size:1.6rem;font-weight:800;color:#155724;line-height:1.1;"><?= number_format($totalContacted ?? 0) ?></div>
+              <div style="font-size:.68rem;color:#28a745;">Touch hua leads</div>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-xl-3 col-sm-6 col-6 mb-2">
+      <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-dashboard?contact_status=not_contacted&date_age=<?= $date_age ?? 'all' ?>" class="text-decoration-none">
+        <div class="card border-0 shadow-sm" style="border-radius:12px; border-left:4px solid #dc3545 !important;">
+          <div class="card-body py-3 px-4 d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:linear-gradient(135deg,#fdecea,#fbc7c0);border-radius:50%;display:flex;align-items:center;justify-content:center;">
+              <i class="bi bi-telephone-x-fill text-danger fs-5"></i>
+            </div>
+            <div>
+              <div class="text-muted" style="font-size:.72rem;font-weight:600;letter-spacing:.05em;">NOT CONTACTED</div>
+              <div style="font-size:1.6rem;font-weight:800;color:#721c24;line-height:1.1;"><?= number_format($totalNotContacted ?? 0) ?></div>
+              <div style="font-size:.68rem;color:#dc3545;">Touch hoini yet</div>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-xl-6 col-sm-12 mb-2">
+      <div class="card border-0 shadow-sm h-100" style="border-radius:12px;">
+        <div class="card-body py-3 px-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span style="font-size:.78rem;font-weight:700;color:#1a2744;">Contact Progress</span>
+            <span style="font-size:.78rem;color:#6c757d;"><?= $contactedPct ?>% Contacted</span>
+          </div>
+          <div class="progress" style="height:12px;border-radius:8px;background:#f0f4f8;">
+            <div class="progress-bar bg-success" role="progressbar" style="width:<?= $contactedPct ?>%; border-radius:8px;" aria-valuenow="<?= $contactedPct ?>" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+          <div class="d-flex justify-content-between mt-2">
+            <small class="text-success fw-semibold"><i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i><?= number_format($totalContacted ?? 0) ?> Contacted</small>
+            <small class="text-danger fw-semibold"><i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i><?= number_format($totalNotContacted ?? 0) ?> Pending</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 
 
   <!-- ════ TABS ════ -->

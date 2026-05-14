@@ -381,6 +381,7 @@ class FlatController extends Controller
                 'project_name'           => 'project_name',
                 'project_nar'            => 'project_name',  // Excel truncation
                 'project'                => 'project_name',
+                'nar'                    => '_ignore',        // second project col in some templates
                 'sft'                    => 'sqft',
                 'sqft'                   => 'sqft',
                 'size'                   => 'sqft',
@@ -418,25 +419,55 @@ class FlatController extends Controller
                 return $aliasMap[$col] ?? $col;
             }, $header);
 
+            // ── Step 3: De-duplicate headers so array_combine never gets duplicate keys.
+            //   Repeated headers (e.g. two columns both aliased to project_name) get
+            //   renamed _dup1, _dup2 … and will simply be skipped during insert.
+            $seenHeaders = [];
+            $dupCount    = [];
+            $header = array_map(function ($col) use (&$seenHeaders, &$dupCount) {
+                if (in_array($col, $seenHeaders, true)) {
+                    $dupCount[$col] = ($dupCount[$col] ?? 0) + 1;
+                    return $col . '_dup' . $dupCount[$col];
+                }
+                $seenHeaders[] = $col;
+                return $col;
+            }, $header);
+
             $successCount  = 0;
             $errors        = [];
+            $skippedRows   = []; // detailed list: [rowNum, project, flat, reason]
             $rowNum        = 1;
             $projectsCache = [];
 
             while (($row = fgetcsv($handle, 2000, ",")) !== false) {
                 $rowNum++;
                 if (count(array_filter($row)) === 0) continue;
+
+                // Partial data for nicer error messages even on column-count mismatch
+                $partialData = (count($header) === count($row))
+                    ? array_combine($header, $row)
+                    : array_combine(
+                        array_slice($header, 0, count($row)),
+                        $row
+                    );
+                $errProject = trim($partialData['project_name'] ?? '—');
+                $errFlat    = trim($partialData['flat_name']    ?? '—');
+
                 if (count($header) !== count($row)) {
-                    $errors[] = "Row $rowNum: Column count mismatch — skipped";
+                    $reason = "Column count mismatch (expected " . count($header) . ", got " . count($row) . ")";
+                    $errors[]      = "Row $rowNum [{$errProject} / {$errFlat}]: $reason — skipped";
+                    $skippedRows[] = ['row' => $rowNum, 'project' => $errProject, 'flat' => $errFlat, 'reason' => $reason];
                     continue;
                 }
 
-                $data = array_combine($header, $row);
+                $data = $partialData;
 
                 // ── Resolve project_id from project name ──────────────────
                 $projectName = trim($data['project_name'] ?? '');
                 if (empty($projectName)) {
-                    $errors[] = "Row $rowNum: project_name is empty — skipped";
+                    $reason = "project_name is empty";
+                    $errors[]      = "Row $rowNum [/ {$errFlat}]: $reason — skipped";
+                    $skippedRows[] = ['row' => $rowNum, 'project' => '(empty)', 'flat' => $errFlat, 'reason' => $reason];
                     continue;
                 }
 
@@ -448,7 +479,7 @@ class FlatController extends Controller
                     $stmt->bind_param("s", $projectName);
                     $stmt->execute();
                     $res = $stmt->get_result()->fetch_assoc();
-                
+
                     if ($res) {
                         $projectId = $res['id'];
                         $projectsCache[$projectName] = $projectId;
@@ -456,14 +487,18 @@ class FlatController extends Controller
                 }
 
                 if (!$projectId) {
-                    $errors[] = "Row $rowNum: Project not found: '$projectName'";
+                    $reason = "Project not found in system";
+                    $errors[]      = "Row $rowNum [{$projectName} / {$errFlat}]: $reason — skipped";
+                    $skippedRows[] = ['row' => $rowNum, 'project' => $projectName, 'flat' => $errFlat, 'reason' => $reason];
                     continue;
                 }
 
                 // ── flat_name required ────────────────────────────────────
                 $flatName = trim($data['flat_name'] ?? '');
                 if (empty($flatName)) {
-                    $errors[] = "Row $rowNum: flat_name is empty — skipped";
+                    $reason = "flat_name is empty";
+                    $errors[]      = "Row $rowNum [{$projectName} / (empty)]: $reason — skipped";
+                    $skippedRows[] = ['row' => $rowNum, 'project' => $projectName, 'flat' => '(empty)', 'reason' => $reason];
                     continue;
                 }
 
@@ -472,12 +507,11 @@ class FlatController extends Controller
                 $data['upload_from'] = 'From company csv'; // CSV bulk import tag
 
                 // ── Normalize status column ────────────────────────────
-                // Maps various CSV status values → DB enum('available','booked','sold')
                 $rawStatus = strtolower(trim($data['status'] ?? ''));
                 $statusMap = [
                     'available'  => 'available',
-                    'unsold'     => 'available',   // unsold = available
-                    'on sale'    => 'available',   // on sale = available
+                    'unsold'     => 'available',
+                    'on sale'    => 'available',
                     'on_sale'    => 'available',
                     'for sale'   => 'available',
                     'for_sale'   => 'available',
@@ -492,27 +526,34 @@ class FlatController extends Controller
                 $data['is_booked'] = in_array($data['status'], ['booked', 'sold']) ? 1 : 0;
 
                 try {
+                    // DEBUG: log price_value raw value — remove after fix
+                    error_log("Row $rowNum price_value raw=[" . ($data['price_value'] ?? 'KEY_NOT_FOUND') . "] land_share=[" . ($data['land_share_value'] ?? 'KEY_NOT_FOUND') . "]");
                     $this->flatModel->createFromCsvBulk($data);
                     $successCount++;
                 } catch (Exception $e) {
-                    $errors[] = "Row $rowNum: DB Error — " . $e->getMessage();
+                    $reason = "DB Error — " . $e->getMessage();
+                    $errors[]      = "Row $rowNum [{$projectName} / {$flatName}]: $reason";
+                    $skippedRows[] = ['row' => $rowNum, 'project' => $projectName, 'flat' => $flatName, 'reason' => $reason];
                     error_log("Flat CSV Import Error (row $rowNum): " . $e->getMessage());
                 }
             }
+
+            // Store full skipped-row details in session for the view to render
+            $_SESSION['csv_import_skipped'] = $skippedRows;
             fclose($handle);
 
+            $skippedCount = count($skippedRows);
+
             if ($successCount > 0) {
-                $msg = "$successCount Flats imported successfully.";
-                if (!empty($errors)) {
-                    $msg .= " Skipped " . count($errors) . " row(s): " . implode("; ", array_slice($errors, 0, 3));
-                    if (count($errors) > 3) $msg .= " and " . (count($errors) - 3) . " more.";
+                $msg = "{$successCount} flat(s) imported successfully.";
+                if ($skippedCount > 0) {
+                    $msg .= " {$skippedCount} row(s) were skipped — see the details below.";
                 }
                 setSuccess($msg);
             } else {
-                $msg = "0 Flats imported.";
-                if (!empty($errors)) {
-                    $msg .= " Errors: " . implode("; ", array_slice($errors, 0, 5));
-                    if (count($errors) > 5) $msg .= " and " . (count($errors) - 5) . " more.";
+                $msg = "No flats were imported.";
+                if ($skippedCount > 0) {
+                    $msg .= " {$skippedCount} row(s) were skipped — see the details below.";
                 }
                 setError($msg);
             }

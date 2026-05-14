@@ -71,6 +71,7 @@ class DigitalMarketingController extends Controller
         SELECT COUNT(*) AS total FROM (
             SELECT phone_number FROM leads
             WHERE deleted_at IS NULL AND phone_number IS NOT NULL AND phone_number != ''
+              AND uploaded_from = 'From Campaign'
             GROUP BY phone_number HAVING COUNT(*) > 1
         ) dupes
     ");
@@ -78,6 +79,35 @@ class DigitalMarketingController extends Controller
 
     // Total lead count
     $totalLeads = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge);
+
+    // Contacted / Not Contacted summary counts (From Campaign only)
+    $cStmt = $this->db->prepare("
+        SELECT
+            SUM(CASE
+                WHEN EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
+                  OR (l.lead_type IS NOT NULL AND l.lead_type != '')
+                  OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
+                  OR (l.call_status IN ('called', 'received'))
+                THEN 1 ELSE 0
+            END) AS contacted,
+            SUM(CASE
+                WHEN NOT (
+                    EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
+                    OR (l.lead_type IS NOT NULL AND l.lead_type != '')
+                    OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
+                    OR (l.call_status IN ('called', 'received'))
+                ) THEN 1 ELSE 0
+            END) AS not_contacted
+        FROM leads l
+        WHERE l.deleted_at IS NULL
+          AND l.uploaded_from = 'From Campaign'
+        " . ($teamId ? 'AND l.team_id = ?' : '')
+    );
+    if ($teamId) { $cStmt->bind_param('i', $teamId); }
+    $cStmt->execute();
+    $cCounts           = $cStmt->get_result()->fetch_assoc();
+    $totalContacted    = (int)($cCounts['contacted']    ?? 0);
+    $totalNotContacted = (int)($cCounts['not_contacted'] ?? 0);
 
     return $this->view("digital-marketing-team/digital-marketing-head-dashboard", [
         "current_route"       => "digital-marketing-dashboard",
@@ -94,6 +124,8 @@ class DigitalMarketingController extends Controller
         "phoneFreq"           => [],
         "duplicateLeadsCount" => $duplicateLeadsCount,
         "totalLeads"          => $totalLeads,
+        "totalContacted"      => $totalContacted,
+        "totalNotContacted"   => $totalNotContacted,
         "date_age"            => $dateAge,
         "sort_order"          => $sortOrder,
         "duplicates_only"     => $duplicatesOnly,
@@ -203,6 +235,7 @@ public function deleteBudget($id)
                     WHEN EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
                       OR (l.lead_type IS NOT NULL AND l.lead_type != '')
                       OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
+                      OR (l.call_status IN ('called', 'received'))
                     THEN 1 ELSE 0
                 END) AS contacted,
                 SUM(CASE
@@ -210,10 +243,12 @@ public function deleteBudget($id)
                         EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
                         OR (l.lead_type IS NOT NULL AND l.lead_type != '')
                         OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
+                        OR (l.call_status IN ('called', 'received'))
                     ) THEN 1 ELSE 0
                 END) AS not_contacted
             FROM leads l
             WHERE l.deleted_at IS NULL
+              AND l.uploaded_from = 'From Campaign'
             " . ($teamId ? 'AND l.team_id = ?' : '')
         );
         if ($teamId) {
@@ -229,6 +264,7 @@ public function deleteBudget($id)
             SELECT COUNT(*) AS total FROM (
                 SELECT phone_number FROM leads
                 WHERE deleted_at IS NULL AND phone_number IS NOT NULL AND phone_number != ''
+                  AND uploaded_from = 'From Campaign'
                 GROUP BY phone_number HAVING COUNT(*) > 1
             ) dupes
         ");

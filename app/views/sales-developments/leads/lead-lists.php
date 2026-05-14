@@ -1,7 +1,45 @@
 <?php
 $page = "Lead & Booking Management";
 $show_breadcrumb = true;
+
+// ── Booking CSV import skipped-row report ────────────────────────
+$bookingCsvSkipped = $_SESSION['booking_csv_import_skipped'] ?? [];
+unset($_SESSION['booking_csv_import_skipped']); // clear after reading
 ?>
+<?php if (!empty($bookingCsvSkipped)): ?>
+<div class="card__wrapper mb-3" style="border-left: 4px solid #f59e0b;">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+        <h6 class="mb-0 fw-semibold text-warning">
+            <?= count($bookingCsvSkipped) ?> row(s) were <u>not imported</u> from the Booking CSV
+        </h6>
+    </div>
+    <div class="table-responsive" style="max-height:320px; overflow-y:auto;">
+        <table class="table table-sm table-bordered mb-0" style="font-size:13px;">
+            <thead class="table-warning">
+                <tr>
+                    <th style="width:60px;">CSV Row</th>
+                    <th>Lead Phone</th>
+                    <th>Project</th>
+                    <th>Flat / Unit</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($bookingCsvSkipped as $sk): ?>
+                <tr>
+                    <td class="text-center fw-bold"><?= (int)$sk['row'] ?></td>
+                    <td><?= htmlspecialchars($sk['lead_phone'] ?? '—') ?></td>
+                    <td><?= htmlspecialchars($sk['project']    ?? '—') ?></td>
+                    <td><?= htmlspecialchars($sk['flat']       ?? '—') ?></td>
+                    <td class="text-danger"><?= htmlspecialchars($sk['reason'] ?? '') ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+<?php endif; ?>
 <!-- Stats Grid -->
 <div class="row  mb-4 align-items-stretch">
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">

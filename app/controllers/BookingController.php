@@ -186,30 +186,43 @@ class BookingController extends Controller
 
             $successCount = 0;
             
-            $leadsCache = [];
+            $leadsCache    = [];
             $projectsCache = [];
-            $flatsCache = [];
-            $usersCache = [];
+            $flatsCache    = [];
+            $usersCache    = [];
 
-            $errors = [];
-            $skippedDetails = [];
-            $rowNum = 1;
+            $errors      = [];
+            $skippedRows = []; // structured for view table: [row, lead_phone, project, flat, reason]
+            $rowNum      = 1;
+
             while (($row = fgetcsv($handle, 2000, ",")) !== false) {
                 $rowNum++;
                 if (count(array_filter($row)) === 0) continue;
+
+                // Partial data for nicer error messages even on column-count mismatch
+                $partialData = (count($header) === count($row))
+                    ? array_combine($header, $row)
+                    : array_combine(array_slice($header, 0, count($row)), $row);
+
+                $errPhone   = trim($partialData['lead_phone']    ?? '—');
+                $errProject = trim($partialData['project_name']  ?? '—');
+                $errFlat    = trim($partialData['flat_name']     ?? '—');
+
                 if (count($header) !== count($row)) {
-                    $errors[] = "Row $rowNum: Column mismatch (expected " . count($header) . ", got " . count($row) . ")";
+                    $reason = "Column mismatch (expected " . count($header) . ", got " . count($row) . ")";
+                    $errors[]      = "Row $rowNum: $reason";
+                    $skippedRows[] = ['row' => $rowNum, 'lead_phone' => $errPhone, 'project' => $errProject, 'flat' => $errFlat, 'reason' => $reason];
                     continue;
                 }
 
-                $data = array_combine($header, $row);
+                $data      = $partialData;
                 $rowIssues = []; // collect all issues for this row before skipping
                 
                 // ═══════════════════════════════════════════════════════
                 // 1. Resolve lead_id from lead_phone
                 // ═══════════════════════════════════════════════════════
                 $leadPhone = trim($data['lead_phone'] ?? '');
-                $leadId = null;
+                $leadId    = null;
                 if (empty($leadPhone)) {
                     $rowIssues[] = "lead_phone is empty";
                 } else {
@@ -233,8 +246,8 @@ class BookingController extends Controller
                 // 2. Resolve sales agent from email (sales_agent column)
                 // ═══════════════════════════════════════════════════════
                 $salesAgentEmail = trim($data['sales_agent'] ?? '');
-                $salesById = null;
-                $salesAgentOld = null;
+                $salesById       = null;
+                $salesAgentOld   = null;
 
                 if (!empty($salesAgentEmail)) {
                     if (isset($usersCache[$salesAgentEmail])) {
@@ -244,7 +257,6 @@ class BookingController extends Controller
                         $stmt->bind_param("s", $salesAgentEmail);
                         $stmt->execute();
                         $res = $stmt->get_result()->fetch_assoc();
-                        
                         if ($res) {
                             $salesById = $res['id'];
                             $usersCache[$salesAgentEmail] = $salesById;
@@ -263,7 +275,7 @@ class BookingController extends Controller
                 // 3. Resolve project_id from project_name
                 // ═══════════════════════════════════════════════════════
                 $projectName = trim($data['project_name'] ?? '');
-                $projectId = null;
+                $projectId   = null;
                 if (empty($projectName)) {
                     $rowIssues[] = "project_name is empty";
                 } else {
@@ -287,7 +299,7 @@ class BookingController extends Controller
                 // 4. Resolve flat_id from flat_name + project_id
                 // ═══════════════════════════════════════════════════════
                 $flatName = trim($data['flat_name'] ?? '');
-                $flatId = null;
+                $flatId   = null;
                 if (empty($flatName)) {
                     $rowIssues[] = "flat_name is empty";
                 } elseif ($projectId) {
@@ -314,9 +326,9 @@ class BookingController extends Controller
                 // If ANY required field is missing, skip with details
                 // ═══════════════════════════════════════════════════════
                 if (!empty($rowIssues)) {
-                    $detail = "Row $rowNum: " . implode(' | ', $rowIssues);
-                    $errors[] = $detail;
-                    $skippedDetails[] = $detail;
+                    $reason = implode(' | ', $rowIssues);
+                    $errors[]      = "Row $rowNum: $reason";
+                    $skippedRows[] = ['row' => $rowNum, 'lead_phone' => $leadPhone ?: $errPhone, 'project' => $projectName ?: $errProject, 'flat' => $flatName ?: $errFlat, 'reason' => $reason];
                     continue;
                 }
 
@@ -364,31 +376,34 @@ class BookingController extends Controller
 
                     $successCount++;
                 } catch (Exception $e) {
-                    $errors[] = "Row $rowNum: DB Error - " . $e->getMessage();
+                    $reason = "DB Error - " . $e->getMessage();
+                    $errors[]      = "Row $rowNum: $reason";
+                    $skippedRows[] = ['row' => $rowNum, 'lead_phone' => $leadPhone, 'project' => $projectName, 'flat' => $flatName, 'reason' => $reason];
                     error_log("CSV Import Error: " . $e->getMessage());
                     continue;
                 }
             }
             fclose($handle);
 
+            // Store structured skipped rows in session for the view to render
+            $_SESSION['booking_csv_import_skipped'] = $skippedRows;
+
             // ═══════════════════════════════════════════════════════
             // Build detailed result message
             // ═══════════════════════════════════════════════════════
-            $totalRows = $rowNum - 1; // exclude header
-            $failedCount = count($errors);
+            $totalRows   = $rowNum - 1; // exclude header
+            $failedCount = count($skippedRows);
 
             if ($successCount > 0) {
                 $msg = "✅ $successCount / $totalRows Bookings imported successfully.";
                 if ($failedCount > 0) {
-                    $msg .= " ⚠️ $failedCount row(s) skipped: " . implode(" | ", array_slice($errors, 0, 5));
-                    if ($failedCount > 5) $msg .= " ... and " . ($failedCount - 5) . " more.";
+                    $msg .= " ⚠️ $failedCount row(s) skipped — see details below.";
                 }
                 setSuccess($msg);
             } else {
                 $msg = "❌ 0 / $totalRows Bookings imported.";
                 if ($failedCount > 0) {
-                    $msg .= " Errors: " . implode(" | ", array_slice($errors, 0, 5));
-                    if ($failedCount > 5) $msg .= " ... and " . ($failedCount - 5) . " more.";
+                    $msg .= " $failedCount error(s) — see details below.";
                 }
                 setError($msg);
             }

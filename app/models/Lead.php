@@ -1214,26 +1214,26 @@ class Lead extends Model
     {
         $stats = [];
 
-        // Total Leads (Active and not deleted)
-        $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE status = 'active' AND deleted_at IS NULL");
-        $stmt2 = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE created_at >= CURDATE() AND deleted_at IS NULL");
+        // Total Leads (Active, not deleted, From Campaign only)
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE status = 'active' AND deleted_at IS NULL AND uploaded_from = 'From Campaign'");
+        $stmt2 = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE created_at >= CURDATE() AND deleted_at IS NULL AND uploaded_from = 'From Campaign'");
         $stmt->execute();
         $stats['total_leads'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
         $stmt2->execute();
         $stats['today_uploads'] = $stmt2->get_result()->fetch_assoc()['total'] ?? 0;
 
-        // Uploaded This Week (Leads created in the last 7 days)
-        $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND deleted_at IS NULL");
+        // Uploaded This Week (Leads created in the last 7 days, From Campaign)
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND deleted_at IS NULL AND uploaded_from = 'From Campaign'");
         $stmt->execute();
         $stats['leads_this_week'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
 
-        // Failed / Errors (Inactive or Cancelled leads)
-        $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE (status = 'inactive' OR last_lead_action = 'cancel') AND deleted_at IS NULL");
+        // Failed / Errors (Inactive or Cancelled leads, From Campaign)
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE (status = 'inactive' OR last_lead_action = 'cancel') AND deleted_at IS NULL AND uploaded_from = 'From Campaign'");
         $stmt->execute();
         $stats['failed_leads'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
 
-        // Total Uploads (Leads with campaign_name, assuming they are from CSV/Marketing)
-        $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE campaign_name IS NOT NULL AND deleted_at IS NULL");
+        // Total Uploads (From Campaign)
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM leads WHERE deleted_at IS NULL AND uploaded_from = 'From Campaign'");
         $stmt->execute();
         $stats['total_uploads'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
 
@@ -1249,7 +1249,7 @@ class Lead extends Model
      */
     public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null)
     {
-        $sql = "SELECT COUNT(*) AS total FROM leads l WHERE l.deleted_at IS NULL";
+        $sql = "SELECT COUNT(*) AS total FROM leads l WHERE l.deleted_at IS NULL AND l.uploaded_from = 'From Campaign'";
 
         $params = [];
         $types  = "";
@@ -1305,12 +1305,13 @@ class Lead extends Model
                 SELECT COUNT(*) FROM lead_follow_ups lfc
                 WHERE lfc.lead_id = l.id AND lfc.deleted_at IS NULL
             ), 0) AS follow_up_count,
-            -- Contact status (3 conditions)
+            -- Contact status (4 conditions)
             CASE
                 WHEN (
                     EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
                     OR (l.lead_type IS NOT NULL AND l.lead_type != '')
                     OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
+                    OR (l.call_status IN ('called', 'received'))
                 ) THEN 'Contacted'
                 ELSE 'Not Contacted'
             END AS contact_status,
@@ -1329,6 +1330,7 @@ class Lead extends Model
             ) AND lf1.deleted_at IS NULL
         ) lfu ON lfu.lead_id = l.id
         WHERE l.deleted_at IS NULL
+          AND l.uploaded_from = 'From Campaign'
         ";
 
         $params = [];
@@ -1545,6 +1547,7 @@ class Lead extends Model
             WHERE deleted_at IS NULL 
               AND platform IS NOT NULL 
               AND platform != ''
+              AND uploaded_from = 'From Campaign'
         ";
         
         $params = [];
