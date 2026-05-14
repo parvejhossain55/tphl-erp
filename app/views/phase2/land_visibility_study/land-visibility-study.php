@@ -1,6 +1,8 @@
 <?php
 $addPage = true;
 $show_breadcrumb = false;
+$roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+$canModify = ($roleId === 14);
 ?>
 
 
@@ -14,12 +16,14 @@ $show_breadcrumb = false;
         <div class="col-12">
             <div class="card__wrapper border-0 p-0 shadow-none bg-transparent">
                 <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                    <?php if ($canModify): ?>
                     <a href="<?= $GLOBALS['base_url'] ?>/con-land-visibility-studies/create" class="btn btn-primary text-nowrap">
                         <i class="fa-light fa-plus me-1"></i> Add New Study
                     </a>
                     <button type="button" class="btn btn-outline-success text-nowrap" data-bs-toggle="modal" data-bs-target="#importLandVisibilityCsvModal">
                         <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
                     </button>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -86,6 +90,7 @@ $show_breadcrumb = false;
                                         <span class="bd-badge bg-<?= $qcBadge ?>"><?= $row['qc_approval_status'] ?? 'Pending' ?></span>
                                     </td>
                                     <td class="table__icon-box">
+                                        <?php if ($canModify): ?>
                                         <div class="d-flex align-items-center justify-content-center gap-10">
                                             <a href="<?= $GLOBALS['base_url'] ?>/con-land-visibility-studies/edit?id=<?= $row['id'] ?>" class="table__icon edit">
                                                 <i class="fa-sharp fa-light fa-pen"></i>
@@ -97,6 +102,9 @@ $show_breadcrumb = false;
                                                 <i class="fa-regular fa-trash"></i>
                                             </button>
                                         </div>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

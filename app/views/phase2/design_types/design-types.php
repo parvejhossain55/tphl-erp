@@ -3,12 +3,15 @@ $page_title = "Design Types";
 $page = 'Design Types';
 $addPage = true;
 $show_breadcrumb = true;
+$roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+$canModify = ($roleId === 16);
 ?>
 
 <div class="row justify-content-end mb-3 mt-3">
     <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
         <div class="card__wrapper border-0 p-0 shadow-none bg-transparent">
             <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                <?php if ($canModify): ?>
                 <button type="button" class="btn btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#addDesignTypeModal">
                     <i class="fa-light fa-plus me-1"></i> Add Design Type
                 </button>
@@ -16,6 +19,7 @@ $show_breadcrumb = true;
                 <button type="button" class="btn btn-outline-success text-nowrap" data-bs-toggle="modal" data-bs-target="#importDesignTypeCsvModal">
                     <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
                 </button>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -46,6 +50,7 @@ $show_breadcrumb = true;
                                         </span>
                                     </td>
                                     <td class="table__icon-box">
+                                        <?php if ($canModify): ?>
                                         <div class="d-flex align-items-center justify-content-start gap-10">
                                             <button type="button"
                                                 class="table__icon edit"
@@ -63,6 +68,9 @@ $show_breadcrumb = true;
                                                 <i class="fa-regular fa-trash"></i>
                                             </button>
                                         </div>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

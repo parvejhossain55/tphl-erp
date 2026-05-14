@@ -1812,7 +1812,7 @@
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/con-weekly-report-create"
                                         class="sidebar__menu-item <?= isActive('con-weekly-report-create', $current_route) ?>">
-                                        + New DPR
+                                        + New WPR
                                     </a>
                                 </li>
                             </ul>
@@ -1890,9 +1890,6 @@
 
                 <?php endif; ?>
                 <!-- FOR Task Manage  -->
-
-
-
                 <!-- ====== BATCH IMPORTS ====== -->
                 <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): // Only Admins can import ?>
                         <li class="slide">

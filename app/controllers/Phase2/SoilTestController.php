@@ -48,9 +48,9 @@ class SoilTestController extends Controller {
     }
 
     public function create() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
-            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+        if ((int)($_SESSION['user']['role_id'] ?? 0) !== 12) {
+            setError('Only Site Engineers can add Soil Tests.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-soil-tests");
             exit;
         }
 
@@ -68,9 +68,9 @@ class SoilTestController extends Controller {
     }
 
     public function store() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
-            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+        if ((int)($_SESSION['user']['role_id'] ?? 0) !== 12) {
+            setError('Only Site Engineers can add Soil Tests.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-soil-tests");
             exit;
         }
 
@@ -103,9 +103,9 @@ class SoilTestController extends Controller {
     }
 
     public function edit() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
-            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+        if ((int)($_SESSION['user']['role_id'] ?? 0) !== 12) {
+            setError('Only Site Engineers can edit Soil Tests.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-soil-tests");
             exit;
         }
 
@@ -131,9 +131,9 @@ class SoilTestController extends Controller {
     }
 
     public function update() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
-            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+        if ((int)($_SESSION['user']['role_id'] ?? 0) !== 12) {
+            setError('Only Site Engineers can edit Soil Tests.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-soil-tests");
             exit;
         }
 
@@ -157,9 +157,9 @@ class SoilTestController extends Controller {
     }
 
     public function delete() {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
-            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+        if ((int)($_SESSION['user']['role_id'] ?? 0) !== 12) {
+            setError('Only Site Engineers can delete Soil Tests.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-soil-tests");
             exit;
         }
 
