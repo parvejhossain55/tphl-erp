@@ -1,8 +1,20 @@
 -- MySQL dump 10.13  Distrib 8.0.45, for Linux (x86_64)
 --
+<<<<<<< HEAD
 -- Host: localhost    Database: final_erp_db
 -- ------------------------------------------------------
 -- Server version	8.0.45-0ubuntu0.24.04.1
+=======
+-- Host: 127.0.0.1
+-- Generation Time: May 11, 2026 at 11:07 AM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -656,10 +668,67 @@ CREATE TABLE `con_financial_transactions` (
 -- Dumping data for table `con_financial_transactions`
 --
 
+<<<<<<< HEAD
 LOCK TABLES `con_financial_transactions` WRITE;
 /*!40000 ALTER TABLE `con_financial_transactions` DISABLE KEYS */;
 /*!40000 ALTER TABLE `con_financial_transactions` ENABLE KEYS */;
 UNLOCK TABLES;
+=======
+CREATE TABLE `con_materials` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `unit` varchar(50) NOT NULL,
+  `min_stock_level` decimal(12,3) NOT NULL DEFAULT 0.000,
+  `created_by` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `con_materials`
+--
+
+INSERT INTO `con_materials` (`id`, `name`, `unit`, `min_stock_level`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 'Cement - Holcim 50kg', 'Bags', 100.000, 123, '2026-05-05 13:09:31', NULL),
+(2, 'Bricks', 'Pcs', 1000.000, 123, '2026-05-05 13:09:31', NULL),
+(3, 'Reinforcement Steel', 'Ton', 5.000, 123, '2026-05-05 13:09:31', NULL),
+(4, 'Aggregate/Stone', 'CFT', 100.000, 123, '2026-05-05 13:09:31', '2026-05-05 13:09:43'),
+(5, 'Tiles', 'SFT', 200.000, 123, '2026-05-05 13:09:31', NULL),
+(6, 'Sand', 'CFT', 100.000, 123, '2026-05-05 13:09:31', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `con_material_issues`
+--
+
+CREATE TABLE `con_material_issues` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `warehouse_id` int(10) UNSIGNED NOT NULL,
+  `material_id` int(10) UNSIGNED NOT NULL,
+  `quantity` decimal(12,3) NOT NULL,
+  `issued_to` int(11) DEFAULT NULL,
+  `purpose` text DEFAULT NULL,
+  `target_id` int(11) DEFAULT NULL,
+  `work_plan_id` int(11) DEFAULT NULL,
+  `issued_by` int(11) NOT NULL,
+  `issue_date` date NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `con_material_issues`
+--
+
+INSERT INTO `con_material_issues` (`id`, `project_id`, `warehouse_id`, `material_id`, `quantity`, `issued_to`, `purpose`, `target_id`, `work_plan_id`, `issued_by`, `issue_date`, `created_at`) VALUES
+(1, 13, 1, 4, 200.000, 0, 'test', 1, 2, 123, '2026-05-07', '2026-05-07 07:40:11'),
+(2, 13, 1, 2, 100.000, 1, 'test', 1, 2, 123, '2026-05-07', '2026-05-07 09:11:33'),
+(3, 13, 1, 1, 150.000, 1, 'Floor 3 slab', 2, 2, 123, '2026-05-07', '2026-05-07 10:50:29'),
+(4, 13, 1, 4, 200.000, 1, 'column cast', 3, 2, 123, '2026-05-10', '2026-05-10 10:58:36');
+
+-- --------------------------------------------------------
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
 
 --
 -- Table structure for table `con_material_issue_items`
@@ -715,11 +784,18 @@ CREATE TABLE `con_material_issues` (
 -- Dumping data for table `con_material_issues`
 --
 
+<<<<<<< HEAD
 LOCK TABLES `con_material_issues` WRITE;
 /*!40000 ALTER TABLE `con_material_issues` DISABLE KEYS */;
 INSERT INTO `con_material_issues` VALUES (1,13,1,2,300.000,1,'Column cast',3,1,123,'2026-05-07','2026-05-07 12:59:51');
 /*!40000 ALTER TABLE `con_material_issues` ENABLE KEYS */;
 UNLOCK TABLES;
+=======
+INSERT INTO `con_stocks` (`id`, `material_id`, `warehouse_id`, `current_quantity`, `unit_price`, `total_value`, `updated_at`) VALUES
+(1, 4, 1, 100.000, 85.50, 42750.00, '2026-05-10 10:58:36'),
+(2, 2, 1, 100.000, 420.00, 84000.00, '2026-05-07 09:11:33'),
+(3, 1, 1, 850.000, 12.00, 12000.00, '2026-05-07 10:50:29');
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
 
 --
 -- Table structure for table `con_materials`
@@ -779,11 +855,22 @@ CREATE TABLE `con_stock_movements` (
 -- Dumping data for table `con_stock_movements`
 --
 
+<<<<<<< HEAD
 LOCK TABLES `con_stock_movements` WRITE;
 /*!40000 ALTER TABLE `con_stock_movements` DISABLE KEYS */;
 INSERT INTO `con_stock_movements` VALUES (1,2,1,'IN',500.000,'material_receiving',1,120,'2026-05-07 12:58:35'),(2,1,1,'IN',300.000,'material_receiving',1,120,'2026-05-07 12:58:35'),(3,2,1,'OUT',300.000,'material_issue',1,123,'2026-05-07 12:59:51');
 /*!40000 ALTER TABLE `con_stock_movements` ENABLE KEYS */;
 UNLOCK TABLES;
+=======
+INSERT INTO `con_stock_movements` (`id`, `material_id`, `warehouse_id`, `type`, `quantity`, `ref_type`, `ref_id`, `moved_by`, `created_at`) VALUES
+(1, 4, 1, 'IN', 500.000, 'material_receiving', 1, 127, '2026-05-07 06:47:04'),
+(2, 2, 1, 'IN', 200.000, 'material_receiving', 1, 127, '2026-05-07 06:47:04'),
+(3, 1, 1, 'IN', 1000.000, 'material_receiving', 1, 127, '2026-05-07 06:47:04'),
+(4, 4, 1, 'OUT', 200.000, 'material_issue', 1, 123, '2026-05-07 07:40:11'),
+(5, 2, 1, 'OUT', 100.000, 'material_issue', 2, 123, '2026-05-07 09:11:33'),
+(6, 1, 1, 'OUT', 150.000, 'material_issue', 3, 123, '2026-05-07 10:50:29'),
+(7, 4, 1, 'OUT', 200.000, 'material_issue', 4, 123, '2026-05-10 10:58:36');
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
 
 --
 -- Table structure for table `con_stocks`
@@ -852,6 +939,7 @@ DROP TABLE IF EXISTS `con_work_orders`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `con_work_orders` (
+<<<<<<< HEAD
   `id` int NOT NULL AUTO_INCREMENT,
   `project_id` int NOT NULL,
   `contractor_id` int NOT NULL,
@@ -861,6 +949,19 @@ CREATE TABLE `con_work_orders` (
   `wo_number` varchar(50) DEFAULT NULL,
   `title` varchar(255) DEFAULT NULL,
   `scope_of_work` text,
+=======
+  `id` int(11) NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `contractor_id` int(11) NOT NULL,
+  `work_type_id` int(11) DEFAULT NULL,
+  `design_id` int(11) DEFAULT NULL,
+  `boq_id` int(11) DEFAULT NULL,
+  `wo_number` varchar(50) DEFAULT NULL,
+  `title` varchar(255) DEFAULT NULL,
+  `scope_of_work` text DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `description` longtext DEFAULT NULL,
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
   `unit` varchar(50) DEFAULT NULL,
   `unit_rate` decimal(15,2) DEFAULT NULL,
   `quantity` decimal(10,2) DEFAULT NULL,
@@ -888,6 +989,7 @@ CREATE TABLE `con_work_orders` (
 -- Dumping data for table `con_work_orders`
 --
 
+<<<<<<< HEAD
 LOCK TABLES `con_work_orders` WRITE;
 /*!40000 ALTER TABLE `con_work_orders` DISABLE KEYS */;
 /*!40000 ALTER TABLE `con_work_orders` ENABLE KEYS */;
@@ -1005,6 +1107,12 @@ LOCK TABLES `contractors` WRITE;
 INSERT INTO `contractors` VALUES (1,'Md. Rahim','Contractor','Masonry','01711223344','1990123456789','Dhaka, Bangladesh',1200.00,'active',120,'2026-05-05 13:42:21',NULL);
 /*!40000 ALTER TABLE `contractors` ENABLE KEYS */;
 UNLOCK TABLES;
+=======
+INSERT INTO `con_work_orders` (`id`, `project_id`, `contractor_id`, `work_type_id`, `design_id`, `boq_id`, `wo_number`, `title`, `scope_of_work`, `notes`, `description`, `unit`, `unit_rate`, `quantity`, `total_amount`, `start_date`, `end_date`, `advance_percent`, `running_percent`, `retention_percent`, `advance_amount`, `retention_amount`, `status`, `created_by`, `approved_by`, `approved_at`, `qc_approved_by`, `qc_approved_at`, `completed_by`, `completed_at`, `rejection_reason`, `updated_at`, `created_at`, `target_id`, `work_plan_id`) VALUES
+(1, 13, 1, 2, 1, NULL, 'WO-2026-0001', 'Foundation Work', 'Test work order', '', NULL, 'sqft', 1000.00, 10000.00, 10000000.00, '2026-05-10', '2026-05-15', 20.00, 70.00, 10.00, 2000000.00, 1000000.00, 'approved', 120, 6, '2026-05-11 11:09:43', NULL, NULL, NULL, NULL, NULL, '2026-05-11 05:09:43', '2026-05-10 11:22:36', 1, 2);
+
+-- --------------------------------------------------------
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
 
 --
 -- Table structure for table `departments`
@@ -2253,11 +2361,18 @@ CREATE TABLE `material_receiving` (
 -- Dumping data for table `material_receiving`
 --
 
+<<<<<<< HEAD
 LOCK TABLES `material_receiving` WRITE;
 /*!40000 ALTER TABLE `material_receiving` DISABLE KEYS */;
 INSERT INTO `material_receiving` VALUES (1,1,127,'2026-05-07','Full','Received',NULL,126,'Accept',NULL,'Accepted',127,1,'','2026-05-07 12:47:43','2026-05-07 12:58:35',120,'','2026-05-07 12:58:35');
 /*!40000 ALTER TABLE `material_receiving` ENABLE KEYS */;
 UNLOCK TABLES;
+=======
+INSERT INTO `material_receiving` (`id`, `purchase_order_id`, `received_by`, `receiving_date`, `received_status`, `site_eng_note`, `site_eng_photo`, `qc_checked_by`, `qc_note`, `qc_photo`, `overall_status`, `created_by`, `warehouse_id`, `notes`, `created_at`, `updated_at`, `pm_checked_by`, `pm_note`, `pm_approved_at`) VALUES
+(1, 2, 127, '2026-05-10', 'Full', NULL, NULL, 120, NULL, NULL, 'Accepted', 127, 1, NULL, '2026-05-07 06:47:04', '2026-05-10 09:23:00', 120, NULL, NULL);
+
+-- --------------------------------------------------------
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
 
 --
 -- Table structure for table `material_receiving_items`
@@ -2724,6 +2839,51 @@ LOCK TABLES `project_legal_sheets` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `project_legal_sheets`
+--
+
+CREATE TABLE `project_legal_sheets` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `project_id` bigint(20) UNSIGNED NOT NULL,
+  `sheet_type` varchar(100) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `version` varchar(50) DEFAULT 'V1',
+  `link` text NOT NULL,
+  `submitted_by` bigint(20) UNSIGNED NOT NULL,
+  `remark` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `project_legal_sheets`
+--
+
+INSERT INTO `project_legal_sheets` (`id`, `project_id`, `sheet_type`, `title`, `version`, `link`, `submitted_by`, `remark`, `created_at`, `updated_at`) VALUES
+(1, 13, 'Amin', 'Ami Sheet', 'V1', 'https://drive.google.com/', 124, 'test', '2026-05-11 08:30:48', '2026-05-11 08:30:48');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `project_sheets`
+--
+
+CREATE TABLE `project_sheets` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `project_id` bigint(20) UNSIGNED NOT NULL,
+  `sheet_type` varchar(100) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `version` varchar(50) DEFAULT 'V1',
+  `link` text NOT NULL,
+  `submitted_by` bigint(20) UNSIGNED NOT NULL,
+  `remark` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `project_structural_designs`
 --
 
@@ -3043,6 +3203,7 @@ DROP TABLE IF EXISTS `qc_checklists`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `qc_checklists` (
+<<<<<<< HEAD
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `work_type_id` bigint unsigned NOT NULL,
   `material_item_id` bigint unsigned DEFAULT NULL,
@@ -3055,16 +3216,68 @@ CREATE TABLE `qc_checklists` (
   CONSTRAINT `fk_qc_work_type_id` FOREIGN KEY (`work_type_id`) REFERENCES `work_types` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+=======
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `work_type_id` bigint(20) UNSIGNED NOT NULL,
+  `material_item_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `checklist_item_name` varchar(255) NOT NULL,
+  `created_by` bigint(20) UNSIGNED NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `qc_checklists`
 --
 
+INSERT INTO `qc_checklists` (`id`, `work_type_id`, `material_item_id`, `checklist_item_name`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 1, NULL, 'Soil bearing capacity test conducted', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(2, 1, NULL, 'Footing depth matches approved drawing', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(3, 1, NULL, 'Footing size & reinforcement verified', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(4, 1, NULL, 'Concrete grade matches specification', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(5, 1, NULL, 'Compaction test done before pouring', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(6, 2, NULL, 'Floor plan dimensions match approved drawing', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(7, 2, NULL, 'Column positions verified against layout', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(8, 2, NULL, 'Elevation levels checked with datum', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(9, 2, NULL, 'Drainage slope and outlets verified', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(10, 2, NULL, 'Wall alignment and plumb checked', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
+(11, 2, NULL, 'Openings (doors/windows) size and position verified', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02');
+
+-- --------------------------------------------------------
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
+
+--
+-- Dumping data for table `qc_checklists`
+--
+
+<<<<<<< HEAD
 LOCK TABLES `qc_checklists` WRITE;
 /*!40000 ALTER TABLE `qc_checklists` DISABLE KEYS */;
 INSERT INTO `qc_checklists` VALUES (1,1,NULL,'Soil bearing capacity test conducted',126,'2026-05-11 07:05:02','2026-05-11 07:05:02'),(2,1,NULL,'Footing depth matches approved drawing',126,'2026-05-11 07:05:02','2026-05-11 07:05:02'),(3,1,NULL,'Footing size & reinforcement verified',126,'2026-05-11 07:05:02','2026-05-11 07:05:02'),(4,1,NULL,'Concrete grade matches specification',126,'2026-05-11 07:05:02','2026-05-11 07:05:02'),(5,1,NULL,'Compaction test done before pouring',126,'2026-05-11 07:05:02','2026-05-11 07:05:02'),(6,2,NULL,'Floor plan dimensions match approved drawing',126,'2026-05-11 07:05:02','2026-05-11 07:05:02'),(7,2,NULL,'Column positions verified against layout',126,'2026-05-11 07:05:02','2026-05-11 07:05:02'),(8,2,NULL,'Elevation levels checked with datum',126,'2026-05-11 07:05:02','2026-05-11 07:05:02'),(9,2,NULL,'Drainage slope and outlets verified',126,'2026-05-11 07:05:02','2026-05-11 07:05:02'),(10,2,NULL,'Wall alignment and plumb checked',126,'2026-05-11 07:05:02','2026-05-11 07:05:02'),(11,2,NULL,'Openings (doors/windows) size and position verified',126,'2026-05-11 07:05:02','2026-05-11 07:05:02');
 /*!40000 ALTER TABLE `qc_checklists` ENABLE KEYS */;
 UNLOCK TABLES;
+=======
+CREATE TABLE `qc_inspections` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `work_type_id` bigint(20) UNSIGNED NOT NULL,
+  `inspector_id` bigint(20) UNSIGNED NOT NULL,
+  `inspection_date` date NOT NULL,
+  `overall_status` enum('passed','failed','rework_needed') NOT NULL,
+  `attachment` varchar(255) DEFAULT NULL,
+  `comments` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `qc_inspections`
+--
+
+INSERT INTO `qc_inspections` (`id`, `project_id`, `work_type_id`, `inspector_id`, `inspection_date`, `overall_status`, `attachment`, `comments`, `created_at`) VALUES
+(1, 13, 2, 126, '2026-05-11', 'passed', NULL, '', '2026-05-11 07:20:21');
+
+-- --------------------------------------------------------
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
 
 --
 -- Table structure for table `qc_inspection_items`
@@ -3092,6 +3305,7 @@ CREATE TABLE `qc_inspection_items` (
 -- Dumping data for table `qc_inspection_items`
 --
 
+<<<<<<< HEAD
 LOCK TABLES `qc_inspection_items` WRITE;
 /*!40000 ALTER TABLE `qc_inspection_items` DISABLE KEYS */;
 /*!40000 ALTER TABLE `qc_inspection_items` ENABLE KEYS */;
@@ -3130,6 +3344,17 @@ LOCK TABLES `qc_inspections` WRITE;
 /*!40000 ALTER TABLE `qc_inspections` DISABLE KEYS */;
 /*!40000 ALTER TABLE `qc_inspections` ENABLE KEYS */;
 UNLOCK TABLES;
+=======
+INSERT INTO `qc_inspection_items` (`id`, `qc_inspection_id`, `qc_checklist_id`, `is_passed`, `observation_note`, `attachment`) VALUES
+(1, 1, 6, 1, 'Passed', NULL),
+(2, 1, 7, 1, 'Passed', NULL),
+(3, 1, 8, 1, 'Passed', NULL),
+(4, 1, 9, 0, 'Failed', NULL),
+(5, 1, 10, 0, 'Failed', NULL),
+(6, 1, 11, 0, 'Failed', NULL);
+
+-- --------------------------------------------------------
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
 
 --
 -- Table structure for table `qc_material_tests`
@@ -3139,12 +3364,22 @@ DROP TABLE IF EXISTS `qc_material_tests`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `qc_material_tests` (
+<<<<<<< HEAD
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `project_id` int DEFAULT NULL,
   `work_type_id` int DEFAULT NULL,
   `test_type_id` int DEFAULT NULL,
   `material_receiving_id` int DEFAULT NULL COMMENT 'Nullable: Used only for GRN material tests',
   `test_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+=======
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `material_item_id` int(11) DEFAULT NULL,
+  `project_id` int(11) DEFAULT NULL,
+  `work_type_id` int(11) DEFAULT NULL,
+  `test_type_id` int(11) DEFAULT NULL,
+  `material_receiving_id` int(11) DEFAULT NULL COMMENT 'Nullable: Used only for GRN material tests',
+  `test_name` varchar(255) NOT NULL,
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
   `test_date` date DEFAULT NULL,
   `age_of_sample` int DEFAULT NULL COMMENT 'e.g., 7 or 28 for concrete cylinder tests',
   `required_value` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Standard threshold/required value (e.g., 3500 PSI)',
@@ -3163,11 +3398,19 @@ CREATE TABLE `qc_material_tests` (
 -- Dumping data for table `qc_material_tests`
 --
 
+<<<<<<< HEAD
 LOCK TABLES `qc_material_tests` WRITE;
 /*!40000 ALTER TABLE `qc_material_tests` DISABLE KEYS */;
 INSERT INTO `qc_material_tests` VALUES (1,NULL,NULL,NULL,1,'GRN-1 Test material',NULL,NULL,NULL,'100','pass','',NULL,126,'2026-05-07 12:49:14');
 /*!40000 ALTER TABLE `qc_material_tests` ENABLE KEYS */;
 UNLOCK TABLES;
+=======
+INSERT INTO `qc_material_tests` (`id`, `material_item_id`, `project_id`, `work_type_id`, `test_type_id`, `material_receiving_id`, `test_name`, `test_date`, `age_of_sample`, `required_value`, `result_value`, `test_status`, `lab_report_link`, `attachment`, `created_by`, `created_at`) VALUES
+(1, NULL, NULL, NULL, NULL, 1, 'GRN-1 Test material', NULL, NULL, NULL, '', 'pass', '', NULL, 126, '2026-05-10 09:55:36'),
+(4, NULL, 13, 2, 1, NULL, 'Cylinder Compressive Strength', '2026-05-10', 7, '23', '20', 'pass', '', 'uploads/qc/qc_6a0061b524ded_1778409909.png', 126, '2026-05-10 10:45:09');
+
+-- --------------------------------------------------------
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
 
 --
 -- Table structure for table `qc_test_types`
@@ -3308,11 +3551,150 @@ CREATE TABLE `role_permissions` (
 -- Dumping data for table `role_permissions`
 --
 
+<<<<<<< HEAD
 LOCK TABLES `role_permissions` WRITE;
 /*!40000 ALTER TABLE `role_permissions` DISABLE KEYS */;
 INSERT INTO `role_permissions` VALUES (26,7,12,'2026-02-05 07:06:27','2026-02-05 07:06:27'),(27,7,13,'2026-02-05 07:06:27','2026-02-05 07:06:27'),(79,11,13,'2026-04-02 08:11:08','2026-04-02 08:11:08'),(80,11,22,'2026-04-02 08:11:08','2026-04-02 08:11:08'),(85,10,23,'2026-04-02 08:11:48','2026-04-02 08:11:48'),(86,10,13,'2026-04-02 08:11:48','2026-04-02 08:11:48'),(87,10,19,'2026-04-02 08:11:48','2026-04-02 08:11:48'),(88,8,15,'2026-04-06 09:20:46','2026-04-06 09:20:46'),(89,8,20,'2026-04-06 09:20:46','2026-04-06 09:20:46'),(90,8,13,'2026-04-06 09:20:46','2026-04-06 09:20:46'),(120,5,17,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(121,5,20,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(122,5,7,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(123,5,24,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(124,5,13,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(133,1,10,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(134,1,3,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(135,1,1,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(136,1,5,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(137,1,21,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(138,1,12,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(139,1,6,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(140,1,25,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(141,1,14,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(142,1,11,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(143,1,7,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(144,1,24,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(145,1,4,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(146,1,13,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(147,1,2,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(164,4,6,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(165,4,25,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(166,4,20,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(167,4,8,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(168,4,24,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(169,4,13,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(170,9,25,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(171,9,24,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(172,9,13,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(173,9,19,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(177,6,10,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(178,6,25,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(179,6,20,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(180,6,13,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(417,14,27,'2026-04-30 04:56:20','2026-04-30 04:56:20'),(437,16,34,'2026-04-30 04:58:52','2026-04-30 04:58:52'),(442,19,41,'2026-04-30 05:30:57','2026-04-30 05:30:57'),(443,19,31,'2026-04-30 05:30:57','2026-04-30 05:30:57'),(470,21,48,'2026-04-30 05:33:10','2026-04-30 05:33:10'),(476,18,39,'2026-05-04 06:53:40','2026-05-04 06:53:40'),(477,13,49,'2026-05-05 04:23:42','2026-05-05 04:23:42'),(478,23,26,'2026-05-06 08:41:20','2026-05-06 08:41:20'),(552,20,47,'2026-05-07 11:12:15','2026-05-07 11:12:15'),(553,20,45,'2026-05-07 11:12:15','2026-05-07 11:12:15'),(554,20,43,'2026-05-07 11:12:15','2026-05-07 11:12:15'),(555,20,46,'2026-05-07 11:12:15','2026-05-07 11:12:15'),(556,20,35,'2026-05-07 11:12:15','2026-05-07 11:12:15'),(573,17,44,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(574,17,38,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(575,17,35,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(576,17,36,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(577,12,26,'2026-05-07 12:25:49','2026-05-07 12:25:49'),(578,12,45,'2026-05-07 12:25:49','2026-05-07 12:25:49'),(579,12,40,'2026-05-07 12:25:49','2026-05-07 12:25:49'),(580,12,31,'2026-05-07 12:25:49','2026-05-07 12:25:49'),(581,12,28,'2026-05-07 12:25:49','2026-05-07 12:25:49'),(582,12,27,'2026-05-07 12:25:49','2026-05-07 12:25:49'),(583,12,33,'2026-05-07 12:25:49','2026-05-07 12:25:49'),(584,12,43,'2026-05-07 12:25:49','2026-05-07 12:25:49'),(585,12,34,'2026-05-07 12:25:49','2026-05-07 12:25:49'),(586,12,46,'2026-05-07 12:25:49','2026-05-07 12:25:49'),(587,12,32,'2026-05-07 12:25:49','2026-05-07 12:25:49'),(588,12,30,'2026-05-07 12:25:49','2026-05-07 12:25:49'),(589,12,42,'2026-05-07 12:25:49','2026-05-07 12:25:49'),(610,22,26,'2026-05-10 12:36:59','2026-05-10 12:36:59'),(611,22,50,'2026-05-10 12:36:59','2026-05-10 12:36:59'),(612,15,41,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(613,15,26,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(614,15,45,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(615,15,40,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(616,15,31,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(617,15,28,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(618,15,27,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(619,15,33,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(620,15,44,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(621,15,43,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(622,15,38,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(623,15,34,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(624,15,29,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(625,15,46,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(626,15,48,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(627,15,32,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(628,15,35,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(629,15,30,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(630,15,36,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(631,15,50,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(632,15,42,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(633,3,10,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(634,3,3,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(635,3,1,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(636,3,5,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(637,3,39,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(638,3,47,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(639,3,41,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(640,3,21,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(641,3,12,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(642,3,26,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(643,3,45,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(644,3,31,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(645,3,6,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(646,3,28,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(647,3,27,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(648,3,25,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(649,3,33,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(650,3,44,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(651,3,43,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(652,3,14,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(653,3,8,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(654,3,38,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(655,3,34,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(656,3,29,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(657,3,46,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(658,3,48,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(659,3,32,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(660,3,35,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(661,3,11,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(662,3,7,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(663,3,24,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(664,3,4,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(665,3,30,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(666,3,13,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(667,3,36,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(668,3,50,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(669,3,42,'2026-05-10 12:37:23','2026-05-10 12:37:23');
 /*!40000 ALTER TABLE `role_permissions` ENABLE KEYS */;
 UNLOCK TABLES;
+=======
+INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `created_at`, `updated_at`) VALUES
+(26, 7, 12, '2026-02-05 07:06:27', '2026-02-05 07:06:27'),
+(27, 7, 13, '2026-02-05 07:06:27', '2026-02-05 07:06:27'),
+(79, 11, 13, '2026-04-02 08:11:08', '2026-04-02 08:11:08'),
+(80, 11, 22, '2026-04-02 08:11:08', '2026-04-02 08:11:08'),
+(85, 10, 23, '2026-04-02 08:11:48', '2026-04-02 08:11:48'),
+(86, 10, 13, '2026-04-02 08:11:48', '2026-04-02 08:11:48'),
+(87, 10, 19, '2026-04-02 08:11:48', '2026-04-02 08:11:48'),
+(88, 8, 15, '2026-04-06 09:20:46', '2026-04-06 09:20:46'),
+(89, 8, 20, '2026-04-06 09:20:46', '2026-04-06 09:20:46'),
+(90, 8, 13, '2026-04-06 09:20:46', '2026-04-06 09:20:46'),
+(120, 5, 17, '2026-04-07 10:14:19', '2026-04-07 10:14:19'),
+(121, 5, 20, '2026-04-07 10:14:19', '2026-04-07 10:14:19'),
+(122, 5, 7, '2026-04-07 10:14:19', '2026-04-07 10:14:19'),
+(123, 5, 24, '2026-04-07 10:14:19', '2026-04-07 10:14:19'),
+(124, 5, 13, '2026-04-07 10:14:19', '2026-04-07 10:14:19'),
+(133, 1, 10, '2026-04-07 12:49:38', '2026-04-07 12:49:38'),
+(134, 1, 3, '2026-04-07 12:49:38', '2026-04-07 12:49:38'),
+(135, 1, 1, '2026-04-07 12:49:38', '2026-04-07 12:49:38'),
+(136, 1, 5, '2026-04-07 12:49:38', '2026-04-07 12:49:38'),
+(137, 1, 21, '2026-04-07 12:49:38', '2026-04-07 12:49:38'),
+(138, 1, 12, '2026-04-07 12:49:38', '2026-04-07 12:49:38'),
+(139, 1, 6, '2026-04-07 12:49:38', '2026-04-07 12:49:38'),
+(140, 1, 25, '2026-04-07 12:49:38', '2026-04-07 12:49:38'),
+(141, 1, 14, '2026-04-07 12:49:38', '2026-04-07 12:49:38'),
+(142, 1, 11, '2026-04-07 12:49:38', '2026-04-07 12:49:38'),
+(143, 1, 7, '2026-04-07 12:49:38', '2026-04-07 12:49:38'),
+(144, 1, 24, '2026-04-07 12:49:38', '2026-04-07 12:49:38'),
+(145, 1, 4, '2026-04-07 12:49:38', '2026-04-07 12:49:38'),
+(146, 1, 13, '2026-04-07 12:49:38', '2026-04-07 12:49:38'),
+(147, 1, 2, '2026-04-07 12:49:38', '2026-04-07 12:49:38'),
+(164, 4, 6, '2026-04-07 12:50:01', '2026-04-07 12:50:01'),
+(165, 4, 25, '2026-04-07 12:50:01', '2026-04-07 12:50:01'),
+(166, 4, 20, '2026-04-07 12:50:01', '2026-04-07 12:50:01'),
+(167, 4, 8, '2026-04-07 12:50:01', '2026-04-07 12:50:01'),
+(168, 4, 24, '2026-04-07 12:50:01', '2026-04-07 12:50:01'),
+(169, 4, 13, '2026-04-07 12:50:01', '2026-04-07 12:50:01'),
+(170, 9, 25, '2026-04-07 12:50:21', '2026-04-07 12:50:21'),
+(171, 9, 24, '2026-04-07 12:50:21', '2026-04-07 12:50:21'),
+(172, 9, 13, '2026-04-07 12:50:21', '2026-04-07 12:50:21'),
+(173, 9, 19, '2026-04-07 12:50:21', '2026-04-07 12:50:21'),
+(177, 6, 10, '2026-04-10 08:55:37', '2026-04-10 08:55:37'),
+(178, 6, 25, '2026-04-10 08:55:37', '2026-04-10 08:55:37'),
+(179, 6, 20, '2026-04-10 08:55:37', '2026-04-10 08:55:37'),
+(180, 6, 13, '2026-04-10 08:55:37', '2026-04-10 08:55:37'),
+(417, 14, 27, '2026-04-30 04:56:20', '2026-04-30 04:56:20'),
+(437, 16, 34, '2026-04-30 04:58:52', '2026-04-30 04:58:52'),
+(470, 21, 48, '2026-04-30 05:33:10', '2026-04-30 05:33:10'),
+(476, 18, 39, '2026-05-04 06:53:40', '2026-05-04 06:53:40'),
+(477, 13, 49, '2026-05-05 04:23:42', '2026-05-05 04:23:42'),
+(550, 19, 41, '2026-05-06 06:40:22', '2026-05-06 06:40:22'),
+(551, 19, 31, '2026-05-06 06:40:22', '2026-05-06 06:40:22'),
+(552, 19, 37, '2026-05-06 06:40:22', '2026-05-06 06:40:22'),
+(558, 17, 44, '2026-05-06 08:57:06', '2026-05-06 08:57:06'),
+(559, 17, 38, '2026-05-06 08:57:06', '2026-05-06 08:57:06'),
+(560, 17, 35, '2026-05-06 08:57:06', '2026-05-06 08:57:06'),
+(561, 17, 36, '2026-05-06 08:57:06', '2026-05-06 08:57:06'),
+(595, 3, 10, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(596, 3, 3, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(597, 3, 1, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(598, 3, 5, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(599, 3, 39, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(600, 3, 47, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(601, 3, 41, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(602, 3, 21, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(603, 3, 12, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(604, 3, 26, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(605, 3, 45, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(606, 3, 31, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(607, 3, 6, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(608, 3, 28, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(609, 3, 27, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(610, 3, 25, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(611, 3, 33, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(612, 3, 44, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(613, 3, 43, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(614, 3, 14, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(615, 3, 8, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(616, 3, 38, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(617, 3, 34, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(618, 3, 29, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(619, 3, 46, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(620, 3, 48, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(621, 3, 32, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(622, 3, 35, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(623, 3, 11, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(624, 3, 7, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(625, 3, 24, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(626, 3, 4, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(627, 3, 30, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(628, 3, 13, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(629, 3, 36, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(630, 3, 50, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(631, 3, 42, '2026-05-09 08:40:28', '2026-05-09 08:40:28'),
+(632, 15, 41, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(633, 15, 26, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(634, 15, 45, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(635, 15, 40, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(636, 15, 31, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(637, 15, 28, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(638, 15, 27, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(639, 15, 33, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(640, 15, 44, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(641, 15, 43, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(642, 15, 38, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(643, 15, 34, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(644, 15, 29, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(645, 15, 46, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(646, 15, 48, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(647, 15, 32, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(648, 15, 30, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(649, 15, 36, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(650, 15, 50, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(651, 15, 42, '2026-05-09 08:40:45', '2026-05-09 08:40:45'),
+(652, 22, 26, '2026-05-09 08:41:10', '2026-05-09 08:41:10'),
+(653, 22, 50, '2026-05-09 08:41:10', '2026-05-09 08:41:10'),
+(656, 23, 51, '2026-05-09 12:28:27', '2026-05-09 12:28:27'),
+(660, 20, 44, '2026-05-10 07:25:53', '2026-05-10 07:25:53'),
+(661, 20, 43, '2026-05-10 07:25:53', '2026-05-10 07:25:53'),
+(662, 20, 46, '2026-05-10 07:25:53', '2026-05-10 07:25:53'),
+(663, 20, 35, '2026-05-10 07:25:53', '2026-05-10 07:25:53'),
+(664, 12, 26, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(665, 12, 45, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(666, 12, 40, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(667, 12, 31, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(668, 12, 28, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(669, 12, 27, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(670, 12, 33, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(671, 12, 44, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(672, 12, 38, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(673, 12, 34, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(674, 12, 46, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(675, 12, 32, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(676, 12, 35, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(677, 12, 30, '2026-05-10 07:34:54', '2026-05-10 07:34:54'),
+(678, 12, 42, '2026-05-10 07:34:54', '2026-05-10 07:34:54');
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
 
 --
 -- Table structure for table `roles`
@@ -3527,6 +3909,7 @@ DROP TABLE IF EXISTS `target_fixed`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `target_fixed` (
+<<<<<<< HEAD
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `project_id` int NOT NULL,
   `work_plan_id` int DEFAULT NULL,
@@ -3551,6 +3934,32 @@ CREATE TABLE `target_fixed` (
   `lab_test_date` date DEFAULT NULL,
   `target_details` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
   `description` longtext COLLATE utf8mb4_general_ci,
+=======
+  `id` int(10) UNSIGNED NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `work_plan_id` int(11) DEFAULT NULL,
+  `work_order_id` int(11) DEFAULT NULL,
+  `target_title` varchar(200) DEFAULT NULL,
+  `user_id` int(11) NOT NULL,
+  `year` smallint(5) UNSIGNED NOT NULL,
+  `month` tinyint(3) UNSIGNED NOT NULL,
+  `week_number` tinyint(3) UNSIGNED DEFAULT NULL,
+  `target_percentage` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `gain_percentage` decimal(5,2) DEFAULT 0.00,
+  `photo_link` varchar(500) DEFAULT NULL,
+  `field_test_details` text DEFAULT NULL,
+  `lab_test_result` text DEFAULT NULL,
+  `approved_by_site_eng` tinyint(1) NOT NULL DEFAULT 0,
+  `approved_by_qc` tinyint(1) NOT NULL DEFAULT 0,
+  `approved_by_pc` tinyint(1) NOT NULL DEFAULT 0,
+  `approved_by_pd` tinyint(1) NOT NULL DEFAULT 0,
+  `approved_by_manager` tinyint(1) NOT NULL DEFAULT 0,
+  `qc_reviewed_by_id` int(11) DEFAULT NULL,
+  `is_lab_test` int(11) NOT NULL DEFAULT 0,
+  `lab_test_date` date DEFAULT NULL,
+  `target_details` text DEFAULT NULL,
+  `description` longtext DEFAULT NULL,
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
   `qc_reviewed_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -3566,11 +3975,20 @@ CREATE TABLE `target_fixed` (
 -- Dumping data for table `target_fixed`
 --
 
+<<<<<<< HEAD
 LOCK TABLES `target_fixed` WRITE;
 /*!40000 ALTER TABLE `target_fixed` DISABLE KEYS */;
 INSERT INTO `target_fixed` VALUES (1,13,1,NULL,'0',123,2026,5,1,25.00,0.00,NULL,NULL,NULL,0,1,0,0,1,126,0,NULL,'test',NULL,'2026-05-05 13:28:44','2026-05-05 13:20:01','2026-05-05 13:29:15',NULL),(2,13,1,NULL,'Test Week 1',123,2026,5,1,25.00,0.00,NULL,NULL,NULL,0,0,0,0,0,NULL,0,NULL,'Column,Beam,Footing',NULL,NULL,'2026-05-07 12:07:42',NULL,NULL),(3,13,1,NULL,'Column Cast',120,2026,5,1,25.00,80.00,NULL,'1 column error','test 80',0,1,0,0,1,126,0,NULL,'Column\r\nBeam\r\nFooting',NULL,'2026-05-07 13:12:59','2026-05-07 12:09:08','2026-05-07 13:12:59',NULL);
 /*!40000 ALTER TABLE `target_fixed` ENABLE KEYS */;
 UNLOCK TABLES;
+=======
+INSERT INTO `target_fixed` (`id`, `project_id`, `work_plan_id`, `work_order_id`, `target_title`, `user_id`, `year`, `month`, `week_number`, `target_percentage`, `gain_percentage`, `photo_link`, `field_test_details`, `lab_test_result`, `approved_by_site_eng`, `approved_by_qc`, `approved_by_pc`, `approved_by_pd`, `approved_by_manager`, `qc_reviewed_by_id`, `is_lab_test`, `lab_test_date`, `target_details`, `description`, `qc_reviewed_at`, `created_at`, `updated_at`, `manager_approved_by_id`, `manager_approved_at`) VALUES
+(1, 13, 2, 1, 'Column Cast', 120, 2026, 5, 1, 24.98, 0.00, NULL, NULL, NULL, 0, 0, 0, 0, 1, NULL, 0, NULL, 'tyregjrf jkdfhuyreiuertijkdhf kdjfhurt', NULL, NULL, '2026-05-06 08:29:10', '2026-05-11 05:23:33', NULL, NULL),
+(2, 13, 2, 1, 'Floor 3 slab Target Week 1', 123, 2026, 5, 1, 0.00, 0.00, NULL, NULL, NULL, 0, 0, 0, 0, 0, NULL, 0, NULL, NULL, NULL, NULL, '2026-05-07 10:50:29', '2026-05-11 05:23:37', NULL, NULL),
+(3, 13, 2, NULL, 'Column Cast', 123, 2026, 5, 1, 25.00, 0.00, NULL, NULL, NULL, 0, 0, 0, 0, 0, NULL, 0, NULL, 'Column\r\nBeam\r\nFooting', NULL, NULL, '2026-05-07 12:16:15', NULL, NULL, NULL);
+
+-- --------------------------------------------------------
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
 
 --
 -- Table structure for table `tasks`
@@ -3700,11 +4118,153 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
+<<<<<<< HEAD
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
 INSERT INTO `users` VALUES (1,0,'Farzana','farzana','01873244236','farzana.tphl@gmail.com',28,'Dhaka','123',1,'$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS',NULL,'','','2026-04-09 05:34:11',6,'2026-02-22 06:47:08','2026-04-30 04:25:17',0),(2,NULL,'Sojib','sojib','01798342755','sales@gmail.com',1,'Dhaka',NULL,5,'$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS',NULL,NULL,NULL,'2026-05-09 04:45:14',NULL,'2026-02-22 06:47:08','2026-05-09 04:45:14',NULL),(3,1,'Fahim','Fahim','01790128471','fahim@gmail.com',0,'Mohammadpur, Dhaka-1207','23445',8,'$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG',NULL,'','','2026-04-19 05:54:47',4,'2026-02-23 03:24:25','2026-04-19 05:54:47',0),(4,1008,'Md. Jasim Uddin','Jasim Uddin','01762013007','hr@gmail.com',14,'House:01, Road:03, Block: B, Section:02, Mirpur, Dhaka-1216.','1903663282',4,'$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry',NULL,'','','2026-04-24 12:21:28',4,'2026-02-23 05:44:19','2026-04-24 12:21:28',NULL),(5,0,'Mr. Jisan','Mr. Jisan','01390128223','accounts@gmail.com',3,'Mohammadpur, Dhaka-1207','2345676',6,'$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6',NULL,'','','2026-04-08 09:48:37',6,'2026-02-23 06:11:06','2026-04-08 09:48:37',NULL),(6,1,'Management','Management','01933657804','management@gmail.com',0,'dhaka','32453',3,'$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW',NULL,'','','2026-05-12 04:46:18',110,'2026-03-29 03:44:44','2026-05-12 04:46:18',0),(7,NULL,'CED','CED','01872364346','ced@gmail.com',1,'Dhaka','823445',7,'$2y$10$a51psvUGsp/WsSE5cY2xNuKpuKSNoG/QZNNxxfWs0I.eSPM1KPAX.',NULL,'','','2026-03-31 12:05:54',6,'2026-03-29 04:01:38','2026-03-31 12:05:54',NULL),(8,NULL,'Sales Team Head','Sales Head','01327488234','sales-head@gmail.com',1,'Dhaka','09231943',9,'$2y$10$Hr8gjcm14bLK/Ns6ws/pt.jz0PA5ObSc.jo4Z7epS23UsEkVDUXn.',NULL,'','','2026-04-08 09:30:55',1,'2026-03-29 04:16:47','2026-04-08 09:30:55',NULL),(9,3,'Md. rafi','admin_39_','01234567890','rafi@easytechx.com',9,'ADDL Tower, Dhanmondi 27/A','',8,'$2y$10$nId2sBtusb0qFr2136IMrOZVDVkHq8RTjbsJIzgZ8GpaDXDTMhhHG',NULL,'','','2026-03-29 10:24:18',0,'2026-03-29 10:23:39','2026-03-30 16:36:23',NULL),(11,5,'Bornali Haque','Bornali Haque','01335258340','bornalihaque.tphl@gmail.com',13,'RUAP, Uttara 18, Dhaka','',2,'$2y$10$R9YSZd3L1v262q20VEtdG.dyT9xPRWmHFtjeTvwao5i8i24T5Hpm.',NULL,'','','2026-03-31 08:48:42',0,'2026-03-29 10:31:45','2026-04-11 08:52:14',0),(12,8,'Sanjana Hossain Moure','sanjana moure','01901310848','moure.tphl@gmail.com',15,'Mirpur-2 water tank, Block - F, road -3, Dhaka -1216','',8,'$2y$10$2J2ciVq5whQHb80.zq0zYuQcH.eb0B3pagwhnmx9TEsy.elK3J1ry',NULL,'','','2026-03-30 05:15:10',0,'2026-03-30 05:15:10','2026-03-30 16:36:23',NULL),(13,9,'Md. Rabbi Hossain','rabbi hossain','0 1901-3108','rabbihossain.tphl@gmail.com',20,'Baro Bazar, Ashulia Model Town, Savar, Dhaka.','',8,'$2y$10$uWAvlmxoW/gvdDhxn.IT9.HU7.NBPwqpbWipciGD0eZWdJQ6z9vvG',NULL,'','','2026-03-30 05:15:44',0,'2026-03-30 05:15:44','2026-04-12 11:40:43',4),(14,7,'Saleh Ahamed','saleh ahmed','0 1901-3650','saleh.tphl@gmail.com',21,'','',5,'$2y$10$fsUbevYAvi9OQguKgaiyEOzj/63NgEbIFqoqshjTVDdjkBrNhQ.Sq',NULL,'','','2026-04-30 05:27:15',0,'2026-03-30 05:18:44','2026-04-30 05:27:15',4),(15,6,'Md. Kawsar Ahammed','kowsar ahammed','01901310845','kawsar.tphl@gmail.com',21,'Vill: Bhubangati, Post: Biswarigacha, Thana: Dhunat, Zilla: Bogura','',5,'$2y$10$o4oawe3QpdDiLJTIH4chT.gwAdLBA52i.HFtGH.M1KDmjzkTfFDZy',NULL,'','','2026-04-25 03:54:29',0,'2026-03-30 05:19:07','2026-04-25 03:54:29',0),(16,0,'Ashfaque Bhuiyan Omi','Ashfaque Omi','01958253303','ashfaqueomi.tphl25@gmail.com',20,'Darul Aman Housing, Mirpur-2, Dhaka - 1206','',2,'$2y$10$29JSW4M8FbD3VNZnoUD8AOXB5LRrqo7vS22WMNfWezI11UlsObVCa',NULL,'','','2026-03-30 05:19:52',0,'2026-03-30 05:19:52','2026-03-30 16:36:23',NULL),(18,10,'Mehnaz Ahmed','mehnaz ahmed','0 1901-3650','mehnaz.tphl@gmail.com',20,'South chayabithi, Joydebpur, Gazipur','9160336244',8,'$2y$10$edszxcW7aAhMpXKVGUIZZePVtP.RhKwPuC8vA2baFfd8jmrYS8mEG',NULL,'','','2026-03-30 05:26:05',0,'2026-03-30 05:26:05','2026-03-30 16:36:23',NULL),(19,11,'Mr. Ibrahim Khalil','ibrahim khalil','01958253319','ibrahim.tphl@gmail.com',20,'5/9, Dakkhin Rajashon, Savar, Dhaka','2805006299',8,'$2y$10$iSTZaE4q9PCH.qM.53lFp.4EuEh2KoQKQRkD/q4SGrvV9Un84T1Pa',NULL,'','','2026-03-30 05:30:21',0,'2026-03-30 05:30:21','2026-03-30 16:36:23',NULL),(20,12,'Shammi Akther','shammi akhter','0 1901-3108','shammi.tphl@gmail.com',20,'13 no sector ,uttara.','',5,'$2y$10$bOb3g/W82j7pq3Jk9s520uIK1KOulFlbRWN4NVT55EC/1NxigzSJm',NULL,'','','2026-05-07 11:05:31',0,'2026-03-30 05:35:10','2026-05-07 11:05:31',10),(21,13,'Rejwan Ahmed','rejwan ahmad','01901365040','rejwantphl@gmail.com',21,'Sreemangal, Moulvibazar.','',5,'$2y$10$kQcMOXqxvt92qxB0nnSFtexGzH.iIcEQMC66.kOAasjnr943R9lBG',NULL,'','','2026-03-30 05:40:37',0,'2026-03-30 05:40:37','2026-04-06 06:29:52',2),(22,14,'MD. Feroz Ahamed','feroz ahamed','01958253327','feroz.tphl@gmail.com',20,'Savar, Dhaka','',5,'$2y$10$7hG94FPqPG5HzIWpCm/8QufyocDjtDn.onUagAcqBZEMNRvMX6Z/e',NULL,'','','2026-04-07 04:40:50',0,'2026-03-30 05:47:14','2026-04-07 04:40:50',9),(23,15,'Mojammel Haque','mojammel haque','01958253324','mojammel.tphl@gmail.com',21,'B-4, G-1, Sher-E-Bangla Nagar Staff Quarter, Dhaka-1207','',5,'$2y$10$U15bgAj.WrcLRkMMhITZXOezRY5D9EqGXHeNN79JuKjwaygBddySy',NULL,'','','2026-05-06 10:46:45',6,'2026-03-30 05:51:15','2026-05-06 10:46:45',0),(25,17,'Rakib Al Hasan','rakibal hasan','01958253321','rakib.tphl@gmail.com',20,'Daffodil smart city, Birulia savar Dhaka','',5,'$2y$10$yBQjX3SvmWQXO2cA.ol4B.zPmjIqbyUiqysRN7HTZfXLlo4Z95qfq',NULL,'','','2026-04-16 12:12:39',0,'2026-03-30 06:43:56','2026-04-16 12:12:39',8),(26,18,'Md. Nazmul Khan Shihab','khan Shihab','01958253326','shihab.tphl@gmail.com',20,'2450/11,East Dandabor, Palashbari, Savar cantonment -1344, Savar, Dhaka','',8,'$2y$10$b/geGkDCcdjnJY4j931Ia.YyXu1/FBrONUVr8jCr9csPFZXJ8BYMi',NULL,'','','2026-03-30 06:50:40',0,'2026-03-30 06:50:40','2026-04-12 11:58:01',10),(27,19,'Munshi Aiman Kabir','aiman kabir','01958253318','aiman.tphl@gmail.com',20,'Savar, Dhaka','',8,'$2y$10$lxze0zOCDKCiYZanahnfO.8tgO6v4MZiK8OBHsMxiXr7/4qH3s2FO',NULL,'','','2026-03-30 07:01:11',0,'2026-03-30 07:01:11','2026-04-16 07:46:31',4),(28,20,'Md. Tariqul Islam Illion','tariqul islam','0 1958-2533','illion.tphl@gmail.com',20,'Ashulia Model Town, Khagan Bazar, Birulia, Savar, Dhaka','',8,'$2y$10$Sj/S3IIUnt4EttdRVs/lXOCGvn9i/funVCadYEXd0ENgLdmEXSZF6',NULL,'','','2026-03-30 07:06:02',0,'2026-03-30 07:06:02','2026-04-16 08:25:07',11),(29,21,'Shafia Afrin Shahana','Shafia Afrin Shahana','01335258332','shafia.tphl@gmail.com',15,'Apon Bazar Samiti Market, Rayerbag, Jatrabari, Dhaka','',5,'$2y$10$jg9yoH8rHsH2A7wrOb6D8urj1iUv889LWfvhL3dU95RDg8t7HIYpK',NULL,'','','2026-05-07 11:04:56',0,'2026-03-30 07:56:24','2026-05-07 11:04:56',11),(30,22,'Abir Ahmed','Abir Ahmed','01335258328','abir0.tphl@gmail.com',15,'Poshu Hospital Para, Magura Sadar,Magura','',8,'$2y$10$IU8I8sJvyYl06UUHgy8XHuzHv66J7mAfVdPACHogEpVjTZ8Wuq2bG',NULL,'','','2026-03-30 08:29:14',0,'2026-03-30 08:29:14','2026-04-12 11:58:59',10),(31,23,'Shanawaz Khan','Shanawaz Khan','01335258330','shanawaz.tphl@gmail.com',15,'House-12,Road-4,Block-J,Banasree Meradia Khilgaon Dhaka 1219','',8,'$2y$10$Px7TN7veOADIqwYdPfISbOLfxqwEkSq9S1R8sTPWDUpAYRo4hb4uS',NULL,'','','2026-05-09 04:03:04',0,'2026-03-30 08:42:17','2026-05-09 04:03:04',3),(32,24,'Md. Saiful Islam Jony','saiful jony','01958253340','saif.thpl@gmail.com',21,'104/A/9 Buddhibi Road,Mohammadpur,Dhaka-1207','',5,'$2y$10$iJlvDYNOYQ5.AFtGpin74uRVIvXn//mKEgfeHXBvVTXXvqLEteiJa',NULL,'','','2026-04-20 05:23:04',0,'2026-03-30 08:46:37','2026-04-20 05:23:04',12),(33,25,'Aranya Bhowmick Dhrubo','Aranya Bhowmick Dhrubo','01335258329','dhrubo.tphl@gmail.com',20,'15 Shah-Shaheb Lane Narinda, Dhaka','',8,'$2y$10$U/nrFg9Eyc.ss5Oi2gFWV.BgzE8NXmjGHyhD9aY2VLUaGv9dr8KwO',NULL,'','','2026-03-30 08:47:19',0,'2026-03-30 08:47:19','2026-04-12 11:55:20',2),(34,26,'Tabassum Akter Soma','tabassum soma','01958253374','soma.tphl@gmail.com',23,'Ashulia Model Town, Savar, Dhaka','',8,'$2y$10$tfmvA.ksOc8S9hmYTwU5Xut8ERUg7YztJfCydw1f9.K4jRF.HKBom','users_69d480ed67778.jpg','','','2026-03-30 08:50:26',0,'2026-03-30 08:50:26','2026-04-12 11:54:19',9),(35,27,'Sadat Hossain','Sadat Hossain','01335258331','sadathossain11@gmail.com',15,'116, Jagannath Saha Road, Lalbagh, Dhaka-1211','',8,'$2y$10$cRtbvkGvyjShTPIsq0egPO4PYdXmFT3jJ5NzOBGAKeu823cA2CA7K',NULL,'','','2026-03-30 08:52:52',0,'2026-03-30 08:52:52','2026-04-12 12:09:57',6),(36,28,'Md. Ajizul Islam Manik','ajizul manik','01958253338','manik.tphl@gmail.com',20,'1/B , Nondipara, Dhaka ,1219','',5,'$2y$10$fGHgvRrPvCdxk8IUbwWnse1eebLaQ2c6q3h4pbfPmGkOb.hP60IH.',NULL,'','','2026-05-09 04:19:04',0,'2026-03-30 08:56:43','2026-05-09 04:19:04',3),(37,29,'Tasnur Aman Satu','aman satu','01958253363','satu.tphl@gmail.com',20,'kumkumari- Midha bari','',8,'$2y$10$B8RxH6k07S5uVYeOQdAySusGhyguSq1rwA5ZNa7DcFbo.kd7jwNCe',NULL,'','','2026-03-30 09:00:39',0,'2026-03-30 09:00:39','2026-04-12 11:53:21',8),(38,30,'Md. Tasdikul Hasan Sikder','Md. Tasdikul Hasan Sikder','01335258317','tasdik.tphl@gmail.com',13,'523 East Kazipara, Dhaka, Mirpur-1216','',8,'$2y$10$hvyLcozNhFKHKyzSHob2LurUMAn1cka7WeuKy6354xGTxHOCEFMv.',NULL,'','','2026-03-30 09:03:57',0,'2026-03-30 09:03:57','2026-04-12 11:59:21',10),(40,31,'Qazi Nadeem Javed','Qazi Nadeem Javed','‪0195825333','nadeem.tphl@gmail.com',25,'Sector 10 Road 7 uttara','2350020026',2,'$2y$10$HwTS4uTRRrfpsjH0iIssnO2q8R1aJb/JKRdGmr8vK3Od7JyC8RaU.',NULL,'','','2026-03-30 09:09:53',0,'2026-03-30 09:09:53','2026-03-30 16:36:23',NULL),(41,32,'Nayeemur Rahman','Nayeemur Rahman','01335258318','nayeemtonmoytphl@gmail.com',15,'Road No. 4, F Block, Mirpur-2','',8,'$2y$10$vNpgHQwRP33k2ftwwnzuuO8mJSGtb2K6MSgQyyzBm5hlu1pxQKt0.',NULL,'','','2026-03-30 09:12:53',0,'2026-03-30 09:12:53','2026-04-12 11:57:29',3),(42,33,'Mahin - Al Beruni','Mahin - Al Beruni','01958253328','tphl.mahin@gmail.com',26,'House 40/3, Varalipara, Boro Bangram, Sopura, Shah Mokhdum, Rajshahi - 6203','8710606925',2,'$2y$10$w0GwPk82B7c/775XmUq6V.XOJnByBk5qE3Ux5I6nJB.0m2d0NhGWW',NULL,'','','2026-03-30 09:16:00',0,'2026-03-30 09:16:00','2026-03-30 16:36:23',NULL),(44,35,'Md. Momidul Islam','Md. Momidul Islam','01958253335','momidul.tphl@gmail.com',20,'Nolbata, Hatiandaha, Singra, Natore','',5,'$2y$10$EBQ3p.5EUXFhu8yNczeCdeEXYQT4DVq.eNcdL32sCZsICVTFc1/ry',NULL,'','','2026-04-09 11:09:59',0,'2026-03-30 09:23:02','2026-04-09 11:09:59',13),(48,36,'Rifat Ahsan','Rifat Ahsan','01958583350','rifat.tphl@gmail.com',20,'Khilkhet kha para','4213633714',8,'$2y$10$O3uQB5h/6KwsPWex8ESVzee39365moqUtNr9DIoqhxeJJM1JDLB4e',NULL,'','','2026-03-30 09:32:02',0,'2026-03-30 09:30:56','2026-03-30 16:36:23',NULL),(51,38,'Sudipto Azad Hriday','Sudipto Azad Hriday','01901365046','sudiptoazad.tphl@gmail.com',17,'38, Road 3B, Mohammadia Housing Limited, Mohammadpur, Dhaka-1207','9151890663',8,'$2y$10$BMBC8TMV0h.nDrahyrmUO.dhGkDQwII8Ov.UT/Hg.JVRBA6wTMUY2',NULL,'','','2026-03-30 09:38:33',0,'2026-03-30 09:38:33','2026-03-30 16:36:23',NULL),(53,39,'Al Mubin Shuvo','Al Mubin Shuvo','01335258302','almubintphl@gmail.com',15,'Kumarkhali,Kushtia','',8,'$2y$10$mXwL/qloJHAWt2lal/Y9HO4yO0sCjGHKGgr1/AckNXExlPEy1iaKS',NULL,'','','2026-05-02 11:55:02',0,'2026-03-30 09:40:37','2026-05-02 11:55:02',11),(54,40,'France Roy','France Roy','01335258303','franceroy.tphl26@gmail.com',13,'N/A','',8,'$2y$10$Vo6DJxaJpxggwx.KMaNnWuioSOc6n06nnQh/dignLkfcZQM5Re7Pa',NULL,'','','2026-04-15 10:49:21',0,'2026-03-30 09:41:04','2026-04-15 10:49:21',5),(55,41,'Md. Anwar Parvez','Md. Anwar Parvez','01335258305','anwar.tphl@gmail.com',13,'N/A','',8,'$2y$10$nD6apWdkQA9A4pxQ2WK.TuXjrF./xCNaUOMtnxEXIhYBUEm6ec5v.',NULL,'','','2026-03-30 09:44:21',0,'2026-03-30 09:44:21','2026-04-16 12:12:32',7),(56,42,'Nafisa Anjum','Nafisa Anjum','01335258319','nafisaanjum.tphl@gmail.com',23,'Ilisha Road, Ward No-1, Bhola Pourashava.\r\nBhola Sadar, District- Bhola.','8727836291',8,'$2y$10$Njcwsx0qybiXNWr6I4xU6OXrnNZ0Gez0PTeiI9mymsLEByvmFtFau',NULL,'','','2026-03-30 09:48:38',0,'2026-03-30 09:48:38','2026-03-30 16:36:23',NULL),(57,43,'Md.Minhazul Islam Sumon','Md. Minhazul Islam Sumon','01607037251','sumon.tphl@gmail.com',20,'Datta para, birulia,Savar,Dhaka','6445593269',0,'$2y$10$Vxxg305sx5c9QTdS1nZe5Ow1VTzQGDXu6Vo101UVl3iRJTGWLHPmq',NULL,'','','2026-03-30 09:56:21',0,'2026-03-30 09:56:21','2026-03-30 16:36:23',NULL),(58,44,'Md Tarekul Islam','Md Tarekul Islam','01335258316','tarekul.tphl@gmail.com',16,'Kalai, Joypurhat','',8,'$2y$10$FgfGch01R5MmOmV06QbSE.Ztcu6ohd1xekC57B9SwWwuMmnbs1KSq',NULL,'','','2026-03-30 09:59:28',0,'2026-03-30 09:59:28','2026-04-12 12:13:49',12),(59,45,'Kazi Jahid Hasan','Kazi Jahid Hasan','01335258339','jahid.tphl@gmail.com',23,'Shah Ali Thana, Mirpur 1, Dhaka, 1229','',8,'$2y$10$o1c8bwaEWyTgxCs8OKnmy.155Q2E1XV.Y5Zt2/N.AwJB9HhD39PbC',NULL,'','','2026-03-30 10:03:44',0,'2026-03-30 10:03:44','2026-04-12 12:10:37',6),(60,46,'H M Nazmul Alam','H M Nazmul Alam','01335258313','nazmulshakib.tphl@gmail.com',15,'Tulashar, Shilpakala Academy, Aminbag, Shariatpur Sadar','',8,'$2y$10$j8oSuPOI0BarG10VQLdlgu3XQLs9u4HXgl7l1S1GgnNFTSjDm5X2C','users_69cb86772a604.jpg','','','2026-03-30 10:05:23',0,'2026-03-30 10:05:23','2026-04-12 11:58:36',10),(61,47,'Mst. Tamanna Aktar Meghna','Mst. Tamanna Aktar Meghna','01958253348','tamanna.tphl@gmail.com',23,'Khagan, Birulia, savar, 1340','',8,'$2y$10$GAromZnC1DJDwjgu1qW4.eU0/aoDJbqvJPr3oyFS3HflvESXRJTwi',NULL,'','','2026-03-30 10:07:57',0,'2026-03-30 10:07:57','2026-04-12 11:53:50',8),(62,48,'Md. Rayhan Kabir Roni','Md. Rayhan Kabir Roni','01335-25832','rayhan.tphl@gmail.com',15,'Palashbari,Gaibandha','',8,'$2y$10$nN8hAqbsVXHTLsh.zHew2.nqBcRmvzezxII7SAQl3DPS8vx9/0NHy',NULL,'','','2026-04-28 10:40:13',0,'2026-03-30 10:09:50','2026-04-28 10:40:13',3),(63,49,'Sayed Al Shahab','Sayed Al Shahab','01335258322','shahab.tphl@gmail.com',15,'\" Village/Street: Rouha, Post Office:Niamatpur - 2310, Karimganj, Kishoreganj\"','',8,'$2y$10$bjXDvIEqOg9VeQ5bhNDq5exrakmbZyDeQ9w8WES/Ia06fay.8Mfgi',NULL,'','','2026-03-30 10:16:53',0,'2026-03-30 10:16:53','2026-04-12 12:15:37',13),(64,50,'Rafiqul Islam','Rafiqul Islam','01958253345','rafiqul.tphl@gmail.com',20,'Khalpar,Tarabo,Rupganj,Narayanganj, post code:1460','',8,'$2y$10$2N5KDT5gZ0UCL6S8SeRxWuZ3fxTOOWUgw3LABYD4NHzmf06UsJGNS','users_69d34f1238f61.jpeg','','','2026-03-30 10:20:00',0,'2026-03-30 10:20:00','2026-04-12 12:11:33',7),(65,51,'Md. Mahabubur Rahman Mehedee','Md. Mahabubur Rahman Mehedee','01335258307','mehedee.tphl@gmail.com',21,'N/A','',8,'$2y$10$8RKSqAv7Ir8wx2sEjdhPR.h.toEB4e5Xhoj1IGdstx2f89Hd/gKse',NULL,'','','2026-03-30 10:24:57',0,'2026-03-30 10:24:57','2026-04-12 12:13:29',12),(66,52,'Md. Sakib Al Hasan','Md. Sakib Al Hasan','01335258325','sakibhasan.tphl@gmail.com',17,'Changone, Ahulia, Dhaka 1341','',8,'$2y$10$A/mGm65CzDyqbYojepkTpOWidQpnLF4HkAhx0vkylEh38peYQuX26',NULL,'','','2026-03-30 10:25:00',0,'2026-03-30 10:25:00','2026-04-12 12:09:24',6),(67,53,'Md Asim Akram','Md Asim Akram','01335258308','akram.tphl@gmail.com',15,'N/A','',8,'$2y$10$FYOiBtICro0TkZQIb4VfhOwX5a0nUwvvFVxi2oZD3gp6ZDK75ngoW',NULL,'','','2026-04-13 05:25:31',0,'2026-03-30 10:31:00','2026-04-13 05:25:31',6),(68,54,'Rakib Hasan Rubai','Rakib Rubai','01335258309','rubai.tphl@gmail.com',13,'Nobabgonj Bazar, Lalbagh , Dhaka -1205','',5,'$2y$10$hRRDNYUbrDDK2dgBOaM/TOSCNK3VDn0TMTAfHfkMgI8Ar59HNZb1O',NULL,'','','2026-04-15 09:54:03',0,'2026-03-30 10:31:59','2026-04-15 09:54:03',7),(69,55,'Md. Rawnak Hassan Seyam','Md. Rawnak Hassan Seyam','01335-25832','rawnak.tphl@gmail.com',20,'N/A','',2,'$2y$10$GKoc1DcZdbOmsLGSBPsJU.6NaH/06m1BMsff0OFZGr05BZYXR5BgS',NULL,'','','2026-03-30 10:35:13',0,'2026-03-30 10:35:13','2026-04-16 15:19:42',0),(70,56,'Zannatul Ferdous','Zannatul Ferdous','01335258315','zannatul.tphl@gmail.com',20,'Ghoshbagh,Ashulia, Dhaka','',8,'$2y$10$N5VFRRAr6NPeO2sNHAv6hOhir6DidyOkV8l6C54kSifQZw/MVhYiG',NULL,'','','2026-03-30 10:35:17',0,'2026-03-30 10:35:17','2026-04-12 11:53:03',8),(71,57,'Mst. Mahzabin Reza','MST. MAHZABIN REZA','01335258311','mahzabin.tphl@gmail.com',23,'N/A','',8,'$2y$10$Y1Zl3QED4PDxFZhq9szMzOObIZ2wSz/pd0Dqy2e9zB8zJi4Yy4E4y',NULL,'','','2026-03-30 10:40:34',0,'2026-03-30 10:40:34','2026-04-12 12:15:01',13),(72,58,'Md. Ali Haider Abdullah','Md. Ali Haider Abdullah','0 1958-2533','tphl.alihaider@gmail.com',17,'N/A','',8,'$2y$10$/T5eDgeej3P.JoXuhChGceCnDHOceBwixNyIGehU4lHJ0xHtdqDFe',NULL,'','','2026-03-30 10:41:19',0,'2026-03-30 10:41:19','2026-04-12 11:43:16',5),(73,59,'Tanvir Hossain Jian','Tanvir Hossain Jian','01335258314','tanvir.tphl@gmail.com',20,'Uttor badda, Abdullah bag masjid','',8,'$2y$10$8YxvgfxnkLTwgnksEVIeRu3dLINjXElLIbY6LUvy4.t6K3HzQ3b2a',NULL,'','','2026-03-30 10:44:55',0,'2026-03-30 10:44:55','2026-04-12 11:58:20',10),(74,60,'Ahnaf Adil Roxy','Ahnaf Adil Roxy','01335-25832','roxy.tphl@gmail.com',13,'','4213421763',8,'$2y$10$EidwlET76JrkaxbXZWi1b.WHbW2IdKsfzevS5cbMDnLM3pJPk/arK',NULL,'','','2026-03-30 10:45:59',0,'2026-03-30 10:45:59','2026-03-30 16:36:23',NULL),(75,61,'Md.Tamim','Md.Tamim','01308212749','tamim.tphl@gmail.com',23,'Dattapara, Birulia,Savar, Dhaka 1216','',8,'$2y$10$vP/q95cSabGHgVL9h3sBw.MWwc8JGYQiRXLarqEx6zl8p6A43uwk2',NULL,'','','2026-03-30 10:49:04',0,'2026-03-30 10:49:04','2026-03-30 16:36:23',NULL),(76,63,'Akhoy kumer Nibir Roy','Akhoy kumer Nibir Roy','01335258301','akhoy.tphl@gmail.com',15,'N/A','',8,'$2y$10$/A2yZtrb7UELabmGdPX.IuVuX/LcgmoxPoe0CV56vCoxJGAfGOUie',NULL,'','','2026-03-30 10:54:37',0,'2026-03-30 10:54:37','2026-04-12 12:08:09',11),(77,64,'Md. Amanullah Aman','Md. Amanullah Aman','01335258306','aman.tphl@gmail.com',20,'South Bhandaria-8550, Bhandaria, Pirojpur','',8,'$2y$10$GvrxHKdWRY2m3tvvUsFMRuAgqeM6L993ISeHJG/42UBRYVYI6UnQ6','users_69eaf30d55fcd.jpeg','','','2026-03-30 10:56:23',77,'2026-03-30 10:56:23','2026-04-24 04:35:25',0),(78,65,'Abu Naym','Abu Naym','01335258312','naymtphl@gmail.com',20,'Ati-1312, Keraniganj, Dhaka','',8,'$2y$10$CojmU9mTBwgDjkx4CfkdYeaQ57vvBBDxV/seIXX4jy.25RgK19WMG','users_69cb90acdaad5.jpg','','','2026-04-19 05:10:00',0,'2026-03-30 10:59:42','2026-04-20 05:23:44',12),(79,66,'Md. Sakib Inam','Md. Sakib Inam','01335258310','sakibinam.tphl@gmail.com',16,'N/A','',8,'$2y$10$uhKw9sTOb03dEHxMvZb/KekSOvQ6RjfanioES3ZW5pOa4m.VkexNO',NULL,'','','2026-03-30 11:00:09',0,'2026-03-30 11:00:09','2026-04-18 04:34:42',12),(80,67,'Md Bakhtiar Hasan','Md Bakhtiar Hasan','01335258300','bakhtiar.tphl@gmail.com',13,'N/A','',0,'$2y$10$3KjxMU.PqmWBXo77Kd3nbO4vYx55T4pByMR7U.kHE91Sro2ch8sLe',NULL,'','','2026-03-30 11:10:48',0,'2026-03-30 11:10:48','2026-04-11 04:35:06',0),(81,68,'Md Lutfor Rahaman','Md Lutfor Rahaman','01335258334','lutfor.tphl@gmail.com',27,'Vill: Asapur, PO: Phancherkanda, Thana: Ghior, Dist: Manikganj, Dhaka','7350928797',2,'$2y$10$SiSPnIWXvfbAy0DznRqjNebZp6fjgF0LGkHEVG7NPoNy8.J2fdc9O',NULL,'','','2026-03-30 11:17:42',0,'2026-03-30 11:17:42','2026-03-30 16:36:23',NULL),(82,69,'Dipto Kumar Roy','Dipto Kumar Roy','01958253358','dipto.tphl@gmail.com',20,'Khagan,Ashulia,Saver Dhaka','2851653333',2,'$2y$10$pB9uAIYgkG6tt/yMZQzVUuiQzSe3shbNwKlu45kAtQqlTrNGZ/JPu',NULL,'','','2026-03-30 11:19:42',0,'2026-03-30 11:19:42','2026-03-30 16:36:23',NULL),(83,70,'B. M Shaharear Hasan','B. M Shaharear Hasan','01917331397','shaharear.tphl@gmail.com',27,'Korotoa road, latifpur kolony, Bogra','7318135568',6,'$2y$10$IR.UVy4pARa366NVJj3DGejR6j1MB0KlvUqEi5kvhJeZSLVd3RenW',NULL,'','','2026-03-30 11:22:17',0,'2026-03-30 11:22:17','2026-03-30 16:36:23',NULL),(84,71,'MD. Sakhawat Hossain Emon','MD. Sakhawat Hossain Emon','01335258335','emon.tphl@gmail.com',23,'Block-A, Lane-6, Mirpur-6, Dhaka 1216','1962405062',2,'$2y$10$zbxbowLRq8arKWPKWtXlmutMu0HgAD/L0jo0QOuiV5v1tzE/5MBoK',NULL,'','','2026-03-30 11:22:57',0,'2026-03-30 11:22:57','2026-03-30 16:36:23',NULL),(85,72,'MD. Zamiul Islam','MD. Zamiul Islam','01335258338','zamiul.tphl@gmail.com',17,'130/6/A Baganbari,  Madatek, Basabo, Dhaka -1214.','5086466165',2,'$2y$10$JNlsOeAu7vANay8HvhgzTu8qrFZTw42wEfb9hvza857xBIdxSE5kq',NULL,'','','2026-03-30 11:25:48',0,'2026-03-30 11:25:48','2026-03-30 16:36:23',NULL),(86,73,'MD. Ahadul Islam','MD. Ahadul Islam','01314010972','asif.tphl@gmail.com',23,'Amula Dahabharatta, Nikrail, Bhuapur.','3314775515',2,'$2y$10$YlJmkkdgPI02YYTHw5G/o.tJE.7k/v6D34A6bHyNdlPuQztkA1IFe',NULL,'','','2026-03-30 11:26:09',0,'2026-03-30 11:26:09','2026-03-30 16:36:23',NULL),(87,74,'Sadman Islam Sakib','Sadman Islam Sakib','01958253344','sakib.tphl@gmail.com',21,'H-12, Kusumbag Residential Area, North Bisil  Road, Mirpur-1,Dhaka-1216','',8,'$2y$10$EZYoIwrFc/RwFFaj299PeOTVK1Jjf4pVV8dFhN0apKOxd6.BoIP9C','users_69d4989074172.jpg','','','2026-04-22 10:19:56',0,'2026-03-30 11:33:39','2026-04-22 10:19:56',2),(88,75,'Mahaananda Kumar Saha','Mahaananda Kumar Saha','01335258327','mahaanandakumarsaha@gmail.com',22,'Faridpur, sadarpur,hatkrishnapur','5506251882',2,'$2y$10$IawCX1UOcrjxps1aO4QTWeip4b8tKdN3JGDyduTJtnqLNYVuIzYXu',NULL,'','','2026-03-30 11:34:33',0,'2026-03-30 11:34:33','2026-03-30 16:36:23',NULL),(90,79,'Moonmoon Akter Oishy','Moonmoon Akter Oishy','01958253355','oishytphl@gmail.com',24,'Road No -1,  B - 45 Bank Town,  Savar','1047316906',2,'$2y$10$Sdqb84cXh8GKU9Okw2rRSe7k3N6a0riQJVPBDqnRhqa9px28WsDY.',NULL,'','','2026-03-30 11:43:09',0,'2026-03-30 11:43:09','2026-03-30 16:36:23',NULL),(91,76,'Rubina Islam','Rubina Islam','01958253349','rubinatphl49@gmail.com',15,'','',2,'$2y$10$r8GdWRKSpeZjr24W1pjGn.uaye6s/.clnO7G8ESZI3NnV844NrnCS',NULL,'','','2026-03-30 11:44:43',0,'2026-03-30 11:44:43','2026-03-30 16:36:23',NULL),(92,80,'Afrin Jahan Anika','Afrin Jahan Anika','01958253335','anika.tphl@gmail.com',13,'39/b senpara porbota mirpur 10','1032936708',2,'$2y$10$nBTOuqyG5vmEhBfJADloguSRdoA383Hrd.mFIuseKxOXG3bkfZYZG',NULL,'','','2026-03-30 11:52:36',0,'2026-03-30 11:52:36','2026-03-30 16:36:23',NULL),(94,0,'Mehedi H. Jony','Mehedi H. Jony','01861685153','mehedihjony.tphl@gmail.com',28,'Dhaka','',10,'$2y$10$YO/Y1hPq8lo0NTFbWbSX5u1hyUYn.i0F1s3KcNN9Xx8Askz3/5q0O',NULL,'','','2026-04-27 06:07:13',6,'2026-03-30 16:43:54','2026-04-27 06:07:13',0),(95,81,'Riya','Riya','01778234546','riya@gmail.com',28,'Dhaka','34',5,'$2y$10$cUYgCjvi4yiNDYS8mTGWsOkEvOJR32hiN/5Dsku7ULURP.tcviqpK',NULL,'','','2026-04-04 11:27:15',4,'2026-03-31 06:40:46','2026-04-04 11:27:15',0),(98,82,'S.A Arnob','S.A Arnob','01958253347','arnob.tphl@gmail.com',20,'Dottopara, Asuliya, Dhaka','',8,'$2y$10$aaooqfFW63prXcheowgGMeuZAHV88qpV1JQMljfQiHbOv2qCKtFdy',NULL,'','','2026-03-31 08:18:16',0,'2026-03-31 08:18:16','2026-04-12 11:41:08',4),(100,83,'Md. Mamunur Rahman','Md. Mamunur Rahman','01958253342','mamunur.tphl@gmail.com',19,'','1947418776',7,'$2y$10$ADpw3aS2xygSq6zySs.GaOoDAhv9XTdf3jXLxpZeyQ8fJinfXiZwG',NULL,'','','2026-03-31 08:58:36',0,'2026-03-31 08:58:36','2026-03-31 08:58:36',2),(102,84,'Mehedi Hasan Rudro','Rudro','01872356456','rudro@gmail.com',21,'N/A','',11,'$2y$10$XZKNktLIkAjqt/eY93vvFuKVMkut4pqaro7pZDaJm1PCHN7EApKra',NULL,'','','2026-04-29 06:46:23',4,'2026-04-02 08:14:46','2026-04-29 06:46:23',0),(103,85,'Mehedi Hasan Shuvo','hasan shuvo','01901365048','shuvo.tphl@gmail.com',17,'Dhaka','',5,'$2y$10$IQykvHC0cycV2VPhGMjfz.h6JdRuJzPkX4fw20XGlbQlHrPo4hKbu',NULL,'','','2026-04-09 04:00:41',0,'2026-04-03 13:29:06','2026-04-09 04:00:41',5),(105,11,'Mr. Ibrahim Khalil','ibrahim khalil','01958253319','ibrahimkhalil.tphl@gmail.com',20,'5/9, Dakkhin Rajashon, Savar, Dhaka','',8,'$2y$10$qExZ9v2Jozj5g9ct4UC3TeFToO.2UTmVBXrWXXmDmmjelR0co0hTG',NULL,'','','2026-04-04 05:57:01',0,'2026-04-04 05:57:01','2026-04-12 11:54:39',9),(110,NULL,'Mainul Hassan Dulon','Mainul H. Dulon','01933657804','ceo@dpremiumhomes.com',29,'Dhaka','',3,'$2y$10$8Z5Mj0/6UMu4MDupWjOnGOv6CvqtAqS5E0SdhEiOBvEp.oUszI5/e',NULL,'','','2026-04-08 11:18:00',6,'2026-04-04 11:35:30','2026-04-08 11:18:00',0),(112,NULL,'Ejaz Ur Rahman','Ejaz Ur Rahman','01738822694','dceo@dpremiumhomes.com',31,'Dhaka','',3,'$2y$10$BKhqSTbXDhPI4toSjpUiH.QnGD.lvBC5o5fB8IhwrVpolh1E0RIh2',NULL,'','','2026-04-04 12:40:57',6,'2026-04-04 12:29:06','2026-04-04 12:50:30',0),(113,NULL,'Mahfuza Shikder Tanha','Mahfuza Shikder Tanha','01721316211','pd@dpremiumhomes.com',32,'Dhaka','',3,'$2y$10$uSiCIm/rYxSI2Q5jXfsOBuz8w4.dja8GlRNx5WYsUdkc7AzjHiBA6',NULL,'','','2026-04-04 12:41:12',6,'2026-04-04 12:30:16','2026-04-04 12:51:08',0),(114,NULL,'Md. Rayhan Bhuiyan','Md. Rayhan Bhuiyan','01689-58433','coo@dpremiumhomes.com',30,'Dhaka','',3,'$2y$10$099WG2xiU7I7762yH70l5e4KtEODir4przyxvpdHPB.GPPToQ7huC',NULL,'','','2026-04-04 12:56:53',110,'2026-04-04 12:56:53','2026-04-08 11:17:49',0),(115,62,'Md. Abul Hasan Hasib','Md. Abul Hasan Hasib','01335258320','hasib.tphl@gmail.com',21,'N/A','',8,'$2y$10$lzrZhqIiXpnom1CIBmwptuuVKJBUsTDJ3x85HjDOElQ.eR3EPLzry',NULL,'','','2026-04-07 09:26:45',0,'2026-04-07 09:26:45','2026-04-12 12:15:19',13),(116,12,'Nahian','rafi','01123456789','nahian.easytechx@gmail.com',14,'asdfadf','55555534434',8,'$2y$10$RHjmhMhmgwE/OuuD2c92suYCaEZlm5RN0UhhFbAz2hRBKdeXj6Fe2',NULL,'','','2026-04-08 10:14:38',6,'2026-04-08 10:14:38','2026-04-08 10:15:58',0),(117,86,'Test Employee','Test','01790128472','test3@gmail.com',32,'Mohammadpur, Dhaka-1207','',0,'$2y$10$sw5JwFNK.bYOVVwur2/1FOxpkSV/FOm7WWdLEfTzh//K3GkkykKQW',NULL,'','','2026-04-10 10:07:16',0,'2026-04-10 10:07:16','2026-04-10 10:07:16',0),(118,87,'Shazzadur Rahman Shoumic','Shazzad','01765562314','shazzadur.tphl@gmail.com',20,'','',8,'$2y$10$TX/Hto3FA3ypCs4fd8al4euM8Mh1vmGy/3mIbgelj8wuiwLDJw0/6',NULL,'','','2026-04-12 11:46:52',0,'2026-04-12 11:46:52','2026-04-12 11:46:52',5),(119,90,'Shohanur Rahaman','Shohanur Rahaman','01958253372','shohan.tphl@gmail.com',13,'Khagan Ashulia','',11,'$2y$10$AIzAW5dhzVr58q5NyyyBueMXK5aTZHZwHOyGVa3EEz842ZAWUsxZK',NULL,'','','2026-04-19 04:42:58',119,'2026-04-17 13:13:21','2026-04-19 04:42:58',0),(120,NULL,'Project Manager1','Project Manager1','01876123454','project.manager1@gmail.com',36,'Dhaka','',15,'$2y$10$GhwOi2FtFs9pBw7GkpZaCefIBQhTiY9GoQLUgUKfBDa9p.XtUvlXu',NULL,'','','2026-05-09 03:58:03',6,'2026-04-26 03:55:58','2026-05-09 03:58:03',0),(121,NULL,'Land Man1','Land Man1','01993878733','land.manager1@gmail.com',33,'Dhaka','',14,'$2y$10$0Zg/ELOPJh5n.sSZkO2i8eMKon1lIWKj5lHQq2cLgbKrqVaYZcUhO',NULL,'','','2026-05-09 03:37:31',6,'2026-04-26 03:56:52','2026-05-09 03:37:31',0),(122,NULL,'Mr. Architect1','Mr. Architect1','01875438578','architecture1@gmail.com',34,'Dhaka','',18,'$2y$10$uYzkPN7DDLAanWYNsI02.OvkqvUIS35JblMvG0NRUHLTaXBemryL2',NULL,'','','2026-05-09 03:08:07',6,'2026-04-26 03:58:02','2026-05-09 03:08:07',0),(123,NULL,'Mr. Site Engineer1','Mr. Site Engineer1','01987328476','site.engineer1@gmail.com',38,'Dhaka','',12,'$2y$10$C.kuqYaBXt7SNIuwlDSoi.NySk5tcj67PFfUBFUqWc1bYrnCqCqIi',NULL,'','','2026-05-09 03:50:05',6,'2026-04-26 03:58:54','2026-05-09 03:50:05',0),(124,NULL,'Mr. Draftsman1','Mr. Draftsman1','01763425454','draftsman1@gmail.com',35,'dhaka','',16,'$2y$10$GpWdksQaMYX5TguAlFBFYO/ygwnc8af9LA0SqWRf./0oVspQwc.De',NULL,'','','2026-05-09 03:44:28',6,'2026-04-26 03:59:33','2026-05-09 03:44:28',0),(125,NULL,'Mr Estimator1','Mr Estimator1','','estimator1@gmail.com',37,'dhaka','',19,'$2y$10$NgvBE.GRBJt0HNyQmSqua.PeaLLgA2oWcVuGhwv7Im31Jz6SgAjay',NULL,'','','2026-05-09 03:53:31',6,'2026-04-26 04:00:08','2026-05-09 03:53:31',0),(126,NULL,'Mr. QC1','Mr. QC1','01986378256','qc1@gmail.com',43,'Dhaka','',13,'$2y$10$paZNUceDQ1b3BWWwfP6jReGr3d9ZLqKdMwisIHzdYTR0toYXK3GXi',NULL,'','','2026-05-09 03:30:48',6,'2026-04-26 04:00:52','2026-05-09 03:30:48',0),(127,NULL,'Mr Purchase Head1','Mr Purchase Head1','01782354543','purchase1@gmail.com',42,'Dhaka','',17,'$2y$10$WWHjM9YQBDTjCW7Dvf6KC.5mbo/0tJPW.WOLTXy2Ahhfz2xnoAPEe',NULL,'','','2026-05-09 04:04:21',6,'2026-04-26 04:01:41','2026-05-09 04:04:21',0),(128,NULL,'Mr Site Operators1','Mr Site Operators1','01723876324','operations1@gmail.com',38,'Dhaka','',20,'$2y$10$NN/GFnq6O6qtzqFyavU4EO4eOwgFH5JJi8J409SIOJZfvrNPlsT5q',NULL,'','','2026-05-09 04:03:44',6,'2026-04-26 04:05:25','2026-05-09 04:03:44',0),(129,NULL,'Mr Structural Designer1','Mr Structure Designer1','01653247632','structural.designer1@gmail.com',15,'Dhaka','',21,'$2y$10$tzAM7hH8kzCv2PnyRdzMneFlpt2yMJBcbMCvxSp2Zj16X/GNO6i4G',NULL,'','','2026-05-09 03:47:43',6,'2026-04-26 05:41:57','2026-05-09 03:47:43',0),(130,NULL,'M.H Jony','M.H Jony','01861685153','admin@gmail.com',28,'Dhaka','',1,'$2y$10$ZsoxIYkWS/zUeQjawL6/4.9oL7L21uVMvqu/7bIAQq6r4OL29eByy',NULL,'','','2026-05-02 04:44:05',130,'2026-05-02 04:34:07','2026-05-02 04:44:05',0);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
+=======
+INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `email`, `designation_id`, `address`, `nid`, `role_id`, `password`, `photo`, `media_link1`, `media_link2`, `last_logout`, `created_by`, `created_at`, `updated_at`, `team_id`) VALUES
+(1, 0, 'Farzana', 'farzana', '01873244236', 'farzana.tphl@gmail.com', 28, 'Dhaka', '123', 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, '', '', '2026-04-09 05:34:11', 6, '2026-02-22 06:47:08', '2026-04-30 04:25:17', 0),
+(2, NULL, 'Sojib', 'sojib', '01798342755', 'sales@gmail.com', 1, 'Dhaka', NULL, 5, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-05-03 06:11:33', NULL, '2026-02-22 06:47:08', '2026-05-03 06:11:33', NULL),
+(3, 1, 'Fahim', 'Fahim', '01790128471', 'fahim@gmail.com', 0, 'Mohammadpur, Dhaka-1207', '23445', 8, '$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG', NULL, '', '', '2026-04-19 05:54:47', 4, '2026-02-23 03:24:25', '2026-04-19 05:54:47', 0),
+(4, 1008, 'Md. Jasim Uddin', 'Jasim Uddin', '01762013007', 'hr@gmail.com', 14, 'House:01, Road:03, Block: B, Section:02, Mirpur, Dhaka-1216.', '1903663282', 4, '$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry', NULL, '', '', '2026-04-24 12:21:28', 4, '2026-02-23 05:44:19', '2026-04-24 12:21:28', NULL),
+(5, 0, 'Mr. Jisan', 'Mr. Jisan', '01390128223', 'accounts@gmail.com', 3, 'Mohammadpur, Dhaka-1207', '2345676', 6, '$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6', NULL, '', '', '2026-04-08 09:48:37', 6, '2026-02-23 06:11:06', '2026-04-08 09:48:37', NULL),
+(6, 1, 'Management', 'Management', '01933657804', 'management@gmail.com', 0, 'dhaka', '32453', 3, '$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW', NULL, '', '', '2026-05-11 12:55:09', 110, '2026-03-29 03:44:44', '2026-05-11 06:55:09', 0),
+(7, NULL, 'CED', 'CED', '01872364346', 'ced@gmail.com', 1, 'Dhaka', '823445', 7, '$2y$10$a51psvUGsp/WsSE5cY2xNuKpuKSNoG/QZNNxxfWs0I.eSPM1KPAX.', NULL, '', '', '2026-03-31 12:05:54', 6, '2026-03-29 04:01:38', '2026-03-31 12:05:54', NULL),
+(8, NULL, 'Sales Team Head', 'Sales Head', '01327488234', 'sales-head@gmail.com', 1, 'Dhaka', '09231943', 9, '$2y$10$Hr8gjcm14bLK/Ns6ws/pt.jz0PA5ObSc.jo4Z7epS23UsEkVDUXn.', NULL, '', '', '2026-04-08 09:30:55', 1, '2026-03-29 04:16:47', '2026-04-08 09:30:55', NULL),
+(9, 3, 'Md. rafi', 'admin_39_', '01234567890', 'rafi@easytechx.com', 9, 'ADDL Tower, Dhanmondi 27/A', '', 8, '$2y$10$nId2sBtusb0qFr2136IMrOZVDVkHq8RTjbsJIzgZ8GpaDXDTMhhHG', NULL, '', '', '2026-03-29 10:24:18', 0, '2026-03-29 10:23:39', '2026-03-30 16:36:23', NULL),
+(11, 5, 'Bornali Haque', 'Bornali Haque', '01335258340', 'bornalihaque.tphl@gmail.com', 13, 'RUAP, Uttara 18, Dhaka', '', 2, '$2y$10$R9YSZd3L1v262q20VEtdG.dyT9xPRWmHFtjeTvwao5i8i24T5Hpm.', NULL, '', '', '2026-03-31 08:48:42', 0, '2026-03-29 10:31:45', '2026-04-11 08:52:14', 0),
+(12, 8, 'Sanjana Hossain Moure', 'sanjana moure', '01901310848', 'moure.tphl@gmail.com', 15, 'Mirpur-2 water tank, Block - F, road -3, Dhaka -1216', '', 8, '$2y$10$2J2ciVq5whQHb80.zq0zYuQcH.eb0B3pagwhnmx9TEsy.elK3J1ry', NULL, '', '', '2026-03-30 05:15:10', 0, '2026-03-30 05:15:10', '2026-03-30 16:36:23', NULL),
+(13, 9, 'Md. Rabbi Hossain', 'rabbi hossain', '0 1901-3108', 'rabbihossain.tphl@gmail.com', 20, 'Baro Bazar, Ashulia Model Town, Savar, Dhaka.', '', 8, '$2y$10$uWAvlmxoW/gvdDhxn.IT9.HU7.NBPwqpbWipciGD0eZWdJQ6z9vvG', NULL, '', '', '2026-03-30 05:15:44', 0, '2026-03-30 05:15:44', '2026-04-12 11:40:43', 4),
+(14, 7, 'Saleh Ahamed', 'saleh ahmed', '0 1901-3650', 'saleh.tphl@gmail.com', 21, '', '', 5, '$2y$10$fsUbevYAvi9OQguKgaiyEOzj/63NgEbIFqoqshjTVDdjkBrNhQ.Sq', NULL, '', '', '2026-04-30 05:27:15', 0, '2026-03-30 05:18:44', '2026-04-30 05:27:15', 4),
+(15, 6, 'Md. Kawsar Ahammed', 'kowsar ahammed', '01901310845', 'kawsar.tphl@gmail.com', 21, 'Vill: Bhubangati, Post: Biswarigacha, Thana: Dhunat, Zilla: Bogura', '', 5, '$2y$10$o4oawe3QpdDiLJTIH4chT.gwAdLBA52i.HFtGH.M1KDmjzkTfFDZy', NULL, '', '', '2026-04-25 03:54:29', 0, '2026-03-30 05:19:07', '2026-04-25 03:54:29', 0),
+(16, 0, 'Ashfaque Bhuiyan Omi', 'Ashfaque Omi', '01958253303', 'ashfaqueomi.tphl25@gmail.com', 20, 'Darul Aman Housing, Mirpur-2, Dhaka - 1206', '', 2, '$2y$10$29JSW4M8FbD3VNZnoUD8AOXB5LRrqo7vS22WMNfWezI11UlsObVCa', NULL, '', '', '2026-03-30 05:19:52', 0, '2026-03-30 05:19:52', '2026-03-30 16:36:23', NULL),
+(18, 10, 'Mehnaz Ahmed', 'mehnaz ahmed', '0 1901-3650', 'mehnaz.tphl@gmail.com', 20, 'South chayabithi, Joydebpur, Gazipur', '9160336244', 8, '$2y$10$edszxcW7aAhMpXKVGUIZZePVtP.RhKwPuC8vA2baFfd8jmrYS8mEG', NULL, '', '', '2026-03-30 05:26:05', 0, '2026-03-30 05:26:05', '2026-03-30 16:36:23', NULL),
+(19, 11, 'Mr. Ibrahim Khalil', 'ibrahim khalil', '01958253319', 'ibrahim.tphl@gmail.com', 20, '5/9, Dakkhin Rajashon, Savar, Dhaka', '2805006299', 8, '$2y$10$iSTZaE4q9PCH.qM.53lFp.4EuEh2KoQKQRkD/q4SGrvV9Un84T1Pa', NULL, '', '', '2026-03-30 05:30:21', 0, '2026-03-30 05:30:21', '2026-03-30 16:36:23', NULL),
+(20, 12, 'Shammi Akther', 'shammi akhter', '0 1901-3108', 'shammi.tphl@gmail.com', 20, '13 no sector ,uttara.', '', 5, '$2y$10$bOb3g/W82j7pq3Jk9s520uIK1KOulFlbRWN4NVT55EC/1NxigzSJm', NULL, '', '', '2026-04-13 04:59:26', 0, '2026-03-30 05:35:10', '2026-04-13 04:59:26', 10),
+(21, 13, 'Rejwan Ahmed', 'rejwan ahmad', '01901365040', 'rejwantphl@gmail.com', 21, 'Sreemangal, Moulvibazar.', '', 5, '$2y$10$kQcMOXqxvt92qxB0nnSFtexGzH.iIcEQMC66.kOAasjnr943R9lBG', NULL, '', '', '2026-03-30 05:40:37', 0, '2026-03-30 05:40:37', '2026-04-06 06:29:52', 2),
+(22, 14, 'MD. Feroz Ahamed', 'feroz ahamed', '01958253327', 'feroz.tphl@gmail.com', 20, 'Savar, Dhaka', '', 5, '$2y$10$7hG94FPqPG5HzIWpCm/8QufyocDjtDn.onUagAcqBZEMNRvMX6Z/e', NULL, '', '', '2026-04-07 04:40:50', 0, '2026-03-30 05:47:14', '2026-04-07 04:40:50', 9),
+(23, 15, 'Mojammel Haque', 'mojammel haque', '01958253324', 'mojammel.tphl@gmail.com', 21, 'B-4, G-1, Sher-E-Bangla Nagar Staff Quarter, Dhaka-1207', '', 5, '$2y$10$.IhiGn25wWUqKu9YuC38xeNy6hpeAwnWuiGLT0fK7SuhS.40f8FS6', NULL, '', '', '2026-04-25 03:56:07', 0, '2026-03-30 05:51:15', '2026-04-25 03:56:07', 6),
+(25, 17, 'Rakib Al Hasan', 'rakibal hasan', '01958253321', 'rakib.tphl@gmail.com', 20, 'Daffodil smart city, Birulia savar Dhaka', '', 5, '$2y$10$yBQjX3SvmWQXO2cA.ol4B.zPmjIqbyUiqysRN7HTZfXLlo4Z95qfq', NULL, '', '', '2026-04-16 12:12:39', 0, '2026-03-30 06:43:56', '2026-04-16 12:12:39', 8),
+(26, 18, 'Md. Nazmul Khan Shihab', 'khan Shihab', '01958253326', 'shihab.tphl@gmail.com', 20, '2450/11,East Dandabor, Palashbari, Savar cantonment -1344, Savar, Dhaka', '', 8, '$2y$10$b/geGkDCcdjnJY4j931Ia.YyXu1/FBrONUVr8jCr9csPFZXJ8BYMi', NULL, '', '', '2026-03-30 06:50:40', 0, '2026-03-30 06:50:40', '2026-04-12 11:58:01', 10),
+(27, 19, 'Munshi Aiman Kabir', 'aiman kabir', '01958253318', 'aiman.tphl@gmail.com', 20, 'Savar, Dhaka', '', 8, '$2y$10$lxze0zOCDKCiYZanahnfO.8tgO6v4MZiK8OBHsMxiXr7/4qH3s2FO', NULL, '', '', '2026-03-30 07:01:11', 0, '2026-03-30 07:01:11', '2026-04-16 07:46:31', 4),
+(28, 20, 'Md. Tariqul Islam Illion', 'tariqul islam', '0 1958-2533', 'illion.tphl@gmail.com', 20, 'Ashulia Model Town, Khagan Bazar, Birulia, Savar, Dhaka', '', 8, '$2y$10$Sj/S3IIUnt4EttdRVs/lXOCGvn9i/funVCadYEXd0ENgLdmEXSZF6', NULL, '', '', '2026-03-30 07:06:02', 0, '2026-03-30 07:06:02', '2026-04-16 08:25:07', 11),
+(29, 21, 'Shafia Afrin Shahana', 'Shafia Afrin Shahana', '01335258332', 'shafia.tphl@gmail.com', 15, 'Apon Bazar Samiti Market, Rayerbag, Jatrabari, Dhaka', '', 5, '$2y$10$jg9yoH8rHsH2A7wrOb6D8urj1iUv889LWfvhL3dU95RDg8t7HIYpK', NULL, '', '', '2026-04-28 05:54:59', 0, '2026-03-30 07:56:24', '2026-04-28 05:54:59', 11),
+(30, 22, 'Abir Ahmed', 'Abir Ahmed', '01335258328', 'abir0.tphl@gmail.com', 15, 'Poshu Hospital Para, Magura Sadar,Magura', '', 8, '$2y$10$IU8I8sJvyYl06UUHgy8XHuzHv66J7mAfVdPACHogEpVjTZ8Wuq2bG', NULL, '', '', '2026-03-30 08:29:14', 0, '2026-03-30 08:29:14', '2026-04-12 11:58:59', 10),
+(31, 23, 'Shanawaz Khan', 'Shanawaz Khan', '01335258330', 'shanawaz.tphl@gmail.com', 15, 'House-12,Road-4,Block-J,Banasree Meradia Khilgaon Dhaka 1219', '', 8, '$2y$10$Px7TN7veOADIqwYdPfISbOLfxqwEkSq9S1R8sTPWDUpAYRo4hb4uS', NULL, '', '', '2026-03-30 08:42:17', 0, '2026-03-30 08:42:17', '2026-04-12 11:57:10', 3),
+(32, 24, 'Md. Saiful Islam Jony', 'saiful jony', '01958253340', 'saif.thpl@gmail.com', 21, '104/A/9 Buddhibi Road,Mohammadpur,Dhaka-1207', '', 5, '$2y$10$iJlvDYNOYQ5.AFtGpin74uRVIvXn//mKEgfeHXBvVTXXvqLEteiJa', NULL, '', '', '2026-04-20 05:23:04', 0, '2026-03-30 08:46:37', '2026-04-20 05:23:04', 12),
+(33, 25, 'Aranya Bhowmick Dhrubo', 'Aranya Bhowmick Dhrubo', '01335258329', 'dhrubo.tphl@gmail.com', 20, '15 Shah-Shaheb Lane Narinda, Dhaka', '', 8, '$2y$10$U/nrFg9Eyc.ss5Oi2gFWV.BgzE8NXmjGHyhD9aY2VLUaGv9dr8KwO', NULL, '', '', '2026-03-30 08:47:19', 0, '2026-03-30 08:47:19', '2026-04-12 11:55:20', 2),
+(34, 26, 'Tabassum Akter Soma', 'tabassum soma', '01958253374', 'soma.tphl@gmail.com', 23, 'Ashulia Model Town, Savar, Dhaka', '', 8, '$2y$10$tfmvA.ksOc8S9hmYTwU5Xut8ERUg7YztJfCydw1f9.K4jRF.HKBom', 'users_69d480ed67778.jpg', '', '', '2026-03-30 08:50:26', 0, '2026-03-30 08:50:26', '2026-04-12 11:54:19', 9),
+(35, 27, 'Sadat Hossain', 'Sadat Hossain', '01335258331', 'sadathossain11@gmail.com', 15, '116, Jagannath Saha Road, Lalbagh, Dhaka-1211', '', 8, '$2y$10$cRtbvkGvyjShTPIsq0egPO4PYdXmFT3jJ5NzOBGAKeu823cA2CA7K', NULL, '', '', '2026-03-30 08:52:52', 0, '2026-03-30 08:52:52', '2026-04-12 12:09:57', 6),
+(36, 28, 'Md. Ajizul Islam Manik', 'ajizul manik', '01958253338', 'manik.tphl@gmail.com', 20, '1/B , Nondipara, Dhaka ,1219', '', 5, '$2y$10$fGHgvRrPvCdxk8IUbwWnse1eebLaQ2c6q3h4pbfPmGkOb.hP60IH.', NULL, '', '', '2026-05-03 05:27:55', 0, '2026-03-30 08:56:43', '2026-05-03 05:27:55', 3),
+(37, 29, 'Tasnur Aman Satu', 'aman satu', '01958253363', 'satu.tphl@gmail.com', 20, 'kumkumari- Midha bari', '', 8, '$2y$10$B8RxH6k07S5uVYeOQdAySusGhyguSq1rwA5ZNa7DcFbo.kd7jwNCe', NULL, '', '', '2026-03-30 09:00:39', 0, '2026-03-30 09:00:39', '2026-04-12 11:53:21', 8),
+(38, 30, 'Md. Tasdikul Hasan Sikder', 'Md. Tasdikul Hasan Sikder', '01335258317', 'tasdik.tphl@gmail.com', 13, '523 East Kazipara, Dhaka, Mirpur-1216', '', 8, '$2y$10$hvyLcozNhFKHKyzSHob2LurUMAn1cka7WeuKy6354xGTxHOCEFMv.', NULL, '', '', '2026-03-30 09:03:57', 0, '2026-03-30 09:03:57', '2026-04-12 11:59:21', 10),
+(40, 31, 'Qazi Nadeem Javed', 'Qazi Nadeem Javed', '‪0195825333', 'nadeem.tphl@gmail.com', 25, 'Sector 10 Road 7 uttara', '2350020026', 2, '$2y$10$HwTS4uTRRrfpsjH0iIssnO2q8R1aJb/JKRdGmr8vK3Od7JyC8RaU.', NULL, '', '', '2026-03-30 09:09:53', 0, '2026-03-30 09:09:53', '2026-03-30 16:36:23', NULL),
+(41, 32, 'Nayeemur Rahman', 'Nayeemur Rahman', '01335258318', 'nayeemtonmoytphl@gmail.com', 15, 'Road No. 4, F Block, Mirpur-2', '', 8, '$2y$10$vNpgHQwRP33k2ftwwnzuuO8mJSGtb2K6MSgQyyzBm5hlu1pxQKt0.', NULL, '', '', '2026-03-30 09:12:53', 0, '2026-03-30 09:12:53', '2026-04-12 11:57:29', 3),
+(42, 33, 'Mahin - Al Beruni', 'Mahin - Al Beruni', '01958253328', 'tphl.mahin@gmail.com', 26, 'House 40/3, Varalipara, Boro Bangram, Sopura, Shah Mokhdum, Rajshahi - 6203', '8710606925', 2, '$2y$10$w0GwPk82B7c/775XmUq6V.XOJnByBk5qE3Ux5I6nJB.0m2d0NhGWW', NULL, '', '', '2026-03-30 09:16:00', 0, '2026-03-30 09:16:00', '2026-03-30 16:36:23', NULL),
+(44, 35, 'Md. Momidul Islam', 'Md. Momidul Islam', '01958253335', 'momidul.tphl@gmail.com', 20, 'Nolbata, Hatiandaha, Singra, Natore', '', 5, '$2y$10$EBQ3p.5EUXFhu8yNczeCdeEXYQT4DVq.eNcdL32sCZsICVTFc1/ry', NULL, '', '', '2026-04-09 11:09:59', 0, '2026-03-30 09:23:02', '2026-04-09 11:09:59', 13),
+(48, 36, 'Rifat Ahsan', 'Rifat Ahsan', '01958583350', 'rifat.tphl@gmail.com', 20, 'Khilkhet kha para', '4213633714', 8, '$2y$10$O3uQB5h/6KwsPWex8ESVzee39365moqUtNr9DIoqhxeJJM1JDLB4e', NULL, '', '', '2026-03-30 09:32:02', 0, '2026-03-30 09:30:56', '2026-03-30 16:36:23', NULL),
+(51, 38, 'Sudipto Azad Hriday', 'Sudipto Azad Hriday', '01901365046', 'sudiptoazad.tphl@gmail.com', 17, '38, Road 3B, Mohammadia Housing Limited, Mohammadpur, Dhaka-1207', '9151890663', 8, '$2y$10$BMBC8TMV0h.nDrahyrmUO.dhGkDQwII8Ov.UT/Hg.JVRBA6wTMUY2', NULL, '', '', '2026-03-30 09:38:33', 0, '2026-03-30 09:38:33', '2026-03-30 16:36:23', NULL),
+(53, 39, 'Al Mubin Shuvo', 'Al Mubin Shuvo', '01335258302', 'almubintphl@gmail.com', 15, 'Kumarkhali,Kushtia', '', 8, '$2y$10$mXwL/qloJHAWt2lal/Y9HO4yO0sCjGHKGgr1/AckNXExlPEy1iaKS', NULL, '', '', '2026-05-02 11:55:02', 0, '2026-03-30 09:40:37', '2026-05-02 11:55:02', 11),
+(54, 40, 'France Roy', 'France Roy', '01335258303', 'franceroy.tphl26@gmail.com', 13, 'N/A', '', 8, '$2y$10$Vo6DJxaJpxggwx.KMaNnWuioSOc6n06nnQh/dignLkfcZQM5Re7Pa', NULL, '', '', '2026-04-15 10:49:21', 0, '2026-03-30 09:41:04', '2026-04-15 10:49:21', 5),
+(55, 41, 'Md. Anwar Parvez', 'Md. Anwar Parvez', '01335258305', 'anwar.tphl@gmail.com', 13, 'N/A', '', 8, '$2y$10$nD6apWdkQA9A4pxQ2WK.TuXjrF./xCNaUOMtnxEXIhYBUEm6ec5v.', NULL, '', '', '2026-03-30 09:44:21', 0, '2026-03-30 09:44:21', '2026-04-16 12:12:32', 7),
+(56, 42, 'Nafisa Anjum', 'Nafisa Anjum', '01335258319', 'nafisaanjum.tphl@gmail.com', 23, 'Ilisha Road, Ward No-1, Bhola Pourashava.\r\nBhola Sadar, District- Bhola.', '8727836291', 8, '$2y$10$Njcwsx0qybiXNWr6I4xU6OXrnNZ0Gez0PTeiI9mymsLEByvmFtFau', NULL, '', '', '2026-03-30 09:48:38', 0, '2026-03-30 09:48:38', '2026-03-30 16:36:23', NULL),
+(57, 43, 'Md.Minhazul Islam Sumon', 'Md. Minhazul Islam Sumon', '01607037251', 'sumon.tphl@gmail.com', 20, 'Datta para, birulia,Savar,Dhaka', '6445593269', 0, '$2y$10$Vxxg305sx5c9QTdS1nZe5Ow1VTzQGDXu6Vo101UVl3iRJTGWLHPmq', NULL, '', '', '2026-03-30 09:56:21', 0, '2026-03-30 09:56:21', '2026-03-30 16:36:23', NULL),
+(58, 44, 'Md Tarekul Islam', 'Md Tarekul Islam', '01335258316', 'tarekul.tphl@gmail.com', 16, 'Kalai, Joypurhat', '', 8, '$2y$10$FgfGch01R5MmOmV06QbSE.Ztcu6ohd1xekC57B9SwWwuMmnbs1KSq', NULL, '', '', '2026-03-30 09:59:28', 0, '2026-03-30 09:59:28', '2026-04-12 12:13:49', 12),
+(59, 45, 'Kazi Jahid Hasan', 'Kazi Jahid Hasan', '01335258339', 'jahid.tphl@gmail.com', 23, 'Shah Ali Thana, Mirpur 1, Dhaka, 1229', '', 8, '$2y$10$o1c8bwaEWyTgxCs8OKnmy.155Q2E1XV.Y5Zt2/N.AwJB9HhD39PbC', NULL, '', '', '2026-03-30 10:03:44', 0, '2026-03-30 10:03:44', '2026-04-12 12:10:37', 6),
+(60, 46, 'H M Nazmul Alam', 'H M Nazmul Alam', '01335258313', 'nazmulshakib.tphl@gmail.com', 15, 'Tulashar, Shilpakala Academy, Aminbag, Shariatpur Sadar', '', 8, '$2y$10$j8oSuPOI0BarG10VQLdlgu3XQLs9u4HXgl7l1S1GgnNFTSjDm5X2C', 'users_69cb86772a604.jpg', '', '', '2026-03-30 10:05:23', 0, '2026-03-30 10:05:23', '2026-04-12 11:58:36', 10),
+(61, 47, 'Mst. Tamanna Aktar Meghna', 'Mst. Tamanna Aktar Meghna', '01958253348', 'tamanna.tphl@gmail.com', 23, 'Khagan, Birulia, savar, 1340', '', 8, '$2y$10$GAromZnC1DJDwjgu1qW4.eU0/aoDJbqvJPr3oyFS3HflvESXRJTwi', NULL, '', '', '2026-03-30 10:07:57', 0, '2026-03-30 10:07:57', '2026-04-12 11:53:50', 8),
+(62, 48, 'Md. Rayhan Kabir Roni', 'Md. Rayhan Kabir Roni', '01335-25832', 'rayhan.tphl@gmail.com', 15, 'Palashbari,Gaibandha', '', 8, '$2y$10$nN8hAqbsVXHTLsh.zHew2.nqBcRmvzezxII7SAQl3DPS8vx9/0NHy', NULL, '', '', '2026-04-28 10:40:13', 0, '2026-03-30 10:09:50', '2026-04-28 10:40:13', 3),
+(63, 49, 'Sayed Al Shahab', 'Sayed Al Shahab', '01335258322', 'shahab.tphl@gmail.com', 15, '\" Village/Street: Rouha, Post Office:Niamatpur - 2310, Karimganj, Kishoreganj\"', '', 8, '$2y$10$bjXDvIEqOg9VeQ5bhNDq5exrakmbZyDeQ9w8WES/Ia06fay.8Mfgi', NULL, '', '', '2026-03-30 10:16:53', 0, '2026-03-30 10:16:53', '2026-04-12 12:15:37', 13),
+(64, 50, 'Rafiqul Islam', 'Rafiqul Islam', '01958253345', 'rafiqul.tphl@gmail.com', 20, 'Khalpar,Tarabo,Rupganj,Narayanganj, post code:1460', '', 8, '$2y$10$2N5KDT5gZ0UCL6S8SeRxWuZ3fxTOOWUgw3LABYD4NHzmf06UsJGNS', 'users_69d34f1238f61.jpeg', '', '', '2026-03-30 10:20:00', 0, '2026-03-30 10:20:00', '2026-04-12 12:11:33', 7),
+(65, 51, 'Md. Mahabubur Rahman Mehedee', 'Md. Mahabubur Rahman Mehedee', '01335258307', 'mehedee.tphl@gmail.com', 21, 'N/A', '', 8, '$2y$10$8RKSqAv7Ir8wx2sEjdhPR.h.toEB4e5Xhoj1IGdstx2f89Hd/gKse', NULL, '', '', '2026-03-30 10:24:57', 0, '2026-03-30 10:24:57', '2026-04-12 12:13:29', 12),
+(66, 52, 'Md. Sakib Al Hasan', 'Md. Sakib Al Hasan', '01335258325', 'sakibhasan.tphl@gmail.com', 17, 'Changone, Ahulia, Dhaka 1341', '', 8, '$2y$10$A/mGm65CzDyqbYojepkTpOWidQpnLF4HkAhx0vkylEh38peYQuX26', NULL, '', '', '2026-03-30 10:25:00', 0, '2026-03-30 10:25:00', '2026-04-12 12:09:24', 6),
+(67, 53, 'Md Asim Akram', 'Md Asim Akram', '01335258308', 'akram.tphl@gmail.com', 15, 'N/A', '', 8, '$2y$10$FYOiBtICro0TkZQIb4VfhOwX5a0nUwvvFVxi2oZD3gp6ZDK75ngoW', NULL, '', '', '2026-04-13 05:25:31', 0, '2026-03-30 10:31:00', '2026-04-13 05:25:31', 6),
+(68, 54, 'Rakib Hasan Rubai', 'Rakib Rubai', '01335258309', 'rubai.tphl@gmail.com', 13, 'Nobabgonj Bazar, Lalbagh , Dhaka -1205', '', 5, '$2y$10$hRRDNYUbrDDK2dgBOaM/TOSCNK3VDn0TMTAfHfkMgI8Ar59HNZb1O', NULL, '', '', '2026-04-15 09:54:03', 0, '2026-03-30 10:31:59', '2026-04-15 09:54:03', 7),
+(69, 55, 'Md. Rawnak Hassan Seyam', 'Md. Rawnak Hassan Seyam', '01335-25832', 'rawnak.tphl@gmail.com', 20, 'N/A', '', 2, '$2y$10$GKoc1DcZdbOmsLGSBPsJU.6NaH/06m1BMsff0OFZGr05BZYXR5BgS', NULL, '', '', '2026-03-30 10:35:13', 0, '2026-03-30 10:35:13', '2026-04-16 15:19:42', 0),
+(70, 56, 'Zannatul Ferdous', 'Zannatul Ferdous', '01335258315', 'zannatul.tphl@gmail.com', 20, 'Ghoshbagh,Ashulia, Dhaka', '', 8, '$2y$10$N5VFRRAr6NPeO2sNHAv6hOhir6DidyOkV8l6C54kSifQZw/MVhYiG', NULL, '', '', '2026-03-30 10:35:17', 0, '2026-03-30 10:35:17', '2026-04-12 11:53:03', 8),
+(71, 57, 'Mst. Mahzabin Reza', 'MST. MAHZABIN REZA', '01335258311', 'mahzabin.tphl@gmail.com', 23, 'N/A', '', 8, '$2y$10$Y1Zl3QED4PDxFZhq9szMzOObIZ2wSz/pd0Dqy2e9zB8zJi4Yy4E4y', NULL, '', '', '2026-03-30 10:40:34', 0, '2026-03-30 10:40:34', '2026-04-12 12:15:01', 13),
+(72, 58, 'Md. Ali Haider Abdullah', 'Md. Ali Haider Abdullah', '0 1958-2533', 'tphl.alihaider@gmail.com', 17, 'N/A', '', 8, '$2y$10$/T5eDgeej3P.JoXuhChGceCnDHOceBwixNyIGehU4lHJ0xHtdqDFe', NULL, '', '', '2026-03-30 10:41:19', 0, '2026-03-30 10:41:19', '2026-04-12 11:43:16', 5),
+(73, 59, 'Tanvir Hossain Jian', 'Tanvir Hossain Jian', '01335258314', 'tanvir.tphl@gmail.com', 20, 'Uttor badda, Abdullah bag masjid', '', 8, '$2y$10$8YxvgfxnkLTwgnksEVIeRu3dLINjXElLIbY6LUvy4.t6K3HzQ3b2a', NULL, '', '', '2026-03-30 10:44:55', 0, '2026-03-30 10:44:55', '2026-04-12 11:58:20', 10),
+(74, 60, 'Ahnaf Adil Roxy', 'Ahnaf Adil Roxy', '01335-25832', 'roxy.tphl@gmail.com', 13, '', '4213421763', 8, '$2y$10$EidwlET76JrkaxbXZWi1b.WHbW2IdKsfzevS5cbMDnLM3pJPk/arK', NULL, '', '', '2026-03-30 10:45:59', 0, '2026-03-30 10:45:59', '2026-03-30 16:36:23', NULL),
+(75, 61, 'Md.Tamim', 'Md.Tamim', '01308212749', 'tamim.tphl@gmail.com', 23, 'Dattapara, Birulia,Savar, Dhaka 1216', '', 8, '$2y$10$vP/q95cSabGHgVL9h3sBw.MWwc8JGYQiRXLarqEx6zl8p6A43uwk2', NULL, '', '', '2026-03-30 10:49:04', 0, '2026-03-30 10:49:04', '2026-03-30 16:36:23', NULL),
+(76, 63, 'Akhoy kumer Nibir Roy', 'Akhoy kumer Nibir Roy', '01335258301', 'akhoy.tphl@gmail.com', 15, 'N/A', '', 8, '$2y$10$/A2yZtrb7UELabmGdPX.IuVuX/LcgmoxPoe0CV56vCoxJGAfGOUie', NULL, '', '', '2026-03-30 10:54:37', 0, '2026-03-30 10:54:37', '2026-04-12 12:08:09', 11),
+(77, 64, 'Md. Amanullah Aman', 'Md. Amanullah Aman', '01335258306', 'aman.tphl@gmail.com', 20, 'South Bhandaria-8550, Bhandaria, Pirojpur', '', 8, '$2y$10$GvrxHKdWRY2m3tvvUsFMRuAgqeM6L993ISeHJG/42UBRYVYI6UnQ6', 'users_69eaf30d55fcd.jpeg', '', '', '2026-03-30 10:56:23', 77, '2026-03-30 10:56:23', '2026-04-24 04:35:25', 0),
+(78, 65, 'Abu Naym', 'Abu Naym', '01335258312', 'naymtphl@gmail.com', 20, 'Ati-1312, Keraniganj, Dhaka', '', 8, '$2y$10$CojmU9mTBwgDjkx4CfkdYeaQ57vvBBDxV/seIXX4jy.25RgK19WMG', 'users_69cb90acdaad5.jpg', '', '', '2026-04-19 05:10:00', 0, '2026-03-30 10:59:42', '2026-04-20 05:23:44', 12),
+(79, 66, 'Md. Sakib Inam', 'Md. Sakib Inam', '01335258310', 'sakibinam.tphl@gmail.com', 16, 'N/A', '', 8, '$2y$10$uhKw9sTOb03dEHxMvZb/KekSOvQ6RjfanioES3ZW5pOa4m.VkexNO', NULL, '', '', '2026-03-30 11:00:09', 0, '2026-03-30 11:00:09', '2026-04-18 04:34:42', 12),
+(80, 67, 'Md Bakhtiar Hasan', 'Md Bakhtiar Hasan', '01335258300', 'bakhtiar.tphl@gmail.com', 13, 'N/A', '', 0, '$2y$10$3KjxMU.PqmWBXo77Kd3nbO4vYx55T4pByMR7U.kHE91Sro2ch8sLe', NULL, '', '', '2026-03-30 11:10:48', 0, '2026-03-30 11:10:48', '2026-04-11 04:35:06', 0),
+(81, 68, 'Md Lutfor Rahaman', 'Md Lutfor Rahaman', '01335258334', 'lutfor.tphl@gmail.com', 27, 'Vill: Asapur, PO: Phancherkanda, Thana: Ghior, Dist: Manikganj, Dhaka', '7350928797', 2, '$2y$10$SiSPnIWXvfbAy0DznRqjNebZp6fjgF0LGkHEVG7NPoNy8.J2fdc9O', NULL, '', '', '2026-03-30 11:17:42', 0, '2026-03-30 11:17:42', '2026-03-30 16:36:23', NULL),
+(82, 69, 'Dipto Kumar Roy', 'Dipto Kumar Roy', '01958253358', 'dipto.tphl@gmail.com', 20, 'Khagan,Ashulia,Saver Dhaka', '2851653333', 2, '$2y$10$pB9uAIYgkG6tt/yMZQzVUuiQzSe3shbNwKlu45kAtQqlTrNGZ/JPu', NULL, '', '', '2026-03-30 11:19:42', 0, '2026-03-30 11:19:42', '2026-03-30 16:36:23', NULL),
+(83, 70, 'B. M Shaharear Hasan', 'B. M Shaharear Hasan', '01917331397', 'shaharear.tphl@gmail.com', 27, 'Korotoa road, latifpur kolony, Bogra', '7318135568', 6, '$2y$10$IR.UVy4pARa366NVJj3DGejR6j1MB0KlvUqEi5kvhJeZSLVd3RenW', NULL, '', '', '2026-03-30 11:22:17', 0, '2026-03-30 11:22:17', '2026-03-30 16:36:23', NULL),
+(84, 71, 'MD. Sakhawat Hossain Emon', 'MD. Sakhawat Hossain Emon', '01335258335', 'emon.tphl@gmail.com', 23, 'Block-A, Lane-6, Mirpur-6, Dhaka 1216', '1962405062', 2, '$2y$10$zbxbowLRq8arKWPKWtXlmutMu0HgAD/L0jo0QOuiV5v1tzE/5MBoK', NULL, '', '', '2026-03-30 11:22:57', 0, '2026-03-30 11:22:57', '2026-03-30 16:36:23', NULL),
+(85, 72, 'MD. Zamiul Islam', 'MD. Zamiul Islam', '01335258338', 'zamiul.tphl@gmail.com', 17, '130/6/A Baganbari,  Madatek, Basabo, Dhaka -1214.', '5086466165', 2, '$2y$10$JNlsOeAu7vANay8HvhgzTu8qrFZTw42wEfb9hvza857xBIdxSE5kq', NULL, '', '', '2026-03-30 11:25:48', 0, '2026-03-30 11:25:48', '2026-03-30 16:36:23', NULL),
+(86, 73, 'MD. Ahadul Islam', 'MD. Ahadul Islam', '01314010972', 'asif.tphl@gmail.com', 23, 'Amula Dahabharatta, Nikrail, Bhuapur.', '3314775515', 2, '$2y$10$YlJmkkdgPI02YYTHw5G/o.tJE.7k/v6D34A6bHyNdlPuQztkA1IFe', NULL, '', '', '2026-03-30 11:26:09', 0, '2026-03-30 11:26:09', '2026-03-30 16:36:23', NULL),
+(87, 74, 'Sadman Islam Sakib', 'Sadman Islam Sakib', '01958253344', 'sakib.tphl@gmail.com', 21, 'H-12, Kusumbag Residential Area, North Bisil  Road, Mirpur-1,Dhaka-1216', '', 8, '$2y$10$EZYoIwrFc/RwFFaj299PeOTVK1Jjf4pVV8dFhN0apKOxd6.BoIP9C', 'users_69d4989074172.jpg', '', '', '2026-04-22 10:19:56', 0, '2026-03-30 11:33:39', '2026-04-22 10:19:56', 2),
+(88, 75, 'Mahaananda Kumar Saha', 'Mahaananda Kumar Saha', '01335258327', 'mahaanandakumarsaha@gmail.com', 22, 'Faridpur, sadarpur,hatkrishnapur', '5506251882', 2, '$2y$10$IawCX1UOcrjxps1aO4QTWeip4b8tKdN3JGDyduTJtnqLNYVuIzYXu', NULL, '', '', '2026-03-30 11:34:33', 0, '2026-03-30 11:34:33', '2026-03-30 16:36:23', NULL),
+(90, 79, 'Moonmoon Akter Oishy', 'Moonmoon Akter Oishy', '01958253355', 'oishytphl@gmail.com', 24, 'Road No -1,  B - 45 Bank Town,  Savar', '1047316906', 2, '$2y$10$Sdqb84cXh8GKU9Okw2rRSe7k3N6a0riQJVPBDqnRhqa9px28WsDY.', NULL, '', '', '2026-03-30 11:43:09', 0, '2026-03-30 11:43:09', '2026-03-30 16:36:23', NULL),
+(91, 76, 'Rubina Islam', 'Rubina Islam', '01958253349', 'rubinatphl49@gmail.com', 15, '', '', 2, '$2y$10$r8GdWRKSpeZjr24W1pjGn.uaye6s/.clnO7G8ESZI3NnV844NrnCS', NULL, '', '', '2026-03-30 11:44:43', 0, '2026-03-30 11:44:43', '2026-03-30 16:36:23', NULL),
+(92, 80, 'Afrin Jahan Anika', 'Afrin Jahan Anika', '01958253335', 'anika.tphl@gmail.com', 13, '39/b senpara porbota mirpur 10', '1032936708', 2, '$2y$10$nBTOuqyG5vmEhBfJADloguSRdoA383Hrd.mFIuseKxOXG3bkfZYZG', NULL, '', '', '2026-03-30 11:52:36', 0, '2026-03-30 11:52:36', '2026-03-30 16:36:23', NULL),
+(94, 0, 'Mehedi H. Jony', 'Mehedi H. Jony', '01861685153', 'mehedihjony.tphl@gmail.com', 28, 'Dhaka', '', 10, '$2y$10$YO/Y1hPq8lo0NTFbWbSX5u1hyUYn.i0F1s3KcNN9Xx8Askz3/5q0O', NULL, '', '', '2026-04-27 06:07:13', 6, '2026-03-30 16:43:54', '2026-04-27 06:07:13', 0),
+(95, 81, 'Riya', 'Riya', '01778234546', 'riya@gmail.com', 28, 'Dhaka', '34', 5, '$2y$10$cUYgCjvi4yiNDYS8mTGWsOkEvOJR32hiN/5Dsku7ULURP.tcviqpK', NULL, '', '', '2026-04-04 11:27:15', 4, '2026-03-31 06:40:46', '2026-04-04 11:27:15', 0),
+(98, 82, 'S.A Arnob', 'S.A Arnob', '01958253347', 'arnob.tphl@gmail.com', 20, 'Dottopara, Asuliya, Dhaka', '', 8, '$2y$10$aaooqfFW63prXcheowgGMeuZAHV88qpV1JQMljfQiHbOv2qCKtFdy', NULL, '', '', '2026-03-31 08:18:16', 0, '2026-03-31 08:18:16', '2026-04-12 11:41:08', 4),
+(100, 83, 'Md. Mamunur Rahman', 'Md. Mamunur Rahman', '01958253342', 'mamunur.tphl@gmail.com', 19, '', '1947418776', 7, '$2y$10$ADpw3aS2xygSq6zySs.GaOoDAhv9XTdf3jXLxpZeyQ8fJinfXiZwG', NULL, '', '', '2026-03-31 08:58:36', 0, '2026-03-31 08:58:36', '2026-03-31 08:58:36', 2),
+(102, 84, 'Mehedi Hasan Rudro', 'Rudro', '01872356456', 'rudro@gmail.com', 21, 'N/A', '', 11, '$2y$10$XZKNktLIkAjqt/eY93vvFuKVMkut4pqaro7pZDaJm1PCHN7EApKra', NULL, '', '', '2026-04-29 06:46:23', 4, '2026-04-02 08:14:46', '2026-04-29 06:46:23', 0),
+(103, 85, 'Mehedi Hasan Shuvo', 'hasan shuvo', '01901365048', 'shuvo.tphl@gmail.com', 17, 'Dhaka', '', 5, '$2y$10$IQykvHC0cycV2VPhGMjfz.h6JdRuJzPkX4fw20XGlbQlHrPo4hKbu', NULL, '', '', '2026-04-09 04:00:41', 0, '2026-04-03 13:29:06', '2026-04-09 04:00:41', 5),
+(105, 11, 'Mr. Ibrahim Khalil', 'ibrahim khalil', '01958253319', 'ibrahimkhalil.tphl@gmail.com', 20, '5/9, Dakkhin Rajashon, Savar, Dhaka', '', 8, '$2y$10$qExZ9v2Jozj5g9ct4UC3TeFToO.2UTmVBXrWXXmDmmjelR0co0hTG', NULL, '', '', '2026-04-04 05:57:01', 0, '2026-04-04 05:57:01', '2026-04-12 11:54:39', 9),
+(110, NULL, 'Mainul Hassan Dulon', 'Mainul H. Dulon', '01933657804', 'ceo@dpremiumhomes.com', 29, 'Dhaka', '', 3, '$2y$10$8Z5Mj0/6UMu4MDupWjOnGOv6CvqtAqS5E0SdhEiOBvEp.oUszI5/e', NULL, '', '', '2026-04-08 11:18:00', 6, '2026-04-04 11:35:30', '2026-04-08 11:18:00', 0),
+(112, NULL, 'Ejaz Ur Rahman', 'Ejaz Ur Rahman', '01738822694', 'dceo@dpremiumhomes.com', 31, 'Dhaka', '', 3, '$2y$10$BKhqSTbXDhPI4toSjpUiH.QnGD.lvBC5o5fB8IhwrVpolh1E0RIh2', NULL, '', '', '2026-04-04 12:40:57', 6, '2026-04-04 12:29:06', '2026-04-04 12:50:30', 0),
+(113, NULL, 'Mahfuza Shikder Tanha', 'Mahfuza Shikder Tanha', '01721316211', 'pd@dpremiumhomes.com', 32, 'Dhaka', '', 3, '$2y$10$uSiCIm/rYxSI2Q5jXfsOBuz8w4.dja8GlRNx5WYsUdkc7AzjHiBA6', NULL, '', '', '2026-04-04 12:41:12', 6, '2026-04-04 12:30:16', '2026-04-04 12:51:08', 0),
+(114, NULL, 'Md. Rayhan Bhuiyan', 'Md. Rayhan Bhuiyan', '01689-58433', 'coo@dpremiumhomes.com', 30, 'Dhaka', '', 3, '$2y$10$099WG2xiU7I7762yH70l5e4KtEODir4przyxvpdHPB.GPPToQ7huC', NULL, '', '', '2026-04-04 12:56:53', 110, '2026-04-04 12:56:53', '2026-04-08 11:17:49', 0),
+(115, 62, 'Md. Abul Hasan Hasib', 'Md. Abul Hasan Hasib', '01335258320', 'hasib.tphl@gmail.com', 21, 'N/A', '', 8, '$2y$10$lzrZhqIiXpnom1CIBmwptuuVKJBUsTDJ3x85HjDOElQ.eR3EPLzry', NULL, '', '', '2026-04-07 09:26:45', 0, '2026-04-07 09:26:45', '2026-04-12 12:15:19', 13),
+(116, 12, 'Nahian', 'rafi', '01123456789', 'nahian.easytechx@gmail.com', 14, 'asdfadf', '55555534434', 8, '$2y$10$RHjmhMhmgwE/OuuD2c92suYCaEZlm5RN0UhhFbAz2hRBKdeXj6Fe2', NULL, '', '', '2026-04-08 10:14:38', 6, '2026-04-08 10:14:38', '2026-04-08 10:15:58', 0),
+(117, 86, 'Test Employee', 'Test', '01790128472', 'test3@gmail.com', 32, 'Mohammadpur, Dhaka-1207', '', 0, '$2y$10$sw5JwFNK.bYOVVwur2/1FOxpkSV/FOm7WWdLEfTzh//K3GkkykKQW', NULL, '', '', '2026-04-10 10:07:16', 0, '2026-04-10 10:07:16', '2026-04-10 10:07:16', 0),
+(118, 87, 'Shazzadur Rahman Shoumic', 'Shazzad', '01765562314', 'shazzadur.tphl@gmail.com', 20, '', '', 8, '$2y$10$TX/Hto3FA3ypCs4fd8al4euM8Mh1vmGy/3mIbgelj8wuiwLDJw0/6', NULL, '', '', '2026-04-12 11:46:52', 0, '2026-04-12 11:46:52', '2026-04-12 11:46:52', 5),
+(119, 90, 'Shohanur Rahaman', 'Shohanur Rahaman', '01958253372', 'shohan.tphl@gmail.com', 13, 'Khagan Ashulia', '', 11, '$2y$10$AIzAW5dhzVr58q5NyyyBueMXK5aTZHZwHOyGVa3EEz842ZAWUsxZK', NULL, '', '', '2026-04-19 04:42:58', 119, '2026-04-17 13:13:21', '2026-04-19 04:42:58', 0),
+(120, NULL, 'Project Manager1', 'Project Manager1', '01876123454', 'project.manager1@gmail.com', 36, 'Dhaka', '', 15, '$2y$10$GhwOi2FtFs9pBw7GkpZaCefIBQhTiY9GoQLUgUKfBDa9p.XtUvlXu', NULL, '', '', '2026-05-11 14:46:45', 6, '2026-04-26 03:55:58', '2026-05-11 08:46:45', 0),
+(121, NULL, 'Land Man1', 'Land Man1', '01993878733', 'land.manager1@gmail.com', 33, 'Dhaka', '', 14, '$2y$10$0Zg/ELOPJh5n.sSZkO2i8eMKon1lIWKj5lHQq2cLgbKrqVaYZcUhO', NULL, '', '', '2026-05-05 13:04:21', 6, '2026-04-26 03:56:52', '2026-05-05 13:04:21', 0),
+(122, NULL, 'Mr. Architect1', 'Mr. Architect1', '01875438578', 'architecture1@gmail.com', 34, 'Dhaka', '', 18, '$2y$10$uYzkPN7DDLAanWYNsI02.OvkqvUIS35JblMvG0NRUHLTaXBemryL2', NULL, '', '', '2026-05-09 12:33:09', 6, '2026-04-26 03:58:02', '2026-05-09 06:33:09', 0),
+(123, NULL, 'Mr. Site Engineer1', 'Mr. Site Engineer1', '01987328476', 'site.engineer1@gmail.com', 38, 'Dhaka', '', 12, '$2y$10$C.kuqYaBXt7SNIuwlDSoi.NySk5tcj67PFfUBFUqWc1bYrnCqCqIi', NULL, '', '', '2026-05-10 17:02:35', 6, '2026-04-26 03:58:54', '2026-05-10 11:02:35', 0),
+(124, NULL, 'Mr. Draftsman1', 'Mr. Draftsman1', '01763425454', 'draftsman1@gmail.com', 35, 'dhaka', '', 16, '$2y$10$GpWdksQaMYX5TguAlFBFYO/ygwnc8af9LA0SqWRf./0oVspQwc.De', NULL, '', '', '2026-05-11 14:40:09', 6, '2026-04-26 03:59:33', '2026-05-11 08:40:09', 0),
+(125, NULL, 'Mr Estimator1', 'Mr Estimator1', '', 'estimator1@gmail.com', 37, 'dhaka', '', 19, '$2y$10$NgvBE.GRBJt0HNyQmSqua.PeaLLgA2oWcVuGhwv7Im31Jz6SgAjay', NULL, '', '', '2026-05-09 12:52:46', 6, '2026-04-26 04:00:08', '2026-05-09 06:52:46', 0),
+(126, NULL, 'Mr. QC1', 'Mr. QC1', '01986378256', 'qc1@gmail.com', 43, 'Dhaka', '', 13, '$2y$10$paZNUceDQ1b3BWWwfP6jReGr3d9ZLqKdMwisIHzdYTR0toYXK3GXi', NULL, '', '', '2026-05-11 14:05:37', 6, '2026-04-26 04:00:52', '2026-05-11 08:05:37', 0),
+(127, NULL, 'Mr Purchase Head1', 'Mr Purchase Head1', '01782354543', 'purchase1@gmail.com', 42, 'Dhaka', '', 17, '$2y$10$WWHjM9YQBDTjCW7Dvf6KC.5mbo/0tJPW.WOLTXy2Ahhfz2xnoAPEe', NULL, '', '', '2026-05-09 18:17:03', 6, '2026-04-26 04:01:41', '2026-05-09 12:17:03', 0),
+(128, NULL, 'Mr Site Operators1', 'Mr Site Operators1', '01723876324', 'operations1@gmail.com', 38, 'Dhaka', '', 20, '$2y$10$NN/GFnq6O6qtzqFyavU4EO4eOwgFH5JJi8J409SIOJZfvrNPlsT5q', NULL, '', '', '2026-05-07 18:08:10', 6, '2026-04-26 04:05:25', '2026-05-07 12:08:10', 0),
+(129, NULL, 'Mr Structural Designer1', 'Mr Structure Designer1', '01653247632', 'structural.designer1@gmail.com', 15, 'Dhaka', '', 21, '$2y$10$tzAM7hH8kzCv2PnyRdzMneFlpt2yMJBcbMCvxSp2Zj16X/GNO6i4G', NULL, '', '', '2026-05-03 05:21:16', 6, '2026-04-26 05:41:57', '2026-05-03 05:21:16', 0),
+(130, NULL, 'M.H Jony', 'M.H Jony', '01861685153', 'admin@gmail.com', 28, 'Dhaka', '', 1, '$2y$10$ZsoxIYkWS/zUeQjawL6/4.9oL7L21uVMvqu/7bIAQq6r4OL29eByy', NULL, '', '', '2026-05-02 04:44:05', 130, '2026-05-02 04:34:07', '2026-05-02 04:44:05', 0),
+(131, NULL, 'Mr. Purchase Exeutive', 'Mr. Purchase Exeutive', '01882364534', 'purchase.executive1@gmail.com', 15, 'Dhaka', '2343543654', 23, '$2y$10$c/zYf4q4.8zQSeitdqmjY.e4vgjLE7ePADun84jFmskm595xO0CA.', NULL, '', '', '2026-05-11 12:50:14', 6, '2026-05-09 11:22:56', '2026-05-11 06:50:14', 0);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `vendors`
+--
+
+CREATE TABLE `vendors` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `phone` varchar(30) DEFAULT NULL,
+  `email` varchar(191) DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `company_name` varchar(200) DEFAULT NULL,
+  `rating` decimal(3,2) NOT NULL DEFAULT 5.00,
+  `status` enum('active','blacklisted') NOT NULL DEFAULT 'active',
+  `created_by` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `vendors`
+--
+
+INSERT INTO `vendors` (`id`, `name`, `phone`, `email`, `address`, `company_name`, `rating`, `status`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 'ABC Suppliers Ltd', '01711223344', 'abcvendor@abc.com', 'Dhaka, Bangladesh', NULL, 5.00, 'active', 120, '2026-05-05 13:41:56', NULL),
+(2, 'Vendor - 1', '+8801790128472', '', 'Mohammadpur, Dhaka-1207', NULL, 5.00, 'active', 123, '2026-05-05 13:44:36', NULL);
+
+-- --------------------------------------------------------
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
 
 --
 -- Table structure for table `vendor_payment_requests`
@@ -3867,6 +4427,7 @@ CREATE TABLE `weekly_progress_report` (
   `work_done` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `progress_percentage` decimal(5,2) NOT NULL DEFAULT '0.00',
   `report_date` date NOT NULL,
+<<<<<<< HEAD
   `progress_image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `weather_condition` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `approved_by_pm` int DEFAULT NULL,
@@ -3882,16 +4443,38 @@ CREATE TABLE `weekly_progress_report` (
   KEY `idx_dpr_created_by` (`created_by`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+=======
+  `progress_image` varchar(255) DEFAULT NULL,
+  `weather_condition` varchar(100) DEFAULT NULL,
+  `approved_by_pm` int(11) DEFAULT NULL,
+  `manpower_count` smallint(5) UNSIGNED DEFAULT NULL,
+  `approved_by_qc` int(11) DEFAULT NULL,
+  `created_by` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `work_order_id` int(11) DEFAULT NULL,
+  `qc_gain_percentage` decimal(5,2) DEFAULT 0.00,
+  `qc_photo` varchar(255) DEFAULT NULL,
+  `qc_field_test_details` text DEFAULT NULL,
+  `qc_lab_test_result` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
 
 --
 -- Dumping data for table `weekly_progress_report`
 --
 
+<<<<<<< HEAD
 LOCK TABLES `weekly_progress_report` WRITE;
 /*!40000 ALTER TABLE `weekly_progress_report` DISABLE KEYS */;
 INSERT INTO `weekly_progress_report` VALUES (1,13,123,1,1,3,'First week work done',90.00,'2026-05-07',NULL,'average',120,10,126,123,'2026-05-07 13:00:49',NULL);
 /*!40000 ALTER TABLE `weekly_progress_report` ENABLE KEYS */;
 UNLOCK TABLES;
+=======
+INSERT INTO `weekly_progress_report` (`id`, `project_id`, `site_engineer_id`, `work_plan_id`, `week_no`, `target_id`, `work_done`, `progress_percentage`, `report_date`, `progress_image`, `weather_condition`, `approved_by_pm`, `manpower_count`, `approved_by_qc`, `created_by`, `created_at`, `work_order_id`, `qc_gain_percentage`, `qc_photo`, `qc_field_test_details`, `qc_lab_test_result`) VALUES
+(1, 13, 120, 2, 1, 1, 'test work done', 80.00, '2026-05-11', NULL, '', 6, 30, 126, 120, '2026-05-11 06:35:21', NULL, 80.00, 'uploads/qc-reports/1778482589_users.png', 'test data', '100');
+
+-- --------------------------------------------------------
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
 
 --
 -- Table structure for table `whatsapp_campaigns`
@@ -3976,6 +4559,7 @@ CREATE TABLE `work_types` (
 -- Dumping data for table `work_types`
 --
 
+<<<<<<< HEAD
 LOCK TABLES `work_types` WRITE;
 /*!40000 ALTER TABLE `work_types` DISABLE KEYS */;
 INSERT INTO `work_types` VALUES (1,6,'Soil Analysis & Footing Design','<p>Test data </p>',123,'2026-05-05 13:07:56','2026-05-05 13:07:56'),(2,6,'Floor Plan & Elevation','<p>test </p>',123,'2026-05-05 13:08:27','2026-05-05 13:08:27');
@@ -3986,6 +4570,1543 @@ UNLOCK TABLES;
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+=======
+INSERT INTO `work_types` (`id`, `design_type_id`, `work_type_name`, `description`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 6, 'Soil Analysis & Footing Design', '<p>Test data </p>', 123, '2026-05-05 13:07:56', '2026-05-05 13:07:56'),
+(2, 6, 'Floor Plan & Elevation', '<p>test </p>', 123, '2026-05-05 13:08:27', '2026-05-05 13:08:27');
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `approval_requests`
+--
+ALTER TABLE `approval_requests`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `architect_engineering`
+--
+ALTER TABLE `architect_engineering`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_ae_project` (`project_id`),
+  ADD KEY `idx_ae_user` (`user_id`),
+  ADD KEY `idx_ae_created_by` (`created_by`);
+
+--
+-- Indexes for table `banks`
+--
+ALTER TABLE `banks`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `blogs`
+--
+ALTER TABLE `blogs`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `boq_items`
+--
+ALTER TABLE `boq_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_boqi_boq` (`boq_id`),
+  ADD KEY `idx_boqi_material` (`material_id`);
+
+--
+-- Indexes for table `boq_master`
+--
+ALTER TABLE `boq_master`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_boq_project` (`project_id`),
+  ADD KEY `idx_boq_approved_by` (`approved_by`),
+  ADD KEY `idx_target_id` (`target_id`);
+
+--
+-- Indexes for table `budget_extend_requests`
+--
+ALTER TABLE `budget_extend_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_ber_project` (`project_id`),
+  ADD KEY `idx_ber_requested_by` (`requested_by`),
+  ADD KEY `idx_ber_approved_by` (`approved_by`);
+
+--
+-- Indexes for table `cache`
+--
+ALTER TABLE `cache`
+  ADD PRIMARY KEY (`key`);
+
+--
+-- Indexes for table `cameras`
+--
+ALTER TABLE `cameras`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `project_id` (`project_id`);
+
+--
+-- Indexes for table `camera_logs`
+--
+ALTER TABLE `camera_logs`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `cashout_payments`
+--
+ALTER TABLE `cashout_payments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_cashout_request_id` (`cashout_request_id`),
+  ADD KEY `idx_project_id` (`project_id`),
+  ADD KEY `idx_created_by` (`created_by`);
+
+--
+-- Indexes for table `cashout_requests`
+--
+ALTER TABLE `cashout_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_requested_by` (`requested_by`),
+  ADD KEY `fk_approved_by` (`approved_by`),
+  ADD KEY `fk_rejected_by` (`rejected_by`);
+
+--
+-- Indexes for table `chat_messages`
+--
+ALTER TABLE `chat_messages`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `client_refund_requests`
+--
+ALTER TABLE `client_refund_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_booking` (`booking_id`),
+  ADD KEY `idx_lead` (`lead_id`),
+  ADD KEY `idx_status` (`status`);
+
+--
+-- Indexes for table `communities`
+--
+ALTER TABLE `communities`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `company_bank_accounts`
+--
+ALTER TABLE `company_bank_accounts`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `comparison_items`
+--
+ALTER TABLE `comparison_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_ci_comparison` (`comparison_id`),
+  ADD KEY `idx_ci_material` (`material_id`),
+  ADD KEY `idx_ci_vendor` (`vendor_id`);
+
+--
+-- Indexes for table `contacts`
+--
+ALTER TABLE `contacts`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `contractors`
+--
+ALTER TABLE `contractors`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_oo_role` (`role`),
+  ADD KEY `idx_oo_status` (`status`);
+
+--
+-- Indexes for table `contractor_bill_requests`
+--
+ALTER TABLE `contractor_bill_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_cbr_project` (`project_id`),
+  ADD KEY `idx_cbr_operator` (`operator_id`),
+  ADD KEY `idx_cbr_created_by` (`created_by`),
+  ADD KEY `idx_cbr_verified_by` (`verified_by`),
+  ADD KEY `idx_cbr_status` (`status`);
+
+--
+-- Indexes for table `con_approval_logs`
+--
+ALTER TABLE `con_approval_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_cal_ref` (`ref_table`,`ref_id`),
+  ADD KEY `idx_cal_actioned_by` (`actioned_by`),
+  ADD KEY `idx_cal_created_by` (`created_by`);
+
+--
+-- Indexes for table `con_financial_transactions`
+--
+ALTER TABLE `con_financial_transactions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_cft_ref` (`ref_type`,`ref_id`),
+  ADD KEY `idx_cft_processed` (`processed_by`),
+  ADD KEY `idx_cft_created_by` (`created_by`);
+
+--
+-- Indexes for table `con_materials`
+--
+ALTER TABLE `con_materials`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_material_name` (`name`);
+
+--
+-- Indexes for table `con_material_issues`
+--
+ALTER TABLE `con_material_issues`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `con_material_issue_items`
+--
+ALTER TABLE `con_material_issue_items`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `con_stocks`
+--
+ALTER TABLE `con_stocks`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_stock_material_warehouse` (`material_id`,`warehouse_id`),
+  ADD KEY `idx_stock_warehouse` (`warehouse_id`);
+
+--
+-- Indexes for table `con_stock_movements`
+--
+ALTER TABLE `con_stock_movements`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_sm_material` (`material_id`),
+  ADD KEY `idx_sm_warehouse` (`warehouse_id`),
+  ADD KEY `idx_sm_ref` (`ref_type`,`ref_id`);
+
+--
+-- Indexes for table `con_warehouses`
+--
+ALTER TABLE `con_warehouses`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `con_work_orders`
+--
+ALTER TABLE `con_work_orders`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `wo_number` (`wo_number`);
+
+--
+-- Indexes for table `departments`
+--
+ALTER TABLE `departments`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `designations`
+--
+ALTER TABLE `designations`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `department_id` (`department_id`);
+
+--
+-- Indexes for table `design_types`
+--
+ALTER TABLE `design_types`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_design_type_name` (`name`);
+
+--
+-- Indexes for table `emi_schedules`
+--
+ALTER TABLE `emi_schedules`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `lead_booking_id` (`lead_booking_id`),
+  ADD KEY `lead_payment_id` (`lead_payment_id`);
+
+--
+-- Indexes for table `employees`
+--
+ALTER TABLE `employees`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `employee_id` (`employee_id`),
+  ADD UNIQUE KEY `username` (`username`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD KEY `department_id` (`department_id`),
+  ADD KEY `designation_id` (`designation_id`),
+  ADD KEY `fk_employee_user` (`user_id`);
+
+--
+-- Indexes for table `employee_leaves`
+--
+ALTER TABLE `employee_leaves`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `employee_leave_balances`
+--
+ALTER TABLE `employee_leave_balances`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `employee_tasks`
+--
+ALTER TABLE `employee_tasks`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `employee_id` (`employee_id`);
+
+--
+-- Indexes for table `emp_attendances`
+--
+ALTER TABLE `emp_attendances`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_employee_date` (`employee_id`,`attendance_date`);
+
+--
+-- Indexes for table `emp_weekly_day_off`
+--
+ALTER TABLE `emp_weekly_day_off`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `flats`
+--
+ALTER TABLE `flats`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `project_id` (`project_id`);
+
+--
+-- Indexes for table `flat_purchase_rules`
+--
+ALTER TABLE `flat_purchase_rules`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `head_notifications`
+--
+ALTER TABLE `head_notifications`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_user_read` (`user_id`,`is_read`),
+  ADD KEY `idx_type` (`type`);
+
+--
+-- Indexes for table `holidays`
+--
+ALTER TABLE `holidays`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `initial_estimate_budgets`
+--
+ALTER TABLE `initial_estimate_budgets`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `initial_estimate_items`
+--
+ALTER TABLE `initial_estimate_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_iei_budget` (`budget_id`);
+
+--
+-- Indexes for table `initial_estimate_labors`
+--
+ALTER TABLE `initial_estimate_labors`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_iel_budget` (`budget_id`);
+
+--
+-- Indexes for table `land_visibility_study`
+--
+ALTER TABLE `land_visibility_study`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_lvs_project` (`project_id`),
+  ADD KEY `idx_lvs_qc` (`qc_reviewed_by_id`);
+
+--
+-- Indexes for table `leads`
+--
+ALTER TABLE `leads`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_leads_owner` (`assigned_id`);
+
+--
+-- Indexes for table `lead_bookings`
+--
+ALTER TABLE `lead_bookings`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `lead_id` (`lead_id`),
+  ADD KEY `project_id` (`project_id`),
+  ADD KEY `created_by` (`created_by`),
+  ADD KEY `flat_id` (`flat_id`);
+
+--
+-- Indexes for table `lead_follow_ups`
+--
+ALTER TABLE `lead_follow_ups`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `lead_id` (`lead_id`),
+  ADD KEY `project_id` (`project_id`),
+  ADD KEY `flat_id` (`flat_id`);
+
+--
+-- Indexes for table `lead_payments`
+--
+ALTER TABLE `lead_payments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_payment_booking` (`booking_id`),
+  ADD KEY `idx_lp_verification_status` (`verification_status`),
+  ADD KEY `idx_lp_payment_method` (`payment_method`),
+  ADD KEY `idx_lp_booking_vstatus` (`booking_id`,`verification_status`);
+
+--
+-- Indexes for table `lead_sources`
+--
+ALTER TABLE `lead_sources`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `leave_types`
+--
+ALTER TABLE `leave_types`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `locations`
+--
+ALTER TABLE `locations`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `management_cashin`
+--
+ALTER TABLE `management_cashin`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_role_name` (`role_name`),
+  ADD KEY `idx_transaction_date` (`transaction_date`),
+  ADD KEY `idx_payment_status` (`payment_status`),
+  ADD KEY `idx_created_by` (`created_by`),
+  ADD KEY `idx_role_id` (`role_id`);
+
+--
+-- Indexes for table `management_cashout`
+--
+ALTER TABLE `management_cashout`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_role_name` (`role_name`),
+  ADD KEY `idx_transaction_date` (`transaction_date`),
+  ADD KEY `idx_payment_status` (`payment_status`),
+  ADD KEY `idx_created_by` (`created_by`),
+  ADD KEY `idx_role_id` (`role_id`),
+  ADD KEY `idx_category_id` (`category_id`);
+
+--
+-- Indexes for table `management_categories`
+--
+ALTER TABLE `management_categories`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `category_name` (`category_name`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_created_by` (`created_by`);
+
+--
+-- Indexes for table `management_roles`
+--
+ALTER TABLE `management_roles`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `created_by` (`created_by`);
+
+--
+-- Indexes for table `manpower_requisitions`
+--
+ALTER TABLE `manpower_requisitions`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `material_receiving`
+--
+ALTER TABLE `material_receiving`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_mr_po` (`purchase_order_id`),
+  ADD KEY `idx_mr_received_by` (`received_by`),
+  ADD KEY `idx_mr_qc_checked_by` (`qc_checked_by`),
+  ADD KEY `idx_mr_created_by` (`created_by`);
+
+--
+-- Indexes for table `material_receiving_items`
+--
+ALTER TABLE `material_receiving_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_mri_receiving` (`receiving_id`),
+  ADD KEY `idx_mri_poi` (`purchase_order_item_id`),
+  ADD KEY `idx_mri_created_by` (`created_by`);
+
+--
+-- Indexes for table `material_returns`
+--
+ALTER TABLE `material_returns`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `material_return_items`
+--
+ALTER TABLE `material_return_items`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `employee_id` (`user_id`),
+  ADD KEY `task_id` (`task_id`),
+  ADD KEY `assigned_by` (`assigned_by`);
+
+--
+-- Indexes for table `onboard_clients`
+--
+ALTER TABLE `onboard_clients`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `operational_fund_requests`
+--
+ALTER TABLE `operational_fund_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_ofr_project` (`project_id`),
+  ADD KEY `idx_ofr_requester` (`requester_id`),
+  ADD KEY `idx_ofr_operator` (`operator_id`),
+  ADD KEY `idx_ofr_created_by` (`created_by`),
+  ADD KEY `idx_ofr_status` (`status`);
+
+--
+-- Indexes for table `payslips`
+--
+ALTER TABLE `payslips`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `employee_id` (`employee_id`),
+  ADD KEY `designation_id` (`designation_id`);
+
+--
+-- Indexes for table `payslip_details`
+--
+ALTER TABLE `payslip_details`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `payslip_id` (`payslip_id`),
+  ADD KEY `payslip_item_id` (`payslip_item_id`);
+
+--
+-- Indexes for table `payslip_items`
+--
+ALTER TABLE `payslip_items`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `permissions`
+--
+ALTER TABLE `permissions`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `personal_access_tokens`
+--
+ALTER TABLE `personal_access_tokens`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `token` (`token`),
+  ADD KEY `tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`);
+
+--
+-- Indexes for table `platform_budgets`
+--
+ALTER TABLE `platform_budgets`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `projects`
+--
+ALTER TABLE `projects`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `location_id` (`location_id`),
+  ADD KEY `community_id` (`community_id`);
+
+--
+-- Indexes for table `project_drawings`
+--
+ALTER TABLE `project_drawings`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_pd_project` (`project_id`),
+  ADD KEY `idx_pd_design_type` (`design_type_id`),
+  ADD KEY `idx_pd_user` (`user_id`),
+  ADD KEY `idx_pd_approved_by` (`approved_by_id`),
+  ADD KEY `idx_pd_created_by` (`created_by`);
+
+--
+-- Indexes for table `project_legal_sheets`
+--
+ALTER TABLE `project_legal_sheets`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_project_id` (`project_id`),
+  ADD KEY `idx_sheet_type` (`sheet_type`);
+
+--
+-- Indexes for table `project_sheets`
+--
+ALTER TABLE `project_sheets`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_project_id` (`project_id`),
+  ADD KEY `idx_sheet_type` (`sheet_type`);
+
+--
+-- Indexes for table `project_structural_designs`
+--
+ALTER TABLE `project_structural_designs`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `project_working_plans`
+--
+ALTER TABLE `project_working_plans`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_pwp_budget` (`initial_budget_id`);
+
+--
+-- Indexes for table `property_reviews`
+--
+ALTER TABLE `property_reviews`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `purchase_orders`
+--
+ALTER TABLE `purchase_orders`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_po_request` (`request_id`);
+
+--
+-- Indexes for table `purchase_order_items`
+--
+ALTER TABLE `purchase_order_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_poi_po` (`purchase_order_id`),
+  ADD KEY `idx_poi_material` (`material_id`),
+  ADD KEY `idx_poi_vendor` (`selected_vendor_id`);
+
+--
+-- Indexes for table `purchase_requests`
+--
+ALTER TABLE `purchase_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_pr_project` (`project_id`),
+  ADD KEY `idx_pr_created_by` (`created_by`);
+
+--
+-- Indexes for table `purchase_request_items`
+--
+ALTER TABLE `purchase_request_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_pri_request` (`request_id`),
+  ADD KEY `idx_pri_material` (`material_id`);
+
+--
+-- Indexes for table `qc_checklists`
+--
+ALTER TABLE `qc_checklists`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_qc_work_type_id` (`work_type_id`);
+
+--
+-- Indexes for table `qc_inspections`
+--
+ALTER TABLE `qc_inspections`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_qc_project` (`project_id`),
+  ADD KEY `fk_qc_work_type` (`work_type_id`);
+
+--
+-- Indexes for table `qc_inspection_items`
+--
+ALTER TABLE `qc_inspection_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_ins_master` (`qc_inspection_id`),
+  ADD KEY `fk_ins_checklist` (`qc_checklist_id`);
+
+--
+-- Indexes for table `qc_material_tests`
+--
+ALTER TABLE `qc_material_tests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_qmt_receiving` (`material_receiving_id`);
+
+--
+-- Indexes for table `qc_test_types`
+--
+ALTER TABLE `qc_test_types`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `quotations`
+--
+ALTER TABLE `quotations`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_q_request` (`request_id`),
+  ADD KEY `idx_q_vendor` (`vendor_id`);
+
+--
+-- Indexes for table `quotation_comparisons`
+--
+ALTER TABLE `quotation_comparisons`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_qc_request` (`request_id`);
+
+--
+-- Indexes for table `quotation_items`
+--
+ALTER TABLE `quotation_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_qi_quotation` (`quotation_id`),
+  ADD KEY `idx_qi_material` (`material_id`);
+
+--
+-- Indexes for table `roles`
+--
+ALTER TABLE `roles`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `role_permissions`
+--
+ALTER TABLE `role_permissions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `permission_id` (`permission_id`),
+  ADD KEY `role_id` (`role_id`,`permission_id`) USING BTREE;
+
+--
+-- Indexes for table `sales_targets`
+--
+ALTER TABLE `sales_targets`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_sales_month` (`sales_user_id`,`month`),
+  ADD KEY `idx_sales_month` (`sales_user_id`,`month`);
+
+--
+-- Indexes for table `site_settings`
+--
+ALTER TABLE `site_settings`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `site_visits`
+--
+ALTER TABLE `site_visits`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `lead_id` (`lead_id`),
+  ADD KEY `project_id` (`project_id`),
+  ADD KEY `flat_id` (`flat_id`);
+
+--
+-- Indexes for table `sliders`
+--
+ALTER TABLE `sliders`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `soil_tests`
+--
+ALTER TABLE `soil_tests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_st_project` (`project_id`),
+  ADD KEY `idx_st_engineer` (`site_engineer_id`),
+  ADD KEY `idx_st_created_by` (`created_by`);
+
+--
+-- Indexes for table `target_fixed`
+--
+ALTER TABLE `target_fixed`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_tf_project` (`project_id`),
+  ADD KEY `idx_tf_user` (`user_id`),
+  ADD KEY `idx_tf_qc_reviewed_by` (`qc_reviewed_by_id`);
+
+--
+-- Indexes for table `tasks`
+--
+ALTER TABLE `tasks`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_employee_id` (`user_id`);
+
+--
+-- Indexes for table `teams`
+--
+ALTER TABLE `teams`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `units`
+--
+ALTER TABLE `units`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD KEY `role_id` (`role_id`),
+  ADD KEY `fk_user_employee` (`employee_id`);
+
+--
+-- Indexes for table `vendors`
+--
+ALTER TABLE `vendors`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_vendor_name` (`name`);
+
+--
+-- Indexes for table `vendor_payment_requests`
+--
+ALTER TABLE `vendor_payment_requests`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_vpr_vendor` (`vendor_id`),
+  ADD KEY `idx_vpr_po` (`purchase_order_id`),
+  ADD KEY `idx_vpr_created_by` (`created_by`);
+
+--
+-- Indexes for table `vendor_penalties`
+--
+ALTER TABLE `vendor_penalties`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_vp_vendor` (`vendor_id`);
+
+--
+-- Indexes for table `vendor_ratings`
+--
+ALTER TABLE `vendor_ratings`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_vr_vendor` (`vendor_id`),
+  ADD KEY `idx_vr_rated_by` (`rated_by`);
+
+--
+-- Indexes for table `weekly_progress_report`
+--
+ALTER TABLE `weekly_progress_report`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_dpr_project` (`project_id`),
+  ADD KEY `idx_dpr_engineer` (`site_engineer_id`),
+  ADD KEY `idx_dpr_date` (`report_date`),
+  ADD KEY `idx_dpr_created_by` (`created_by`);
+
+--
+-- Indexes for table `whatsapp_campaigns`
+--
+ALTER TABLE `whatsapp_campaigns`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `whatsapp_messages`
+--
+ALTER TABLE `whatsapp_messages`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `campaign_id` (`campaign_id`),
+  ADD KEY `lead_id` (`lead_id`);
+
+--
+-- Indexes for table `work_types`
+--
+ALTER TABLE `work_types`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `approval_requests`
+--
+ALTER TABLE `approval_requests`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `architect_engineering`
+--
+ALTER TABLE `architect_engineering`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `banks`
+--
+ALTER TABLE `banks`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=46;
+
+--
+-- AUTO_INCREMENT for table `blogs`
+--
+ALTER TABLE `blogs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `boq_items`
+--
+ALTER TABLE `boq_items`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `boq_master`
+--
+ALTER TABLE `boq_master`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `budget_extend_requests`
+--
+ALTER TABLE `budget_extend_requests`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `cameras`
+--
+ALTER TABLE `cameras`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `camera_logs`
+--
+ALTER TABLE `camera_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `cashout_payments`
+--
+ALTER TABLE `cashout_payments`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `cashout_requests`
+--
+ALTER TABLE `cashout_requests`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `chat_messages`
+--
+ALTER TABLE `chat_messages`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `client_refund_requests`
+--
+ALTER TABLE `client_refund_requests`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `communities`
+--
+ALTER TABLE `communities`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `company_bank_accounts`
+--
+ALTER TABLE `company_bank_accounts`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `comparison_items`
+--
+ALTER TABLE `comparison_items`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `contacts`
+--
+ALTER TABLE `contacts`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `contractors`
+--
+ALTER TABLE `contractors`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `contractor_bill_requests`
+--
+ALTER TABLE `contractor_bill_requests`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `con_approval_logs`
+--
+ALTER TABLE `con_approval_logs`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `con_financial_transactions`
+--
+ALTER TABLE `con_financial_transactions`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `con_materials`
+--
+ALTER TABLE `con_materials`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `con_material_issues`
+--
+ALTER TABLE `con_material_issues`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `con_material_issue_items`
+--
+ALTER TABLE `con_material_issue_items`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `con_stocks`
+--
+ALTER TABLE `con_stocks`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `con_stock_movements`
+--
+ALTER TABLE `con_stock_movements`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `con_warehouses`
+--
+ALTER TABLE `con_warehouses`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `con_work_orders`
+--
+ALTER TABLE `con_work_orders`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `departments`
+--
+ALTER TABLE `departments`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+
+--
+-- AUTO_INCREMENT for table `designations`
+--
+ALTER TABLE `designations`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
+
+--
+-- AUTO_INCREMENT for table `design_types`
+--
+ALTER TABLE `design_types`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+
+--
+-- AUTO_INCREMENT for table `emi_schedules`
+--
+ALTER TABLE `emi_schedules`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `employees`
+--
+ALTER TABLE `employees`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=91;
+
+--
+-- AUTO_INCREMENT for table `employee_leaves`
+--
+ALTER TABLE `employee_leaves`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `employee_leave_balances`
+--
+ALTER TABLE `employee_leave_balances`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=175;
+
+--
+-- AUTO_INCREMENT for table `employee_tasks`
+--
+ALTER TABLE `employee_tasks`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `emp_attendances`
+--
+ALTER TABLE `emp_attendances`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `emp_weekly_day_off`
+--
+ALTER TABLE `emp_weekly_day_off`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `flats`
+--
+ALTER TABLE `flats`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
+
+--
+-- AUTO_INCREMENT for table `flat_purchase_rules`
+--
+ALTER TABLE `flat_purchase_rules`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `head_notifications`
+--
+ALTER TABLE `head_notifications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `holidays`
+--
+ALTER TABLE `holidays`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `initial_estimate_budgets`
+--
+ALTER TABLE `initial_estimate_budgets`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `initial_estimate_items`
+--
+ALTER TABLE `initial_estimate_items`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `initial_estimate_labors`
+--
+ALTER TABLE `initial_estimate_labors`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `land_visibility_study`
+--
+ALTER TABLE `land_visibility_study`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `leads`
+--
+ALTER TABLE `leads`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4354;
+
+--
+-- AUTO_INCREMENT for table `lead_bookings`
+--
+ALTER TABLE `lead_bookings`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `lead_follow_ups`
+--
+ALTER TABLE `lead_follow_ups`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=532;
+
+--
+-- AUTO_INCREMENT for table `lead_payments`
+--
+ALTER TABLE `lead_payments`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `lead_sources`
+--
+ALTER TABLE `lead_sources`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `leave_types`
+--
+ALTER TABLE `leave_types`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `locations`
+--
+ALTER TABLE `locations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `management_cashin`
+--
+ALTER TABLE `management_cashin`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `management_cashout`
+--
+ALTER TABLE `management_cashout`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `management_categories`
+--
+ALTER TABLE `management_categories`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `management_roles`
+--
+ALTER TABLE `management_roles`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `manpower_requisitions`
+--
+ALTER TABLE `manpower_requisitions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `material_receiving`
+--
+ALTER TABLE `material_receiving`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `material_receiving_items`
+--
+ALTER TABLE `material_receiving_items`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `material_returns`
+--
+ALTER TABLE `material_returns`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `material_return_items`
+--
+ALTER TABLE `material_return_items`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `notifications`
+--
+ALTER TABLE `notifications`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `onboard_clients`
+--
+ALTER TABLE `onboard_clients`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `operational_fund_requests`
+--
+ALTER TABLE `operational_fund_requests`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `payslips`
+--
+ALTER TABLE `payslips`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `payslip_details`
+--
+ALTER TABLE `payslip_details`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `payslip_items`
+--
+ALTER TABLE `payslip_items`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `permissions`
+--
+ALTER TABLE `permissions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=52;
+
+--
+-- AUTO_INCREMENT for table `personal_access_tokens`
+--
+ALTER TABLE `personal_access_tokens`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `platform_budgets`
+--
+ALTER TABLE `platform_budgets`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `projects`
+--
+ALTER TABLE `projects`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
+
+--
+-- AUTO_INCREMENT for table `project_drawings`
+--
+ALTER TABLE `project_drawings`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `project_legal_sheets`
+--
+ALTER TABLE `project_legal_sheets`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `project_sheets`
+--
+ALTER TABLE `project_sheets`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `project_structural_designs`
+--
+ALTER TABLE `project_structural_designs`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `project_working_plans`
+--
+ALTER TABLE `project_working_plans`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `property_reviews`
+--
+ALTER TABLE `property_reviews`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `purchase_orders`
+--
+ALTER TABLE `purchase_orders`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `purchase_order_items`
+--
+ALTER TABLE `purchase_order_items`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `purchase_requests`
+--
+ALTER TABLE `purchase_requests`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `purchase_request_items`
+--
+ALTER TABLE `purchase_request_items`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT for table `qc_checklists`
+--
+ALTER TABLE `qc_checklists`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+
+--
+-- AUTO_INCREMENT for table `qc_inspections`
+--
+ALTER TABLE `qc_inspections`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `qc_inspection_items`
+--
+ALTER TABLE `qc_inspection_items`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `qc_material_tests`
+--
+ALTER TABLE `qc_material_tests`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `qc_test_types`
+--
+ALTER TABLE `qc_test_types`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT for table `quotations`
+--
+ALTER TABLE `quotations`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `quotation_comparisons`
+--
+ALTER TABLE `quotation_comparisons`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `quotation_items`
+--
+ALTER TABLE `quotation_items`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT for table `roles`
+--
+ALTER TABLE `roles`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+
+--
+-- AUTO_INCREMENT for table `role_permissions`
+--
+ALTER TABLE `role_permissions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=679;
+
+--
+-- AUTO_INCREMENT for table `sales_targets`
+--
+ALTER TABLE `sales_targets`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `site_settings`
+--
+ALTER TABLE `site_settings`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `site_visits`
+--
+ALTER TABLE `site_visits`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `sliders`
+--
+ALTER TABLE `sliders`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `soil_tests`
+--
+ALTER TABLE `soil_tests`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `target_fixed`
+--
+ALTER TABLE `target_fixed`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `tasks`
+--
+ALTER TABLE `tasks`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `teams`
+--
+ALTER TABLE `teams`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+
+--
+-- AUTO_INCREMENT for table `units`
+--
+ALTER TABLE `units`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+
+--
+-- AUTO_INCREMENT for table `users`
+--
+ALTER TABLE `users`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=132;
+
+--
+-- AUTO_INCREMENT for table `vendors`
+--
+ALTER TABLE `vendors`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `vendor_payment_requests`
+--
+ALTER TABLE `vendor_payment_requests`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `vendor_penalties`
+--
+ALTER TABLE `vendor_penalties`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `vendor_ratings`
+--
+ALTER TABLE `vendor_ratings`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `weekly_progress_report`
+--
+ALTER TABLE `weekly_progress_report`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `whatsapp_campaigns`
+--
+ALTER TABLE `whatsapp_campaigns`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `whatsapp_messages`
+--
+ALTER TABLE `whatsapp_messages`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `work_types`
+--
+ALTER TABLE `work_types`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `qc_checklists`
+--
+ALTER TABLE `qc_checklists`
+  ADD CONSTRAINT `fk_qc_work_type_id` FOREIGN KEY (`work_type_id`) REFERENCES `work_types` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `qc_inspections`
+--
+ALTER TABLE `qc_inspections`
+  ADD CONSTRAINT `fk_qc_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`),
+  ADD CONSTRAINT `fk_qc_work_type` FOREIGN KEY (`work_type_id`) REFERENCES `work_types` (`id`);
+
+--
+-- Constraints for table `qc_inspection_items`
+--
+ALTER TABLE `qc_inspection_items`
+  ADD CONSTRAINT `fk_ins_checklist` FOREIGN KEY (`qc_checklist_id`) REFERENCES `qc_checklists` (`id`),
+  ADD CONSTRAINT `fk_ins_master` FOREIGN KEY (`qc_inspection_id`) REFERENCES `qc_inspections` (`id`) ON DELETE CASCADE;
+COMMIT;
+
+>>>>>>> 4f2e7cae5148c0817d198c2962926e1ab3f21787
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

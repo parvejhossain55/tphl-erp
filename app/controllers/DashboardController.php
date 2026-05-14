@@ -77,6 +77,10 @@ class DashboardController extends Controller
         // Get combined overview statistics with period and project filter
         $overviewStats = $this->dashboardModel->getOverviewStatistics($period, $projectId);
 
+        // ── FETCH BOTH WEEKLY DATA FOR THE LINE CHART ──
+        $weeklyCashInDataArray = $this->dashboardModel->getWeeklyTransactionData('cashin', $period, $projectId);
+        $weeklyCashOutDataArray = $this->dashboardModel->getWeeklyTransactionData('cashout', $period, $projectId);
+
         // Prepare chart data
         $chartLabels = [];
         $chartData = [];
@@ -85,6 +89,15 @@ class DashboardController extends Controller
             foreach ($monthlyData as $data) {
                 $chartLabels[] = date('M Y', strtotime($data['month'] . '-01'));
                 $chartData[] = floatval($data['total']);
+            }
+        }
+        
+        $yearlyLabels = [];
+        $yearlyChartData = [];
+        if (!empty($yearlyData)) {
+            foreach ($yearlyData as $data) {
+                $yearlyLabels[] = $data['year'];
+                $yearlyChartData[] = floatval($data['total']);
             }
         }
 
@@ -104,6 +117,10 @@ class DashboardController extends Controller
             "monthlyData" => $monthlyData,
             "chartLabels" => $chartLabels,
             "chartData" => $chartData,
+            "yearlyLabels" => $yearlyLabels,
+            "yearlyChartData" => $yearlyChartData,
+            "weeklyCashInDataArray" => $weeklyCashInDataArray,
+            "weeklyCashOutDataArray" => $weeklyCashOutDataArray,
             "weeklyData" => $weeklyData,
             "yearlyData" => $yearlyData,
             "overviewStats" => $overviewStats,

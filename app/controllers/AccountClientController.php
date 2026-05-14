@@ -56,6 +56,12 @@ public function indexTwo($bookingId = null)
         exit;
     }
 
+    if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
+        require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+        $this->clientModel = new AccountShopClient($this->db);
+        $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+    }
+
     // Get transaction history for this booking
     $transactions = $this->clientModel->getTransactionsByBookingId($bookingId);
     
@@ -667,7 +673,7 @@ public function addTransaction()
             'attachment_paths' => $uploadedPaths ?: null,
             'due_emi_amount'   => isset($_POST['due_emi_amount']) ? (float)$_POST['due_emi_amount'] : 0,
             'parent_payment_id'=> !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : null,
-            'settlement_type'  => !empty($_POST['settlement_type']) ? $_POST['settlement_type'] : null,
+            'settlement_type'  => ($paymentType === 'emi_due_settlement') ? 'emi_due_settlement' : null,
             'bulk_emi_discount'=> isset($_POST['bulk_emi_discount']) ? (float)$_POST['bulk_emi_discount'] : 0,
             'created_by'       => $_SESSION['user']['id'] ?? 1
         ];
