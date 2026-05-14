@@ -300,8 +300,7 @@ class FlatModel extends Model
             throw new Exception($this->db->error);
         }
 
-        // Extract values into named variables (bind_param requires variables by reference)
-        $project_id           = isset($data['project_id'])           && trim($data['project_id'])           !== '' ? trim($data['project_id'])           : null;
+        $project_id           = isset($data['project_id'])           && trim($data['project_id'])           !== '' ? (int)trim($data['project_id'])           : null;
         $flat_name            = isset($data['flat_name'])            && trim($data['flat_name'])            !== '' ? trim($data['flat_name'])            : null;
 
         // For integer/numeric fields: strip commas, units like "SFT", "BHK", etc.
@@ -326,20 +325,26 @@ class FlatModel extends Model
         $facing_site          = isset($data['facing_site']) && trim($data['facing_site']) !== '' ? trim($data['facing_site'])      : null;
         $is_shop              = isset($data['is_shop'])     ? (int)$data['is_shop']                                                : 0;
         $unit_type            = !empty($data['unit_type'])  ? trim($data['unit_type'])                                             : 'residential';
-        $price_value          = isset($data['price_value'])         && trim($data['price_value'])         !== '' ? $extractDecimal($data['price_value'])         : null;
+        // Use extractDecimal → string for DECIMAL columns.
+        // bind_param 'd' maps PHP null→0 in many MySQL configs; 's' keeps NULL as NULL.
+        $price_value         = isset($data['price_value'])         && trim($data['price_value'])         !== '' ? $extractDecimal($data['price_value'])         : null;
+        $land_share_value    = isset($data['land_share_value'])    && trim($data['land_share_value'])    !== '' ? $extractDecimal($data['land_share_value'])    : null;
+        $development_charges = isset($data['development_charges']) && trim($data['development_charges']) !== '' ? $extractDecimal($data['development_charges']) : null;
         $shop_service_charge  = isset($data['shop_service_charge']) && $data['shop_service_charge'] !== '' ? (int)$extractInt($data['shop_service_charge']) : null;
         $facilities           = isset($data['facilities'])          && trim($data['facilities'])          !== '' ? trim($data['facilities'])                  : null;
-        $land_share_value     = isset($data['land_share_value'])    && trim($data['land_share_value'])    !== '' ? $extractDecimal($data['land_share_value'])    : null;
-        $development_charges  = isset($data['development_charges']) && trim($data['development_charges']) !== '' ? $extractDecimal($data['development_charges']) : null;
-        $created_by           = isset($data['created_by'])          && trim($data['created_by'])          !== '' ? trim($data['created_by'])                  : null;
+        $created_by           = isset($data['created_by'])          && trim($data['created_by'])          !== '' ? (int)trim($data['created_by'])                  : null;
 
         // If status is booked or sold, is_booked = 1
         $status      = strtolower(trim($data['status'] ?? 'available')) ?: 'available';
         $is_booked   = in_array($status, ['booked', 'sold']) ? 1 : 0;
         $upload_from = $data['upload_from'] ?? 'From company csv';
 
+        // 's' used for price_value/land_share_value/development_charges:
+        // MySQL DECIMAL accepts numeric strings; avoids null→0 bug with 'd' type.
+        // Types: i s sssssss ii ss i s s i s s s i s i s
+        //        project_id, flat_name, sqft,bhk,bed,bath,balcony, draw,common, floor,facing, is_shop, unit_type, price_value, shop_sc, facilities, land_share, dev_charges, created_by, status, is_booked, upload_from
         $stmt->bind_param(
-            "sssssssiissississsssis",
+            "issssssiissississsisis",
             $project_id,
             $flat_name,
             $sqft,

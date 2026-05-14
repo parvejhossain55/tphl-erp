@@ -526,6 +526,8 @@ class FlatController extends Controller
                 $data['is_booked'] = in_array($data['status'], ['booked', 'sold']) ? 1 : 0;
 
                 try {
+                    // DEBUG: log price_value raw value — remove after fix
+                    error_log("Row $rowNum price_value raw=[" . ($data['price_value'] ?? 'KEY_NOT_FOUND') . "] land_share=[" . ($data['land_share_value'] ?? 'KEY_NOT_FOUND') . "]");
                     $this->flatModel->createFromCsvBulk($data);
                     $successCount++;
                 } catch (Exception $e) {

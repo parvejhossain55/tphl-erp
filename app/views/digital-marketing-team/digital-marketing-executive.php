@@ -536,7 +536,7 @@
             <div>
               <div class="text-muted" style="font-size:.72rem;font-weight:600;letter-spacing:.05em;">CONTACTED</div>
               <div style="font-size:1.6rem;font-weight:800;color:#155724;line-height:1.1;"><?= number_format($totalContacted ?? 0) ?></div>
-              <div style="font-size:.68rem;color:#28a745;">Touch hua leads</div>
+              <div style="font-size:.68rem;color:#28a745;">Touch leads</div>
             </div>
           </div>
         </div>
