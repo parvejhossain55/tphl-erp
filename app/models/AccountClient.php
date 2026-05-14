@@ -1069,6 +1069,8 @@ ORDER BY lb.booking_date DESC
             }
 
             if ($paymentType === 'emi' && $emiScheduleData) {
+                // Ensure the backend-calculated due amount is passed to the schedule!
+                $emiScheduleData['due_emi_amount'] = $dueEmiAmount;
                 $this->createEMISchedule($bookingId, $paymentId, $amount, $serviceFee, $emiScheduleData);
             }
 
@@ -1096,7 +1098,7 @@ ORDER BY lb.booking_date DESC
      * Finds the first gap in the non-rejected sequence (e.g., if #5 was rejected, returns 5).
      * If no gaps, returns COUNT(non-rejected) + 1.
      */
-    private function getNextAvailableEmiNo($bookingId)
+    protected function getNextAvailableEmiNo($bookingId)
     {
         $stmt = $this->db->prepare("
             SELECT es.emi_no 
@@ -1272,7 +1274,7 @@ ORDER BY lb.booking_date DESC
     /**
      * Create EMI schedule
      */
-    private function createEMISchedule($bookingId, $paymentId, $emiAmount, $serviceFee, $emiScheduleData)
+    protected function createEMISchedule($bookingId, $paymentId, $emiAmount, $serviceFee, $emiScheduleData)
     {
         $nextEmiNo = $this->getNextAvailableEmiNo($bookingId);
 
