@@ -145,30 +145,30 @@ class Con_WorkOrder extends Model
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiiiiisssssssdddssddddiii',
-            $data['project_id'],
-            $data['contractor_id'],
-            $data['design_id'],
-            $data['work_type_id'],
-            $data['boq_id'],
-            $woNumber,
-            $data['title'],
-            $data['scope_of_work'],
-            $data['notes'],
-            $data['description'],
-            $data['unit'],
-            $data['unit_rate'],
-            $data['quantity'],
-            $data['total_amount'],
-            $data['start_date'],
-            $data['end_date'],
-            $data['advance_percent'],
-            $data['running_percent'],
-            $data['retention_percent'],
-            $data['advance_amount'],
-            $data['retention_amount'],
-            $data['work_plan_id'],
-            $data['created_by']
+            'iiiiissssssdddssdddddii',
+            $data['project_id'],      // i
+            $data['contractor_id'],   // i
+            $data['design_id'],       // i
+            $data['work_type_id'],    // i
+            $data['boq_id'],          // i
+            $woNumber,                // s
+            $data['title'],           // s
+            $data['scope_of_work'],   // s
+            $data['notes'],           // s
+            $data['description'],     // s
+            $data['unit'],            // s
+            $data['unit_rate'],       // d
+            $data['quantity'],        // d
+            $data['total_amount'],    // d
+            $data['start_date'],      // s
+            $data['end_date'],        // s
+            $data['advance_percent'], // d
+            $data['running_percent'], // d
+            $data['retention_percent'],// d
+            $data['advance_amount'],  // d
+            $data['retention_amount'],// d
+            $data['work_plan_id'],    // i
+            $data['created_by']       // i
         );
         $stmt->execute();
         return $stmt->insert_id;

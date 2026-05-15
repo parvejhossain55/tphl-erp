@@ -2,8 +2,6 @@
 
 architect_engineering
 
-banks (আপনার drop তে আছে, উপরের লিস্টে যোগ করেছি, চেক করুন)
-
 boq_items
 
 boq_master
@@ -79,6 +77,15 @@ vendor_penalties
 vendor_ratings
 
 weekly_progress_report
+ project_structural_designs;
+work_types;
+ material_returns;
+ material_return_items;
+qc_checklists;
+qc_inspections;
+ qc_inspection_items;
+con_work_orders;
+ project_legal_sheets;
 
 -- akhon aro modify hoye lead_payments table e ]
 lead_payments

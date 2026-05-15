@@ -66,7 +66,7 @@ class Con_ContractorBillController extends Controller
     public function index()
     {
         $filterUserId = null;
-        if (!in_array($this->userRole, [1, 3, 6])) {
+        if (!in_array($this->userRole, [1, 3, 6, 22])) {
             $filterUserId = $this->userId;
         }
 

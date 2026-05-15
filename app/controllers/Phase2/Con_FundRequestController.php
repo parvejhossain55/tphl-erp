@@ -55,7 +55,7 @@ class Con_FundRequestController extends Controller
         // Roles 1 (Admin), 3 (Super Admin), 6 (Accounts) see ALL requests
         // Other roles only see their own requests
         $filterUserId = null;
-        if (!in_array($this->userRole, [1, 3, 6])) {
+        if (!in_array($this->userRole, [1, 3, 6, 22])) {
             $filterUserId = $this->userId;
         }
 

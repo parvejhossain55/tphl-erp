@@ -413,6 +413,26 @@ class Con_WorkOrderController extends Controller
     }
 
     // =========================================================================
+    // PRINT VIEW (standalone — no sidebar/header)
+    // =========================================================================
+    public function printView($id)
+    {
+        $wo = $this->model->findWithRelations($id);
+        if (!$wo) {
+            die('Work Order not found.');
+        }
+
+        $linkedBills         = $this->model->getLinkedBills($id);
+        $linkedWeeklyReports = $this->model->getLinkedWeeklyReports($id);
+
+        $base_url   = $GLOBALS['base_url'];
+        $page_title = 'Work Order — ' . ($wo['wo_number'] ?? 'Print');
+
+        require_once dirname(__DIR__, 2) . '/views/phase2/work-orders/print-work-order.php';
+        exit;
+    }
+
+    // =========================================================================
     // AJAX — Get WOs by Project (for contractor bill dropdown)
     // =========================================================================
     public function ajaxGetByProject()

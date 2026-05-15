@@ -45,6 +45,10 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
             <a href="<?= $base_url ?>/con-work-orders" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left me-1"></i> Back
             </a>
+            <a href="<?= $base_url ?>/con-work-order-print/<?= $wo['id'] ?>" target="_blank"
+               class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-printer me-1"></i> Print / PDF
+            </a>
             <?php if ($status === 'draft' && $canApprove): ?>
                 <a href="<?= $base_url ?>/con-work-order-edit/<?= $wo['id'] ?>" class="btn btn-outline-warning btn-sm">
                     <i class="bi bi-pencil me-1"></i> Edit

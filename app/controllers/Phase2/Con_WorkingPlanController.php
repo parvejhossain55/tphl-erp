@@ -306,6 +306,60 @@ class Con_WorkingPlanController extends Controller
     }
 
     // =========================================================================
+    // WORKING PLANS — VIEW / SHOW (Single Plan Detail)
+    // =========================================================================
+
+    public function show($id)
+    {
+        $plan = $this->model->find($id);
+        if (!$plan) {
+            setError('Working plan not found.');
+            header("Location: {$GLOBALS['base_url']}/con-working-plans");
+            exit;
+        }
+
+        // Get all plans for the same project (monthly breakdown)
+        $projectPlans = $this->model->getByProject($plan['project_id']);
+
+        // Budget summary
+        $budgetSummary = $this->model->getBudgetSummary($plan['initial_budget_id']);
+
+        $this->view('phase2/working_plans/view-working-plan', [
+            'current_route'  => 'con-working-plans',
+            'page_title'     => 'Working Plan — ' . ($plan['project_name'] ?? 'Details'),
+            'plan'           => $plan,
+            'projectPlans'   => $projectPlans,
+            'budgetSummary'  => $budgetSummary,
+        ]);
+    }
+
+    // =========================================================================
+    // WORKING PLANS — PRINT VIEW (No sidebar/header — print-only layout)
+    // =========================================================================
+
+    public function printView($id)
+    {
+        $plan = $this->model->find($id);
+        if (!$plan) {
+            die('Working plan not found.');
+        }
+
+        // Get all plans for the same project (monthly breakdown)
+        $projectPlans = $this->model->getByProject($plan['project_id']);
+
+        // Budget summary
+        $budgetSummary = $this->model->getBudgetSummary($plan['initial_budget_id']);
+
+        // Extract variables for the view
+        $base_url = $GLOBALS['base_url'];
+        $page_title = 'Working Plan — ' . ($plan['project_name'] ?? 'Print');
+
+        // Render print-only page (bypasses master layout)
+        require_once dirname(__DIR__, 2) . '/views/phase2/working_plans/print-working-plan.php';
+        exit;
+    }
+
+    // =========================================================================
     // BUDGET EXTENSIONS — LIST
     // =========================================================================
 

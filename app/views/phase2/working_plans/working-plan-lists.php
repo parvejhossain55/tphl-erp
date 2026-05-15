@@ -85,6 +85,15 @@
                                 </td>
                                 <td><?= htmlspecialchars($plan['created_by_name'] ?? '—') ?></td>
                                 <td class="text-center">
+                                    <a href="<?= $base_url ?>/con-working-plan-view/<?= $plan['id'] ?>"
+                                       class="btn btn-sm btn-outline-info me-1" title="View Details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="<?= $base_url ?>/con-working-plan-print/<?= $plan['id'] ?>"
+                                       target="_blank"
+                                       class="btn btn-sm btn-outline-primary me-1" title="Print">
+                                        <i class="bi bi-printer"></i>
+                                    </a>
                                     <a href="<?= $base_url ?>/con-working-plan-edit/<?= $plan['id'] ?>"
                                        class="btn btn-sm btn-outline-warning" title="Edit">
                                         <i class="bi bi-pencil-square"></i>

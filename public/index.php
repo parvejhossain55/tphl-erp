@@ -1000,6 +1000,7 @@ $routes['con-estimate-edit/(\d+)']    = ['controller' => 'Phase2\Con_InitialEsti
 $routes['con-estimate-update/(\d+)']  = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'update'];
 $routes['con-estimate-approve/(\d+)'] = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'approveBudget'];
 $routes['con-estimate-cancel/(\d+)']  = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'cancelBudget'];
+$routes['con-estimate-print/(\d+)']   = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'printView'];
 $routes['con-ajax-arch-by-project']     = ['controller' => 'Phase2\\Con_InitialEstimateController', 'method' => 'ajaxArchByProject'];
 $routes['con-ajax-designs-by-project']  = ['controller' => 'Phase2\\Con_InitialEstimateController', 'method' => 'ajaxDesignsByProject'];
 $routes['con-estimate-ajax-add-material'] = ['controller' => 'Phase2\\Con_InitialEstimateController', 'method' => 'ajaxAddMaterial'];
@@ -1036,6 +1037,7 @@ $routes['con-work-order-reject/(\d+)']     = ['controller' => 'Phase2\\Con_WorkO
 $routes['con-work-order-complete/(\d+)']   = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'markComplete'];
 $routes['con-work-order-qc-approve/(\d+)'] = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'qcApprove'];
 $routes['con-work-order-delete']           = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'delete'];
+$routes['con-work-order-print/(\d+)']      = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'printView'];
 $routes['con-ajax-wo-by-project']          = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetByProject'];
 $routes['con-ajax-wo-work-plans']          = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetWorkPlans'];
 $routes['con-ajax-wo-targets']             = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetTargets'];
@@ -1059,6 +1061,8 @@ $routes['con-working-plan-store']         = ['controller' => 'Phase2\Con_Working
 $routes['con-working-plan-edit/(\d+)']    = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'edit'];
 $routes['con-working-plan-update/(\d+)']  = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'update'];
 $routes['con-working-plan-delete/(\d+)']  = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'delete'];
+$routes['con-working-plan-view/(\d+)']    = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'show'];
+$routes['con-working-plan-print/(\d+)']   = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'printView'];
 
 // ── Budget Extension Requests ─────────────────────────────────────────────────
 $routes['con-budget-extends']             = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'budgetExtends'];

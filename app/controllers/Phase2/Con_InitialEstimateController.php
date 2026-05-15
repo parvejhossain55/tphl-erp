@@ -535,6 +535,32 @@ class Con_InitialEstimateController extends Controller
     }
 
     // =========================================================================
+    // PRINT VIEW (standalone — no sidebar/header)
+    // =========================================================================
+
+    public function printView($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $budget = $this->model->find($id);
+        if (!$budget) {
+            die('Budget not found.');
+        }
+
+        $items     = $this->model->getItemsByBudget($id);
+        $labors    = $this->model->getLaborsByBudget($id);
+        $breakdown = $this->model->getFullBreakdownByDesignType($id);
+        $wpModel   = new \Con_WorkingPlan($this->db);
+        $workingPlans = $wpModel->getByBudget($id);
+
+        $base_url   = $GLOBALS['base_url'];
+        $page_title = 'Initial Estimate — ' . ($budget['project_name'] ?? 'Print');
+
+        require_once dirname(__DIR__, 2) . '/views/phase2/initial_estimates/print-initial-budget.php';
+        exit;
+    }
+
+    // =========================================================================
     // AJAX — Quick-add material from estimate create page
     // POST /con-estimate-ajax-add-material
     // Returns JSON { success, id, name, unit, error? }
