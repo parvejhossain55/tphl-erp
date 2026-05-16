@@ -413,10 +413,11 @@ class AccountShopClient extends AccountClient
             $emiPaidSoFar         = (float) ($summary['emi_paid_total'] ?? 0);
             $perEmiAmount         = (float) ($summary['per_emi_amount'] ?? 0);
             $existingBulkDiscount = (float) ($summary['total_bulk_emi_discount'] ?? 0);
-            $effectiveCF          = max(0, $constructionFee - $existingBulkDiscount);
-
+            
             // Bulk discount validation
             $bulkEmiDiscount = (float) ($transactionData['bulk_emi_discount'] ?? 0);
+            
+            $effectiveCF          = max(0, $constructionFee - $existingBulkDiscount - $bulkEmiDiscount);
 
             if ($bulkEmiDiscount > 0) {
                 // Discount only allowed when paying >= 2 EMIs worth

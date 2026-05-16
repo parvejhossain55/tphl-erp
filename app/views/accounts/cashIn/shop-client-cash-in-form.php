@@ -87,7 +87,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     </div>
                 <?php endif; ?>
 
-                <?php if ($hasOutstandingDues): ?>
+                <?php if ($hasOutstandingDues && $remainingCF > 0): ?>
                     <div class="alert alert-danger alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
                       
                         <div>
@@ -166,7 +166,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                 <?php endif; ?>
 
                                 <!-- Settle EMI Due — Advanced fallback (only shown when outstanding dues exist) -->
-                                <?php if ($hasOutstandingDues): ?>
+                                <?php if ($hasOutstandingDues && $remainingCF > 0): ?>
                                     <option value="emi_due_settlement" data-details="false">
                                         ⚙ Advanced: Settle Specific EMI Due (Outstanding: TK.<?= number_format($totalEmiDue, 2) ?>)
                                     </option>
