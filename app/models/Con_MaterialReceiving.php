@@ -218,12 +218,34 @@ class Con_MaterialReceiving extends Model
 
                 if ($status === 'Accepted') {
                     $acceptedCount++;
-                    // Stock In moved to PM Approval
+                    // AUTO STOCK IN (Triggered directly on QC Approval)
+                    $stockModel->logMovement([
+                        'material_id'  => $item['material_id'],
+                        'warehouse_id' => $receiving['warehouse_id'],
+                        'type'         => 'IN',
+                        'quantity'     => $item['received_quantity'], // fully accepted qty
+                        'ref_type'     => 'material_receiving',
+                        'ref_id'       => $receivingId,
+                        'moved_by'     => $userId,
+                    ]);
                 } elseif ($status === 'Rejected' || $status === 'Partially Accepted') {
                     if ($status === 'Rejected') {
                         $rejectedCount++;
                     } else {
                         $acceptedCount++; // counts as partially accepted
+                    }
+                    
+                    if ($status === 'Partially Accepted' && $accQty > 0) {
+                        // AUTO STOCK IN for Partially Accepted items
+                        $stockModel->logMovement([
+                            'material_id'  => $item['material_id'],
+                            'warehouse_id' => $receiving['warehouse_id'],
+                            'type'         => 'IN',
+                            'quantity'     => $accQty,
+                            'ref_type'     => 'material_receiving',
+                            'ref_id'       => $receivingId,
+                            'moved_by'     => $userId,
+                        ]);
                     }
 
                     if ($rejQty > 0) {
@@ -352,16 +374,7 @@ class Con_MaterialReceiving extends Model
             foreach ($items as $item) {
                 if ($item['status'] === 'Accepted') {
                     $acceptedCount++;
-                    // AUTO STOCK IN
-                    $stockModel->logMovement([
-                        'material_id'  => $item['material_id'],
-                        'warehouse_id' => $receiving['warehouse_id'],
-                        'type'         => 'IN',
-                        'quantity'     => $item['received_quantity'],
-                        'ref_type'     => 'material_receiving',
-                        'ref_id'       => $receivingId,
-                        'moved_by'     => $userId,
-                    ]);
+                    // Note: Stock In already happened during QC Review
                 } elseif ($item['status'] === 'Rejected') {
                     $rejectedCount++;
                 }

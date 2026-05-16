@@ -299,7 +299,7 @@ function redirectByRole()
             $url = "{$GLOBALS['base_url']}/digital-marketing-executive-dashboard";
             break;
         case 12: // site Engineer
-            $url = "{$GLOBALS['base_url']}/con-dashboard";
+            $url = "{$GLOBALS['base_url']}/con-site-engineer-dashboard";
             break;
         case 13: // QC
             $url = "{$GLOBALS['base_url']}/qc-dashboard";
@@ -331,7 +331,7 @@ function redirectByRole()
         case 22: //  Project Manager Head
             $url = "{$GLOBALS['base_url']}/con-dashboard";
             break;
-        case 23: //  Project Manager Head
+        case 23: //  purchase executive
             $url = "{$GLOBALS['base_url']}/purchase-executive-dashboard";
             break;
  

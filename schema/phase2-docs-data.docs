@@ -1,0 +1,171 @@
+২. রোল-ভিত্তিক অ্যাক্সেস কন্ট্রোল (RBAC) ও ড্যাশবোর্ড
+সিস্টেমটি role_id এবং সুনির্দিষ্ট পারমিশনের উপর ভিত্তি করে ইউজারদেরকে আলাদা আলাদা ড্যাশবোর্ডে পাঠায় এবং কাজের ধাপগুলোতে অ্যাক্সেস নিয়ন্ত্রণ করে।
+
+স্পেশালাইজড ড্যাশবোর্ড (সাইডবার লজিক অনুযায়ী)
+Construction Management (PM/Admin): con-dashboard এবং সমস্ত সাব-মডিউলে সম্পূর্ণ অ্যাক্সেস।
+Operations Dashboard (Site Operator - Role 20): সাইটে ম্যাটেরিয়াল রিসিভ এবং সাইট এক্সিকিউশনের জন্য।
+Procurement Dashboard (Purchase Team Lead): পারচেজ অর্ডার, ভেন্ডর এবং ম্যাটেরিয়াল ম্যানেজ করার জন্য (কন্সট্রাকশন ম্যানেজমেন্ট পারমিশন থাকে না)।
+Executive Dashboard (Purchase Executive - Role 23): পারচেজ রিকোয়েস্ট তৈরি এবং ম্যানেজ করার জন্য।
+Draft Dashboard (Draftsman): শুধু প্রোজেক্ট ড্রাফট ডিজাইনে অ্যাক্সেস।
+Land Dashboard (Land Manager): শুধু ল্যান্ড ভিজিবিলিটি স্টাডিতে অ্যাক্সেস।
+Architect Dashboard: আর্কিটেকচারাল ডিজাইন এবং ড্রাফট ডিজাইনের জন্য।
+Estimator Dashboard: প্রোজেক্ট ড্রয়িং এবং ইনিশিয়াল বাজেট এস্টিমেশনের জন্য।
+Structure Dashboard: স্ট্রাকচারাল ডিজাইন ম্যানেজ করার জন্য।
+QC Dashboard: কোয়ালিটি কন্ট্রোল, ইন্সপেকশন এবং চেকলিস্টের জন্য।
+ব্যবহৃত মূল পারমিশনসমূহ
+Construction Management (মডিউলের সুপার পারমিশন)
+Land Study, Architect Design, Project structure design, Project Draft Design, Project Drawing, Soil tests (প্রি-কন্সট্রাকশন / ইঞ্জিনিয়ারিং)
+Estimate Budget, Working Plan, Project Target Set, Budget Extend (প্ল্যানিং ও বাজেটিং)
+Material Manage, Material Issue, Purchase order, Vendor Manage (প্রকিউরমেন্ট ও ইনভেন্টরি)
+Operation manage, Work Order, Contractor Bill, Project Report (সাইট অপারেশন)
+Bill & Payments (অ্যাকাউন্টস / ফিন্যান্স)
+৩. কাজের ধাপ (Workflow) ও অটোমেটেড ইমেইল নোটিফিকেশন
+ProjectWorkflowMailService-এর মাধ্যমে ওয়ার্কফ্লোটি কঠোরভাবে নিয়ন্ত্রণ করা হয়। এক ধাপের কাজ শেষ হলে স্বয়ংক্রিয়ভাবে পরের ধাপের দায়িত্বপ্রাপ্ত ব্যক্তিকে মেইল চলে যায়।
+
+Step 0: Project Creation / Team Assignment
+কাজ: Admin/Management প্রোজেক্ট তৈরি করে এবং টিম মেম্বারদের অ্যাসাইন করে (PM, Site Engineer, Architect, Draftsman ইত্যাদি)।
+ইমেইল নোটিফিকেশন:
+sendProjectAssignmentEmails(): অ্যাসাইন হওয়া সবাইকে "You've Been Assigned" মেইল পাঠায়।
+sendProjectReassignmentEmails(): পরবর্তীতে টিম চেঞ্জ হলে আপডেট মেইল পাঠায়।
+Phase 1: Pre-Construction (Engineering)
+এই ধাপটি সম্পূর্ণ পর্যায়ক্রমিক (Sequential)।
+
+Land Visibility Study
+কাজ: Land Manager স্টাডি রিপোর্ট সম্পূর্ণ করে।
+ইমেইল: notifyArchitectAfterLandStudy() -> Architect-কে Action Required মেইল দেয়। টিমের বাকিদের Progress Update দেয়।
+Architect & Engineering
+কাজ: Architect ডিজাইন সাবমিট করে।
+ইমেইল (Partial): notifyPmOnAePartial() -> কাজ আংশিক (partially) হলে শুধু Project Manager-কে জানায়।
+ইমেইল (Complete): notifyDraftsmanAfterAE() -> সম্পূর্ণ হলে Draftsman-কে Action Required মেইল দেয়। টিমের বাকিদের Progress Update দেয়।
+Project Drawings
+কাজ: Draftsman ড্রয়িং আপলোড করে।
+ইমেইল: notifyStructuralEngineerAfterDrawings() -> Structural Engineer-কে Action Required মেইল দেয়।
+Structural Design
+কাজ: Structural Engineer ডিজাইন শেষ করে।
+ইমেইল: notifySiteEngineerAfterStructuralDesign() -> Site Engineer-কে Soil Test শুরু করার জন্য Action Required মেইল দেয়।
+Soil Tests
+কাজ: Site Engineer সয়েল টেস্ট শেষ করে।
+ইমেইল: notifyPreConstructionComplete() -> প্রি-কন্সট্রাকশন শেষ। পুরো টিমকে মেইল করে জানায় যে প্রোজেক্টটি এখন Budget/BOQ-এর জন্য রেডি।
+Phase 2: Budgeting & BOQ
+Initial Estimate Budget
+কাজ: Estimator ইনিশিয়াল বাজেট সাবমিট করে।
+ইমেইল: notifyApproversForNewInitialBudget() -> Approver-দের (MD [1], Director [3], PM [15]) কাছে Action Required মেইল দেয়।
+Bill of Quantities (BOQ)
+কাজ: এস্টিমেটের ওপর ভিত্তি করে BOQ সাবমিট করা হয়।
+
+আমি সাইডবার এবং ফর্ম আপডেট করে দিয়েছি!
+
+যে কাজগুলো করা হয়েছে: ১. নাম পরিবর্তন: সাইডবার এবং পেজের সব জায়গায় "Budget Extension" নাম পরিবর্তন করে "Budget Adjustments" করে দিয়েছি। ২. নতুন ইনপুট অপশন: ফর্মে Adjustment Type (Increase/Decrease) নামে একটি নতুন ড্রপডাউন যুক্ত করেছি। এখন চাইলেই সিলেক্ট করা যাবে যে বাজেট বাড়ানো হবে নাকি কমানো হবে। ৩. নেগেটিভ ভ্যালু ক্যালকুলেশন: কন্ট্রোলারে লজিক দিয়েছি যেন ইউজার "Decrease (-)" সিলেক্ট করে যদি 50,000 টাকা দেয়, তবে সেটি ডাটাবেসে -50000 হিসেবে সেভ হবে। ৪. অটোমেটিক বিয়োগ (Subtraction): আপনি বলেছিলেন initial_estimate_budgets টেবিলে কলাম অ্যাড করে কমানোর জন্য। তবে মজার ব্যাপার হলো, আমাদের আর্কিটেকচারে সেটার দরকার নেই! আমাদের সিস্টেমে Revised Total নামে যে অপশনটি আছে, সেটি ডাইনামিক। সেটি মূলত Initial Budget + Approved Adjustments করে তৈরি হয়। যেহেতু এখন আমরা Adjustment এ নেগেটিভ ভ্যালু (যেমন -50,000) ঢোকাচ্ছি, সিস্টেম নিজে নিজেই Initial Budget থেকে ঐ টাকাটা মাইনাস করে Revised Total-এ কমিয়ে দেখাবে! এতে করে অরিজিনাল Initial Budget-এর রেকর্ডটাও হিস্ট্রি হিসেবে ঠিক থাকলো, আবার বর্তমান বাজেটও কমে গেল।
+
+
+
+ইমেইল: notifyApproversForNewBOQ() -> Approver-দের (MD [1], Director [3], PM [15]) কাছে Action Required মেইল দেয়।
+Phase 3: Procurement & Inventory
+Purchase Order (PO) Generation
+কাজ: Procurement টিম অ্যাপ্রুভড Purchase Request/Quotation থেকে PO তৈরি করে।
+ইমেইল: notifyApproversForNewPO() -> Approver-দের (MD [1], Director [3], PM [15], SE [12], Head of Procurement [20]) কাছে Action Required মেইল দেয়।
+PO Fully Approved
+কাজ: টপ ম্যানেজমেন্ট এবং SE পিও (PO) অ্যাপ্রুভ করে।
+ইমেইল: notifySiteOperatorForApprovedPO() -> Site Operator (Role 20)-কে জানায় যে ম্যাটেরিয়াল রিসিভ (GRN) করার জন্য রেডি।
+Material Receiving (GRN)
+কাজ: Site Operator/Engineer মাল রিসিভ করে (Con_MaterialReceiving.php)।
+ইমেইল: সিস্টেম ইন্টারনালি Project Manager-কে জানায়।
+QC Check: মাল স্টকে (con_stocks) ঢোকার আগে অবশ্যই QC-কে তা 'Accept' করতে হবে। রিজেক্ট হলে ভেন্ডরকে পেনাল্টি দেওয়া হতে পারে (con_vendor_penalties)।
+Phase 4 & 5: Operations, Billing & Payments
+Working Plans & Targets: PM টার্গেট সেট করে (con_target_fixed), যা বাজেটের ওপর ভিত্তি করে সাপ্তাহিক/মাসিক গোল ঠিক করে দেয়।
+Work Orders & Contractor Bills: Site Engineer ওয়ার্ক অর্ডার তৈরি করে। কন্ট্রাক্টররা টার্গেট অনুযায়ী কাজের ওপর ভিত্তি করে বিল সাবমিট করে (contractor_bill_requests)।
+Payments: ফিন্যান্স টিম Vendor Payment (vendor_payment_requests) এবং Contractor Bill প্রসেস করে।
+
+
+৫. ডাটাবেস স্ট্রাকচার ওভারভিউ
+Phase 2 মডিউলে প্রচুর রিলেশনাল টেবিল ব্যবহার করা হয়েছে:
+
+Core Entities: projects, users, roles, permissions, role_permissions.
+Pre-Construction: land_visibility_study, architect_engineering, design_types, project_drawings, soil_tests.
+Budgeting: initial_estimate_budgets, initial_estimate_items, initial_estimate_labors, project_working_plans, boq_master, boq_items.
+Procurement: purchase_requests, purchase_request_items, quotations, quotation_items, quotation_comparisons, purchase_orders, purchase_order_items, vendors, vendor_penalties.
+Inventory/QC: con_materials, con_warehouses, material_receiving (GRN), material_receiving_items, con_stocks, con_stock_movements, con_material_issues, con_material_issue_items.
+Operations & Finance: target_fixed, weekly_progress_report, contractors, contractor_bill_requests, vendor_payment_requests, con_financial_transactions, con_approval_logs, budget_extend_requests.
+৬. ইমপ্রুভমেন্ট সাজেশন এবং লজিক্যাল চেকিং
+কোডবেস এবং ডাটাবেস চেক করার পর, সিস্টেমটিকে আরও নিখুঁত করার জন্য নিচের পরামর্শগুলো দেওয়া হলো:
+
+১. ইন্টারনাল কমিউনিকেশন (Pre-Construction)
+বর্তমান অবস্থা: বর্তমান ইমেইল ওয়ার্কফ্লোটি শুধুমাত্র সামনের দিকে এগোয় (যেমন- Land -> Architect -> Draftsman)।
+পর্যবেক্ষণ: প্রি-কন্সট্রাকশন ধাপে ডিজাইনে কোনো ভুল থাকলে টিম ইন্টারনালি আলোচনা করে সেটি ঠিক করে নেয়। তাই সিস্টেমে আলাদা করে "রিজেকশন মেইল" লুপের প্রয়োজন নেই। কাজ ফাইনালি অ্যাপ্রুভ হওয়ার পরই শুধু সামনের দিকে মেইল যাবে, যা বর্তমান লজিকে ঠিকভাবেই কাজ করছে।
+২. অ্যাপ্রুভাল বটলনেক (MD / Director Dependency)
+সমস্যা: PO, BOQ এবং বাজেটের সব কাজেই MD (Role 1) বা Director (Role 3)-এর অ্যাপ্রুভাল লাগছে। তারা ব্যস্ত থাকলে প্রোজেক্ট আটকে যেতে পারে।
+পরামর্শ: একটি "অ্যাপ্রুভাল থ্রেশহোল্ড (Threshold)" সেট করা উচিত। যেমন, ৫০,০০০ টাকার নিচের PO শুধু PM (Role 15) একাই অ্যাপ্রুভ করতে পারবে। এর বেশি হলে ম্যানেজমেন্টের কাছে যাবে।
+৩. ম্যাটেরিয়াল রিসিভ ও QC ইন্সপেকশনের গ্যাপ
+সমস্যা: ডকুমেন্টেশনে বলা আছে QC-কে ম্যাটেরিয়াল অ্যাপ্রুভ করতে হবে, কিন্তু notifySiteOperatorForApprovedPO মেইলে Site Operator-কে সরাসরি GRN এন্ট্রি করতে বলা হচ্ছে।
+পরামর্শ: GRN তৈরি হওয়ার সাথে সাথে "QC Inspection Request" হিসেবে QC টিমকে মেইল পাঠানো উচিত। মালগুলো সরাসরি মেইন স্টকে (con_stocks) না গিয়ে "Pending QC" বা "Quarantine" স্ট্যাটাসে থাকা উচিত, যতক্ষণ না QCController সেটি 'Accept' করছে।
+৪. কন্ট্রাক্টর বিল ভ্যালিডেশন
+সমস্যা: কন্ট্রাক্টররা কাজের ওপর ভিত্তি করে বিল সাবমিট করে।
+পরামর্শ: Con_ContractorBillController.php-তে ব্যাকএন্ড ভ্যালিডেশন যোগ করতে হবে। কন্ট্রাক্টরের বিল কোনোভাবেই weekly_progress_report (DPR) বা target_fixed-এর চেয়ে বেশি হতে পারবে না। বেশি হলে এটি স্বয়ংক্রিয়ভাবে ব্লক হবে বা PM-এর স্পেশাল রিভিউয়ের জন্য যাবে।
+৫. রোলের পার্থক্য: Site Operator বনাম Site Engineer
+সমস্যা: Role 20 (Site Operator) এবং Site Engineer (SE)-এর কাজের মধ্যে ম্যাটেরিয়াল রিসিভ নিয়ে ওভারল্যাপ আছে।
+পরামর্শ: সাইডবারের পারমিশনে এই দুটি রোল আলাদা করতে হবে। Site Operator শুধু Material Receiving (ডেটা এন্ট্রি) করতে পারবে, এবং Site Engineer শুধু Material Issue (সাইটে মাল পাঠানো) করতে পারবে।
+৬. ব্যাকগ্রাউন্ড ইমেইল কিউ (Background Queue for Emails)
+ইতিবাচক দিক: সিস্টেমে ডাটাবেসের মাধ্যমে email_queue টেবিল ব্যবহার করা হয়েছে, যা ভালো।
+পরামর্শ: process_email_queue.php স্ক্রিপ্টটি শুধুমাত্র cURL দিয়ে কল না করে সার্ভারে একটি CRON job (যেমন- প্রতি ২ মিনিটে একবার) হিসেবে সেট করা উচিত। কারণ সার্ভারে লোড বেশি থাকলে cURL মাঝে মাঝে ফেইল করতে পারে।
+৭. বাজেট এডজাস্টমেন্ট (বাড়ানো বা কমানো) এবং নোটিফিকেশন
+সমস্যা: ডাটাবেসে budget_extend_requests টেবিল রয়েছে, যার মাধ্যমে মূলত বাজেট বাড়ানো যায়। কিন্তু যদি প্রোজেক্টের মাঝপথে বাজেট কমাতে হয়, তবে বর্তমান সিস্টেমে সেটি হ্যান্ডেল করার ক্লিয়ার ফ্লো নেই।
+পরামর্শ: বাজেট এক্সটেনশন সিস্টেমটিকে "Budget Adjustment" হিসেবে মডিফাই করা উচিত, যেখানে পজেটিভ (+) ভ্যালু দিয়ে বাজেট বাড়ানো যাবে এবং নেগেটিভ (-) ভ্যালু দিয়ে বাজেট কমানো যাবে। এছাড়া, বাজেট পরিবর্তন (বাড়ানো বা কমানো) অ্যাপ্রুভ হলে সাথে সাথে প্রকিউরমেন্ট টিম এবং Site Engineer-কে একটি অটোমেটেড মেইল পাঠানো উচিত, কারণ এতে তাদের টার্গেট লিমিট এবং কেনার ক্ষমতা পরিবর্তন হয়।
+
+
+
+================== after pre Construction kaj then work in others menu ========================
+কোর আর্কিটেকচার (Core Architecture)
+সিস্টেমের সবচেয়ে গুরুত্বপূর্ণ এবং শক্তিশালী লজিকটি হলো ম্যানেজমেন্টের টাইমলাইন এবং কন্ট্রাক্টরের কাজের মধ্যে সমন্বয় সাধন করা:
+
+Independent Work Plan (টাইমলাইন): এটি শুধুমাত্র ম্যানেজমেন্টের একটি টাইমলাইন বা টার্গেট (যেমন: জানুয়ারি মাসে ১০% কাজ হবে)। এর সাথে কন্ট্রাক্টরের কোনো সম্পর্ক নেই।
+Independent Work Order (কন্ট্রাক্ট): এটি কন্ট্রাক্টরের সাথে করা পুরো প্রজেক্ট বা বড় অংশের কাজের একটি চুক্তি এবং রেট চার্ট। এটি কোনো নির্দিষ্ট মাস বা Work Plan-এর সাথে যুক্ত নয়।
+Target Fixed (The Intersection! 🤝): এই স্টেপে এসে ম্যানেজমেন্টের Work Plan (মাস/সময়) এবং Work Order (কন্ট্রাক্টর/রেট)—এই দুটোকে মেলাতে হয়। অর্থাৎ, "জানুয়ারি মাসের Work Plan অনুযায়ী, এই সপ্তাহে কন্ট্রাক্টর রহিম ভাইকে Work Order থেকে ১০০০ স্কয়ার ফিটের কাজ করার Target দেওয়া হলো।"
+স্টেপ-বাই-স্টেপ প্রসেস
+১. Initial Estimate (মাস্টার বাজেট)
+
+কাজ: পুরো প্রজেক্টের মোট ম্যাটেরিয়াল এবং খরচের প্রাথমিক বাজেট তৈরি করা।
+অ্যাপ্রুভাল: MD (1), Director (3), PM Head (22), PM (15)।
+২. Work Plan (মান্থলি টাইমলাইন)
+
+কাজ: Initial Estimate-কে মাসের হিসেবে ভাগ করা (যেমন: কোন মাসে কত % কাজ হবে)।
+অ্যাপ্রুভাল: PM (15) / Management (3)।
+৩. Work Order (কন্ট্রাক্টরের সাথে চুক্তি)
+
+কাজ: কন্ট্রাক্টরদের জন্য পুরো কাজের রেট ও টোটাল অ্যামাউন্ট দিয়ে Work Order ইস্যু করা (সম্পূর্ণ স্বাধীন চুক্তি)।
+অ্যাপ্রুভাল: PM (15) / Management (3)।
+৪. Target Fixed (সবার দেখা হওয়ার জায়গা!)
+
+কাজ: নির্দিষ্ট মাসের Work Plan এবং কন্ট্রাক্টরের Work Order সিলেক্ট করে সাপ্তাহিক/মাসিক টার্গেট ফিক্স করা।
+অ্যাপ্রুভাল: Assigned PM (15) / PM Head (22)।
+৫. BOQ Generation (Target-wise)
+
+কাজ: অনুমোদিত নির্দিষ্ট টার্গেট অনুযায়ী ম্যাটেরিয়ালের BOQ বা ডিমান্ড তৈরি করা।
+অ্যাপ্রুভাল: PM (15) / Management (3)।
+৬. Procurement (PR → CST → Vendor → PO)
+
+কাজ: Purchase Executive (বা Site Engineer) PR তৈরি করবেন। এরপর Purchase Executive বিভিন্ন ভেন্ডরের রেট নিয়ে CST তৈরি করবেন এবং ভেন্ডর সিলেক্ট করবেন।
+অ্যাপ্রুভাল: Vendor Selection অ্যাপ্রুভ করবে Management (3) / PM (15)।
+PO Generate: অ্যাপ্রুভালের পর Purchase Head ফাইনাল Purchase Order (PO) জেনারেট করবেন।
+৭. Vendor Advance Payment
+
+কাজ: Purchase Head ভেন্ডরকে অ্যাডভান্স দেওয়ার জন্য Payment Request করবেন।
+অ্যাপ্রুভাল: Management (3), Assigned PM (15), PM Head (22)।
+পেমেন্ট: অ্যাপ্রুভ হওয়ার পর Accounts Team পেমেন্ট ক্লিয়ার করবে। (এই অ্যাডভান্স পরে ফাইনাল বিলের সাথে অ্যাডজাস্ট বা মাইনাস করা হবে)।
+৮. Material Receiving (GRN) ও Auto Stock In
+
+কাজ: Site Engineer সাইটে মাল রিসিভ করে GRN করবেন।
+QC Check & Auto Stock In: QC ইন্সপেক্টর মাল চেক করে কোয়ালিটি অ্যাপ্রুভ করবেন। QC অ্যাপ্রুভ করার সাথে সাথেই সরাসরি স্টকে (Warehouse) মাল অ্যাড হয়ে যাবে।
+PM Review: Assigned PM (15) বা PM Head (22) এরপর শুধুমাত্র রিপোর্টটি ফাইনাল রিভিউ করে স্ট্যাটাস 'Accepted' করবেন।
+৯. Material Issue
+
+কাজ: স্টকে মাল আসার পর কন্ট্রাক্টরকে কাজ করার জন্য Site Engineer/Operator মাল ইস্যু (Stock Out) করে দেবেন।
+১০. Weekly Progress Report (WPR)
+
+কাজ: Site Operator বা Site Engineer সারা সপ্তাহের কাজের ডকেট ও রিপোর্ট সাবমিট করবেন।
+QC Review: QC সাইট ভিজিট করে কত % কাজ হয়েছে তার ফিডব্যাক দেবেন এবং অ্যাপ্রুভ করবেন।
+ফাইনাল অ্যাপ্রুভাল: Assigned PM (15) অথবা PM Head (22) রিপোর্টটি অ্যাপ্রুভ করবেন।
+১১. Contractor Bill & Payment
+
+কাজ: WPR এর প্রোগ্রেস অনুযায়ী Site Engineer কন্ট্রাক্টর বিল তৈরি করবেন। বিলের মধ্যে পূর্বের কোনো অ্যাডভান্স থাকলে তা অ্যাডজাস্ট (মাইনাস) করা হবে।
+অ্যাপ্রুভাল: Management (3), Assigned PM (15), PM Head (22)।
+পেমেন্ট: সবশেষে Accounts Team কন্ট্রাক্টরকে বিল পে করবে।

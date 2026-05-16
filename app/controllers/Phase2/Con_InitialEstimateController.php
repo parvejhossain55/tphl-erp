@@ -526,11 +526,45 @@ class Con_InitialEstimateController extends Controller
 
         if ($this->model->cancelBudget($id, $note)) {
             setSuccess('Budget rejected.');
+            
+            // Trigger rejection email
+            require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+            $mailService = new \ProjectWorkflowMailService($this->db);
+            $b = $this->model->find($id);
+            if ($b && !empty($b['project_id'])) {
+                $mailService->notifyAfterBudgetRejection((int)$b['project_id'], $b['project_name'] ?? 'Project', $id, $note);
+            }
         } else {
             setError('Cancellation failed.');
         }
 
         header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
+        exit;
+    }
+
+    // =========================================================================
+    // PRINT VIEW (standalone — no sidebar/header)
+    // =========================================================================
+
+    public function printView($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $budget = $this->model->find($id);
+        if (!$budget) {
+            die('Budget not found.');
+        }
+
+        $items     = $this->model->getItemsByBudget($id);
+        $labors    = $this->model->getLaborsByBudget($id);
+        $breakdown = $this->model->getFullBreakdownByDesignType($id);
+        $wpModel   = new \Con_WorkingPlan($this->db);
+        $workingPlans = $wpModel->getByBudget($id);
+
+        $base_url   = $GLOBALS['base_url'];
+        $page_title = 'Initial Estimate — ' . ($budget['project_name'] ?? 'Print');
+
+        require_once dirname(__DIR__, 2) . '/views/phase2/initial_estimates/print-initial-budget.php';
         exit;
     }
 

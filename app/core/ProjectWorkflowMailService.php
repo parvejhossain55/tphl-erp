@@ -274,12 +274,35 @@ class ProjectWorkflowMailService
         if (!$project) return;
 
         $base    = $this->getBaseUrl();
-        $subject = " Pre-Construction Complete: {$projectName} Ready for BOQ";
+        $subject = "🎉 Pre-Construction Complete: {$projectName} Ready for BOQ";
 
-        // All unique team members
-        $recipients = $this->getAllTeamMembers($projectId);
+        // PM, SE, Estimator (next actor), Management (3), PM Head (22). Exclude Admin (1).
+        $pmId = (int)($project['pm_id'] ?? 0);
+        $seId = (int)($project['site_engineer_id'] ?? 0);
+        $estId = (int)($project['estimator_id'] ?? 0);
 
-        foreach ($recipients as $user) {
+        $stmt = $this->db->prepare("
+            SELECT id, full_name, email, role_id 
+            FROM users 
+            WHERE (id IN (?, ?, ?) OR role_id IN (3, 22)) 
+              AND role_id != 1 
+              AND email IS NOT NULL AND email != ''
+        ");
+        $stmt->bind_param('iii', $pmId, $seId, $estId);
+        $stmt->execute();
+        $recipients = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Deduplicate
+        $uniqueRecipients = [];
+        $seen = [];
+        foreach ($recipients as $r) {
+            if (!in_array($r['id'], $seen)) {
+                $seen[] = $r['id'];
+                $uniqueRecipients[] = $r;
+            }
+        }
+
+        foreach ($uniqueRecipients as $user) {
             $body = $this->buildHtml(
                 title:       'Pre-Construction Phase Complete!',
                 greeting:    "Dear {$user['full_name']},",
@@ -301,9 +324,12 @@ class ProjectWorkflowMailService
     public function notifyApproversForNewInitialBudget(int $projectId, string $projectName, int $budgetId): void
     {
         $base = $this->getBaseUrl();
+        $project = $this->getProjectRow($projectId);
+        $pmId = (int)($project['pm_id'] ?? 0);
 
-        // Get approvers
-        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE role_id IN (1, 3, 15) AND email IS NOT NULL AND email != ''");
+        // Get approvers: Management (3), PM Head (22), assigned PM
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE (role_id IN (3, 22) OR id = ?) AND email IS NOT NULL AND email != ''");
+        $stmt->bind_param('i', $pmId);
         $stmt->execute();
         $approvers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
@@ -341,9 +367,12 @@ class ProjectWorkflowMailService
     public function notifyApproversForNewBOQ(int $projectId, string $projectName, int $boqId): void
     {
         $base = $this->getBaseUrl();
+        $project = $this->getProjectRow($projectId);
+        $pmId = (int)($project['pm_id'] ?? 0);
 
-        // Get approvers
-        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE role_id IN (1, 3, 15) AND email IS NOT NULL AND email != ''");
+        // Get approvers: Management (3), PM Head (22), assigned PM
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE (role_id IN (3, 22) OR id = ?) AND email IS NOT NULL AND email != ''");
+        $stmt->bind_param('i', $pmId);
         $stmt->execute();
         $approvers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
@@ -375,15 +404,49 @@ class ProjectWorkflowMailService
     }
 
     /**
+     * BUDGET REJECTED — Notify Estimator (who created it)
+     */
+    public function notifyAfterBudgetRejection(int $projectId, string $projectName, int $budgetId, string $reason): void
+    {
+        $base = $this->getBaseUrl();
+        $project = $this->getProjectRow($projectId);
+        $estimatorId = (int)($project['estimator_id'] ?? 0);
+
+        if ($estimatorId <= 0) return;
+
+        $user = $this->getUserById($estimatorId);
+        if (!$user || empty($user['email'])) return;
+
+        $subject = "❌ Budget Rejected: {$projectName}";
+
+        $body = $this->buildHtml(
+            title:       "Initial Estimate Budget Rejected",
+            greeting:    "Dear {$user['full_name']},",
+            message:     "Your Initial Estimate Budget for project <strong>{$projectName}</strong> has been rejected.<br><br><strong>Rejection Reason:</strong> {$reason}",
+            stepHtml:    "",
+            ctaLabel:    'View Budget Details',
+            ctaLink:     $base . "/con-estimate-show/{$budgetId}",
+            projectName: $projectName,
+            note:        'Please review the rejection notes and make the necessary corrections.'
+        );
+
+        $this->send($user['email'], $subject, $body);
+    }
+
+    /**
      * PURCHASE ORDER GENERATION
      * → Action required: SE (12) and Approvers (1, 3, 15, 20)
      */
     public function notifyApproversForNewPO(int $projectId, string $projectName, int $poId): void
     {
         $base = $this->getBaseUrl();
+        $project = $this->getProjectRow($projectId);
+        $pmId = (int)($project['pm_id'] ?? 0);
+        $seId = (int)($project['site_engineer_id'] ?? 0);
 
-        // Get approvers (SE=12, MD=1, Director=3, PM=15, Head of Procurement=20)
-        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE role_id IN (1, 3, 12, 15, 20) AND email IS NOT NULL AND email != ''");
+        // Get approvers: Management (3), PM Head (22), Procurement Head (20), assigned PM, assigned SE
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE (role_id IN (3, 20, 22) OR id IN (?, ?)) AND email IS NOT NULL AND email != ''");
+        $stmt->bind_param('ii', $pmId, $seId);
         $stmt->execute();
         $approvers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
@@ -415,7 +478,72 @@ class ProjectWorkflowMailService
     }
 
     /**
+     * PR REJECTED — Notify Procurement Head (20) & Site Engineer
+     */
+    public function notifyAfterPRRejection(int $projectId, string $projectName, int $prId): void
+    {
+        $base = $this->getBaseUrl();
+        $project = $this->getProjectRow($projectId);
+        $seId = (int)($project['site_engineer_id'] ?? 0);
+
+        // Procurement Head (20) & assigned SE
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE (role_id = 20 OR id = ?) AND email IS NOT NULL AND email != ''");
+        $stmt->bind_param('i', $seId);
+        $stmt->execute();
+        $recipients = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $subject = "❌ Purchase Request Rejected — {$projectName}";
+
+        foreach ($recipients as $user) {
+            $body = $this->buildHtml(
+                title:       "Purchase Request Rejected",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "Purchase Request <strong>PR-{$prId}</strong> for project <strong>{$projectName}</strong> has been rejected by Management/PM.",
+                stepHtml:    "",
+                ctaLabel:    'View Purchase Request',
+                ctaLink:     $base . "/con-purchase-request/{$prId}",
+                projectName: $projectName,
+                note:        'Please review the request or create a new one with correct details.'
+            );
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * PO REJECTED — Notify Procurement Head (20) & Site Engineer
+     */
+    public function notifyAfterPORejection(int $projectId, string $projectName, int $poId, string $remarks): void
+    {
+        $base = $this->getBaseUrl();
+        $project = $this->getProjectRow($projectId);
+        $seId = (int)($project['site_engineer_id'] ?? 0);
+
+        // Procurement Head (20) & assigned SE
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE (role_id = 20 OR id = ?) AND email IS NOT NULL AND email != ''");
+        $stmt->bind_param('i', $seId);
+        $stmt->execute();
+        $recipients = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $subject = "❌ Purchase Order Rejected — {$projectName}";
+
+        foreach ($recipients as $user) {
+            $body = $this->buildHtml(
+                title:       "Purchase Order Rejected",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "Purchase Order <strong>#{$poId}</strong> for project <strong>{$projectName}</strong> has been rejected by Management/PM.<br><br><strong>Reason:</strong> {$remarks}",
+                stepHtml:    "",
+                ctaLabel:    'View Purchase Order',
+                ctaLink:     $base . "/con-purchase-order/{$poId}",
+                projectName: $projectName,
+                note:        'Please review the PO details or CST selections based on the given remarks.'
+            );
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
      * PO FULLY APPROVED — Notify Site Operator
+
      * → Action required: Site Operator (20)
      */
     public function notifySiteOperatorForApprovedPO(int $poId, string $projectName): void
@@ -455,6 +583,229 @@ class ProjectWorkflowMailService
     }
 
     /**
+     * MATERIAL RECEIVING (GRN) CREATED — Notify QC
+     */
+    public function notifyQCForNewGRN(int $projectId, string $projectName, int $poId, int $grnId): void
+    {
+        $base = $this->getBaseUrl();
+        $project = $this->getProjectRow($projectId);
+        $qcId = (int)($project['qc_id'] ?? 0);
+
+        if ($qcId <= 0) return;
+
+        $user = $this->getUserById($qcId);
+        if (!$user || empty($user['email'])) return;
+
+        $subject = "🔍 QC Inspection Required: PO #{$poId} — {$projectName}";
+
+        $stepHtml = "<div style='margin:20px 0;'>
+            <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
+                <div style='width:28px;height:28px;border-radius:50%;background:#d97706;color:#fff;
+                            text-align:center;line-height:28px;
+                            font-size:13px;font-weight:700;flex-shrink:0;'>&#9888;</div>
+                <div style='font-size:13px;color:#d97706;'><strong>QC Inspection Pending</strong> <em style='font-size:11px;color:#d97706'>(Action Required)</em></div>
+            </div>
+        </div>";
+
+        $body = $this->buildHtml(
+            title:       "Material Received — QC Inspection Required",
+            greeting:    "Dear {$user['full_name']},",
+            message:     "Materials for <strong>PO #{$poId}</strong> have arrived at the site (GRN-{$grnId}). Before adding these to the stock, your inspection is required.",
+            stepHtml:    $stepHtml,
+            ctaLabel:    'Perform QC Review',
+            ctaLink:     $base . "/con-material-receiving-qc/{$grnId}",
+            projectName: $projectName,
+            note:        'Please review the materials for quality and quantity discrepancies.'
+        );
+
+        $this->send($user['email'], $subject, $body);
+    }
+
+    /**
+     * QC INSPECTION COMPLETE — Notify PM/Management (if accepted) or Purchase Head (if rejected)
+     */
+    public function notifyAfterQCInspection(int $projectId, string $projectName, int $grnId, bool $hasRejections): void
+    {
+        $base = $this->getBaseUrl();
+        $project = $this->getProjectRow($projectId);
+        $pmId = (int)($project['pm_id'] ?? 0);
+
+        if ($hasRejections) {
+            // Notify Purchase Head (20/22)
+            $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE role_id IN (20, 22) AND email IS NOT NULL AND email != ''");
+            $stmt->execute();
+            $recipients = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $subject = "⚠️ QC Rejected Materials: GRN-{$grnId} — {$projectName}";
+            $title = "Materials Rejected by QC";
+            $message = "During the QC inspection for <strong>GRN-{$grnId}</strong>, some materials were rejected. Please review the details to arrange a penalty or return process.";
+        } else {
+            // Notify PM (15) and Management (3)
+            $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE (role_id = 3 OR id = ?) AND email IS NOT NULL AND email != ''");
+            $stmt->bind_param('i', $pmId);
+            $stmt->execute();
+            $recipients = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $subject = "✅ QC Passed: Pending Stock Update GRN-{$grnId} — {$projectName}";
+            $title = "QC Complete: Ready for Stock Update";
+            $message = "The QC inspection for <strong>GRN-{$grnId}</strong> has been successfully passed. Please review and approve the GRN to update the stock.";
+        }
+
+        foreach ($recipients as $user) {
+            $body = $this->buildHtml(
+                title:       $title,
+                greeting:    "Dear {$user['full_name']},",
+                message:     $message,
+                stepHtml:    "",
+                ctaLabel:    'View GRN Details',
+                ctaLink:     $base . "/con-material-receiving-qc/{$grnId}",
+                projectName: $projectName,
+                note:        'Please take necessary actions based on the inspection result.'
+            );
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * GRN APPROVED (STOCK UPDATED) — Notify Site Operator & Site Engineer
+     */
+    public function notifyAfterPMGRNApproval(int $projectId, string $projectName, int $grnId): void
+    {
+        $base = $this->getBaseUrl();
+        $project = $this->getProjectRow($projectId);
+        $seId = (int)($project['site_engineer_id'] ?? 0);
+        $operatorId = (int)($project['operator_id'] ?? 0);
+
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE id IN (?, ?) AND email IS NOT NULL AND email != ''");
+        $stmt->bind_param('ii', $seId, $operatorId);
+        $stmt->execute();
+        $recipients = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $subject = "📦 Stock Updated: GRN-{$grnId} Approved — {$projectName}";
+
+        foreach ($recipients as $user) {
+            $body = $this->buildHtml(
+                title:       "Stock Successfully Updated",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "The Material Receiving record <strong>GRN-{$grnId}</strong> has been fully approved by the PM/Management. The stock inventory has been successfully updated.",
+                stepHtml:    "",
+                ctaLabel:    'View Material Inventory',
+                ctaLink:     $base . "/con-stocks",
+                projectName: $projectName,
+                note:        'You can now issue these materials for project tasks.'
+            );
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * WEEKLY REPORT SUBMITTED — Notify PM and QC
+     */
+    public function notifyQCAndPMForNewWeeklyReport(int $projectId, string $projectName, int $reportId, int $weekNo): void
+    {
+        $base = $this->getBaseUrl();
+        $project = $this->getProjectRow($projectId);
+        $pmId = (int)($project['pm_id'] ?? 0);
+        $qcId = (int)($project['qc_id'] ?? 0);
+
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE id IN (?, ?) AND email IS NOT NULL AND email != ''");
+        $stmt->bind_param('ii', $pmId, $qcId);
+        $stmt->execute();
+        $recipients = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $subject = "📈 Weekly Progress Report Submitted: Week {$weekNo} — {$projectName}";
+
+        foreach ($recipients as $user) {
+            $body = $this->buildHtml(
+                title:       "Weekly Progress Report Submitted",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "The Site Engineer has submitted the Weekly Progress Report for <strong>Week {$weekNo}</strong> of project <strong>{$projectName}</strong>. It is now awaiting your review and approval.",
+                stepHtml:    "",
+                ctaLabel:    'Review Progress Report',
+                ctaLink:     $base . "/con-weekly-report/{$reportId}",
+                projectName: $projectName,
+                note:        'Please verify the work done against the target and approve the progress percentage.'
+            );
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * WEEKLY REPORT APPROVED BY PM — Notify Management & PM Head
+     */
+    public function notifyManagementForWeeklyReportApproval(int $projectId, string $projectName, int $reportId, int $weekNo): void
+    {
+        $base = $this->getBaseUrl();
+
+        // Notify Management (3) and PM Head (22)
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE role_id IN (3, 22) AND email IS NOT NULL AND email != ''");
+        $stmt->execute();
+        $recipients = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $subject = "✅ Weekly Progress Approved: Week {$weekNo} — {$projectName}";
+
+        foreach ($recipients as $user) {
+            $body = $this->buildHtml(
+                title:       "Weekly Progress Report Approved",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "The Weekly Progress Report for <strong>Week {$weekNo}</strong> of project <strong>{$projectName}</strong> has been reviewed and fully approved by the Project Manager.",
+                stepHtml:    "",
+                ctaLabel:    'View Approved Report',
+                ctaLink:     $base . "/con-weekly-report/{$reportId}",
+                projectName: $projectName,
+                note:        'You can view the detailed progress breakdown and targets achieved in the report dashboard.'
+            );
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * BUDGET EXTENSION / ADJUSTMENT APPROVED
+     * → Notifies Project Manager, Procurement Head, and Site Engineer.
+     */
+    public function notifyAfterBudgetAdjustment(int $projectId, string $projectName, float $amount, string $reason): void
+    {
+        $base = $this->getBaseUrl();
+        $project = $this->getProjectRow($projectId);
+        $pmId = (int)($project['pm_id'] ?? 0);
+        $seId = (int)($project['site_engineer_id'] ?? 0);
+
+        // Procurement Head (20), PM Head (22), assigned PM, assigned SE
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE (role_id IN (20, 22) OR id IN (?, ?)) AND email IS NOT NULL AND email != ''");
+        $stmt->bind_param('ii', $pmId, $seId);
+        $stmt->execute();
+        $recipients = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $actionWord = $amount > 0 ? "increased" : "decreased";
+        $color = $amount > 0 ? "#10b981" : "#ef4444";
+        $sign = $amount > 0 ? "+" : "";
+
+        $subject = "📋 Budget Adjustment Approved — {$projectName}";
+
+        foreach ($recipients as $user) {
+            $stepHtml = "<div style='margin:20px 0;'>
+                <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
+                    <div style='width:28px;height:28px;border-radius:50%;background:{$color};color:#fff;
+                                text-align:center;line-height:28px;
+                                font-size:13px;font-weight:700;flex-shrink:0;'>৳</div>
+                    <div style='font-size:13px;color:{$color};'><strong>Budget {$actionWord} by {$sign}" . number_format($amount, 2) . "</strong></div>
+                </div>
+            </div>";
+
+            $body = $this->buildHtml(
+                title:       "Budget Adjustment Notification",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "A budget adjustment request for project <strong>{$projectName}</strong> has been approved. The budget was {$actionWord} by <strong>{$sign}" . number_format($amount, 2) . "</strong>.<br><br><strong>Reason:</strong> {$reason}",
+                stepHtml:    $stepHtml,
+                ctaLabel:    'View Budget Extends',
+                ctaLink:     $base . "/con-budget-extends",
+                projectName: $projectName,
+                note:        'Please review your target limits and purchase plans according to the new revised budget.'
+            );
+
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
      * Core "notify all team" engine used by Batch 2–5.
      *
      * - Responsible person  → "Action Required" email with their CTA link
@@ -477,17 +828,39 @@ class ProjectWorkflowMailService
         $project = $this->getProjectRow($projectId);
         if (!$project) return;
 
-        $base        = $this->getBaseUrl();
-        $allMembers  = $this->getAllTeamMembers($projectId);
+        $base = $this->getBaseUrl();
         $activeUserId = (int)($project[$activeCol] ?? 0);
+        $pmId = (int)($project['pm_id'] ?? 0);
+        $seId = (int)($project['site_engineer_id'] ?? 0);
+
+        // Fetch targeted recipients: Active User, Assigned PM, Assigned SE, Management (3), PM Head (22)
+        // Exclude Admin (1)
+        $stmt = $this->db->prepare("
+            SELECT id, full_name, email, role_id 
+            FROM users 
+            WHERE (id IN (?, ?, ?) OR role_id IN (3, 22)) 
+              AND role_id != 1 
+              AND email IS NOT NULL AND email != ''
+        ");
+        $stmt->bind_param('iii', $activeUserId, $pmId, $seId);
+        $stmt->execute();
+        $recipients = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Deduplicate
+        $uniqueRecipients = [];
+        $seen = [];
+        foreach ($recipients as $r) {
+            if (!in_array($r['id'], $seen)) {
+                $seen[] = $r['id'];
+                $uniqueRecipients[] = $r;
+            }
+        }
 
         // Step HTML variants
         $stepHtmlActive  = $this->buildPreConstructionSteps($activeStep);
         $stepHtmlWatcher = $this->buildPreConstructionSteps($completedStep); // shows completed 
 
-        foreach ($allMembers as $user) {
-            if (empty($user['email'])) continue;
-
+        foreach ($uniqueRecipients as $user) {
             $isResponsible = ($user['id'] === $activeUserId);
 
             if ($isResponsible) {
@@ -584,6 +957,38 @@ class ProjectWorkflowMailService
     /**
      * Returns all assigned team members with their role labels.
      */
+    /**
+     * MATERIAL ISSUED — Notify Site Engineer & Site Operator
+     */
+    public function notifyAfterMaterialIssue(int $projectId, string $projectName, int $issueId, string $contractorName): void
+    {
+        $base = $this->getBaseUrl();
+        $project = $this->getProjectRow($projectId);
+        $seId = (int)($project['site_engineer_id'] ?? 0);
+        $operatorId = (int)($project['operator_id'] ?? 0);
+
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE id IN (?, ?) AND email IS NOT NULL AND email != ''");
+        $stmt->bind_param('ii', $seId, $operatorId);
+        $stmt->execute();
+        $recipients = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $subject = "📤 Material Issued to {$contractorName} — {$projectName}";
+
+        foreach ($recipients as $user) {
+            $body = $this->buildHtml(
+                title:       "Material Issue Logged",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "Materials have been successfully issued to <strong>{$contractorName}</strong> (Issue Record: ISS-{$issueId}). Stock has been automatically deducted.",
+                stepHtml:    "",
+                ctaLabel:    'View Issue Details',
+                ctaLink:     $base . "/con-material-issue/{$issueId}",
+                projectName: $projectName,
+                note:        'Please ensure the materials are properly utilized at the site.'
+            );
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
     private function getProjectTeam(int $projectId): array
     {
         $project = $this->getProjectRow($projectId);

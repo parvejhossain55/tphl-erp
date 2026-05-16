@@ -148,6 +148,17 @@ class Con_WeeklyReportController extends Controller
         $id = $this->model->create($data);
 
         if ($id) {
+            // Trigger email to QC and PM
+            require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+            $mailService = new \ProjectWorkflowMailService($this->db);
+            $pInfo = $this->db->prepare("SELECT name FROM projects WHERE id = ?");
+            $pInfo->bind_param('i', $data['project_id']);
+            $pInfo->execute();
+            $pRow = $pInfo->get_result()->fetch_assoc();
+            if ($pRow) {
+                $mailService->notifyQCAndPMForNewWeeklyReport((int)$data['project_id'], $pRow['name'], $id, (int)$data['week_no']);
+            }
+
             setSuccess('Weekly progress report saved successfully!');
             header("Location: {$GLOBALS['base_url']}/con-weekly-report/{$id}");
         } else {
@@ -265,6 +276,16 @@ class Con_WeeklyReportController extends Controller
                 }
             }
             
+            // Trigger email to Management if PM approves
+            if ($step === 'pm') {
+                require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+                $mailService = new \ProjectWorkflowMailService($this->db);
+                $report = $this->model->find($id);
+                if ($report && !empty($report['project_id'])) {
+                    $mailService->notifyManagementForWeeklyReportApproval((int)$report['project_id'], $report['project_name'] ?? 'Project', $id, (int)$report['week_no']);
+                }
+            }
+
             setSuccess('Approval recorded successfully!');
         } else {
             setError('Approval failed.');

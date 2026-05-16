@@ -354,7 +354,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
 
       <!-- Approve Action — PM -->
       <?php if ($canApprovePM): ?>
-        <form action="<?= $base_url ?>/con-purchase-order-approve/<?= $po['id'] ?>" method="POST">
+        <form action="<?= $base_url ?>/con-purchase-order-approve/<?= $po['id'] ?>" method="POST" style="margin-bottom:8px">
           <button type="submit"
             style="width:100%;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;border:none;
             border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer"
@@ -362,6 +362,35 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
             <i class="fal fa-user-tie me-2"></i>Approve as Management/PM
           </button>
         </form>
+
+        <button type="button" class="btn btn-outline-danger w-100" style="border-radius:10px;font-size:12px;font-weight:700;padding:8px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
+          <i class="fal fa-times-circle me-2"></i>Reject Order
+        </button>
+        
+        <!-- Reject Modal -->
+        <div class="modal fade" id="rejectPoModal" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
+              <form action="<?= $base_url ?>/con-purchase-order-reject/<?= $po['id'] ?>" method="POST">
+                <div class="modal-header border-0 pb-0">
+                  <h5 class="modal-title text-danger fw-bold"><i class="fal fa-exclamation-triangle me-2"></i>Reject Purchase Order</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">Reason for Rejection <span class="text-danger">*</span></label>
+                    <textarea class="form-control" name="remarks" rows="3" placeholder="Explain why this PO is being rejected..." required></textarea>
+                    <div class="form-text">An email notification will be sent to the Procurement Head and Site Engineer with these remarks.</div>
+                  </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                  <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600">Cancel</button>
+                  <button type="submit" class="btn btn-danger" style="border-radius:10px;font-weight:600"><i class="fal fa-times-circle me-1"></i> Confirm Rejection</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       <?php endif; ?>
     </div>
 

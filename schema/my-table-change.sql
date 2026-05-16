@@ -78,3 +78,13 @@ CREATE TABLE `material_return_items` (
     `unit_price` DECIMAL(15,2) NOT NULL-- রিটার্ন ভ্যালু ট্র্যাক করার জন্য
   
 );
+
+-- 15/may/2026 run in terminal live
+ALTER TABLE con_work_orders 
+  ADD COLUMN description TEXT NULL AFTER title,
+  ADD COLUMN notes TEXT NULL AFTER scope_of_work,
+  ADD COLUMN rejection_reason TEXT NULL AFTER status,
+  ADD COLUMN qc_approved_by INT NULL AFTER approved_at,
+  ADD COLUMN qc_approved_at DATETIME NULL AFTER qc_approved_by,
+  ADD COLUMN completed_by INT NULL AFTER qc_approved_at,
+  ADD COLUMN completed_at DATETIME NULL AFTER completed_by;

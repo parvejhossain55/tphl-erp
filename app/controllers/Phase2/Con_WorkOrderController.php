@@ -133,9 +133,8 @@ class Con_WorkOrderController extends Controller
             'advance_percent'   => $advPct,
             'running_percent'   => $runPct,
             'retention_percent' => $retPct,
-            'advance_amount'    => round($total * $advPct / 100, 2),
             'retention_amount'  => round($total * $retPct / 100, 2),
-            'work_plan_id'      => !empty($_POST['work_plan_id']) ? (int)$_POST['work_plan_id'] : null,
+            // 'work_plan_id' removed, Work Orders are independent of monthly plans
             'created_by'        => $this->userId,
         ];
 
@@ -223,11 +222,7 @@ class Con_WorkOrderController extends Controller
         $contractors = $this->contractorModel->getActiveContractors();
         $workTypes   = $this->db->query("SELECT id, work_type_name FROM work_types ORDER BY work_type_name")->fetch_all(MYSQLI_ASSOC);
 
-        // Pre-load work plans for the selected project
-        $workPlans = [];
-        if (!empty($wo['work_plan_id'])) {
-            $workPlans = $this->model->getWorkPlansByProject($wo['project_id']);
-        }
+        // work_plan_id removed from Work Orders
 
         $this->view('phase2/work-orders/edit-work-order', [
             'current_route' => 'con-work-orders',
@@ -236,7 +231,6 @@ class Con_WorkOrderController extends Controller
             'projects'      => $projects,
             'contractors'   => $contractors,
             'workTypes'     => $workTypes,
-            'workPlans'     => $workPlans,
         ]);
     }
 
@@ -280,7 +274,7 @@ class Con_WorkOrderController extends Controller
             'retention_percent' => $retPct,
             'advance_amount'    => round($total * $advPct / 100, 2),
             'retention_amount'  => round($total * $retPct / 100, 2),
-            'work_plan_id'      => !empty($_POST['work_plan_id']) ? (int)$_POST['work_plan_id'] : null,
+            // 'work_plan_id' removed
         ];
 
         if ($this->model->update($id, $data)) {
@@ -413,6 +407,26 @@ class Con_WorkOrderController extends Controller
     }
 
     // =========================================================================
+    // PRINT VIEW (standalone — no sidebar/header)
+    // =========================================================================
+    public function printView($id)
+    {
+        $wo = $this->model->findWithRelations($id);
+        if (!$wo) {
+            die('Work Order not found.');
+        }
+
+        $linkedBills         = $this->model->getLinkedBills($id);
+        $linkedWeeklyReports = $this->model->getLinkedWeeklyReports($id);
+
+        $base_url   = $GLOBALS['base_url'];
+        $page_title = 'Work Order — ' . ($wo['wo_number'] ?? 'Print');
+
+        require_once dirname(__DIR__, 2) . '/views/phase2/work-orders/print-work-order.php';
+        exit;
+    }
+
+    // =========================================================================
     // AJAX — Get WOs by Project (for contractor bill dropdown)
     // =========================================================================
     public function ajaxGetByProject()
@@ -427,19 +441,7 @@ class Con_WorkOrderController extends Controller
     }
 
     // =========================================================================
-    // AJAX — Get Work Plans by Project (for cascading dropdown)
-    // =========================================================================
-    public function ajaxGetWorkPlans()
-    {
-        header('Content-Type: application/json');
-        $projectId = (int)($_GET['project_id'] ?? 0);
-        if (!$projectId) { echo json_encode(['work_plans' => []]); exit; }
-
-        $plans = $this->model->getWorkPlansByProject($projectId);
-        echo json_encode(['work_plans' => $plans]);
-        exit;
-    }
-
+    // (ajaxGetWorkPlans removed, no longer needed in Work Order)
     // =========================================================================
     // AJAX — Get Drawings by Project
     // =========================================================================
@@ -462,19 +464,7 @@ class Con_WorkOrderController extends Controller
     }
 
     // =========================================================================
-    // AJAX — Get Targets by Work Plan (for cascading dropdown)
-    // =========================================================================
-    public function ajaxGetTargets()
-    {
-        header('Content-Type: application/json');
-        $planId = (int)($_GET['work_plan_id'] ?? 0);
-        if (!$planId) { echo json_encode(['targets' => []]); exit; }
-
-        $targets = $this->model->getTargetsByWorkPlan($planId);
-        echo json_encode(['targets' => $targets]);
-        exit;
-    }
-
+    // (ajaxGetTargets removed, no longer needed in Work Order)
     // =========================================================================
     // HELPER — Get projects filtered by role (mirrors getProjectRoleFilter in dashboard)
     // =========================================================================

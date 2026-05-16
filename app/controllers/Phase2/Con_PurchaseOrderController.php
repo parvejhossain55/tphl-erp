@@ -180,4 +180,60 @@ class Con_PurchaseOrderController extends Controller
         header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
         exit;
     }
+
+    // =========================================================================
+    // REJECT PO STEP
+    // =========================================================================
+
+    public function rejectPO($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $userId = (int)($_SESSION['user']['id']   ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        $po = $this->poModel->find($id);
+        if (!$po) {
+            setError('Purchase Order not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-orders");
+            exit;
+        }
+
+        // Role guard — Only Management/PM (1, 3, 15) can reject
+        if (!in_array($roleId, [1, 3, 15])) {
+            setError('You are not authorized to reject Purchase Orders.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
+            exit;
+        }
+
+        if ($po['status'] === 'Cancelled' || $po['status'] === 'Fully Received') {
+            setError('This PO cannot be rejected anymore.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
+            exit;
+        }
+
+        $remarks = trim($_POST['remarks'] ?? '');
+        if (empty($remarks)) {
+            setError('Rejection remarks are required.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
+            exit;
+        }
+
+        // Update status to Cancelled
+        $upd = $this->db->prepare("UPDATE purchase_orders SET status = 'Cancelled' WHERE id = ?");
+        $upd->bind_param('i', $id);
+        if ($upd->execute()) {
+            setSuccess('Purchase Order has been rejected.');
+
+            // Trigger rejection email
+            require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+            $mailService = new \ProjectWorkflowMailService($this->db);
+            $mailService->notifyAfterPORejection((int)$po['project_id'], $po['project_name'], $id, $remarks);
+        } else {
+            setError('Failed to reject Purchase Order.');
+        }
+
+        header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
+        exit;
+    }
 }

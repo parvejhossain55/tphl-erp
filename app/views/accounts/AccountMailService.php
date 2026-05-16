@@ -526,11 +526,29 @@ HTML;
             $mail->AltBody = "New Contractor Bill by {$requesterName}. Contractor: {$contractorName}. Amount: BDT {$billAmount}.";
 
             $recipients = $this->getUsersByRoles([1, 3, 6]);
+            
+            // Add Project Manager (PM) to recipients
+            if (!empty($billData['project_id'])) {
+                $projSql = "SELECT pm_id FROM projects WHERE id = " . (int)$billData['project_id'];
+                $projRes = $this->db->query($projSql);
+                if ($projRes && $projRow = $projRes->fetch_assoc()) {
+                    if ((int)$projRow['pm_id'] > 0) {
+                        $pmUser = $this->getUserById((int)$projRow['pm_id']);
+                        if ($pmUser && filter_var($pmUser['email'], FILTER_VALIDATE_EMAIL)) {
+                            $recipients[] = $pmUser;
+                        }
+                    }
+                }
+            }
+
             if (empty($recipients)) return false;
 
+            // Use a track array to avoid duplicates
+            $addedEmails = [];
             foreach ($recipients as $recipient) {
-                if (filter_var($recipient['email'], FILTER_VALIDATE_EMAIL)) {
+                if (filter_var($recipient['email'], FILTER_VALIDATE_EMAIL) && !in_array($recipient['email'], $addedEmails)) {
                     $mail->addAddress($recipient['email'], $recipient['full_name']);
+                    $addedEmails[] = $recipient['email'];
                 }
             }
 
@@ -619,6 +637,96 @@ HTML;
             return $mail->send();
         } catch (Exception $e) {
             error_log("Mail Service Error (Contractor Bill Approval): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Notification: Contractor Bill Rejected
+     */
+    public function sendContractorBillOnRejection($billData, $rejecterId)
+    {
+        try {
+            $mail = $this->getMailer();
+            $mail->Subject = 'Contractor Bill Rejected';
+
+            $billAmount      = number_format((float)($billData['bill_amount'] ?? 0), 2);
+            $contractorName  = htmlspecialchars($billData['contractor_name'] ?? 'N/A');
+
+            $requester     = $this->getUserById($billData['created_by'] ?? 0);
+            $requesterName = $requester ? htmlspecialchars($requester['full_name']) : 'Unknown User';
+
+            $rejecter     = $this->getUserById($rejecterId);
+            $rejecterName = $rejecter ? htmlspecialchars($rejecter['full_name']) : 'System/Admin';
+
+            $projectName = '';
+            if (!empty($billData['project_name'])) {
+                $projectName = htmlspecialchars($billData['project_name']);
+            } elseif (!empty($billData['project_id'])) {
+                $projectName = htmlspecialchars($this->getProjectNames($billData['project_id']) ?? '');
+            }
+
+            $extraDetails = "";
+            if (!empty($projectName)) {
+                $extraDetails .= "<strong style='color: #000000;'>Project:</strong> {$projectName}<br>";
+            }
+
+            $headerTitle = "Contractor Bill Rejected";
+            $greeting    = "Hello,";
+            $message     = "A contractor bill has been rejected by Management/PM.";
+            $buttonText  = "View Bill";
+            $buttonUrl   = "https://thepremiumhomesltd.com/TPHL-ERP/con-contractor-bills";
+
+            $detailsHtml = "
+                <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Rejection Details:</h4>
+                <div style='color: #333333; font-size: 15px; line-height: 1.6;'>
+                    <strong style='color: #000000;'>Submitted By:</strong> {$requesterName}<br>
+                    <strong style='color: #000000;'>Rejected By:</strong> {$rejecterName}<br>
+                    <strong style='color: #000000;'>Contractor:</strong> {$contractorName}<br>
+                    {$extraDetails}
+                    <strong style='color: #000000;'>Bill Amount:</strong> BDT {$billAmount}
+                </div>
+            ";
+
+            $mail->Body    = $this->getHtmlTemplate($headerTitle, $greeting, $message, $buttonText, $buttonUrl, $detailsHtml);
+            $mail->AltBody = "Contractor Bill Rejected. Contractor: {$contractorName}. Amount: BDT {$billAmount}. Rejected By: {$rejecterName}.";
+
+            $recipients = $this->getUsersByRoles([1, 3, 6]);
+
+            // Add PM
+            if (!empty($billData['project_id'])) {
+                $projSql = "SELECT pm_id FROM projects WHERE id = " . (int)$billData['project_id'];
+                $projRes = $this->db->query($projSql);
+                if ($projRes && $projRow = $projRes->fetch_assoc()) {
+                    if ((int)$projRow['pm_id'] > 0) {
+                        $pmUser = $this->getUserById((int)$projRow['pm_id']);
+                        if ($pmUser && filter_var($pmUser['email'], FILTER_VALIDATE_EMAIL)) {
+                            $recipients[] = $pmUser;
+                        }
+                    }
+                }
+            }
+
+            $addedEmails = [];
+            foreach ($recipients as $recipient) {
+                if (filter_var($recipient['email'], FILTER_VALIDATE_EMAIL) && !in_array($recipient['email'], $addedEmails)) {
+                    $mail->addAddress($recipient['email'], $recipient['full_name']);
+                    $addedEmails[] = $recipient['email'];
+                    if ($requester && $recipient['email'] === $requester['email']) {
+                        $requesterEmailAdded = true;
+                    }
+                }
+            }
+
+            if (!isset($requesterEmailAdded) || !$requesterEmailAdded) {
+                if ($requester && filter_var($requester['email'], FILTER_VALIDATE_EMAIL)) {
+                    $mail->addAddress($requester['email'], $requester['full_name']);
+                }
+            }
+
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Mail Service Error (Contractor Bill Rejection): " . $e->getMessage());
             return false;
         }
     }

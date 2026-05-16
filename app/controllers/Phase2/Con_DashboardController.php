@@ -945,9 +945,99 @@ class Con_DashboardController extends Controller
     }
 
     // =========================================================================
-    // QC DASHBOARD  (Quality Controller)
-    // Permissions: Estimate Budget, Project Target Set, Material Issue,
-    //              Purchase order, Working Plan, Project Report
+    // SITE ENGINEER DASHBOARD
+    // Permissions: Material Receiving, Material Issue, Project View
+    // =========================================================================
+    public function siteEngineerDashboard()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // KPI: Total Projects Assigned to Site Engineer
+        $r1 = $this->db->query("SELECT COUNT(*) AS c FROM projects p WHERE p.deleted_at IS NULL AND p.site_engineer_id = {$userId}");
+        $myProjectsCount = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
+
+        // KPI: Material Received (GRN) By Me
+        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM material_receiving WHERE received_by = {$userId}");
+        $totalReceived = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
+
+        // KPI: Material Issued By Me
+        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM con_material_issues WHERE issued_by = {$userId}");
+        $totalIssued = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
+
+        // KPI: Weekly Reports Submitted By Me
+        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM weekly_progress_report WHERE site_engineer_id = {$userId}");
+        $totalReports = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
+
+        // My Assigned Projects List
+        $rProjs = $this->db->query("
+            SELECT p.id, p.name, p.project_status, COALESCE(l.name,'') AS location_name,
+                   COALESCE(prog.progress_pct,0) AS progress_pct
+            FROM projects p
+            LEFT JOIN locations l ON l.id=p.location_id
+            LEFT JOIN (
+                SELECT wp.project_id, SUM((COALESCE(tf.gain_percentage,0)/100)*(COALESCE(tf.target_percentage,0)/100)*(COALESCE(wp.weight_percentage,0)/100)*COALESCE(ib.weight_percentage,100)) AS progress_pct
+                FROM project_working_plans wp
+                LEFT JOIN target_fixed tf ON tf.work_plan_id = wp.id
+                LEFT JOIN initial_estimate_budgets ib ON ib.id = wp.initial_budget_id
+                GROUP BY wp.project_id
+            ) prog ON prog.project_id=p.id
+            WHERE p.deleted_at IS NULL AND p.site_engineer_id = {$userId}
+            ORDER BY p.id DESC
+        ");
+        $myProjects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Recent Material Receiving (GRN)
+        $rMR = $this->db->query("
+            SELECT mr.*, p.name AS project_name, u.full_name AS received_by_name
+            FROM material_receiving mr
+            LEFT JOIN purchase_orders po ON po.id = mr.purchase_order_id
+            LEFT JOIN purchase_requests pr ON pr.id = po.request_id
+            LEFT JOIN projects p ON p.id = pr.project_id
+            LEFT JOIN users u ON u.id = mr.received_by
+            WHERE mr.received_by = {$userId}
+            ORDER BY mr.id DESC LIMIT 5
+        ");
+        $recentReceives = $rMR ? $rMR->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Recent Material Issues
+        $rMI = $this->db->query("
+            SELECT mi.*, p.name AS project_name, m.name AS material_name
+            FROM con_material_issues mi
+            LEFT JOIN projects p ON p.id = mi.project_id
+            LEFT JOIN con_materials m ON m.id = mi.material_id
+            WHERE mi.issued_by = {$userId}
+            ORDER BY mi.id DESC LIMIT 5
+        ");
+        $recentIssues = $rMI ? $rMI->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Recent Weekly Reports
+        $rWPR = $this->db->query("
+            SELECT wpr.*, p.name AS project_name
+            FROM weekly_progress_report wpr
+            LEFT JOIN projects p ON p.id = wpr.project_id
+            WHERE wpr.site_engineer_id = {$userId}
+            ORDER BY wpr.id DESC LIMIT 5
+        ");
+        $recentReports = $rWPR ? $rWPR->fetch_all(MYSQLI_ASSOC) : [];
+
+        return $this->view('phase2/dashboard/site-engineer-dashboard', [
+            'current_route'   => 'con-site-engineer-dashboard',
+            'myProjectsCount' => $myProjectsCount,
+            'totalReceived'   => $totalReceived,
+            'totalIssued'     => $totalIssued,
+            'totalReports'    => $totalReports,
+            'myProjects'      => $myProjects,
+            'recentReceives'  => $recentReceives,
+            'recentIssues'    => $recentIssues,
+            'recentReports'   => $recentReports,
+        ]);
+    }
+
+    // =========================================================================
+    // OPERATIONS DASHBOARD
+    // Permissions: ...
     // =========================================================================
     
     public function operationsDashboard()

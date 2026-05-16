@@ -148,9 +148,9 @@ function sib_fmt($n) {
         <?php
         $st   = $budget['status'] ?? 'pending';
         $sMap = [
-          'approved'  => ['bg'=>'rgba(16,185,129,.2)','text'=>'#059669','icon'=>'fa-check-circle'],
-          'cancelled' => ['bg'=>'rgba(239,68,68,.2)', 'text'=>'#dc2626','icon'=>'fa-times-circle'],
-          'pending'   => ['bg'=>'rgba(245,158,11,.2)','text'=>'#d97706','icon'=>'fa-clock'],
+          'approved'  => ['bg'=>'#fff','text'=>'#059669','icon'=>'fa-check-circle'],
+          'cancelled' => ['bg'=>'rgba(239,68,68,.2)', 'text'=>'#fff','icon'=>'fa-times-circle'],
+          'pending'   => ['bg'=>'rgba(245,158,11,.2)','text'=>'#fff','icon'=>'fa-clock'],
         ];
         $sc = $sMap[$st] ?? $sMap['pending'];
         ?>
@@ -183,6 +183,10 @@ function sib_fmt($n) {
           <i class="fal fa-pencil"></i>Edit Budget
         </a>
       <?php endif; ?>
+      <a href="<?= $base ?>/con-estimate-print/<?= $budget['id'] ?>" target="_blank" class="sib-btn-w"
+         style="background:rgba(74,222,128,.15);border-color:rgba(74,222,128,.4);">
+        <i class="fal fa-print"></i>Print / PDF
+      </a>
       <a href="<?= $base ?>/con-estimates" class="sib-btn-w"><i class="fal fa-arrow-left"></i>Back to List</a>
     </div>
   </div>

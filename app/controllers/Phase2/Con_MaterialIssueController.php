@@ -167,6 +167,23 @@ class Con_MaterialIssueController extends Controller
 
         $id = $this->issueModel->create($data);
         if ($id) {
+            // Trigger email to SE and Operator
+            require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+            $mailService = new \ProjectWorkflowMailService($this->db);
+            $pInfo = $this->db->prepare("SELECT name FROM projects WHERE id = ?");
+            $pInfo->bind_param('i', $data['project_id']);
+            $pInfo->execute();
+            $pRow = $pInfo->get_result()->fetch_assoc();
+            $cInfo = $this->db->prepare("SELECT name FROM contractors WHERE id = ?");
+            $cInfo->bind_param('i', $data['issued_to']);
+            $cInfo->execute();
+            $cRow = $cInfo->get_result()->fetch_assoc();
+            
+            if ($pRow) {
+                $contractorName = $cRow ? $cRow['name'] : 'Contractor';
+                $mailService->notifyAfterMaterialIssue($data['project_id'], $pRow['name'], $id, $contractorName);
+            }
+
             setSuccess("Material Issue ISS-{$id} created. Stock deducted.");
             header("Location: {$GLOBALS['base_url']}/con-material-issue/{$id}");
         } else {

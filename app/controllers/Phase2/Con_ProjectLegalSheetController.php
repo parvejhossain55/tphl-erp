@@ -26,7 +26,45 @@ class Con_ProjectLegalSheetController extends Controller {
     }
 
     public function index() {
-        $sheets = $this->sheetModel->getAll();
+        $uid = (int)($_SESSION['user']['id'] ?? 0);
+        $rid = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if (in_array($rid, [1, 3, 22])) {
+            $sheets = $this->sheetModel->getAll();
+        } else {
+            $sql = "SELECT pls.*, p.name as project_name, u.full_name as submitted_by_name 
+                    FROM project_legal_sheets pls
+                    LEFT JOIN projects p ON p.id = pls.project_id
+                    LEFT JOIN users u ON u.id = pls.submitted_by
+                    WHERE p.deleted_at IS NULL
+                      AND (
+                          p.pm_id              = ? OR
+                          p.site_engineer_id   = ? OR
+                          p.landman_id         = ? OR
+                          p.struct_engineer_id = ? OR
+                          p.operation_head_id  = ? OR
+                          p.draftsman_id       = ? OR
+                          p.architect_id       = ? OR
+                          p.estimator_id       = ? OR
+                          p.qc_id              = ? OR
+                          p.operator_id        = ? OR
+                          p.created_by         = ?
+                      )
+                    ORDER BY pls.id DESC";
+            $stmt = $this->db->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param(
+                    "iiiiiiiiiii",
+                    $uid, $uid, $uid, $uid, $uid,
+                    $uid, $uid, $uid, $uid, $uid, $uid
+                );
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $sheets = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+            } else {
+                $sheets = [];
+            }
+        }
         
         $this->view('phase2/project_legal_sheets/legal-sheet-lists', [
             'current_route' => 'legal-sheet-lists',

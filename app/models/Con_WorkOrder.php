@@ -64,10 +64,7 @@ class Con_WorkOrder extends Model
                        tf.target_percentage AS target_percentage,
                        tf.year         AS target_year,
                        tf.month        AS target_month,
-                       tf.week_number  AS target_week,
-                       wp.work_description AS work_plan_title,
-                       wp.year         AS plan_year,
-                       wp.month        AS plan_month
+                       tf.week_number  AS target_week
                 FROM {$this->table} wo
                 LEFT JOIN projects p                ON p.id  = wo.project_id
                 LEFT JOIN contractors c             ON c.id  = wo.contractor_id
@@ -79,7 +76,6 @@ class Con_WorkOrder extends Model
                 LEFT JOIN users qc                  ON qc.id = wo.qc_approved_by
                 LEFT JOIN users cm                  ON cm.id = wo.completed_by
                 LEFT JOIN target_fixed tf           ON tf.id = wo.target_id
-                LEFT JOIN project_working_plans wp  ON wp.id = wo.work_plan_id
                 WHERE wo.id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -139,36 +135,34 @@ class Con_WorkOrder extends Model
                  start_date, end_date,
                  advance_percent, running_percent, retention_percent,
                  advance_amount, retention_amount,
-                 work_plan_id,
                  status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)";
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiiiiisssssssdddssddddiii',
-            $data['project_id'],
-            $data['contractor_id'],
-            $data['design_id'],
-            $data['work_type_id'],
-            $data['boq_id'],
-            $woNumber,
-            $data['title'],
-            $data['scope_of_work'],
-            $data['notes'],
-            $data['description'],
-            $data['unit'],
-            $data['unit_rate'],
-            $data['quantity'],
-            $data['total_amount'],
-            $data['start_date'],
-            $data['end_date'],
-            $data['advance_percent'],
-            $data['running_percent'],
-            $data['retention_percent'],
-            $data['advance_amount'],
-            $data['retention_amount'],
-            $data['work_plan_id'],
-            $data['created_by']
+            'iiiiissssssdddssdddddi',
+            $data['project_id'],      // i
+            $data['contractor_id'],   // i
+            $data['design_id'],       // i
+            $data['work_type_id'],    // i
+            $data['boq_id'],          // i
+            $woNumber,                // s
+            $data['title'],           // s
+            $data['scope_of_work'],   // s
+            $data['notes'],           // s
+            $data['description'],     // s
+            $data['unit'],            // s
+            $data['unit_rate'],       // d
+            $data['quantity'],        // d
+            $data['total_amount'],    // d
+            $data['start_date'],      // s
+            $data['end_date'],        // s
+            $data['advance_percent'], // d
+            $data['running_percent'], // d
+            $data['retention_percent'],// d
+            $data['advance_amount'],  // d
+            $data['retention_amount'],// d
+            $data['created_by']       // i
         );
         $stmt->execute();
         return $stmt->insert_id;
@@ -184,13 +178,12 @@ class Con_WorkOrder extends Model
                     scope_of_work=?, notes=?, description=?, unit=?, unit_rate=?, quantity=?, total_amount=?,
                     start_date=?, end_date=?,
                     advance_percent=?, running_percent=?, retention_percent=?,
-                    advance_amount=?, retention_amount=?,
-                    work_plan_id=?
+                    advance_amount=?, retention_amount=?
                 WHERE id=? AND status='draft'";
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiiiiisssssdddssddddii',
+            'iiiiisssssdddssdddddi',
             $data['project_id'],
             $data['contractor_id'],
             $data['design_id'],
@@ -211,7 +204,6 @@ class Con_WorkOrder extends Model
             $data['retention_percent'],
             $data['advance_amount'],
             $data['retention_amount'],
-            $data['work_plan_id'],
             $id
         );
         return $stmt->execute();

@@ -138,6 +138,17 @@ class Con_MaterialReceivingController extends Controller
 
         $id = $this->receivingModel->create($data, $items);
         if ($id) {
+            // Trigger email to QC
+            require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+            $mailService = new \ProjectWorkflowMailService($this->db);
+            $poInfo = $this->db->prepare("SELECT pr.project_id, p.name FROM purchase_orders po JOIN purchase_requests pr ON pr.id = po.request_id JOIN projects p ON p.id = pr.project_id WHERE po.id = ?");
+            $poInfo->bind_param('i', $data['purchase_order_id']);
+            $poInfo->execute();
+            $poRow = $poInfo->get_result()->fetch_assoc();
+            if ($poRow) {
+                $mailService->notifyQCForNewGRN((int)$poRow['project_id'], $poRow['name'], $data['purchase_order_id'], $id);
+            }
+
             setSuccess('Material Receiving GRN-' . $id . ' logged. Proceed to QC Review.');
             header("Location: {$GLOBALS['base_url']}/con-material-receiving-qc/{$id}");
         } else {
@@ -240,6 +251,26 @@ class Con_MaterialReceivingController extends Controller
         $itemStatuses['qc_photo'] = $uploadPhoto('qc_photo');
 
         if ($this->receivingModel->qcReview($id, $itemStatuses, $userId)) {
+            // Check if any item was rejected
+            $hasRejections = false;
+            foreach ($itemStatuses as $st) {
+                if ($st['status'] === 'Rejected' || $st['status'] === 'Partial' || $st['rejected_qty'] > 0) {
+                    $hasRejections = true;
+                    break;
+                }
+            }
+
+            // Trigger email to PM or Procurement
+            require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+            $mailService = new \ProjectWorkflowMailService($this->db);
+            $grnInfo = $this->db->prepare("SELECT pr.project_id, p.name FROM material_receiving mr JOIN purchase_orders po ON po.id = mr.purchase_order_id JOIN purchase_requests pr ON pr.id = po.request_id JOIN projects p ON p.id = pr.project_id WHERE mr.id = ?");
+            $grnInfo->bind_param('i', $id);
+            $grnInfo->execute();
+            $grnRow = $grnInfo->get_result()->fetch_assoc();
+            if ($grnRow) {
+                $mailService->notifyAfterQCInspection((int)$grnRow['project_id'], $grnRow['name'], $id, $hasRejections);
+            }
+
             setSuccess('QC Review completed. Awaiting PM/Management Approval.');
         } else {
             setError('QC Review failed. Please check the logs.');
@@ -268,6 +299,17 @@ class Con_MaterialReceivingController extends Controller
         $pmNote = trim($_POST['pm_note'] ?? '');
 
         if ($this->receivingModel->pmReview($id, $userId, $pmNote)) {
+            // Trigger email to Site Operator/SE
+            require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+            $mailService = new \ProjectWorkflowMailService($this->db);
+            $grnInfo = $this->db->prepare("SELECT pr.project_id, p.name FROM material_receiving mr JOIN purchase_orders po ON po.id = mr.purchase_order_id JOIN purchase_requests pr ON pr.id = po.request_id JOIN projects p ON p.id = pr.project_id WHERE mr.id = ?");
+            $grnInfo->bind_param('i', $id);
+            $grnInfo->execute();
+            $grnRow = $grnInfo->get_result()->fetch_assoc();
+            if ($grnRow) {
+                $mailService->notifyAfterPMGRNApproval((int)$grnRow['project_id'], $grnRow['name'], $id);
+            }
+
             setSuccess('PM/Management Approval completed. Stock has been updated.');
         } else {
             setError('PM Approval failed. Please check the logs.');

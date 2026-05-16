@@ -1,0 +1,82 @@
+ইমেইল নোটিফিকেশন ইমপ্লিমেন্টেশন প্ল্যান (Batch-wise)
+আপনার পুরো সিস্টেমে যেখানে যেখানে অ্যাপ্রুভাল বা কোনো অ্যাকশন প্রয়োজন, সেইসব জায়গায় সংশ্লিষ্ট ব্যক্তির users টেবিলের ইমেইলে নোটিফিকেশন পাঠানোর জন্য একটি সুনির্দিষ্ট ব্যাচ-ভিত্তিক প্ল্যান নিচে দেওয়া হলো।
+
+এই প্ল্যানটি বর্তমান ProjectWorkflowMailService.php এর সাথে মিলিয়ে এবং missing লজিকগুলো কভার করে তৈরি করা হয়েছে।
+
+Batch 1: Budget, BOQ & Procurement Approvals
+এখানে কিছু মেইল অলরেডি আছে, তবে সেগুলোকে আরও অপটিমাইজড এবং ডাইনামিক করতে হবে।
+
+Initial Estimate & BOQ Approval (Role 1, 3, 15)
+ট্রিগার: Estimator যখন বাজেট বা BOQ সাবমিট করবে।
+বর্তমান অবস্থা: অলরেডি আছে।
+নতুন সংযোজন: যদি MD (1) বা Director (3) এটি রিজেক্ট করে, তবে স্বয়ংক্রিয়ভাবে Estimator কে রিজেকশন মেইল যাবে কারেকশনের জন্য।
+Purchase Request (PR) Approval
+ট্রিগার: Purchase Executive যখন PR তৈরি করবে।
+প্রাপক: Purchase Head / Project Manager.
+ম্যাসেজ: "একটি নতুন PR সাবমিট হয়েছে। আপনার অ্যাপ্রুভাল প্রয়োজন।"
+Quotation / Comparative Statement (CS) Approval
+ট্রিগার: ভেন্ডরদের কোটেশন দিয়ে CS তৈরি করার পর।
+প্রাপক: Finance Team এবং Top Management (Role 1, 3).
+ম্যাসেজ: "CS তৈরি করা হয়েছে, PO জেনারেট করার জন্য আপনার অ্যাপ্রুভাল দরকার।"
+Purchase Order (PO) Approval & Rejection
+ট্রিগার: PO তৈরি হলে।
+বর্তমান অবস্থা: অ্যাপ্রুভাল মেইল আছে।
+নতুন সংযোজন: PO রিজেক্ট হলে Purchase Head কে মেইল যাবে।
+Batch 2: Inventory & Quality Control (QC)
+ম্যাটেরিয়াল রিসিভ হওয়ার পর QC এর একটি বড় গ্যাপ আছে, সেটি এখানে কভার করা হবে।
+
+Material Receiving (GRN) to QC Request
+ট্রিগার: Site Operator যখন মাল রিসিভ (GRN) করে সিস্টেমে এন্ট্রি দেবে।
+প্রাপক: Quality Controller (QC - qc_id).
+ম্যাসেজ: "PO #{po_id} এর ম্যাটেরিয়াল সাইটে এসেছে। স্টকে অ্যাড করার আগে আপনার ইন্সপেকশন (QC Check) প্রয়োজন।"
+QC Inspection Result Notification
+ট্রিগার: QC যখন ম্যাটেরিয়াল 'Accept' বা 'Reject' করবে।
+প্রাপক:
+Accept হলে: Site Operator ও Site Engineer (স্টক আপডেটের কনফার্মেশন)।
+Reject হলে: Purchase Head (যেন তিনি ভেন্ডরকে পেনাল্টি দিতে পারেন বা মাল ফেরতের ব্যবস্থা করতে পারেন)।
+Material Issue Request
+ট্রিগার: Site Engineer যখন গুদাম থেকে মাল চাইবে।
+প্রাপক: Site Operator / Store Manager.
+ম্যাসেজ: "সাইটের কাজের জন্য ম্যাটেরিয়াল ইস্যু রিকোয়েস্ট এসেছে।"
+Batch 3: Site Operations, Target & Billing
+সাইটের কাজ এবং বিলিং এর স্বচ্ছতার জন্য এই মেইলগুলো জরুরি।
+
+Target Fixed & Working Plan Approval
+ট্রিগার: PM যখন সাপ্তাহিক/মাসিক কাজের টার্গেট ফিক্স করবে।
+প্রাপক: Site Engineer (site_engineer_id) এবং QC (qc_id).
+ম্যাসেজ: "নতুন কাজের টার্গেট নির্ধারণ করা হয়েছে। অনুগ্রহ করে আপনার ড্যাশবোর্ড চেক করুন।"
+Budget Adjustment (Extend/Reduce) Request Approval
+ট্রিগার: প্রোজেক্টের বাজেট বাড়ানোর বা কমানোর জন্য যখন রিকোয়েস্ট করা হবে।
+প্রাপক: Top Management (Role 1, 3).
+ম্যাসেজ: "প্রোজেক্টের বাজেট পরিবর্তন (বাড়ানো/কমানো) করার একটি রিকোয়েস্ট এসেছে। আপনার অ্যাপ্রুভাল প্রয়োজন।"
+Budget Adjustment Approved Notification
+ট্রিগার: Top Management বাজেট পরিবর্তন অ্যাপ্রুভ করলে।
+প্রাপক: Project Manager, Procurement Head এবং Site Engineer.
+ম্যাসেজ: "বাজেট এডজাস্টমেন্ট রিকোয়েস্টটি অ্যাপ্রুভ হয়েছে। আপনার নতুন টার্গেট লিমিট এবং কেনার ক্ষমতা আপডেট করা হয়েছে।"
+Contractor Bill Approval Request
+ট্রিগার: Site Engineer যখন কন্ট্রাক্টর বিল সাবমিট করবে।
+প্রাপক: Project Manager এবং Finance Team.
+ম্যাসেজ: "কন্ট্রাক্টর বিল সাবমিট হয়েছে। পেমেন্ট প্রসেস করার জন্য আপনার অ্যাপ্রুভাল প্রয়োজন।"
+Batch 4: Finance & General HR/Task
+ফাইন্যান্সিয়াল এবং টাস্ক ম্যানেজমেন্টের জন্য।
+
+Vendor Payment Request Approval
+ট্রিগার: Purchase Team যখন ভেন্ডর পেমেন্টের রিকোয়েস্ট দেবে।
+প্রাপক: Finance/Accounts Team এবং Management.
+ম্যাসেজ: "ভেন্ডর পেমেন্ট রিকোয়েস্ট এসেছে। অনুগ্রহ করে অ্যাপ্রুভ করুন।"
+Cashout Request Approval
+ট্রিগার: যখন ক্যাশ-আউট রিকোয়েস্ট তৈরি হবে।
+প্রাপক: Management (Role 1, 3).
+ম্যাসেজ: "একটি ক্যাশ-আউট রিকোয়েস্ট অ্যাপ্রুভালের অপেক্ষায় আছে।"
+Task Assignment Notification
+ট্রিগার: Task Controller থেকে কাউকে কোনো টাস্ক অ্যাসাইন করা হলে।
+প্রাপক: যাকে টাস্ক দেওয়া হয়েছে (assigned_to).
+ম্যাসেজ: "আপনাকে একটি নতুন টাস্ক দেওয়া হয়েছে। ডেডলাইন: {date}।" (এটি সম্ভবত আংশিক ইমপ্লিমেন্ট করা আছে)।
+পরবর্তী পদক্ষেপ (How to proceed):
+আপনি যেহেতু প্রি-কন্সট্রাকশনের রিজেকশন লুপটি (আগের ব্যাচ ১) ইন্টারনালি ম্যানেজ করবেন, তাই আমি সেটি এই প্ল্যান থেকে বাদ দিয়েছি।
+
+আপনি যদি এই প্ল্যানের সাথে একমত হন, তবে আমরা নতুন Batch 1 (Budget & Procurement Approvals) বা Batch 2 (QC Inspection) থেকে কাজ শুরু করতে পারি।
+
+আমি ProjectWorkflowMailService.php তে নতুন মেথডগুলো লিখে সংশ্লিষ্ট কন্ট্রোলারগুলোতে (যেমন: QCController.php বা Con_BudgetExtendController.php) সেগুলো কানেক্ট করে দিতে পারি।
+
+আপনি কি চান আমি Batch 1 (Budget & Procurement Approvals) দিয়ে কোডিং শুরু করি?

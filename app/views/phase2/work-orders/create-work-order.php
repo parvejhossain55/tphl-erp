@@ -26,7 +26,7 @@ $page_title = $page_title ?? 'New Work Order';
                         <div class="row ">
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold">Project <span class="text-danger">*</span></label>
-                                <select name="project_id" id="wo_project_id" class="form-select" required onchange="loadWorkPlans(this.value); loadDrawings(this.value);">
+                                <select name="project_id" id="wo_project_id" class="form-select" required onchange="loadDrawings(this.value);">
                                     <option value="">-- Select Project --</option>
                                     <?php foreach ($projects as $p): ?>
                                         <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
@@ -67,15 +67,7 @@ $page_title = $page_title ?? 'New Work Order';
                                        placeholder="e.g. Foundation Work — Block A">
                             </div>
 
-                            <!-- Working Plan Link -->
-                            <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Link to Working Plan (optional — select Project first)</small></div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Working Plan</label>
-                                <select name="work_plan_id" id="wo_work_plan_id" class="form-select">
-                                    <option value="">-- Select Working Plan --</option>
-                                </select>
-                                <small class="text-muted">Select Project first to load plans</small>
-                            </div>
+                            <!-- Working Plan Link Removed as WO is independent -->
                             <div class="col-12">
                                 <label class="form-label fw-semibold">Description</label>
                                 <textarea name="description" class="form-control" rows="3"
@@ -217,25 +209,6 @@ $page_title = $page_title ?? 'New Work Order';
 
 <script>
 const BASE_URL = '<?= $base_url ?>';
-
-// ── Cascade: Project → Work Plans ─────────────────────────────────────────
-function loadWorkPlans(projectId) {
-    const wpSel = document.getElementById('wo_work_plan_id');
-
-    // Reset downstream
-    wpSel.innerHTML = '<option value="">-- Select Working Plan --</option>';
-
-    if (!projectId) return;
-
-    fetch(`${BASE_URL}/con-ajax-wo-work-plans?project_id=${projectId}`)
-        .then(r => r.json())
-        .then(data => {
-            data.work_plans.forEach(wp => {
-                const label = `${wp.work_description} (${wp.month}/${wp.year})`;
-                wpSel.innerHTML += `<option value="${wp.id}">${label}</option>`;
-            });
-        });
-}
 
 // ── Cascade: Project → Drawings ───────────────────────────────────────────
 function loadDrawings(projectId) {

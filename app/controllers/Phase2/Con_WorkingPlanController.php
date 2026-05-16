@@ -306,6 +306,60 @@ class Con_WorkingPlanController extends Controller
     }
 
     // =========================================================================
+    // WORKING PLANS — VIEW / SHOW (Single Plan Detail)
+    // =========================================================================
+
+    public function show($id)
+    {
+        $plan = $this->model->find($id);
+        if (!$plan) {
+            setError('Working plan not found.');
+            header("Location: {$GLOBALS['base_url']}/con-working-plans");
+            exit;
+        }
+
+        // Get all plans for the same project (monthly breakdown)
+        $projectPlans = $this->model->getByProject($plan['project_id']);
+
+        // Budget summary
+        $budgetSummary = $this->model->getBudgetSummary($plan['initial_budget_id']);
+
+        $this->view('phase2/working_plans/view-working-plan', [
+            'current_route'  => 'con-working-plans',
+            'page_title'     => 'Working Plan — ' . ($plan['project_name'] ?? 'Details'),
+            'plan'           => $plan,
+            'projectPlans'   => $projectPlans,
+            'budgetSummary'  => $budgetSummary,
+        ]);
+    }
+
+    // =========================================================================
+    // WORKING PLANS — PRINT VIEW (No sidebar/header — print-only layout)
+    // =========================================================================
+
+    public function printView($id)
+    {
+        $plan = $this->model->find($id);
+        if (!$plan) {
+            die('Working plan not found.');
+        }
+
+        // Get all plans for the same project (monthly breakdown)
+        $projectPlans = $this->model->getByProject($plan['project_id']);
+
+        // Budget summary
+        $budgetSummary = $this->model->getBudgetSummary($plan['initial_budget_id']);
+
+        // Extract variables for the view
+        $base_url = $GLOBALS['base_url'];
+        $page_title = 'Working Plan — ' . ($plan['project_name'] ?? 'Print');
+
+        // Render print-only page (bypasses master layout)
+        require_once dirname(__DIR__, 2) . '/views/phase2/working_plans/print-working-plan.php';
+        exit;
+    }
+
+    // =========================================================================
     // BUDGET EXTENSIONS — LIST
     // =========================================================================
 
@@ -361,18 +415,24 @@ class Con_WorkingPlanController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        $amount = (float) ($_POST['amount'] ?? 0);
+        $adjType = $_POST['adjustment_type'] ?? 'increase';
+        if ($adjType === 'decrease') {
+            $amount = -$amount;
+        }
+
         $data = [
             'project_id'        => (int)   ($_POST['project_id']        ?? 0),
             'initial_budget_id' => (int)   ($_POST['initial_budget_id'] ?? 0),
             'requested_by'      => (int)   ($_SESSION['user']['id']     ?? 0),
             'title'             =>          trim($_POST['title']         ?? ''),
-            'amount'            => (float) ($_POST['amount']            ?? 0),
+            'amount'            => $amount,
             'reason'            =>          trim($_POST['reason']        ?? ''),
             'docs_link'         =>          trim($_POST['docs_link']     ?? ''),
         ];
 
-        if (!$data['project_id'] || !$data['initial_budget_id'] || empty($data['title']) || $data['amount'] <= 0) {
-            setError('All fields are required and amount must be > 0.');
+        if (!$data['project_id'] || !$data['initial_budget_id'] || empty($data['title']) || $data['amount'] == 0) {
+            setError('All fields are required and amount cannot be 0.');
             header("Location: {$GLOBALS['base_url']}/con-budget-extend-create");
             exit;
         }
@@ -401,9 +461,17 @@ class Con_WorkingPlanController extends Controller
         $userId  = (int)($_SESSION['user']['id'] ?? 0);
         $remarks = trim($_POST['remarks'] ?? '');
 
+        // Fetch request info before approving to send email
+        $request = $this->model->findExtend($id);
+
         $result = $this->model->approveBudgetExtend($id, $userId, $remarks);
         if ($result['ok']) {
-            setSuccess('Budget extension request approved. Revised budget updated.');
+            if ($request) {
+                require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+                $wfMail = new \ProjectWorkflowMailService($this->db);
+                $wfMail->notifyAfterBudgetAdjustment($request['project_id'], $request['project_name'] ?? 'Project', (float)$request['amount'], $request['reason']);
+            }
+            setSuccess('Budget adjustment request approved. Revised budget updated.');
         } else {
             setError($result['error']);
         }
