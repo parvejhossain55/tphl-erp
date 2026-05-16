@@ -226,9 +226,14 @@ class ProjectStructuralDesignController extends Controller {
             )->fetch_all(MYSQLI_ASSOC);
         }
         $stmt = $this->db->prepare(
-            "SELECT id, name FROM projects WHERE {$roleCol} = ? AND deleted_at IS NULL ORDER BY name ASC"
+            "SELECT id, name FROM projects 
+             WHERE deleted_at IS NULL 
+               AND (pm_id = ? OR site_engineer_id = ? OR landman_id = ? OR struct_engineer_id = ? 
+                    OR operation_head_id = ? OR draftsman_id = ? OR architect_id = ? 
+                    OR estimator_id = ? OR qc_id = ? OR operator_id = ? OR created_by = ?)
+             ORDER BY name ASC"
         );
-        $stmt->bind_param('i', $userId);
+        $stmt->bind_param('iiiiiiiiiii', $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }

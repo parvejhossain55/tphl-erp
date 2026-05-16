@@ -181,25 +181,7 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                 </div>
             </div>
 
-            <!-- Working Plan Link -->
-            <?php if (!empty($wo['work_plan_title'])): ?>
-            <div class="card custom-card mb-4 border-warning">
-                <div class="card-header bg-warning-transparent">
-                    <h6 class="card-title mb-0"><i class="bi bi-bullseye me-2 text-warning"></i>Linked Working Plan</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row ">
-                        <div class="col-md-12">
-                            <div class="text-muted fs-12">Working Plan</div>
-                            <div class="fw-semibold text-muted"><?= htmlspecialchars($wo['work_plan_title'] ?? '—') ?>
-                                <small class="text-muted">(<?= $wo['plan_month'] ?? '' ?>/<?= $wo['plan_year'] ?? '' ?>)</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <?php endif; ?>
-
+            <!-- Working Plan logic removed as WO is now independent -->
             <!-- Linked Weekly Reports -->
             <?php if (!empty($linkedWeeklyReports)): ?>
             <div class="card custom-card mb-4">

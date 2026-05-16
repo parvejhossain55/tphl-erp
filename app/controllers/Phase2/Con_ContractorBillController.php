@@ -157,13 +157,37 @@ class Con_ContractorBillController extends Controller
             exit;
         }
 
-        // Validate Target if selected
+        // Validate Target if selected (Strict Financial Limit for Progress Bills)
         if (!empty($data['target_id'])) {
             $target = $this->targetModel->find($data['target_id']);
-            if ($target && (float)$target['gain_percentage'] <= 0) {
-                setError('Selected target must have a Gain % greater than 0 to submit a bill.');
-                header("Location: {$GLOBALS['base_url']}/con-contractor-bill-create");
-                exit;
+            if ($target) {
+                $gainPct = (float)$target['gain_percentage'];
+                $targetPct = (float)$target['target_percentage'];
+                
+                if ($gainPct <= 0) {
+                    setError('Selected target must have a Gain % greater than 0 to submit a bill.');
+                    header("Location: {$GLOBALS['base_url']}/con-contractor-bill-create");
+                    exit;
+                }
+
+                // If this target represents a specific % of the Work Order, enforce financial limit
+                if ($targetPct > 0 && $data['bill_type'] === 'Progress') {
+                    // Maximum allowable amount for this target: (WO Total * Target%) * Gain%
+                    $maxTargetAmount = ((float)$workOrder['total_amount'] * ($targetPct / 100)) * ($gainPct / 100);
+                    
+                    // Find out how much they already billed specifically for this target
+                    $targetBilledRes = $this->db->query("SELECT COALESCE(SUM(IF(approved_amount IS NOT NULL AND approved_amount > 0, approved_amount, bill_amount)), 0) as total FROM contractor_bill_requests WHERE target_id = {$data['target_id']} AND status != 'rejected'");
+                    $targetBilledSoFar = $targetBilledRes ? (float)$targetBilledRes->fetch_assoc()['total'] : 0;
+                    
+                    $remainingTargetAmount = $maxTargetAmount - $targetBilledSoFar;
+                    
+                    // Use a tiny 1-taka margin for float rounding issues
+                    if ($data['bill_amount'] > ($remainingTargetAmount + 1.00)) {
+                        setError('Bill amount (৳' . number_format($data['bill_amount'], 2) . ') exceeds the completed work value for this target. Maximum allowable request is ৳' . number_format($remainingTargetAmount, 2) . '.');
+                        header("Location: {$GLOBALS['base_url']}/con-contractor-bill-create");
+                        exit;
+                    }
+                }
             }
         }
 
@@ -363,6 +387,25 @@ class Con_ContractorBillController extends Controller
 
         if ($this->billModel->reject($id, $this->userId)) {
             $this->syncApprovalRequest($id, 'rejected');
+            
+            // Send email notification on rejection
+            try {
+                $rejectedBill = $this->billModel->find($id);
+                if ($rejectedBill) {
+                    $operator = $this->operatorModel->find($rejectedBill['operator_id'] ?? 0);
+                    $project  = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($rejectedBill['project_id'] ?? 0))->fetch_assoc();
+                    $rejectedBill['contractor_name'] = $operator['name'] ?? '';
+                    $rejectedBill['project_name']    = $project['name'] ?? '';
+
+                    $this->mailService->sendContractorBillOnRejection(
+                        $rejectedBill,
+                        $this->userId
+                    );
+                }
+            } catch (\Exception $e) {
+                error_log("Contractor Bill email (rejection) failed: " . $e->getMessage());
+            }
+
             setSuccess('Bill has been rejected.');
         } else {
             setError('Failed to reject bill.');

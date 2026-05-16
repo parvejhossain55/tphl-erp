@@ -415,18 +415,24 @@ class Con_WorkingPlanController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        $amount = (float) ($_POST['amount'] ?? 0);
+        $adjType = $_POST['adjustment_type'] ?? 'increase';
+        if ($adjType === 'decrease') {
+            $amount = -$amount;
+        }
+
         $data = [
             'project_id'        => (int)   ($_POST['project_id']        ?? 0),
             'initial_budget_id' => (int)   ($_POST['initial_budget_id'] ?? 0),
             'requested_by'      => (int)   ($_SESSION['user']['id']     ?? 0),
             'title'             =>          trim($_POST['title']         ?? ''),
-            'amount'            => (float) ($_POST['amount']            ?? 0),
+            'amount'            => $amount,
             'reason'            =>          trim($_POST['reason']        ?? ''),
             'docs_link'         =>          trim($_POST['docs_link']     ?? ''),
         ];
 
-        if (!$data['project_id'] || !$data['initial_budget_id'] || empty($data['title']) || $data['amount'] <= 0) {
-            setError('All fields are required and amount must be > 0.');
+        if (!$data['project_id'] || !$data['initial_budget_id'] || empty($data['title']) || $data['amount'] == 0) {
+            setError('All fields are required and amount cannot be 0.');
             header("Location: {$GLOBALS['base_url']}/con-budget-extend-create");
             exit;
         }
@@ -455,9 +461,17 @@ class Con_WorkingPlanController extends Controller
         $userId  = (int)($_SESSION['user']['id'] ?? 0);
         $remarks = trim($_POST['remarks'] ?? '');
 
+        // Fetch request info before approving to send email
+        $request = $this->model->findExtend($id);
+
         $result = $this->model->approveBudgetExtend($id, $userId, $remarks);
         if ($result['ok']) {
-            setSuccess('Budget extension request approved. Revised budget updated.');
+            if ($request) {
+                require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+                $wfMail = new \ProjectWorkflowMailService($this->db);
+                $wfMail->notifyAfterBudgetAdjustment($request['project_id'], $request['project_name'] ?? 'Project', (float)$request['amount'], $request['reason']);
+            }
+            setSuccess('Budget adjustment request approved. Revised budget updated.');
         } else {
             setError($result['error']);
         }

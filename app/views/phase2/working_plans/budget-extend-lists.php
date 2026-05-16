@@ -4,7 +4,7 @@
         <nav>
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
-                <li class="breadcrumb-item active">Budget Extensions</li>
+                <li class="breadcrumb-item active">Budget Adjustments</li>
             </ol>
         </nav>
     </div>
@@ -39,7 +39,7 @@
                             <th>Project</th>
                             <th>Budget Status</th>
                             <th class="text-end">Initial Budget (৳)</th>
-                            <th class="text-end">Approved Extensions (৳)</th>
+                            <th class="text-end">Approved Adjustments (৳)</th>
                             <th class="text-end">Revised Total (৳)</th>
                             <th class="text-end">Total Planned (৳)</th>
                             <th class="text-end">Remaining (৳)</th>
@@ -113,8 +113,8 @@
                                         Budget #<?= $item['initial_budget_id'] ?>
                                     </span>
                                 </td>
-                                <td class="text-end fw-bold text-danger">
-                                    +৳ <?= number_format($item['amount'], 2) ?>
+                                <td class="text-end fw-bold <?= $item['amount'] > 0 ? 'text-danger' : 'text-success' ?>">
+                                    <?= $item['amount'] > 0 ? '+' : '' ?>৳ <?= number_format($item['amount'], 2) ?>
                                 </td>
                                 <td><?= htmlspecialchars($item['requested_by_name']) ?></td>
 
@@ -244,7 +244,7 @@
             <form id="rejectForm" method="POST">
                 <div class="modal-header">
                     <h5 class="modal-title text-danger" id="rejectModalLabel">
-                        <i class="bi bi-x-circle me-2"></i>Reject Extension Request
+                        <i class="bi bi-x-circle me-2"></i>Reject Adjustment Request
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>

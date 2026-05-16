@@ -93,8 +93,37 @@ class ProjectDrawingController extends Controller {
             $records = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
         } else {
-            // All other roles — read-only, see all
-            $records = $this->model->getAll();
+            // All other roles — see only their assigned projects
+            if ($filterProjectId > 0) {
+                $stmt = $this->db->prepare("
+                    SELECT d.*, p.name AS project_name, dt.name AS design_type_name, u.full_name AS internal_designer_name
+                    FROM project_drawings d
+                    LEFT JOIN projects p  ON d.project_id    = p.id
+                    LEFT JOIN design_types dt ON d.design_type_id = dt.id
+                    LEFT JOIN users u ON d.user_id = u.id
+                    WHERE d.project_id = ?
+                      AND (p.pm_id = ? OR p.site_engineer_id = ? OR p.landman_id = ? OR p.struct_engineer_id = ? 
+                           OR p.operation_head_id = ? OR p.draftsman_id = ? OR p.architect_id = ? 
+                           OR p.estimator_id = ? OR p.qc_id = ? OR p.operator_id = ? OR p.created_by = ?)
+                    ORDER BY d.id DESC
+                ");
+                $stmt->bind_param('iiiiiiiiiiii', $filterProjectId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId);
+            } else {
+                $stmt = $this->db->prepare("
+                    SELECT d.*, p.name AS project_name, dt.name AS design_type_name, u.full_name AS internal_designer_name
+                    FROM project_drawings d
+                    LEFT JOIN projects p  ON d.project_id    = p.id
+                    LEFT JOIN design_types dt ON d.design_type_id = dt.id
+                    LEFT JOIN users u ON d.user_id = u.id
+                    WHERE p.pm_id = ? OR p.site_engineer_id = ? OR p.landman_id = ? OR p.struct_engineer_id = ? 
+                           OR p.operation_head_id = ? OR p.draftsman_id = ? OR p.architect_id = ? 
+                           OR p.estimator_id = ? OR p.qc_id = ? OR p.operator_id = ? OR p.created_by = ?
+                    ORDER BY d.id DESC
+                ");
+                $stmt->bind_param('iiiiiiiiiii', $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId);
+            }
+            $stmt->execute();
+            $records = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         }
 
         $this->view('phase2/project_drawings/project-drawings', [
@@ -284,9 +313,14 @@ class ProjectDrawingController extends Controller {
             )->fetch_all(MYSQLI_ASSOC);
         }
         $stmt = $this->db->prepare(
-            "SELECT id, name FROM projects WHERE {$roleCol} = ? AND deleted_at IS NULL ORDER BY name ASC"
+            "SELECT id, name FROM projects 
+             WHERE deleted_at IS NULL 
+               AND (pm_id = ? OR site_engineer_id = ? OR landman_id = ? OR struct_engineer_id = ? 
+                    OR operation_head_id = ? OR draftsman_id = ? OR architect_id = ? 
+                    OR estimator_id = ? OR qc_id = ? OR operator_id = ? OR created_by = ?)
+             ORDER BY name ASC"
         );
-        $stmt->bind_param('i', $userId);
+        $stmt->bind_param('iiiiiiiiiii', $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }

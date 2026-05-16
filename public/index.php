@@ -780,6 +780,7 @@ $routes['con-ajax-weekly/(\d+)']   = ['controller' => 'Phase2\Con_DashboardContr
 $routes['con-ajax-workorders/(\d+)']= ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWorkOrders'];
 // ── Role-Specific Dashboards ───────────────────────────────────────────────
 $routes['operations-dashboard']           = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'operationsDashboard'];
+$routes['con-site-engineer-dashboard']    = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'siteEngineerDashboard'];
 $routes['qc-dashboard']                   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'qcDashboard'];
 $routes['purchase-team-lead-dashboard']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'purchaseTeamLeadDashboard'];
 $routes['draft-dashboard']                = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'draftDashboard'];
@@ -886,6 +887,7 @@ $routes['con-purchase-orders']         = ['controller' => 'Phase2\Con_PurchaseOr
 $routes['con-purchase-order/(\d+)']    = ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'show'];
 $routes['con-purchase-order-generate/(\d+)'] = ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'generate'];
 $routes['con-purchase-order-approve/(\d+)']  = ['controller' => 'Phase2\\Con_PurchaseOrderController', 'method' => 'approvePO'];
+$routes['con-purchase-order-reject/(\d+)']   = ['controller' => 'Phase2\\Con_PurchaseOrderController', 'method' => 'rejectPO'];
 
 $routes['con-material-receivings']             = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'index'];
 $routes['con-material-receiving-create/(\d+)'] = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'create'];

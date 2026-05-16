@@ -252,6 +252,20 @@ class Con_PurchaseRequestController extends Controller
         $stmt->bind_param('sii', $status, $userId, $id);
         if ($stmt->execute()) {
             setSuccess("Purchase Request status updated to {$status}.");
+            
+            // Trigger email if rejected
+            if ($status === 'Rejected') {
+                require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+                $mailService = new \ProjectWorkflowMailService($this->db);
+                // Fetch project ID and name
+                $prInfo = $this->db->prepare("SELECT pr.project_id, p.name FROM purchase_requests pr JOIN projects p ON p.id = pr.project_id WHERE pr.id = ?");
+                $prInfo->bind_param('i', $id);
+                $prInfo->execute();
+                $prRow = $prInfo->get_result()->fetch_assoc();
+                if ($prRow) {
+                    $mailService->notifyAfterPRRejection((int)$prRow['project_id'], $prRow['name'], $id);
+                }
+            }
         } else {
             setError('Failed to update status.');
         }

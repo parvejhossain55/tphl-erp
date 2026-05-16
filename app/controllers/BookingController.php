@@ -395,7 +395,7 @@ class BookingController extends Controller
             $failedCount = count($skippedRows);
 
             if ($successCount > 0) {
-                $msg = "✅ $successCount / $totalRows Bookings imported successfully.";
+                $msg = " $successCount / $totalRows Bookings imported successfully.";
                 if ($failedCount > 0) {
                     $msg .= " ⚠️ $failedCount row(s) skipped — see details below.";
                 }

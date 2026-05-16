@@ -526,6 +526,14 @@ class Con_InitialEstimateController extends Controller
 
         if ($this->model->cancelBudget($id, $note)) {
             setSuccess('Budget rejected.');
+            
+            // Trigger rejection email
+            require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+            $mailService = new \ProjectWorkflowMailService($this->db);
+            $b = $this->model->find($id);
+            if ($b && !empty($b['project_id'])) {
+                $mailService->notifyAfterBudgetRejection((int)$b['project_id'], $b['project_name'] ?? 'Project', $id, $note);
+            }
         } else {
             setError('Cancellation failed.');
         }

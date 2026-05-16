@@ -20,7 +20,7 @@
             <div class="card__wrapper shadow-sm">
                 <div class="card__header">
                     <h6 class="card__title mb-0">
-                        <i class="bi bi-coin me-2"></i>Request Budget Extension
+                        <i class="bi bi-coin me-2"></i>Request Budget Adjustment
                     </h6>
                 </div>
                 <div class="card__body p-4">
@@ -63,14 +63,23 @@
                         </div>
 
                         <!-- Amount -->
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">
-                                Extension Amount (৳) <span class="text-danger">*</span>
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text">৳</span>
-                                <input type="number" step="0.01" name="amount"
-                                       class="form-control" placeholder="0.00" min="0.01" required>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Adjustment Type <span class="text-danger">*</span></label>
+                                <select name="adjustment_type" class="form-select" required>
+                                    <option value="increase">Increase (+)</option>
+                                    <option value="decrease">Decrease (-)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">
+                                    Amount (৳) <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">৳</span>
+                                    <input type="number" step="0.01" name="amount"
+                                           class="form-control" placeholder="0.00" min="0.01" required>
+                                </div>
                             </div>
                         </div>
 
@@ -119,8 +128,8 @@
 
                         <div class="alert alert-info py-2 small mb-4">
                             <i class="bi bi-info-circle me-1"></i>
-                            Once submitted, this request will be reviewed by management. Approved extensions
-                            automatically increase the project's Revised Total Budget.
+                            Once submitted, this request will be reviewed by management. Approved adjustments
+                            will automatically update the project's Revised Total Budget.
                         </div>
 
                         <div class="text-end">
