@@ -233,6 +233,8 @@ class Con_MaterialReceiving extends Model
                         $rejectedCount++;
                     } else {
                         $acceptedCount++; // counts as partially accepted
+                    }
+                    
                     if ($status === 'Partially Accepted' && $accQty > 0) {
                         // AUTO STOCK IN for Partially Accepted items
                         $stockModel->logMovement([
