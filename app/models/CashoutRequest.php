@@ -179,7 +179,14 @@ public function createRequest($data)
                 rejector.full_name as rejected_by_name
                 FROM {$this->table} cr
                 LEFT JOIN users u ON cr.requested_by = u.id
-                LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
+                LEFT JOIN (
+                    SELECT ar1.* FROM approval_requests ar1
+                    INNER JOIN (
+                        SELECT source_table, source_id, MAX(id) as max_id 
+                        FROM approval_requests 
+                        GROUP BY source_table, source_id
+                    ) ar2 ON ar1.id = ar2.max_id
+                ) ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
                 LEFT JOIN users approver ON ar.approved_by = approver.id
                 LEFT JOIN users rejector ON cr.rejected_by = rejector.id
                 WHERE cr.requested_by = ?
@@ -243,7 +250,14 @@ public function createRequest($data)
                     rejector.full_name COLLATE utf8mb4_general_ci AS rejected_by_name
                 FROM {$this->table} cr
                 LEFT JOIN users u ON cr.requested_by = u.id
-                LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
+                LEFT JOIN (
+                    SELECT ar1.* FROM approval_requests ar1
+                    INNER JOIN (
+                        SELECT source_table, source_id, MAX(id) as max_id 
+                        FROM approval_requests 
+                        GROUP BY source_table, source_id
+                    ) ar2 ON ar1.id = ar2.max_id
+                ) ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
                 LEFT JOIN users approver ON ar.approved_by = approver.id
                 LEFT JOIN users rejector ON cr.rejected_by = rejector.id
 
@@ -284,7 +298,14 @@ public function createRequest($data)
                 FROM vendor_payment_requests vpr
                 LEFT JOIN vendors v ON vpr.vendor_id = v.id
                 LEFT JOIN users u ON vpr.created_by = u.id
-                LEFT JOIN approval_requests ar ON ar.source_table = 'vendor_payment_requests' AND ar.source_id = vpr.id
+                LEFT JOIN (
+                    SELECT ar1.* FROM approval_requests ar1
+                    INNER JOIN (
+                        SELECT source_table, source_id, MAX(id) as max_id 
+                        FROM approval_requests 
+                        GROUP BY source_table, source_id
+                    ) ar2 ON ar1.id = ar2.max_id
+                ) ar ON ar.source_table = 'vendor_payment_requests' AND ar.source_id = vpr.id
                 LEFT JOIN users approver ON ar.approved_by = approver.id
 
                 UNION ALL
@@ -323,7 +344,14 @@ public function createRequest($data)
                     CAST(NULL AS CHAR) COLLATE utf8mb4_general_ci AS rejected_by_name
                 FROM contractor_bill_requests cbr
                 LEFT JOIN users u ON cbr.created_by = u.id
-                LEFT JOIN approval_requests ar ON ar.source_table = 'contractor_bill_requests' AND ar.source_id = cbr.id
+                LEFT JOIN (
+                    SELECT ar1.* FROM approval_requests ar1
+                    INNER JOIN (
+                        SELECT source_table, source_id, MAX(id) as max_id 
+                        FROM approval_requests 
+                        GROUP BY source_table, source_id
+                    ) ar2 ON ar1.id = ar2.max_id
+                ) ar ON ar.source_table = 'contractor_bill_requests' AND ar.source_id = cbr.id
                 LEFT JOIN users approver ON ar.approved_by = approver.id
             ) AS cr
             WHERE 1 = 1
@@ -428,7 +456,14 @@ public function createRequest($data)
                 rejector.full_name as rejected_by_name
                 FROM {$this->table} cr
                 LEFT JOIN users u ON cr.requested_by = u.id
-                LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
+                LEFT JOIN (
+                    SELECT ar1.* FROM approval_requests ar1
+                    INNER JOIN (
+                        SELECT source_table, source_id, MAX(id) as max_id 
+                        FROM approval_requests 
+                        GROUP BY source_table, source_id
+                    ) ar2 ON ar1.id = ar2.max_id
+                ) ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
                 LEFT JOIN users approver ON ar.approved_by = approver.id
                 LEFT JOIN users rejector ON cr.rejected_by = rejector.id
                 WHERE cr.id = ?
@@ -500,10 +535,10 @@ public function createRequest($data)
             if (!empty($approvalRequest) && $approvalRequest['status'] === 'pending') {
                 $approvalSql = "UPDATE approval_requests 
                                SET status = ?, approved_by = ?, approved_at = NOW()
-                               WHERE source_table = 'cashout_requests' AND source_id = ?";
+                               WHERE id = ?";
 
                 $approvalStmt = $this->db->prepare($approvalSql);
-                $approvalStmt->bind_param("sii", $status, $userId, $id);
+                $approvalStmt->bind_param("sii", $status, $userId, $approvalRequest['id']);
 
                 if (!$approvalStmt->execute()) {
                     throw new Exception("Approval request update failed: " . $approvalStmt->error);
@@ -620,7 +655,7 @@ public function createRequest($data)
     {
         $sql = "SELECT * FROM approval_requests 
                 WHERE source_table = 'cashout_requests' AND source_id = ?
-                LIMIT 1";
+                ORDER BY id DESC LIMIT 1";
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param("i", $cashoutId);
@@ -675,7 +710,14 @@ public function createRequest($data)
     public function syncPendingRequests()
     {
         $sql = "UPDATE {$this->table} cr
-                LEFT JOIN approval_requests ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
+                LEFT JOIN (
+                    SELECT ar1.* FROM approval_requests ar1
+                    INNER JOIN (
+                        SELECT source_table, source_id, MAX(id) as max_id 
+                        FROM approval_requests 
+                        GROUP BY source_table, source_id
+                    ) ar2 ON ar1.id = ar2.max_id
+                ) ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
                 SET cr.status = CASE 
                     WHEN ar.status = 'approved' OR ar.status = 'partial' THEN 'approved'
                     WHEN ar.status = 'rejected' THEN 'rejected'
