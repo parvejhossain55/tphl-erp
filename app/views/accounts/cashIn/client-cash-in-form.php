@@ -204,8 +204,8 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                         <div class="col-md-6">
                             <div class="from__input-box">
                                 <label class="form__input-title">Paid Amount <span>*</span></label>
-                                <input type="number" name="amount" id="amount" class="form-control" step="1"
-                                    min="1" required placeholder="Enter payment amount">
+                                        <input type="number" name="amount" id="amount" class="form-control" step="0.01"
+                                    min="0.01" required placeholder="Enter payment amount">
                                 <small id="amountHelp" class="text-muted"></small>
                             </div>
                         </div>
@@ -443,8 +443,8 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
             switch (paymentTypeValue) {
                 case 'booking_money':
                     if (bookingBalance > 0) {
-                        helpText = 'Maximum payable: TK.' + Math.round(bookingBalance).toLocaleString('en-IN') + ' (agreement minus discount)';
-                        amountField.setAttribute('max', Math.round(bookingBalance));
+                        helpText = 'Maximum payable: TK.' + bookingBalance.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (agreement minus discount)';
+                        amountField.setAttribute('max', bookingBalance.toFixed(2));
                         amountField.setAttribute('placeholder', 'Max: TK.' + bookingBalance.toLocaleString('en-IN', {minimumFractionDigits:2}));
                     } else {
                         helpText = 'Booking already fully paid';
@@ -455,8 +455,8 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
 
                 case 'land_share':
                     if (remainingLandShare > 0) {
-                        helpText = 'Maximum: TK.' + Math.round(remainingLandShare).toLocaleString('en-IN');
-                        amountField.setAttribute('max', Math.round(remainingLandShare));
+                        helpText = 'Maximum: TK.' + remainingLandShare.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+                        amountField.setAttribute('max', remainingLandShare.toFixed(2));
                     } else {
                         helpText = 'Land share already completed';
                         amountField.setAttribute('disabled', 'disabled');
@@ -473,13 +473,13 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                         let dueNote = totalDue > 0 ? ' Outstanding due: TK.' + totalDue.toLocaleString('en-IN', {minimumFractionDigits:2}) + ' (auto-cleared first).' : '';
                         const effectiveMax = Math.min(perEmiAmount, remainingCF);
                         if (remainingCF < perEmiAmount) {
-                            helpText = 'Remaining CF: TK.' + Math.round(remainingCF).toLocaleString('en-IN') + ' (less than per EMI).' + svcPct + dueNote;
-                            amountField.setAttribute('placeholder', 'Max: TK.' + Math.round(remainingCF).toLocaleString('en-IN'));
-                            amountField.setAttribute('max', Math.round(remainingCF));
+                            helpText = 'Remaining CF: TK.' + remainingCF.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (less than per EMI).' + svcPct + dueNote;
+                            amountField.setAttribute('placeholder', 'Max: TK.' + remainingCF.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}));
+                            amountField.setAttribute('max', remainingCF.toFixed(2));
                         } else {
                             helpText = 'Suggested: TK.' + perEmiAmount.toLocaleString('en-IN', {minimumFractionDigits:2}) + svcPct + '.' + dueNote + ' Enter any amount — system allocates automatically.';
                             amountField.setAttribute('placeholder', 'Suggested EMI: TK.' + perEmiAmount.toLocaleString('en-IN', {minimumFractionDigits:2}));
-                            amountField.setAttribute('max', Math.round(remainingCF));
+                            amountField.setAttribute('max', remainingCF.toFixed(2));
                         }
                         amountField.removeAttribute('disabled');
                     } else {
@@ -490,8 +490,8 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
 
                 case 'registration':
                     if (remainingLandShare > 0) {
-                        helpText = 'Registration fee (Max: TK.' + Math.round(remainingLandShare).toLocaleString('en-IN') + ')';
-                        amountField.setAttribute('max', Math.round(remainingLandShare));
+                        helpText = 'Registration fee (Max: TK.' + remainingLandShare.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')';
+                        amountField.setAttribute('max', remainingLandShare.toFixed(2));
                     } else {
                         helpText = 'Land share fully paid — registration not needed.';
                         amountField.setAttribute('disabled', 'disabled');
@@ -540,7 +540,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
             if (cfRemainAfter > 0) {
                 // Expected for this installment is capped at actual remaining CF
                 const expectedForThis = perEmiAmount > 0 ? Math.min(perEmiAmount, remainingCF) : 0;
-                due = expectedForThis > 0 && entered < expectedForThis ? Math.round(expectedForThis - entered) : 0;
+                due = expectedForThis > 0 && entered < expectedForThis ? (expectedForThis - entered).toFixed(2) : 0;
             }
             if (dueEmiHidden)  dueEmiHidden.value  = due.toFixed(2);
             if (dueEmiDisplay) dueEmiDisplay.value  = due > 0 ? 'TK. ' + due.toLocaleString('en-IN') : 'TK. 0.00';

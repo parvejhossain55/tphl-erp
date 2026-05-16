@@ -145,8 +145,8 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                         <div class="col-md-6">
                             <div class="from__input-box">
                                 <label class="form__input-title">Paid Amount <span>*</span></label>
-                                <input type="number" name="amount" id="amount" class="form-control" step="1"
-                                    min="1" required>
+                                <input type="number" name="amount" id="amount" class="form-control" step="0.01"
+                                    min="0.01" required>
                                 <small id="amountHelp" class="text-muted"></small>
                             </div>
                         </div>
@@ -383,13 +383,13 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                         helpText = 'Construction fee fully paid — no more EMI needed.';
                         amountField.setAttribute('disabled', 'disabled');
                     } else if (perEmi > 0 && cedRemainingCF < perEmi) {
-                        helpText = 'Remaining CF: TK.' + cedRemainingCF.toLocaleString('en-IN', {minimumFractionDigits:2}) + ' (less than per EMI).' + dueNote;
-                        amountField.setAttribute('placeholder', 'Max: TK.' + Math.round(cedRemainingCF).toLocaleString('en-IN'));
-                        amountField.setAttribute('max', Math.round(cedRemainingCF));
+                        helpText = 'Remaining CF: TK.' + cedRemainingCF.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (less than per EMI).' + dueNote;
+                        amountField.setAttribute('placeholder', 'Max: TK.' + cedRemainingCF.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}));
+                        amountField.setAttribute('max', cedRemainingCF.toFixed(2));
                         amountField.removeAttribute('disabled');
                     } else {
                         helpText = perEmi > 0 ? 'Suggested: TK.' + perEmi.toLocaleString('en-IN', {minimumFractionDigits:2}) + '.' + dueNote + ' Enter any amount — system allocates automatically.' : 'Enter EMI amount';
-                        amountField.setAttribute('max', Math.round(cedRemainingCF));
+                        amountField.setAttribute('max', cedRemainingCF.toFixed(2));
                         amountField.removeAttribute('disabled');
                     }
                     break;

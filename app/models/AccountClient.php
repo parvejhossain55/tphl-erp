@@ -778,7 +778,8 @@ ORDER BY lb.booking_date DESC
         // Effective booking target: discount reduces how much the client must physically pay
         $effectiveBookingTarget = max(0, $agreementValue - $discountForBooking);
         // Booking is fully paid when verified-only payments cover the effective target (after discount)
-        $isBookingFullyPaid  = ($effectiveBookingTarget > 0 && $bookingMoneyPaid >= $effectiveBookingTarget);
+        // We add a 1.0 TK tolerance to avoid 0.01 float issues locking the system
+        $isBookingFullyPaid  = ($effectiveBookingTarget > 0 && $bookingMoneyPaid >= ($effectiveBookingTarget - 1.0));
         // Also consider fully paid if no agreement set at all
         if ($effectiveBookingTarget <= 0 && $agreementValue <= 0) {
             $isBookingFullyPaid = false; // no agreement set, assume not paid

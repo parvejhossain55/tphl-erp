@@ -335,7 +335,7 @@ class AccountShopClient extends AccountClient
         $bookingMoneyPaid     = (float) ($clientDetails['booking_money_paid'] ?? 0);
         
         $effectiveBookingTarget = max(0, ($clientDetails['total_price'] * 0.15) - $discountForBooking);
-        $isBookingFullyPaid  = ($effectiveBookingTarget > 0 && $bookingMoneyPaid >= $effectiveBookingTarget);
+        $isBookingFullyPaid  = ($effectiveBookingTarget > 0 && $bookingMoneyPaid >= ($effectiveBookingTarget - 1.0));
         if ($effectiveBookingTarget <= 0 && $clientDetails['total_price'] <= 0) {
             $isBookingFullyPaid = false; 
         }
