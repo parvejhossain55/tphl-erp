@@ -245,9 +245,17 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                                    class="form-control" step="1" min="0" value="0"
                                                    placeholder="Enter discount amount">
                                         </div>
-
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                Remaining CF after payment: <strong id="remainingCFAfterPayment">—</strong><br>
+                                                Max discount: <strong id="maxBulkDiscount">—</strong>
+                                            </small>
+                                        </div>
                                     </div>
-
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="fa-light fa-info-circle me-1"></i>
+                                        This discount reduces the <strong>total construction fee</strong> (separate from booking discount). Applied after verification.
+                                    </small>
                                 </div>
                             </div>
                         </div>
@@ -416,6 +424,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
         const parentPaymentIdSelect  = document.getElementById('parentPaymentId');
         const dueEmiHidden           = document.getElementById('dueEmiAmount');
         const dueEmiDisplay          = document.getElementById('dueEmiDisplay');
+        const remainingCF            = <?= json_encode((float)$remainingCF) ?>;
         // Bulk discount elements
         const bulkDiscountSection    = document.getElementById('bulkDiscountSection');
         const bulkDiscountInput      = document.getElementById('bulkEmiDiscount');
@@ -455,7 +464,6 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     break;
 
                 case 'emi':
-                    const remainingCF = <?= json_encode((float)$remainingCF) ?>;
                     if (remainingCF <= 0) {
                         helpText = 'Construction fee fully paid — no more EMI needed.';
                         amountField.setAttribute('disabled', 'disabled');
