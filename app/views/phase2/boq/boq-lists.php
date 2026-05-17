@@ -17,7 +17,7 @@ function consumeClass($pct) {
         <h4><?= htmlspecialchars($page_title) ?></h4>
     </div>
     <div class="d-flex gap-2">
-        <?php if ($isPM): ?>
+        <?php if (!in_array($currentRole, [1, 3, 15, 20, 22])): ?>
         <a href="<?= $base_url ?>/con-boq-create" class="btn btn-primary btn-sm">
             <i class="bi bi-plus-circle me-1"></i> New BOQ
         </a>
@@ -118,7 +118,7 @@ function consumeClass($pct) {
                                         class="btn btn-sm btn-outline-info" title="View Details">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <?php if ($isPM): ?>
+                                    <?php if (!in_array($currentRole, [1, 3, 15, 20, 22])): ?>
                                         <a href="<?= $base_url ?>/con-boq-edit/<?= $boq['id'] ?>"
                                             class="btn btn-sm btn-outline-warning ms-1" title="Edit">
                                             <i class="bi bi-pencil-square"></i>

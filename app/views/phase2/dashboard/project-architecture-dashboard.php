@@ -365,6 +365,44 @@ $isAdmin = $isAdmin ?? false;
       </div>
     </div>
 
+    <!-- ═════ WORKFLOW NOTIFICATIONS ═════ -->
+    <?php if (!empty($landDoneNotifications)): ?>
+      <div class="mb-4" style="border-radius:14px; padding:20px; border:1px solid rgba(25,135,84,.2); background:rgba(25,135,84,.04);">
+        <div style="font-weight:800; font-size:14px; color:#0f5132; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+          <div style="width:32px; height:32px; border-radius:50%; background:rgba(25,135,84,.15); display:flex; align-items:center; justify-content:center; color:#198754;">
+            <i class="fal fa-bell"></i>
+          </div>
+          Workflow Notification: Land Visibility Completed (Ready for Architecture)
+        </div>
+        <div style="overflow-x:auto; background:#fff; border-radius:10px; border:1px solid rgba(0,0,0,.05);">
+          <table class="pa-table" style="margin:0;">
+            <thead>
+              <tr>
+                <th>Project Name</th>
+                <th>Land Study Completed On</th>
+                <th style="text-align:right;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($landDoneNotifications as $noti): ?>
+                <tr>
+                  <td><strong style="font-size:13px; color:var(--pa-primary);"><?= htmlspecialchars($noti['project_name']) ?></strong></td>
+                  <td style="font-size:12px; color:var(--text-muted);">
+                    <i class="fal fa-calendar me-1"></i> <?= date('d M Y, h:i A', strtotime($noti['land_completed_date'])) ?>
+                  </td>
+                  <td style="text-align:right;">
+                    <a href="<?= $base ?>/con-architect-engineering" style="display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:6px 14px; border-radius:8px; text-decoration:none; background:var(--pa-primary); color:#fff;">
+                      Start Architecture <i class="fal fa-arrow-right"></i>
+                    </a>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <?php endif; ?>
+
     <!-- ═════ KPI GRID ═════ -->
     <div class="kpi-grid-4">
 

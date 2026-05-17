@@ -20,25 +20,13 @@ $projects        = $projects        ?? [];
     </p>
     <!-- Blocked project chips -->
     <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:24px;">
-      <?php foreach ($blockedProjects as $bp):
-        $label = match($bp['ae_status']) {
-            'draft'       => 'Draft',
-            'partially'   => 'In Progress',
-            'not_started' => 'Not Started',
-            default       => 'Pending',
-        };
-        $color = match($bp['ae_status']) {
-            'draft'       => '#94a3b8',
-            'partially'   => '#f59e0b',
-            default       => '#ef4444',
-        };
-      ?>
+      <?php foreach ($blockedProjects as $bp): ?>
       <div style="background:var(--card-bg,#fff);border:1px solid rgba(0,0,0,.09);border-radius:12px;padding:10px 16px;display:flex;align-items:center;gap:10px;">
         <i class="fal fa-building" style="color:var(--text-muted);font-size:16px;"></i>
         <div style="text-align:left;">
           <div style="font-size:13px;font-weight:700;"><?= htmlspecialchars($bp['name']) ?></div>
-          <div style="font-size:10px;color:<?= $color ?>;font-weight:700;">
-            <i class="fal fa-clock me-1"></i>A&amp;E Status: <?= $label ?>
+          <div style="font-size:10px;color:#ef4444;font-weight:700;">
+            <i class="fal fa-clock me-1"></i>A&amp;E Status: Pending
           </div>
         </div>
       </div>

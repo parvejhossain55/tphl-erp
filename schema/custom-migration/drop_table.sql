@@ -113,3 +113,7 @@ DROP TABLE IF EXISTS qc_inspection_items;
 DROP TABLE IF EXISTS con_work_orders;
 DROP TABLE IF EXISTS project_legal_sheets;
 DROP TABLE IF EXISTS weekly_progress_report;
+DROP TABLE IF EXISTS con_security_systems;
+DROP TABLE IF EXISTS con_security_equipments;
+DROP TABLE IF EXISTS con_security_daily_logs;
+DROP TABLE IF EXISTS con_security_incidents;

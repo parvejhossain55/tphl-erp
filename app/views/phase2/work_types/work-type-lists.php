@@ -46,7 +46,7 @@ $show_breadcrumb = true;
                                             <?= htmlspecialchars($row['design_type_name'] ?? 'N/A') ?>
                                         </span>
                                     </td>
-                                    <td><?= htmlspecialchars($row['description']) ?></td>
+                                    <td><?= ($row['description'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($row['created_by_name'] ?? 'N/A') ?></td>
                                     <td class="table__icon-box">
                                         <div class="d-flex align-items-center justify-content-start gap-10">

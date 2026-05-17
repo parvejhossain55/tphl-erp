@@ -188,6 +188,23 @@ class Con_DashboardController extends Controller
             ORDER BY r.id DESC LIMIT 10");
         $pendingWeeklyReportsPM = $rPendingWeeklyPM ? $rPendingWeeklyPM->fetch_all(MYSQLI_ASSOC) : [];
 
+        // ── Pending Security Issues ──────────────────────────────
+        $rPendingIncidents = $this->db->query("
+            SELECT i.id, i.issue_title, i.priority, i.reported_at, p.name AS project_name
+            FROM con_security_incidents i
+            LEFT JOIN projects p ON p.id = i.project_id
+            WHERE i.status != 'Resolved'
+            ORDER BY i.id DESC LIMIT 5");
+        $pendingIncidents = $rPendingIncidents ? $rPendingIncidents->fetch_all(MYSQLI_ASSOC) : [];
+
+        $rPendingLogs = $this->db->query("
+            SELECT l.id, l.log_date, l.remarks, p.name AS project_name
+            FROM con_security_daily_logs l
+            LEFT JOIN projects p ON p.id = l.project_id
+            WHERE l.condition_status = 'Issue Found' AND l.status != 'Resolved'
+            ORDER BY l.id DESC LIMIT 5");
+        $pendingLogs = $rPendingLogs ? $rPendingLogs->fetch_all(MYSQLI_ASSOC) : [];
+
         // ── Week-based Target Notifications (PM role=15, SE role=12) ──────
         // Show targets where current month+week matches the target's month+week
         $curYear  = (int)date('Y');
@@ -265,7 +282,6 @@ class Con_DashboardController extends Controller
         ");
         $pendingReturns = $rPendingReturns ? $rPendingReturns->fetch_all(MYSQLI_ASSOC) : [];
 
-        // ── Pending Work Orders ──────────────────────────────────
         $pendingWorkOrders = [];
         if (in_array($userRole, [1, 3, 22])) {
             $rWO = $this->db->query("
@@ -284,6 +300,47 @@ class Con_DashboardController extends Controller
             $pendingWorkOrders = $rWO ? $rWO->fetch_all(MYSQLI_ASSOC) : [];
         }
 
+        // ── Pending Budget Extensions ──────────────────────────────
+        $pendingBudgetExtends = [];
+        if (in_array($userRole, [1, 3, 15, 22])) {
+            $rBE = $this->db->query("
+                SELECT r.id, r.amount, r.title, r.reason, r.created_at,
+                       p.name AS project_name,
+                       u.full_name AS requester_name
+                FROM project_budget_requests r
+                LEFT JOIN projects p ON p.id = r.project_id
+                LEFT JOIN users u ON u.id = r.requested_by
+                WHERE r.status = 'Pending'
+                ORDER BY r.created_at DESC
+                LIMIT 10
+            ");
+            $pendingBudgetExtends = $rBE ? $rBE->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
+        // ── PRs awaiting approval — for roles 3, 15, 22 ─────────────────────
+        $prsForApproval = [];
+        if (in_array($userRole, [3, 15, 22])) {
+            $rPRApproval = $this->db->query("
+                SELECT pr.id, pr.status, pr.created_at, pr.notes,
+                       p.name  AS project_name,
+                       u.full_name AS created_by_name,
+                       r.name  AS created_by_role,
+                       COUNT(pri.id) AS item_count
+                FROM purchase_requests pr
+                LEFT JOIN projects p    ON p.id  = pr.project_id
+                LEFT JOIN users u       ON u.id  = pr.created_by
+                LEFT JOIN roles r       ON r.id  = u.role_id
+                LEFT JOIN purchase_request_items pri ON pri.request_id = pr.id
+                WHERE pr.status IN ('Draft', 'Submitted')
+                GROUP BY pr.id, pr.status, pr.created_at, pr.notes,
+                         p.name, u.full_name, r.name
+                ORDER BY
+                    CASE pr.status WHEN 'Submitted' THEN 0 WHEN 'Draft' THEN 1 ELSE 2 END,
+                    pr.id DESC
+                LIMIT 20");
+            $prsForApproval = $rPRApproval ? $rPRApproval->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
         $this->view('phase2/dashboard/cons-dashboard', [
             'current_route'           => 'con-dashboard',
             'stats'                   => $stats,
@@ -300,8 +357,11 @@ class Con_DashboardController extends Controller
             'pendingGRNs'             => $pendingGRNs,
             'pendingGRNsPM'           => $pendingGRNsPM,
             'pendingWeeklyReportsPM'  => $pendingWeeklyReportsPM,
+            'pendingIncidents'        => $pendingIncidents,
+            'pendingLogs'             => $pendingLogs,
             'pendingReturns'          => $pendingReturns,
             'pendingWorkOrders'       => $pendingWorkOrders,
+            'pendingBudgetExtends'    => $pendingBudgetExtends,
             'weekTargetNotifications' => $weekTargetNotifications,
             'labDueNotifications'     => $labDueNotifications,
             'currentWeek'             => $curWeek,
@@ -310,6 +370,7 @@ class Con_DashboardController extends Controller
             'recentBills'             => $recentBills,
             'recentFunds'             => $recentFunds,
             'recentMaterialIssues'    => $recentMaterialIssues,
+            'prsForApproval'          => $prsForApproval,
         ]);
     }
 
@@ -1022,6 +1083,35 @@ class Con_DashboardController extends Controller
         ");
         $recentReports = $rWPR ? $rWPR->fetch_all(MYSQLI_ASSOC) : [];
 
+        // ── Approved Purchase Orders for SE's projects ─────────────────────────
+        // POs where PM has approved (approved_by_pm != 0) on SE's assigned projects
+        $rApprovedPOs = $this->db->query("
+            SELECT po.id, po.status, po.order_date, po.created_at,
+                   po.approved_by_pm, po.pm_approved_at,
+                   pr.id   AS pr_id,
+                   p.id    AS project_id,
+                   p.name  AS project_name,
+                   u.full_name  AS created_by_name,
+                   pm.full_name AS approved_by_name,
+                   COUNT(poi.id) AS item_count,
+                   COALESCE(SUM(poi.quantity * poi.unit_price), 0) AS total_amount
+            FROM purchase_orders po
+            JOIN purchase_requests pr  ON pr.id  = po.request_id
+            JOIN projects p            ON p.id   = pr.project_id
+            LEFT JOIN users u          ON u.id   = po.created_by
+            LEFT JOIN users pm         ON pm.id  = po.approved_by_pm
+            LEFT JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
+            WHERE p.site_engineer_id = {$userId}
+              AND po.approved_by_pm != 0
+              AND po.approved_by_pm IS NOT NULL
+            GROUP BY po.id, po.status, po.order_date, po.created_at,
+                     po.approved_by_pm, po.pm_approved_at,
+                     pr.id, p.id, p.name, u.full_name, pm.full_name
+            ORDER BY po.pm_approved_at DESC
+            LIMIT 15
+        ");
+        $approvedPOs = $rApprovedPOs ? $rApprovedPOs->fetch_all(MYSQLI_ASSOC) : [];
+
         return $this->view('phase2/dashboard/site-engineer-dashboard', [
             'current_route'   => 'con-site-engineer-dashboard',
             'myProjectsCount' => $myProjectsCount,
@@ -1032,6 +1122,7 @@ class Con_DashboardController extends Controller
             'recentReceives'  => $recentReceives,
             'recentIssues'    => $recentIssues,
             'recentReports'   => $recentReports,
+            'approvedPOs'     => $approvedPOs,
         ]);
     }
 
@@ -1319,6 +1410,46 @@ class Con_DashboardController extends Controller
             ORDER BY pr.id DESC LIMIT 10");
         $pendingPRsForPO = $rPendingPRs ? $rPendingPRs->fetch_all(MYSQLI_ASSOC) : [];
 
+        // ── ALL BOQs (any status) — full visibility for Team Lead ────────────
+        $rAllBOQs = $this->db->query("
+            SELECT bm.id AS boq_id, bm.version, bm.status, bm.created_at, bm.approved_at,
+                   p.id  AS project_id, p.name AS project_name,
+                   u.full_name  AS creator_name,
+                   au.full_name AS approver_name,
+                   COUNT(bi.id)                    AS item_count,
+                   COALESCE(SUM(bi.total_cost), 0) AS grand_total
+            FROM boq_master bm
+            LEFT JOIN projects  p   ON p.id  = bm.project_id
+            LEFT JOIN users     u   ON u.id  = bm.created_by
+            LEFT JOIN users     au  ON au.id = bm.approved_by
+            LEFT JOIN boq_items bi  ON bi.boq_id = bm.id
+            GROUP BY bm.id, bm.version, bm.status, bm.created_at, bm.approved_at,
+                     p.id, p.name, u.full_name, au.full_name
+            ORDER BY bm.created_at DESC
+            LIMIT 30");
+        $allBOQs = $rAllBOQs ? $rAllBOQs->fetch_all(MYSQLI_ASSOC) : [];
+
+        // ── PRs awaiting approval by Purchase Team Lead (role 17) ───────────
+        $rPRsForApproval = $this->db->query("
+            SELECT pr.id, pr.status, pr.created_at, pr.notes,
+                   p.name  AS project_name,
+                   u.full_name AS created_by_name,
+                   r.name  AS created_by_role,
+                   COUNT(pri.id) AS item_count
+            FROM purchase_requests pr
+            LEFT JOIN projects p    ON p.id  = pr.project_id
+            LEFT JOIN users u       ON u.id  = pr.created_by
+            LEFT JOIN roles r       ON r.id  = u.role_id
+            LEFT JOIN purchase_request_items pri ON pri.request_id = pr.id
+            WHERE pr.status IN ('Draft', 'Submitted')
+            GROUP BY pr.id, pr.status, pr.created_at, pr.notes,
+                     p.name, u.full_name, r.name
+            ORDER BY
+                CASE pr.status WHEN 'Submitted' THEN 0 WHEN 'Draft' THEN 1 ELSE 2 END,
+                pr.id DESC
+            LIMIT 20");
+        $prsForApproval = $rPRsForApproval ? $rPRsForApproval->fetch_all(MYSQLI_ASSOC) : [];
+
         return $this->view('phase2/dashboard/purchase-team-lead-dashboard', [
             'current_route'    => 'purchase-team-lead-dashboard',
             'totalPOs'         => $totalPOs,
@@ -1332,6 +1463,8 @@ class Con_DashboardController extends Controller
             'stockOverview'    => $stockOverview,
             'pendingBOQsForPR' => $pendingBOQsForPR,
             'pendingPRsForPO'  => $pendingPRsForPO,
+            'allBOQs'          => $allBOQs,
+            'prsForApproval'   => $prsForApproval,
         ]);
     }
 
@@ -1407,14 +1540,14 @@ class Con_DashboardController extends Controller
         if (!in_array($roleId, [1, 2, 3, 13, 15, 22])) {
             $stmtWait = $this->db->prepare("
                 SELECT p.id, p.name,
-                       COALESCE(ae.status, 'not_started') AS ae_status,
                        COALESCE(u.full_name, 'N/A') AS architect_name
                 FROM projects p
-                LEFT JOIN architect_engineering ae ON ae.project_id = p.id
                 LEFT JOIN users u ON u.id = p.architect_id
                 WHERE p.draftsman_id = ?
                   AND p.deleted_at IS NULL
-                  AND (ae.id IS NULL OR ae.status != 'fully')
+                  AND p.id NOT IN (
+                      SELECT project_id FROM architect_engineering WHERE status = 'fully'
+                  )
                 ORDER BY p.name ASC
             ");
             $stmtWait->bind_param('i', $userId);
@@ -1559,6 +1692,20 @@ class Con_DashboardController extends Controller
         $rExt = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering WHERE architect_type = 'external'");
         $externalArchitects = $rExt ? (int)$rExt->fetch_assoc()['c'] : 0;
 
+        // ── Workflow Notifications: Land Visibility Completed ─────────────────
+        $rLandDone = $this->db->query("
+            SELECT p.id, p.name AS project_name, lvs.created_at AS land_completed_date
+            FROM land_visibility_study lvs
+            JOIN projects p ON p.id = lvs.project_id
+            LEFT JOIN architect_engineering ae ON ae.project_id = p.id
+            WHERE p.deleted_at IS NULL 
+              AND " . $this->getProjectRoleFilter('p') . "
+              AND ae.id IS NULL
+            ORDER BY lvs.id DESC
+            LIMIT 10
+        ");
+        $landDoneNotifications = $rLandDone ? $rLandDone->fetch_all(MYSQLI_ASSOC) : [];
+
         return $this->view('phase2/dashboard/project-architecture-dashboard', [
             'current_route'       => 'project-architecture-dashboard',
             'isAdmin'             => $isAdmin,
@@ -1572,6 +1719,7 @@ class Con_DashboardController extends Controller
             'externalArchitects'  => $externalArchitects,
             'recentAE'            => $recentAE,
             'projectsNeedingAE'   => $projectsNeedingAE,
+            'landDoneNotifications'=> $landDoneNotifications,
         ]);
     }
 
@@ -1875,15 +2023,38 @@ class Con_DashboardController extends Controller
         $r5->execute();
         $myProjects = $r5->get_result()->fetch_all(MYSQLI_ASSOC);
 
+        // BOQ Notifications: projects assigned to this executive that have BOQs
+        // A project is "assigned" when projects.purchase_user_id = $userId
+        $r6 = $this->db->prepare("
+            SELECT
+                p.id        AS project_id,
+                p.name      AS project_name,
+                bm.id       AS boq_id,
+                bm.version  AS boq_version,
+                bm.status   AS boq_status,
+                bm.created_at AS boq_created_at,
+                u.full_name AS boq_created_by
+            FROM projects p
+            JOIN boq_master bm ON bm.project_id = p.id
+            LEFT JOIN users u ON u.id = bm.created_by
+            WHERE p.purchase_user_id = ?
+              AND p.deleted_at IS NULL
+            ORDER BY bm.created_at DESC
+        ");
+        $r6->bind_param('i', $userId);
+        $r6->execute();
+        $boqNotifications = $r6->get_result()->fetch_all(MYSQLI_ASSOC);
+
         $this->view('phase2/dashboard/purchase-executive-dashboard', [
-            'current_route'  => 'con-dashboard',
-            'page_title'     => 'My Purchase Dashboard',
-            'totalAssigned'  => $totalAssigned,
-            'completedCst'   => $completedCst,
-            'pendingCst'     => $pendingCst,
-            'totalQuotations'=> $totalQuotations,
-            'recentAssigned' => $recentAssigned,
-            'myProjects'     => $myProjects,
+            'current_route'    => 'con-dashboard',
+            'page_title'       => 'My Purchase Dashboard',
+            'totalAssigned'    => $totalAssigned,
+            'completedCst'     => $completedCst,
+            'pendingCst'       => $pendingCst,
+            'totalQuotations'  => $totalQuotations,
+            'recentAssigned'   => $recentAssigned,
+            'myProjects'       => $myProjects,
+            'boqNotifications' => $boqNotifications,
         ]);
     }
 }

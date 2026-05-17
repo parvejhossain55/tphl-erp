@@ -606,7 +606,7 @@ $aeStatusLabel = [
                   ?>
                   <tr>
                     <td class="text-muted"><?= $index + 1 ?></td>
-                    <td class="fw-bold text-dark" style="max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                    <td class="fw-bold " style="max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
                       <?= htmlspecialchars($ae['project_name'] ?? 'N/A') ?>
                     </td>
                     <td>

@@ -90,7 +90,7 @@ class Con_BOQController extends Controller
 
     public function store()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -240,7 +240,7 @@ class Con_BOQController extends Controller
 
     public function edit($id)
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -282,7 +282,7 @@ class Con_BOQController extends Controller
 
     public function update($id)
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -389,7 +389,7 @@ class Con_BOQController extends Controller
 
     public function delete()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;

@@ -22,7 +22,13 @@ $statusBg  = $sc['bg'];
 
 $totalAmt  = (float)($wo['total_amount']     ?? 0);
 $advAmt    = (float)($wo['advance_amount']   ?? 0);
+if ($advAmt == 0 && ($wo['advance_percent'] ?? 0) > 0) {
+    $advAmt = round($totalAmt * (float)$wo['advance_percent'] / 100, 2);
+}
 $retAmt    = (float)($wo['retention_amount'] ?? 0);
+if ($retAmt == 0 && ($wo['retention_percent'] ?? 0) > 0) {
+    $retAmt = round($totalAmt * (float)$wo['retention_percent'] / 100, 2);
+}
 $runAmt    = $totalAmt - $advAmt - $retAmt;
 
 $printDate = date('d M Y, h:i A');

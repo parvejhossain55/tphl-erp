@@ -557,9 +557,9 @@ $grandTotal = $budget['total_estimated_cost'] ?? 0;
                 <div class="company">TPHL-ERP · Initial Estimate Budget</div>
                 <h1><?= htmlspecialchars($budget['project_name'] ?? 'N/A') ?></h1>
                 <div class="sub">
-                    <?= !empty($budget['start_date']) ? date('d M Y', strtotime($budget['start_date'])) : '—' ?>
+                    <?= (!empty($budget['start_date']) && $budget['start_date'] !== '0000-00-00') ? date('d M Y', strtotime($budget['start_date'])) : '—' ?>
                     &nbsp;→&nbsp;
-                    <?= !empty($budget['end_date']) ? date('d M Y', strtotime($budget['end_date'])) : '—' ?>
+                    <?= (!empty($budget['end_date']) && $budget['end_date'] !== '0000-00-00') ? date('d M Y', strtotime($budget['end_date'])) : '—' ?>
                     &nbsp;·&nbsp;
                     <?= number_format($budget['total_area_sqft'] ?? 0, 2) ?> sqft
                 </div>
@@ -633,13 +633,13 @@ $grandTotal = $budget['total_estimated_cost'] ?? 0;
                     <div class="info-item">
                         <div class="il">Start Date</div>
                         <div class="iv">
-                            <?= !empty($budget['start_date']) ? date('d M Y', strtotime($budget['start_date'])) : '—' ?>
+                            <?= (!empty($budget['start_date']) && $budget['start_date'] !== '0000-00-00') ? date('d M Y', strtotime($budget['start_date'])) : '—' ?>
                         </div>
                     </div>
                     <div class="info-item">
                         <div class="il">End Date</div>
                         <div class="iv">
-                            <?= !empty($budget['end_date']) ? date('d M Y', strtotime($budget['end_date'])) : '—' ?>
+                            <?= (!empty($budget['end_date']) && $budget['end_date'] !== '0000-00-00') ? date('d M Y', strtotime($budget['end_date'])) : '—' ?>
                         </div>
                     </div>
                     <div class="info-item">

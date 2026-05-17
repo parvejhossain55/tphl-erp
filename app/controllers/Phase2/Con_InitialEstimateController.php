@@ -109,8 +109,8 @@ class Con_InitialEstimateController extends Controller
             'project_id'       => (int)   ($_POST['project_id']       ?? 0),
             'architecture_id'  => (int)   ($_POST['architecture_id']  ?? 0),
             'work_type_id'     => $workTypeId,
-            'start_date'       =>         ($_POST['start_date']       ?? null),
-            'end_date'         =>         ($_POST['end_date']         ?? null),
+            'start_date'       => !empty($_POST['start_date']) ? $_POST['start_date'] : null,
+            'end_date'         => !empty($_POST['end_date'])   ? $_POST['end_date']   : null,
             'total_area_sqft'  => (float) ($_POST['total_area_sqft']  ?? 0),
             'other_costs'      => (float) ($_POST['other_costs']      ?? 0),
             'other_cost_detail'=>         ($_POST['other_cost_detail']?? null),
@@ -236,8 +236,9 @@ class Con_InitialEstimateController extends Controller
         $breakdown = $this->model->getFullBreakdownByDesignType($id);
 
         // Load working plans linked to this budget (with approved_status)
-        $wpModel      = new \Con_WorkingPlan($this->db);
-        $workingPlans = $wpModel->getByBudget($id);
+        $wpModel          = new \Con_WorkingPlan($this->db);
+        $workingPlans     = $wpModel->getByBudget($id);
+        $monthlyPlanSummary = $wpModel->getMonthlyPlanSummary($id);
 
         $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
         $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
@@ -264,17 +265,18 @@ class Con_InitialEstimateController extends Controller
         }
 
         $this->view('phase2/initial_estimates/show-initial-budget', [
-            'current_route'  => 'con-estimates',
-            'page_title'     => 'Estimate Detail — ' . $budget['project_name'],
-            'budget'         => $budget,
-            'items'          => $items,
-            'labors'         => $labors,
-            'breakdown'      => $breakdown,
-            'locked'         => $this->model->isLocked($id),
-            'workingPlans'   => $workingPlans,
-            'currentUserId'  => $currentUserId,
-            'canApprove'     => $canApprove,
-            'creatorInfo'    => $creatorInfo,
+            'current_route'      => 'con-estimates',
+            'page_title'         => 'Estimate Detail — ' . $budget['project_name'],
+            'budget'             => $budget,
+            'items'              => $items,
+            'labors'             => $labors,
+            'breakdown'          => $breakdown,
+            'locked'             => $this->model->isLocked($id),
+            'workingPlans'       => $workingPlans,
+            'monthlyPlanSummary' => $monthlyPlanSummary,
+            'currentUserId'      => $currentUserId,
+            'canApprove'         => $canApprove,
+            'creatorInfo'        => $creatorInfo,
         ]);
     }
 
@@ -354,8 +356,8 @@ class Con_InitialEstimateController extends Controller
             'project_id'      => (int)   ($_POST['project_id']      ?? 0),
             'architecture_id' => (int)   ($_POST['architecture_id'] ?? 0),
             'work_type_id'    => $workTypeId,
-            'start_date'      =>         ($_POST['start_date']      ?? null),
-            'end_date'        =>         ($_POST['end_date']        ?? null),
+            'start_date'      => !empty($_POST['start_date']) ? $_POST['start_date'] : null,
+            'end_date'        => !empty($_POST['end_date'])   ? $_POST['end_date']   : null,
             'total_area_sqft' => (float) ($_POST['total_area_sqft'] ?? 0),
             'other_costs'     => (float) ($_POST['other_costs']     ?? 0),
             'other_cost_detail'=>         ($_POST['other_cost_detail']?? null),

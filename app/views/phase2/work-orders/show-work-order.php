@@ -25,8 +25,15 @@ $status     = $wo['status'];
 $statusCol  = $statusColors[$status] ?? 'secondary';
 $statusLbl  = $statusLabels[$status] ?? ucfirst($status);
 $totalAmt   = (float)($wo['total_amount'] ?? 0);
+// If advance_amount not stored, compute from percent (handles legacy records)
 $advAmt     = (float)($wo['advance_amount'] ?? 0);
+if ($advAmt == 0 && ($wo['advance_percent'] ?? 0) > 0) {
+    $advAmt = round($totalAmt * (float)$wo['advance_percent'] / 100, 2);
+}
 $retAmt     = (float)($wo['retention_amount'] ?? 0);
+if ($retAmt == 0 && ($wo['retention_percent'] ?? 0) > 0) {
+    $retAmt = round($totalAmt * (float)$wo['retention_percent'] / 100, 2);
+}
 $runAmt     = $totalAmt - $advAmt - $retAmt;
 ?>
 

@@ -15,7 +15,7 @@ $page_title = $page_title ?? 'Site Targets';
             </div>
         </div>
     </div>
-    <?php if (in_array($_SESSION['user']['role_id'], [1, 3, 12, 15, 22], true)): ?>
+    <?php if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])): ?>
         <div class="row justify-content-end mb-3 mt-3">
             <div class="col-xxl-6 col-xl-6 col-lg-6 col-md-6 col-12">
                 <div class="card__wrapper border-0 p-0 shadow-none bg-transparent">
@@ -96,15 +96,17 @@ $page_title = $page_title ?? 'Site Targets';
                                         <?php endif; ?>
                                     </td>
                                     <td>
+                                        <?php if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])): ?>
                                         <a href="<?= $base_url ?>/con-boq-create?target_id=<?= $t['id'] ?>"
                                             class="btn btn-sm btn-outline-info" title="Create BOM">
                                             <i class="bi bi-box-seam"></i> BOM
                                         </a>
+                                        <?php endif; ?>
                                         <a href="<?= $base_url ?>/con-target/<?= $t['id'] ?>"
                                             class="btn btn-sm btn-outline-primary" title="View">
                                             <i class="bi bi-eye"></i>
                                         </a>
-                                            <?php if (in_array($_SESSION['user']['role_id'], [1, 3, 12, 15, 22], true)): ?>
+                                        <?php if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])): ?>
                                         <?php if ($pmApproved): ?>
                                             <a href="<?= $base_url ?>/con-target-edit/<?= $t['id'] ?>"
                                                 class="btn btn-sm btn-outline-secondary disabled" title="Edit">

@@ -8,13 +8,15 @@
             </ol>
         </nav>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-none d-flex gap-2">
         <a href="<?= $base_url ?>/con-working-plans" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-calendar3 me-1"></i> Working Plans
         </a>
+        <?php if (!in_array($_SESSION['user']['role_id'] ?? 0, [3, 15, 22])): ?>
         <a href="<?= $base_url ?>/con-budget-extend-create" class="btn btn-warning btn-sm">
             <i class="bi bi-plus-circle me-1"></i> New Request
         </a>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -163,26 +165,30 @@
                                 </td>
                                 <td class="text-center">
                                     <?php if ($item['status'] === 'Pending'): ?>
-                                        <!-- Approve Button -->
-                                        <button type="button"
-                                                class="btn btn-sm btn-success"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#approveModal"
-                                                data-id="<?= $item['id'] ?>"
-                                                data-title="<?= htmlspecialchars($item['title']) ?>"
-                                                title="Approve">
-                                            <i class="bi bi-check-circle"></i>
-                                        </button>
-                                        <!-- Reject Button -->
-                                        <button type="button"
-                                                class="btn btn-sm btn-danger ms-1"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#rejectModal"
-                                                data-id="<?= $item['id'] ?>"
-                                                data-title="<?= htmlspecialchars($item['title']) ?>"
-                                                title="Reject">
-                                            <i class="bi bi-x-circle"></i>
-                                        </button>
+                                        <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])): ?>
+                                            <!-- Approve Button -->
+                                            <button type="button"
+                                                    class="btn btn-sm btn-success"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#approveModal"
+                                                    data-id="<?= $item['id'] ?>"
+                                                    data-title="<?= htmlspecialchars($item['title']) ?>"
+                                                    title="Approve">
+                                                <i class="bi bi-check-circle"></i>
+                                            </button>
+                                            <!-- Reject Button -->
+                                            <button type="button"
+                                                    class="btn btn-sm btn-danger ms-1"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#rejectModal"
+                                                    data-id="<?= $item['id'] ?>"
+                                                    data-title="<?= htmlspecialchars($item['title']) ?>"
+                                                    title="Reject">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                        <?php else: ?>
+                                            <span class="text-muted small">Pending Approval</span>
+                                        <?php endif; ?>
                                     <?php else: ?>
                                         <span class="text-muted small"><?= $item['status'] ?></span>
                                     <?php endif; ?>

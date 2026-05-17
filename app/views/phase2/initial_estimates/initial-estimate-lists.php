@@ -6,12 +6,14 @@
         <div class="col-12">
             <div class="card__wrapper border-0 p-0 shadow-none bg-transparent">
                 <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                    <?php if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])): ?>
                     <a href="<?= $base_url ?>/con-estimate-create" class="btn btn-primary text-nowrap">
                         <i class="bi bi-plus-circle me-1"></i> New Estimate
                     </a>
                     <button type="button" class="btn btn-outline-success text-nowrap" data-bs-toggle="modal" data-bs-target="#importEstimateCsvModal">
                         <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
                     </button>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -62,6 +64,11 @@
                                     };
                                     ?>
                                     <span class="badge <?= $sc ?>"><?= ucfirst($b['status']) ?></span>
+                                    <?php if ($b['status'] === 'approved' && !empty($b['approved_by_name'])): ?>
+                                        <div style="font-size: 11px; margin-top: 4px; color: var(--text-muted); font-weight: 600;">
+                                            by <?= htmlspecialchars($b['approved_by_name']) ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </td>
                                 <td><?= htmlspecialchars($b['created_by_name']) ?></td>
                                 <td class="text-center">
@@ -69,16 +76,18 @@
                                        class="btn btn-sm btn-outline-info" title="View Detail">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <?php if ($b['status'] === 'pending'): ?>
-                                        <a href="<?= $base_url ?>/con-estimate-edit/<?= $b['id'] ?>"
-                                           class="btn btn-sm btn-outline-warning ms-1" title="Edit">
-                                            <i class="bi bi-pencil-square"></i>
-                                        </a>
-                                    <?php else: ?>
-                                        <span class="btn btn-sm btn-outline-secondary ms-1 disabled"
-                                              title="<?= ucfirst($b['status']) ?> — cannot edit">
-                                            <i class="bi bi-lock"></i>
-                                        </span>
+                                    <?php if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])): ?>
+                                        <?php if ($b['status'] === 'pending'): ?>
+                                            <a href="<?= $base_url ?>/con-estimate-edit/<?= $b['id'] ?>"
+                                               class="btn btn-sm btn-outline-warning ms-1" title="Edit">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="btn btn-sm btn-outline-secondary ms-1 disabled"
+                                                  title="<?= ucfirst($b['status']) ?> — cannot edit">
+                                                <i class="bi bi-lock"></i>
+                                            </span>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </td>
                             </tr>

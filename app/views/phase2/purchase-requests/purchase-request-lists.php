@@ -8,7 +8,7 @@
             </ol>
         </nav>
     </div>
-    <?php if (in_array($_SESSION['user']['role_id'], [1, 3, 12, 15, 22], true)): ?>
+    <?php if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])): ?>
         <a href="<?= $base_url ?>/con-purchase-request-create" class="btn btn-primary btn-sm">
             <i class="bi bi-plus-circle me-1"></i> New Purchase Request
         </a>
