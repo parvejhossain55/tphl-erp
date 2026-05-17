@@ -39,7 +39,9 @@
                             <?php endforeach; ?>
                         </div>
                         <div id="advanceNote" class="alert alert-info mt-2 py-2 small d-none">
-                            <i class="bi bi-info-circle me-1"></i><strong>Advance Payment:</strong> মাল আসার আগে দেওয়া হয়।
+                            <i class="bi bi-info-circle me-1"></i>
+                            <strong>Advance Payment:</strong> মাল আসার <strong>আগে</strong> দেওয়া হয়। Material Receive (GRN) না করেও এই payment submit করা যাবে।
+                            Purchase Order বাছাই করা <strong>optional</strong> — কোনো PO না থাকলে ছেড়ে দিন।
                         </div>
                     </div>
 
@@ -66,17 +68,20 @@
                     </div>
 
                     <!-- PO Dropdown -->
-                    <div class="mb-3">
+                    <div class="mb-3" id="poDropdownWrapper">
                         <label class="form-label fw-bold">
                             <i class="bi bi-receipt me-1 text-success"></i>
                             Purchase Order
-                            <span class="text-muted fw-normal small">(select project first)</span>
+                            <span class="text-muted fw-normal small" id="poRequiredBadge"></span>
                         </label>
                         <select name="purchase_order_id" id="poSelect" class="form-select" disabled>
                             <option value="0">-- Select Project First --</option>
                         </select>
                         <div id="poLoader" class="text-muted small mt-1" style="display:none">
                             <i class="bi bi-hourglass-split me-1"></i> Loading POs...
+                        </div>
+                        <div id="poOptionalNote" class="text-muted small mt-1 d-none">
+                            <i class="bi bi-info-circle me-1"></i> Advance payment এ PO select না করলেও চলবে।
                         </div>
                     </div>
 
@@ -236,9 +241,12 @@ function calculateNet() {
 
 function togglePaymentTypeUI() {
     const type = getPaymentType();
-    const advNote = document.getElementById('advanceNote');
+    const advNote  = document.getElementById('advanceNote');
     const delivRow = document.getElementById('deliveryVerifiedRow');
-    const adv = document.getElementById('deliveryVerified');
+    const adv      = document.getElementById('deliveryVerified');
+    const poOptNote   = document.getElementById('poOptionalNote');
+    const poReqBadge  = document.getElementById('poRequiredBadge');
+
     if (type === 'Advance') {
         advNote.classList.remove('d-none');
         delivRow.style.display = 'none';
@@ -246,11 +254,16 @@ function togglePaymentTypeUI() {
         document.getElementById('invoiceLabel').innerHTML = 'Advance Amount (৳) <span class="text-danger">*</span>';
         document.getElementById('advancePaidAmt').value = '0.00';
         document.getElementById('penaltyAmt').value     = '0.00';
+        // PO is optional for advance
+        poOptNote.classList.remove('d-none');
+        poReqBadge.innerHTML = '<span class="badge bg-info ms-1" style="font-size:9px">Optional</span>';
     } else {
         advNote.classList.add('d-none');
         delivRow.style.display = '';
         adv.disabled = false;
         document.getElementById('invoiceLabel').innerHTML = 'Invoice / Request Amount (৳) <span class="text-danger">*</span>';
+        poOptNote.classList.add('d-none');
+        poReqBadge.innerHTML = '<span class="badge bg-secondary ms-1" style="font-size:9px">Recommended</span>';
         fetchAdvanceSummary();
     }
     calculateNet();

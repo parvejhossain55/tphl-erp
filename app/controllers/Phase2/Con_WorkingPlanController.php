@@ -106,12 +106,29 @@ class Con_WorkingPlanController extends Controller
             }
         }
 
+        // Fetch already-planned months per budget (for next-month suggestion & range blocking)
+        $plannedMonthsMap = [];
+        $pmQuery = $this->db->query(
+            "SELECT initial_budget_id, year, month
+             FROM project_working_plans
+             ORDER BY initial_budget_id, year, month"
+        );
+        if ($pmQuery) {
+            while ($pmRow = $pmQuery->fetch_assoc()) {
+                $plannedMonthsMap[$pmRow['initial_budget_id']][] = [
+                    'year'  => (int)$pmRow['year'],
+                    'month' => (int)$pmRow['month'],
+                ];
+            }
+        }
+
         $this->view('phase2/working_plans/create-working-plan', [
             'current_route'       => 'con-working-plan-create',
             'page_title'          => 'New Working Plan Entry',
             'projects'            => $projects,
             'budgets'             => $budgets,
             'workTypesByProject'  => $workTypesByProject,
+            'plannedMonthsMap'    => $plannedMonthsMap,
         ]);
     }
 
@@ -390,6 +407,12 @@ class Con_WorkingPlanController extends Controller
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
+        if (in_array($roleId, [1, 3, 15, 20, 22])) {
+            setError('You do not have permission to create budget extensions. You can only approve them.');
+            header("Location: {$GLOBALS['base_url']}/con-budget-extends");
+            exit;
+        }
+
         $filter = "1=1";
         if (!in_array($roleId, [1, 3, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
@@ -414,6 +437,13 @@ class Con_WorkingPlanController extends Controller
     public function budgetExtendStore()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if (in_array($roleId, [1, 3, 15, 20, 22])) {
+            setError('You do not have permission to create budget extensions.');
+            header("Location: {$GLOBALS['base_url']}/con-budget-extends");
+            exit;
+        }
 
         $amount = (float) ($_POST['amount'] ?? 0);
         $adjType = $_POST['adjustment_type'] ?? 'increase';
@@ -441,6 +471,14 @@ class Con_WorkingPlanController extends Controller
         $data['attachment_file'] = uploadFile('attachment_file', 'budget_extends');
 
         if ($this->model->createBudgetRequest($data)) {
+            // Trigger email notification to Approvers
+            $project = $this->projectModel->find($data['project_id']);
+            $projectName = $project ? $project['name'] : 'Project';
+            
+            require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+            $wfMail = new \ProjectWorkflowMailService($this->db);
+            $wfMail->notifyApproversForNewBudgetAdjustment($data['project_id'], $projectName, $amount, $data['reason']);
+
             setSuccess('Budget extension request submitted successfully.');
             header("Location: {$GLOBALS['base_url']}/con-budget-extends");
         } else {
@@ -459,7 +497,15 @@ class Con_WorkingPlanController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $userId  = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId  = (int)($_SESSION['user']['role_id'] ?? 0);
         $remarks = trim($_POST['remarks'] ?? '');
+
+        // Only MD(1), Director(3), PM(15), PM Head(22) can approve
+        if (!in_array($roleId, [1, 3, 15, 22])) {
+            setError('You do not have permission to approve budget adjustments.');
+            header("Location: {$GLOBALS['base_url']}/con-budget-extends");
+            exit;
+        }
 
         // Fetch request info before approving to send email
         $request = $this->model->findExtend($id);
@@ -488,7 +534,15 @@ class Con_WorkingPlanController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $userId  = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId  = (int)($_SESSION['user']['role_id'] ?? 0);
         $remarks = trim($_POST['remarks'] ?? '');
+
+        // Only MD(1), Director(3), PM(15), PM Head(22) can reject
+        if (!in_array($roleId, [1, 3, 15, 22])) {
+            setError('You do not have permission to reject budget adjustments.');
+            header("Location: {$GLOBALS['base_url']}/con-budget-extends");
+            exit;
+        }
 
         if (empty($remarks)) {
             setError('Remarks are required when rejecting a request.');

@@ -830,7 +830,7 @@ class Con_VendorPaymentRequestController extends Controller
             $rStmt = $this->db->prepare("
                 SELECT
                     COALESCE(SUM(
-                        (mri.accepted_qty - COALESCE(ret.return_qty, 0)) * poi.unit_price
+                        (mri.received_quantity - COALESCE(ret.return_qty, 0)) * poi.unit_price
                     ), 0) AS received_amount
                 FROM material_receiving_items mri
                 JOIN material_receiving mr   ON mr.id = mri.receiving_id
@@ -856,7 +856,7 @@ class Con_VendorPaymentRequestController extends Controller
                        vpr.net_payable_amount, vpr.status, vpr.created_at,
                        v.name AS vendor_name, v.company_name
                 FROM vendor_payment_requests vpr
-                LEFT JOIN con_vendors v ON v.id = vpr.vendor_id
+                LEFT JOIN vendors v ON v.id = vpr.vendor_id
                 WHERE vpr.purchase_order_id = ?
                 ORDER BY vpr.id DESC");
             $pStmt->bind_param('i', $poId);

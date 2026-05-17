@@ -758,6 +758,53 @@ class ProjectWorkflowMailService
     }
 
     /**
+     * BUDGET EXTENSION / ADJUSTMENT REQUESTED
+     * → Notifies Approvers (MD=1, Director=3, PM=15, PM Head=22)
+     */
+    public function notifyApproversForNewBudgetAdjustment(int $projectId, string $projectName, float $amount, string $reason): void
+    {
+        $base = $this->getBaseUrl();
+        $project = $this->getProjectRow($projectId);
+        $pmId = (int)($project['pm_id'] ?? 0);
+
+        // Get approvers: MD (1), Director (3), PM Head (22), assigned PM
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE (role_id IN (1, 3, 22) OR id = ?) AND email IS NOT NULL AND email != ''");
+        $stmt->bind_param('i', $pmId);
+        $stmt->execute();
+        $approvers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $actionWord = $amount > 0 ? "increase" : "decrease";
+        $color = $amount > 0 ? "#10b981" : "#ef4444";
+        $sign = $amount > 0 ? "+" : "";
+
+        $subject = "⚡ Action Required: Approve Budget Adjustment — {$projectName}";
+
+        foreach ($approvers as $user) {
+            $stepHtml = "<div style='margin:20px 0;'>
+                <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
+                    <div style='width:28px;height:28px;border-radius:50%;background:#0f5132;color:#fff;
+                                text-align:center;line-height:28px;
+                                font-size:13px;font-weight:700;flex-shrink:0;'>&#9654;</div>
+                    <div style='font-size:13px;color:#0f5132;'><strong>Budget Adjustment Approval</strong> <em style='font-size:11px;color:#0f5132'>(Action Required)</em></div>
+                </div>
+            </div>";
+
+            $body = $this->buildHtml(
+                title:       "Action Required: Budget Adjustment Request",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "A new budget adjustment request for project <strong>{$projectName}</strong> has been submitted and is waiting for your approval. The request is to {$actionWord} the budget by <strong>{$sign}" . number_format($amount, 2) . "</strong>.<br><br><strong>Reason:</strong> {$reason}",
+                stepHtml:    $stepHtml,
+                ctaLabel:    'Review Request',
+                ctaLink:     $base . "/con-budget-extends",
+                projectName: $projectName,
+                note:        'Please review the adjustment details before approving. Any of the authorized approvers can approve this.'
+            );
+
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
      * BUDGET EXTENSION / ADJUSTMENT APPROVED
      * → Notifies Project Manager, Procurement Head, and Site Engineer.
      */

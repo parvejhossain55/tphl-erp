@@ -116,6 +116,7 @@ class ProjectController extends Controller
             'estimator_id'        => !empty($_POST['estimator_id']) ? (int)$_POST['estimator_id'] : null,
             'qc_id'               => !empty($_POST['qc_id']) ? (int)$_POST['qc_id'] : null,
             'operator_id'         => !empty($_POST['operator_id']) ? (int)$_POST['operator_id'] : null,
+            'purchase_user_id'    => !empty($_POST['purchase_user_id']) ? (int)$_POST['purchase_user_id'] : null,
         ];
 
         // ======================
@@ -249,6 +250,7 @@ class ProjectController extends Controller
             'estimator_id'        => !empty($_POST['estimator_id']) ? (int)$_POST['estimator_id'] : null,
             'qc_id'               => !empty($_POST['qc_id']) ? (int)$_POST['qc_id'] : null,
             'operator_id'         => !empty($_POST['operator_id']) ? (int)$_POST['operator_id'] : null,
+            'purchase_user_id'    => !empty($_POST['purchase_user_id']) ? (int)$_POST['purchase_user_id'] : null,
         ];
 
         // ======================
@@ -472,18 +474,20 @@ class ProjectController extends Controller
             13 => 'qc_controllers',      // Quality Controller
             20 => 'site_operators',      // Site Operator
             21 => 'struct_engineers',    // Structure designer
+            23 => 'purchase_executives', // Purchase Executive
         ];
 
         $result = [
-            'project_managers'  => [],
-            'site_engineers'    => [],
-            'land_managers'     => [],
-            'struct_engineers'  => [],
-            'draftsmen'         => [],
-            'architects'        => [],
-            'estimators'        => [],
-            'qc_controllers'    => [],
-            'site_operators'    => [],
+            'project_managers'   => [],
+            'site_engineers'     => [],
+            'land_managers'      => [],
+            'struct_engineers'   => [],
+            'draftsmen'          => [],
+            'architects'         => [],
+            'estimators'         => [],
+            'qc_controllers'     => [],
+            'site_operators'     => [],
+            'purchase_executives'=> [],
         ];
 
         $roleIds = implode(',', array_keys($roleMap));

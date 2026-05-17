@@ -395,6 +395,20 @@ $show_breadcrumb = true;
                     </select>
                 </div>
 
+                <!-- Purchase Executive -->
+                <div class="col-xl-4 col-md-6">
+                    <label for="team_purchase_user_id">
+                        <i class="fa-solid fa-cart-shopping text-success me-1"></i>
+                        Purchase Executive
+                    </label>
+                    <select id="team_purchase_user_id" name="purchase_user_id" class="form-control select2-no-scroll">
+                        <option value="">-- Select Purchase Executive --</option>
+                        <?php foreach ($teamUsers['purchase_executives'] ?? [] as $u): ?>
+                            <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
                 <div class="col-12 text-center mt-4">
                     <button class="btn btn-primary">Create Project</button>
                 </div>

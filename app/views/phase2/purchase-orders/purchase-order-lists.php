@@ -9,10 +9,12 @@
         </nav>
     </div>
     <div class="mb-4 d-flex gap-2 align-items-center">
+        <?php if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])): ?>
         <a href="<?= $base_url ?>/con-material-receiving-import"
            class="btn btn-success btn-sm fw-bold">
             <i class="bi bi-cloud-upload me-1"></i> Bulk CSV Import
         </a>
+        <?php endif; ?>
     </div>
 </div>
 

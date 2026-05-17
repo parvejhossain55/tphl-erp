@@ -1430,6 +1430,16 @@
                     </li>
                 <?php endif; ?>
 
+                <?php if (hasPermission('Project Manage')): ?>
+                    <li class="slide child2">
+                        <a href="<?= $base_url ?>/project-lists"
+                            class="sidebar__menu-item <?= isActive('project-lists', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <span class="sidebar__menu-label">Project List</span>
+                        </a>
+
+                    </li>
+                <?php endif; ?>
 
                 <!-- Module 2.0: Initial Estimate Budgets -->
                 <?php if (hasPermission('Estimate Budget')): ?>
@@ -1452,6 +1462,35 @@
                                     class="sidebar__menu-item <?= isActive('con-estimate-create', $current_route) ?>">New
                                     Estimate</a>
                             </li>
+                        </ul>
+                    </li>
+                <?php endif; ?>
+
+                <!-- ====== Work Orders ====== -->
+                <?php if (hasPermission('Work Order') ): ?>
+                    <li
+                        class="slide has-sub <?= isActive(['con-work-orders', 'con-work-order-create'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['con-work-orders', 'con-work-order-create'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="bi bi-file-earmark-ruled"></i></div>
+                            <span class="sidebar__menu-label">Work Orders</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide <?= isActive('con-work-orders', $current_route) ?>">
+                                <a href="<?= $base_url ?>/con-work-orders"
+                                    class="sidebar__menu-item <?= isActive('con-work-orders', $current_route) ?>">
+                                    <i class="bi bi-list-ul me-1"></i> All Work Orders
+                                </a>
+                            </li>
+                            <?php if (hasPermission('Construction Management') || hasPermission('Work Order')): ?>
+                                <li class="slide <?= isActive('con-work-order-create', $current_route) ?>">
+                                    <a href="<?= $base_url ?>/con-work-order-create"
+                                        class="sidebar__menu-item <?= isActive('con-work-order-create', $current_route) ?>">
+                                        + New Work Order
+                                    </a>
+                                </li>
+                            <?php endif; ?>
                         </ul>
                     </li>
                 <?php endif; ?>
@@ -1731,34 +1770,7 @@
 
                 <?php endif; ?>
 
-                <!-- ====== Work Orders ====== -->
-                <?php if (hasPermission('Work Order') || hasPermission('Construction Management')): ?>
-                    <li
-                        class="slide has-sub <?= isActive(['con-work-orders', 'con-work-order-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-work-orders', 'con-work-order-create'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="bi bi-file-earmark-ruled"></i></div>
-                            <span class="sidebar__menu-label">Work Orders</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide <?= isActive('con-work-orders', $current_route) ?>">
-                                <a href="<?= $base_url ?>/con-work-orders"
-                                    class="sidebar__menu-item <?= isActive('con-work-orders', $current_route) ?>">
-                                    <i class="bi bi-list-ul me-1"></i> All Work Orders
-                                </a>
-                            </li>
-                            <?php if (hasPermission('Construction Management') || hasPermission('Work Order')): ?>
-                                <li class="slide <?= isActive('con-work-order-create', $current_route) ?>">
-                                    <a href="<?= $base_url ?>/con-work-order-create"
-                                        class="sidebar__menu-item <?= isActive('con-work-order-create', $current_route) ?>">
-                                        + New Work Order
-                                    </a>
-                                </li>
-                            <?php endif; ?>
-                        </ul>
-                    </li>
-                <?php endif; ?>
+
 
                 <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
                 <?php if (hasPermission('Contractor Bill')): ?>
@@ -1783,7 +1795,7 @@
                                     + New Bill
                                 </a>
                             </li>
-                            
+
                             <!-- <li class="slide">
                             <a href="<= $base_url ?>/con-fund-requests" class="sidebar__menu-item <?= isActive('con-fund-requests', $current_route) ?>">
                                 <i class="bi bi-cash-coin me-1"></i> Fund Requests
@@ -1861,6 +1873,52 @@
                     </li>
                 <?php endif; ?>
                 <!-- ====== END Finance & Accounts ====== -->
+
+                <?php if (hasPermission("Security Operations")): ?>
+                    <!-- ====== Site IT & Security (NEW) ====== -->
+                    <li
+                        class="slide has-sub <?= isActive(['con-security-systems', 'con-security-equipments', 'con-security-logs', 'con-security-incidents'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['con-security-systems', 'con-security-equipments', 'con-security-logs', 'con-security-incidents'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-shield-halved"></i></div>
+                            <span class="sidebar__menu-label">Site IT & Security</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-security-systems"
+                                    class="sidebar__menu-item <?= isActive('con-security-systems', $current_route) ?>">
+                                    <i class="bi bi-diagram-3 me-1"></i> Security Systems
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-security-equipments"
+                                    class="sidebar__menu-item <?= isActive('con-security-equipments', $current_route) ?>">
+                                    <i class="bi bi-webcam me-1"></i> Equipment List
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-security-equipments/create"
+                                    class="sidebar__menu-item <?= isActive('con-security-equipments/create', $current_route) ?>">
+                                    <i class="bi bi-plus-circle me-1"></i> Add Equipment
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-security-logs"
+                                    class="sidebar__menu-item <?= isActive('con-security-logs', $current_route) ?>">
+                                    <i class="bi bi-journal-text me-1"></i> Daily Logs
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-security-incidents"
+                                    class="sidebar__menu-item <?= isActive('con-security-incidents', $current_route) ?>">
+                                    <i class="bi bi-exclamation-triangle me-1"></i> Incidents
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <!-- ====== END Site IT & Security ====== -->
+                <?php endif; ?>
 
 
                 <?php if (hasPermission("Manpower Requisition")): ?>

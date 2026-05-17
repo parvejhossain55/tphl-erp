@@ -364,13 +364,13 @@ class ProjectDrawingController extends Controller {
             return [];
         }
         $stmt = $this->db->prepare("
-            SELECT p.id, p.name,
-                   COALESCE(ae.status, 'not_started') AS ae_status
+            SELECT p.id, p.name
             FROM projects p
-            LEFT JOIN architect_engineering ae ON ae.project_id = p.id
             WHERE p.draftsman_id = ?
               AND p.deleted_at IS NULL
-              AND (ae.id IS NULL OR ae.status != 'fully')
+              AND p.id NOT IN (
+                  SELECT project_id FROM architect_engineering WHERE status = 'fully'
+              )
             ORDER BY p.name ASC
         ");
         $stmt->bind_param('i', $userId);

@@ -790,6 +790,31 @@ $routes['project-structural-design-dashboard']   = ['controller' => 'Phase2\Con_
 $routes['estimator-dashboard']                   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'estimatorDashboard'];
 $routes['purchase-executive-dashboard']          = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'purchaseExecutiveDashboard'];
 
+// ── Site IT & Security Operations ──────────────────────────────────────────────
+$routes['con-security-systems'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'systemLists'];
+$routes['con-security-systems/create'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'systemCreate'];
+$routes['con-security-systems/store'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'systemStore'];
+$routes['con-security-systems/edit'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'systemEdit'];
+$routes['con-security-systems/update'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'systemUpdate'];
+$routes['con-security-systems/view'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'systemView'];
+
+$routes['con-security-equipments'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'equipmentLists'];
+$routes['con-security-equipments/create'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'equipmentCreate'];
+$routes['con-security-equipments/store'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'equipmentStore'];
+$routes['con-security-equipments/view'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'equipmentView'];
+
+$routes['con-security-logs'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'logLists'];
+$routes['con-security-logs/create'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'logCreate'];
+$routes['con-security-logs/store'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'logStore'];
+$routes['con-security-logs/approve'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'logApprove'];
+$routes['con-security-logs/view'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'logView'];
+
+$routes['con-security-incidents'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'incidentLists'];
+$routes['con-security-incidents/create'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'incidentCreate'];
+$routes['con-security-incidents/store'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'incidentStore'];
+$routes['con-security-incidents/approve'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'incidentApprove'];
+$routes['con-security-incidents/view'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'incidentView'];
+
 // ── QC Module ──────────────────────────────────────────────────────────────
 $routes['qc-dashboard']                = ['controller' => 'Phase2\QCController', 'method' => 'index'];
 $routes['qc-inspection-create']        = ['controller' => 'Phase2\QCController', 'method' => 'createInspection'];

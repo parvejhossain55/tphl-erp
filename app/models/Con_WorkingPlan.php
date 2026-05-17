@@ -81,13 +81,54 @@ class Con_WorkingPlan extends Model
     public function getByBudget($budgetId)
     {
         $stmt = $this->db->prepare(
-            "SELECT w.*, p.name AS project_name, wt.work_type_name AS work_type_name, dt.name AS design_type_name
+            "SELECT w.*, p.name AS project_name, wt.work_type_name AS work_type_name, dt.name AS design_type_name,
+                    u.full_name AS created_by_name, ap.full_name AS approved_by_name, ap_r.name AS approved_by_role
              FROM {$this->planTable} w
              LEFT JOIN projects    p  ON p.id  = w.project_id
              LEFT JOIN work_types  wt ON wt.id = w.work_type_id
              LEFT JOIN design_types dt ON dt.id = wt.design_type_id
+             LEFT JOIN users        u  ON u.id  = w.created_by
+             LEFT JOIN users       ap  ON ap.id = w.approved_by
+             LEFT JOIN roles     ap_r  ON ap_r.id = ap.role_id
              WHERE w.initial_budget_id = ?
              ORDER BY w.year ASC, w.month ASC"
+        );
+        $stmt->bind_param('i', $budgetId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Returns array of already-planned {year, month} pairs for a budget.
+     * Used by the create form to determine the next available month.
+     */
+    public function getPlannedMonthsByBudget($budgetId)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT DISTINCT year, month FROM {$this->planTable}
+             WHERE initial_budget_id = ?
+             ORDER BY year ASC, month ASC"
+        );
+        $stmt->bind_param('i', $budgetId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Year+Month wise cost summary for a budget — used on show-initial-budget page.
+     * Returns [{year, month, total_cost, plan_count}]
+     */
+    public function getMonthlyPlanSummary($budgetId)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT year, month,
+                    SUM(estimated_cost)   AS total_cost,
+                    COUNT(*)              AS plan_count,
+                    SUM(planned_quantity) AS total_qty
+             FROM {$this->planTable}
+             WHERE initial_budget_id = ?
+             GROUP BY year, month
+             ORDER BY year ASC, month ASC"
         );
         $stmt->bind_param('i', $budgetId);
         $stmt->execute();

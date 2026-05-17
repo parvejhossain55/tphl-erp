@@ -72,17 +72,21 @@ $canModify = ($roleId === 18);
                                     </td>
                                     <td class="table__icon-box">
                                         <?php if ($canModify): ?>
-                                        <div class="d-flex align-items-center justify-content-center gap-10">
-                                            <a href="<?= $GLOBALS['base_url'] ?>/con-architect-engineering/edit?id=<?= $row['id'] ?>" class="table__icon edit">
-                                                <i class="fa-sharp fa-light fa-pen"></i>
-                                            </a>
-                                            <button class="table__icon delete removeBtnCust"
-                                                data-id="<?= $row['id'] ?>"
-                                                data-name="<?= htmlspecialchars($row['project_name'] ?? '') ?>"
-                                                data-action="delete-architect-engineering">
-                                                <i class="fa-regular fa-trash"></i>
-                                            </button>
-                                        </div>
+                                            <?php if (($row['status'] ?? 'draft') !== 'fully'): ?>
+                                                <div class="d-flex align-items-center justify-content-center gap-10">
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/con-architect-engineering/edit?id=<?= $row['id'] ?>" class="table__icon edit">
+                                                        <i class="fa-sharp fa-light fa-pen"></i>
+                                                    </a>
+                                                    <button class="table__icon delete removeBtnCust"
+                                                        data-id="<?= $row['id'] ?>"
+                                                        data-name="<?= htmlspecialchars($row['project_name'] ?? '') ?>"
+                                                        data-action="delete-architect-engineering">
+                                                        <i class="fa-regular fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="badge bg-light text-dark border"><i class="fa-solid fa-lock me-1"></i> Locked</span>
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <span class="text-muted">—</span>
                                         <?php endif; ?>

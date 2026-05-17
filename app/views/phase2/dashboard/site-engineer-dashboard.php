@@ -270,3 +270,98 @@ $base_url = $GLOBALS['base_url'];
         </div>
     </div>
 </div>
+
+<?php
+// ── Approved Purchase Orders Notification ─────────────────────────────────
+$approvedPOs = $approvedPOs ?? [];
+if (!empty($approvedPOs)):
+?>
+<div class="container-fluid mt-2 mb-4">
+    <div class="card custom-card" style="border:2px solid rgba(16,185,129,.35);background:rgba(16,185,129,.02)">
+        <div class="card-header justify-content-between" style="border-bottom:1px solid rgba(16,185,129,.2)">
+            <div class="card-title d-flex align-items-center gap-2" style="color:#059669">
+                <span style="width:10px;height:10px;border-radius:50%;background:#10b981;display:inline-block;animation:pulse 1.5s infinite"></span>
+                <i class="bi bi-bag-check-fill text-success"></i>
+                Purchase Orders Approved — Action Required
+                <span class="badge bg-success ms-2" style="font-size:10px"><?= count($approvedPOs) ?> PO<?= count($approvedPOs) > 1 ? 's' : '' ?></span>
+            </div>
+            <a href="<?= $base_url ?>/con-purchase-orders" class="btn btn-sm btn-success-light">
+                View All POs →
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <div class="alert alert-success border-0 rounded-0 mb-0 py-2 px-4" style="font-size:12px">
+                <i class="bi bi-info-circle me-1"></i>
+                নিচের Purchase Order গুলো Project Manager কর্তৃক Approved হয়েছে। এগুলোর Material Receiving (GRN) করুন।
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="font-size:12.5px">
+                    <thead class="table-success bg-opacity-25">
+                        <tr>
+                            <th>#PO</th>
+                            <th>Project</th>
+                            <th>PR Ref</th>
+                            <th>Items</th>
+                            <th>Total Amount</th>
+                            <th>PO Status</th>
+                            <th>Approved By (PM)</th>
+                            <th>Approved On</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($approvedPOs as $po):
+                            $poStatus = $po['status'] ?? 'Issued';
+                            $stBadge = match($poStatus) {
+                                'Issued'            => 'bg-primary-transparent',
+                                'Partially Received' => 'bg-warning-transparent',
+                                'Fully Received'    => 'bg-success-transparent',
+                                'Cancelled'         => 'bg-danger-transparent',
+                                default             => 'bg-secondary-transparent',
+                            };
+                        ?>
+                        <tr>
+                            <td class="fw-bold" style="color:#059669">PO-<?= $po['id'] ?></td>
+                            <td><strong><?= htmlspecialchars($po['project_name'] ?? 'N/A') ?></strong></td>
+                            <td>
+                                <a href="<?= $base_url ?>/con-purchase-request/<?= $po['pr_id'] ?>"
+                                   class="text-primary" style="font-size:11px">PR-<?= $po['pr_id'] ?></a>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border" style="font-size:10px">
+                                    <?= (int)$po['item_count'] ?> items
+                                </span>
+                            </td>
+                            <td class="fw-semibold">
+                                ৳<?= number_format((float)$po['total_amount'], 2) ?>
+                            </td>
+                            <td>
+                                <span class="badge <?= $stBadge ?>" style="font-size:10px"><?= $poStatus ?></span>
+                            </td>
+                            <td style="font-size:11px;color:#6b7280">
+                                <?= htmlspecialchars($po['approved_by_name'] ?? '—') ?>
+                            </td>
+                            <td style="font-size:11px;color:#6b7280">
+                                <?= !empty($po['pm_approved_at']) ? date('d M Y, h:i A', strtotime($po['pm_approved_at'])) : '—' ?>
+                            </td>
+                            <td class="text-end" style="white-space:nowrap">
+                                <a href="<?= $base_url ?>/con-purchase-order/<?= $po['id'] ?>"
+                                   class="btn btn-sm btn-outline-success" style="font-size:11px">
+                                    <i class="bi bi-eye"></i> View PO
+                                </a>
+                                <?php if (in_array($poStatus, ['Issued', 'Partially Received'])): ?>
+                                <a href="<?= $base_url ?>/con-material-receiving-create?po_id=<?= $po['id'] ?>"
+                                   class="btn btn-sm btn-success" style="font-size:11px">
+                                    <i class="bi bi-inbox-fill"></i> Receive
+                                </a>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>

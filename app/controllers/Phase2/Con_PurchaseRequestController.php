@@ -66,18 +66,33 @@ class Con_PurchaseRequestController extends Controller
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
         $userId   = (int)($_SESSION['user']['id'] ?? 0);
 
-        // Block management-only roles
-        if ($userRole === 20) {
-            setError('You do not have permission to create Purchase Requests.');
+        // Block management and approver roles from creating PRs
+        if (in_array($userRole, [1, 3, 15, 20, 22])) {
+            setError('You do not have permission to create Purchase Requests. You can only approve them.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
         }
 
-        // Roles 1, 3, 22 → all projects; everyone else → only their assigned projects
-        if (in_array($userRole, [1, 3, 22])) {
+        // ── Project list based on role ────────────────────────────────────────
+        if (in_array($userRole, [1, 3, 17, 22])) {
+            // Admin / Super Admin / Purchase Team Leader / PM Head → all projects
             $pResult  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
             $projects = $pResult ? $pResult->fetch_all(MYSQLI_ASSOC) : [];
+
+        } elseif ($userRole === 23) {
+            // Purchase Executive → only projects assigned via purchase_user_id
+            $pStmt = $this->db->prepare("
+                SELECT id, name FROM projects
+                WHERE deleted_at IS NULL
+                  AND purchase_user_id = ?
+                ORDER BY name ASC
+            ");
+            $pStmt->bind_param('i', $userId);
+            $pStmt->execute();
+            $projects = $pStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
         } else {
+            // Other construction roles → any project they are assigned to
             $pStmt = $this->db->prepare("
                 SELECT id, name FROM projects
                 WHERE deleted_at IS NULL
@@ -133,6 +148,22 @@ class Con_PurchaseRequestController extends Controller
             }
         }
 
+        // ── Inject preProjectId into $projects if not already there ──────────
+        // This ensures the BOQ-linked project always appears in the dropdown
+        // even if the purchase_user_id assignment is not yet set
+        if ($preProjectId) {
+            $inList = array_filter($projects, fn($p) => (int)$p['id'] === $preProjectId);
+            if (empty($inList)) {
+                $stmtPrj = $this->db->prepare("SELECT id, name FROM projects WHERE id = ? AND deleted_at IS NULL LIMIT 1");
+                $stmtPrj->bind_param('i', $preProjectId);
+                $stmtPrj->execute();
+                $prjRow = $stmtPrj->get_result()->fetch_assoc();
+                if ($prjRow) {
+                    array_unshift($projects, $prjRow); // add at top
+                }
+            }
+        }
+
         $this->view('phase2/purchase-requests/create-purchase-request', [
             'current_route' => 'con-purchase-request-create',
             'page_title'    => 'New Purchase Request',
@@ -150,7 +181,7 @@ class Con_PurchaseRequestController extends Controller
 
     public function store()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;

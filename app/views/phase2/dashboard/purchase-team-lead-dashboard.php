@@ -22,6 +22,8 @@ $recentPOs       = $recentPOs       ?? [];
 $stockOverview    = $stockOverview    ?? [];
 $pendingBOQsForPR = $pendingBOQsForPR ?? [];
 $pendingPRsForPO  = $pendingPRsForPO  ?? [];
+$allBOQs          = $allBOQs          ?? [];
+$prsForApproval   = $prsForApproval   ?? [];
 ?>
 <div class="row"><div class="col-12">
 <style>
@@ -126,15 +128,104 @@ $pendingPRsForPO  = $pendingPRsForPO  ?? [];
         <h4 class="ptl-hero-title">Procurement Dashboard</h4>
         <p class="ptl-hero-sub">Real-time procurement overview · <?= date('d M Y, h:i A') ?></p>
       </div>
+      <?php if (!empty($prsForApproval)): ?>
+      <div style="background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.35);border-radius:12px;padding:10px 18px;display:flex;align-items:center;gap:10px">
+        <i class="fal fa-bell" style="color:#fca5a5;font-size:20px"></i>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#fca5a5;letter-spacing:1px">PENDING APPROVAL</div>
+          <div style="font-size:22px;font-weight:900;color:#fff;line-height:1"><?= count($prsForApproval) ?> PR<?= count($prsForApproval) > 1 ? 's' : '' ?></div>
+        </div>
+      </div>
+      <?php endif; ?>
     </div>
     <div class="ptl-hero-actions">
       <a href="<?= $base ?>/con-purchase-orders" class="ptl-btn-white"><i class="fal fa-cart-shopping"></i> Purchase Orders</a>
       <a href="<?= $base ?>/con-vendors" class="ptl-btn-white"><i class="fal fa-user-tie"></i> Vendors</a>
       <a href="<?= $base ?>/con-material-issues" class="ptl-btn-white"><i class="fal fa-box-open"></i> Material Issues</a>
       <a href="<?= $base ?>/con-vendor-penalties" class="ptl-btn-white"><i class="fal fa-gavel"></i> Penalties</a>
+      <a href="<?= $base ?>/con-purchase-requests" class="ptl-btn-white"><i class="fal fa-file-invoice"></i> All PRs</a>
     </div>
   </div>
 </div>
+
+<?php if (!empty($prsForApproval)): ?>
+<!-- ═════════════════ PRs AWAITING APPROVAL ═════════════════ -->
+<div class="ptl-panel" style="border:2px solid rgba(239,68,68,.4);background:rgba(239,68,68,.03);margin-bottom:22px">
+  <div class="ptl-panel-title" style="color:#dc2626">
+    <div class="ptl-dot" style="background:var(--ptl-red);animation:pulse 1.5s infinite"></div>
+    <i class="fal fa-file-signature me-2" style="color:var(--ptl-red)"></i>
+    Purchase Requests — Awaiting Your Approval
+    <span style="margin-left:auto;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(239,68,68,.15);color:#dc2626">
+      <?= count($prsForApproval) ?> Pending
+    </span>
+  </div>
+  <p style="font-size:11.5px;color:var(--text-muted);margin-bottom:14px">
+    নিচের Purchase Request গুলো আপনার Approval এর অপেক্ষায়। <strong>Submitted</strong> গুলো সরাসরি Approve বা Reject করুন।
+  </p>
+  <div style="overflow-x:auto">
+  <table class="ptl-table">
+    <thead>
+      <tr>
+        <th>#PR</th>
+        <th>Project</th>
+        <th>Status</th>
+        <th>Items</th>
+        <th>Created By</th>
+        <th>Date</th>
+        <th style="text-align:right">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php foreach ($prsForApproval as $apr):
+        $aprSt = $apr['status'] ?? 'Draft';
+        $aprSc = match($aprSt) {
+          'Submitted' => ['bg'=>'rgba(59,130,246,.12)','text'=>'#3b82f6'],
+          default     => ['bg'=>'rgba(245,158,11,.12)','text'=>'#f59e0b'],
+        };
+      ?>
+      <tr style="<?= $aprSt === 'Submitted' ? 'background:rgba(59,130,246,.03)' : '' ?>">
+        <td style="font-weight:700;color:var(--ptl-indigo)">PR-<?= $apr['id'] ?></td>
+        <td><strong><?= htmlspecialchars($apr['project_name'] ?? 'N/A') ?></strong></td>
+        <td>
+          <span style="background:<?= $aprSc['bg'] ?>;color:<?= $aprSc['text'] ?>;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">
+            <?= $aprSt ?>
+          </span>
+        </td>
+        <td>
+          <span style="font-size:11px;background:rgba(139,92,246,.1);color:#7c3aed;padding:2px 8px;border-radius:10px">
+            <?= (int)$apr['item_count'] ?> items
+          </span>
+        </td>
+        <td style="font-size:11px;color:var(--text-muted)">
+          <?= htmlspecialchars($apr['created_by_name'] ?? '—') ?>
+          <?php if (!empty($apr['created_by_role'])): ?>
+            <span style="font-size:9px;color:var(--text-muted);display:block"><?= htmlspecialchars($apr['created_by_role']) ?></span>
+          <?php endif; ?>
+        </td>
+        <td style="font-size:11px;color:var(--text-muted)"><?= !empty($apr['created_at']) ? date('d M Y', strtotime($apr['created_at'])) : '—' ?></td>
+        <td style="text-align:right;white-space:nowrap">
+          <a href="<?= $base ?>/con-purchase-request/<?= $apr['id'] ?>"
+             style="display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;
+                    border:none;border-radius:8px;padding:5px 12px;font-size:11.5px;font-weight:700;text-decoration:none">
+            <i class="fal fa-eye"></i> View
+          </a>
+          <?php if ($aprSt === 'Draft'): ?>
+          <span style="font-size:10px;color:var(--ptl-amber);margin-left:6px;font-weight:600">
+            <i class="fal fa-clock me-1"></i>Draft
+          </span>
+          <?php elseif ($aprSt === 'Submitted'): ?>
+          <span style="font-size:10px;color:#3b82f6;margin-left:6px;font-weight:600">
+            <i class="fal fa-hourglass-half me-1"></i>Awaiting PM
+          </span>
+          <?php endif; ?>
+        </td>
+      </tr>
+      <?php endforeach; ?>
+    </tbody>
+  </table>
+  </div>
+</div>
+<?php endif; ?>
 
 <!-- ═════════════════ KPI GRID ═════════════════ -->
 <div class="kpi-grid-3c">
@@ -432,6 +523,95 @@ $pendingPRsForPO  = $pendingPRsForPO  ?? [];
       <?php endforeach; ?>
     </tbody>
   </table>
+</div>
+<?php endif; ?>
+
+<?php if (!empty($allBOQs)): ?>
+<!-- ═════════════════ ALL BOQs OVERVIEW PANEL ═════════════════ -->
+<div class="ptl-panel" style="border:2px solid rgba(99,102,241,.25);background:rgba(99,102,241,.03);margin-bottom:22px">
+  <div class="ptl-panel-title" style="color:#4338ca">
+    <div class="ptl-dot" style="background:var(--ptl-indigo)"></div>
+    <i class="fal fa-file-lines me-2" style="color:var(--ptl-indigo)"></i>
+    সকল BOQ Overview
+    <span style="margin-left:auto;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(99,102,241,.12);color:#4338ca">
+      <?= count($allBOQs) ?> BOQ<?= count($allBOQs) > 1 ? 's' : '' ?>
+    </span>
+  </div>
+  <p style="font-size:11.5px;color:var(--text-muted);margin-bottom:14px">
+    সব প্রজেক্টের BOQ এর সর্বশেষ status, item count, এবং estimated value এক জায়গায়।
+  </p>
+  <div style="overflow-x:auto">
+  <table class="ptl-table">
+    <thead>
+      <tr>
+        <th>BOQ #</th>
+        <th>Project</th>
+        <th>Status</th>
+        <th>Items</th>
+        <th>Est. Value</th>
+        <th>Created By</th>
+        <th>Created At</th>
+        <th>Approved By</th>
+        <th style="text-align:right">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php foreach ($allBOQs as $bq):
+        $bst = $bq['status'] ?? 'Draft';
+        $bsc = match($bst) {
+          'Approved'  => ['bg'=>'rgba(16,185,129,.12)', 'text'=>'#10b981'],
+          'Submitted' => ['bg'=>'rgba(59,130,246,.12)', 'text'=>'#3b82f6'],
+          'Rejected'  => ['bg'=>'rgba(239,68,68,.12)',  'text'=>'#ef4444'],
+          default     => ['bg'=>'rgba(245,158,11,.12)', 'text'=>'#f59e0b'],
+        };
+      ?>
+      <tr>
+        <td style="font-size:11px;color:var(--text-muted)">
+          BOQ #<?= $bq['boq_id'] ?>
+          <span style="font-size:10px">(v<?= htmlspecialchars($bq['version']) ?>)</span>
+        </td>
+        <td><strong><?= htmlspecialchars($bq['project_name'] ?? 'N/A') ?></strong></td>
+        <td>
+          <span style="background:<?= $bsc['bg'] ?>;color:<?= $bsc['text'] ?>;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">
+            <?= $bst ?>
+          </span>
+        </td>
+        <td>
+          <span style="font-size:11px;background:rgba(59,130,246,.1);color:#2563eb;padding:2px 8px;border-radius:10px">
+            <?= (int)$bq['item_count'] ?> items
+          </span>
+        </td>
+        <td><strong style="color:var(--ptl-green)"><?= ptlFmt($bq['grand_total']) ?></strong></td>
+        <td style="font-size:11px;color:var(--text-muted)"><?= htmlspecialchars($bq['creator_name'] ?? '—') ?></td>
+        <td style="font-size:11px;color:var(--text-muted)">
+          <?= !empty($bq['created_at']) ? date('d M Y', strtotime($bq['created_at'])) : '—' ?>
+        </td>
+        <td style="font-size:11px;color:var(--text-muted)">
+          <?php if (!empty($bq['approver_name'])): ?>
+            <span style="color:#10b981"><i class="fal fa-check-circle me-1"></i><?= htmlspecialchars($bq['approver_name']) ?></span>
+          <?php else: ?>
+            <span style="color:var(--text-muted)">—</span>
+          <?php endif; ?>
+        </td>
+        <td style="text-align:right">
+          <a href="<?= $base ?>/con-boq-show/<?= $bq['boq_id'] ?>"
+             style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;
+                    border:none;border-radius:8px;padding:5px 14px;font-size:11.5px;font-weight:700;text-decoration:none">
+            <i class="fal fa-eye"></i> View
+          </a>
+          <?php if ($bst === 'Approved'): ?>
+          <a href="<?= $base ?>/con-purchase-request-create?boq_id=<?= $bq['boq_id'] ?>&project_id=<?= $bq['project_id'] ?>"
+             style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;
+                    border:none;border-radius:8px;padding:5px 12px;font-size:11.5px;font-weight:700;text-decoration:none;margin-left:6px">
+            <i class="fal fa-plus-circle"></i> PR
+          </a>
+          <?php endif; ?>
+        </td>
+      </tr>
+      <?php endforeach; ?>
+    </tbody>
+  </table>
+  </div>
 </div>
 <?php endif; ?>
 

@@ -23,15 +23,22 @@ $show_breadcrumb = true;
                 </div>
 
                 <div class="col-xl-6">
-                    <label>Internal Designer (User)</label>
-                    <select name="user_id" class="form-control">
-                        <option value="">Select User (Optional)</option>
+                    <label>Internal Designer (Saved User)</label>
+                    <select name="user_id" class="form-control" disabled>
                         <?php foreach ($users as $u): ?>
-                            <option value="<?= $u['id'] ?>" <?= ($u['id'] == $record['user_id']) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($u['full_name']) ?>
-                            </option>
+                            <?php if ($u['id'] == $record['user_id']): ?>
+                                <option value="<?= $u['id'] ?>" selected>
+                                    <?= htmlspecialchars($u['full_name']) ?>
+                                </option>
+                            <?php endif; ?>
                         <?php endforeach; ?>
+                        <?php if (empty($record['user_id'])): ?>
+                            <option value="" selected>No User Saved</option>
+                        <?php endif; ?>
                     </select>
+                    <small class="text-muted d-block mt-1">
+                        <i class="fa-light fa-info-circle"></i> On update, the editing user will be recorded.
+                    </small>
                 </div>
 
                 <div class="col-xl-12">

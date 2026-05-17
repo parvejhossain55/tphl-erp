@@ -1,5 +1,6 @@
 <?php
-$userName = htmlspecialchars($_SESSION['user']['full_name'] ?? 'Executive');
+$userName         = htmlspecialchars($_SESSION['user']['full_name'] ?? 'Executive');
+$boqNotifications = $boqNotifications ?? [];
 ?>
 
 <div class="pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
@@ -16,6 +17,88 @@ $userName = htmlspecialchars($_SESSION['user']['full_name'] ?? 'Executive');
         <span class="badge bg-primary fs-6 px-3 py-2"><i class="bi bi-person-badge me-1"></i> <?= $userName ?></span>
     </div>
 </div>
+
+<?php if (!empty($boqNotifications)): ?>
+<!-- ══════════════ BOQ NOTIFICATION BANNER ══════════════ -->
+<div class="mb-4">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <div style="width:4px;height:22px;background:linear-gradient(180deg,#f59e0b,#ef4444);border-radius:4px"></div>
+        <h6 class="mb-0 fw-bold" style="font-size:14px;">
+            <i class="bi bi-bell-fill me-2 text-warning"></i>
+            BOQ Notifications
+        </h6>
+        <span class="badge" style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;font-size:11px;">
+            <?= count($boqNotifications) ?> BOQ<?= count($boqNotifications) > 1 ? 's' : '' ?>
+        </span>
+    </div>
+
+    <div class="row g-3">
+        <?php foreach ($boqNotifications as $boq): ?>
+        <?php
+            $statusColor = match($boq['boq_status']) {
+                'Approved'  => ['bg' => 'rgba(34,197,94,.12)', 'border' => '#22c55e', 'badge' => '#22c55e', 'text' => '#15803d'],
+                'Submitted' => ['bg' => 'rgba(59,130,246,.10)', 'border' => '#3b82f6', 'badge' => '#3b82f6', 'text' => '#1d4ed8'],
+                'Rejected'  => ['bg' => 'rgba(239,68,68,.10)', 'border' => '#ef4444', 'badge' => '#ef4444', 'text' => '#b91c1c'],
+                default     => ['bg' => 'rgba(245,158,11,.10)', 'border' => '#f59e0b', 'badge' => '#f59e0b', 'text' => '#b45309'],
+            };
+        ?>
+        <div class="col-xl-4 col-md-6">
+            <div class="card border-0 shadow-sm h-100 position-relative overflow-hidden"
+                 style="border-left: 4px solid <?= $statusColor['border'] ?> !important;background:<?= $statusColor['bg'] ?>;">
+                <!-- Decorative pulse dot for new/draft -->
+                <?php if ($boq['boq_status'] === 'Draft' || $boq['boq_status'] === 'Submitted'): ?>
+                <span style="position:absolute;top:12px;right:12px;width:10px;height:10px;border-radius:50%;background:<?= $statusColor['border'] ?>;box-shadow:0 0 0 3px <?= $statusColor['bg'] ?>;animation:boq-pulse 1.5s infinite"></span>
+                <?php endif; ?>
+
+                <div class="card-body py-3 px-4">
+                    <!-- Project name -->
+                    <div class="fw-bold mb-1" style="font-size:13px;color:#111827">
+                        <i class="bi bi-buildings me-1" style="color:<?= $statusColor['border'] ?>"></i>
+                        <?= htmlspecialchars($boq['project_name']) ?>
+                    </div>
+
+                    <!-- BOQ info row -->
+                    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                        <span class="badge" style="background:<?= $statusColor['badge'] ?>;color:#fff;font-size:10px;font-weight:700;">
+                            <?= $boq['boq_status'] ?>
+                        </span>
+                        <span class="text-muted" style="font-size:11px;">
+                            BOQ v<?= htmlspecialchars($boq['boq_version']) ?>
+                        </span>
+                        <?php if (!empty($boq['boq_created_by'])): ?>
+                        <span class="text-muted" style="font-size:11px;">
+                            · by <?= htmlspecialchars($boq['boq_created_by']) ?>
+                        </span>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Date + Action -->
+                    <div class="d-flex align-items-center justify-content-between">
+                        <small class="text-muted" style="font-size:10px;">
+                            <i class="bi bi-clock me-1"></i>
+                            <?= date('d M Y, h:i A', strtotime($boq['boq_created_at'])) ?>
+                        </small>
+                        <a href="<?= $base_url ?>/con-boq/<?= $boq['boq_id'] ?>"
+                           class="btn btn-sm fw-bold"
+                           style="font-size:11px;padding:4px 14px;border-radius:8px;background:<?= $statusColor['border'] ?>;color:#fff;border:none;text-decoration:none;">
+                            <i class="bi bi-eye me-1"></i> View BOQ
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+<style>
+@keyframes boq-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(245,158,11,.6); }
+    70%  { box-shadow: 0 0 0 8px rgba(245,158,11,0); }
+    100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+}
+</style>
+<?php endif; ?>
 
 <!-- KPI Cards -->
 <section class="section">

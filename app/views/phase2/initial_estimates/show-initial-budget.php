@@ -1,14 +1,15 @@
 <?php
 $base         = $base_url;
-$budget       = $budget       ?? [];
-$items        = $items        ?? [];
-$labors       = $labors       ?? [];
-$breakdown    = $breakdown    ?? [];
-$workingPlans = $workingPlans ?? [];
-$locked       = $locked       ?? false;
-$currentUserId= $currentUserId?? 0;
-$canApprove   = $canApprove   ?? false;
-$creatorInfo  = $creatorInfo  ?? [];
+$budget       = $budget            ?? [];
+$items        = $items             ?? [];
+$labors       = $labors            ?? [];
+$breakdown    = $breakdown         ?? [];
+$workingPlans = $workingPlans      ?? [];
+$monthlyPlanSummary = $monthlyPlanSummary ?? [];
+$locked       = $locked            ?? false;
+$currentUserId= $currentUserId     ?? 0;
+$canApprove   = $canApprove        ?? false;
+$creatorInfo  = $creatorInfo       ?? [];
 
 $monthNames = ['','January','February','March','April','May','June',
                'July','August','September','October','November','December'];
@@ -127,9 +128,9 @@ function sib_fmt($n) {
         <h4 class="sib-hero-title"><?= htmlspecialchars($budget['project_name'] ?? 'N/A') ?></h4>
         <p class="sib-hero-sub">
           <i class="fal fa-calendar me-1"></i>
-          <?= !empty($budget['start_date']) ? date('d M Y', strtotime($budget['start_date'])) : '—' ?>
+          <?= (!empty($budget['start_date']) && $budget['start_date'] !== '0000-00-00') ? date('d M Y', strtotime($budget['start_date'])) : '—' ?>
           &nbsp;→&nbsp;
-          <?= !empty($budget['end_date'])   ? date('d M Y', strtotime($budget['end_date']))   : '—' ?>
+          <?= (!empty($budget['end_date']) && $budget['end_date'] !== '0000-00-00') ? date('d M Y', strtotime($budget['end_date'])) : '—' ?>
           &nbsp;&nbsp;·&nbsp;&nbsp;
           <?= number_format($budget['total_area_sqft'] ?? 0, 2) ?> sqft
         </p>
@@ -471,6 +472,62 @@ function sib_fmt($n) {
       </div>
     </div>
   <?php else: ?>
+
+  <!-- ═══ Year+Month wise Cost Summary ═══ -->
+  <?php if (!empty($monthlyPlanSummary)): ?>
+  <?php
+    // Group by year
+    $byYear = [];
+    foreach ($monthlyPlanSummary as $row) {
+        $byYear[$row['year']][] = $row;
+    }
+    $grandTotal = array_sum(array_column($monthlyPlanSummary, 'total_cost'));
+    $budgetTotal = (float)($budget['total_estimated_cost'] ?? 0);
+    $progressPct = $budgetTotal > 0 ? min(100, round($grandTotal / $budgetTotal * 100, 1)) : 0;
+  ?>
+  <div class="sib-panel" style="margin-bottom:18px;">
+    <div class="sib-panel-title">
+      <div class="sib-dot" style="background:var(--sib-teal)"></div>
+      Working Plan Cost Summary — Year &amp; Month Wise
+      <span style="margin-left:auto;font-size:11px;font-weight:500;color:var(--text-muted);text-transform:none;letter-spacing:0">
+        Grand Total: <strong style="color:var(--sib-teal)">৳<?= number_format($grandTotal, 2) ?></strong>
+        &nbsp;/&nbsp; Budget: <strong>৳<?= number_format($budgetTotal, 2) ?></strong>
+      </span>
+    </div>
+
+    <!-- Progress bar -->
+    <div style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:4px">
+        <span style="color:var(--sib-teal)">Planned: <?= $progressPct ?>%</span>
+        <span style="color:var(--text-muted)">৳<?= number_format($budgetTotal - $grandTotal, 2) ?> remaining</span>
+      </div>
+      <div style="height:8px;background:rgba(0,0,0,.07);border-radius:10px;overflow:hidden">
+        <div style="height:100%;width:<?= $progressPct ?>%;background:linear-gradient(90deg,#14b8a6,#06b6d4);border-radius:10px;transition:width .4s"></div>
+      </div>
+    </div>
+
+    <!-- Year-wise breakdown -->
+    <?php foreach ($byYear as $year => $months): ?>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--sib-blue);padding:6px 10px;background:rgba(59,130,246,.06);border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+        <span><i class="fal fa-calendar me-1"></i><?= $year ?></span>
+        <span style="color:var(--text-muted)">Total: ৳<?= number_format(array_sum(array_column($months, 'total_cost')), 2) ?></span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;padding:0 4px">
+        <?php foreach ($months as $m): ?>
+        <div style="background:var(--card-bg,#fff);border:1px solid rgba(0,0,0,.07);border-radius:10px;padding:10px 14px;position:relative;overflow:hidden">
+          <div style="position:absolute;left:0;top:0;width:3px;height:100%;background:var(--sib-teal);border-radius:10px 0 0 10px"></div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:3px"><?= $monthNames[(int)$m['month']] ?></div>
+          <div style="font-size:14px;font-weight:900;color:var(--sib-teal)">৳<?= number_format($m['total_cost'], 2) ?></div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px"><?= $m['plan_count'] ?> plan<?= $m['plan_count'] > 1 ? 's' : '' ?></div>
+        </div>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <?php endforeach; ?>
+  </div>
+  <?php endif; ?>
+
   <div style="overflow-x:auto">
     <table class="sib-table">
       <thead>

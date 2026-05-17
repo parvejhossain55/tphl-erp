@@ -28,9 +28,10 @@ class ArchitectEngineeringController extends Controller {
             $records = $this->model->getAll();
         } else {
             $stmt = $this->db->prepare("
-                SELECT ae.*, p.name AS project_name
+                SELECT ae.*, p.name AS project_name, u.full_name AS user_name
                 FROM architect_engineering ae
                 LEFT JOIN projects p ON ae.project_id = p.id
+                LEFT JOIN users u ON ae.user_id = u.id
                 WHERE p.architect_id = ?
                 ORDER BY ae.id DESC
             ");
@@ -123,6 +124,12 @@ class ArchitectEngineeringController extends Controller {
             exit;
         }
 
+        if ($record['status'] === 'fully') {
+            setError("Cannot edit a fully completed architecture record.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-architect-engineering");
+            exit;
+        }
+
         $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
         $users    = $this->db->query("SELECT id, full_name FROM users ORDER BY full_name ASC")->fetch_all(MYSQLI_ASSOC);
 
@@ -146,7 +153,19 @@ class ArchitectEngineeringController extends Controller {
 
         // Capture OLD status before update
         $oldRecord = $this->model->find($id);
+        if (!$oldRecord) {
+            setError("Record not found.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-architect-engineering");
+            exit;
+        }
+        
         $oldStatus = $oldRecord['status'] ?? 'draft';
+
+        if ($oldStatus === 'fully') {
+            setError("Cannot update a fully completed architecture record.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-architect-engineering");
+            exit;
+        }
 
         $data = [
             'project_id'                    => $_POST['project_id'] ?? 0,
@@ -193,6 +212,14 @@ class ArchitectEngineeringController extends Controller {
         }
 
         $id = $_POST['id'] ?? 0;
+        
+        $record = $this->model->find($id);
+        if ($record && ($record['status'] ?? 'draft') === 'fully') {
+            setError("Cannot delete a fully completed architecture record.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-architect-engineering");
+            exit;
+        }
+
         if ($this->model->delete($id)) {
             setSuccess("Deleted successfully.");
         } else {

@@ -126,18 +126,25 @@
                     </div>
 
                     <!-- Status Actions -->
+                    <?php
+                    $sessionRole = (int)($_SESSION['user']['role_id'] ?? 0);
+                    $canApprove  = in_array($sessionRole, [3, 15, 22]); // Super Admin, Project Manager, PM Head
+                    ?>
                     <?php if ($pr['status'] === 'Draft'): ?>
                         <div class="mt-4 p-3 bg-light rounded d-flex justify-content-between align-items-center">
                             <span class="text-muted small">
                                 <i class="bi bi-info-circle me-1"></i> This PR is a Draft. Submit or approve it.
                             </span>
                             <div class="d-flex gap-2">
+                                <?php if ($canApprove || true): // creator can submit ?>
                                 <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline">
                                     <input type="hidden" name="status" value="Submitted">
                                     <button type="submit" class="btn btn-info btn-sm">
                                         <i class="bi bi-send me-1"></i> Submit
                                     </button>
                                 </form>
+                                <?php endif; ?>
+                                <?php if ($canApprove): ?>
                                 <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline"
                                       onsubmit="return confirm('Approve this Purchase Request?');">
                                     <input type="hidden" name="status" value="Approved">
@@ -145,13 +152,20 @@
                                         <i class="bi bi-check-circle me-1"></i> Approve
                                     </button>
                                 </form>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php elseif ($pr['status'] === 'Submitted'): ?>
                         <div class="mt-4 p-3 bg-light rounded d-flex justify-content-between align-items-center">
                             <span class="text-muted small">
-                                <i class="bi bi-clock-history me-1"></i> Awaiting approval.
+                                <i class="bi bi-clock-history me-1"></i>
+                                <?php if ($canApprove): ?>
+                                    This PR is Submitted. Please review and Approve or Reject.
+                                <?php else: ?>
+                                    Awaiting approval by Purchase Team Leader.
+                                <?php endif; ?>
                             </span>
+                            <?php if ($canApprove): ?>
                             <div class="d-flex gap-2">
                                 <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline"
                                       onsubmit="return confirm('Approve this PR?');">
@@ -168,6 +182,7 @@
                                     </button>
                                 </form>
                             </div>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                 </div>
