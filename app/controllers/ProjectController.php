@@ -474,7 +474,7 @@ class ProjectController extends Controller
             13 => 'qc_controllers',      // Quality Controller
             20 => 'site_operators',      // Site Operator
             21 => 'struct_engineers',    // Structure designer
-            23 => 'purchase_executives', // Purchase Executive
+            17 => 'purchase_executives', // Purchase Executive
         ];
 
         $result = [

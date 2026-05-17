@@ -1209,6 +1209,15 @@
                         </a>
                     </li>
                 <?php endif; ?>
+                <?php if (hasPermission('site engineer dashboard')): ?>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/con-site-engineer-dashboard"
+                            class="sidebar__menu-item <?= isActive('con-site-engineer-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <span class="sidebar__menu-label">site engineer Dashboard</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
 
 
                 <!-- ══ Operations Dashboard ════════════════════════════════════════

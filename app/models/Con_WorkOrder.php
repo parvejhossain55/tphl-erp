@@ -113,7 +113,8 @@ class Con_WorkOrder extends Model
                         WHERE cft.ref_type = 'contractor_bill' AND cbr.work_order_id = wo.id) AS paid_amount
                 FROM {$this->table} wo
                 LEFT JOIN contractors c ON c.id = wo.contractor_id
-                WHERE wo.project_id = ? AND wo.status IN ({$placeholders})
+                WHERE wo.project_id = ?
+                  AND (wo.status IN ({$placeholders}) OR wo.approved_by IS NOT NULL)
                 ORDER BY wo.created_at DESC";
 
         $stmt = $this->db->prepare($sql);
@@ -214,10 +215,11 @@ class Con_WorkOrder extends Model
     // =========================================================================
     public function approve($id, $userId)
     {
+        // Approve if status is 'draft' OR empty/null (handles legacy data edge cases)
         $stmt = $this->db->prepare(
             "UPDATE {$this->table}
              SET status='approved', approved_by=?, approved_at=NOW()
-             WHERE id=? AND status='draft'"
+             WHERE id=? AND (status='draft' OR status='' OR status IS NULL OR status NOT IN ('approved','active','work_completed','qc_approved','closed','cancelled'))"
         );
         $stmt->bind_param('ii', $userId, $id);
         return $stmt->execute() && $stmt->affected_rows > 0;

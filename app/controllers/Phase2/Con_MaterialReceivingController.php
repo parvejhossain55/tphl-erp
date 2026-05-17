@@ -254,7 +254,8 @@ class Con_MaterialReceivingController extends Controller
             // Check if any item was rejected
             $hasRejections = false;
             foreach ($itemStatuses as $st) {
-                if ($st['status'] === 'Rejected' || $st['status'] === 'Partial' || $st['rejected_qty'] > 0) {
+                if (!is_array($st)) continue; // skip qc_note, qc_photo (string values)
+                if (($st['status'] ?? '') === 'Rejected' || ($st['status'] ?? '') === 'Partial' || ($st['rejected_qty'] ?? 0) > 0) {
                     $hasRejections = true;
                     break;
                 }

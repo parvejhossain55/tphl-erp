@@ -147,7 +147,7 @@ $base_url = $GLOBALS['base_url'];
             <div class="card custom-card">
                 <div class="card-header justify-content-between">
                     <div class="card-title">Recent Material Received (GRN)</div>
-                    <a href="<?= $base_url ?>/con-material-receiving" class="btn btn-sm btn-primary btn-wave">View All</a>
+                    <a href="<?= $base_url ?>/con-material-receivings" class="btn btn-sm btn-primary btn-wave">View All</a>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
