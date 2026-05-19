@@ -1,1 +1,0 @@
-<?php require __DIR__."/../app/config/config.php"; $db = new mysqli("localhost", "root", "", "tphl_db"); $res = $db->query("SHOW COLUMNS FROM cashout_requests"); while($r = $res->fetch_assoc()) echo $r["Field"]."\n"; ?>

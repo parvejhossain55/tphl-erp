@@ -52,9 +52,9 @@ jobs:
 
             # Project upload in Main From Staging
             echo "Copying files to production..."
-            rm -rf /var/www/html/TPHL-ERP/*
-            cp -r /var/www/staging/TPHL-ERP/* /var/www/html/TPHL-ERP/
-            cp -r /var/www/staging/TPHL-ERP/.htaccess /var/www/html/TPHL-ERP/
+            # rm -rf /var/www/html/TPHL-ERP/*
+            # cp -r /var/www/staging/TPHL-ERP/* /var/www/html/TPHL-ERP/
+            # cp -r /var/www/staging/TPHL-ERP/.htaccess /var/www/html/TPHL-ERP/
 
             echo "Deployment completed successfully"
 

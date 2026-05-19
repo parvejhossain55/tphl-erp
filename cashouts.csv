@@ -1,4 +1,0 @@
-Payment Type,Project Name,Requested By,Amount,Date,Status,Purpose / Description,Vendor Name,PO Number,Invoice Number,Operator Name,File Attachment,Payment Method,Paid Amount
-General,Orchid Project,admin@tphl.com,5000.00,2026-05-01,Fully Paid,Office Supplies,,,,,,BankTransfer,5000.00
-Vendor,Orchid Project,admin@tphl.com,15000.00,2026-05-02,Paid,,ABC Supplies,123,INV-001,,,Cheque,15000.00
-Contractor,Orchid Project,admin@tphl.com,20000.00,2026-05-03,Paid,Foundation Work,,,,,John Doe,,Cash,20000.00
