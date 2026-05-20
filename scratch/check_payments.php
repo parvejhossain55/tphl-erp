@@ -1,9 +1,15 @@
 <?php
-$db = new mysqli('localhost', 'root', '', 'tphl_db');
-if ($db->connect_error) {
-    die("Connection failed: " . $db->connect_error);
+$config = require dirname(__DIR__) . "/app/config/config.php";
+$db = new mysqli($config['db_host'], $config['db_user'], $config['db_pass'], $config['db_name']);
+
+echo "=== LAND BAYANA PAYMENTS ===\n";
+$res1 = $db->query("SELECT * FROM land_bayana_payments");
+while ($row = $res1->fetch_assoc()) {
+    print_r($row);
 }
-$res = $db->query("SELECT id, booking_id, payment_type, amount, created_at FROM lead_payments ORDER BY id DESC LIMIT 5");
-while($row = $res->fetch_assoc()){
+
+echo "=== LAND FUND REQUISITIONS ===\n";
+$res2 = $db->query("SELECT * FROM land_fund_requisitions");
+while ($row = $res2->fetch_assoc()) {
     print_r($row);
 }

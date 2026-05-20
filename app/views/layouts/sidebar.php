@@ -1378,7 +1378,7 @@
                     <li
                         class="slide has-sub <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit', 'legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit', 'legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['con-land-visibility-studies', 'con-land-acquisitions', 'con-land-requisitions', 'con-land-monthly-reports', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit', 'legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             <div class="side-menu__icon">
                                 <i class="bi bi-building"></i>
@@ -1391,6 +1391,18 @@
                                 <li class="slide <?= isActive('con-land-visibility-studies', $current_route) ?>">
                                     <a class="sidebar__menu-item <?= isActive('con-land-visibility-studies', $current_route) ?>"
                                         href="<?= $base_url ?>/con-land-visibility-studies">Land Visibility Study</a>
+                                </li>
+                                <li class="slide <?= isActive(['con-land-acquisitions', 'con-land-acquisitions/create', 'con-land-acquisitions/edit'], $current_route) ? 'active' : '' ?>">
+                                    <a class="sidebar__menu-item <?= isActive(['con-land-acquisitions', 'con-land-acquisitions/create', 'con-land-acquisitions/edit'], $current_route) ? 'active' : '' ?>"
+                                        href="<?= $base_url ?>/con-land-acquisitions">Land Acquisitions</a>
+                                </li>
+                                <li class="slide <?= isActive(['con-land-requisitions', 'con-land-requisitions/create'], $current_route) ? 'active' : '' ?>">
+                                    <a class="sidebar__menu-item <?= isActive(['con-land-requisitions', 'con-land-requisitions/create'], $current_route) ? 'active' : '' ?>"
+                                        href="<?= $base_url ?>/con-land-requisitions">Land Requisitions</a>
+                                </li>
+                                <li class="slide <?= isActive('con-land-monthly-reports', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('con-land-monthly-reports', $current_route) ?>"
+                                        href="<?= $base_url ?>/con-land-monthly-reports">Land Monthly Report</a>
                                 </li>
                             <?php endif; ?>
                             <?php if (hasPermission('Architect Design') || hasPermission('Construction Management')): ?>
@@ -1883,6 +1895,41 @@
                 <?php endif; ?>
                 <!-- ====== END Finance & Accounts ====== -->
 
+                <!-- ====== Land Department (NEW) ====== -->
+                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6])): ?>
+                    <li class="sidebar__menu-category">
+                        <span class="category-name">Land Department</span>
+                    </li>
+                    <li class="slide has-sub <?= isActive(['con-land-acquisitions', 'con-land-requisitions', 'con-land-reports'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['con-land-acquisitions', 'con-land-requisitions', 'con-land-reports'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-earth-americas"></i></div>
+                            <span class="sidebar__menu-label">Land Portfolio</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-land-acquisitions"
+                                    class="sidebar__menu-item <?= isActive('con-land-acquisitions', $current_route) ?>">
+                                    <i class="bi bi-geo-alt me-1"></i> Land Acquisitions
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-land-requisitions"
+                                    class="sidebar__menu-item <?= isActive('con-land-requisitions', $current_route) ?>">
+                                    <i class="bi bi-cash-coin me-1"></i> Fund Requisitions
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-land-reports"
+                                    class="sidebar__menu-item <?= isActive('con-land-reports', $current_route) ?>">
+                                    <i class="bi bi-file-earmark-bar-graph me-1"></i> Monthly Reports
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                <?php endif; ?>
+
                 <?php if (hasPermission("Security Operations")): ?>
                     <!-- ====== Site IT & Security (NEW) ====== -->
                     <li
@@ -1946,6 +1993,13 @@
                         class="sidebar__menu-item <?= isActive('task-sheets', $current_route) ?>">
                         <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
                         <span class="sidebar__menu-label">My Task Sheets</span>
+                    </a>
+                </li>
+                <li class="slide <?= isActive('petty-cash-requests', $current_route) ?>">
+                    <a href="<?= $base_url ?>/petty-cash-requests"
+                        class="sidebar__menu-item <?= isActive('petty-cash-requests', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-wallet"></i></div>
+                        <span class="sidebar__menu-label">Petty Cash Requests</span>
                     </a>
                 </li>
                 <?php if (hasPermission("task manage")): ?>

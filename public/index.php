@@ -728,6 +728,34 @@ $routes['con-land-visibility-studies/edit'] = ['controller' => 'Phase2\LandVisib
 $routes['con-land-visibility-studies/update'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'update'];
 $routes['delete-land-visibility-study']         = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'delete'];
 
+// Land Acquisitions routes
+$routes['con-land-acquisitions'] = ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'index'];
+$routes['con-land-acquisitions/create'] = ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'create'];
+$routes['con-land-acquisitions/store'] = ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'store'];
+$routes['con-land-acquisitions/edit'] = ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'edit'];
+$routes['con-land-acquisitions/update'] = ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'update'];
+$routes['con-land-acquisitions/delete'] = ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'delete'];
+
+// Land Requisitions routes
+$routes['con-land-requisitions'] = ['controller' => 'Phase2\LandRequisitionController', 'method' => 'index'];
+$routes['con-land-requisitions/create'] = ['controller' => 'Phase2\LandRequisitionController', 'method' => 'create'];
+$routes['con-land-requisitions/store'] = ['controller' => 'Phase2\LandRequisitionController', 'method' => 'store'];
+$routes['con-land-requisitions/approve'] = ['controller' => 'Phase2\LandRequisitionController', 'method' => 'approve'];
+$routes['con-land-requisitions/pay'] = ['controller' => 'Phase2\LandRequisitionController', 'method' => 'pay'];
+$routes['con-land-requisitions/delete'] = ['controller' => 'Phase2\LandRequisitionController', 'method' => 'delete'];
+
+// Land Monthly Reports routes
+$routes['con-land-monthly-reports'] = ['controller' => 'Phase2\LandReportController', 'method' => 'index'];
+$routes['con-land-monthly-reports/generate'] = ['controller' => 'Phase2\LandReportController', 'method' => 'generate'];
+
+// Petty Cash Requests routes
+$routes['petty-cash-requests'] = ['controller' => 'Phase2\PettyCashController', 'method' => 'index'];
+$routes['petty-cash-requests/create'] = ['controller' => 'Phase2\PettyCashController', 'method' => 'create'];
+$routes['petty-cash-requests/store'] = ['controller' => 'Phase2\PettyCashController', 'method' => 'store'];
+$routes['petty-cash-requests/approve'] = ['controller' => 'Phase2\PettyCashController', 'method' => 'approve'];
+$routes['petty-cash-requests/pay'] = ['controller' => 'Phase2\PettyCashController', 'method' => 'pay'];
+$routes['petty-cash-requests/delete'] = ['controller' => 'Phase2\PettyCashController', 'method' => 'delete'];
+
 $routes['con-architect-engineering'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'index'];
 $routes['con-architect-engineering/create'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'create'];
 $routes['con-architect-engineering/store'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'store'];

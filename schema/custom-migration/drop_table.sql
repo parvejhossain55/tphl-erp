@@ -62,6 +62,12 @@ DROP TABLE IF EXISTS units;
 DROP TABLE IF EXISTS banks;
 
 -- phase2 
+DROP TABLE IF EXISTS land_acquisitions;
+DROP TABLE IF EXISTS land_bayana_payments;
+DROP TABLE IF EXISTS land_registrations;
+DROP TABLE IF EXISTS land_fund_requisitions;
+DROP TABLE IF EXISTS land_monthly_reports;
+DROP TABLE IF EXISTS petty_cash_requests;
 DROP TABLE IF EXISTS architect_engineering;
 DROP TABLE IF EXISTS boq_items;
 DROP TABLE IF EXISTS boq_master;

@@ -341,8 +341,37 @@ class Con_DashboardController extends Controller
             $prsForApproval = $rPRApproval ? $rPRApproval->fetch_all(MYSQLI_ASSOC) : [];
         }
 
+        // Fetch pending Land requisitions and Petty Cash requests for Management / Admin
+        $pendingLandRequisitions = [];
+        $pendingPettyCash = [];
+        if (in_array($userRole, [1, 3])) {
+            $rLandReq = $this->db->query("
+                SELECT lfr.*, la.land_owner_name, p.name as project_name, u.full_name as requester_name
+                FROM land_fund_requisitions lfr
+                LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
+                LEFT JOIN projects p ON la.project_id = p.id
+                LEFT JOIN users u ON lfr.requested_by = u.id
+                WHERE lfr.mgmt_status = 'Pending'
+                ORDER BY lfr.id DESC LIMIT 10
+            ");
+            $pendingLandRequisitions = $rLandReq ? $rLandReq->fetch_all(MYSQLI_ASSOC) : [];
+
+            $rPetty = $this->db->query("
+                SELECT pcr.*, p.name as project_name, d.name as department_name, u.full_name as requester_name
+                FROM petty_cash_requests pcr
+                LEFT JOIN projects p ON pcr.project_id = p.id
+                LEFT JOIN departments d ON pcr.department_id = d.id
+                LEFT JOIN users u ON pcr.requested_by = u.id
+                WHERE pcr.status = 'pending'
+                ORDER BY pcr.id DESC LIMIT 10
+            ");
+            $pendingPettyCash = $rPetty ? $rPetty->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
         $this->view('phase2/dashboard/cons-dashboard', [
             'current_route'           => 'con-dashboard',
+            'pendingLandRequisitions' => $pendingLandRequisitions,
+            'pendingPettyCash'        => $pendingPettyCash,
             'stats'                   => $stats,
             'projects'                => $projects,
             'budgetUtil'              => $budgetUtil,
