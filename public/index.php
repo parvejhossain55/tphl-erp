@@ -748,13 +748,11 @@ $routes['con-land-requisitions/delete'] = ['controller' => 'Phase2\LandRequisiti
 $routes['con-land-monthly-reports'] = ['controller' => 'Phase2\LandReportController', 'method' => 'index'];
 $routes['con-land-monthly-reports/generate'] = ['controller' => 'Phase2\LandReportController', 'method' => 'generate'];
 
-// Petty Cash Requests routes
-$routes['petty-cash-requests'] = ['controller' => 'Phase2\PettyCashController', 'method' => 'index'];
-$routes['petty-cash-requests/create'] = ['controller' => 'Phase2\PettyCashController', 'method' => 'create'];
-$routes['petty-cash-requests/store'] = ['controller' => 'Phase2\PettyCashController', 'method' => 'store'];
-$routes['petty-cash-requests/approve'] = ['controller' => 'Phase2\PettyCashController', 'method' => 'approve'];
-$routes['petty-cash-requests/pay'] = ['controller' => 'Phase2\PettyCashController', 'method' => 'pay'];
-$routes['petty-cash-requests/delete'] = ['controller' => 'Phase2\PettyCashController', 'method' => 'delete'];
+// Fund Requisitions routes
+$routes['fund-requisitions'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'index'];
+$routes['fund-requisitions/store'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'store'];
+$routes['fund-requisitions/pay'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'pay'];
+$routes['fund-requisitions/delete'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'delete'];
 
 $routes['con-architect-engineering'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'index'];
 $routes['con-architect-engineering/create'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'create'];

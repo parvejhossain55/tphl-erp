@@ -1995,11 +1995,11 @@
                         <span class="sidebar__menu-label">My Task Sheets</span>
                     </a>
                 </li>
-                <li class="slide <?= isActive('petty-cash-requests', $current_route) ?>">
-                    <a href="<?= $base_url ?>/petty-cash-requests"
-                        class="sidebar__menu-item <?= isActive('petty-cash-requests', $current_route) ?>">
+                <li class="slide <?= isActive('fund-requisitions', $current_route) ?>">
+                    <a href="<?= $base_url ?>/fund-requisitions"
+                        class="sidebar__menu-item <?= isActive('fund-requisitions', $current_route) ?>">
                         <div class="side-menu__icon"><i class="fa-solid fa-wallet"></i></div>
-                        <span class="sidebar__menu-label">Petty Cash Requests</span>
+                        <span class="sidebar__menu-label">Fund Requisitions</span>
                     </a>
                 </li>
                 <?php if (hasPermission("task manage")): ?>

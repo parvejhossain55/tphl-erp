@@ -222,11 +222,11 @@ class DashboardController extends Controller
             $stats['pending_land_requisition_amt'] = (float)$row['amt'];
         }
 
-        // 8. Pending Petty Cash requests (approved by Management, pending Accounts disbursement)
+        // 8. Pending Fund Requisitions (pending Accounts disbursement)
         $r = $this->db->query("
             SELECT COUNT(*) AS c, COALESCE(SUM(amount), 0) AS amt
-            FROM petty_cash_requests
-            WHERE status = 'approved'
+            FROM fund_requisitions
+            WHERE status = 'pending'
         ");
         if ($r && $row = $r->fetch_assoc()) {
             $stats['pending_petty_cash'] = (int)$row['c'];

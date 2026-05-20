@@ -356,16 +356,7 @@ class Con_DashboardController extends Controller
             ");
             $pendingLandRequisitions = $rLandReq ? $rLandReq->fetch_all(MYSQLI_ASSOC) : [];
 
-            $rPetty = $this->db->query("
-                SELECT pcr.*, p.name as project_name, d.name as department_name, u.full_name as requester_name
-                FROM petty_cash_requests pcr
-                LEFT JOIN projects p ON pcr.project_id = p.id
-                LEFT JOIN departments d ON pcr.department_id = d.id
-                LEFT JOIN users u ON pcr.requested_by = u.id
-                WHERE pcr.status = 'pending'
-                ORDER BY pcr.id DESC LIMIT 10
-            ");
-            $pendingPettyCash = $rPetty ? $rPetty->fetch_all(MYSQLI_ASSOC) : [];
+            $pendingPettyCash = [];
         }
 
         $this->view('phase2/dashboard/cons-dashboard', [
