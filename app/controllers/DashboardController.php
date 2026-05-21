@@ -226,7 +226,7 @@ class DashboardController extends Controller
         $r = $this->db->query("
             SELECT COUNT(*) AS c, COALESCE(SUM(amount), 0) AS amt
             FROM fund_requisitions
-            WHERE status = 'pending'
+            WHERE status = 'approved'
         ");
         if ($r && $row = $r->fetch_assoc()) {
             $stats['pending_petty_cash'] = (int)$row['c'];

@@ -44,7 +44,7 @@ $filterProjectId = $filterProjectId ?? 0;
                         <tr class="table__title">
                             <th>#</th>
                             <th>Project</th>
-                            <th>Design Type</th>
+                            <th>Drawing Type</th>
                             <th>Designer</th>
                             <th>Version</th>
                             <th>Status</th>

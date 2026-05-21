@@ -16,6 +16,12 @@ class DesignTypeController extends Controller {
             header("Location: " . $GLOBALS['base_url'] . "/login");
             exit;
         }
+
+        if ((int)($_SESSION['user']['role_id'] ?? 0) !== 16) {
+            setError('Access Denied: Only Draftsman can manage Drawing Types.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
+            exit;
+        }
     }
 
     public function index() {
@@ -29,24 +35,12 @@ class DesignTypeController extends Controller {
     }
 
     public function create() {
-        if (!in_array((int)($_SESSION['user']['role_id'] ?? 0), [16])) {
-            setError('Only Draftsman can manage Design Types.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-design-types");
-            exit;
-        }
-
         $this->view('phase2/design_types/create-design-type', [
             'page_title' => 'Add Design Type'
         ]);
     }
 
     public function store() {
-        if (!in_array((int)($_SESSION['user']['role_id'] ?? 0), [16])) {
-            setError('Only Draftsman can manage Design Types.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-design-types");
-            exit;
-        }
-
         $data = [
             'name'       => trim($_POST['name'] ?? ''),
             'status'     => $_POST['status'] ?? 'active',
@@ -69,12 +63,6 @@ class DesignTypeController extends Controller {
     }
 
     public function edit() {
-        if (!in_array((int)($_SESSION['user']['role_id'] ?? 0), [16])) {
-            setError('Only Draftsman can manage Design Types.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-design-types");
-            exit;
-        }
-
         $id     = $_GET['id'] ?? 0;
         $record = $this->model->find($id);
 
@@ -91,12 +79,6 @@ class DesignTypeController extends Controller {
     }
 
     public function update() {
-        if (!in_array((int)($_SESSION['user']['role_id'] ?? 0), [16])) {
-            setError('Only Draftsman can manage Design Types.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-design-types");
-            exit;
-        }
-
         $id   = $_POST['id'] ?? 0;
         $data = [
             'name'   => trim($_POST['name'] ?? ''),
@@ -113,12 +95,6 @@ class DesignTypeController extends Controller {
     }
 
     public function delete() {
-        if (!in_array((int)($_SESSION['user']['role_id'] ?? 0), [16])) {
-            setError('Only Draftsman can manage Design Types.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-design-types");
-            exit;
-        }
-
         $id = $_POST['id'] ?? 0;
         if ($this->model->delete($id)) {
             setSuccess("Deleted successfully.");

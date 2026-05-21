@@ -356,7 +356,16 @@ class Con_DashboardController extends Controller
             ");
             $pendingLandRequisitions = $rLandReq ? $rLandReq->fetch_all(MYSQLI_ASSOC) : [];
 
-            $pendingPettyCash = [];
+            $rFundReq = $this->db->query("
+                SELECT fr.*, p.name AS project_name, d.name AS department_name, u.full_name AS requester_name
+                FROM fund_requisitions fr
+                LEFT JOIN projects p ON fr.project_id = p.id
+                LEFT JOIN departments d ON fr.department_id = d.id
+                LEFT JOIN users u ON fr.requested_by = u.id
+                WHERE fr.status = 'pending'
+                ORDER BY fr.id DESC LIMIT 10
+            ");
+            $pendingPettyCash = $rFundReq ? $rFundReq->fetch_all(MYSQLI_ASSOC) : [];
         }
 
         $this->view('phase2/dashboard/cons-dashboard', [
@@ -447,6 +456,10 @@ class Con_DashboardController extends Controller
                 SELECT id FROM operational_fund_requests   WHERE status = 'pending'
                 UNION ALL
                 SELECT id FROM vendor_payment_requests     WHERE status = 'Submitted'
+                UNION ALL
+                SELECT id FROM fund_requisitions           WHERE status = 'pending'
+                UNION ALL
+                SELECT id FROM land_fund_requisitions      WHERE mgmt_status = 'Pending'
             ) t");
         $s['pending_approvals'] = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
 
@@ -1960,6 +1973,37 @@ class Con_DashboardController extends Controller
         }
         $myProjects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
 
+        // ── Architectural Designs (scoped) ──────────────────────────────────
+        if ($isAdmin) {
+            $rArch = $this->db->query("
+                SELECT ae.*, p.name AS project_name,
+                       COALESCE(l.name,'') AS location_name,
+                       p.project_status,
+                       u.full_name AS architect_name
+                FROM architect_engineering ae
+                LEFT JOIN projects  p ON p.id = ae.project_id
+                LEFT JOIN locations l ON l.id = p.location_id
+                LEFT JOIN users u ON u.id = ae.user_id
+                WHERE p.deleted_at IS NULL
+                ORDER BY ae.id DESC");
+            $architecturalDesigns = $rArch ? $rArch->fetch_all(MYSQLI_ASSOC) : [];
+        } else {
+            $sArch = $this->db->prepare("
+                SELECT ae.*, p.name AS project_name,
+                       COALESCE(l.name,'') AS location_name,
+                       p.project_status,
+                       u.full_name AS architect_name
+                FROM architect_engineering ae
+                JOIN  projects  p ON p.id = ae.project_id
+                LEFT JOIN locations l ON l.id = p.location_id
+                LEFT JOIN users u ON u.id = ae.user_id
+                WHERE p.deleted_at IS NULL AND p.struct_engineer_id = ?
+                ORDER BY ae.id DESC");
+            $sArch->bind_param('i', $userId);
+            $sArch->execute();
+            $architecturalDesigns = $sArch->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
         // ── Projects needing design (scoped) ─────────────────────────────────
         $projectsNeedingDesign = array_filter($myProjects, fn($p) => empty($p['design_id']));
 
@@ -1975,6 +2019,7 @@ class Con_DashboardController extends Controller
             'recentDesigns'         => $recentDesigns,
             'myProjects'            => $myProjects,
             'projectsNeedingDesign' => array_values($projectsNeedingDesign),
+            'architecturalDesigns'  => $architecturalDesigns,
         ]);
     }
 

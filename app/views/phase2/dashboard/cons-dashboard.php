@@ -737,6 +737,72 @@ $statusColor = [
         </div>
     <?php endif; ?>
 
+    <?php
+    $pendingPettyCash = $pendingPettyCash ?? [];
+    if (!empty($pendingPettyCash) && in_array($sessionRoleId, [1, 3])):
+    ?>
+        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.03)">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="sec-title" style="margin-bottom:0">
+              <div class="sec-title-dot" style="background:#f59e0b;animation:pulse 1.5s infinite"></div>
+              <i class="fal fa-wallet me-2" style="color:#f59e0b"></i>
+              Fund Requisitions &mdash; Awaiting Management Approval
+              <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
+                background:rgba(245,158,11,.12);color:#f59e0b">
+                <?= count($pendingPettyCash) ?> Pending
+              </span>
+            </div>
+            <a href="<?= $base_url ?>/fund-requisitions" class="btn btn-sm btn-outline-warning text-dark" style="font-size:11px">
+              View All Requisitions &rarr;
+            </a>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle" style="font-size:12.5px">
+              <thead class="table-light">
+                <tr>
+                  <th>#</th>
+                  <th>Department & Project</th>
+                  <th>Category / Type</th>
+                  <th>Amount</th>
+                  <th>Purpose</th>
+                  <th>Requested By</th>
+                  <th>Date</th>
+                  <th class="text-end">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($pendingPettyCash as $pcIndex => $pcreq): ?>
+                <tr>
+                  <td><?= $pcIndex + 1 ?></td>
+                  <td>
+                    <strong><?= htmlspecialchars($pcreq['department_name'] ?? 'N/A') ?></strong>
+                    <div style="font-size:11px; color:#6c757d;">Project: <?= htmlspecialchars($pcreq['project_name'] ?? 'Office General') ?></div>
+                  </td>
+                  <td>
+                    <span class="badge bg-secondary"><?= htmlspecialchars($pcreq['requisition_type'] === 'petty_cash' ? 'Petty Cash' : 'General') ?></span>
+                    <div style="font-size:10px; color:#6c757d;"><?= htmlspecialchars($pcreq['category']) ?></div>
+                  </td>
+                  <td class="fw-bold text-success">BDT <?= number_format($pcreq['amount'], 2) ?></td>
+                  <td>
+                    <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= htmlspecialchars($pcreq['purpose']) ?>">
+                      <?= htmlspecialchars($pcreq['purpose']) ?>
+                    </div>
+                  </td>
+                  <td><?= htmlspecialchars($pcreq['requester_name'] ?? '—') ?></td>
+                  <td class="text-muted" style="font-size:11px"><?= date('d M Y', strtotime($pcreq['created_at'])) ?></td>
+                  <td class="text-end">
+                    <a href="<?= $base_url ?>/fund-requisitions" class="btn btn-sm btn-warning text-dark fw-bold" style="font-size:11px">
+                      <i class="bi bi-check-circle"></i> Review & Approve
+                    </a>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+    <?php endif; ?>
+
 
 
     <?php

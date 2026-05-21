@@ -1,6 +1,4 @@
 <?php
-include(dirname(__DIR__) . '/../layouts/header.php');
-include(dirname(__DIR__) . '/../layouts/sidebar.php');
 
 $userId = (int)($_SESSION['user']['id'] ?? 0);
 $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
@@ -10,7 +8,6 @@ $designationId = (int)($_SESSION['user']['designation_id'] ?? 0);
 $isSiteEngineer = ($roleId === 12 || $designationId === 38);
 ?>
 
-<div class="main-content app-content">
     <div class="container-fluid">
         <!-- Page Header -->
         <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb no-print">
@@ -66,6 +63,33 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
                         <i class="fa-solid fa-print"></i> Print Statement
                     </button>
                 </div>
+            </div>
+
+            <!-- Date Filter (No print) -->
+            <div class="card-body no-print border-bottom pb-3">
+                <form method="GET" action="" class="row g-3 align-items-end">
+                    <div class="col-md-3 col-sm-6">
+                        <label for="start_date" class="form-label fs-12 fw-semibold mb-1">Start Date</label>
+                        <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="<?= htmlspecialchars($startDate ?? '') ?>">
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label for="end_date" class="form-label fs-12 fw-semibold mb-1">End Date</label>
+                        <input type="date" name="end_date" id="end_date" class="form-control form-control-sm" value="<?= htmlspecialchars($endDate ?? '') ?>">
+                    </div>
+                    <div class="col-md-4 col-sm-12">
+                        <button type="submit" class="btn btn-primary btn-sm px-3"><i class="fa-solid fa-filter me-1"></i> Filter</button>
+                        <?php if (!empty($startDate) || !empty($endDate)): ?>
+                            <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions" class="btn btn-light btn-sm ms-2"><i class="fa-solid fa-arrows-rotate me-1"></i> Reset</a>
+                        <?php endif; ?>
+                    </div>
+                    <?php if ($isDefaultLimit): ?>
+                        <div class="col-12 mt-2">
+                            <span class="badge bg-info-transparent text-info fs-11">
+                                <i class="fa-solid fa-circle-info me-1"></i> Showing the latest 10 requisitions by default. Use the filters above to search by date.
+                            </span>
+                        </div>
+                    <?php endif; ?>
+                </form>
             </div>
 
             <!-- Tabs filter (No print) -->
@@ -213,7 +237,6 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
             </div>
         </div>
     </div>
-</div>
 
 <!-- ========================================================================= -->
 <!-- MODAL: CREATE REQUISITION -->
@@ -232,18 +255,13 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
                         <label for="department_id" class="form-label">Department <span class="text-danger">*</span></label>
                         <select name="department_id" id="department_id" class="form-select" required>
                             <option value="">-- Select Department --</option>
-                            <?php foreach ($departments as $dept): ?>
-                                <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="project_id" class="form-label">Project (Optional)</label>
-                        <select name="project_id" id="project_id" class="form-select">
-                            <option value="">-- Office General (No Project) --</option>
-                            <?php foreach ($projects as $proj): ?>
-                                <option value="<?= $proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
+                            <?php 
+                            $userDeptId = $_SESSION['user']['department_id'] ?? 0;
+                            foreach ($departments as $dept): 
+                            ?>
+                                <option value="<?= $dept['id'] ?>" <?= ($dept['id'] == $userDeptId) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($dept['name']) ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -307,10 +325,10 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
 <!-- ========================================================================= -->
 <div class="modal fade" id="payRequisitionModal" tabindex="-1" aria-labelledby="payRequisitionModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <form action="<?= $GLOBALS['base_url'] ?>/fund-requisitions/pay" method="POST">
+        <form action="<?= $GLOBALS['base_url'] ?>/fund-requisitions/pay" method="POST" enctype="multipart/form-data">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="payRequisitionModalLabel">Process Fund Requisition</h5>
+                    <h5 class="modal-title" id="payRequisitionModalLabel">Process Fund Requisition (Accounts)</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -337,7 +355,7 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
                     <div class="mb-3">
                         <label for="payStatusSelect" class="form-label">Action <span class="text-danger">*</span></label>
                         <select name="status" id="payStatusSelect" class="form-select" onchange="togglePaymentMethodSelect()" required>
-                            <option value="paid">Approve & Mark Paid</option>
+                            <option value="paid">Record Disbursement / Paid</option>
                             <option value="rejected">Reject Request</option>
                         </select>
                     </div>
@@ -353,9 +371,14 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
                         </select>
                     </div>
 
+                    <div class="mb-3" id="paymentAttachmentGroup">
+                        <label for="payment_attachment" class="form-label">Payment Receipt / Bank Slip (Optional)</label>
+                        <input type="file" name="payment_attachment" id="payment_attachment" class="form-control" accept="image/*,application/pdf">
+                    </div>
+
                     <div class="mb-3">
-                        <label for="approval_note" class="form-label">Remarks / Note</label>
-                        <textarea name="approval_note" id="approval_note" class="form-control" rows="2" placeholder="Provide reason or payment remarks..."></textarea>
+                        <label for="accounts_note" class="form-label">Remarks / Note</label>
+                        <textarea name="accounts_note" id="accounts_note" class="form-control" rows="2" placeholder="Provide payment remarks..."></textarea>
                     </div>
 
                 </div>
@@ -365,6 +388,295 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
                 </div>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: PROCESS REQUISITION APPROVAL (MANAGEMENT ACTION) -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="approveRequisitionModal" tabindex="-1" aria-labelledby="approveRequisitionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form action="<?= $GLOBALS['base_url'] ?>/fund-requisitions/approve" method="POST">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="approveRequisitionModalLabel">Approve/Reject Requisition (Management)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="approveRequisitionId">
+                    
+                    <div class="mb-3">
+                        <div class="bg-light p-3 rounded mb-3 border">
+                            <p class="mb-1 text-muted fs-11 uppercase fw-semibold">Requester Details</p>
+                            <h6 class="mb-2" id="approveRequesterInfo">John Doe - Civil Engineering</h6>
+                            
+                            <div class="row">
+                                <div class="col-6">
+                                    <p class="mb-0 text-muted fs-11">Requisition Type</p>
+                                    <span class="badge bg-secondary-transparent" id="approveRequisitionType">Petty Cash</span>
+                                </div>
+                                <div class="col-6">
+                                    <p class="mb-0 text-muted fs-11 text-end">Amount</p>
+                                    <h5 class="mb-0 text-success text-end fw-bold" id="approveAmountInfo">BDT 5,000.00</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="approveStatusSelect" class="form-label">Approval Action <span class="text-danger">*</span></label>
+                        <select name="status" id="approveStatusSelect" class="form-select" required>
+                            <option value="approved">Approve Requisition</option>
+                            <option value="rejected">Reject Requisition</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="approve_note" class="form-label">Approval Remarks / Note</label>
+                        <textarea name="approval_note" id="approve_note" class="form-control" rows="3" placeholder="Provide approval or rejection comments..."></textarea>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Submit Approval</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: VIEW DETAILS & EXPENSES -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="viewRequisitionModal" tabindex="-1" aria-labelledby="viewRequisitionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title" id="viewRequisitionModalLabel">Requisition Details & Expense Tracker</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Requisition Info Block -->
+                <div class="card custom-card mb-4 border">
+                    <div class="card-header bg-light-transparent">
+                        <div class="card-title fs-13 text-primary">REQ INFO</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="text-muted fs-11 uppercase fw-semibold d-block">Requisition ID</label>
+                                <span class="fw-semibold fs-13 text-dark" id="vReqId">REQ-000</span>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="text-muted fs-11 uppercase fw-semibold d-block">Requested By</label>
+                                <span class="fw-semibold fs-13 text-dark" id="vRequester">John Doe</span>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="text-muted fs-11 uppercase fw-semibold d-block">Department & Project</label>
+                                <span class="fw-semibold fs-13 text-dark" id="vDeptProject">Engineering / Project A</span>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="text-muted fs-11 uppercase fw-semibold d-block">Type / Category</label>
+                                <span id="vTypeBadge">General</span>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="text-muted fs-11 uppercase fw-semibold d-block">Amount</label>
+                                <span class="fw-bold fs-14 text-success" id="vAmount">BDT 0.00</span>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="text-muted fs-11 uppercase fw-semibold d-block">Attachments</label>
+                                <div id="vReceiptLink">—</div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="text-muted fs-11 uppercase fw-semibold d-block">Purpose</label>
+                                <p class="mb-0 text-dark fs-12 text-wrap bg-light p-2 rounded" id="vPurpose">Purpose description goes here...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Approval / Payment Timeline Block -->
+                <div class="row mb-4">
+                    <!-- Management Approval Section -->
+                    <div class="col-md-6">
+                        <div class="card custom-card border h-100 mb-0">
+                            <div class="card-header bg-light-transparent">
+                                <div class="card-title fs-13 text-info">Management Approval</div>
+                            </div>
+                            <div class="card-body">
+                                <div id="vMgmtSection">
+                                    <div class="mb-2">
+                                        <span class="fs-11 text-muted">Status:</span>
+                                        <span class="badge" id="vMgmtStatus">Pending</span>
+                                    </div>
+                                    <div class="mb-2 d-none" id="vMgmtApproverGroup">
+                                        <span class="fs-11 text-muted">By:</span>
+                                        <span class="fw-semibold fs-12 text-dark" id="vMgmtApprover">Admin</span>
+                                        <span class="fs-10 text-muted ms-1" id="vMgmtTime">At time</span>
+                                    </div>
+                                    <div>
+                                        <span class="fs-11 text-muted d-block">Remarks:</span>
+                                        <p class="mb-0 text-dark fs-12 bg-light p-2 rounded" id="vMgmtNote">—</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Accounts Payment Section -->
+                    <div class="col-md-6">
+                        <div class="card custom-card border h-100 mb-0">
+                            <div class="card-header bg-light-transparent">
+                                <div class="card-title fs-13 text-success">Accounts Disbursement</div>
+                            </div>
+                            <div class="card-body">
+                                <div id="vAcctsSection">
+                                    <div class="mb-2">
+                                        <span class="fs-11 text-muted">Status:</span>
+                                        <span class="badge" id="vAcctsStatus">Pending</span>
+                                    </div>
+                                    <div class="mb-2 d-none" id="vAcctsPayGroup">
+                                        <span class="fs-11 text-muted">By:</span>
+                                        <span class="fw-semibold fs-12 text-dark" id="vAcctsPayer">Accounts</span>
+                                        <span class="fs-10 text-muted ms-1" id="vAcctsTime">At time</span>
+                                    </div>
+                                    <div class="mb-2 d-none" id="vAcctsMethodGroup">
+                                        <span class="fs-11 text-muted">Method:</span>
+                                        <span class="fw-semibold fs-12 text-dark" id="vAcctsMethod">Cash</span>
+                                    </div>
+                                    <div class="mb-2 d-none" id="vAcctsAttachmentGroup">
+                                        <span class="fs-11 text-muted">Payment Attachment:</span>
+                                        <span id="vAcctsAttachment">—</span>
+                                    </div>
+                                    <div>
+                                        <span class="fs-11 text-muted d-block">Remarks:</span>
+                                        <p class="mb-0 text-dark fs-12 bg-light p-2 rounded" id="vAcctsNote">—</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expenses Section -->
+                <div id="vExpensesContainer" class="d-none">
+                    <div class="card custom-card border mb-0">
+                        <div class="card-header justify-content-between align-items-center bg-light-transparent">
+                            <div class="card-title fs-13 ">Actual Expenses Logged</div>
+                            <div class="bd-badge bg-primary fs-12 fw-semibold" id="vBalanceTracker">
+                                Disbursed: BDT 0.00 | Spent: BDT 0.00 | Balance: BDT 0.00
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <!-- Expense Date Filter Form -->
+                            <div class="p-3 border-bottom no-print">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-4 col-sm-6">
+                                        <label for="v_exp_start_date" class="form-label fs-11 fw-semibold text-muted mb-1">Start Date</label>
+                                        <input type="date" id="v_exp_start_date" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-4 col-sm-6">
+                                        <label for="v_exp_end_date" class="form-label fs-11 fw-semibold text-muted mb-1">End Date</label>
+                                        <input type="date" id="v_exp_end_date" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-4 col-sm-12 d-flex gap-1">
+                                        <button type="button" class="btn btn-primary btn-sm w-100" id="btnFilterExpenses" onclick="filterModalExpenses()">
+                                            <i class="fa-solid fa-filter me-1"></i> Filter
+                                        </button>
+                                        <button type="button" class="btn btn-light btn-sm px-2 border" id="btnResetExpenses" onclick="resetModalExpenses()">
+                                            <i class="fa-solid fa-arrows-rotate"></i>
+                                        </button>
+                                    </div>
+                                    <div class="col-12 d-none" id="vExpenseLimitAlert">
+                                        <span class="badge bg-info-transparent text-info fs-10 mt-1">
+                                            <i class="fa-solid fa-circle-info me-1"></i> Showing the latest 10 expenses by default. Use the filters to view older logs.
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Expense List Table -->
+                            <div class="table-responsive border-bottom">
+                                <table class="table text-nowrap table-hover mb-0 fs-12">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Purpose</th>
+                                            <th>Project</th>
+                                            <th class="text-end">Amount</th>
+                                            <th>Receipt</th>
+                                            <th>By</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="vExpenseListBody">
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted py-3">No expenses logged yet.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Log New Expense Form -->
+                            <div id="vLogExpenseFormContainer" class="p-3 bg-light-transparent border-top">
+                                <h6 class="mb-3 text-dark fw-semibold fs-13">Log an Expense Details</h6>
+                                <form action="<?= $GLOBALS['base_url'] ?>/fund-requisitions/store-expense" method="POST" enctype="multipart/form-data" id="logExpenseForm">
+                                    <input type="hidden" name="fund_requisition_id" id="vLogExpenseReqId">
+                                    <div class="row ">
+                                        <div class="col-md-6">
+                                            <label for="exp_amount" class="form-label fs-11 fw-semibold text-muted mb-1">Spent Amount (BDT) <span class="text-danger">*</span></label>
+                                            <input type="number" name="amount" id="exp_amount" class="form-control form-control-sm" placeholder="0.00" step="0.01" required>
+                                            <small class="text-danger d-none" id="exp_balance_warning"></small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="exp_attachment" class="form-label fs-11 fw-semibold text-muted mb-1">Receipt Attachment (Optional)</label>
+                                            <input type="file" name="attachment" id="exp_attachment" class="form-control form-control-sm" accept="image/*,application/pdf">
+                                        </div>
+                                        
+                                        <div class="col-md-12">
+                                            <label class="form-label fs-11 fw-semibold text-muted d-block mb-1">Project / Expense Type</label>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="project_type" id="project_type_select" value="by_project" checked onchange="toggleExpenseProjectInput()">
+                                                <label class="form-check-label fs-12 text-dark" for="project_type_select">System Project</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="project_type" id="project_type_other" value="other_project" onchange="toggleExpenseProjectInput()">
+                                                <label class="form-check-label fs-12 text-dark" for="project_type_other">Others</label>
+                                            </div>
+
+                                            <div class="mt-2" id="expProjectSelectGroup">
+                                                <select name="project_id" id="exp_project_id" class="form-select form-select-sm">
+                                                    <option value="">-- Office General / No Project --</option>
+                                                </select>
+                                            </div>
+                                            <div class="mt-2 d-none" id="expProjectOtherGroup">
+                                                <input type="text" name="other_project_name" id="exp_other_project_name" class="form-control form-control-sm" placeholder="Specify other purpose/details...">
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-12">
+                                            <label for="exp_purpose" class="form-label fs-11 fw-semibold text-muted mb-1">Purpose / Description <span class="text-danger">*</span></label>
+                                            <textarea name="purpose" id="exp_purpose" class="form-control form-control-sm" rows="2" placeholder="What was this money spent on?" required></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 text-end">
+                                        <button type="submit" class="btn btn-primary btn-sm px-4">
+                                            <i class="fa-solid fa-save me-1"></i> Log Expense
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -411,6 +723,28 @@ document.getElementById('requisitionForm').addEventListener('submit', function(e
     }
 });
 
+function openApproveModal(id, requesterName, deptName, type, amount) {
+    document.getElementById('approveRequisitionId').value = id;
+    document.getElementById('approveRequesterInfo').innerText = requesterName + ' - ' + deptName;
+    document.getElementById('approveAmountInfo').innerText = 'BDT ' + parseFloat(amount).toLocaleString('en-US', {minimumFractionDigits: 2});
+    
+    var typeLabel = type === 'petty_cash' ? 'Petty Cash' : 'General Requisition';
+    var typeSpan = document.getElementById('approveRequisitionType');
+    typeSpan.innerText = typeLabel;
+    
+    if (type === 'petty_cash') {
+        typeSpan.className = 'badge bg-warning-transparent';
+    } else {
+        typeSpan.className = 'badge bg-info-transparent';
+    }
+    
+    document.getElementById('approveStatusSelect').value = 'approved';
+    document.getElementById('approve_note').value = '';
+    
+    var myModal = new bootstrap.Modal(document.getElementById('approveRequisitionModal'));
+    myModal.show();
+}
+
 function openPayModal(id, requesterName, deptName, type, amount) {
     document.getElementById('payRequisitionId').value = id;
     document.getElementById('payRequesterInfo').innerText = requesterName + ' - ' + deptName;
@@ -426,12 +760,12 @@ function openPayModal(id, requesterName, deptName, type, amount) {
         typeSpan.className = 'badge bg-info-transparent';
     }
     
-    // Reset inputs
     document.getElementById('payStatusSelect').value = 'paid';
     document.getElementById('paymentMethodGroup').style.display = 'block';
-    document.getElementById('approval_note').value = '';
+    document.getElementById('paymentAttachmentGroup').style.display = 'block';
+    document.getElementById('accounts_note').value = '';
+    document.getElementById('payment_attachment').value = '';
     
-    // Show modal
     var myModal = new bootstrap.Modal(document.getElementById('payRequisitionModal'));
     myModal.show();
 }
@@ -439,10 +773,290 @@ function openPayModal(id, requesterName, deptName, type, amount) {
 function togglePaymentMethodSelect() {
     var status = document.getElementById('payStatusSelect').value;
     var methodGroup = document.getElementById('paymentMethodGroup');
+    var attachmentGroup = document.getElementById('paymentAttachmentGroup');
     if (status === 'rejected') {
         methodGroup.style.display = 'none';
+        attachmentGroup.style.display = 'none';
     } else {
         methodGroup.style.display = 'block';
+        attachmentGroup.style.display = 'block';
+    }
+}
+
+function openViewModal(id) {
+    document.getElementById('vReqId').innerText = 'REQ-' + id;
+    document.getElementById('vRequester').innerText = 'Loading...';
+    document.getElementById('vDeptProject').innerText = 'Loading...';
+    document.getElementById('vAmount').innerText = 'BDT 0.00';
+    document.getElementById('vPurpose').innerText = 'Loading...';
+    document.getElementById('vReceiptLink').innerHTML = '—';
+    document.getElementById('vLogExpenseReqId').value = id;
+    
+    // Clear modal date filter inputs
+    document.getElementById('v_exp_start_date').value = '';
+    document.getElementById('v_exp_end_date').value = '';
+    document.getElementById('vExpenseLimitAlert').classList.add('d-none');
+    
+    // Clear Log Expense Form inputs
+    document.getElementById('exp_amount').value = '';
+    document.getElementById('exp_purpose').value = '';
+    document.getElementById('exp_attachment').value = '';
+    document.getElementById('exp_other_project_name').value = '';
+    document.getElementById('project_type_select').checked = true;
+    toggleExpenseProjectInput();
+    
+    document.getElementById('vMgmtStatus').innerText = 'Pending';
+    document.getElementById('vMgmtStatus').className = 'badge bg-warning-transparent';
+    document.getElementById('vMgmtApproverGroup').classList.add('d-none');
+    document.getElementById('vMgmtNote').innerText = '—';
+    
+    document.getElementById('vAcctsStatus').innerText = 'Pending';
+    document.getElementById('vAcctsStatus').className = 'badge bg-warning-transparent';
+    document.getElementById('vAcctsPayGroup').classList.add('d-none');
+    document.getElementById('vAcctsMethodGroup').classList.add('d-none');
+    document.getElementById('vAcctsAttachmentGroup').classList.add('d-none');
+    document.getElementById('vAcctsNote').innerText = '—';
+    
+    document.getElementById('vExpensesContainer').classList.add('d-none');
+    
+    var viewModal = new bootstrap.Modal(document.getElementById('viewRequisitionModal'));
+    viewModal.show();
+    
+    fetchModalExpensesData(id);
+}
+
+function fetchModalExpensesData(id, startDate = '', endDate = '') {
+    var url = '<?= $GLOBALS['base_url'] ?>/fund-requisitions/show/' + id;
+    if (startDate || endDate) {
+        url += '?start_date=' + encodeURIComponent(startDate) + '&end_date=' + encodeURIComponent(endDate);
+    }
+    
+    var listBody = document.getElementById('vExpenseListBody');
+    listBody.innerHTML = '<tr><td colspan="7" class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading expenses...</td></tr>';
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                alert(data.message || 'Failed to fetch details');
+                return;
+            }
+            
+            var req = data.requisition;
+            var expenses = data.expenses;
+            var projects = data.projects;
+            
+            document.getElementById('vRequester').innerText = req.requester_name || 'System User';
+            document.getElementById('vDeptProject').innerText = (req.department_name || 'N/A') + ' / ' + (req.project_name || 'Office General');
+            document.getElementById('vAmount').innerText = 'BDT ' + parseFloat(req.amount).toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('vPurpose').innerText = req.purpose;
+            
+            if (req.receipt_path) {
+                document.getElementById('vReceiptLink').innerHTML = `
+                    <a href="<?= $GLOBALS['base_url'] ?>/${req.receipt_path}" target="_blank" class="btn btn-sm btn-light border px-2">
+                        <i class="fa-solid fa-paperclip me-1"></i> View Receipt
+                    </a>
+                `;
+            } else {
+                document.getElementById('vReceiptLink').innerHTML = '<span class="text-muted fs-11">No Receipt Attached</span>';
+            }
+            
+            var typeBadge = document.getElementById('vTypeBadge');
+            if (req.requisition_type === 'petty_cash') {
+                typeBadge.className = 'badge bg-warning fs-11';
+                typeBadge.innerText = 'Petty Cash (' + (req.category || 'Petty Cash') + ')';
+            } else {
+                typeBadge.className = 'badge bg-info fs-11';
+                typeBadge.innerText = 'General (' + (req.category || 'General') + ')';
+            }
+            
+            var mgmtStatusBadge = document.getElementById('vMgmtStatus');
+            if (req.status === 'approved' || req.status === 'paid') {
+                mgmtStatusBadge.innerText = 'Approved';
+                mgmtStatusBadge.className = 'badge bg-success-transparent fs-11 text-capitalize';
+                document.getElementById('vMgmtApproverGroup').classList.remove('d-none');
+                document.getElementById('vMgmtApprover').innerText = req.approved_by_name || 'Management';
+                document.getElementById('vMgmtTime').innerText = req.approved_at ? 'at ' + req.approved_at : '';
+                document.getElementById('vMgmtNote').innerText = req.approval_note || 'No remarks provided.';
+            } else if (req.status === 'rejected' && req.approved_by !== null) {
+                mgmtStatusBadge.innerText = 'Rejected';
+                mgmtStatusBadge.className = 'badge bg-danger-transparent fs-11 text-capitalize';
+                document.getElementById('vMgmtApproverGroup').classList.remove('d-none');
+                document.getElementById('vMgmtApprover').innerText = req.approved_by_name || 'Management';
+                document.getElementById('vMgmtTime').innerText = req.approved_at ? 'at ' + req.approved_at : '';
+                document.getElementById('vMgmtNote').innerText = req.approval_note || 'No remarks provided.';
+            } else {
+                mgmtStatusBadge.innerText = 'Pending';
+                mgmtStatusBadge.className = 'badge bg-warning-transparent fs-11 text-capitalize';
+                document.getElementById('vMgmtNote').innerText = 'Awaiting Management Approval';
+            }
+            
+            var acctsStatusBadge = document.getElementById('vAcctsStatus');
+            if (req.status === 'paid') {
+                document.getElementById('vExpensesContainer').classList.remove('d-none');
+                
+                acctsStatusBadge.innerText = 'Paid';
+                acctsStatusBadge.className = 'badge bg-success-transparent fs-11 text-capitalize';
+                document.getElementById('vAcctsPayGroup').classList.remove('d-none');
+                document.getElementById('vAcctsPayer').innerText = req.paid_by_name || 'Accounts';
+                document.getElementById('vAcctsTime').innerText = req.paid_at ? 'at ' + req.paid_at : '';
+                
+                document.getElementById('vAcctsMethodGroup').classList.remove('d-none');
+                document.getElementById('vAcctsMethod').innerText = req.payment_method || 'Cash';
+                
+                document.getElementById('vAcctsNote').innerText = req.accounts_note || 'No remarks provided.';
+                
+                if (req.payment_attachment_path) {
+                    document.getElementById('vAcctsAttachmentGroup').classList.remove('d-none');
+                    document.getElementById('vAcctsAttachment').innerHTML = `
+                        <a href="<?= $GLOBALS['base_url'] ?>/${req.payment_attachment_path}" target="_blank" class="btn btn-sm btn-success-light border px-2 py-1 fs-11">
+                            <i class="fa-solid fa-receipt me-1"></i> View Payment Slip
+                        </a>
+                    `;
+                } else {
+                    document.getElementById('vAcctsAttachmentGroup').classList.add('d-none');
+                }
+                
+                var projectSelect = document.getElementById('exp_project_id');
+                projectSelect.innerHTML = '<option value="">-- Office General / No Project --</option>';
+                projects.forEach(p => {
+                    projectSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+                });
+                
+                // Show or hide default limit alert badge
+                var limitAlert = document.getElementById('vExpenseLimitAlert');
+                if (data.is_default_limit) {
+                    limitAlert.classList.remove('d-none');
+                } else {
+                    limitAlert.classList.add('d-none');
+                }
+                
+                var totalAmount = parseFloat(req.amount);
+                var totalSpentGlobal = parseFloat(data.total_spent_global || 0);
+                listBody.innerHTML = '';
+                
+                if (expenses.length === 0) {
+                    listBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">No expenses logged yet.</td></tr>';
+                } else {
+                    expenses.forEach(exp => {
+                        var amount = parseFloat(exp.amount);
+                        
+                        var projName = exp.project_name ? exp.project_name : (exp.other_project_name ? exp.other_project_name : '<span class="text-muted fs-11">Office General</span>');
+                        var attachmentBtn = exp.attachment_path ? `
+                            <a href="<?= $GLOBALS['base_url'] ?>/${exp.attachment_path}" target="_blank" class="btn btn-icon btn-sm btn-light border py-0 px-2" title="View Bill/Receipt">
+                                <i class="fa-solid fa-paperclip fs-11"></i>
+                            </a>
+                        ` : '—';
+                        
+                        var deleteBtn = '';
+                        if (exp.created_by == data.session_user_id || [1, 3].includes(data.session_role_id)) {
+                            deleteBtn = `
+                                <form action="<?= $GLOBALS['base_url'] ?>/fund-requisitions/delete-expense" method="POST" class="d-inline" onsubmit="return confirm('Delete this expense log?')">
+                                    <input type="hidden" name="id" value="${exp.id}">
+                                    <button type="submit" class="btn btn-icon btn-sm btn-danger border py-0 px-2" title="Delete">
+                                        <i class="fa-solid fa-trash-can fs-11"></i>
+                                    </button>
+                                </form>
+                            `;
+                        }
+                        
+                        var dateFormatted = new Date(exp.created_at).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'});
+                        
+                        listBody.innerHTML += `
+                            <tr>
+                                <td>${dateFormatted}</td>
+                                <td class="text-wrap">${escapeHtml(exp.purpose)}</td>
+                                <td>${projName}</td>
+                                <td class="text-end fw-semibold">BDT ${amount.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                                <td>${attachmentBtn}</td>
+                                <td>${exp.creator_name || 'Staff'}</td>
+                                <td>${deleteBtn}</td>
+                            </tr>
+                        `;
+                    });
+                }
+                
+                var remaining = totalAmount - totalSpentGlobal;
+                document.getElementById('vBalanceTracker').innerHTML = `
+                    Disbursed: BDT ${totalAmount.toLocaleString('en-US', {minimumFractionDigits: 2})} | 
+                    Spent: BDT ${totalSpentGlobal.toLocaleString('en-US', {minimumFractionDigits: 2})} | 
+                    Balance: BDT ${remaining.toLocaleString('en-US', {minimumFractionDigits: 2})}
+                `;
+                
+                var isOwnerOrAdmin = (req.requested_by == data.session_user_id || [1, 3].includes(data.session_role_id));
+                var formContainer = document.getElementById('vLogExpenseFormContainer');
+                if (isOwnerOrAdmin && remaining > 0) {
+                    formContainer.classList.remove('d-none');
+                    document.getElementById('exp_amount').setAttribute('max', remaining);
+                    
+                    document.getElementById('exp_amount').oninput = function() {
+                        var val = parseFloat(this.value || 0);
+                        var warning = document.getElementById('exp_balance_warning');
+                        if (val > remaining) {
+                            warning.innerText = 'Amount exceeds remaining balance of BDT ' + remaining.toLocaleString('en-US', {minimumFractionDigits: 2});
+                            warning.classList.remove('d-none');
+                        } else {
+                            warning.classList.add('d-none');
+                        }
+                    };
+                } else {
+                    formContainer.classList.add('d-none');
+                }
+            } else {
+                document.getElementById('vExpensesContainer').classList.add('d-none');
+                
+                if (req.status === 'rejected' && req.paid_by !== null) {
+                    acctsStatusBadge.innerText = 'Rejected by Accounts';
+                    acctsStatusBadge.className = 'badge bg-danger-transparent fs-11 text-capitalize';
+                    document.getElementById('vAcctsPayGroup').classList.remove('d-none');
+                    document.getElementById('vAcctsPayer').innerText = req.paid_by_name || 'Accounts';
+                    document.getElementById('vAcctsTime').innerText = req.paid_at ? 'at ' + req.paid_at : '';
+                    document.getElementById('vAcctsNote').innerText = req.accounts_note || 'No remarks provided.';
+                } else {
+                    acctsStatusBadge.innerText = 'Pending';
+                    acctsStatusBadge.className = 'badge bg-warning-transparent fs-11 text-capitalize';
+                    document.getElementById('vAcctsNote').innerText = 'Awaiting payment disbursement';
+                }
+            }
+        })
+        .catch(err => {
+            console.error('Error fetching details:', err);
+            alert('Error loading details.');
+        });
+}
+
+function filterModalExpenses() {
+    var id = document.getElementById('vLogExpenseReqId').value;
+    var startDate = document.getElementById('v_exp_start_date').value;
+    var endDate = document.getElementById('v_exp_end_date').value;
+    fetchModalExpensesData(id, startDate, endDate);
+}
+
+function resetModalExpenses() {
+    document.getElementById('v_exp_start_date').value = '';
+    document.getElementById('v_exp_end_date').value = '';
+    var id = document.getElementById('vLogExpenseReqId').value;
+    fetchModalExpensesData(id);
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function toggleExpenseProjectInput() {
+    var selectRadio = document.getElementById('project_type_select');
+    var selectGroup = document.getElementById('expProjectSelectGroup');
+    var otherGroup = document.getElementById('expProjectOtherGroup');
+    
+    if (selectRadio.checked) {
+        selectGroup.classList.remove('d-none');
+        otherGroup.classList.add('d-none');
+        document.getElementById('exp_other_project_name').removeAttribute('required');
+    } else {
+        selectGroup.classList.add('d-none');
+        otherGroup.classList.remove('d-none');
+        document.getElementById('exp_other_project_name').setAttribute('required', 'required');
     }
 }
 
@@ -451,6 +1065,7 @@ document.addEventListener("DOMContentLoaded", function() {
     toggleRequisitionType();
 });
 </script>
+
 
 <!-- ========================================================================= -->
 <!-- PRINT STYLING & HELPERS -->
@@ -506,12 +1121,13 @@ document.addEventListener("DOMContentLoaded", function() {
 </style>
 
 <?php
-include(dirname(__DIR__) . '/../layouts/footer.php');
 
 // Helper function to render a single table row
 function renderRow($req, $userId, $roleId, $isSiteEngineer) {
     $statusClass = 'bg-warning-transparent';
-    if ($req['status'] === 'paid') {
+    if ($req['status'] === 'approved') {
+        $statusClass = 'bg-info-transparent';
+    } elseif ($req['status'] === 'paid') {
         $statusClass = 'bg-success-transparent';
     } elseif ($req['status'] === 'rejected') {
         $statusClass = 'bg-danger-transparent';
@@ -537,29 +1153,42 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
         <td class="text-end fw-bold text-dark">
             BDT <?= number_format($req['amount'], 2) ?>
         </td>
-        <td class="text-wrap" style="max-width: 250px;">
-            <?= htmlspecialchars($req['purpose']) ?>
+        <td class="text-wrap" style="max-width: 200px;">
+            <div class="fs-12"><?= htmlspecialchars($req['purpose']) ?></div>
             <?php if (!empty($req['approval_note'])): ?>
-                <div class="fs-11 text-danger mt-1">
-                    <strong>Remarks:</strong> <?= htmlspecialchars($req['approval_note']) ?>
+                <div class="fs-10 text-info mt-1">
+                    <strong>Mgr Note:</strong> <?= htmlspecialchars($req['approval_note']) ?>
+                </div>
+            <?php endif; ?>
+            <?php if (!empty($req['accounts_note'])): ?>
+                <div class="fs-10 text-success mt-1">
+                    <strong>Accts Note:</strong> <?= htmlspecialchars($req['accounts_note']) ?>
                 </div>
             <?php endif; ?>
         </td>
         <td>
-            <?php if (!empty($req['receipt_path'])): ?>
-                <a href="<?= $GLOBALS['base_url'] . '/' . $req['receipt_path'] ?>" target="_blank" class="btn btn-icon btn-sm btn-light border no-print" title="View Receipt">
-                    <i class="fa-solid fa-paperclip"></i>
-                </a>
-                <span class="d-none print-only-text">Attached</span>
-            <?php else: ?>
-                <span class="text-muted fs-11">—</span>
-            <?php endif; ?>
+            <div class="d-flex gap-1">
+                <?php if (!empty($req['receipt_path'])): ?>
+                    <a href="<?= $GLOBALS['base_url'] . '/' . $req['receipt_path'] ?>" target="_blank" class="btn btn-icon btn-sm btn-light border no-print" title="Requisition Receipt">
+                        <i class="fa-solid fa-paperclip"></i>
+                    </a>
+                <?php endif; ?>
+                <?php if (!empty($req['payment_attachment_path'])): ?>
+                    <a href="<?= $GLOBALS['base_url'] . '/' . $req['payment_attachment_path'] ?>" target="_blank" class="btn btn-icon btn-sm btn-success-light border no-print" title="Payment Slip">
+                        <i class="fa-solid fa-receipt text-success"></i>
+                    </a>
+                <?php endif; ?>
+            </div>
         </td>
         <td>
             <span class="badge <?= $statusClass ?> fs-11 text-capitalize">
                 <?= htmlspecialchars($req['status']) ?>
             </span>
-            <?php if ($req['status'] === 'paid' && !empty($req['paid_by_name'])): ?>
+            <?php if ($req['status'] === 'approved' && !empty($req['approved_by_name'])): ?>
+                <div class="fs-9 text-muted mt-1">
+                    Approved by <?= htmlspecialchars($req['approved_by_name']) ?>
+                </div>
+            <?php elseif ($req['status'] === 'paid' && !empty($req['paid_by_name'])): ?>
                 <div class="fs-9 text-muted mt-1">
                     Paid via <?= htmlspecialchars($req['payment_method'] ?? 'Cash') ?><br>
                     By <?= htmlspecialchars($req['paid_by_name']) ?>
@@ -568,10 +1197,25 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
         </td>
         <td class="no-print">
             <div class="btn-list">
-                <?php if ($req['status'] === 'pending' && in_array($roleId, [1, 3, 6])): ?>
+                <!-- View Details button (always available) -->
+                <button type="button" class="btn btn-icon btn-sm btn-info border" title="View Details & Log Expenses"
+                        onclick="openViewModal(<?= $req['id'] ?>)">
+                    <i class="fa-solid fa-eye"></i>
+                </button>
+
+                <!-- Management Approval button (role 1, 3 for pending requisitions) -->
+                <?php if ($req['status'] === 'pending' && in_array($roleId, [1, 3])): ?>
+                    <button type="button" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1" 
+                            onclick="openApproveModal(<?= $req['id'] ?>, '<?= addslashes($req['requester_name']) ?>', '<?= addslashes($req['department_name']) ?>', '<?= $req['requisition_type'] ?>', <?= $req['amount'] ?>)">
+                        <i class="fa-solid fa-stamp"></i> Approve
+                    </button>
+                <?php endif; ?>
+
+                <!-- Accounts Payment button (role 1, 6 for approved requisitions) -->
+                <?php if ($req['status'] === 'approved' && in_array($roleId, [1, 6])): ?>
                     <button type="button" class="btn btn-sm btn-success d-inline-flex align-items-center gap-1" 
                             onclick="openPayModal(<?= $req['id'] ?>, '<?= addslashes($req['requester_name']) ?>', '<?= addslashes($req['department_name']) ?>', '<?= $req['requisition_type'] ?>', <?= $req['amount'] ?>)">
-                        <i class="fa-solid fa-file-invoice-dollar"></i> Pay/Reject
+                        <i class="fa-solid fa-file-invoice-dollar"></i> Pay
                     </button>
                 <?php endif; ?>
                 

@@ -751,8 +751,12 @@ $routes['con-land-monthly-reports/generate'] = ['controller' => 'Phase2\LandRepo
 // Fund Requisitions routes
 $routes['fund-requisitions'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'index'];
 $routes['fund-requisitions/store'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'store'];
+$routes['fund-requisitions/approve'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'approve'];
 $routes['fund-requisitions/pay'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'pay'];
 $routes['fund-requisitions/delete'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'delete'];
+$routes['fund-requisitions/show/(\d+)'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'show'];
+$routes['fund-requisitions/store-expense'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'storeExpense'];
+$routes['fund-requisitions/delete-expense'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'deleteExpense'];
 
 $routes['con-architect-engineering'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'index'];
 $routes['con-architect-engineering/create'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'create'];
@@ -815,6 +819,9 @@ $routes['project-architecture-dashboard']        = ['controller' => 'Phase2\Con_
 $routes['project-structural-design-dashboard']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectStructuralDesignDashboard'];
 $routes['estimator-dashboard']                   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'estimatorDashboard'];
 $routes['purchase-executive-dashboard']          = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'purchaseExecutiveDashboard'];
+
+// Monthly work report
+$routes['con-monthly-work-report']               = ['controller' => 'Phase2\Con_MonthlyWorkReportController', 'method' => 'index'];
 
 // ── Site IT & Security Operations ──────────────────────────────────────────────
 $routes['con-security-systems'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'systemLists'];
