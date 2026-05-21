@@ -248,6 +248,12 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                                         Booking Payment
                                                     </a>
                                                 <?php endif; ?>
+                                                
+                                                <a href="<?= $GLOBALS['base_url'] ?>/client-refund-create/<?= $or['id'] ?>"
+                                                    class="btn btn-sm btn-outline-danger">
+                                                    Refund Request
+                                                </a>
+
                                                 <?php if ($or['approval_status'] === 'pending'): ?>
                                                     <br><small class="text-warning mt-1 d-block" style="font-size:11px;">
                                                         <i class="fa-solid fa-clock"></i> Discount Pending Approval

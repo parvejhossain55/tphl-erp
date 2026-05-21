@@ -85,6 +85,12 @@
                                     <?php else: ?>
                                         <div style="font-size:11px;color:var(--text-muted,#6b7280)">Awaiting approval</div>
                                     <?php endif; ?>
+
+                                    <?php if (!empty($pr['management_note'])): ?>
+                                        <div style="font-size:11px; margin-top:5px;" class="text-muted">
+                                            <strong>Note:</strong> <?= htmlspecialchars($pr['management_note']) ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                             <span style="font-size:10px;font-weight:700;padding:4px 12px;border-radius:20px;
@@ -148,7 +154,10 @@
                                 <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline"
                                       onsubmit="return confirm('Approve this Purchase Request?');">
                                     <input type="hidden" name="status" value="Approved">
-                                    <button type="submit" class="btn btn-success btn-sm">
+                                    <div class="mb-2">
+                                        <textarea name="approval_note" class="form-control" rows="2" placeholder="Approval Note"></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-success btn-sm w-100">
                                         <i class="bi bi-check-circle me-1"></i> Approve
                                     </button>
                                 </form>
@@ -156,8 +165,8 @@
                             </div>
                         </div>
                     <?php elseif ($pr['status'] === 'Submitted'): ?>
-                        <div class="mt-4 p-3 bg-light rounded d-flex justify-content-between align-items-center">
-                            <span class="text-muted small">
+                        <div class="mt-4 p-3 bg-light rounded d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <span class="text-muted small w-100 mb-2">
                                 <i class="bi bi-clock-history me-1"></i>
                                 <?php if ($canApprove): ?>
                                     This PR is Submitted. Please review and Approve or Reject.
@@ -166,22 +175,20 @@
                                 <?php endif; ?>
                             </span>
                             <?php if ($canApprove): ?>
-                            <div class="d-flex gap-2">
-                                <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Approve this PR?');">
-                                    <input type="hidden" name="status" value="Approved">
-                                    <button type="submit" class="btn btn-success btn-sm">
+                            <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline w-100"
+                                  onsubmit="return confirm('Process this PR?');">
+                                <div class="mb-2">
+                                    <textarea name="approval_note" class="form-control" rows="2" placeholder="Approval / Rejection Note"></textarea>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" name="status" value="Approved" class="btn btn-success btn-sm">
                                         <i class="bi bi-check-circle me-1"></i> Approve
                                     </button>
-                                </form>
-                                <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Reject this PR?');">
-                                    <input type="hidden" name="status" value="Rejected">
-                                    <button type="submit" class="btn btn-danger btn-sm">
+                                    <button type="submit" name="status" value="Rejected" class="btn btn-danger btn-sm">
                                         <i class="bi bi-x-circle me-1"></i> Reject
                                     </button>
-                                </form>
-                            </div>
+                                </div>
+                            </form>
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>

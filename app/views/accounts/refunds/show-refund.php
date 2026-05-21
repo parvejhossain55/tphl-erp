@@ -195,7 +195,8 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                     </div>
                     <div class="mb-3">
                         <small class="text-muted d-block">Requested By</small>
-                        <strong><?= htmlspecialchars($refund['requested_by_name'] ?? '—') ?></strong>
+                        <strong><?= htmlspecialchars($refund['requested_by_name'] ?? '—') ?></strong><br>
+                        <small class="text-muted">(<?= htmlspecialchars($refund['requested_by_role'] ?? 'Role not found') ?>)</small>
                     </div>
                     <div class="mb-3">
                         <small class="text-muted d-block">Requested At</small>
@@ -244,24 +245,56 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                         • Cancel all pending EMIs<br>
                         • Create a cashout request for ৳<?= number_format($refund['refund_amount'], 2) ?>
                     </div>
-                    <form action="<?= $base_url ?>/client-refund-approve/<?= $refund['id'] ?>" method="POST" class="mb-3">
+                    <form action="<?= $base_url ?>/client-refund-approve/<?= $refund['id'] ?>" method="POST" class="mb-3" id="approveForm">
                         <div class="mb-3">
                             <label class="form-label fw-bold">Approved Amount (৳)</label>
                             <input type="number" step="0.01" name="approved_amount" class="form-control" value="<?= htmlspecialchars($refund['refund_amount']) ?>" required>
                         </div>
-                        <button type="submit" class="btn btn-success w-100 fw-bold"
-                                onclick="return confirm('Approve this refund? This will cancel the booking and release the flat.');">
+                        <button type="button" class="btn btn-success w-100 fw-bold" onclick="confirmApproval()">
                             <i class="bi bi-check-circle me-1"></i> Approve Refund
                         </button>
                     </form>
-                    <form action="<?= $base_url ?>/client-refund-reject/<?= $refund['id'] ?>" method="POST">
-                        <button type="submit" class="btn btn-outline-danger w-100 btn-sm"
-                                onclick="return confirm('Reject this refund request?');">
+                    <form action="<?= $base_url ?>/client-refund-reject/<?= $refund['id'] ?>" method="POST" id="rejectForm">
+                        <button type="button" class="btn btn-outline-danger w-100 btn-sm" onclick="confirmRejection()">
                             <i class="bi bi-x-circle me-1"></i> Reject
                         </button>
                     </form>
                 </div>
             </div>
+
+            <script>
+            function confirmApproval() {
+                Swal.fire({
+                    title: 'Approve this refund?',
+                    text: 'This will cancel the booking and release the flat.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, Approve it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        document.getElementById('approveForm').submit();
+                    }
+                });
+            }
+
+            function confirmRejection() {
+                Swal.fire({
+                    title: 'Reject this refund request?',
+                    text: 'This action cannot be undone.',
+                    icon: 'error',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Reject it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        document.getElementById('rejectForm').submit();
+                    }
+                });
+            }
+            </script>
             <?php endif; ?>
 
             <!-- Status Messages -->
@@ -305,14 +338,73 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                             </div>
                         </div>
                         <?php if (!$isFullyPaid): ?>
-                        <a href="<?= $base_url ?>/view-cashout-request?id=<?= $cashout['id'] ?>&redirect=client-refunds"
-                           class="btn btn-primary w-100 fw-bold">
+                        <button type="button" class="btn btn-primary w-100 fw-bold mb-3" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
                             <i class="bi bi-plus-circle me-1"></i> Add Payment
-                        </a>
+                        </button>
                         <?php else: ?>
-                        <div class="text-center text-success fw-bold">
+                        <div class="text-center text-success fw-bold mb-3">
                             <i class="bi bi-check-circle me-1"></i> Refund fully disbursed
                         </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($cashout_payments)): ?>
+                            <hr>
+                            <h6 class="fs-14 fw-semibold mb-3">Payment History</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Amount (৳)</th>
+                                            <th>Docs</th>
+                                            <th>Added By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($cashout_payments as $cp): ?>
+                                        <tr>
+                                            <td><?= date('d M Y h:i A', strtotime($cp['created_at'])) ?></td>
+                                            <td class="text-success fw-semibold">৳ <?= number_format($cp['amount'], 2) ?></td>
+                                            <td>
+                                                <?php if (!empty($cp['disbursement_proof'])): ?>
+                                                    <?php 
+                                                    $proofStr = $cp['disbursement_proof'];
+                                                    $proofFiles = json_decode($proofStr, true);
+                                                    if (!is_array($proofFiles)) {
+                                                        $proofFiles = [$proofStr];
+                                                    }
+                                                    ?>
+                                                    <div class="d-flex flex-wrap gap-1">
+                                                    <?php foreach ($proofFiles as $pIdx => $pPath): ?>
+                                                        <?php $pExt = strtolower(pathinfo($pPath, PATHINFO_EXTENSION)); ?>
+                                                        <a href="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars($pPath) ?>" target="_blank"
+                                                            class="btn btn-xs btn-outline-success py-0 px-1"
+                                                            style="font-size:11px;"
+                                                            title="<?= htmlspecialchars(basename($pPath)) ?>">
+                                                            <?php if (in_array($pExt, ['jpg','jpeg','png','gif','webp'])): ?>
+                                                                <i class="bi bi-image"></i>
+                                                            <?php elseif ($pExt === 'pdf'): ?>
+                                                                <i class="bi bi-file-pdf"></i>
+                                                            <?php else: ?>
+                                                                <i class="bi bi-file-earmark-text"></i>
+                                                            <?php endif; ?>
+                                                            <?= $pIdx + 1 ?>
+                                                        </a>
+                                                    <?php endforeach; ?>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <span class="text-muted">—</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?= htmlspecialchars($cp['added_by_name'] ?? '—') ?><br>
+                                                <small class="text-muted"><?= htmlspecialchars($cp['added_by_role'] ?? '—') ?></small>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -326,3 +418,177 @@ $isApproved = in_array($status, ['approved', 'refunded']);
         </div>
     </div>
 </div>
+
+<!-- Add Payment Modal -->
+<?php if (!empty($cashout) && !$isFullyPaid): ?>
+    <div class="modal fade" id="addPaymentModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fa-light fa-plus-circle me-2"></i>Add Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="<?= $GLOBALS['base_url'] ?>/add-cashout-payment?redirect=client-refunds" method="POST" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <input type="hidden" name="request_id" value="<?= $cashout['id'] ?>">
+
+                        <div class="alert alert-info">
+                            <strong>Total Approved:</strong> TK.<?= number_format($cashoutTotal, 2) ?><br>
+                            <strong>Already Paid:</strong> TK.<?= number_format($cashoutPaid, 2) ?><br>
+                            <strong>Due Amount:</strong> <span class="text-danger">TK.<?= number_format($cashoutRemaining, 2) ?></span>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Amount (TK.): <span class="text-danger">*</span></label>
+                                <input type="number" name="amount" class="form-control" placeholder="0.00" step="0.01"
+                                    min="0.01" max="<?= $cashoutRemaining ?>" value="<?= $cashoutRemaining ?>" required>
+                                <small class="text-muted">Max: TK.<?= number_format($cashoutRemaining, 2) ?></small>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Payment Date: <span class="text-danger">*</span></label>
+                                <input type="date" name="payment_date" class="form-control"
+                                    value="<?= date('Y-m-d') ?>" required>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Payment Method: <span class="text-danger">*</span></label>
+                                <select name="payment_method" class="form-control" id="vrPaymentMethod" required>
+                                    <option value="cash">Cash</option>
+                                    <option value="bank">Bank Transfer</option>
+                                    <option value="cheque">Cheque</option>
+                                    <option value="online">Online Payment</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Transaction Reference:</label>
+                                <input type="text" name="transaction_ref" class="form-control"
+                                    placeholder="e.g., Receipt #, Transaction ID">
+                            </div>
+
+                            <!-- Bank Transfer Fields -->
+                            <div class="col-md-12 mb-3 vr-bank-fields" style="display:none;">
+                                <label class="form-label">Bank / Branch: <span class="text-danger">*</span></label>
+                                <select name="bank_id" id="vrBankSelect" class="form-control">
+                                    <option value="">-- Loading banks... --</option>
+                                </select>
+                                <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/bank-registry" target="_blank">Bank Registry</a></small>
+                            </div>
+
+                            <div class="col-md-6 mb-3 vr-bank-fields" style="display:none;">
+                                <label class="form-label">Account Number:</label>
+                                <input type="text" name="bank_account_no" class="form-control" placeholder="Enter account number">
+                            </div>
+
+                            <!-- Cheque Fields -->
+                            <div class="col-md-6 mb-3 vr-cheque-fields" style="display:none;">
+                                <label class="form-label">Cheque Number:</label>
+                                <input type="text" name="cheque_no" class="form-control" placeholder="Enter cheque number">
+                            </div>
+
+                            <!-- Online Payment Fields -->
+                            <div class="col-md-6 mb-3 vr-online-fields" style="display:none;">
+                                <label class="form-label">Online Payment Type:</label>
+                                <select name="online_type" class="form-control">
+                                    <option value="">Select type</option>
+                                    <option value="bkash">bKash</option>
+                                    <option value="nagad">Nagad</option>
+                                    <option value="rocket">Rocket</option>
+                                    <option value="upay">Upay</option>
+                                    <option value="paypal">PayPal</option>
+                                    <option value="stripe">Stripe</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+
+                            <!-- Mandatory Disbursement Proof -->
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">
+                                    <i class="fa-light fa-paperclip me-1"></i>
+                                    Disbursement Proof <span class="text-danger">*</span>
+                                    <span class="text-muted small ms-1">(JPG, PNG, PDF, DOC — max 5MB each)</span>
+                                </label>
+                                <input type="file" name="disbursement_proof[]" id="vrProofFiles"
+                                    class="form-control" multiple
+                                    accept="image/*,application/pdf,.doc,.docx" required>
+                                <div id="vrFilePreview" class="d-flex flex-wrap gap-2 mt-2"></div>
+                                <small class="text-danger">Upload at least one proof document (receipt, bank slip, screenshot, etc.)</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fa-light fa-check me-1"></i> Add Payment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const method  = document.getElementById('vrPaymentMethod');
+    const bankF   = document.querySelectorAll('.vr-bank-fields');
+    const chequeF = document.querySelectorAll('.vr-cheque-fields');
+    const onlineF = document.querySelectorAll('.vr-online-fields');
+
+    function toggleFields() {
+        bankF.forEach(el => el.style.display = 'none');
+        chequeF.forEach(el => el.style.display = 'none');
+        onlineF.forEach(el => el.style.display = 'none');
+        if (!method) return;
+        if (method.value === 'bank')   bankF.forEach(el => el.style.display = 'block');
+        if (method.value === 'cheque') chequeF.forEach(el => el.style.display = 'block');
+        if (method.value === 'online') onlineF.forEach(el => el.style.display = 'block');
+    }
+
+    if (method) { method.addEventListener('change', toggleFields); toggleFields(); }
+
+    // Load Bank Registry options via AJAX
+    fetch('<?= $GLOBALS['base_url'] ?>/get-banks')
+        .then(r => r.json())
+        .then(data => {
+            const sel = document.getElementById('vrBankSelect');
+            if (!sel) return;
+            sel.innerHTML = '<option value="">-- Select Bank / Branch --</option>';
+            (data.banks || []).forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = b.bank_name + ' — ' + b.branch_name;
+                sel.appendChild(opt);
+            });
+        });
+
+    // File thumbnail preview
+    const proofInput = document.getElementById('vrProofFiles');
+    const preview    = document.getElementById('vrFilePreview');
+    if (proofInput && preview) {
+        proofInput.addEventListener('change', function() {
+            preview.innerHTML = '';
+            Array.from(this.files).forEach(file => {
+                const thumb = document.createElement('div');
+                thumb.className = 'border rounded p-1 text-center';
+                thumb.style.cssText = 'width:72px;font-size:10px;overflow:hidden;';
+                if (file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.style.cssText = 'width:62px;height:46px;object-fit:cover;border-radius:3px;';
+                    img.src = URL.createObjectURL(file);
+                    thumb.appendChild(img);
+                } else {
+                    thumb.innerHTML = '<i class="fa-light fa-file-pdf fa-2x text-danger"></i>';
+                }
+                const n = document.createElement('div');
+                n.textContent = file.name.length > 9 ? file.name.substr(0,9)+'...' : file.name;
+                thumb.appendChild(n);
+                preview.appendChild(thumb);
+            });
+        });
+    }
+});
+</script>
+<?php endif; ?>

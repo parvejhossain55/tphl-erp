@@ -88,9 +88,9 @@
 
                     <!-- Lead & Booking -->
                     <li
-                        class="slide has-sub <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients', 'client-refunds'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients', 'client-refunds'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
                             <span class="sidebar__menu-label">Lead & Booking</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -136,7 +136,10 @@
                                     class="sidebar__menu-item <?= isActive('onboarding-clients', $current_route) ?>">All
                                     Onboarding Clients</a>
                             </li>
-
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/client-refunds"
+                                    class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">Client Refunds</a>
+                            </li>
                         </ul>
                     </li>
 
@@ -833,21 +836,23 @@
 
                     <!-- Cash In Manage -->
                     <li
-                        class="slide has-sub <?= isActive(['ced-dashboard', 'clients-cashin-view', 'clients-cash-in-history-view'], $current_route) ?>">
+                        class="slide has-sub <?= isActive(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds'], $current_route) ? 'open active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isMenuOpen(['clients-cashin-view', 'clients-cash-in-history-view'], $current_route) ?>">
+                            class="sidebar__menu-item <?= isActive(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds'], $current_route) ? 'active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
                             <span class="sidebar__menu-label">Cash In View</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
                         <ul class="sidebar-menu child2"
-                            style="<?= isMenuOpen(['ced-dashboard', 'clients-cashin-view', 'clients-cashin-history-view'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                            style="<?= isMenuOpen(['clients-cashin-view', 'clients-cash-in-history-view', 'client-refunds'], $current_route) ? 'display:block;' : 'display:none;' ?>">
                             <li class="slide <?= isActive('clients-cashin-view', $current_route) ?>">
                                 <a href="<?= $base_url ?>/clients-cashin-view"
                                     class="sidebar__menu-item <?= isActive('clients-cashin-view', $current_route) ?>">Clients</a>
                             </li>
-
-
+                            <li class="slide <?= isActive('client-refunds', $current_route) ?>">
+                                <a href="<?= $base_url ?>/client-refunds"
+                                    class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">Refunds</a>
+                            </li>
                         </ul>
                     </li>
                     <!-- Clients For Login  -->
@@ -922,9 +927,9 @@
                     </li>
 
                     <li
-                        class="slide has-sub <?= isActive(['create-cashout-request', 'admin-cashout-requests'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['create-cashout-request', 'admin-cashout-requests', 'expense-adjustments'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['', 'create-cashout-request', 'admin-cashout-requests'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['create-cashout-request', 'admin-cashout-requests', 'expense-adjustments'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"> <i class="fa-solid fa-money-bill-trend-down"></i></div>
                             <span class="sidebar__menu-label">Manage Cash Out</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -943,6 +948,11 @@
                                 <a href="<?= $base_url ?>/admin-cashout-requests"
                                     class="sidebar__menu-item <?= isActive('admin-cashout-requests', $current_route) ?>">Cashout
                                     Requests</a>
+                            </li>
+
+                            <li class="slide <?= isActive('expense-adjustments', $current_route) ?>">
+                                <a href="<?= $base_url ?>/expense-adjustments"
+                                    class="sidebar__menu-item <?= isActive('expense-adjustments', $current_route) ?>">Expense Adjustments</a>
                             </li>
                         </ul>
                     </li>
@@ -1882,6 +1892,39 @@
                     </li>
                 <?php endif; ?>
                 <!-- ====== END Finance & Accounts ====== -->
+
+                <?php if (hasPermission('QC & Internal Audit') || ($_SESSION['user']['role_name'] ?? '') === 'qc_audit' || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
+                    <!-- ====== QC & Internal Audit (NEW) ====== -->
+                    <li class="slide has-sub <?= isActive(['qc-audit-dashboard', 'qc-requests', 'qc-advanced-audit'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['qc-audit-dashboard', 'qc-requests', 'qc-advanced-audit'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="bi bi-shield-check"></i></div>
+                            <span class="sidebar__menu-label">QC & Internal Audit</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/qc-audit-dashboard"
+                                    class="sidebar__menu-item <?= isActive('qc-audit-dashboard', $current_route) ?>">
+                                    <i class="bi bi-speedometer2 me-1"></i> Dashboard
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/qc-advanced-audit"
+                                    class="sidebar__menu-item <?= isActive('qc-advanced-audit', $current_route) ?>">
+                                    <i class="bi bi-filter-square me-1"></i> Advanced Audit
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/qc-requests"
+                                    class="sidebar__menu-item <?= isActive('qc-requests', $current_route) ?>">
+                                    <i class="bi bi-check2-square me-1"></i> QC Approvals
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <!-- ====== END QC & Internal Audit ====== -->
+                <?php endif; ?>
 
                 <?php if (hasPermission("Security Operations")): ?>
                     <!-- ====== Site IT & Security (NEW) ====== -->

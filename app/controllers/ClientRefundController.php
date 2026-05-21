@@ -39,10 +39,10 @@ class ClientRefundController extends Controller
         return in_array($this->userRole, [1, 3]);
     }
 
-    /** Roles 1, 3, 6 (Accounts) can create refund requests */
+    /** Roles 1 (Admin), 3 (Super Admin), 4 (Sales Exec), 5 (Sales Mgr), 6 (Accounts) can create refund requests */
     private function canCreateRefund()
     {
-        return in_array($this->userRole, [1, 3, 6]);
+        return in_array($this->userRole, [1, 3, 4, 5, 6]);
     }
 
     // =========================================================================
@@ -146,15 +146,9 @@ class ClientRefundController extends Controller
         }
 
         $totalPaid    = $this->model->getTotalVerifiedPaid($bookingId);
-        
-        if ($totalPaid <= 0) {
-            setError('No verified payments found for this booking.');
-            header("Location: {$GLOBALS['base_url']}/clients-cash-in-history/{$bookingId}");
-            exit;
-        }
 
-        if ($refundAmount <= 0 || $refundAmount > $totalPaid) {
-            setError('Refund amount must be greater than zero and cannot exceed total paid.');
+        if ($refundAmount < 0 || $refundAmount > $totalPaid) {
+            setError('Refund amount cannot be negative or exceed total paid.');
             header("Location: {$GLOBALS['base_url']}/clients-cash-in-history/{$bookingId}");
             exit;
         }
@@ -282,6 +276,19 @@ class ClientRefundController extends Controller
                 $paidStmt->execute();
                 $paidRow = $paidStmt->get_result()->fetch_assoc();
                 $cashoutRequest['paid_amount'] = (float)($paidRow['paid_amount'] ?? 0);
+
+                // Fetch individual payments for the view
+                $payStmt = $this->db->prepare(
+                    "SELECT cp.*, u.full_name as added_by_name, r.name as added_by_role
+                     FROM cashout_payments cp
+                     LEFT JOIN users u ON cp.created_by = u.id
+                     LEFT JOIN roles r ON u.role_id = r.id
+                     WHERE cp.cashout_request_id = ?
+                     ORDER BY cp.payment_date DESC, cp.id DESC"
+                );
+                $payStmt->bind_param('i', $refund['cashout_request_id']);
+                $payStmt->execute();
+                $cashoutPayments = $payStmt->get_result()->fetch_all(MYSQLI_ASSOC);
             }
         }
 
@@ -302,6 +309,7 @@ class ClientRefundController extends Controller
             'refund'           => $refund,
             'payments'         => $payments,
             'cashout_request'  => $cashoutRequest,
+            'cashout_payments' => $cashoutPayments ?? [],
             'approval_request' => $approvalReq,
             'canApprove'       => $this->canApprove(),
             'userRole'         => $this->userRole,
@@ -376,6 +384,15 @@ class ClientRefundController extends Controller
             );
             $arStmt->bind_param('ii', $this->userId, $id);
             $arStmt->execute();
+
+            // Sync approval_requests for the cashout
+            $arCashoutStmt = $this->db->prepare(
+                "UPDATE approval_requests
+                 SET status = 'approved', approved_by = ?, approved_at = NOW()
+                 WHERE source_table = 'cashout_requests' AND source_id = ? AND status = 'pending'"
+            );
+            $arCashoutStmt->bind_param('ii', $this->userId, $cashoutId);
+            $arCashoutStmt->execute();
         }
 
         // Step 3: Send email notification
@@ -431,6 +448,55 @@ class ClientRefundController extends Controller
         }
 
         header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+        exit;
+    }
+
+    // =========================================================================
+    // DELETE
+    // =========================================================================
+
+    public function delete($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/client-refunds");
+            exit;
+        }
+
+        $refund = $this->model->find($id);
+        if (!$refund) {
+            setError('Refund request not found.');
+            header("Location: {$GLOBALS['base_url']}/client-refunds");
+            exit;
+        }
+
+        // Only the requester can delete it, and only if it's pending
+        if ($refund['requested_by'] != $this->userId) {
+            setError('You can only delete your own refund requests.');
+            header("Location: {$GLOBALS['base_url']}/client-refunds");
+            exit;
+        }
+
+        if ($refund['status'] !== 'pending') {
+            setError('Only pending refund requests can be deleted.');
+            header("Location: {$GLOBALS['base_url']}/client-refunds");
+            exit;
+        }
+
+        if ($this->model->delete($id)) {
+            // Also delete the approval request
+            $arStmt = $this->db->prepare(
+                "DELETE FROM approval_requests
+                 WHERE source_table = 'client_refund_requests' AND source_id = ?"
+            );
+            $arStmt->bind_param('i', $id);
+            $arStmt->execute();
+
+            setSuccess('Refund request deleted successfully.');
+        } else {
+            setError('Failed to delete refund request.');
+        }
+
+        header("Location: {$GLOBALS['base_url']}/client-refunds");
         exit;
     }
 }

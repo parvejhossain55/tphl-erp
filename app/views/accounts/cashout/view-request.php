@@ -33,6 +33,11 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
         color: #721c24;
     }
 
+    .status-qc_approved {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+
     .status-partial {
         background: #cce5ff;
         color: #004085;
@@ -158,6 +163,9 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                                     break;
                                                 case 'rejected':
                                                     $statusClass = 'status-rejected';
+                                                    break;
+                                                case 'qc_approved':
+                                                    $statusClass = 'status-qc_approved';
                                                     break;
                                                 case 'partially_paid':
                                                     $statusClass = 'status-partial';
@@ -362,16 +370,40 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                 <div class="card-body">
                                     <?php
                                     // Determine what actions to show
-                                    $showApproveReject = $displayStatus == 'pending' && !$isAlreadyApproved;
+                                    $isPending = ($displayStatus === 'pending');
+                                    $isQCApproved = ($displayStatus === 'qc_approved');
+                                    
                                     $showAddPayment = ($displayStatus == 'approved' || $displayStatus == 'partial' || $displayStatus == 'partially_paid') && $request['due_amount'] > 0;
                                     $showFullyPaid = $request['due_amount'] <= 0;
                                     ?>
 
-                                    <?php if ($showApproveReject && $canApproveOrReject): ?>
-                                        <!-- Show approve/reject buttons only if pending and not already approved from homepage -->
-                                        <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST"
-                                            class="mb-2">
+                                    <?php if ($isPending && $canApproveQC && !$isAlreadyApproved): ?>
+                                        <!-- QC Approval -->
+                                        <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST" class="mb-2">
                                             <input type="hidden" name="id" value="<?= $request['id'] ?>">
+                                            <input type="hidden" name="status" value="qc_approved">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">QC Note (Optional)</label>
+                                                <textarea name="approval_note" class="form-control" rows="2" placeholder="Leave a note..."></textarea>
+                                            </div>
+                                            <button type="submit" class="btn btn-warning w-100 mb-2">
+                                                <i class="fa-light fa-shield-check me-2"></i> QC Approve
+                                            </button>
+                                        </form>
+                                        <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal"
+                                            data-bs-target="#rejectModal">
+                                            <i class="fa-light fa-times me-2"></i> Reject Request
+                                        </button>
+
+                                    <?php elseif ($isQCApproved && $canApproveOrReject && !$isAlreadyApproved): ?>
+                                        <!-- Management Approval -->
+                                        <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST" class="mb-2">
+                                            <input type="hidden" name="id" value="<?= $request['id'] ?>">
+                                            <input type="hidden" name="status" value="approved">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Approved Amount (Optional)</label>
+                                                <input type="number" step="0.01" name="approved_amount" class="form-control" value="<?= htmlspecialchars($request['amount']) ?>" max="<?= htmlspecialchars($request['amount']) ?>">
+                                            </div>
                                             <button type="submit" class="btn btn-success w-100 mb-2">
                                                 <i class="fa-light fa-check me-2"></i> Approve Request
                                             </button>
@@ -380,6 +412,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                             data-bs-target="#rejectModal">
                                             <i class="fa-light fa-times me-2"></i> Reject Request
                                         </button>
+
                                     <?php elseif ($showAddPayment): ?>
                                         <!-- Show add payment button if approved and has due amount -->
                                         <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal"
@@ -454,6 +487,23 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                             </span>
                                         </p>
                                     </div>
+
+                                    <?php if (!empty($request['qc_approved_by_id'])): ?>
+                                        <div class="mb-3">
+                                            <label class="form-label">QC Approved By (ID):</label>
+                                            <p class="form-control-static fw-bold"><?= htmlspecialchars($request['qc_approved_by_id']) ?></p>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">QC Approved At:</label>
+                                            <p class="form-control-static"><?= date('d M Y h:i A', strtotime($request['qc_approved_at'])) ?></p>
+                                        </div>
+                                        <?php if (!empty($request['qc_note'])): ?>
+                                            <div class="mb-3">
+                                                <label class="form-label">QC Note:</label>
+                                                <p class="form-control-static fst-italic">"<?= nl2br(htmlspecialchars($request['qc_note'])) ?>"</p>
+                                            </div>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
 
                                     <?php if (!empty($approval_request['approved_amount'])): ?>
                                         <div class="mb-3">
@@ -537,7 +587,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
 </div>
 
 <!-- Reject Modal -->
-<?php if ($isAdmin && $canApproveOrReject && $displayStatus == 'pending' && !$isAlreadyApproved): ?>
+<?php if ($isAdmin && ($isPending || $isQCApproved) && !$isAlreadyApproved && ($canApproveOrReject || $canApproveQC)): ?>
     <div class="modal fade" id="rejectModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">

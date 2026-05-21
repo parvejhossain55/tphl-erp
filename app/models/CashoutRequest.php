@@ -555,6 +555,23 @@ public function createRequest($data)
         }
     }
 
+    public function updateQCStatus($id, $userId, $qcNote)
+    {
+        $sql = "UPDATE {$this->table} SET 
+                status = 'qc_approved',
+                qc_approved_by_id = ?,
+                qc_approved_at = NOW(),
+                qc_note = ?,
+                updated_at = NOW()
+                WHERE id = ?";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("isi", $userId, $qcNote, $id);
+        $result = $stmt->execute();
+        $stmt->close();
+        return $result;
+    }
+
     // Update due amount
     public function updateDueAmount($id, $dueAmount)
     {
@@ -686,9 +703,15 @@ public function createRequest($data)
                 case 'approved':
                 case 'partial':
                     // If approved or partial, check payment status
-                    if (isset($request['due_amount']) && $request['due_amount'] <= 0) {
+                    // Only mark as fully_paid if approved_amount > 0 AND due_amount is explicitly 0
+                    // (meaning payments were actually made to cover it)
+                    if (isset($request['approved_amount']) && $request['approved_amount'] > 0 
+                        && isset($request['due_amount']) && $request['due_amount'] <= 0) {
                         return 'fully_paid';
-                    } elseif (isset($request['due_amount']) && $request['due_amount'] < $request['amount']) {
+                    } elseif (isset($request['due_amount']) && isset($request['approved_amount'])
+                        && $request['approved_amount'] > 0
+                        && $request['due_amount'] > 0 
+                        && $request['due_amount'] < $request['approved_amount']) {
                         return 'partially_paid';
                     }
                     return 'approved';
@@ -703,6 +726,9 @@ public function createRequest($data)
         }
 
         // If no approval record, use cashout status
+        if ($cashoutStatus === 'qc_approved') {
+            return 'qc_approved';
+        }
         return $cashoutStatus;
     }
 
@@ -736,6 +762,7 @@ public function createRequest($data)
     // NEW: Update approved amount directly (for manual updates)
     public function updateApprovedAmount($id, $approvedAmount)
     {
+        // Step 1: Update approved_amount
         $sql = "UPDATE {$this->table} SET 
                 approved_amount = ?,
                 updated_at = NOW()
@@ -745,6 +772,25 @@ public function createRequest($data)
         $stmt->bind_param("di", $approvedAmount, $id);
         $result = $stmt->execute();
         $stmt->close();
+
+        // Step 2: Calculate and set due_amount = approved_amount - total payments
+        $totalPaid = 0;
+        $paidSql = "SELECT COALESCE(SUM(amount), 0) as total FROM cashout_payments WHERE cashout_request_id = ?";
+        $paidStmt = $this->db->prepare($paidSql);
+        $paidStmt->bind_param("i", $id);
+        $paidStmt->execute();
+        $paidResult = $paidStmt->get_result();
+        if ($row = $paidResult->fetch_assoc()) {
+            $totalPaid = (float)$row['total'];
+        }
+        $paidStmt->close();
+
+        $dueAmount = $approvedAmount - $totalPaid;
+        $dueSql = "UPDATE {$this->table} SET due_amount = ? WHERE id = ?";
+        $dueStmt = $this->db->prepare($dueSql);
+        $dueStmt->bind_param("di", $dueAmount, $id);
+        $dueStmt->execute();
+        $dueStmt->close();
 
         return $result;
     }

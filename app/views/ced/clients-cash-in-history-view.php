@@ -62,6 +62,13 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                     <?php else: ?>
                         <span class="badge bg-success">Current</span>
                     <?php endif; ?>
+                    
+                    <?php if (isset($refundDetails) && $refundDetails['status'] === 'approved'): ?>
+                        <span class="badge bg-danger"><i class="fa-light fa-undo me-1"></i>Refund Approved</span>
+                        <?php if ($refundPaidAmount > 0): ?>
+                            <span class="badge" style="background:#2d8cf0; color:#fff;"><i class="fa-light fa-money-bill-transfer me-1"></i>Refunded Amount: TK.<?= number_format($refundPaidAmount, 2) ?></span>
+                        <?php endif; ?>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -489,6 +496,9 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                     </a>
                     <a href="<?= $GLOBALS['base_url'] ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-primary mb-3">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
+                    </a>
+                    <a href="<?= $GLOBALS['base_url'] ?>/discount-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn mb-3" style="background: linear-gradient(135deg, #6c5ffc, #8b5cf6); color:#fff; border:none;">
+                        <i class="fa-light fa-tags me-2"></i> Discount Statement
                     </a>
                     <?php
                         $canRefund = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 8]);
@@ -1002,9 +1012,9 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
         });
     });
     </script>
+
 <?php endif; ?>
 
-<!-- Transfer Note Modal -->
 <div class="modal fade" id="transferNoteModal" tabindex="-1" aria-labelledby="transferNoteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <form method="POST" action="<?= $GLOBALS['base_url'] ?>/save-transfer-note">

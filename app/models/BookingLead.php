@@ -517,6 +517,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
          FROM lead_bookings lb
          INNER JOIN lead_payments lp 
             ON lp.booking_id = lb.id
+         WHERE lb.deleted_at IS NULL AND lb.booking_status NOT IN ('refunded', 'cancelled')
          GROUP BY lb.lead_id"
         );
 
@@ -540,7 +541,9 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         $sql = "SELECT lb.lead_id, COUNT(DISTINCT lb.id) AS booking_count
                 FROM lead_bookings lb
                 INNER JOIN lead_payments lp ON lp.booking_id = lb.id
-                WHERE lb.lead_id IN ($ids)
+                WHERE lb.lead_id IN ($ids) 
+                  AND lb.deleted_at IS NULL 
+                  AND lb.booking_status NOT IN ('refunded', 'cancelled')
                 GROUP BY lb.lead_id";
 
         $result = $this->db->query($sql);

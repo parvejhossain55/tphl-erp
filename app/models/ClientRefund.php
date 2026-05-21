@@ -30,13 +30,17 @@ class ClientRefund extends Model
                        f.flat_name,
                        f.floor_no,
                        u_req.full_name  AS requested_by_name,
-                       u_app.full_name  AS approved_by_name
+                       r_req.name       AS requested_by_role,
+                       u_app.full_name  AS approved_by_name,
+                       r_app.name       AS approved_by_role
                 FROM {$this->table} crr
                 LEFT JOIN leads    l     ON l.id  = crr.lead_id
                 LEFT JOIN projects p     ON p.id  = crr.project_id
                 LEFT JOIN flats    f     ON f.id  = crr.flat_id
                 LEFT JOIN users    u_req ON u_req.id = crr.requested_by
-                LEFT JOIN users    u_app ON u_app.id = crr.approved_by";
+                LEFT JOIN roles    r_req ON r_req.id = u_req.role_id
+                LEFT JOIN users    u_app ON u_app.id = crr.approved_by
+                LEFT JOIN roles    r_app ON r_app.id = u_app.role_id";
 
         if ($filterUserId) {
             $sql .= " WHERE crr.requested_by = " . (int)$filterUserId;
@@ -64,14 +68,18 @@ class ClientRefund extends Model
                     lb.agreement_value,
                     lb.booking_status,
                     u_req.full_name  AS requested_by_name,
-                    u_app.full_name  AS approved_by_name
+                    r_req.name       AS requested_by_role,
+                    u_app.full_name  AS approved_by_name,
+                    r_app.name       AS approved_by_role
              FROM {$this->table} crr
              LEFT JOIN leads         l     ON l.id  = crr.lead_id
              LEFT JOIN projects      p     ON p.id  = crr.project_id
              LEFT JOIN flats         f     ON f.id  = crr.flat_id
              LEFT JOIN lead_bookings lb    ON lb.id = crr.booking_id
              LEFT JOIN users         u_req ON u_req.id = crr.requested_by
+             LEFT JOIN roles         r_req ON r_req.id = u_req.role_id
              LEFT JOIN users         u_app ON u_app.id = crr.approved_by
+             LEFT JOIN roles         r_app ON r_app.id = u_app.role_id
              WHERE crr.id = ?"
         );
         $stmt->bind_param('i', $id);
@@ -272,5 +280,13 @@ class ClientRefund extends Model
         );
         $stmt->bind_param('ii', $cashoutRequestId, $refundId);
         return $stmt->execute();
+    }
+
+    /** Delete a refund request (only if pending) */
+    public function delete($id)
+    {
+        $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = ? AND status = 'pending'");
+        $stmt->bind_param('i', $id);
+        return $stmt->execute() && $stmt->affected_rows > 0;
     }
 }

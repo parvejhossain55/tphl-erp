@@ -50,6 +50,13 @@ class Con_VendorPaymentRequestController extends Controller
     {
         return in_array($this->userRole, [1, 3]);
     }
+    
+    /** Roles that can do QC Approval */
+    private function canApproveQC()
+    {
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        return ($roleName === 'qc_audit' || hasPermission('QC & Internal Audit') || $this->canApprove());
+    }
 
     /** Roles 1, 3, 6 (Accounts) can process payments */
     private function canProcessPayment()
@@ -259,6 +266,12 @@ class Con_VendorPaymentRequestController extends Controller
         // Get banks for payment modal dropdown
         $banks = $this->db->query("SELECT id, bank_name, branch_name FROM banks WHERE status = 'active' ORDER BY bank_name")->fetch_all(MYSQLI_ASSOC);
 
+        // Fetch extra documents/notes added post-approval
+        $stmtDoc = $this->db->prepare("SELECT d.*, u.full_name as uploaded_by_name FROM vendor_payment_request_documents d LEFT JOIN users u ON u.id = d.uploaded_by WHERE d.vendor_payment_request_id = ? ORDER BY d.id ASC");
+        $stmtDoc->bind_param('i', $id);
+        $stmtDoc->execute();
+        $documents = $stmtDoc->get_result()->fetch_all(MYSQLI_ASSOC);
+
         $this->view('phase2/vendor-payment-requests/show-payment', [
             'current_route'     => 'con-vendor-payment-requests',
             'page_title'        => 'Payment Request Details',
@@ -272,91 +285,205 @@ class Con_VendorPaymentRequestController extends Controller
             'payable_amount'    => $payableAmt,
             'approval_request'  => $approvalReq,
             'canApprove'        => $this->canApprove(),
+            'canApproveQC'      => $this->canApproveQC(),
             'canProcessPayment' => $this->canProcessPayment(),
             'userRole'          => $this->userRole,
             'banks'             => $banks,
+            'documents'         => $documents,
         ]);
     }
 
     // =========================================================================
-    // APPROVE — Management (roles 1,3) with adjustable amount
+    // ADD DOCUMENT & NOTE (POST-APPROVAL FLEXIBILITY)
     // =========================================================================
 
-    public function approve($id)
+    public function addDocument($id)
     {
-        if (!$this->canApprove()) {
-            setError('You are not authorized to approve payment requests.');
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $note = trim($_POST['note'] ?? '');
+
+        // Upload file if present
+        $documentPath = null;
+        if (isset($_FILES['document']) && $_FILES['document']['error'] === UPLOAD_ERR_OK) {
+            $uploadResult = $this->handleFileUpload($_FILES['document']);
+            if ($uploadResult['success']) {
+                $documentPath = $uploadResult['file_path'];
+            } else {
+                setError($uploadResult['message']);
+                header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+                exit;
+            }
+        }
+
+        if (empty($note) && empty($documentPath)) {
+            setError('Please provide a note or a document.');
             header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
             exit;
         }
 
+        $stmt = $this->db->prepare(
+            "INSERT INTO vendor_payment_request_documents (vendor_payment_request_id, document_path, note, uploaded_by, created_at) VALUES (?, ?, ?, ?, NOW())"
+        );
+        $stmt->bind_param('issi', $id, $documentPath, $note, $userId);
+        
+        if ($stmt->execute()) {
+            setSuccess('Document/Note added successfully.');
+        } else {
+            setError('Failed to add document.');
+        }
+
+        header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+        exit;
+    }
+
+    // =========================================================================
+    // APPROVE — 2-Tier: QC -> Management
+    // =========================================================================
+
+    public function approve($id)
+    {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
             exit;
         }
 
         $request = $this->model->find($id);
-        if (!$request || $request['status'] !== 'Submitted') {
-            setError('Payment request is not in Submitted status.');
+        if (!$request) {
+            setError('Payment request not found.');
             header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
             exit;
         }
 
-        $approvedAmount = (float)($_POST['approved_amount'] ?? $request['net_payable']);
-        if ($approvedAmount <= 0) {
-            $approvedAmount = (float)$request['net_payable'];
+        $status = $_POST['status'] ?? '';
+        if (!in_array($status, ['QC Approved', 'Approved'])) {
+            setError('Invalid status.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
         }
 
-        if ($this->model->approve($id, $this->userId, $approvedAmount)) {
-            // Sync approval_requests table
-            $this->syncApprovalRequest($id, 'approved');
-
-            // Send email notification on approval
-            try {
-                $updatedRequest = $this->model->find($id);
-                if ($updatedRequest) {
-                    // Fetch vendor name for the email
-                    $vendor = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
-                    $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($request['project_id'] ?? 0))->fetch_assoc();
-                    $updatedRequest['vendor_name']  = $vendor['name'] ?? '';
-                    $updatedRequest['project_name'] = $project['name'] ?? '';
-
-                    $this->mailService->sendVendorPaymentOnApproval(
-                        $updatedRequest,
-                        'approved',
-                        $this->userId
-                    );
-                }
-            } catch (\Exception $e) {
-                error_log("Vendor Payment email (approval) failed: " . $e->getMessage());
+        if ($status === 'QC Approved') {
+            if (!$this->canApproveQC()) {
+                setError('You are not authorized for QC approval.');
+                header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+                exit;
+            }
+            if ($request['status'] !== 'Submitted') {
+                setError('Payment request must be in Submitted state for QC approval.');
+                header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+                exit;
+            }
+            $qcNote = trim($_POST['approval_note'] ?? '');
+            
+            $stmt = $this->db->prepare("UPDATE vendor_payment_requests SET status = 'QC Approved', qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ? WHERE id = ?");
+            $stmt->bind_param('isi', $this->userId, $qcNote, $id);
+            if ($stmt->execute()) {
+                setSuccess('Payment Request QC Approved successfully.');
+            } else {
+                setError('Failed to QC approve.');
+            }
+        } 
+        else if ($status === 'Approved') {
+            if (!$this->canApprove()) {
+                setError('You are not authorized to approve payment requests.');
+                header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+                exit;
+            }
+            if ($request['status'] !== 'QC Approved') {
+                setError('Payment request must be QC Approved before management approval.');
+                header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+                exit;
             }
 
-            setSuccess('Payment Request Approved with amount ৳' . number_format($approvedAmount, 2));
-        } else {
-            setError('Failed to approve or request already processed.');
+            $approvedAmount = (float)($_POST['approved_amount'] ?? $request['net_payable']);
+            if ($approvedAmount <= 0) {
+                $approvedAmount = (float)$request['net_payable'];
+            }
+            $mgtNote = trim($_POST['approval_note'] ?? '');
+
+            if ($this->model->approve($id, $this->userId, $approvedAmount)) {
+                // Update management note
+                $stmt = $this->db->prepare("UPDATE vendor_payment_requests SET management_note = ? WHERE id = ?");
+                $stmt->bind_param('si', $mgtNote, $id);
+                $stmt->execute();
+                
+                // Sync approval_requests table
+                $this->syncApprovalRequest($id, 'approved');
+
+                // Send email notification on approval
+                try {
+                    $updatedRequest = $this->model->find($id);
+                    if ($updatedRequest) {
+                        // Fetch vendor name for the email
+                        $vendor = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
+                        $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($request['project_id'] ?? 0))->fetch_assoc();
+                        $updatedRequest['vendor_name']  = $vendor['name'] ?? '';
+                        $updatedRequest['project_name'] = $project['name'] ?? '';
+
+                        $this->mailService->sendVendorPaymentOnApproval(
+                            $updatedRequest,
+                            'approved',
+                            $this->userId
+                        );
+                    }
+                } catch (\Exception $e) {
+                    error_log("Vendor Payment email (approval) failed: " . $e->getMessage());
+                }
+
+                setSuccess('Payment Request Approved with amount ৳' . number_format($approvedAmount, 2));
+            } else {
+                setError('Failed to approve or request already processed.');
+            }
         }
+        
         header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
         exit;
     }
 
     // =========================================================================
-    // REJECT — Management (roles 1,3)
+    // REJECT
     // =========================================================================
 
     public function reject($id)
     {
-        if (!$this->canApprove()) {
-            setError('You are not authorized to reject payment requests.');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+        
+        $request = $this->model->find($id);
+        if (!$request) {
             header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
             exit;
         }
 
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $isQC = ($request['status'] === 'Submitted');
+        $isMgmt = ($request['status'] === 'QC Approved');
+
+        if ($isQC && !$this->canApproveQC()) {
+            setError('You are not authorized to reject as QC.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        if ($isMgmt && !$this->canApprove()) {
+            setError('You are not authorized to reject as Management.');
             header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
             exit;
         }
 
         if ($this->model->reject($id, $this->userId)) {
+            $note = trim($_POST['approval_note'] ?? '');
+            if ($isQC) {
+                $stmt = $this->db->prepare("UPDATE vendor_payment_requests SET qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ? WHERE id = ?");
+                $stmt->bind_param('isi', $this->userId, $note, $id);
+                $stmt->execute();
+            } else {
+                $stmt = $this->db->prepare("UPDATE vendor_payment_requests SET management_note = ? WHERE id = ?");
+                $stmt->bind_param('si', $note, $id);
+                $stmt->execute();
+            }
+
             // Sync approval_requests table
             $this->syncApprovalRequest($id, 'rejected');
             setSuccess('Payment Request Rejected.');

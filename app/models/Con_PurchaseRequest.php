@@ -42,12 +42,14 @@ class Con_PurchaseRequest extends Model
             "SELECT pr.*, p.name AS project_name, u.full_name AS created_by_name,
                     apv.full_name AS approved_by_name,
                     apv_r.name    AS approved_by_role,
+                    qc.full_name  AS qc_approved_by_name,
                     exec.full_name AS assigned_executive_name
              FROM {$this->table} pr
              LEFT JOIN projects p   ON p.id    = pr.project_id
              LEFT JOIN users u      ON u.id    = pr.created_by
              LEFT JOIN users apv    ON apv.id  = pr.approved_by_id
              LEFT JOIN roles apv_r  ON apv_r.id = apv.role_id
+             LEFT JOIN users qc     ON qc.id   = pr.qc_approved_by_id
              LEFT JOIN users exec   ON exec.id = pr.assigned_executive_id
              WHERE pr.id = ?"
         );
