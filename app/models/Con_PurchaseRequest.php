@@ -59,9 +59,10 @@ class Con_PurchaseRequest extends Model
     public function getItems($requestId)
     {
         $stmt = $this->db->prepare(
-            "SELECT pri.*, m.name AS material_name, m.unit
+            "SELECT pri.*, m.name AS material_name, m.unit, COALESCE(cat.name, 'Uncategorized') AS category_name
              FROM {$this->itemTable} pri
              JOIN con_materials m ON m.id = pri.material_id
+             LEFT JOIN con_material_categories cat ON cat.id = m.category_id
              WHERE pri.request_id = ?
              ORDER BY pri.id ASC"
         );

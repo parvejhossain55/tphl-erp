@@ -49,9 +49,10 @@ class Con_Quotation extends Model
     public function getItems($quotationId)
     {
         $stmt = $this->db->prepare(
-            "SELECT qi.*, m.name AS material_name, m.unit
+            "SELECT qi.*, m.name AS material_name, m.unit, COALESCE(cat.name, 'Uncategorized') AS category_name
              FROM {$this->itemTable} qi
              JOIN con_materials m ON m.id = qi.material_id
+             LEFT JOIN con_material_categories cat ON cat.id = m.category_id
              WHERE qi.quotation_id = ?
              ORDER BY qi.id ASC"
         );
@@ -215,10 +216,11 @@ class Con_Quotation extends Model
     /** Get the winning selections for a request (used to generate PO) */
     public function getWinningSelections($requestId)
     {
-        $sql = "SELECT ci.*, m.name AS material_name, m.unit, v.name AS vendor_name
+        $sql = "SELECT ci.*, m.name AS material_name, m.unit, COALESCE(cat.name, 'Uncategorized') AS category_name, v.name AS vendor_name
                 FROM comparison_items ci
                 JOIN quotation_comparisons qc ON qc.id = ci.comparison_id
                 JOIN con_materials m ON m.id = ci.material_id
+                LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                 JOIN vendors v ON v.id = ci.vendor_id
                 WHERE qc.request_id = ? AND ci.is_selected = 1
                 ORDER BY ci.id ASC";

@@ -138,7 +138,7 @@ $months     = ['','January','February','March','April','May','June',
                                                 <option value="">-- Select Material --</option>
                                                 <?php foreach ($materials as $m): ?>
                                                     <option value="<?= $m['id'] ?>" data-unit="<?= $m['unit'] ?>">
-                                                        <?= htmlspecialchars($m['name']) ?> (<?= $m['unit'] ?>)
+                                                        <?= htmlspecialchars($m['name']) ?> [<?= htmlspecialchars($m['category_name'] ?? 'Uncategorized') ?>] (<?= htmlspecialchars($m['unit']) ?>)
                                                     </option>
                                                 <?php endforeach; ?>
                                             </select>

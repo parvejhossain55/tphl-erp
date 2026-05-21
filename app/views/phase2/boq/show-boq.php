@@ -369,7 +369,10 @@ if ($viewerRole === 12 && $status === 'Draft'):
         ?>
         <tr>
           <td style="font-size:11px;color:var(--text-muted)"><?= $i+1 ?></td>
-          <td style="font-weight:700"><?= htmlspecialchars($item['material_name']) ?></td>
+          <td>
+            <span style="font-weight:700"><?= htmlspecialchars($item['material_name']) ?></span>
+            <br><small class="text-muted">[Category: <?= htmlspecialchars($item['category_name'] ?? 'Uncategorized') ?>]</small>
+          </td>
           <td style="font-size:11.5px;color:var(--text-muted)"><?= htmlspecialchars($item['unit']) ?></td>
           <td style="text-align:right;font-weight:700;color:#2563eb"><?= number_format($boqQty, 3) ?></td>
           <td style="text-align:right"><?= boqFmt($item['unit_cost']) ?></td>

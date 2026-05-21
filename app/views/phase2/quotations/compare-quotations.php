@@ -82,6 +82,7 @@ $vendorIds = array_keys($vendors);
                                         <td class="text-start fw-bold">
                                             <?= htmlspecialchars($mat['material_name']) ?>
                                             <span class="text-muted small">(<?= $mat['unit'] ?>)</span>
+                                            <br><small class="text-muted">[Category: <?= htmlspecialchars($mat['category_name'] ?? 'Uncategorized') ?>]</small>
                                             <input type="hidden" name="sel_material_id[]" value="<?= $mid ?>">
                                         </td>
                                         <td><?= number_format($mat['quantity'], 3) ?></td>

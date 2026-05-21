@@ -432,6 +432,7 @@ class Con_PurchaseRequestController extends Controller
                     bi.material_id,
                     m.name  AS material_name,
                     m.unit,
+                    COALESCE(cat.name, 'Uncategorized') AS category_name,
                     bi.quantity AS boq_qty,
                     COALESCE((
                         SELECT SUM(pri.quantity)
@@ -466,6 +467,7 @@ class Con_PurchaseRequestController extends Controller
                     ), 0) AS received_qty
                 FROM boq_items bi
                 JOIN con_materials m ON m.id = bi.material_id
+                LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                 WHERE bi.boq_id = ?
                 ORDER BY m.name ASC");
             $stmtItems->bind_param('iiii', $projectId, $projectId, $projectId, $boq['id']);

@@ -7,10 +7,11 @@ class Con_QCChecklist {
     }
 
     public function getAll() {
-        $sql = "SELECT c.*, wt.work_type_name, m.name as material_name
+        $sql = "SELECT c.*, wt.work_type_name, m.name as material_name, COALESCE(cat.name, 'Uncategorized') AS category_name
                 FROM qc_checklists c
                 LEFT JOIN work_types wt ON c.work_type_id = wt.id
                 LEFT JOIN con_materials m ON c.material_item_id = m.id
+                LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                 ORDER BY c.id DESC";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];

@@ -904,6 +904,10 @@ $routes['con-material-store']          = ['controller' => 'Phase2\Con_MaterialCo
 $routes['con-material-edit/(\d+)']     = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'edit'];
 $routes['con-material-update/(\d+)']   = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'update'];
 $routes['con-materials-import']        = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'importCsv'];
+$routes['con-material-delete/(\d+)']   = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'delete'];
+$routes['con-material-category-store']          = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'storeCategory'];
+$routes['con-material-category-update/(\d+)']   = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'updateCategory'];
+$routes['con-material-category-delete/(\d+)']   = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'deleteCategory'];
 
 $routes['con-warehouses']              = ['controller' => 'Phase2\WarehouseController', 'method' => 'index'];
 $routes['con-warehouse-create']        = ['controller' => 'Phase2\WarehouseController', 'method' => 'create'];

@@ -156,7 +156,7 @@
                                         <option value="">-- Select Material --</option>
                                         <?php foreach ($materials as $m): ?>
                                             <option value="<?= $m['id'] ?>" data-unit="<?= $m['unit'] ?>">
-                                                <?= htmlspecialchars($m['name']) ?> (<?= $m['unit'] ?>)
+                                                <?= htmlspecialchars($m['name'] . ' [' . ($m['category_name'] ?? 'Uncategorized') . '] (' . $m['unit'] . ')') ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
@@ -242,7 +242,10 @@ function selectProject(projectId, projectName) {
         receivedMaterials[projectId].forEach(mat => {
             matTbody.innerHTML += `
                 <tr>
-                    <td class="fw-semibold">${mat.material_name}</td>
+                    <td>
+                        <span class="fw-semibold">${mat.material_name}</span>
+                        <br><small class="text-muted">${mat.category_name || 'Uncategorized'}</small>
+                    </td>
                     <td class="text-end fw-bold text-primary">${parseFloat(mat.total_received).toFixed(2)}</td>
                     <td>${mat.unit}</td>
                 </tr>`;

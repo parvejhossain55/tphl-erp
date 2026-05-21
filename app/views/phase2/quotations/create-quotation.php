@@ -121,6 +121,7 @@
                                         <td>
                                             <span class="fw-bold"><?= htmlspecialchars($item['material_name']) ?></span>
                                             <span class="text-muted small">(<?= $item['unit'] ?>)</span>
+                                            <br><small class="text-muted">[Category: <?= htmlspecialchars($item['category_name'] ?? 'Uncategorized') ?>]</small>
                                             <input type="hidden" name="material_id[]" value="<?= $item['material_id'] ?>">
                                         </td>
                                         <td class="text-muted"><?= number_format($item['quantity'], 3) ?></td>

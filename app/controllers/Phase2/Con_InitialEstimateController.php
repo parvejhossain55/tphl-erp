@@ -36,7 +36,13 @@ class Con_InitialEstimateController extends Controller
 
     public function index()
     {
-        $budgets = $this->model->getAll();
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id']      ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // PM (15,22) and Management (3) see all including drafts
+        // Others see only their own drafts + all non-draft records
+        $budgets = $this->model->getAll($userId, $roleId);
 
         $this->view('phase2/initial_estimates/initial-estimate-lists', [
             'current_route' => 'con-estimates',
@@ -69,19 +75,21 @@ class Con_InitialEstimateController extends Controller
         $rProjs = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND $filter ORDER BY name ASC");
         $projects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
 
-        $archs       = $this->archModel->getAll();
-        $designTypes = $this->designTypeModel->getAll();
-        $materials   = $this->materialModel->getAll();
-        $workTypes   = $this->model->getWorkTypes();
+        $archs           = $this->archModel->getAll();
+        $designTypes     = $this->model->getDesignTypes();
+        $workTypes       = $this->model->getWorkTypes();
+        $workTypesGrouped= $this->model->getWorkTypesGrouped();
+        $materials       = $this->materialModel->getAll();
 
         $this->view('phase2/initial_estimates/create-initial-budget', [
-            'current_route' => 'con-estimate-create',
-            'page_title'    => 'Create Initial Estimate Budget',
-            'projects'      => $projects,
-            'archs'         => $archs,
-            'designTypes'   => $designTypes,
-            'materials'     => $materials,
-            'workTypes'     => $workTypes,
+            'current_route'    => 'con-estimate-create',
+            'page_title'       => 'Create Initial Estimate Budget',
+            'projects'         => $projects,
+            'archs'            => $archs,
+            'designTypes'      => $designTypes,
+            'workTypes'        => $workTypes,
+            'workTypesGrouped' => $workTypesGrouped,
+            'materials'        => $materials,
         ]);
     }
 
@@ -99,25 +107,26 @@ class Con_InitialEstimateController extends Controller
 
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        // ── Header ──────────────────────────────────────────────────────────
-        $workTypeId = (int)($_POST['work_type_id'] ?? 0);
-        // Fetch design_type_id from the selected work_type
-        $wtRow = $workTypeId ? $this->workTypeModel->find($workTypeId) : null;
-        $designTypeId = $wtRow ? (int)$wtRow['design_type_id'] : 0;
+        // Determine status: draft or pending (submitted)
+        $submitAction = $_POST['submit_action'] ?? 'draft';
+        $status       = ($submitAction === 'submit') ? 'pending' : 'draft';
 
+        // ── Header ──────────────────────────────────────────────────────────
         $header = [
-            'project_id'       => (int)   ($_POST['project_id']       ?? 0),
-            'architecture_id'  => (int)   ($_POST['architecture_id']  ?? 0),
-            'work_type_id'     => $workTypeId,
-            'start_date'       => !empty($_POST['start_date']) ? $_POST['start_date'] : null,
-            'end_date'         => !empty($_POST['end_date'])   ? $_POST['end_date']   : null,
-            'total_area_sqft'  => (float) ($_POST['total_area_sqft']  ?? 0),
-            'other_costs'      => (float) ($_POST['other_costs']      ?? 0),
-            'other_cost_detail'=>         ($_POST['other_cost_detail']?? null),
-            'budget_link'      =>         ($_POST['budget_link']      ?? null),
-            'work_details'     =>         ($_POST['work_details']     ?? null),
-            'weight_percentage'=> (float) ($_POST['weight_percentage']?? 100.00),
-            'created_by'       => (int)   ($_SESSION['user']['id']    ?? 0),
+            'project_id'        => (int)   ($_POST['project_id']        ?? 0),
+            'architecture_id'   => (int)   ($_POST['architecture_id']   ?? 0),
+            'drawing_id'        => (int)   ($_POST['drawing_id']        ?? 0) ?: null,
+            'work_type_id'      => null,
+            'start_date'        => !empty($_POST['start_date']) ? $_POST['start_date'] : null,
+            'end_date'          => !empty($_POST['end_date'])   ? $_POST['end_date']   : null,
+            'total_area_sqft'   => (float) ($_POST['total_area_sqft']   ?? 0),
+            'other_costs'       => (float) ($_POST['other_costs']       ?? 0),
+            'other_cost_detail' =>          $_POST['other_cost_detail'] ?? null,
+            'budget_link'       =>          $_POST['budget_link']       ?? null,
+            'work_details'      =>          $_POST['work_details']      ?? null,
+            'weight_percentage' => (float) ($_POST['weight_percentage'] ?? 100.00),
+            'created_by'        => (int)   ($_SESSION['user']['id']     ?? 0),
+            'status'            => $status,
         ];
 
         if (!$header['project_id'] || !$header['architecture_id']) {
@@ -134,33 +143,51 @@ class Con_InitialEstimateController extends Controller
             exit;
         }
 
-        // ── Material Items ───────────────────────────────────────────────────
-        $matWorkTypes    = $_POST['item_work_type_id']    ?? [];
-        $matDesignTypes  = $_POST['item_design_type_id']  ?? [];
-        $matMaterialIds  = $_POST['item_material_id']     ?? [];
-        $matUnits        = $_POST['item_material_unit']   ?? [];
-        $matQtys         = $_POST['item_estimated_qty']   ?? [];
-        $matCosts        = $_POST['item_unit_cost']       ?? [];
-        $matRemarks      = $_POST['item_remarks']         ?? [];
+        // ── QS Material Items (Design-type-wise blocks) ───────────────────────
+        // Posted as flat arrays indexed per item row:
+        // item_design_type_id[], item_work_type_id[], item_sl_no[],
+        // item_location[], item_nos[], item_length[], item_width[], item_height[],
+        // item_volume[], item_material_id[], item_unit[], item_unit_cost[], item_remarks[]
+        $dtIds       = $_POST['item_design_type_id'] ?? [];
+        $wtIds       = $_POST['item_work_type_id']   ?? [];
+        $slNos       = $_POST['item_sl_no']          ?? [];
+        $locations   = $_POST['item_location']        ?? [];
+        $nosArr      = $_POST['item_nos']             ?? [];
+        $lengths     = $_POST['item_length']          ?? [];
+        $widths      = $_POST['item_width']           ?? [];
+        $heights     = $_POST['item_height']          ?? [];
+        $volumes     = $_POST['item_volume']          ?? [];
+        $matIds      = $_POST['item_material_id']     ?? [];
+        $units       = $_POST['item_unit']            ?? [];
+        $costs       = $_POST['item_unit_cost']       ?? [];
+        $remarks     = $_POST['item_remarks']         ?? [];
 
         $items = [];
-        foreach ($matMaterialIds as $i => $mid) {
-            if (empty($mid)) continue;
-            $wtId     = (int)($matWorkTypes[$i]  ?? 0);
-            $dtId     = (int)($matDesignTypes[$i] ?? 0);
-            // fallback: fetch from work_type if design_type_id not posted
-            if (!$dtId && $wtId) {
-                $wr = $this->workTypeModel->find($wtId);
-                $dtId = $wr ? (int)$wr['design_type_id'] : 0;
+        foreach ($dtIds as $i => $dtId) {
+            if (empty($dtId) && empty($matIds[$i])) continue;
+            $volQty = (float)($volumes[$i] ?? 0);
+            if (!$volQty) {
+                $nos = (float)($nosArr[$i] ?? 1) ?: 1;
+                $l   = (float)($lengths[$i] ?? 1) ?: 1;
+                $w   = (float)($widths[$i]  ?? 1) ?: 1;
+                $h   = (float)($heights[$i] ?? 1) ?: 1;
+                $volQty = $nos * $l * $w * $h;
             }
             $items[] = [
-                'work_type_id'    => $wtId,
-                'design_type_id'  => $dtId,
-                'material_id'     => (int)   $mid,
-                'material_unit'   =>          $matUnits[$i] ?? '',
-                'estimated_qty'   => (float) ($matQtys[$i]  ?? 0),
-                'unit_cost_approx'=> (float) ($matCosts[$i] ?? 0),
-                'remarks'         =>          $matRemarks[$i] ?? '',
+                'design_type_id'  => (int)   $dtId,
+                'work_type_id'    => (int)  ($wtIds[$i]     ?? 0),
+                'sl_no'           => (int)  ($slNos[$i]     ?? 0),
+                'location_desc'   =>         $locations[$i] ?? '',
+                'nos'             => (float)($nosArr[$i]    ?? null),
+                'length_ft'       => (float)($lengths[$i]   ?? null),
+                'width_ft'        => (float)($widths[$i]    ?? null),
+                'height_ft'       => (float)($heights[$i]   ?? null),
+                'volume_qty'      => $volQty,
+                'material_id'     => (int)  ($matIds[$i]    ?? 0) ?: null,
+                'material_unit'   =>         $units[$i]     ?? '',
+                'estimated_qty'   => $volQty,
+                'unit_cost_approx'=> (float)($costs[$i]     ?? 0),
+                'remarks'         =>         $remarks[$i]   ?? '',
             ];
         }
         if (!empty($items)) {
@@ -168,28 +195,22 @@ class Con_InitialEstimateController extends Controller
         }
 
         // ── Labor Rows ───────────────────────────────────────────────────────
-        $labWorkTypes    = $_POST['labor_work_type_id']    ?? [];
-        $labDesignTypes  = $_POST['labor_design_type_id']  ?? [];
-        $labTypeNames    = $_POST['labor_type_name']        ?? [];
-        $labRates        = $_POST['labor_rate_per_sqft']    ?? [];
-        $labAreas        = $_POST['labor_area_sqft']        ?? [];
-        $labDescriptions = $_POST['labor_description']      ?? [];
+        $labDtIds        = $_POST['labor_design_type_id'] ?? [];
+        $labWtIds        = $_POST['labor_work_type_id']   ?? [];
+        $labTypeNames    = $_POST['labor_type_name']       ?? [];
+        $labRates        = $_POST['labor_rate_per_sqft']   ?? [];
+        $labAreas        = $_POST['labor_area_sqft']       ?? [];
+        $labDescriptions = $_POST['labor_description']     ?? [];
 
         $labors = [];
         foreach ($labTypeNames as $i => $name) {
             if (empty($name)) continue;
-            $wtId = (int)($labWorkTypes[$i]  ?? 0);
-            $dtId = (int)($labDesignTypes[$i] ?? 0);
-            if (!$dtId && $wtId) {
-                $wr = $this->workTypeModel->find($wtId);
-                $dtId = $wr ? (int)$wr['design_type_id'] : 0;
-            }
             $labors[] = [
-                'work_type_id'    => $wtId,
-                'design_type_id'  => $dtId,
+                'design_type_id'  => (int)  ($labDtIds[$i]       ?? 0),
+                'work_type_id'    => (int)  ($labWtIds[$i]       ?? 0),
                 'labor_type_name' =>          $name,
-                'rate_per_sqft'   => (float) ($labRates[$i] ?? 0),
-                'area_sqft'       => (float) ($labAreas[$i] ?? 0),
+                'rate_per_sqft'   => (float)($labRates[$i]       ?? 0),
+                'area_sqft'       => (float)($labAreas[$i]       ?? 0),
                 'description'     =>          $labDescriptions[$i] ?? '',
             ];
         }
@@ -200,18 +221,20 @@ class Con_InitialEstimateController extends Controller
         // ── Sync totals ──────────────────────────────────────────────────────
         $this->model->syncTotals($budgetId);
 
-        // ── Send Email Notification ──────────────────────────────────────────
-        require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
-        $mailService = new \ProjectWorkflowMailService($this->db);
-        
-        // Fetch project name for the email
-        $projectModel = new \Project($this->db);
-        $project = $projectModel->find($header['project_id']);
-        if ($project) {
-            $mailService->notifyApproversForNewInitialBudget($header['project_id'], $project['name'], $budgetId);
+        // ── Email only on submit (not draft) ─────────────────────────────────
+        if ($status === 'pending') {
+            require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+            $mailService = new \ProjectWorkflowMailService($this->db);
+            $projectModel = new \Project($this->db);
+            $project = $projectModel->find($header['project_id']);
+            if ($project) {
+                $mailService->notifyApproversForNewInitialBudget($header['project_id'], $project['name'], $budgetId);
+            }
+            setSuccess('Estimate submitted successfully and sent for approval.');
+        } else {
+            setSuccess('Estimate saved as draft. You can continue editing anytime.');
         }
 
-        setSuccess('Initial estimate budget created successfully.');
         header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$budgetId}");
         exit;
     }
@@ -305,25 +328,71 @@ class Con_InitialEstimateController extends Controller
             exit;
         }
 
-        $items       = $this->model->getItemsByBudget($id);
-        $labors      = $this->model->getLaborsByBudget($id);
-        $projects    = $this->projectModel->getAll();
-        $archs       = $this->archModel->getAll();
+        $items    = $this->model->getItemsByBudget($id);
+        $labors   = $this->model->getLaborsByBudget($id);
+        $projects = $this->projectModel->getAll();
+        $archs    = $this->archModel->getAll();
+        $materials= $this->materialModel->getAll();
+
+        // Work types grouped by design_type_id (same as create)
+        $workTypesGrouped = $this->model->getWorkTypesGrouped();
+
+        // All design types
         $designTypes = $this->designTypeModel->getAll();
-        $materials   = $this->materialModel->getAll();
-        $workTypes   = $this->model->getWorkTypes();
+
+        // Project drawings for the budget's project
+        $pid   = (int)$budget['project_id'];
+        $stmt  = $this->db->prepare(
+            "SELECT pd.id, pd.design_type_id, pd.design_link, pd.version, pd.status,
+                    dt.name AS design_type
+             FROM project_drawings pd
+             LEFT JOIN design_types dt ON dt.id = pd.design_type_id
+             WHERE pd.project_id = ?
+             ORDER BY pd.design_type_id ASC, pd.id DESC"
+        );
+        $stmt->bind_param('i', $pid);
+        $stmt->execute();
+        $projectDrawings = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Deduplicate by design_type_id (keep first/latest)
+        $drawingsMap = [];
+        foreach ($projectDrawings as $d) {
+            if (!isset($drawingsMap[$d['design_type_id']])) {
+                $drawingsMap[$d['design_type_id']] = $d;
+            }
+        }
+        $projectDrawings = array_values($drawingsMap);
+
+        // Group existing items by design_type_id then work_type_id
+        $itemsByDt = [];
+        foreach ($items as $item) {
+            $dtId = $item['design_type_id'] ?? 0;
+            $wtId = $item['work_type_id']   ?? 0;
+            if (!isset($itemsByDt[$dtId])) $itemsByDt[$dtId] = [];
+            if (!isset($itemsByDt[$dtId][$wtId])) $itemsByDt[$dtId][$wtId] = [];
+            $itemsByDt[$dtId][$wtId][] = $item;
+        }
+
+        // Group existing labors by design_type_id
+        $laborsByDt = [];
+        foreach ($labors as $l) {
+            $dtId = $l['design_type_id'] ?? 0;
+            if (!isset($laborsByDt[$dtId])) $laborsByDt[$dtId] = [];
+            $laborsByDt[$dtId][] = $l;
+        }
 
         $this->view('phase2/initial_estimates/edit-initial-budget', [
-            'current_route' => 'con-estimates',
-            'page_title'    => 'Edit Estimate — ' . $budget['project_name'],
-            'budget'        => $budget,
-            'existingItems' => $items,
-            'existingLabors'=> $labors,
-            'projects'      => $projects,
-            'archs'         => $archs,
-            'designTypes'   => $designTypes,
-            'materials'     => $materials,
-            'workTypes'     => $workTypes,
+            'current_route'   => 'con-estimates',
+            'page_title'      => 'Edit Estimate — ' . $budget['project_name'],
+            'budget'          => $budget,
+            'projects'        => $projects,
+            'archs'           => $archs,
+            'designTypes'     => $designTypes,
+            'materials'       => $materials,
+            'workTypesGrouped'=> $workTypesGrouped,
+            'projectDrawings' => $projectDrawings,
+            'itemsByDt'       => $itemsByDt,
+            'laborsByDt'      => $laborsByDt,
         ]);
     }
 
@@ -347,24 +416,25 @@ class Con_InitialEstimateController extends Controller
             exit;
         }
 
-        // ── Header ──────────────────────────────────────────────────────────
-        $workTypeId   = (int)($_POST['work_type_id']      ?? 0);
-        $wtRow        = $workTypeId ? $this->workTypeModel->find($workTypeId) : null;
-        $designTypeId = $wtRow ? (int)$wtRow['design_type_id'] : 0;
+        // Status: draft or pending
+        $submitAction = $_POST['submit_action'] ?? 'draft';
+        $status       = ($submitAction === 'submit') ? 'pending' : 'draft';
 
+        // ── Header ──────────────────────────────────────────────────────────
         $header = [
-            'project_id'      => (int)   ($_POST['project_id']      ?? 0),
-            'architecture_id' => (int)   ($_POST['architecture_id'] ?? 0),
-            'work_type_id'    => $workTypeId,
-            'start_date'      => !empty($_POST['start_date']) ? $_POST['start_date'] : null,
-            'end_date'        => !empty($_POST['end_date'])   ? $_POST['end_date']   : null,
-            'total_area_sqft' => (float) ($_POST['total_area_sqft'] ?? 0),
-            'other_costs'     => (float) ($_POST['other_costs']     ?? 0),
-            'other_cost_detail'=>         ($_POST['other_cost_detail']?? null),
-            'budget_link'      =>         ($_POST['budget_link']      ?? null),
-            'work_details'     =>         ($_POST['work_details']     ?? null),
-            'weight_percentage'=> (float) ($_POST['weight_percentage']?? 100.00),
-            'updated_by'      => (int)   ($_SESSION['user']['id']   ?? 0),
+            'project_id'        => (int)   ($_POST['project_id']        ?? 0),
+            'architecture_id'   => (int)   ($_POST['architecture_id']   ?? 0),
+            'drawing_id'        => (int)   ($_POST['drawing_id']        ?? 0) ?: null,
+            'work_type_id'      => null,
+            'start_date'        => !empty($_POST['start_date']) ? $_POST['start_date'] : null,
+            'end_date'          => !empty($_POST['end_date'])   ? $_POST['end_date']   : null,
+            'total_area_sqft'   => (float) ($_POST['total_area_sqft']   ?? 0),
+            'other_costs'       => (float) ($_POST['other_costs']       ?? 0),
+            'other_cost_detail' =>          $_POST['other_cost_detail'] ?? null,
+            'budget_link'       =>          $_POST['budget_link']       ?? null,
+            'work_details'      =>          $_POST['work_details']      ?? null,
+            'weight_percentage' => (float) ($_POST['weight_percentage'] ?? 100.00),
+            'status'            => $status,
         ];
 
         if (!$header['project_id'] || !$header['architecture_id']) {
@@ -375,34 +445,46 @@ class Con_InitialEstimateController extends Controller
 
         $this->model->updateBudget($id, $header);
 
-        // ── Replace items (delete all → re-insert) ───────────────────────
+        // ── Replace items (delete all → re-insert QS rows) ───────────────
         $this->model->deleteItemsByBudget($id);
 
-        $matWorkTypes   = $_POST['item_work_type_id']   ?? [];
-        $matDesignTypes = $_POST['item_design_type_id'] ?? [];
-        $matMaterialIds = $_POST['item_material_id']    ?? [];
-        $matUnits       = $_POST['item_material_unit']  ?? [];
-        $matQtys        = $_POST['item_estimated_qty']  ?? [];
-        $matCosts       = $_POST['item_unit_cost']      ?? [];
-        $matRemarks     = $_POST['item_remarks']        ?? [];
+        $dtIds     = $_POST['item_design_type_id'] ?? [];
+        $wtIds     = $_POST['item_work_type_id']   ?? [];
+        $slNos     = $_POST['item_sl_no']          ?? [];
+        $locations = $_POST['item_location_desc']  ?? [];
+        $nosArr    = $_POST['item_nos']            ?? [];
+        $lengths   = $_POST['item_length_ft']      ?? [];
+        $widths    = $_POST['item_width_ft']       ?? [];
+        $heights   = $_POST['item_height_ft']      ?? [];
+        $matIds    = $_POST['item_material_id']    ?? [];
+        $matUnits  = $_POST['item_material_unit']  ?? [];
+        $estQtys   = $_POST['item_estimated_qty']  ?? [];
+        $unitCosts = $_POST['item_unit_cost']      ?? [];
+        $remarks   = $_POST['item_remarks']        ?? [];
 
         $items = [];
-        foreach ($matMaterialIds as $i => $mid) {
+        foreach ($matIds as $i => $mid) {
             if (empty($mid)) continue;
-            $wtId = (int)($matWorkTypes[$i]  ?? 0);
-            $dtId = (int)($matDesignTypes[$i] ?? 0);
-            if (!$dtId && $wtId) {
-                $wr = $this->workTypeModel->find($wtId);
-                $dtId = $wr ? (int)$wr['design_type_id'] : 0;
-            }
+            $nos = (float)($nosArr[$i] ?? 0);
+            $l   = (float)($lengths[$i] ?? 0);
+            $w   = (float)($widths[$i]  ?? 0);
+            $h   = (float)($heights[$i] ?? 0);
+            $vol = ($nos * $l * $w * $h) ?: ((float)($estQtys[$i] ?? 0));
             $items[] = [
-                'work_type_id'     => $wtId,
-                'design_type_id'   => $dtId,
-                'material_id'      => (int)   $mid,
-                'material_unit'    =>          $matUnits[$i] ?? '',
-                'estimated_qty'    => (float) ($matQtys[$i]  ?? 0),
-                'unit_cost_approx' => (float) ($matCosts[$i] ?? 0),
-                'remarks'          =>          $matRemarks[$i] ?? '',
+                'design_type_id'  => (int)($dtIds[$i]  ?? 0),
+                'work_type_id'    => (int)($wtIds[$i]  ?? 0),
+                'sl_no'           => (int)($slNos[$i]  ?? 0) ?: null,
+                'location_desc'   => $locations[$i] ?? null,
+                'nos'             => $nos ?: null,
+                'length_ft'       => $l   ?: null,
+                'width_ft'        => $w   ?: null,
+                'height_ft'       => $h   ?: null,
+                'volume_qty'      => $vol ?: null,
+                'material_id'     => (int)$mid,
+                'material_unit'   => $matUnits[$i] ?? '',
+                'estimated_qty'   => (float)($estQtys[$i]  ?? 0),
+                'unit_cost_approx'=> (float)($unitCosts[$i] ?? 0),
+                'remarks'         => $remarks[$i] ?? '',
             ];
         }
         if (!empty($items)) $this->model->addItems($id, $items);
@@ -410,29 +492,23 @@ class Con_InitialEstimateController extends Controller
         // ── Replace labors (delete all → re-insert) ──────────────────────
         $this->model->deleteLaborsByBudget($id);
 
-        $labWorkTypes   = $_POST['labor_work_type_id']   ?? [];
-        $labDesignTypes = $_POST['labor_design_type_id'] ?? [];
-        $labTypeNames   = $_POST['labor_type_name']       ?? [];
-        $labRates       = $_POST['labor_rate_per_sqft']   ?? [];
-        $labAreas       = $_POST['labor_area_sqft']       ?? [];
-        $labDescriptions = $_POST['labor_description']     ?? [];
+        $labDtIds  = $_POST['labor_design_type_id'] ?? [];
+        $labWtIds  = $_POST['labor_work_type_id']   ?? [];
+        $labNames  = $_POST['labor_type_name']       ?? [];
+        $labRates  = $_POST['labor_rate_per_sqft']   ?? [];
+        $labAreas  = $_POST['labor_area_sqft']       ?? [];
+        $labDescs  = $_POST['labor_description']     ?? [];
 
         $labors = [];
-        foreach ($labTypeNames as $i => $name) {
+        foreach ($labNames as $i => $name) {
             if (empty($name)) continue;
-            $wtId = (int)($labWorkTypes[$i]  ?? 0);
-            $dtId = (int)($labDesignTypes[$i] ?? 0);
-            if (!$dtId && $wtId) {
-                $wr = $this->workTypeModel->find($wtId);
-                $dtId = $wr ? (int)$wr['design_type_id'] : 0;
-            }
             $labors[] = [
-                'work_type_id'    => $wtId,
-                'design_type_id'  => $dtId,
-                'labor_type_name' =>          $name,
-                'rate_per_sqft'   => (float) ($labRates[$i] ?? 0),
-                'area_sqft'       => (float) ($labAreas[$i] ?? 0),
-                'description'     =>          $labDescriptions[$i] ?? '',
+                'design_type_id'  => (int)($labDtIds[$i] ?? 0),
+                'work_type_id'    => (int)($labWtIds[$i] ?? 0),
+                'labor_type_name' =>       $name,
+                'rate_per_sqft'   => (float)($labRates[$i] ?? 0),
+                'area_sqft'       => (float)($labAreas[$i] ?? 0),
+                'description'     =>       $labDescs[$i] ?? '',
             ];
         }
         if (!empty($labors)) $this->model->addLabors($id, $labors);
@@ -440,7 +516,8 @@ class Con_InitialEstimateController extends Controller
         // ── Sync totals ──────────────────────────────────────────────────
         $this->model->syncTotals($id);
 
-        setSuccess('Budget updated successfully.');
+        $msg = ($status === 'draft') ? 'Draft saved successfully.' : 'Estimate submitted for approval.';
+        setSuccess($msg);
         header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
         exit;
     }
@@ -453,34 +530,53 @@ class Con_InitialEstimateController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        $userId   = (int)($_SESSION['user']['id']   ?? 0);
-        $roleId   = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userId = (int)($_SESSION['user']['id']      ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Role guard: only 1, 3, 15, 22
-        if (!in_array($roleId, [1, 3, 22])) {
-            setError('You do not have permission to approve budgets.');
+        // Only PM (15,22) and Management (3) can approve
+        if (!in_array($roleId, [3, 15, 22])) {
+            setError('You do not have permission to approve estimates.');
             header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
             exit;
         }
 
-        // Creator cannot approve their own submission (except PM Head/MD)
         $budget = $this->model->find($id);
-        if ($budget && (int)($budget['created_by'] ?? 0) === $userId && !in_array($roleId, [1, 3, 22])) {
-            setError('You cannot approve a budget that you created.');
-            header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
+        if (!$budget) {
+            setError('Estimate not found.');
+            header("Location: {$GLOBALS['base_url']}/con-estimates");
             exit;
         }
 
-        if ($this->model->isLocked($id)) {
-            setError('This budget is already approved or cancelled.');
-            header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
-            exit;
-        }
+        $status = $budget['status'] ?? '';
 
-        if ($this->model->approveBudget($id, $userId)) {
-            setSuccess('Budget approved successfully.');
+        // ── PM Approval: pending → pm_approved ──────────────────────────
+        if ($status === 'pending') {
+            if (!in_array($roleId, [15, 22])) {
+                setError('শুধুমাত্র PM (role 15/22) pending estimate approve করতে পারবেন।');
+                header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
+                exit;
+            }
+            if ($this->model->pmApproveBudget($id, $userId)) {
+                setSuccess('✅ PM Approved — এখন Management Final Approval বাকি।');
+            } else {
+                setError('PM Approval failed. Estimate may not be in pending state.');
+            }
+
+        // ── Management Final Approval: pm_approved → approved ───────────
+        } elseif ($status === 'pm_approved') {
+            if ($roleId !== 3) {
+                setError('শুধুমাত্র Management (role 3) Final Approve করতে পারবেন।');
+                header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
+                exit;
+            }
+            if ($this->model->approveBudget($id, $userId)) {
+                setSuccess('✅ Estimate Fully Approved by Management.');
+            } else {
+                setError('Final approval failed. Estimate must be PM-approved first.');
+            }
+
         } else {
-            setError('Approval failed. Budget may not be in pending state.');
+            setError('এই estimate approve করা সম্ভব না। Current status: ' . htmlspecialchars($status));
         }
 
         header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
@@ -667,9 +763,10 @@ class Con_InitialEstimateController extends Controller
         $stmt->execute();
         $archs = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        // Project Drawings
+        // Project Drawings — all statuses (Submitted + Approved both shown)
         $stmt2 = $this->db->prepare(
             "SELECT pd.id,
+                    pd.design_type_id,
                     pd.design_link,
                     pd.version,
                     pd.status,
@@ -680,7 +777,7 @@ class Con_InitialEstimateController extends Controller
              LEFT JOIN design_types dt ON dt.id = pd.design_type_id
              LEFT JOIN users        u  ON u.id  = pd.created_by
              WHERE pd.project_id = ?
-             ORDER BY pd.id DESC"
+             ORDER BY pd.design_type_id ASC, pd.id DESC"
         );
         $stmt2->bind_param('i', $projectId);
         $stmt2->execute();

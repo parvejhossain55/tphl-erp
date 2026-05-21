@@ -72,12 +72,12 @@
                                             <td>
                                                 <select name="material_id[]" class="form-select boq-material" required>
                                                     <option value="">-- Select --</option>
-                                                    <?php foreach ($materials as $m): ?>
-                                                        <option value="<?= $m['id'] ?>" data-unit="<?= $m['unit'] ?>"
-                                                            <?= ($m['id'] == $item['material_id']) ? 'selected' : '' ?>>
-                                                            <?= htmlspecialchars($m['name']) ?> (<?= $m['unit'] ?>)
-                                                        </option>
-                                                    <?php endforeach; ?>
+                                                     <?php foreach ($materials as $m): ?>
+                                                         <option value="<?= $m['id'] ?>" data-unit="<?= $m['unit'] ?>"
+                                                             <?= ($m['id'] == $item['material_id']) ? 'selected' : '' ?>>
+                                                             <?= htmlspecialchars($m['name']) ?> [<?= htmlspecialchars($m['category_name'] ?? 'Uncategorized') ?>] (<?= htmlspecialchars($m['unit']) ?>)
+                                                         </option>
+                                                     <?php endforeach; ?>
                                                 </select>
                                             </td>
                                             <td>
@@ -111,11 +111,11 @@
                                             <td>
                                                 <select name="material_id[]" class="form-select boq-material" required>
                                                     <option value="">-- Select --</option>
-                                                    <?php foreach ($materials as $m): ?>
-                                                        <option value="<?= $m['id'] ?>" data-unit="<?= $m['unit'] ?>">
-                                                            <?= htmlspecialchars($m['name']) ?> (<?= $m['unit'] ?>)
-                                                        </option>
-                                                    <?php endforeach; ?>
+                                                     <?php foreach ($materials as $m): ?>
+                                                         <option value="<?= $m['id'] ?>" data-unit="<?= $m['unit'] ?>">
+                                                             <?= htmlspecialchars($m['name']) ?> [<?= htmlspecialchars($m['category_name'] ?? 'Uncategorized') ?>] (<?= htmlspecialchars($m['unit']) ?>)
+                                                         </option>
+                                                     <?php endforeach; ?>
                                                 </select>
                                             </td>
                                             <td>

@@ -89,16 +89,19 @@ class Con_MaterialIssueController extends Controller
         $receivedMaterials = [];
         try {
             $rmRes = $this->db->query("
-                SELECT pr.project_id, m.name AS material_name, m.unit,
+                SELECT pr.project_id, poi.material_id, m.name AS material_name, m.unit,
+                       COALESCE(cat.name, 'Uncategorized') AS category_name,
                        SUM(mri.received_quantity) AS total_received
                 FROM material_receiving_items mri
+                JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
                 JOIN material_receiving mr  ON mr.id  = mri.receiving_id
                 JOIN purchase_orders   po  ON po.id  = mr.purchase_order_id
                 JOIN purchase_requests pr  ON pr.id  = po.request_id
-                JOIN con_materials     m   ON m.id   = mri.material_id
+                JOIN con_materials     m   ON m.id   = poi.material_id
+                LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                 WHERE mri.status = 'Accepted'
                   AND mr.overall_status IN ('Accepted', 'Partially Accepted')
-                GROUP BY pr.project_id, m.id
+                GROUP BY pr.project_id, poi.material_id, m.name, m.unit, cat.name
             ");
             if ($rmRes) {
                 while ($row = $rmRes->fetch_assoc()) {

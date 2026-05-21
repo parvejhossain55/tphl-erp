@@ -116,7 +116,10 @@
                                 <?php foreach ($items as $i => $item): ?>
                                 <tr>
                                     <td><?= $i + 1 ?></td>
-                                    <td class="fw-bold"><?= htmlspecialchars($item['material_name']) ?></td>
+                                    <td>
+                                        <span class="fw-bold"><?= htmlspecialchars($item['material_name']) ?></span>
+                                        <br><small class="text-muted">[Category: <?= htmlspecialchars($item['category_name'] ?? 'Uncategorized') ?>]</small>
+                                    </td>
                                     <td><?= htmlspecialchars($item['unit']) ?></td>
                                     <td class="text-end"><?= number_format($item['quantity'], 3) ?></td>
                                 </tr>

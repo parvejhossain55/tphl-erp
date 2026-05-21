@@ -49,9 +49,10 @@ class Con_PurchaseOrder extends Model
     public function getItems($poId)
     {
         $stmt = $this->db->prepare(
-            "SELECT poi.*, m.name AS material_name, m.unit, v.name AS vendor_name
+            "SELECT poi.*, m.name AS material_name, m.unit, v.name AS vendor_name, COALESCE(cat.name, 'Uncategorized') AS category_name
              FROM {$this->itemTable} poi
              JOIN con_materials m ON m.id = poi.material_id
+             LEFT JOIN con_material_categories cat ON cat.id = m.category_id
              JOIN vendors v ON v.id = poi.selected_vendor_id
              WHERE poi.purchase_order_id = ?
              ORDER BY poi.id ASC"
@@ -68,10 +69,12 @@ class Con_PurchaseOrder extends Model
     public function getPendingItems($poId)
     {
         $sql = "SELECT poi.*, m.name AS material_name, m.unit, v.name AS vendor_name,
+                       COALESCE(cat.name, 'Uncategorized') AS category_name,
                        COALESCE(recv.received_total, 0) AS received_total,
                        (poi.quantity - COALESCE(recv.received_total, 0)) AS pending_qty
                 FROM {$this->itemTable} poi
                 JOIN con_materials m ON m.id = poi.material_id
+                LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                 JOIN vendors v ON v.id = poi.selected_vendor_id
                 LEFT JOIN (
                     SELECT mri.purchase_order_item_id, SUM(mri.received_quantity) AS received_total
@@ -223,9 +226,11 @@ class Con_PurchaseOrder extends Model
         // Step 3: get BOQ items
         $stmtItems = $this->db->prepare("
             SELECT bi.*, m.name AS material_name, m.unit,
+                   COALESCE(cat.name, 'Uncategorized') AS category_name,
                    (bi.quantity * bi.unit_cost) AS line_total
             FROM boq_items bi
             JOIN con_materials m ON m.id = bi.material_id
+            LEFT JOIN con_material_categories cat ON cat.id = m.category_id
             WHERE bi.boq_id = ?
             ORDER BY m.name ASC");
         $stmtItems->bind_param('i', $boqId);
