@@ -156,7 +156,7 @@ $isExtra = $adj['adjustment_type'] == 'extra';
                                     </div>
                                     <div class="col-md-12 mb-2">
                                         <label class="text-muted mb-1 d-block">Original Purpose</label>
-                                        <div><?= htmlspecialchars($adj['original_purpose']) ?></div>
+                                        <div><?= htmlspecialchars($adj['original_purpose'] ?? '') ?></div>
                                     </div>
                                     <?php if(!empty($adj['project_name'])): ?>
                                     <div class="col-md-6 mb-2 mt-2">
@@ -242,13 +242,11 @@ $isExtra = $adj['adjustment_type'] == 'extra';
                                     <?php if ($canApprove): ?>
                                         <form action="<?= $GLOBALS['base_url'] ?>/expense-adjustments/approve" method="POST" class="mb-3">
                                             <input type="hidden" name="id" value="<?= $adj['id'] ?>">
-                                            <?php if ($isExtra): ?>
-                                                <div class="mb-3">
-                                                    <label class="form-label">Approved Amount (TK.) <span class="text-danger">*</span></label>
-                                                    <input type="number" name="approved_amount" class="form-control" step="0.01" min="1" value="<?= $adj['amount'] ?>" required>
-                                                    <small class="text-muted">You can modify the amount requested.</small>
-                                                </div>
-                                            <?php endif; ?>
+                                            <div class="mb-3">
+                                                <label class="form-label">Approved Amount (TK.) <span class="text-danger">*</span></label>
+                                                <input type="number" name="approved_amount" class="form-control" step="0.01" min="1" value="<?= $adj['amount'] ?>" required>
+                                                <small class="text-muted">You can modify the approved amount if needed.</small>
+                                            </div>
                                             <button type="submit" class="btn btn-success w-100 fw-bold">
                                                 <i class="fa-light fa-check-circle me-1"></i> Approve Request
                                             </button>
@@ -261,8 +259,9 @@ $isExtra = $adj['adjustment_type'] == 'extra';
                                             </button>
                                         </form>
                                     <?php else: ?>
-                                        <div class="alert alert-warning text-center">
-                                            <i class="fa-light fa-hourglass-half me-1"></i> Pending Approval
+                                        <div class="alert alert-warning text-center border" style="background:rgba(245,158,11,.08); border-color:rgba(245,158,11,.3) !important;">
+                                            <i class="bi bi-hourglass-split me-1"></i> <strong>Pending Approval</strong>
+                                            <div class="text-muted small mt-1">Awaiting Management approval</div>
                                         </div>
                                     <?php endif; ?>
 

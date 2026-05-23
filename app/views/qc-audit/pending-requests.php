@@ -1,4 +1,46 @@
 <!-- app-content-start -->
+<style>
+@media (max-width: 767.98px) {
+    /* DataTables controls */
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter {
+        text-align: left !important;
+        margin-bottom: 8px;
+    }
+    .dataTables_wrapper .dataTables_filter input {
+        width: 100% !important;
+        margin-left: 0 !important;
+    }
+    .dataTables_wrapper .dataTables_info {
+        text-align: center;
+        font-size: 11px;
+        padding-top: 8px;
+    }
+    .dataTables_wrapper .dataTables_paginate {
+        text-align: center !important;
+        margin-top: 8px;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        padding: 4px 8px !important;
+        font-size: 11px !important;
+    }
+    /* Stack action buttons on mobile */
+    #pendingTable td .btn {
+        display: block;
+        width: 100%;
+        margin-bottom: 4px;
+        margin-right: 0 !important;
+    }
+    /* Page title */
+    .page-header-breadcrumb h1 {
+        font-size: 16px !important;
+    }
+    /* Modal */
+    .modal-dialog {
+        margin: 10px;
+    }
+}
+</style>
         <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
             <h1 class="page-title fw-semibold fs-18 mb-0"><?= $page_title ?></h1>
             <div class="ms-md-1 ms-0">
@@ -78,7 +120,7 @@
 
 <!-- Modal -->
 <div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <form action="<?= $GLOBALS['base_url'] ?>/qc-approve-request" method="POST">
           <div class="modal-header">

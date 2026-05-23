@@ -15,23 +15,25 @@
 
         <div class="card custom-card">
             <div class="card-header pb-0 border-bottom">
-                <ul class="nav nav-tabs border-0" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active fw-semibold text-primary" data-bs-toggle="tab" href="#materials-tab" role="tab">
-                            <i class="bi bi-box-seam me-1"></i> Materials & Stocks
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link fw-semibold text-primary" data-bs-toggle="tab" href="#purchases-tab" role="tab">
-                            <i class="bi bi-cart3 me-1"></i> Purchase Transactions
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link fw-semibold text-primary" data-bs-toggle="tab" href="#payments-tab" role="tab">
-                            <i class="bi bi-wallet2 me-1"></i> Payment Requests
-                        </a>
-                    </li>
-                </ul>
+                <div class="d-flex overflow-auto" style="-webkit-overflow-scrolling:touch;">
+                    <ul class="nav nav-tabs border-0 flex-nowrap" role="tablist" style="min-width:max-content;">
+                        <li class="nav-item">
+                            <a class="nav-link active fw-semibold text-primary" data-bs-toggle="tab" href="#materials-tab" role="tab">
+                                <i class="bi bi-box-seam me-1"></i> <span class="d-none d-sm-inline">Materials &</span> Stocks
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link fw-semibold text-primary" data-bs-toggle="tab" href="#purchases-tab" role="tab">
+                                <i class="bi bi-cart3 me-1"></i> <span class="d-none d-sm-inline">Purchase</span> Transactions
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link fw-semibold text-primary" data-bs-toggle="tab" href="#payments-tab" role="tab">
+                                <i class="bi bi-wallet2 me-1"></i> <span class="d-none d-sm-inline">Payment</span> Requests
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </div>
             <div class="card-body">
                 <div class="tab-content">
@@ -202,6 +204,7 @@
 </div>
 
 <style>
+/* ── Audit Trail Timeline ────────────────────────────────── */
 .audit-timeline { position: relative; padding-left: 40px; }
 .audit-timeline::before { content: ''; position: absolute; left: 15px; top: 0; bottom: 0; width: 2px; background: #dee2e6; }
 .audit-step { position: relative; margin-bottom: 24px; }
@@ -214,6 +217,52 @@
 .audit-step .audit-card.border-info { border-left-color: #0dcaf0; }
 .audit-step .audit-card.border-danger { border-left-color: #dc3545; }
 .audit-step .audit-card.border-secondary { border-left-color: #6c757d; }
+
+/* ── Mobile Responsive Fixes ─────────────────────────────── */
+@media (max-width: 767.98px) {
+    /* DataTables controls */
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter {
+        text-align: left !important;
+        margin-bottom: 8px;
+    }
+    .dataTables_wrapper .dataTables_filter input {
+        width: 100% !important;
+        margin-left: 0 !important;
+    }
+    .dataTables_wrapper .dataTables_info {
+        text-align: center;
+        font-size: 11px;
+        padding-top: 8px;
+    }
+    .dataTables_wrapper .dataTables_paginate {
+        text-align: center !important;
+        margin-top: 8px;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        padding: 4px 8px !important;
+        font-size: 11px !important;
+    }
+    /* Audit trail card layout */
+    .audit-step .audit-card .d-flex {
+        flex-direction: column;
+        gap: 6px;
+    }
+    .audit-step .audit-card .d-flex .text-end {
+        text-align: left !important;
+        min-width: auto !important;
+    }
+    /* Filter button alignment */
+    .page-header-breadcrumb h1 {
+        font-size: 16px !important;
+    }
+    /* Tab labels */
+    .nav-tabs .nav-link {
+        font-size: 12px;
+        padding: 8px 10px;
+        white-space: nowrap;
+    }
+}
 </style>
 
 <script>

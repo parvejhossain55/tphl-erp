@@ -35,12 +35,8 @@ class ExpenseAdjustmentController extends Controller
 
     private function canApprove($type = null)
     {
-        // Management/Admin roles
-        $isManagement = in_array($this->userRole, [1, 3]);
-        if ($type === 'return') {
-            return $isManagement || $this->isAccounts();
-        }
-        return $isManagement;
+        // Only Management/Admin roles can approve
+        return in_array($this->userRole, [1, 3]);
     }
 
     public function index()
@@ -268,17 +264,12 @@ class ExpenseAdjustmentController extends Controller
             exit;
         }
 
-        // If return, approved amount is strictly the requested amount
-        // If extra, approver can specify the amount
-        if ($adj['adjustment_type'] == 'return') {
-            $approvedAmount = $adj['amount'];
-        } else {
-            $approvedAmount = $_POST['approved_amount'] ?? $adj['amount'];
-            if ($approvedAmount <= 0) {
-                setError('Invalid approval amount.');
-                header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
-                exit;
-            }
+        // Management can set the approved amount for any type
+        $approvedAmount = $_POST['approved_amount'] ?? $adj['amount'];
+        if ($approvedAmount <= 0) {
+            setError('Invalid approval amount.');
+            header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
+            exit;
         }
 
         if ($this->model->approve($id, $this->userId, $approvedAmount)) {

@@ -61,8 +61,8 @@ $show_breadcrumb = true;
                                         <strong><?= htmlspecialchars($row['requester_name']) ?></strong>
                                     </td>
                                     <td>
-                                        <div><strong>Title:</strong> <?= htmlspecialchars($row['original_purpose']) ?></div>
-                                        <div><strong>Original Amt:</strong> TK.<?= number_format($row['original_amount'], 2) ?></div>
+                                        <div><strong>Title:</strong> <?= htmlspecialchars($row['original_purpose'] ?? '') ?></div>
+                                        <div><strong>Original Amt:</strong> TK.<?= number_format($row['original_amount'] ?? 0, 2) ?></div>
                                         <?php if (!empty($row['project_name'])): ?>
                                             <div><strong>Project:</strong> <span class="text-info"><?= htmlspecialchars($row['project_name']) ?></span></div>
                                         <?php elseif (!empty($row['office'])): ?>

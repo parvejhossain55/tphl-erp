@@ -186,8 +186,8 @@ class ExpenseAdjustment
         
         $totalPaid = $res['total_paid'] ?? 0;
         
-        // For 'return', target is original amount. For 'extra', target is approved_amount
-        $target = ($adj['adjustment_type'] == 'return') ? $adj['amount'] : $adj['approved_amount'];
+        // Always use the management-approved amount as the target
+        $target = $adj['approved_amount'];
         $remaining = $target - $totalPaid;
         
         $status = $adj['status'];
