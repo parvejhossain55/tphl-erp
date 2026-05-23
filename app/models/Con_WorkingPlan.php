@@ -248,7 +248,7 @@ class Con_WorkingPlan extends Model
     /**
      * Create working plan entry with budget validation.
      */
-    public function createPlan($data)
+    public function createPlan($data, $items = [])
     {
         $budgetId = (int)$data['initial_budget_id'];
 
@@ -288,8 +288,14 @@ class Con_WorkingPlan extends Model
                 $data['created_by']
             );
             $stmt->execute();
+            $planId = $this->db->insert_id;
+
+            if (!empty($items)) {
+                $this->addItems($planId, $items);
+            }
+
             $this->db->commit();
-            return ['ok' => true, 'error' => null];
+            return ['ok' => true, 'error' => null, 'id' => $planId];
         } catch (\Throwable $e) {
             $this->db->rollback();
             return ['ok' => false, 'error' => 'Database error: ' . $e->getMessage()];
@@ -297,7 +303,7 @@ class Con_WorkingPlan extends Model
     }
 
     /** Update working plan */
-    public function updatePlan($id, $data)
+    public function updatePlan($id, $data, $items = [])
     {
         $budgetId = (int)$data['initial_budget_id'];
 
@@ -316,29 +322,38 @@ class Con_WorkingPlan extends Model
             ];
         }
 
-        $stmt = $this->db->prepare(
-            "UPDATE {$this->planTable}
-             SET project_id = ?, initial_budget_id = ?, work_type_id = ?,
-                 year = ?, month = ?, work_description = ?,
-                 planned_quantity = ?, estimated_cost = ?, weight_percentage = ?
-             WHERE id = ?"
-        );
-        $stmt->bind_param(
-            'iiiiisdddi',
-            $data['project_id'],
-            $data['initial_budget_id'],
-            $data['work_type_id'],
-            $data['year'],
-            $data['month'],
-            $data['work_description'],
-            $data['planned_quantity'],
-            $data['estimated_cost'],
-            $data['weight_percentage'],
-            $id
-        );
-        return $stmt->execute()
-            ? ['ok' => true, 'error' => null]
-            : ['ok' => false, 'error' => 'Update failed.'];
+        $this->db->begin_transaction();
+        try {
+            $stmt = $this->db->prepare(
+                "UPDATE {$this->planTable}
+                 SET project_id = ?, initial_budget_id = ?, work_type_id = ?,
+                     year = ?, month = ?, work_description = ?,
+                     planned_quantity = ?, estimated_cost = ?, weight_percentage = ?
+                 WHERE id = ?"
+            );
+            $stmt->bind_param(
+                'iiiiisdddi',
+                $data['project_id'],
+                $data['initial_budget_id'],
+                $data['work_type_id'],
+                $data['year'],
+                $data['month'],
+                $data['work_description'],
+                $data['planned_quantity'],
+                $data['estimated_cost'],
+                $data['weight_percentage'],
+                $id
+            );
+            $stmt->execute();
+
+            $this->replaceItems($id, $items);
+
+            $this->db->commit();
+            return ['ok' => true, 'error' => null];
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            return ['ok' => false, 'error' => 'Database error: ' . $e->getMessage()];
+        }
     }
 
     /** Delete a plan entry */
@@ -575,4 +590,88 @@ class Con_WorkingPlan extends Model
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+    // =========================================================================
+    // NEW METHODS FOR MULTIPLE PHASES & PREVIOUS COST
+    // =========================================================================
+
+    /**
+     * Get all activities/items for a specific Working Plan
+     */
+    public function getItems($planId)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT * FROM project_working_plan_items
+             WHERE working_plan_id = ?
+             ORDER BY sort_order ASC, id ASC"
+        );
+        $stmt->bind_param('i', $planId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Add multiple activity items to a Working Plan
+     */
+    public function addItems($planId, $items)
+    {
+        if (empty($items)) return true;
+        
+        $stmt = $this->db->prepare(
+            "INSERT INTO project_working_plan_items
+             (working_plan_id, sl_no, activity_name, floor_name, quantity, start_date, req_days, end_date, remarks, sort_order)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        );
+        
+        foreach ($items as $idx => $item) {
+            $slNo      = $item['sl_no']      ?? ($idx + 1);
+            $actName   = $item['activity_name'] ?? '';
+            $floorName = !empty($item['floor_name']) ? $item['floor_name'] : null;
+            $qty       = !empty($item['quantity'])   ? $item['quantity']   : '1 Job';
+            $startDate = $item['start_date'] ?? date('Y-m-d');
+            $reqDays   = (int)($item['req_days']     ?? 1);
+            $endDate   = $item['end_date']   ?? $startDate;
+            $remarks   = !empty($item['remarks'])    ? $item['remarks']    : null;
+            $sortOrder = (int)($item['sort_order']   ?? $idx);
+            
+            $stmt->bind_param(
+                'isssssissi',
+                $planId, $slNo, $actName, $floorName, $qty, $startDate, $reqDays, $endDate, $remarks, $sortOrder
+            );
+            $stmt->execute();
+        }
+        return true;
+    }
+
+    /**
+     * Replace all activity items for a Working Plan (used on update)
+     */
+    public function replaceItems($planId, $items)
+    {
+        $stmtDel = $this->db->prepare("DELETE FROM project_working_plan_items WHERE working_plan_id = ?");
+        $stmtDel->bind_param('i', $planId);
+        $stmtDel->execute();
+        
+        return $this->addItems($planId, $items);
+    }
+
+    /**
+     * Get cumulative approved cost of previous months for a project and design_type_id
+     */
+    public function getPreviousCost($projectId, $designTypeId, $year, $month)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COALESCE(SUM(wp.estimated_cost), 0) AS prev_total
+             FROM project_working_plans wp
+             JOIN work_types wt ON wt.id = wp.work_type_id
+             WHERE wp.project_id = ?
+               AND wt.design_type_id = ?
+               AND wp.approved_status = 'Approved'
+               AND (wp.year < ? OR (wp.year = ? AND wp.month < ?))"
+        );
+        $stmt->bind_param('iiiii', $projectId, $designTypeId, $year, $year, $month);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return (float)($row['prev_total'] ?? 0);
+    }
 }
+

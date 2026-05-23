@@ -180,6 +180,189 @@ $monthName = date('F', mktime(0, 0, 0, $plan['month'], 10));
             </div>
         </div>
 
+        <!-- ── Activities & Gantt Chart ─────────────────── -->
+        <div class="col-12 mb-4">
+            <div class="card__wrapper shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center py-3 border-bottom">
+                    <h6 class="card-title mb-0 fw-bold text-dark text-uppercase">
+                        <i class="bi bi-list-task me-2 text-primary"></i>কাজ ও অ্যাক্টিভিটি শিডিউল (Schedule Activities/Phases)
+                    </h6>
+                    <span class="badge bg-primary-transparent text-primary fw-bold"><?= count($planItems) ?> Activities</span>
+                </div>
+                <div class="card__body p-4">
+                    
+                    <!-- Part 1: Activities Table -->
+                    <h6 class="fw-bold mb-3 text-secondary" style="font-size:0.92rem;"><i class="bi bi-table me-2 text-primary"></i>১. কাজের তালিকা ও অবস্থান (Activities List)</h6>
+                    <div class="table-responsive mb-5">
+                        <table class="table table-bordered table-striped table-hover align-middle mb-0" style="font-size: 0.88rem;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-center" style="width: 5%;">নং</th>
+                                    <th>কাজের বিবরণ ও অবস্থান (Activity & Location)</th>
+                                    <th style="width: 15%;">ফ্লোর (Floor)</th>
+                                    <th class="text-center" style="width: 12%;">পরিমাণ (Quantity)</th>
+                                    <th class="text-center" style="width: 12%;">শুরুর তারিখ</th>
+                                    <th class="text-center" style="width: 10%;">প্রয়োজনীয় দিন</th>
+                                    <th class="text-center" style="width: 12%;">শেষের তারিখ</th>
+                                    <th style="width: 15%;">মন্তব্য (Remarks)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($planItems)): ?>
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted py-4">No activities registered for this plan.</td>
+                                    </tr>
+                                <?php else: ?>
+                                    <?php foreach ($planItems as $idx => $item): ?>
+                                        <tr>
+                                            <td class="text-center fw-bold text-primary"><?= htmlspecialchars($item['sl_no'] ?: ($idx + 1)) ?></td>
+                                            <td class="fw-semibold text-dark"><?= htmlspecialchars($item['activity_name']) ?></td>
+                                            <td>
+                                                <?php if (!empty($item['floor_name'])): ?>
+                                                    <span class="badge bg-secondary text-white"><?= htmlspecialchars($item['floor_name']) ?></span>
+                                                <?php else: ?>
+                                                    <span class="text-muted">—</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-center"><?= htmlspecialchars($item['quantity'] ?: '1 Job') ?></td>
+                                            <td class="text-center"><?= date('d M Y', strtotime($item['start_date'])) ?></td>
+                                            <td class="text-center fw-bold text-info-emphasis"><?= (int)$item['req_days'] ?> দিন</td>
+                                            <td class="text-center"><?= date('d M Y', strtotime($item['end_date'])) ?></td>
+                                            <td class="text-muted small"><?= htmlspecialchars($item['remarks'] ?? '—') ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Part 2: Gantt Chart -->
+                    <h6 class="fw-bold mb-3 text-secondary" style="font-size:0.92rem;"><i class="bi bi-calendar-range me-2 text-primary"></i>২. সময়সূচী গ্যান্ট চার্ট (Weekly Gantt Chart / Schedule)</h6>
+                    
+                    <?php
+                    // Gantt calculation logic
+                    $minDate = null;
+                    $maxDate = null;
+                    if (!empty($planItems)) {
+                        foreach ($planItems as $item) {
+                            $sDate = $item['start_date'];
+                            $eDate = $item['end_date'];
+                            if (!$minDate || $sDate < $minDate) $minDate = $sDate;
+                            if (!$maxDate || $eDate > $maxDate) $maxDate = $eDate;
+                        }
+                    }
+
+                    if (!$minDate) {
+                        $minDate = sprintf('%04d-%02d-01', $plan['year'], $plan['month']);
+                        $maxDate = date('Y-m-t', strtotime($minDate));
+                    } else {
+                        // Align to nearest Monday and Sunday of start/end weeks
+                        $minTime = strtotime($minDate);
+                        $maxTime = strtotime($maxDate);
+                        
+                        $startDayOfWeek = date('N', $minTime);
+                        $minTime = $minTime - ($startDayOfWeek - 1) * 86400;
+                        $minDate = date('Y-m-d', $minTime);
+                        
+                        $endDayOfWeek = date('N', $maxTime);
+                        $maxTime = $maxTime + (7 - $endDayOfWeek) * 86400;
+                        $maxDate = date('Y-m-d', $maxTime);
+                    }
+
+                    $weeks = [];
+                    $currTime = strtotime($minDate);
+                    $endTime = strtotime($maxDate);
+                    $wCount = 1;
+                    while ($currTime <= $endTime) {
+                        $wStart = date('Y-m-d', $currTime);
+                        $wEnd = date('Y-m-d', $currTime + 6 * 86400);
+                        $weeks[] = [
+                            'label' => 'W' . $wCount,
+                            'start' => $wStart,
+                            'end' => $wEnd,
+                            'start_display' => date('d M', strtotime($wStart)),
+                            'end_display' => date('d M', strtotime($wEnd))
+                        ];
+                        $currTime += 7 * 86400;
+                        $wCount++;
+                    }
+                    ?>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle text-center mb-0" style="table-layout: fixed; min-width: 800px; font-size: 0.82rem;">
+                            <thead>
+                                <tr class="table-light">
+                                    <th class="text-start" style="width: 280px; font-size: 0.85rem; font-weight: bold;">Activity / Phase</th>
+                                    <?php foreach ($weeks as $w): ?>
+                                        <th style="font-size: 0.76rem; font-weight: 600;">
+                                            <div class="text-primary"><?= $w['label'] ?></div>
+                                            <div class="text-muted" style="font-size: 0.68rem; font-weight: 400;"><?= $w['start_display'] ?> - <?= $w['end_display'] ?></div>
+                                        </th>
+                                    <?php endforeach; ?>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($planItems)): ?>
+                                    <tr>
+                                        <td colspan="<?= count($weeks) + 1 ?>" class="text-muted py-4 text-start ps-3">No schedule data available.</td>
+                                    </tr>
+                                <?php else: ?>
+                                    <?php foreach ($planItems as $idx => $item): 
+                                        $itemStart = strtotime($item['start_date']);
+                                        $itemEnd = strtotime($item['end_date']);
+                                    ?>
+                                        <tr>
+                                            <td class="text-start text-dark fw-semibold text-truncate" style="max-width: 280px;" title="<?= htmlspecialchars($item['activity_name']) ?>">
+                                                <span class="text-muted me-1" style="font-size:0.75rem;"><?= htmlspecialchars($item['sl_no'] ?: ($idx+1)) ?>.</span>
+                                                <?= htmlspecialchars($item['activity_name']) ?>
+                                                <?php if(!empty($item['floor_name'])): ?>
+                                                    <span class="d-block small text-muted font-monospace" style="font-size:0.7rem;">Floor: <?= htmlspecialchars($item['floor_name']) ?></span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <?php foreach ($weeks as $w): 
+                                                $wStart = strtotime($w['start']);
+                                                $wEnd = strtotime($w['end']);
+                                                
+                                                // Check intersection
+                                                $intersects = ($itemStart <= $wEnd && $itemEnd >= $wStart);
+                                                
+                                                // Check if start week
+                                                $isStartWeek = ($itemStart >= $wStart && $itemStart <= $wEnd);
+                                                // Check if end week
+                                                $isEndWeek = ($itemEnd >= $wStart && $itemEnd <= $wEnd);
+                                                
+                                                $barStyle = '';
+                                                $cellStyle = '';
+                                                if ($intersects) {
+                                                    $cellStyle = 'background: rgba(13, 110, 253, 0.04);';
+                                                    $barStyle = 'background: rgba(13, 110, 253, 0.2); border-top: 2px solid #0d6efd; border-bottom: 2px solid #0d6efd; color: #0d6efd;';
+                                                    if ($isStartWeek) {
+                                                        $barStyle .= ' border-left: 4px solid #0d6efd; border-top-left-radius: 4px; border-bottom-left-radius: 4px;';
+                                                    }
+                                                    if ($isEndWeek) {
+                                                        $barStyle .= ' border-right: 4px solid #0d6efd; border-top-right-radius: 4px; border-bottom-right-radius: 4px;';
+                                                    }
+                                                }
+                                            ?>
+                                                <td class="p-1" style="height: 52px; vertical-align: middle; <?= $cellStyle ?>">
+                                                    <?php if ($intersects): ?>
+                                                        <div class="py-1 px-1 fw-bold" style="font-size: 0.72rem; <?= $barStyle ?>">
+                                                            <?= $item['req_days'] ?> Days
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </td>
+                                            <?php endforeach; ?>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
         <!-- ── All Plans for this Project ─────────────────── -->
         <div class="col-12">
             <div class="card__wrapper shadow-sm">

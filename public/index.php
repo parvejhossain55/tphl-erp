@@ -1131,6 +1131,7 @@ $routes['con-working-plan-update/(\d+)']  = ['controller' => 'Phase2\Con_Working
 $routes['con-working-plan-delete/(\d+)']  = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'delete'];
 $routes['con-working-plan-view/(\d+)']    = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'show'];
 $routes['con-working-plan-print/(\d+)']   = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'printView'];
+$routes['con-project-progress-report/(\d+)'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectProgressReport'];
 
 // ── Budget Extension Requests ─────────────────────────────────────────────────
 $routes['con-budget-extends']             = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'budgetExtends'];
@@ -1141,6 +1142,7 @@ $routes['con-budget-extend-reject/(\d+)'] = ['controller' => 'Phase2\Con_Working
 
 // ── AJAX: Cascade project → plans + budgets ───────────────────────────────
 $routes['con-ajax-project-data']           = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'ajaxGetProjectData'];
+$routes['con-ajax-budget-estimate']        = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'ajaxGetBudgetEstimate'];
 // ── AJAX: Cascade project → targets ──────────────────────────────────────
 $routes['con-ajax-project-targets']        = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'ajaxGetProjectTargets'];
 

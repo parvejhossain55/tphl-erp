@@ -2167,4 +2167,119 @@ class Con_DashboardController extends Controller
             'boqNotifications' => $boqNotifications,
         ]);
     }
+
+    // =========================================================================
+    // PROJECT PROGRESS REPORT MATRIX
+    // =========================================================================
+    public function projectProgressReport($projectId)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $projectId = (int)$projectId;
+
+        // 1. Fetch project details
+        $stmt = $this->db->prepare("SELECT * FROM projects WHERE id = ? AND deleted_at IS NULL");
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $project = $stmt->get_result()->fetch_assoc();
+        if (!$project) {
+            setError('Project not found.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
+        // 2. Fetch budgeted work types with weights (columns)
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT wt.id, wt.work_type_name, b.weight_percentage
+            FROM initial_estimate_budgets b
+            JOIN work_types wt ON wt.id = b.work_type_id
+            WHERE b.project_id = ? AND b.status = 'approved'
+            ORDER BY wt.work_type_name ASC
+        ");
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $workTypes = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 3. Fetch targets by Floor and Work Type (cell values)
+        $stmt = $this->db->prepare("
+            SELECT tf.floor_name, wp.work_type_id, 
+                   SUM(tf.target_percentage) AS total_target,
+                   SUM(tf.gain_percentage) AS total_gain
+            FROM target_fixed tf
+            JOIN project_working_plans wp ON wp.id = tf.work_plan_id
+            WHERE tf.project_id = ? AND tf.floor_name IS NOT NULL
+            GROUP BY tf.floor_name, wp.work_type_id
+        ");
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $targetData = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 4. Organize targets into 2D matrix [floor_name][work_type_id]
+        $matrix = [];
+        foreach ($targetData as $row) {
+            $matrix[$row['floor_name']][$row['work_type_id']] = [
+                'target' => (float)$row['total_target'],
+                'gain'   => (float)$row['total_gain']
+            ];
+        }
+
+        // 5. Fetch cumulative targets & achievements per work type
+        $stmt = $this->db->prepare("
+            SELECT wp.work_type_id, 
+                   SUM(tf.target_percentage) AS cumulative_target,
+                   SUM(tf.gain_percentage) AS cumulative_gain
+            FROM target_fixed tf
+            JOIN project_working_plans wp ON wp.id = tf.work_plan_id
+            WHERE tf.project_id = ?
+            GROUP BY wp.work_type_id
+        ");
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $cumulatives = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $cumulativeMap = [];
+        foreach ($cumulatives as $c) {
+            $cumulativeMap[$c['work_type_id']] = [
+                'target' => (float)$c['cumulative_target'],
+                'gain'   => (float)$c['cumulative_gain']
+            ];
+        }
+
+        // 6. Calculate progress contribution per work type and overall project progress
+        $totalProgress = 0.0;
+        foreach ($workTypes as &$wt) {
+            $wtId = $wt['id'];
+            $weight = (float)$wt['weight_percentage'];
+            
+            $cumTarget = $cumulativeMap[$wtId]['target'] ?? 0.0;
+            $cumGain   = $cumulativeMap[$wtId]['gain']   ?? 0.0;
+            
+            $wt['cumulative_target'] = $cumTarget;
+            $wt['cumulative_gain']   = $cumGain;
+            
+            // Contribution: (gain / 100) * weight
+            $contribution = ($cumGain / 100.0) * $weight;
+            $wt['contribution'] = $contribution;
+            
+            $totalProgress += $contribution;
+        }
+        unset($wt);
+
+        // Define fixed floors list matching input forms
+        $floors = [
+            'Foundation', 'Basement', 'G.floor', 
+            '1st floor', '2nd floor', '3rd floor', '4th floor', '5th floor', 
+            '6th floor', '7th floor', '8th floor', '9th floor', '10th floor', 
+            '11th floor', '12th floor', 'Roof'
+        ];
+
+        $this->view('phase2/dashboard/project-progress-report', [
+            'current_route' => 'con-dashboard',
+            'page_title'    => 'Project Progress Report — ' . $project['name'],
+            'project'       => $project,
+            'workTypes'     => $workTypes,
+            'floors'        => $floors,
+            'matrix'        => $matrix,
+            'totalProgress' => $totalProgress
+        ]);
+    }
 }

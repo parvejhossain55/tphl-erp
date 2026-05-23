@@ -32,7 +32,7 @@ $months     = ['January','February','March','April','May','June','July','August'
                                 <select name="project_id" id="project_id" class="form-select" required>
                                     <option value="">-- Select Project --</option>
                                     <?php foreach ($projects as $p): ?>
-                                        <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
+                                        <option value="<?= $p['id'] ?>" data-building-type="<?= htmlspecialchars($p['building_type'] ?? '') ?>"><?= htmlspecialchars($p['name']) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -45,16 +45,7 @@ $months     = ['January','February','March','April','May','June','July','August'
                             </div>
                         </div>
 
-                        <!-- Budget Info (auto-filled) -->
-                        <div id="budgetInfoCard" class="alert alert-info d-none mb-3 d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>Total Initial Budget:</strong>
-                                <span id="budgetInfoText">—</span>
-                            </div>
-                            <a href="#" id="viewBudgetBtn" class="btn btn-sm btn-info text-white" target="_blank">
-                                <i class="bi bi-eye"></i> View Details
-                            </a>
-                        </div>
+
 
                         <!-- Target Linked To -->
                         <div class="row mb-3">
@@ -75,14 +66,14 @@ $months     = ['January','February','March','April','May','June','July','August'
                                    placeholder="e.g. Column Cast — Zone A">
                         </div>
 
-                        <!-- Year / Month / Week -->
-                        <div class="row  mb-3">
-                            <div class="col-md-4">
+                        <!-- Year / Month / Floor / Week -->
+                        <div class="row mb-3">
+                            <div class="col-md-3">
                                 <label class="form-label fw-semibold">Year <span class="text-danger">*</span></label>
                                 <input type="number" name="year" class="form-control"
                                        value="<?= date('Y') ?>" min="2020" max="2035" required>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label fw-semibold">Month <span class="text-danger">*</span></label>
                                 <select name="month" class="form-select" required>
                                     <?php foreach ($months as $i => $m): ?>
@@ -92,7 +83,29 @@ $months     = ['January','February','March','April','May','June','July','August'
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Floor Name (Optional)</label>
+                                <select name="floor_name" id="floor_name" class="form-select">
+                                    <option value="">-- Select Floor --</option>
+                                    <option value="Foundation">Foundation</option>
+                                    <option value="Basement">Basement</option>
+                                    <option value="G.floor">G.floor</option>
+                                    <option value="1st floor">1st floor</option>
+                                    <option value="2nd floor">2nd floor</option>
+                                    <option value="3rd floor">3rd floor</option>
+                                    <option value="4th floor">4th floor</option>
+                                    <option value="5th floor">5th floor</option>
+                                    <option value="6th floor">6th floor</option>
+                                    <option value="7th floor">7th floor</option>
+                                    <option value="8th floor">8th floor</option>
+                                    <option value="9th floor">9th floor</option>
+                                    <option value="10th floor">10th floor</option>
+                                    <option value="11th floor">11th floor</option>
+                                    <option value="12th floor">12th floor</option>
+                                    <option value="Roof">Roof</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
                                 <label class="form-label fw-semibold">Week Number (Optional)</label>
                                 <select name="week_number" class="form-select">
                                     <option value="">-- Monthly Target --</option>
@@ -161,14 +174,70 @@ $months     = ['January','February','March','April','May','June','July','August'
 <script>
 const BASE_URL = '<?= $base_url ?>';
 
+function getFloorsFromBuildingType(buildingType) {
+    if (!buildingType) {
+        return [
+            'Foundation', 'Basement', 'G.floor', 
+            '1st floor', '2nd floor', '3rd floor', '4th floor', '5th floor', 
+            '6th floor', '7th floor', '8th floor', '9th floor', '10th floor', 
+            '11th floor', '12th floor', 'Roof'
+        ];
+    }
+    var str = buildingType.toUpperCase().replace(/\s+/g, '');
+    var parts = str.split('+');
+    var basements = [];
+    var hasGround = false;
+    var upperFloorsCount = 0;
+    parts.forEach(function(part) {
+        if (part.startsWith('B')) {
+            var numStr = part.substring(1);
+            if (numStr === '') {
+                basements.push('Basement');
+            } else {
+                var num = parseInt(numStr);
+                if (!isNaN(num)) {
+                    basements.push(part);
+                }
+            }
+        } else if (part === 'G' || part === 'GF' || part.indexOf('GROUND') !== -1) {
+            hasGround = true;
+        } else {
+            var num = parseInt(part);
+            if (!isNaN(num)) {
+                upperFloorsCount = num;
+            }
+        }
+    });
+    basements.sort(function(a, b) {
+        var numA = parseInt(a.replace(/\D/g, '')) || 1;
+        var numB = parseInt(b.replace(/\D/g, '')) || 1;
+        return numB - numA;
+    });
+    var floorList = ['Foundation'];
+    basements.forEach(function(b) {
+        floorList.push(b);
+    });
+    if (hasGround) {
+        floorList.push('G.floor');
+    }
+    for (var i = 1; i <= upperFloorsCount; i++) {
+        var suffix = 'th';
+        if (i === 1) suffix = 'st';
+        else if (i === 2) suffix = 'nd';
+        else if (i === 3) suffix = 'rd';
+        floorList.push(i + suffix + ' floor');
+    }
+    floorList.push('Roof');
+    return floorList;
+}
+
 document.getElementById('project_id').addEventListener('change', function () {
     const pid = this.value;
     const planSel   = document.getElementById('work_plan_id');
     const woSel     = document.getElementById('work_order_id');
     const woDetails = document.getElementById('woDetailsBox');
     const planInfo  = document.getElementById('planInfo');
-    const budgetCard= document.getElementById('budgetInfoCard');
-    const budgetTxt = document.getElementById('budgetInfoText');
+    const floorSel  = document.getElementById('floor_name');
 
     planSel.innerHTML = '<option value="">-- Loading... --</option>';
     planSel.disabled  = true;
@@ -176,7 +245,18 @@ document.getElementById('project_id').addEventListener('change', function () {
     woSel.disabled    = true;
     woDetails.classList.add('d-none');
     planInfo.textContent = '';
-    budgetCard.classList.add('d-none');
+
+    // Dynamic floors logic
+    const selectedOpt = this.options[this.selectedIndex];
+    const buildingType = selectedOpt ? selectedOpt.getAttribute('data-building-type') : '';
+    const floors = getFloorsFromBuildingType(buildingType);
+    if (floorSel) {
+        let floorOpts = '<option value="">-- Select Floor --</option>';
+        floors.forEach(function(fl) {
+            floorOpts += '<option value="' + fl + '">' + fl + '</option>';
+        });
+        floorSel.innerHTML = floorOpts;
+    }
 
     if (!pid) {
         planSel.innerHTML = '<option value="">-- Select Project First --</option>';
@@ -230,27 +310,11 @@ document.getElementById('project_id').addEventListener('change', function () {
 document.getElementById('work_plan_id').addEventListener('change', function () {
     const opt       = this.options[this.selectedIndex];
     const planInfo  = document.getElementById('planInfo');
-    const budgetCard= document.getElementById('budgetInfoCard');
-    const budgetTxt = document.getElementById('budgetInfoText');
 
     let planHtml = '';
     if (opt.dataset.design) planHtml += `<strong>Design:</strong> ${opt.dataset.design}<br>`;
     if (opt.dataset.desc) planHtml += `<strong>Description:</strong> ${opt.dataset.desc}`;
     planInfo.innerHTML = planHtml;
-
-    if (opt.dataset.budget) {
-        budgetCard.classList.remove('d-none');
-        budgetCard.classList.add('d-flex');
-        budgetTxt.textContent = 'Budget #' + (opt.dataset.budgetId || '') + ' — ' + opt.dataset.budget;
-        
-        const viewBtn = document.getElementById('viewBudgetBtn');
-        if (viewBtn && opt.dataset.budgetId) {
-            viewBtn.href = BASE_URL + '/con-estimate-show/' + opt.dataset.budgetId;
-        }
-    } else {
-        budgetCard.classList.add('d-none');
-        budgetCard.classList.remove('d-flex');
-    }
 });
 
 document.getElementById('work_order_id').addEventListener('change', function () {
