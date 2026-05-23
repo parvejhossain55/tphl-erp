@@ -36,7 +36,7 @@ class Con_WorkOrderController extends Controller
 
     private function canApprove()
     {
-        return in_array($this->userRole, [1, 3, 22]);
+        return in_array($this->userRole, [1, 3, 20, 22]);
     }
 
     private function canMarkComplete()
@@ -108,7 +108,7 @@ class Con_WorkOrderController extends Controller
         }
 
         $unitRate  = (float)($_POST['unit_rate']  ?? 0);
-        $quantity  = (float)($_POST['quantity']   ?? 0);
+        $quantity  = (float)($_POST['quantity']   ?? 1);
         $advPct    = (float)($_POST['advance_percent']   ?? 0);
         $runPct    = (float)($_POST['running_percent']   ?? 70);
         $retPct    = (float)($_POST['retention_percent'] ?? 10);
@@ -126,7 +126,7 @@ class Con_WorkOrderController extends Controller
             'notes'             => trim($_POST['notes']           ?? ''),
             'unit'              => trim($_POST['unit']            ?? ''),
             'document_link'     => trim($_POST['document_link']   ?? '') ?: null,
-            'work_items'        => !empty($_POST['work_items_json']) ? $_POST['work_items_json'] : null,
+            'work_items'        => null, // deprecated JSON — no longer written
             'unit_rate'         => $unitRate,
             'quantity'          => $quantity,
             'total_amount'      => $total,
@@ -135,8 +135,8 @@ class Con_WorkOrderController extends Controller
             'advance_percent'   => $advPct,
             'running_percent'   => $runPct,
             'retention_percent' => $retPct,
+            'advance_amount'    => round($total * $advPct / 100, 2),
             'retention_amount'  => round($total * $retPct / 100, 2),
-            // 'work_plan_id' removed, Work Orders are independent of monthly plans
             'created_by'        => $this->userId,
         ];
 
@@ -148,8 +148,39 @@ class Con_WorkOrderController extends Controller
 
         $id = $this->model->create($data);
         if ($id) {
+            $this->model->initApprovals($id);
+            // ── Save rate schedule items to DB ───────────────────────────────
+            $rawItems = $_POST['wi_items'] ?? [];
+            if (!empty($rawItems) && is_array($rawItems)) {
+                $items = [];
+                foreach ($rawItems as $i => $it) {
+                    $desc = trim($it['description'] ?? '');
+                    if ($desc === '') continue;
+                    $qty  = (float)($it['quantity']    ?? 0);
+                    $rate = (float)($it['rate']        ?? 0);
+                    $items[] = [
+                        'sl_no'       => trim($it['sl_no']      ?? ($i + 1)),
+                        'description' => $desc,
+                        'location'    => trim($it['location']   ?? ''),
+                        'unit'        => trim($it['unit']       ?? 'sqft'),
+                        'quantity'    => $qty,
+                        'rate'        => $rate,
+                        'sort_order'  => $i,
+                    ];
+                }
+                $this->model->addItems($id, $items);
+            }
+
+            // Sync total from items
+            $this->model->syncTotal($id);
+
+            // ── Approval request ─────────────────────────────────────────────
             $operator = $this->contractorModel->find($data['contractor_id']);
             $project  = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$data['project_id'])->fetch_assoc();
+
+            // Get updated total after sync
+            $woFresh = $this->model->find($id);
+            $freshTotal = (float)($woFresh['total_amount'] ?? $total);
 
             $this->approvalModel->create([
                 'department'    => 'construction',
@@ -161,7 +192,7 @@ class Con_WorkOrderController extends Controller
                 'requested_by'  => $this->userId,
                 'approve_role'  => 'management',
                 'meta_data'     => null,
-                'request_amount'=> $data['total_amount'],
+                'request_amount'=> $freshTotal,
             ]);
 
             setSuccess('Work Order created and sent for approval successfully!');
@@ -185,15 +216,21 @@ class Con_WorkOrderController extends Controller
             exit;
         }
 
+        $woItems             = $this->model->getItemsByWorkOrder($id);
         $linkedBills         = $this->model->getLinkedBills($id);
         $linkedWeeklyReports = $this->model->getLinkedWeeklyReports($id);
+        $updateLogs          = $this->model->getUpdateLogs($id);
+        $approvals           = $this->model->getApprovals($id);
 
         $this->view('phase2/work-orders/show-work-order', [
             'current_route'       => 'con-work-orders',
             'page_title'          => 'Work Order — ' . $wo['wo_number'],
             'wo'                  => $wo,
+            'woItems'             => $woItems,
             'linkedBills'         => $linkedBills,
             'linkedWeeklyReports' => $linkedWeeklyReports,
+            'updateLogs'          => $updateLogs,
+            'approvals'           => $approvals,
             'canApprove'          => $this->canApprove(),
             'canMarkComplete'     => $this->canMarkComplete(),
             'canQcApprove'        => $this->canQcApprove(),
@@ -208,8 +245,8 @@ class Con_WorkOrderController extends Controller
     public function edit($id)
     {
         $wo = $this->model->find($id);
-        if (!$wo || $wo['status'] !== 'draft') {
-            setError('Only draft Work Orders can be edited.');
+        if (!$wo || !in_array($wo['status'], ['draft', 'rejected'])) {
+            setError('Only draft or rejected Work Orders can be edited.');
             header("Location: " . $GLOBALS['base_url'] . "/con-work-order/{$id}");
             exit;
         }
@@ -226,10 +263,13 @@ class Con_WorkOrderController extends Controller
 
         // work_plan_id removed from Work Orders
 
+        $woItems     = $this->model->getItemsByWorkOrder((int)$id);
+
         $this->view('phase2/work-orders/edit-work-order', [
             'current_route' => 'con-work-orders',
-            'page_title'    => 'Edit Work Order',
+            'page_title'    => 'Edit Work Order — ' . ($wo['wo_number'] ?? ''),
             'wo'            => $wo,
+            'woItems'       => $woItems,
             'projects'      => $projects,
             'contractors'   => $contractors,
             'workTypes'     => $workTypes,
@@ -242,14 +282,14 @@ class Con_WorkOrderController extends Controller
     public function update($id)
     {
         $wo = $this->model->find($id);
-        if (!$wo || $wo['status'] !== 'draft') {
-            setError('Only draft Work Orders can be updated.');
+        if (!$wo || !in_array($wo['status'], ['draft', 'rejected'])) {
+            setError('Only draft or rejected Work Orders can be updated.');
             header("Location: " . $GLOBALS['base_url'] . "/con-work-order/{$id}");
             exit;
         }
 
         $unitRate = (float)($_POST['unit_rate']  ?? 0);
-        $quantity = (float)($_POST['quantity']   ?? 0);
+        $quantity = (float)($_POST['quantity']   ?? 1);
         $advPct   = (float)($_POST['advance_percent']   ?? 0);
         $runPct   = (float)($_POST['running_percent']   ?? 70);
         $retPct   = (float)($_POST['retention_percent'] ?? 10);
@@ -267,7 +307,7 @@ class Con_WorkOrderController extends Controller
             'notes'             => trim($_POST['notes']         ?? ''),
             'unit'              => trim($_POST['unit']          ?? ''),
             'document_link'     => trim($_POST['document_link'] ?? '') ?: null,
-            'work_items'        => !empty($_POST['work_items_json']) ? $_POST['work_items_json'] : null,
+            'work_items'        => null, // deprecated JSON
             'unit_rate'         => $unitRate,
             'quantity'          => $quantity,
             'total_amount'      => $total,
@@ -278,11 +318,37 @@ class Con_WorkOrderController extends Controller
             'retention_percent' => $retPct,
             'advance_amount'    => round($total * $advPct / 100, 2),
             'retention_amount'  => round($total * $retPct / 100, 2),
-            // 'work_plan_id' removed
         ];
 
         if ($this->model->update($id, $data)) {
-            setSuccess('Work Order updated.');
+            // ── Replace items in DB ──────────────────────────────────────────
+            $rawItems = $_POST['wi_items'] ?? [];
+            if (is_array($rawItems)) {
+                $items = [];
+                foreach ($rawItems as $i => $it) {
+                    $desc = trim($it['description'] ?? '');
+                    if ($desc === '') continue;
+                    $items[] = [
+                        'sl_no'       => trim($it['sl_no']      ?? ($i + 1)),
+                        'description' => $desc,
+                        'location'    => trim($it['location']   ?? ''),
+                        'unit'        => trim($it['unit']       ?? 'sqft'),
+                        'quantity'    => (float)($it['quantity'] ?? 0),
+                        'rate'        => (float)($it['rate']    ?? 0),
+                        'sort_order'  => $i,
+                    ];
+                }
+                $this->model->replaceItems($id, $items);
+            }
+            $this->model->syncTotal($id);
+            $this->model->initApprovals($id); // reset sequential approval queue
+
+            // ── Save update history log ──────────────────────────────────────
+            $updateDate  = !empty($_POST['update_date'])  ? $_POST['update_date']  : date('Y-m-d');
+            $updateNotes = trim($_POST['update_notes'] ?? '');
+            $this->model->addUpdateLog((int)$id, $updateDate, $updateNotes, $this->userId);
+
+            setSuccess('Work Order updated successfully.');
         } else {
             setError('Update failed.');
         }
@@ -301,11 +367,22 @@ class Con_WorkOrderController extends Controller
             exit;
         }
 
-        if ($this->model->approve($id, $this->userId)) {
+        $actingRole = 0;
+        if ($this->userRole === 20) {
+            $actingRole = 20;
+        } elseif ($this->userRole === 22) {
+            $actingRole = 22;
+        } elseif (in_array($this->userRole, [1, 3])) {
+            $actingRole = 3;
+        }
+
+        $note = trim($_POST['approval_note'] ?? 'Approved');
+
+        if ($this->model->updateApproval($id, $actingRole, $this->userId, 'approved', $note)) {
             $this->syncApprovalRequest($id, 'approved');
-            setSuccess('Work Order approved and is now active!');
+            setSuccess('Work Order approved successfully!');
         } else {
-            setError('Approval failed. Work Order must be in draft status.');
+            setError('Approval failed.');
         }
         header("Location: " . $GLOBALS['base_url'] . "/con-work-order/{$id}");
         exit;
@@ -323,7 +400,16 @@ class Con_WorkOrderController extends Controller
         }
 
         $reason = trim($_POST['rejection_reason'] ?? '');
-        if ($this->model->reject($id, $this->userId, $reason)) {
+        $actingRole = 0;
+        if ($this->userRole === 20) {
+            $actingRole = 20;
+        } elseif ($this->userRole === 22) {
+            $actingRole = 22;
+        } elseif (in_array($this->userRole, [1, 3])) {
+            $actingRole = 3;
+        }
+
+        if ($this->model->updateApproval($id, $actingRole, $this->userId, 'rejected', $reason)) {
             $this->syncApprovalRequest($id, 'rejected');
             setSuccess('Work Order has been rejected.');
         } else {
@@ -420,6 +506,7 @@ class Con_WorkOrderController extends Controller
             die('Work Order not found.');
         }
 
+        $woItems             = $this->model->getItemsByWorkOrder($id);
         $linkedBills         = $this->model->getLinkedBills($id);
         $linkedWeeklyReports = $this->model->getLinkedWeeklyReports($id);
 
@@ -445,6 +532,44 @@ class Con_WorkOrderController extends Controller
     }
 
     // =========================================================================
+    // AJAX — Check if existing WO exists for project + design_id
+    // GET /con-ajax-wo-check?project_id=N&design_id=M
+    // Returns JSON { found, wo, items }
+    // =========================================================================
+    public function ajaxCheckExistingWO()
+    {
+        header('Content-Type: application/json');
+        $projectId = (int)($_GET['project_id'] ?? 0);
+        $designId  = (int)($_GET['design_id']  ?? 0);
+
+        if (!$projectId || !$designId) {
+            echo json_encode(['found' => false]);
+            exit;
+        }
+
+        $wo = $this->model->findByProjectAndDesign($projectId, $designId);
+        if (!$wo) {
+            echo json_encode(['found' => false]);
+            exit;
+        }
+
+        $items = $this->model->getItemsByWorkOrder((int)$wo['id']);
+        echo json_encode([
+            'found' => true,
+            'wo'    => [
+                'id'              => $wo['id'],
+                'wo_number'       => $wo['wo_number'],
+                'status'          => $wo['status'],
+                'contractor_name' => $wo['contractor_name'] ?? '',
+                'title'           => $wo['title'] ?? '',
+                'total_amount'    => $wo['total_amount'] ?? 0,
+            ],
+            'items' => $items,
+        ]);
+        exit;
+    }
+
+    // =========================================================================
     // (ajaxGetWorkPlans removed, no longer needed in Work Order)
     // =========================================================================
     // AJAX — Get Drawings by Project
@@ -456,14 +581,51 @@ class Con_WorkOrderController extends Controller
         if (!$projectId) { echo json_encode(['drawings' => []]); exit; }
 
         $r = $this->db->query("
-            SELECT pd.id, dt.name AS design_type_name
+            SELECT pd.id, pd.design_type_id, dt.name AS design_type_name
             FROM project_drawings pd
-            LEFT JOIN design_types dt ON dt.id = pd.design_type_id
+            INNER JOIN design_types dt ON dt.id = pd.design_type_id
             WHERE pd.project_id = {$projectId}
+              AND dt.name IS NOT NULL
             ORDER BY dt.name ASC
         ");
         $drawings = $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
         echo json_encode(['drawings' => $drawings]);
+        exit;
+    }
+
+    // =========================================================================
+    // AJAX — Get Work Types by design_id (project_drawing id)
+    // GET /con-ajax-wo-work-types?design_id=N
+    // Returns work_types filtered by the drawing's design_type_id
+    // =========================================================================
+    public function ajaxGetWorkTypesByDesign()
+    {
+        header('Content-Type: application/json');
+        $designId = (int)($_GET['design_id'] ?? 0);
+        if (!$designId) {
+            echo json_encode(['work_types' => []]);
+            exit;
+        }
+
+        // Get design_type_id from project_drawings
+        $dr = $this->db->query(
+            "SELECT design_type_id FROM project_drawings WHERE id = {$designId} LIMIT 1"
+        );
+        if (!$dr || !$dr->num_rows) {
+            echo json_encode(['work_types' => []]);
+            exit;
+        }
+        $designTypeId = (int)$dr->fetch_assoc()['design_type_id'];
+
+        // Get all work_types for this design_type
+        $r = $this->db->query(
+            "SELECT id, work_type_name, description
+             FROM work_types
+             WHERE design_type_id = {$designTypeId}
+             ORDER BY id ASC"
+        );
+        $workTypes = $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
+        echo json_encode(['work_types' => $workTypes, 'design_type_id' => $designTypeId]);
         exit;
     }
 

@@ -284,19 +284,43 @@ class Con_DashboardController extends Controller
 
         $pendingWorkOrders = [];
         if (in_array($userRole, [1, 3, 22])) {
-            $rWO = $this->db->query("
-                SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
-                       p.name AS project_name,
-                       c.name AS contractor_name,
-                       u.full_name AS creator_name
-                FROM con_work_orders wo
-                LEFT JOIN projects p ON p.id = wo.project_id
-                LEFT JOIN contractors c ON c.id = wo.contractor_id
-                LEFT JOIN users u ON u.id = wo.created_by
-                WHERE wo.status = 'draft'
-                ORDER BY wo.created_at DESC
-                LIMIT 10
-            ");
+            if ($userRole == 22) {
+                $rWO = $this->db->query("
+                    SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
+                           p.name AS project_name,
+                           c.name AS contractor_name,
+                           u.full_name AS creator_name
+                    FROM con_work_orders wo
+                    JOIN con_work_order_approvals wa_pm ON wa_pm.work_order_id = wo.id AND wa_pm.role_id = 22
+                    JOIN con_work_order_approvals wa_mo ON wa_mo.work_order_id = wo.id AND wa_mo.role_id = 20
+                    LEFT JOIN projects p ON p.id = wo.project_id
+                    LEFT JOIN contractors c ON c.id = wo.contractor_id
+                    LEFT JOIN users u ON u.id = wo.created_by
+                    WHERE wo.status = 'draft'
+                      AND wa_pm.status = 'pending'
+                      AND wa_mo.status != 'pending'
+                    ORDER BY wo.created_at DESC
+                    LIMIT 10
+                ");
+            } else {
+                $rWO = $this->db->query("
+                    SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
+                           p.name AS project_name,
+                           c.name AS contractor_name,
+                           u.full_name AS creator_name
+                    FROM con_work_orders wo
+                    JOIN con_work_order_approvals wa_mgmt ON wa_mgmt.work_order_id = wo.id AND wa_mgmt.role_id = 3
+                    JOIN con_work_order_approvals wa_pm ON wa_pm.work_order_id = wo.id AND wa_pm.role_id = 22
+                    LEFT JOIN projects p ON p.id = wo.project_id
+                    LEFT JOIN contractors c ON c.id = wo.contractor_id
+                    LEFT JOIN users u ON u.id = wo.created_by
+                    WHERE wo.status = 'draft'
+                      AND wa_mgmt.status = 'pending'
+                      AND wa_pm.status != 'pending'
+                    ORDER BY wo.created_at DESC
+                    LIMIT 10
+                ");
+            }
             $pendingWorkOrders = $rWO ? $rWO->fetch_all(MYSQLI_ASSOC) : [];
         }
 
@@ -1197,6 +1221,26 @@ class Con_DashboardController extends Controller
         $rVP = $this->db->query("SELECT vpr.*, p.name AS project_name, v.name AS vendor_name FROM vendor_payment_requests vpr JOIN projects p ON p.id = vpr.project_id LEFT JOIN vendors v ON v.id = vpr.vendor_id WHERE p.deleted_at IS NULL AND $filter ORDER BY vpr.id DESC LIMIT 5");
         $recentVendorPayments = $rVP ? $rVP->fetch_all(MYSQLI_ASSOC) : [];
 
+        $pendingWorkOrders = [];
+        if ($roleId === 20 || $isAdmin) {
+            $rWO = $this->db->query("
+                SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
+                       p.name AS project_name,
+                       c.name AS contractor_name,
+                       u.full_name AS creator_name
+                FROM con_work_orders wo
+                JOIN con_work_order_approvals wa ON wa.work_order_id = wo.id AND wa.role_id = 20
+                LEFT JOIN projects p ON p.id = wo.project_id
+                LEFT JOIN contractors c ON c.id = wo.contractor_id
+                LEFT JOIN users u ON u.id = wo.created_by
+                WHERE wo.status = 'draft'
+                  AND wa.status = 'pending'
+                ORDER BY wo.created_at DESC
+                LIMIT 10
+            ");
+            $pendingWorkOrders = $rWO ? $rWO->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
         return $this->view('phase2/dashboard/operations-dashboard', [
             'current_route'         => 'operations-dashboard',
             'isAdmin'               => $isAdmin,
@@ -1208,6 +1252,7 @@ class Con_DashboardController extends Controller
             'recentWorkingPlans'    => $recentWorkingPlans,
             'recentMaterialIssues'  => $recentMaterialIssues,
             'recentVendorPayments'  => $recentVendorPayments,
+            'pendingWorkOrders'     => $pendingWorkOrders,
         ]);
     }
 

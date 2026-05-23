@@ -56,7 +56,7 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                class="btn btn-outline-primary btn-sm">
                 <i class="bi bi-printer me-1"></i> Print / PDF
             </a>
-            <?php if ($status === 'draft' && $canApprove): ?>
+            <?php if (in_array($status, ['draft', 'rejected']) && in_array($userRole, [1, 3, 15, 22])): ?>
                 <a href="<?= $base_url ?>/con-work-order-edit/<?= $wo['id'] ?>" class="btn btn-outline-warning btn-sm">
                     <i class="bi bi-pencil me-1"></i> Edit
                 </a>
@@ -137,6 +137,60 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                 </div>
             </div>
 
+            <!-- ── Rate Schedule Table ─────────────────────────────────── -->
+            <?php if (!empty($woItems)): ?>
+            <div class="card custom-card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-table me-2 text-success"></i>
+                        কাজের বিবরণ ও রেট সিডিউল
+                        <span class="badge bg-success-transparent text-success ms-1"><?= count($woItems) ?> items</span>
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm align-middle mb-0" style="font-size:.84rem">
+                            <thead style="background:#1e3a8a;color:#fff">
+                                <tr>
+                                    <th class="text-center" style="width:50px">নং</th>
+                                    <th>বিবরণ (Description)</th>
+                                    <th style="width:18%">অবস্থান (Location)</th>
+                                    <th style="width:7%" class="text-center">Unit</th>
+                                    <th style="width:8%" class="text-end">Qty</th>
+                                    <th style="width:9%" class="text-end">Rate (৳)</th>
+                                    <th style="width:12%" class="text-end">Subtotal (৳)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $grandTotal = 0;
+                                foreach ($woItems as $item):
+                                    $sub = (float)$item['quantity'] * (float)$item['rate'];
+                                    $grandTotal += $sub;
+                                ?>
+                                <tr>
+                                    <td class="text-center fw-semibold text-primary"><?= htmlspecialchars($item['sl_no']) ?></td>
+                                    <td style="white-space:pre-wrap;max-width:280px"><?= nl2br(htmlspecialchars($item['description'])) ?></td>
+                                    <td class="text-muted"><?= htmlspecialchars($item['location'] ?? '') ?></td>
+                                    <td class="text-center"><?= strtoupper(htmlspecialchars($item['unit'])) ?></td>
+                                    <td class="text-end"><?= number_format((float)$item['quantity'], 2) ?></td>
+                                    <td class="text-end">৳<?= number_format((float)$item['rate'], 2) ?></td>
+                                    <td class="text-end fw-bold text-primary">৳<?= number_format($sub, 2) ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                            <tfoot>
+                                <tr style="background:#eff6ff">
+                                    <td colspan="6" class="text-end fw-bold text-primary">Grand Total:</td>
+                                    <td class="text-end fw-bold text-primary fs-15">৳<?= number_format($grandTotal, 2) ?></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- Rate & Budget -->
             <div class="card custom-card mb-4">
                 <div class="card-header">
@@ -189,6 +243,65 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
             </div>
 
             <!-- Working Plan logic removed as WO is now independent -->
+
+            <!-- ── Update History Timeline ──────────────────────────── -->
+            <?php if (!empty($updateLogs)): ?>
+            <div class="card custom-card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center"
+                     style="background:#fffbeb;border-bottom:2px solid #fbbf24">
+                    <h6 class="card-title mb-0 text-warning-emphasis">
+                        <i class="bi bi-clock-history me-2 text-warning"></i>
+                        Update History
+                        <span class="badge bg-warning text-dark ms-1"><?= count($updateLogs) ?></span>
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline-container" style="position:relative;padding-left:24px">
+                        <!-- Vertical line -->
+                        <div style="position:absolute;left:8px;top:0;bottom:0;width:2px;background:#fde68a"></div>
+
+                        <?php foreach ($updateLogs as $log): ?>
+                        <div class="mb-4" style="position:relative">
+                            <!-- Dot -->
+                            <div style="position:absolute;left:-20px;top:4px;width:12px;height:12px;
+                                        background:#f59e0b;border-radius:50%;border:2px solid #fff;
+                                        box-shadow:0 0 0 2px #fbbf24"></div>
+
+                            <div class="d-flex align-items-start gap-2 flex-wrap">
+                                <!-- Date badge -->
+                                <span class="badge text-dark fw-bold px-3 py-2"
+                                      style="background:#fef3c7;font-size:.85rem;min-width:110px">
+                                    <i class="bi bi-calendar3 me-1"></i>
+                                    <?= date('d M Y', strtotime($log['update_date'])) ?>
+                                </span>
+                                <!-- Who updated -->
+                                <span class="badge bg-secondary-subtle text-secondary px-2 py-2">
+                                    <i class="bi bi-person me-1"></i>
+                                    <?= htmlspecialchars($log['updated_by_name'] ?? 'User #' . $log['updated_by']) ?>
+                                </span>
+                                <small class="text-muted pt-1">
+                                    <i class="bi bi-clock me-1"></i>
+                                    <?= date('h:i A', strtotime($log['created_at'])) ?>
+                                </small>
+                            </div>
+
+                            <?php if (!empty($log['update_notes'])): ?>
+                            <div class="mt-2 p-3 rounded border-start border-warning border-3"
+                                 style="background:#fffdf0;font-size:.9rem">
+                                <?= nl2br(htmlspecialchars($log['update_notes'])) ?>
+                            </div>
+                            <?php else: ?>
+                            <div class="mt-1 text-muted small">
+                                <em>কোনো notes লেখা হয়নি।</em>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- Linked Weekly Reports -->
             <?php if (!empty($linkedWeeklyReports)): ?>
             <div class="card custom-card mb-4">
@@ -324,6 +437,106 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                 </div>
             </div>
 
+            <!-- ── Sequential Approval Status ──────────────────────────── -->
+            <?php
+            $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+            $actingRoleId = 0;
+            if ($userRole === 20) {
+                $actingRoleId = 20;
+            } elseif ($userRole === 22) {
+                $actingRoleId = 22;
+            } elseif (in_array($userRole, [1, 3])) {
+                $actingRoleId = 3;
+            }
+
+            $canUserAct = false;
+            $moStatus   = 'pending';
+            $pmStatus   = 'pending';
+            $mgmtStatus = 'pending';
+
+            if (!empty($approvals)) {
+                $appMap = [];
+                foreach ($approvals as $a) {
+                    $appMap[(int)$a['role_id']] = $a;
+                }
+                $moStatus   = $appMap[20]['status'] ?? 'pending';
+                $pmStatus   = $appMap[22]['status'] ?? 'pending';
+                $mgmtStatus = $appMap[3]['status']  ?? 'pending';
+
+                if ($status === 'draft' && $actingRoleId > 0) {
+                    if ($actingRoleId === 20) {
+                        if ($moStatus === 'pending') {
+                            $canUserAct = true;
+                        }
+                    } elseif ($actingRoleId === 22) {
+                        if ($pmStatus === 'pending' && $moStatus !== 'pending') {
+                            $canUserAct = true;
+                        }
+                    } elseif ($actingRoleId === 3) {
+                        // Admin/Management can act at any time as long as Management is pending
+                        if ($mgmtStatus === 'pending') {
+                            $canUserAct = true;
+                        }
+                    }
+                }
+            }
+            ?>
+            <div class="card custom-card mb-4">
+                <div class="card-header" style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-shield-check me-2 text-primary"></i>
+                        Approval Workflow Progress
+                    </h6>
+                </div>
+                <div class="card-body p-3">
+                    <div class="d-flex flex-column gap-3">
+                        <?php
+                        $roleLabels = [
+                            20 => '1. Site Operator (MOperation)',
+                            22 => '2. Project Manager (PM)',
+                            3  => '3. Management (Director)',
+                        ];
+                        $badgeClasses = [
+                            'pending'  => 'bg-warning-transparent text-warning',
+                            'approved' => 'bg-success-transparent text-success',
+                            'rejected' => 'bg-danger-transparent text-danger',
+                        ];
+
+                        foreach ([20, 22, 3] as $rId):
+                            $app = $appMap[$rId] ?? ['status' => 'pending', 'remarks' => '', 'action_at' => null, 'user_name' => ''];
+                            $appStatus = $app['status'];
+                            $lbl = $roleLabels[$rId];
+                            $badge = $badgeClasses[$appStatus] ?? 'bg-secondary-transparent';
+                        ?>
+                            <div class="p-3 rounded border" style="background: #fdfdfd;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-semibold text-muted" style="font-size: .88rem;"><?= $lbl ?></span>
+                                    <span class="badge <?= $badge ?> text-uppercase fs-10 px-2"><?= $appStatus ?></span>
+                                </div>
+                                <?php if ($appStatus !== 'pending'): ?>
+                                    <div class="text-muted small mb-1">
+                                        <i class="bi bi-person me-1"></i>
+                                        <strong><?= htmlspecialchars($app['user_name'] ?? 'User #' . $app['action_by']) ?></strong>
+                                        on <?= date('d M Y h:i A', strtotime($app['action_at'])) ?>
+                                    </div>
+                                    <?php if (!empty($app['remarks'])): ?>
+                                        <div class="mt-2 p-2 rounded text-dark-emphasis small" style="background:#fff5f5; border-left:3px solid #ef4444; font-size: .82rem;">
+                                            <i class="bi bi-chat-right-text me-1"></i>
+                                            <?= nl2br(htmlspecialchars($app['remarks'])) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <div class="text-muted small">
+                                        <i class="bi bi-hourglass-split me-1 text-muted"></i>
+                                        Awaiting review
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+
             <!-- Actions -->
             <div class="card custom-card mb-4">
                 <div class="card-header">
@@ -331,10 +544,10 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                 </div>
                 <div class="card-body d-grid gap-2">
 
-                    <!-- Approve / Reject (draft → approved) -->
-                    <?php if ($status === 'draft' && $canApprove): ?>
+                    <!-- Approve / Reject sequential actions -->
+                    <?php if ($canUserAct): ?>
                         <form method="POST" action="<?= $base_url ?>/con-work-order-approve/<?= $wo['id'] ?>"
-                              onsubmit="return confirm('Approve this Work Order?')">
+                               onsubmit="return confirm('Approve this Work Order?')">
                             <button type="submit" class="btn btn-success w-100">
                                 <i class="bi bi-check-circle me-1"></i> Approve Work Order
                             </button>
@@ -380,6 +593,20 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                                 <i class="bi bi-trash me-1"></i> Delete
                             </button>
                         </form>
+                    <?php endif; ?>
+
+                    <!-- Debug Panel -->
+                    <?php if (isset($_GET['debug'])): ?>
+                    <div class="alert alert-info small mt-3 p-2 font-monospace" style="font-size:.78rem; line-height:1.4">
+                        <strong>Debug Info:</strong><br>
+                        Logged In Role ID: <?= $userRole ?><br>
+                        Acting Role: <?= $actingRoleId ?><br>
+                        MOperation: <?= $moStatus ?><br>
+                        PM Status: <?= $pmStatus ?><br>
+                        Management: <?= $mgmtStatus ?><br>
+                        Can Act: <?= $canUserAct ? 'Yes' : 'No' ?><br>
+                        WO Status: <?= $status ?>
+                    </div>
                     <?php endif; ?>
                 </div>
             </div>

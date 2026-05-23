@@ -1078,6 +1078,9 @@ $routes['con-material-issue/(\d+)']          = ['controller' => 'Phase2\Con_Mate
 
 
 // ── Vendor Penalties ──────────────────────────────────────────────────────
+$routes['con-ajax-wo-drawings']            = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetDrawings'];
+$routes['con-ajax-wo-check']               = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxCheckExistingWO'];
+$routes['con-ajax-wo-work-types']          = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetWorkTypesByDesign'];
 $routes['con-vendor-penalties']              = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'index'];
 $routes['con-vendor-penalty-create']         = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'create'];
 $routes['con-vendor-penalty-store']          = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'store'];
@@ -1106,6 +1109,7 @@ $routes['con-ajax-wo-by-project']          = ['controller' => 'Phase2\\Con_WorkO
 $routes['con-ajax-wo-work-plans']          = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetWorkPlans'];
 $routes['con-ajax-wo-targets']             = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetTargets'];
 $routes['con-ajax-wo-drawings']            = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetDrawings'];
+$routes['con-ajax-wo-check']               = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxCheckExistingWO'];
 
 // ── Financial Transactions ─────────────────────────────────────────────────
 $routes['con-transactions']               = ['controller' => 'Phase2\\Con_FinancialTransactionController', 'method' => 'index'];

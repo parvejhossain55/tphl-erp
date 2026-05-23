@@ -2,7 +2,8 @@
 
 class Con_WorkOrder extends Model
 {
-    protected $table = 'con_work_orders';
+    protected $table      = 'con_work_orders';
+    protected $itemsTable = 'con_work_order_items';
 
     // =========================================================================
     // READ — All with relations
@@ -179,8 +180,9 @@ class Con_WorkOrder extends Model
                     scope_of_work=?, notes=?, description=?, unit=?, unit_rate=?, quantity=?, total_amount=?,
                     start_date=?, end_date=?,
                     advance_percent=?, running_percent=?, retention_percent=?,
-                    advance_amount=?, retention_amount=?
-                WHERE id=? AND status='draft'";
+                    advance_amount=?, retention_amount=?,
+                    status = 'draft', rejection_reason = NULL
+                WHERE id=? AND status IN ('draft', 'rejected')";
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
@@ -359,5 +361,234 @@ class Con_WorkOrder extends Model
         );
         $count = (int)($result->fetch_assoc()['cnt'] ?? 0);
         return 'WO-' . $year . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+    }
+
+    // =========================================================================
+    // WORK ORDER ITEMS — database-driven rate schedule rows
+    // =========================================================================
+
+    /** Fetch all rate schedule items for a WO, ordered by sort_order */
+    public function getItemsByWorkOrder($woId)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT * FROM {$this->itemsTable}
+             WHERE work_order_id = ?
+             ORDER BY sort_order ASC, id ASC"
+        );
+        $stmt->bind_param('i', $woId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /** Batch-insert rate schedule items for a WO */
+    public function addItems($woId, array $items)
+    {
+        if (empty($items)) return true;
+
+        $sql  = "INSERT INTO {$this->itemsTable}
+                     (work_order_id, sl_no, description, location, unit, quantity, rate, sort_order)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log('WO addItems prepare failed: ' . $this->db->error);
+            return false;
+        }
+        foreach ($items as $i => $item) {
+            $sortOrder = $item['sort_order'] ?? $i;
+            $stmt->bind_param(
+                'issssddi',
+                $woId,
+                $item['sl_no'],
+                $item['description'],
+                $item['location'],
+                $item['unit'],
+                $item['quantity'],
+                $item['rate'],
+                $sortOrder
+            );
+            $stmt->execute();
+        }
+        return true;
+    }
+
+    /** Delete all items then re-insert (used on edit/update) */
+    public function replaceItems($woId, array $items)
+    {
+        $del = $this->db->prepare("DELETE FROM {$this->itemsTable} WHERE work_order_id = ?");
+        $del->bind_param('i', $woId);
+        $del->execute();
+        return $this->addItems($woId, $items);
+    }
+
+    /** Recalculate total_amount from items (SUM of amount) + update header */
+    public function syncTotal($woId)
+    {
+        $r = $this->db->query(
+            "SELECT COALESCE(SUM(quantity * rate), 0) AS grand
+             FROM {$this->itemsTable} WHERE work_order_id = {$woId}"
+        );
+        if (!$r) return false;
+        $grand = (float)$r->fetch_assoc()['grand'];
+
+        // Fetch current percent fields to recalculate amounts
+        $h = $this->find($woId);
+        if (!$h) return false;
+
+        $advAmt = round($grand * (float)($h['advance_percent']   ?? 0) / 100, 2);
+        $retAmt = round($grand * (float)($h['retention_percent'] ?? 0) / 100, 2);
+
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET total_amount = ?, advance_amount = ?, retention_amount = ?
+             WHERE id = ?"
+        );
+        $stmt->bind_param('dddi', $grand, $advAmt, $retAmt, $woId);
+        return $stmt->execute();
+    }
+
+    // =========================================================================
+    // LOOKUP: find existing WO by project + design for AJAX check
+    // =========================================================================
+
+    /**
+     * Find the most recent WO for a given project + design_id combo.
+     * Returns the WO row (with contractor name) or null.
+     */
+    public function findByProjectAndDesign($projectId, $designId)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT wo.*, c.name AS contractor_name
+             FROM {$this->table} wo
+             LEFT JOIN contractors c ON c.id = wo.contractor_id
+             WHERE wo.project_id = ? AND wo.design_id = ?
+             ORDER BY wo.id DESC
+             LIMIT 1"
+        );
+        $stmt->bind_param('ii', $projectId, $designId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc();
+    }
+
+    // =========================================================================
+    // UPDATE HISTORY LOG
+    // =========================================================================
+    protected $updatesTable = 'con_work_order_updates';
+
+    /**
+     * Insert one update log entry when a WO is edited.
+     */
+    public function addUpdateLog($woId, $updateDate, $notes, $userId)
+    {
+        $stmt = $this->db->prepare(
+            "INSERT INTO {$this->updatesTable}
+                 (work_order_id, update_date, update_notes, updated_by)
+             VALUES (?, ?, ?, ?)"
+        );
+        $stmt->bind_param('issi', $woId, $updateDate, $notes, $userId);
+        return $stmt->execute();
+    }
+
+    /**
+     * Fetch all update logs for a WO, newest first.
+     */
+    public function getUpdateLogs($woId)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT u.*, a.full_name AS updated_by_name
+             FROM {$this->updatesTable} u
+             LEFT JOIN users a ON a.id = u.updated_by
+             WHERE u.work_order_id = ?
+             ORDER BY u.update_date DESC, u.id DESC"
+        );
+        $stmt->bind_param('i', $woId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    // =========================================================================
+    // NEW SEQUENTIAL APPROVAL SYSTEM METHODS
+    // =========================================================================
+
+    /**
+     * Initialize approvals for a Work Order (site operator/moperation=20, PM=22, management=3)
+     */
+    public function initApprovals($woId)
+    {
+        $stmtDel = $this->db->prepare("DELETE FROM con_work_order_approvals WHERE work_order_id = ?");
+        $stmtDel->bind_param('i', $woId);
+        $stmtDel->execute();
+
+        $stmtIns = $this->db->prepare("INSERT INTO con_work_order_approvals (work_order_id, role_id, status) VALUES (?, ?, 'pending')");
+        $roles = [20, 22, 3];
+        foreach ($roles as $roleId) {
+            $stmtIns->bind_param('ii', $woId, $roleId);
+            $stmtIns->execute();
+        }
+    }
+
+    /**
+     * Fetch approvals list for a Work Order
+     */
+    public function getApprovals($woId)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT a.*, u.full_name AS user_name, r.name AS role_name
+             FROM con_work_order_approvals a
+             LEFT JOIN users u ON u.id = a.action_by
+             LEFT JOIN roles r ON r.id = a.role_id
+             WHERE a.work_order_id = ?
+             ORDER BY FIELD(a.role_id, 20, 22, 3)"
+        );
+        $stmt->bind_param('i', $woId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Update approval status for a specific role
+     */
+    public function updateApproval($woId, $roleId, $userId, $status, $remarks)
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE con_work_order_approvals 
+             SET status = ?, action_by = ?, action_at = NOW(), remarks = ?
+             WHERE work_order_id = ? AND role_id = ?"
+        );
+        $stmt->bind_param('sisis', $status, $userId, $remarks, $woId, $roleId);
+        $stmt->execute();
+
+        if ($status === 'rejected') {
+            if (in_array($roleId, [1, 3])) {
+                // Set overall work order status to 'rejected' for Management
+                $stmtWO = $this->db->prepare(
+                    "UPDATE {$this->table}
+                     SET status = 'rejected', rejection_reason = ?, approved_by = ?, approved_at = NOW()
+                     WHERE id = ?"
+                );
+                $stmtWO->bind_param('sii', $remarks, $userId, $woId);
+                $stmtWO->execute();
+            } else {
+                // If MOperation/PM rejects, keep status as 'draft' but record the rejection reason
+                $stmtWO = $this->db->prepare(
+                    "UPDATE {$this->table}
+                     SET rejection_reason = ?, approved_by = ?, approved_at = NOW()
+                     WHERE id = ?"
+                );
+                $stmtWO->bind_param('sii', $remarks, $userId, $woId);
+                $stmtWO->execute();
+            }
+        } else if ($roleId == 3 || $roleId == 1) {
+            // If Management/Admin approves, it is finally approved
+            if ($status === 'approved') {
+                $stmtWO = $this->db->prepare(
+                    "UPDATE {$this->table}
+                     SET status = 'approved', approved_by = ?, approved_at = NOW()
+                     WHERE id = ?"
+                );
+                $stmtWO->bind_param('ii', $userId, $woId);
+                $stmtWO->execute();
+            }
+        }
+        return true;
     }
 }

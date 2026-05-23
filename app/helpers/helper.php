@@ -322,7 +322,7 @@ function redirectByRole()
         case 19: // Estimator
             $url = "{$GLOBALS['base_url']}/estimator-dashboard";
             break;
-        case 20: // Purchase team lead
+        case 20: // Operations Manager
             $url = "{$GLOBALS['base_url']}/operations-dashboard";
             break;
         case 21: // structural designer
@@ -343,6 +343,8 @@ function redirectByRole()
     header("Location: $url");
     exit;
 }
+
+
 
 
 

@@ -327,7 +327,51 @@ $isOverdue = $wo['end_date'] && strtotime($wo['end_date']) < time() && !in_array
             <?php endif; ?>
         </div>
 
-        <!-- Section 2: Linked Weekly Reports -->
+        <!-- Section 2: Rate Schedule (CS Format) -->
+        <?php if (!empty($woItems)): ?>
+        <div class="section-block">
+            <div class="section-title">কাজের বিবরণ ও রেট সিডিউল (Rate Schedule)</div>
+            <table class="print-table">
+                <thead>
+                    <tr>
+                        <th style="width:46px" class="center">নং</th>
+                        <th>বিবরণ (Description)</th>
+                        <th style="width:18%">অবস্থান (Location)</th>
+                        <th style="width:6%" class="center">Unit</th>
+                        <th style="width:7%" class="right">Qty</th>
+                        <th style="width:9%" class="right">Rate (৳)</th>
+                        <th style="width:11%" class="right">Amount (৳)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $rsGrand = 0;
+                    foreach ($woItems as $wItem):
+                        $wSub = (float)$wItem['quantity'] * (float)$wItem['rate'];
+                        $rsGrand += $wSub;
+                    ?>
+                    <tr>
+                        <td style="text-align:center;font-weight:700;color:#1d4ed8"><?= htmlspecialchars($wItem['sl_no']) ?></td>
+                        <td style="white-space:pre-wrap;font-size:11px"><?= nl2br(htmlspecialchars($wItem['description'])) ?></td>
+                        <td style="color:#6b7280;font-size:11px"><?= htmlspecialchars($wItem['location'] ?? '') ?></td>
+                        <td style="text-align:center"><?= strtoupper(htmlspecialchars($wItem['unit'])) ?></td>
+                        <td class="right"><?= number_format((float)$wItem['quantity'], 2) ?></td>
+                        <td class="right">৳<?= number_format((float)$wItem['rate'], 2) ?></td>
+                        <td class="right" style="color:#1d4ed8;font-weight:700">৳<?= number_format($wSub, 2) ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+                <tfoot>
+                    <tr style="background:#dbeafe">
+                        <td colspan="6" style="text-align:right;font-weight:800;color:#1e3a8a;padding:10px 12px">Grand Total:</td>
+                        <td style="text-align:right;font-weight:900;color:#1e3a8a;font-size:14px;padding:10px 12px">৳<?= number_format($rsGrand, 2) ?></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <?php endif; ?>
+
+        <!-- Section 3: Linked Weekly Reports -->
         <?php if (!empty($linkedWeeklyReports)): ?>
         <div class="section-block">
             <div class="section-title">Weekly Progress Reports (<?= count($linkedWeeklyReports) ?> entries)</div>
