@@ -274,9 +274,15 @@ $sc = $statusMap[$overallStatus];
           <a href="<?= $base_url ?>/con-targets" class="tgt-btn-w">
             <i class="fal fa-arrow-left"></i>Back
           </a>
-          <a href="<?= $base_url ?>/con-boq-create?target_id=<?= $t['id'] ?>" class="tgt-btn-w" style="border:none">
-            <i class="fal fa-plus-circle"></i>Create BOM
-          </a>
+          <?php if (!empty($targetBoq)): ?>
+            <a href="<?= $base_url ?>/con-boq-show/<?= $targetBoq['id'] ?>" class="tgt-btn-w" style="background:#059669;border:none">
+              <i class="fal fa-eye"></i>View BOM (Already Created)
+            </a>
+          <?php else: ?>
+            <a href="<?= $base_url ?>/con-boq-create?target_id=<?= $t['id'] ?>" class="tgt-btn-w" style="border:none">
+              <i class="fal fa-plus-circle"></i>Create BOM
+            </a>
+          <?php endif; ?>
         </div>
         <?php endif; ?>
       </div>
@@ -351,6 +357,9 @@ $sc = $statusMap[$overallStatus];
           ['Working Plan Weight', number_format($planWeight, 2) . '%'],
           ['Target Percentage (%)', number_format($targetPct, 2) . '% of Monthly Plan'],
           ['Target Weight Contribution', '<span style="color:#2563eb;font-weight:700">' . number_format($calculatedWeight, 3) . '%</span> of Project'],
+          ['BOM / BOQ Status', !empty($targetBoq) 
+            ? '<span style="background:rgba(16,185,129,.12);color:#059669;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:700"><i class="bi bi-check-circle me-1"></i>BOM Already Created (BOM #' . $targetBoq['id'] . ')</span>' 
+            : '<span class="text-muted"><i class="bi bi-dash-circle me-1"></i>BOM Not Created Yet</span>'],
           ['Lab Test',     $labBadge],
           ['Lab Test Date', $isLabTest ? $labDateFmt : '<span class="text-muted">—</span>'],
           ['Created By',   htmlspecialchars($t['created_by_name'] ?? '—')],

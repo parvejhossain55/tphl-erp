@@ -135,7 +135,7 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
   /* KPI */
   .boq-kpi-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 14px;
     margin-bottom: 22px;
   }
@@ -366,14 +366,6 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
 <!-- ══════════ KPI GRID ══════════ -->
 <div class="boq-kpi-grid">
   <div class="boq-kpi">
-    <div class="boq-kpi-accent" style="background:var(--boq-green)"></div>
-    <div class="boq-kpi-icon" style="background:rgba(16,185,129,.12);color:var(--boq-green)">
-      <i class="fal fa-coins"></i>
-    </div>
-    <div class="boq-kpi-lbl">Grand Total</div>
-    <div class="boq-kpi-val" style="color:var(--boq-green)"><?= boqFmt($grandTotal) ?></div>
-  </div>
-  <div class="boq-kpi">
     <div class="boq-kpi-accent" style="background:var(--boq-blue)"></div>
     <div class="boq-kpi-icon" style="background:rgba(59,130,246,.12);color:var(--boq-blue)">
       <i class="fal fa-boxes-stacked"></i>
@@ -534,8 +526,7 @@ if ($viewerRole === 12 && $status === 'Draft'):
             <th>Material</th>
             <th>Unit</th>
             <th style="text-align:right">BOQ Qty</th>
-            <th style="text-align:right">Unit Cost</th>
-            <th style="text-align:right">Total Cost</th>
+            <th>Required Date</th>
             <th style="text-align:right">Ordered</th>
             <th style="text-align:right">Received</th>
             <th style="text-align:right">Remaining</th>
@@ -560,8 +551,7 @@ if ($viewerRole === 12 && $status === 'Draft'):
               </td>
               <td style="font-size:11.5px;color:var(--text-muted)"><?= htmlspecialchars($item['unit']) ?></td>
               <td style="text-align:right;font-weight:700;color:#2563eb"><?= number_format($boqQty, 3) ?></td>
-              <td style="text-align:right"><?= boqFmt($item['unit_cost']) ?></td>
-              <td style="text-align:right;font-weight:700;color:var(--boq-green)"><?= boqFmt($item['total_cost']) ?></td>
+              <td><?= !empty($item['required_date']) ? date('d M Y', strtotime($item['required_date'])) : '—' ?></td>
               <td style="text-align:right;color:#d97706;font-weight:600"><?= number_format($ordered, 3) ?></td>
               <td style="text-align:right;color:#059669;font-weight:700"><?= number_format($received, 3) ?></td>
               <td style="text-align:right;font-weight:800;color:<?= $remaining <= 0 ? '#dc2626' : '#374151' ?>">
@@ -586,10 +576,7 @@ if ($viewerRole === 12 && $status === 'Draft'):
             <td style="text-align:right;font-weight:900;font-size:14px;color:#2563eb;padding:14px 12px">
               <?= number_format($totalBoqQty, 3) ?>
             </td>
-            <td colspan="2"
-              style="text-align:right;font-weight:900;font-size:16px;color:var(--boq-primary,#198754);padding:14px 12px">
-              <?= boqFmt($grandTotal) ?>
-            </td>
+            <td></td>
             <td style="text-align:right;font-weight:800;color:#d97706;padding:14px 12px">
               <?= number_format($totalOrdered, 3) ?>
             </td>

@@ -52,16 +52,14 @@
                         </div>
 
                         <hr class="my-3">
-
                         <!-- BOQ Items Table -->
                         <div class="table-responsive">
                             <table class="table table-bordered align-middle" id="editBoqTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width:40%;">Material <span class="text-danger">*</span></th>
-                                        <th style="width:18%;">Quantity <span class="text-danger">*</span></th>
-                                        <th style="width:18%;">Est. Unit Cost <span class="text-danger">*</span></th>
-                                        <th style="width:16%;" class="text-end">Total</th>
+                                        <th style="width:45%;">Material <span class="text-danger">*</span></th>
+                                        <th style="width:22%;">Quantity <span class="text-danger">*</span></th>
+                                        <th style="width:25%;">Required Date <span class="text-danger">*</span></th>
                                         <th style="width:8%;" class="text-center">Action</th>
                                     </tr>
                                 </thead>
@@ -89,12 +87,9 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <input type="number" step="0.01" name="unit_cost[]"
-                                                       class="form-control boq-cost" required min="0"
-                                                       value="<?= $item['unit_cost'] ?>">
-                                            </td>
-                                            <td class="text-end fw-bold boq-row-total">
-                                                <?= number_format($item['total_cost'], 2) ?>
+                                                <input type="date" name="required_date[]"
+                                                       class="form-control boq-req-date" required
+                                                       value="<?= htmlspecialchars($item['required_date'] ?? '') ?>">
                                             </td>
                                             <td class="text-center">
                                                 <button type="button"
@@ -126,10 +121,9 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <input type="number" step="0.01" name="unit_cost[]"
-                                                       class="form-control boq-cost" required min="0">
+                                                <input type="date" name="required_date[]"
+                                                       class="form-control boq-req-date" required>
                                             </td>
-                                            <td class="text-end fw-bold boq-row-total">0.00</td>
                                             <td class="text-center">
                                                 <button type="button"
                                                         class="btn btn-sm btn-outline-danger boq-remove-row"
@@ -140,15 +134,6 @@
                                         </tr>
                                     <?php endif; ?>
                                 </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td colspan="3" class="text-end fw-bold py-3">Grand Total Estimated Cost:</td>
-                                        <td class="text-end fw-bold py-3 text-primary fs-6">
-                                            <span id="editBoqGrandTotal">0.00</span>
-                                        </td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot>
                             </table>
                         </div>
 
@@ -176,35 +161,12 @@
 document.addEventListener('DOMContentLoaded', function () {
     var tbody = document.getElementById('editBoqBody');
 
-    function recalc() {
-        var grandTotal = 0;
-        tbody.querySelectorAll('tr').forEach(function (row) {
-            var qty  = parseFloat(row.querySelector('.boq-qty').value)  || 0;
-            var cost = parseFloat(row.querySelector('.boq-cost').value) || 0;
-            var total = qty * cost;
-            row.querySelector('.boq-row-total').textContent = total.toLocaleString(undefined, {
-                minimumFractionDigits: 2, maximumFractionDigits: 2
-            });
-            grandTotal += total;
-        });
-        document.getElementById('editBoqGrandTotal').textContent = grandTotal.toLocaleString(undefined, {
-            minimumFractionDigits: 2, maximumFractionDigits: 2
-        });
-    }
-
     // Material change → unit label
     tbody.addEventListener('change', function (e) {
         if (e.target.classList.contains('boq-material')) {
             var opt = e.target.options[e.target.selectedIndex];
             var unit = opt.getAttribute('data-unit') || '-';
             e.target.closest('tr').querySelector('.boq-unit').textContent = unit;
-        }
-    });
-
-    // Qty / Cost input → recalc
-    tbody.addEventListener('input', function (e) {
-        if (e.target.classList.contains('boq-qty') || e.target.classList.contains('boq-cost')) {
-            recalc();
         }
     });
 
@@ -215,7 +177,6 @@ document.addEventListener('DOMContentLoaded', function () {
         newRow.querySelectorAll('input').forEach(function (inp) { inp.value = ''; });
         newRow.querySelector('.boq-material').selectedIndex = 0;
         newRow.querySelector('.boq-unit').textContent = '-';
-        newRow.querySelector('.boq-row-total').textContent = '0.00';
         newRow.querySelector('.boq-remove-row').style.display = '';
         tbody.appendChild(newRow);
     });
@@ -225,11 +186,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var btn = e.target.closest('.boq-remove-row');
         if (btn) {
             btn.closest('tr').remove();
-            recalc();
         }
     });
-
-    // Calculate on page load
-    recalc();
 });
 </script>

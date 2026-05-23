@@ -194,6 +194,12 @@ class Con_TargetFixedController extends Controller
             $planItems = $this->workPlanModel->getItems((int)$target['work_plan_id']);
         }
 
+        // Check if BOM/BOQ is already created for this target
+        $boqStmt = $this->db->prepare("SELECT id, status FROM boq_master WHERE target_id = ? LIMIT 1");
+        $boqStmt->bind_param('i', $id);
+        $boqStmt->execute();
+        $targetBoq = $boqStmt->get_result()->fetch_assoc();
+
         $this->view('phase2/target-fixed/show-target', [
             'current_route'   => 'con-targets',
             'page_title'      => 'Target Detail',
@@ -206,6 +212,7 @@ class Con_TargetFixedController extends Controller
             'currentRoleId'   => $currentRoleId,
             'weeklyReports'   => $weeklyReports,
             'planItems'       => $planItems,
+            'targetBoq'       => $targetBoq,
         ]);
     }
 

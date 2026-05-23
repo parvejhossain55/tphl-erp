@@ -45,7 +45,7 @@ $months     = ['','January','February','March','April','May','June',
                         <input type="hidden" name="design_type_id" id="design_type_id_hidden" value="<?= $targetData['design_type_id'] ?? '' ?>">
 
                         <!-- ── Row 1: Project + Version + Status ── -->
-                        <div class="row mb-3">
+                        <div class="row mb-3 ">
                             <div class="col-md-5">
                                 <label class="form-label fw-bold">Project <span class="text-danger">*</span></label>
                                 <?php if (!empty($targetData)): ?>
@@ -64,11 +64,11 @@ $months     = ['','January','February','March','April','May','June',
                                     </select>
                                 <?php endif; ?>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 d-none">
                                 <label class="form-label fw-bold">Version</label>
                                 <input type="text" name="version" class="form-control" value="1.0" required>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="form-label fw-bold">Initial Status</label>
                                 <select name="status" class="form-select">
                                     <option value="Draft">Draft</option>
@@ -124,10 +124,9 @@ $months     = ['','January','February','March','April','May','June',
                             <table class="table table-bordered align-middle" id="boqItemsTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width:40%;">Material <span class="text-danger">*</span></th>
-                                        <th style="width:18%;">Quantity <span class="text-danger">*</span></th>
-                                        <th style="width:18%;">Est. Unit Cost <span class="text-danger">*</span></th>
-                                        <th style="width:16%;" class="text-end">Total</th>
+                                        <th style="width:45%;">Material <span class="text-danger">*</span></th>
+                                        <th style="width:22%;">Quantity <span class="text-danger">*</span></th>
+                                        <th style="width:25%;">Required Date <span class="text-danger">*</span></th>
                                         <th style="width:8%;" class="text-center">Action</th>
                                     </tr>
                                 </thead>
@@ -151,10 +150,9 @@ $months     = ['','January','February','March','April','May','June',
                                             </div>
                                         </td>
                                         <td>
-                                            <input type="number" step="0.01" name="unit_cost[]"
-                                                   class="form-control boq-cost" required min="0">
+                                            <input type="date" name="required_date[]"
+                                                   class="form-control boq-req-date" required>
                                         </td>
-                                        <td class="text-end fw-bold boq-row-total">0.00</td>
                                         <td class="text-center">
                                             <button type="button" class="btn btn-sm btn-outline-danger boq-remove-row"
                                                     style="display:none;" title="Remove">
@@ -163,15 +161,6 @@ $months     = ['','January','February','March','April','May','June',
                                         </td>
                                     </tr>
                                 </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td colspan="3" class="text-end fw-bold py-3">Grand Total Estimated Cost:</td>
-                                        <td class="text-end fw-bold py-3 text-primary fs-6">
-                                            <span id="boqGrandTotal">0.00</span>
-                                        </td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot>
                             </table>
                         </div>
 
@@ -231,9 +220,12 @@ document.getElementById('project_id').addEventListener('change', function () {
                 data.targets.forEach(t => {
                     const wk  = t.week_number ? ' · Week ' + t.week_number : '';
                     const mon = MONTHS[parseInt(t.month)] || '';
-                    const label = t.target_title
+                    let label = t.target_title
                         + ' [' + mon + ' ' + t.year + wk + ']'
                         + (t.design_type_name ? ' — ' + t.design_type_name : '');
+                    if (t.boq_id) {
+                        label += ' (BOM Already Created)';
+                    }
 
                     const opt = document.createElement('option');
                     opt.value = t.id;
@@ -245,6 +237,7 @@ document.getElementById('project_id').addEventListener('change', function () {
                     opt.dataset.year            = t.year;
                     opt.dataset.month           = t.month;
                     opt.dataset.week            = t.week_number || '';
+                    opt.dataset.boqId           = t.boq_id           || '';
                     sel.appendChild(opt);
                 });
             } else {
@@ -274,6 +267,8 @@ document.getElementById('target_select').addEventListener('change', function () 
     // Info card
     const card = document.getElementById('targetInfoCard');
     const txt  = document.getElementById('targetInfoText');
+    const saveBtn = document.querySelector('#boqForm button[type="submit"]');
+
     if (this.value) {
         const mon = MONTHS[parseInt(opt.dataset.month)] || '';
         const wk  = opt.dataset.week ? ' · Week ' + opt.dataset.week : '';
@@ -281,44 +276,31 @@ document.getElementById('target_select').addEventListener('change', function () 
         info     += ' | Period: ' + mon + ' ' + (opt.dataset.year || '') + wk;
         if (opt.dataset.targetPct) info += ' | Target: <strong>' + parseFloat(opt.dataset.targetPct).toFixed(1) + '%</strong>';
         if (opt.dataset.designTypeName) info += ' | Design: <strong>' + opt.dataset.designTypeName + '</strong>';
+        
+        if (opt.dataset.boqId) {
+            info += '<br><div class="alert alert-danger mt-2 mb-0 py-2 fw-semibold" style="font-size:12.5px;"><i class="bi bi-exclamation-triangle-fill me-1"></i> A BOM has already been created for this target. <a href="' + BASE_URL + '/con-boq-show/' + opt.dataset.boqId + '" class="fw-bold text-danger text-decoration-underline" target="_blank">View BOM #' + opt.dataset.boqId + '</a>. Saving is disabled to prevent duplicates.</div>';
+            if (saveBtn) saveBtn.disabled = true;
+        } else {
+            if (saveBtn) saveBtn.disabled = false;
+        }
+        
         txt.innerHTML = info;
         card.classList.remove('d-none');
     } else {
         card.classList.add('d-none');
+        if (saveBtn) saveBtn.disabled = false;
     }
 });
 
-// ── BOQ Item Calculations ────────────────────────────────────────────────
+// ── BOQ Item Event Listeners ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
     var tbody = document.getElementById('boqItemsBody');
-
-    function recalc() {
-        var grandTotal = 0;
-        tbody.querySelectorAll('tr').forEach(function (row) {
-            var qty  = parseFloat(row.querySelector('.boq-qty').value)  || 0;
-            var cost = parseFloat(row.querySelector('.boq-cost').value) || 0;
-            var total = qty * cost;
-            row.querySelector('.boq-row-total').textContent = total.toLocaleString(undefined, {
-                minimumFractionDigits: 2, maximumFractionDigits: 2
-            });
-            grandTotal += total;
-        });
-        document.getElementById('boqGrandTotal').textContent = grandTotal.toLocaleString(undefined, {
-            minimumFractionDigits: 2, maximumFractionDigits: 2
-        });
-    }
 
     tbody.addEventListener('change', function (e) {
         if (e.target.classList.contains('boq-material')) {
             var opt  = e.target.options[e.target.selectedIndex];
             var unit = opt.getAttribute('data-unit') || '-';
             e.target.closest('tr').querySelector('.boq-unit').textContent = unit;
-        }
-    });
-
-    tbody.addEventListener('input', function (e) {
-        if (e.target.classList.contains('boq-qty') || e.target.classList.contains('boq-cost')) {
-            recalc();
         }
     });
 
@@ -331,7 +313,6 @@ document.addEventListener('DOMContentLoaded', function () {
         matSel.selectedIndex = 0;
         newRow.querySelectorAll('input').forEach(function (inp) { inp.value = ''; });
         newRow.querySelector('.boq-unit').textContent = '-';
-        newRow.querySelector('.boq-row-total').textContent = '0.00';
         newRow.querySelector('.boq-remove-row').style.display = '';
         tbody.appendChild(newRow);
     });
@@ -340,7 +321,6 @@ document.addEventListener('DOMContentLoaded', function () {
         var btn = e.target.closest('.boq-remove-row');
         if (btn) {
             btn.closest('tr').remove();
-            recalc();
         }
     });
 });

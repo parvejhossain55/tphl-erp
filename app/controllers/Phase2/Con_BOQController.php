@@ -115,17 +115,18 @@ class Con_BOQController extends Controller
 
         $boqId = $this->boqModel->createMaster($data);
         if ($boqId) {
-            $materialIds = $_POST['material_id'] ?? [];
-            $quantities  = $_POST['quantity']    ?? [];
-            $unitCosts   = $_POST['unit_cost']   ?? [];
+            $materialIds   = $_POST['material_id'] ?? [];
+            $quantities    = $_POST['quantity']    ?? [];
+            $requiredDates = $_POST['required_date'] ?? [];
 
             $items = [];
             foreach ($materialIds as $index => $mid) {
                 if (!empty($mid) && ($quantities[$index] ?? 0) > 0) {
                     $items[] = [
-                        'material_id' => (int)$mid,
-                        'quantity'    => (float)$quantities[$index],
-                        'unit_cost'   => (float)($unitCosts[$index] ?? 0),
+                        'material_id'   => (int)$mid,
+                        'quantity'      => (float)$quantities[$index],
+                        'unit_cost'     => 0.00,
+                        'required_date' => !empty($requiredDates[$index]) ? $requiredDates[$index] : null,
                     ];
                 }
             }
@@ -296,17 +297,18 @@ class Con_BOQController extends Controller
         $this->boqModel->updateMaster($id, $data);
 
         // Replace items
-        $materialIds = $_POST['material_id'] ?? [];
-        $quantities  = $_POST['quantity']    ?? [];
-        $unitCosts   = $_POST['unit_cost']   ?? [];
+        $materialIds   = $_POST['material_id'] ?? [];
+        $quantities    = $_POST['quantity']    ?? [];
+        $requiredDates = $_POST['required_date'] ?? [];
 
         $items = [];
         foreach ($materialIds as $index => $mid) {
             if (!empty($mid) && ($quantities[$index] ?? 0) > 0) {
                 $items[] = [
-                    'material_id' => (int)$mid,
-                    'quantity'    => (float)$quantities[$index],
-                    'unit_cost'   => (float)($unitCosts[$index] ?? 0),
+                    'material_id'   => (int)$mid,
+                    'quantity'      => (float)$quantities[$index],
+                    'unit_cost'     => 0.00,
+                    'required_date' => !empty($requiredDates[$index]) ? $requiredDates[$index] : null,
                 ];
             }
         }
@@ -350,7 +352,7 @@ class Con_BOQController extends Controller
         } else {
             // 'Approved' or 'Rejected'
             // Role guard: only 1, 3, 15, 22 can approve/reject
-            if (!in_array($roleId, [1, 3, 22])) {
+            if (!in_array($roleId, [1, 3, 15, 22])) {
                 setError('Only authorized approvers can approve/reject a BOQ.');
                 header("Location: {$GLOBALS['base_url']}/con-boq-show/{$id}");
                 exit;
@@ -425,7 +427,8 @@ class Con_BOQController extends Controller
             SELECT tf.id, tf.target_title, tf.year, tf.month, tf.week_number,
                    tf.target_percentage,
                    wp.design_type_id,
-                   dt.name AS design_type_name
+                   dt.name AS design_type_name,
+                   (SELECT id FROM boq_master WHERE target_id = tf.id LIMIT 1) AS boq_id
             FROM target_fixed tf
             LEFT JOIN project_working_plans wp ON wp.id = tf.work_plan_id
             LEFT JOIN design_types          dt ON dt.id = wp.design_type_id

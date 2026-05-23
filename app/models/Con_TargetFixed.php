@@ -31,6 +31,7 @@ class Con_TargetFixed extends Model
     public function getAll()
     {
         $sql = "SELECT tf.*,
+                       (SELECT id FROM boq_master WHERE target_id = tf.id LIMIT 1) AS boq_id,
                        p.name           AS project_name,
                        wo.title         AS work_order_title,
                        wo.wo_number     AS work_order_number,
