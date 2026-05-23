@@ -29,7 +29,7 @@
                         <p class="text-muted">This module allows you to track and audit all financial transactions, material usage, and stock observation across the system.</p>
                         
                         <div class="row mt-3 mb-4">
-                            <div class="col-md-3">
+                            <div class="col-md-3 mb-3 mb-md-0">
                                 <div class="card bg-primary-transparent border border-primary border-opacity-10">
                                     <div class="card-body text-center py-3">
                                         <h5 class="fw-semibold mb-1">Pending QC Approvals</h5>
@@ -37,7 +37,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 mb-3 mb-md-0">
                                 <div class="card bg-success-transparent border border-success border-opacity-10">
                                     <div class="card-body text-center py-3">
                                         <h5 class="fw-semibold mb-1">Approved By QC</h5>
@@ -48,7 +48,7 @@
                         </div>
                         
                         <div class="row mt-3">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <a href="<?= $GLOBALS['base_url'] ?>/qc-requests" class="quick-link">
                                     <div class="ql-icon bg-success-transparent text-success"><i class="bi bi-check2-square"></i></div>
                                     <div>
@@ -60,21 +60,12 @@
                                     <?php endif; ?>
                                 </a>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <a href="<?= $GLOBALS['base_url'] ?>/qc-advanced-audit" class="quick-link">
                                     <div class="ql-icon bg-info-transparent text-info"><i class="bi bi-filter-square"></i></div>
                                     <div>
                                         <strong>Advanced Audit</strong><br>
                                         <small class="text-muted">Materials, Purchases & Payments</small>
-                                    </div>
-                                </a>
-                            </div>
-                            <div class="col-md-4">
-                                <a href="<?= $GLOBALS['base_url'] ?>/admin-cashout-requests" class="quick-link">
-                                    <div class="ql-icon bg-warning-transparent text-warning"><i class="bi bi-cash-coin"></i></div>
-                                    <div>
-                                        <strong>All Cashout Requests</strong><br>
-                                        <small class="text-muted">View complete cashout history</small>
                                     </div>
                                 </a>
                             </div>

@@ -58,7 +58,7 @@ class Con_ContractorBillController extends Controller
     {
         if (in_array($this->userRole, [1, 3])) return true;
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        return ($roleName === 'qc_audit' || $roleName === 'qc & internal audit');
+        return ($roleName === 'qc & internal audit' || hasPermission('QC & Internal Audit') || $this->canApprove());
     }
 
     /** Roles 1, 3, 6 (Accounts) can process payments */

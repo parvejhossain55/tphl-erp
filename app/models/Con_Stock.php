@@ -192,13 +192,14 @@ class Con_Stock extends Model
                                 AVG(poi.unit_price)        AS avg_price,
                                 SUM(mri.received_quantity * poi.unit_price) AS total_value
                          FROM material_receiving_items mri
+                         JOIN material_receiving mr ON mr.id = mri.receiving_id
                          JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
-                         JOIN material_receiving mr     ON mr.id = mri.receiving_id
-                         JOIN purchase_orders   po      ON po.id = mr.purchase_order_id
-                         JOIN purchase_requests pr      ON pr.id = po.request_id
-                         JOIN con_materials m            ON m.id  = poi.material_id
-                         WHERE mri.status = 'Accepted'
-                           AND mr.overall_status IN ('Accepted','Partially Accepted')
+                         JOIN purchase_orders po ON po.id = poi.purchase_order_id
+                         JOIN purchase_requests pr ON pr.id = po.request_id
+                         JOIN con_materials m ON m.id = poi.material_id
+                         WHERE mri.status = 'Accepted' 
+                           AND mr.overall_status IN ('Accepted', 'Partially Accepted')
+                           AND po.status != 'Cancelled'
                          GROUP BY pr.project_id, poi.material_id
                          ORDER BY pr.project_id ASC, total_value DESC";
 

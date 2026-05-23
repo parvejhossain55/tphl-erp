@@ -1207,9 +1207,14 @@
 
 
                 <!-- ==================== PHASE 2: CONSTRUCTION MANAGEMENT ==================== -->
+                <?php 
+                $hasConPerms = hasPermission('Construction Management') || hasPermission('site engineer dashboard') || ($_SESSION['user']['role_id'] ?? 0) == 20 || hasPermission('Purchase order') || ($_SESSION['user']['role_id'] ?? 0) == 23 || hasPermission('Project Draft Design') || hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Estimator dashboard') || hasPermission('Project structure design') || hasPermission('QC Dashboard') || hasPermission('Project Manage') || hasPermission('Estimate Budget') || hasPermission('Work Order') || hasPermission('Working Plan') || hasPermission('Project Target Set') || hasPermission('Budget Extend') || hasPermission('Material Manage') || hasPermission('Operators & Bills') || hasPermission('Project Report') || hasPermission('Bill & Payments') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3]);
+                if ($hasConPerms): 
+                ?>
                 <li class="sidebar__menu-category">
                     <span class="category-name">Construction </span>
                 </li>
+                <?php endif; ?>
                 <?php if (hasPermission('Construction Management')): ?>
                     <li class="slide ">
                         <a href="<?= $base_url ?>/con-dashboard"
@@ -1893,13 +1898,26 @@
                 <?php endif; ?>
                 <!-- ====== END Finance & Accounts ====== -->
 
-                <?php if (hasPermission('QC & Internal Audit') || ($_SESSION['user']['role_name'] ?? '') === 'qc_audit' || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
-                    <!-- ====== QC & Internal Audit (NEW) ====== -->
+                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
+                    <li class="slide <?= isActive('approval-requests', $current_route) ?>">
+                        <a href="<?= $base_url ?>/approval-requests"
+                            class="sidebar__menu-item <?= isActive('approval-requests', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-check-double"></i></div>
+                            <span class="sidebar__menu-label">Approval Requests</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
+                <?php if (hasPermission('QC & Internal Audit') || strtolower($_SESSION['user']['role_name'] ?? '') === 'qc & internal audit' || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
+                    <!-- ====== Internal Audit Section ====== -->
+                    <li class="sidebar__menu-category">
+                        <span class="category-name">Internal Audit</span>
+                    </li>
                     <li class="slide has-sub <?= isActive(['qc-audit-dashboard', 'qc-requests', 'qc-advanced-audit'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
                             class="sidebar__menu-item <?= isActive(['qc-audit-dashboard', 'qc-requests', 'qc-advanced-audit'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="bi bi-shield-check"></i></div>
-                            <span class="sidebar__menu-label">QC & Internal Audit</span>
+                            <span class="sidebar__menu-label">Internal Audit</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
                         <ul class="sidebar-menu child2" style="display:block;">
@@ -1919,6 +1937,18 @@
                                 <a href="<?= $base_url ?>/qc-requests"
                                     class="sidebar__menu-item <?= isActive('qc-requests', $current_route) ?>">
                                     <i class="bi bi-check2-square me-1"></i> QC Approvals
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-purchase-orders"
+                                    class="sidebar__menu-item <?= isActive('con-purchase-orders', $current_route) ?>">
+                                    <i class="bi bi-cart me-1"></i> Purchase Orders
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-vendor-payment-requests"
+                                    class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?>">
+                                    <i class="bi bi-cash-stack me-1"></i> Vendor Payments
                                 </a>
                             </li>
                         </ul>

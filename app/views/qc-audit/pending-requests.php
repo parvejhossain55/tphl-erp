@@ -43,6 +43,8 @@
                                                 $details_url = $GLOBALS['base_url'] . "/con-vendor-payment-show/" . $req['id'];
                                             } elseif ($req['type'] === 'Contractor Bill') {
                                                 $details_url = $GLOBALS['base_url'] . "/con-contractor-bill/" . $req['id'];
+                                            } elseif ($req['type'] === 'Purchase Order') {
+                                                $details_url = $GLOBALS['base_url'] . "/con-purchase-order/" . $req['id'];
                                             }
                                             ?>
                                             <tr>

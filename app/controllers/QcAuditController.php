@@ -19,8 +19,8 @@ class QcAuditController extends Controller
         $this->roleName = strtolower($_SESSION['user']['role_name'] ?? '');
 
         // Usually we check permission here, e.g. hasPermission('QC & Internal Audit') or role check
-        if (!hasPermission('QC & Internal Audit') && $this->roleName !== 'qc_audit' && !in_array($this->userRole, [1, 3])) {
-            // allow admins (1, 3) or qc_audit role
+        if (!hasPermission('QC & Internal Audit') && $this->roleName !== 'qc & internal audit' && !in_array($this->userRole, [1, 3])) {
+            // allow admins (1, 3) or QC & Internal Audit role
             setError("Unauthorized access.");
             header("Location: {$GLOBALS['base_url']}/home");
             exit;
@@ -233,31 +233,26 @@ class QcAuditController extends Controller
 
     public function pendingRequests()
     {
-        // 1. Pending Purchase Requests (Materials)
-        $q1 = "SELECT pr.id, pr.created_at, p.name as project_name, 'Material Requisition' as type, pr.status 
-               FROM purchase_requests pr 
+        // 1. Pending Purchase Orders (PM Approved, awaiting QC)
+        $q1 = "SELECT po.id, po.created_at, p.name as project_name, 'Purchase Order' as type, po.status 
+               FROM purchase_orders po
+               JOIN purchase_requests pr ON pr.id = po.request_id
                LEFT JOIN projects p ON pr.project_id = p.id 
-               WHERE pr.status = 'pending'";
+               WHERE po.status = 'PM Approved'";
 
-        // 2. Pending Cashout Requests
-        $q2 = "SELECT c.id, c.created_at, p.name as project_name, 'Cashout' as type, c.status 
-               FROM cashout_requests c 
-               LEFT JOIN projects p ON c.project_id = p.id 
-               WHERE c.status = 'pending'";
-               
         // 3. Pending Vendor Payment Requests
         $q3 = "SELECT v.id, v.created_at, p.name as project_name, 'Vendor Payment' as type, v.status 
                FROM vendor_payment_requests v 
                LEFT JOIN projects p ON v.project_id = p.id 
-               WHERE v.status = 'pending'";
+               WHERE v.status IN ('Submitted', 'pending')";
 
         // 4. Pending Contractor Bill Requests
         $q4 = "SELECT b.id, b.created_at, p.name as project_name, 'Contractor Bill' as type, b.status 
                FROM contractor_bill_requests b 
                LEFT JOIN projects p ON b.project_id = p.id 
-               WHERE b.status = 'pending'";
+               WHERE b.status IN ('Submitted', 'pending')";
                
-        $query = "$q1 UNION ALL $q2 UNION ALL $q3 UNION ALL $q4 ORDER BY created_at DESC";
+        $query = "$q1 UNION ALL $q3 UNION ALL $q4 ORDER BY created_at DESC";
         $result = $this->db->query($query);
         $requests = [];
         if ($result) {
@@ -283,18 +278,45 @@ class QcAuditController extends Controller
 
             if ($id && $type) {
                 $table = '';
-                if ($type === 'Material Requisition') $table = 'purchase_requests';
-                if ($type === 'Cashout') $table = 'cashout_requests';
+                if ($type === 'Purchase Order') $table = 'purchase_orders';
                 if ($type === 'Vendor Payment') $table = 'vendor_payment_requests';
                 if ($type === 'Contractor Bill') $table = 'contractor_bill_requests';
 
                 if ($table) {
-                    // Assuming qc_approved_by_id, qc_note, qc_approved_at columns exist
-                    $q = "UPDATE $table SET status = 'qc_approved', qc_approved_by_id = ?, qc_note = ?, qc_approved_at = NOW() WHERE id = ?";
+                    $qc_status = 'QC Approved';
+                    if ($type === 'Purchase Order') $qc_status = 'Approved'; // PO uses Fully Approved logic
+
+                    $q = "UPDATE $table SET status = ?, qc_approved_by_id = ?, qc_note = ?, qc_approved_at = NOW() WHERE id = ?";
                     $stmt = $this->db->prepare($q);
                     if ($stmt) {
-                        $stmt->bind_param('isi', $qc_id, $note, $id);
+                        $stmt->bind_param('sisi', $qc_status, $qc_id, $note, $id);
                         $stmt->execute();
+
+                        // For Vendor Payments, also need to create approval_request for management
+                        if ($type === 'Vendor Payment') {
+                            $reqStmt = $this->db->query("SELECT * FROM vendor_payment_requests WHERE id = " . (int)$id);
+                            $reqData = $reqStmt->fetch_assoc();
+                            if ($reqData) {
+                                require_once __DIR__ . '/../models/ApprovalRequest.php';
+                                $approvalModel = new \ApprovalRequest($this->db);
+                                $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$reqData['project_id'])->fetch_assoc();
+                                $vendor  = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)$reqData['vendor_id'])->fetch_assoc();
+
+                                $approvalModel->create([
+                                    'department'     => 'construction',
+                                    'request_type'   => 'vendor_payment',
+                                    'title'          => 'Vendor Payment — ' . ($vendor['name'] ?? '') . ' | ' . ($project['name'] ?? ''),
+                                    'source_table'   => 'vendor_payment_requests',
+                                    'source_id'      => $id,
+                                    'requested_days' => 0,
+                                    'requested_by'   => $reqData['created_by'],
+                                    'approve_role'   => 'management',
+                                    'meta_data'      => null,
+                                    'request_amount' => $reqData['net_payable'],
+                                ]);
+                            }
+                        }
+
                         $_SESSION['flash_success'] = "Request #$id successfully approved by QC!";
                     } else {
                         $_SESSION['flash_error'] = "Failed to prepare query: " . $this->db->error;

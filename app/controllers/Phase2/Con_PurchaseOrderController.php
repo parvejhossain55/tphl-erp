@@ -51,13 +51,16 @@ class Con_PurchaseOrderController extends Controller
         $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $createdBy     = (int)($po['created_by'] ?? 0);
 
-        // Role guard — Only Management/PM (1, 3, 15) approval needed
+        // Role guard — PM + QC approval needed for multi-layer
         $pmApproved    = !empty($po['approved_by_pm']);
+        $qcApproved    = !empty($po['qc_approved_by_id']);
         $seApproved    = !empty($po['approved_by_se']); // kept for legacy display
-        $fullyApproved = $pmApproved; // PM approval alone is sufficient
+        $fullyApproved = $pmApproved && $qcApproved; // Both PM and QC must approve
 
         $canApproveSE = false; // SE approval no longer required
-        $canApprovePM = in_array($currentRoleId, [1, 3, 15]) && !$pmApproved;
+        $canApprovePM = in_array($currentRoleId, [15, 22]) && !$pmApproved;
+        $isQCRole     = ($currentRoleId == 24 || strtolower($_SESSION['user']['role_name'] ?? '') === 'qc & internal audit');
+        $canApproveQC = $isQCRole && $pmApproved && !$qcApproved;
 
         $items        = $this->poModel->getItems($id);
         $pendingItems = $this->poModel->getPendingItems($id);
@@ -79,9 +82,11 @@ class Con_PurchaseOrderController extends Controller
             'pendingItems'   => $pendingItems,
             'seApproved'     => $seApproved,
             'pmApproved'     => $pmApproved,
+            'qcApproved'     => $qcApproved,
             'fullyApproved'  => $fullyApproved,
             'canApproveSE'   => $canApproveSE,
             'canApprovePM'   => $canApprovePM,
+            'canApproveQC'   => $canApproveQC,
             'currentRoleId'  => $currentRoleId,
             'linkedBoq'      => $linkedBoq,
             'hasReceiving'   => $hasReceiving,
@@ -139,42 +144,53 @@ class Con_PurchaseOrderController extends Controller
             exit;
         }
 
-        // Role guard — Only Management/PM (1, 3, 15) can approve
-        if (in_array($roleId, [1, 3, 15])) {
-            // Management / PM approval
+        $isQC = ($roleId == 24 || strtolower($_SESSION['user']['role_name'] ?? '') === 'qc & internal audit');
+
+        // Role guard — Only PM (15, 22) or QC (24) can approve
+        if (in_array($roleId, [15, 22])) {
+            // PM approval
             if (!empty($po['approved_by_pm'])) {
-                setError('Management/PM has already approved this PO.');
+                setError('PM has already approved this PO.');
                 header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
                 exit;
             }
             $stmt = $this->db->prepare(
-                "UPDATE purchase_orders SET approved_by_pm = ?, pm_approved_at = NOW() WHERE id = ?"
+                "UPDATE purchase_orders SET approved_by_pm = ?, pm_approved_at = NOW(), status = 'PM Approved' WHERE id = ?"
             );
             $stmt->bind_param('ii', $userId, $id);
             $stmt->execute();
+            setSuccess('Purchase Order approved by PM. Awaiting QC approval.');
 
-        } else {
-            setError('You are not authorized to approve Purchase Orders.');
-            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
-            exit;
-        }
-
-        // PM approval alone = Fully Approved
-        $fresh = $this->poModel->find($id);
-        if (!empty($fresh['approved_by_pm'])) {
-            // Management approved — update status to 'Approved'
-            $upd = $this->db->prepare("UPDATE purchase_orders SET status = 'Approved' WHERE id = ?");
-            $upd->bind_param('i', $id);
-            $upd->execute();
+        } elseif ($isQC) {
+            // QC approval
+            if (empty($po['approved_by_pm'])) {
+                setError('Project Manager must approve the Purchase Order first.');
+                header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
+                exit;
+            }
+            if (!empty($po['qc_approved_by_id'])) {
+                setError('QC has already approved this PO.');
+                header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
+                exit;
+            }
+            $note = trim($_POST['approval_note'] ?? '');
+            $stmt = $this->db->prepare(
+                "UPDATE purchase_orders SET qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ?, status = 'Approved' WHERE id = ?"
+            );
+            $stmt->bind_param('isi', $userId, $note, $id);
+            $stmt->execute();
 
             // ── Notify Site Operator ─────────────────────────
             require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
             $mailService = new \ProjectWorkflowMailService($this->db);
             $mailService->notifySiteOperatorForApprovedPO($id, $po['project_name']);
 
-            setSuccess('Purchase Order approved by Management/PM. Status updated to Approved!');
+            setSuccess('Purchase Order approved by QC. Status updated to Fully Approved!');
+
         } else {
-            setSuccess('Approval recorded successfully.');
+            setError('You are not authorized to approve Purchase Orders.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
+            exit;
         }
 
         header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
@@ -199,8 +215,8 @@ class Con_PurchaseOrderController extends Controller
             exit;
         }
 
-        // Role guard — Only Management/PM (1, 3, 15) can reject
-        if (!in_array($roleId, [1, 3, 15])) {
+        // Role guard — Only PM (15, 22) can reject
+        if (!in_array($roleId, [15, 22])) {
             setError('You are not authorized to reject Purchase Orders.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
             exit;

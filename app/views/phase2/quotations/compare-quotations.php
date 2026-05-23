@@ -136,8 +136,7 @@ $vendorIds = array_keys($vendors);
 
                         <div class="mt-4 text-end">
                             <a href="<?= $base_url ?>/con-purchase-request/<?= $pr['id'] ?>" class="btn btn-secondary me-2">Cancel</a>
-                            <button type="submit" class="btn btn-success px-4 fw-bold"
-                                    onclick="return confirm('Confirm vendor selections? This will enable PO generation.');">
+                            <button type="button" id="btnConfirmCST" class="btn btn-success px-4 fw-bold">
                                 <i class="bi bi-check-circle me-1"></i> Confirm Selections
                             </button>
                         </div>
@@ -150,6 +149,7 @@ $vendorIds = array_keys($vendors);
     </div>
 </section>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     // When vendor selection changes, update the hidden price field
@@ -160,5 +160,35 @@ document.addEventListener('DOMContentLoaded', function () {
             this.closest('td').querySelector('.cst-selected-price').value = price;
         });
     });
+
+    // SweetAlert confirmation for CST form
+    var confirmBtn = document.getElementById('btnConfirmCST');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function () {
+            var form = document.getElementById('cstForm');
+            // Check form validity first
+            var selects = form.querySelectorAll('select[required]');
+            var allSelected = true;
+            selects.forEach(function(s) { if (!s.value) allSelected = false; });
+            if (!allSelected) {
+                Swal.fire({ icon: 'error', title: 'Missing Selection', text: 'Please select a vendor for every material row.' });
+                return;
+            }
+            Swal.fire({
+                title: 'Confirm Vendor Selections?',
+                text: 'This will finalize vendor choices and enable Purchase Order generation.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#198754',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, Confirm!',
+                cancelButtonText: 'Cancel'
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    }
 });
 </script>

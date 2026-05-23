@@ -5,6 +5,7 @@ $page_title = $page_title ?? 'Payment Request Details';
 $statusMap = [
     'Draft' => ['label' => 'Draft', 'color' => 'warning'],
     'Submitted' => ['label' => 'Submitted', 'color' => 'info'],
+    'QC Approved' => ['label' => 'QC Approved', 'color' => 'success'],
     'Approved' => ['label' => 'Approved', 'color' => 'success'],
     'Rejected' => ['label' => 'Rejected', 'color' => 'danger'],
     'Paid' => ['label' => 'Paid', 'color' => 'secondary'],
@@ -245,51 +246,97 @@ $advancePaid = (float) ($advance_paid ?? 0);
                     <div class="row">
                         <div class="col-md-7">
                             <?php if (empty($documents)): ?>
-                                <p class="text-muted small">No additional documents or notes added yet.</p>
+                                <div class="text-center py-4 text-muted">
+                                    <i class="bi bi-chat-square-text fs-2 mb-2 d-block text-secondary"></i>
+                                    <p class="mb-0">No additional notes or documents have been added yet.</p>
+                                </div>
                             <?php else: ?>
-                                <ul class="list-group mb-3">
+                                <div class="timeline-container ps-3 mt-2" style="border-left: 2px solid #e9ecef;">
                                     <?php foreach ($documents as $doc): ?>
-                                    <li class="list-group-item">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div>
-                                                <?php if (!empty($doc['note'])): ?>
-                                                    <p class="mb-1 text-dark"><?= nl2br(htmlspecialchars($doc['note'])) ?></p>
-                                                <?php endif; ?>
-                                                <small class="text-muted">
-                                                    Added by <strong><?= htmlspecialchars($doc['uploaded_by_name']) ?></strong> 
-                                                    on <?= date('d M Y, h:i A', strtotime($doc['created_at'])) ?>
-                                                </small>
+                                    <div class="mb-3 position-relative ps-4">
+                                        <div class="position-absolute" style="left: -24px; top: 0; background: #fff; border-radius: 50%; padding: 4px;">
+                                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #0d6efd;"></div>
+                                        </div>
+                                        <div class="p-3 rounded border shadow-sm">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <div>
+                                                    <strong class="text-primary"><?= htmlspecialchars($doc['uploaded_by_name']) ?></strong>
+                                                    <span class="text-muted small ms-2"><i class="bi bi-clock me-1"></i><?= date('d M Y, h:i A', strtotime($doc['created_at'])) ?></span>
+                                                </div>
                                             </div>
+                                            <?php if (!empty($doc['note'])): ?>
+                                                <p class="mb-2 text-dark" style="font-size: 14px;"><?= nl2br(htmlspecialchars($doc['note'])) ?></p>
+                                            <?php endif; ?>
+                                            
                                             <?php if (!empty($doc['document_path'])): ?>
-                                                <a href="<?= $base_url ?>/<?= htmlspecialchars($doc['document_path']) ?>" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-paperclip"></i> View File
+                                                <a href="<?= $base_url ?>/<?= htmlspecialchars($doc['document_path']) ?>" target="_blank" class="btn btn-sm btn-outline-primary mt-1" style="font-size: 12px;">
+                                                    <i class="bi bi-paperclip me-1"></i> View Attachment
                                                 </a>
                                             <?php endif; ?>
                                         </div>
-                                    </li>
+                                    </div>
                                     <?php endforeach; ?>
-                                </ul>
+                                </div>
                             <?php endif; ?>
                         </div>
+                        <?php if (!in_array($userRole, [24])): // Hide from QC ?>
                         <div class="col-md-5">
-                            <div class="bg-light p-3 rounded">
-                                <h6><i class="bi bi-plus-circle me-1"></i> Add Note or Document</h6>
-                                <form action="<?= $base_url ?>/con-vendor-payment-document/<?= $request['id'] ?>" method="POST" enctype="multipart/form-data">
-                                    <div class="mb-2">
-                                        <label class="form-label small">Note</label>
-                                        <textarea name="note" class="form-control" rows="2" placeholder="Write something..."></textarea>
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="form-label small">Attachment (Optional)</label>
-                                        <input type="file" name="document" class="form-control form-control-sm">
-                                    </div>
-                                    <button type="submit" class="btn btn-sm btn-primary w-100">Add</button>
-                                </form>
+                            <div class="card border-0 shadow-sm" style="background-color: #f8f9fa;">
+                                <div class="card-body">
+                                    <h6 class="mb-3 fw-bold text-primary"><i class="bi bi-pencil-square me-2"></i>Post a New Note</h6>
+                                    <form action="<?= $base_url ?>/con-vendor-payment-document/<?= $request['id'] ?>" method="POST" enctype="multipart/form-data">
+                                        <div class="mb-3">
+                                            <textarea name="note" class="form-control border-primary-subtle" rows="3" placeholder="Write your note or comment here..." style="font-size: 14px;"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-semibold text-muted">Attach File (Optional)</label>
+                                            <input type="file" name="document" class="form-control form-control-sm border-primary-subtle">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary w-100 fw-bold">
+                                            <i class="bi bi-send me-1"></i> Submit Note
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
+
+            <!-- PO Stock Info (For QC Verification) -->
+            <?php if (!empty($poStocks)): ?>
+                <div class="card custom-card mb-3 border-info">
+                    <div class="card-header bg-info bg-opacity-10">
+                        <h6 class="card-title mb-0 text-info"><i class="bi bi-box-seam me-2"></i>Related PO Stock at Project</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Material</th>
+                                        <th class="text-end">Ordered (PO)</th>
+                                        <th class="text-end">Current Stock</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($poStocks as $stock): ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($stock['material_name']) ?></td>
+                                            <td class="text-end"><?= number_format($stock['po_qty'], 2) ?> <?= htmlspecialchars($stock['unit']) ?></td>
+                                            <td class="text-end fw-bold <?= $stock['current_stock'] > 0 ? 'text-success' : 'text-danger' ?>">
+                                                <?= number_format($stock['current_stock'], 2) ?> <?= htmlspecialchars($stock['unit']) ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <small class="text-muted d-block mt-2"><i class="bi bi-info-circle me-1"></i>QC & Audit must verify the stock levels before approving.</small>
+                    </div>
+                </div>
+            <?php endif; ?>
 
             <!-- Linked Penalties -->
             <?php if (!empty($penalties)): ?>
@@ -452,8 +499,9 @@ $advancePaid = (float) ($advance_paid ?? 0);
                     </div>
                     <?php if (!empty($request['qc_approved_by_id'])): ?>
                         <div class="mb-3">
-                            <small class="text-muted d-block">QC Approved By (ID: <?= $request['qc_approved_by_id'] ?>)</small>
-                            <strong class="text-muted"><?= date('d M Y h:i A', strtotime($request['qc_approved_at'])) ?></strong>
+                            <small class="text-muted d-block">QC Approved By</small>
+                            <strong><?= htmlspecialchars($request['qc_approved_by_name'] ?? 'QC User') ?></strong>
+                            <strong class="text-muted d-block mt-1"><?= date('d M Y h:i A', strtotime($request['qc_approved_at'])) ?></strong>
                             <?php if (!empty($request['qc_note'])): ?>
                                 <p class="small text-muted mt-1 fst-italic">"<?= nl2br(htmlspecialchars($request['qc_note'])) ?>"</p>
                             <?php endif; ?>

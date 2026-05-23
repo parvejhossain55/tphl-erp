@@ -717,7 +717,7 @@ class CashoutRequestController extends Controller
     private function canApproveQC()
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        return ($roleName === 'qc_audit' || hasPermission('QC & Internal Audit') || $this->canApproveOrReject());
+        return ($roleName === 'qc & internal audit' || hasPermission('QC & Internal Audit') || $this->canApproveOrReject());
     }
 
     /**

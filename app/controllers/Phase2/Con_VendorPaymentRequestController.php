@@ -55,7 +55,7 @@ class Con_VendorPaymentRequestController extends Controller
     private function canApproveQC()
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        return ($roleName === 'qc_audit' || hasPermission('QC & Internal Audit') || $this->canApprove());
+        return ($roleName === 'qc & internal audit' || hasPermission('QC & Internal Audit') || $this->canApprove());
     }
 
     /** Roles 1, 3, 6 (Accounts) can process payments */
@@ -73,7 +73,7 @@ class Con_VendorPaymentRequestController extends Controller
         // Roles 1 (Admin), 3 (Super Admin), 6 (Accounts) see ALL requests
         // Other roles only see their own requests
         $filterUserId = null;
-        if (!in_array($this->userRole, [1, 3, 6, 22])) {
+        if (!in_array($this->userRole, [1, 3, 6, 22]) && !$this->canApproveQC()) {
             $filterUserId = $this->userId;
         }
 
@@ -178,20 +178,8 @@ class Con_VendorPaymentRequestController extends Controller
             $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$data['project_id'])->fetch_assoc();
             $vendor  = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)$vendorId)->fetch_assoc();
 
-            // Auto-create approval_request — goes to management
-            $this->approvalModel->create([
-                'department'     => 'construction',
-                'request_type'   => 'vendor_payment',
-                'title'          => 'Vendor Payment — ' . ($vendor['name'] ?? '') . ' | ' . ($project['name'] ?? ''),
-                'source_table'   => 'vendor_payment_requests',
-                'source_id'      => $id,
-                'requested_days' => 0,
-                'requested_by'   => $userId,
-                'approve_role'   => 'management',
-                'meta_data'      => null,
-                'request_amount' => $netPayable,
-            ]);
-
+            // Wait until QC approves before sending to management.
+            // Removed auto-create approval_request here.
             // Send email notification to Management + Accounts
             try {
                 $this->mailService->sendVendorPaymentOnSubmission([
@@ -272,6 +260,21 @@ class Con_VendorPaymentRequestController extends Controller
         $stmtDoc->execute();
         $documents = $stmtDoc->get_result()->fetch_all(MYSQLI_ASSOC);
 
+        // Fetch PO related stock for QC verification
+        $poStocks = [];
+        if (!empty($request['purchase_order_id']) && !empty($request['project_id'])) {
+            $stmtStock = $this->db->prepare("
+                SELECT poi.material_id, m.name AS material_name, m.unit, poi.quantity AS po_qty,
+                       COALESCE((SELECT SUM(s.current_quantity) FROM con_stocks s JOIN con_warehouses w ON w.id = s.warehouse_id WHERE s.material_id = poi.material_id AND w.project_id = ?), 0) AS current_stock
+                FROM purchase_order_items poi
+                JOIN con_materials m ON m.id = poi.material_id
+                WHERE poi.purchase_order_id = ?
+            ");
+            $stmtStock->bind_param('ii', $request['project_id'], $request['purchase_order_id']);
+            $stmtStock->execute();
+            $poStocks = $stmtStock->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
         $this->view('phase2/vendor-payment-requests/show-payment', [
             'current_route'     => 'con-vendor-payment-requests',
             'page_title'        => 'Payment Request Details',
@@ -290,6 +293,7 @@ class Con_VendorPaymentRequestController extends Controller
             'userRole'          => $this->userRole,
             'banks'             => $banks,
             'documents'         => $documents,
+            'poStocks'          => $poStocks,
         ]);
     }
 
@@ -378,7 +382,25 @@ class Con_VendorPaymentRequestController extends Controller
             $stmt = $this->db->prepare("UPDATE vendor_payment_requests SET status = 'QC Approved', qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ? WHERE id = ?");
             $stmt->bind_param('isi', $this->userId, $qcNote, $id);
             if ($stmt->execute()) {
-                setSuccess('Payment Request QC Approved successfully.');
+                // Fetch project and vendor names for approval title
+                $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$request['project_id'])->fetch_assoc();
+                $vendor  = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)$request['vendor_id'])->fetch_assoc();
+
+                // Now create the approval_request for management
+                $this->approvalModel->create([
+                    'department'     => 'construction',
+                    'request_type'   => 'vendor_payment',
+                    'title'          => 'Vendor Payment — ' . ($vendor['name'] ?? '') . ' | ' . ($project['name'] ?? ''),
+                    'source_table'   => 'vendor_payment_requests',
+                    'source_id'      => $id,
+                    'requested_days' => 0,
+                    'requested_by'   => $request['created_by'],
+                    'approve_role'   => 'management',
+                    'meta_data'      => null,
+                    'request_amount' => $request['net_payable'],
+                ]);
+                
+                setSuccess('Payment Request QC Approved successfully and forwarded to Management.');
             } else {
                 setError('Failed to QC approve.');
             }

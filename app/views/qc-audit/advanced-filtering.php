@@ -42,7 +42,7 @@
                         
                         <!-- Filters -->
                         <div class="row mb-3">
-                            <div class="col-md-3">
+                            <div class="col-md-3 mb-2 mb-md-0">
                                 <label class="form-label">Project</label>
                                 <select class="form-select form-select-sm select2" data-placeholder="All Projects" id="mat_project_filter">
                                     <option value="">All Projects</option>
@@ -53,17 +53,17 @@
                                     <?php endif; ?>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 mb-2 mb-md-0">
                                 <label class="form-label">Material Name</label>
                                 <input type="text" class="form-control form-control-sm" placeholder="Search Material...">
                             </div>
-                            <div class="col-md-2 mt-4">
+                            <div class="col-md-2 mt-md-4 mt-2">
                                 <button class="btn btn-sm btn-primary w-100"><i class="bi bi-search me-1"></i>Filter</button>
                             </div>
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-bordered table-hover w-100" id="materialsTable">
+                            <table class="table table-bordered table-hover text-nowrap w-100" id="materialsTable">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Date</th>
@@ -88,28 +88,28 @@
                         
                         <!-- Filters -->
                         <div class="row mb-3">
-                            <div class="col-md-2">
+                            <div class="col-md-2 mb-2 mb-md-0">
                                 <label class="form-label">Period</label>
                                 <select class="form-select form-select-sm">
                                     <option value="yearly">Yearly</option>
                                     <option value="custom">Custom Range</option>
                                 </select>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-2 mb-2 mb-md-0">
                                 <label class="form-label">Start Date</label>
                                 <input type="date" class="form-control form-control-sm">
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-2 mb-2 mb-md-0">
                                 <label class="form-label">End Date</label>
                                 <input type="date" class="form-control form-control-sm">
                             </div>
-                            <div class="col-md-2 mt-4">
+                            <div class="col-md-2 mt-md-4 mt-2">
                                 <button class="btn btn-sm btn-primary w-100"><i class="bi bi-search me-1"></i>Filter</button>
                             </div>
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-bordered table-hover w-100" id="purchasesTable">
+                            <table class="table table-bordered table-hover text-nowrap w-100" id="purchasesTable">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Date</th>
@@ -133,7 +133,7 @@
                         
                         <!-- Filters -->
                         <div class="row mb-3">
-                            <div class="col-md-3">
+                            <div class="col-md-3 mb-2 mb-md-0">
                                 <label class="form-label">Request Type</label>
                                 <select class="form-select form-select-sm">
                                     <option value="">All Types</option>
@@ -142,7 +142,7 @@
                                     <option value="contractor">Contractor Bill</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 mb-2 mb-md-0">
                                 <label class="form-label">Status</label>
                                 <select class="form-select form-select-sm">
                                     <option value="">All Statuses</option>
@@ -152,13 +152,13 @@
                                     <option value="paid">Paid</option>
                                 </select>
                             </div>
-                            <div class="col-md-2 mt-4">
+                            <div class="col-md-2 mt-md-4 mt-2">
                                 <button class="btn btn-sm btn-primary w-100"><i class="bi bi-search me-1"></i>Filter</button>
                             </div>
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-bordered table-hover w-100" id="paymentsTable">
+                            <table class="table table-bordered table-hover text-nowrap w-100" id="paymentsTable">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Date</th>

@@ -304,6 +304,9 @@ function redirectByRole()
         case 13: // QC
             $url = "{$GLOBALS['base_url']}/qc-dashboard";
             break;
+        case 24: // QC & Internal Audit (new ID)
+            $url = "{$GLOBALS['base_url']}/qc-audit-dashboard";
+            break;
         case 14: // land officer
             $url = "{$GLOBALS['base_url']}/land-dashboard";
             break;

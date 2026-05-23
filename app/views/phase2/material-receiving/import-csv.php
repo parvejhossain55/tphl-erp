@@ -92,7 +92,7 @@ $page_title = $page_title ?? 'Bulk Material Receiving Import (CSV)';
                         <tr>
                             <td><code>approved_by_email</code></td>
                             <td>pm@tphl.com</td>
-                            <td>PM / Manager email</td>
+                            <td>PM email</td>
                         </tr>
                         <tr>
                             <td><code>receiving_date</code></td>
