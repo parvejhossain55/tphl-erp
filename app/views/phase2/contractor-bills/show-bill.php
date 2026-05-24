@@ -6,6 +6,7 @@ $statusMap = [
     'draft'          => ['label' => 'Draft',          'color' => 'warning'],
     'submitted'      => ['label' => 'Submitted',      'color' => 'info'],
     'verified'       => ['label' => 'Verified',       'color' => 'primary'],
+    'qc_approved'    => ['label' => 'QC Approved',    'color' => 'secondary'],
     'approved'       => ['label' => 'Approved',       'color' => 'success'],
     'rejected'       => ['label' => 'Rejected',       'color' => 'danger'],
     'paid'           => ['label' => 'Paid',           'color' => 'secondary'],
@@ -15,17 +16,19 @@ $statusMap = [
 $status     = $bill['status'] ?? 'submitted';
 $statusInfo = $statusMap[$status] ?? ['label' => ucfirst(str_replace('_', ' ', $status)), 'color' => 'secondary'];
 
-$canApproveReq  = $canApprove ?? false;
-$canPayReq      = $canProcessPayment ?? false;
-$payments       = $payments ?? [];
-$totalPaid      = $total_paid ?? 0;
-$dueAmount      = $due_amount ?? 0;
-$payableAmount  = $payable_amount ?? 0;
+$canApproveReq   = $canApprove ?? false;
+$canApproveQCReq = $canApproveQC ?? false;
+$canPayReq       = $canProcessPayment ?? false;
+$payments        = $payments ?? [];
+$totalPaid       = $total_paid ?? 0;
+$dueAmount       = $due_amount ?? 0;
+$payableAmount   = $payable_amount ?? 0;
 
-$isSubmitted    = in_array($status, ['submitted', 'verified']);
-$isApproved     = in_array($status, ['approved', 'partially_paid']);
-$isRejected     = ($status === 'rejected');
-$isFullyPaid    = in_array($status, ['fully_paid', 'paid']);
+$isSubmitted     = in_array($status, ['submitted', 'verified']);
+$isQCApproved    = ($status === 'qc_approved');
+$isApproved      = in_array($status, ['approved', 'partially_paid']);
+$isRejected      = ($status === 'rejected');
+$isFullyPaid     = in_array($status, ['fully_paid', 'paid']);
 $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
 ?>
 
@@ -158,9 +161,34 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                         </div>
                         <?php endif; ?>
                         <?php if (!empty($bill['approved_by_name'])): ?>
-                        <div class="col-md-6 text-muted">
+                        <div class="col-md-6 text-muted mt-2">
                             <div class="info-label text-uppercase text-muted small fw-bold">Approved By</div>
                             <div class="info-value"><strong><?= htmlspecialchars($bill['approved_by_name']) ?></strong></div>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($bill['qc_approved_by_id'])): ?>
+                        <div class="col-md-6 text-muted mt-2">
+                            <div class="info-label text-uppercase text-muted small fw-bold">QC Approved By</div>
+                            <div class="info-value"><strong>ID: <?= htmlspecialchars($bill['qc_approved_by_id']) ?></strong>
+                                <?php if (!empty($bill['qc_approved_at'])): ?>
+                                    <small class="text-muted">(<?= date('d M Y h:i A', strtotime($bill['qc_approved_at'])) ?>)</small>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($bill['qc_note'])): ?>
+                        <div class="col-md-12 text-muted mt-2">
+                            <div class="info-label text-uppercase text-muted small fw-bold">QC Note</div>
+                            <div class="info-value text-muted fst-italic">"<?= nl2br(htmlspecialchars($bill['qc_note'])) ?>"</div>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($bill['management_note'])): ?>
+                        <div class="col-md-12 text-muted mt-2">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Management Note</div>
+                            <div class="info-value text-muted fst-italic">"<?= nl2br(htmlspecialchars($bill['management_note'])) ?>"</div>
                         </div>
                         <?php endif; ?>
                     </div>
@@ -277,11 +305,39 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
             </div>
             <?php endif; ?>
 
-            <!-- Approval Actions (Management only, submitted/verified status) -->
-            <?php if ($canApproveReq && $isSubmitted): ?>
+            <!-- QC Approval Actions -->
+            <?php if ($canApproveQCReq && ($status === 'verified' || $status === 'submitted')): ?>
             <div class="card custom-card border-warning mb-3">
                 <div class="card-header bg-warning bg-opacity-10">
-                    <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Approval Action</h6>
+                    <h6 class="card-title mb-0"><i class="bi bi-shield-check me-2"></i>QC Approval</h6>
+                </div>
+                <div class="card-body">
+                    <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST" class="mb-3">
+                        <input type="hidden" name="status" value="qc_approved">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">QC Note (Optional)</label>
+                            <textarea name="approval_note" class="form-control form-control-sm" rows="2" placeholder="Add QC remarks..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-warning w-100 fw-bold"
+                                onclick="return confirm('QC Approve this bill?');">
+                            <i class="bi bi-check-circle me-1"></i> QC Approve
+                        </button>
+                    </form>
+                    <form action="<?= $base_url ?>/con-contractor-bill-reject/<?= $bill['id'] ?>" method="POST">
+                        <button type="submit" class="btn btn-outline-danger w-100 btn-sm"
+                                onclick="return confirm('Reject this bill?');">
+                            <i class="bi bi-x-circle me-1"></i> Reject
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Management Approval Actions -->
+            <?php if ($canApproveReq && $isQCApproved): ?>
+            <div class="card custom-card border-success mb-3">
+                <div class="card-header bg-success bg-opacity-10">
+                    <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Management Approval</h6>
                 </div>
                 <div class="card-body">
                     <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST" class="mb-3">
@@ -291,6 +347,10 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                                    value="<?= number_format($bill['bill_amount'], 2, '.', '') ?>"
                                    step="0.01" min="0.01" max="<?= $bill['bill_amount'] ?>" required>
                             <small class="text-muted">Bill amount: ৳ <?= number_format($bill['bill_amount'], 2) ?></small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Management Note (Optional)</label>
+                            <textarea name="management_note" class="form-control form-control-sm" rows="2" placeholder="Add management remarks..."></textarea>
                         </div>
                         <button type="submit" class="btn btn-success w-100 fw-bold"
                                 onclick="return confirm('Approve this bill?');">

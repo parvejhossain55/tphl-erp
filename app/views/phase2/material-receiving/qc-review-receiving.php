@@ -339,7 +339,7 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                                 <i class="fal fa-user-check" style="color:#7c3aed;font-size:18px;"></i>
                             </div>
                             <div>
-                                <h6 class="fw-bold mb-1" style="color:#6d28d9;font-size:15px;">PM / Management Approval Required</h6>
+                                <h6 class="fw-bold mb-1" style="color:#6d28d9;font-size:15px;">PM Approval Required</h6>
                                 <p class="text-muted small mb-0">QC has completed their review. Please verify the results and approve to update stock.</p>
                             </div>
                         </div>
@@ -360,13 +360,13 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                         <div class="con-panel mt-4" style="border-color:rgba(245,158,11,.3); background:rgba(245,158,11,.05); border-radius:10px; padding:15px;">
                             <div class="d-flex align-items-center">
                                 <i class="fal fa-hourglass-half me-2" style="color:#d97706;font-size:16px;"></i>
-                                <span style="color:#b45309;font-size:13px;font-weight:600;">Waiting for Management / PM Approval to update stock.</span>
+                                <span style="color:#b45309;font-size:13px;font-weight:600;">Waiting for PM Approval to update stock.</span>
                             </div>
                         </div>
                     <?php endif; ?>
                     <?php elseif (in_array($receiving['overall_status'], ['Accepted', 'Partially Accepted', 'Rejected']) && !empty($receiving['pm_approved_at'])): ?>
                         <div class="mt-3 alert alert-success small mb-0">
-                            <i class="bi bi-check-circle-fill me-1"></i> Fully Approved by PM/Management on <?= date('d M Y h:i A', strtotime($receiving['pm_approved_at'])) ?>
+                            <i class="bi bi-check-circle-fill me-1"></i> Fully Approved by PM on <?= date('d M Y h:i A', strtotime($receiving['pm_approved_at'])) ?>
                             <?php if(!empty($receiving['pm_note'])): ?>
                                 <br><strong class="mt-1 d-block">PM Note:</strong> <?= htmlspecialchars($receiving['pm_note']) ?>
                             <?php endif; ?>

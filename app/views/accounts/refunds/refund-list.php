@@ -47,8 +47,8 @@ $statusMap = [
                             <th>Retention (৳)</th>
                             <th>Refund (৳)</th>
                             <th>Status</th>
-                            <th>Requested By</th>
-                            <th>Date</th>
+                            <th>Requested By & Date</th>
+                            <th>Approved By & Date</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -75,12 +75,30 @@ $statusMap = [
                             <td class="text-end text-danger">৳ <?= number_format($r['retention_amount'], 2) ?></td>
                             <td class="text-end fw-bold text-success">৳ <?= number_format($r['refund_amount'], 2) ?></td>
                             <td><span class="badge bg-<?= $sInfo['color'] ?>"><?= $sInfo['label'] ?></span></td>
-                            <td><?= htmlspecialchars($r['requested_by_name'] ?? '—') ?></td>
-                            <td><?= date('d M Y', strtotime($r['created_at'])) ?></td>
                             <td>
-                                <a href="<?= $base_url ?>/client-refund/<?= $r['id'] ?>" class="btn btn-sm btn-outline-primary">
+                                <?= htmlspecialchars($r['requested_by_name'] ?? '—') ?>
+                                <br><small class="text-muted"><?= date('d M Y h:i A', strtotime($r['created_at'])) ?></small>
+                            </td>
+                            <td>
+                                <?php if (!empty($r['approved_by_name'])): ?>
+                                    <?= htmlspecialchars($r['approved_by_name']) ?>
+                                    <br><small class="text-muted"><?= date('d M Y h:i A', strtotime($r['approved_at'])) ?></small>
+                                <?php else: ?>
+                                    <span class="text-muted">—</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <a href="<?= $base_url ?>/client-refund/<?= $r['id'] ?>" class="btn btn-sm btn-outline-primary mb-1">
                                     <i class="bi bi-eye"></i> View
                                 </a>
+                                <?php if ($r['status'] === 'pending' && $r['requested_by'] == ($_SESSION['user']['id'] ?? 0)): ?>
+                                    <!-- Edit disabled for now until feature is built -->
+                                    <form action="<?= $base_url ?>/client-refund-delete/<?= $r['id'] ?>" method="POST" class="d-inline" onsubmit="return confirm('Delete this refund request?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger mb-1">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>

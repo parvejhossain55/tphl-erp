@@ -275,12 +275,14 @@ class Con_PurchaseRequestController extends Controller
         }
 
         $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $note = trim($_POST['approval_note'] ?? '');
 
         // Update status + track approver
         $stmt = $this->db->prepare(
-            "UPDATE purchase_requests SET status = ?, approved_by_id = ?, approved_at = NOW() WHERE id = ?"
+            "UPDATE purchase_requests SET status = ?, approved_by_id = ?, approved_at = NOW(), management_note = ? WHERE id = ?"
         );
-        $stmt->bind_param('sii', $status, $userId, $id);
+        $stmt->bind_param('sisi', $status, $userId, $note, $id);
+
         if ($stmt->execute()) {
             setSuccess("Purchase Request status updated to {$status}.");
             

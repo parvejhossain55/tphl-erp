@@ -57,6 +57,7 @@ $page_title = $page_title ?? 'Vendor Payment Requests';
                                 $statusMap = [
                                     'Draft'          => 'warning',
                                     'Submitted'      => 'info',
+                                    'QC Approved'    => 'success',
                                     'Approved'       => 'success',
                                     'Rejected'       => 'danger',
                                     'Paid'           => 'secondary',

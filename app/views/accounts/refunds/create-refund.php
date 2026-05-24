@@ -34,36 +34,36 @@ $payments  = $payments ?? [];
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Client Name</div>
-                            <div class="info-value fw-semibold"><?= htmlspecialchars($booking['client_name'] ?? '—') ?></div>
+                            <div class="info-label text-uppercase small fw-bold" style="color:var(--text-muted, #adb5bd);">Client Name</div>
+                            <div class="info-value fw-semibold fs-15" style="color: #fff !important;"><?= htmlspecialchars($booking['client_name'] ?? '—') ?></div>
                         </div>
                         <div class="col-md-6">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Phone</div>
-                            <div class="info-value"><?= htmlspecialchars($booking['client_phone'] ?? '—') ?></div>
+                            <div class="info-label text-uppercase small fw-bold" style="color:var(--text-muted, #adb5bd);">Phone</div>
+                            <div class="info-value fs-15" style="color: #fff !important;"><?= htmlspecialchars($booking['client_phone'] ?? '—') ?></div>
                         </div>
                         <div class="col-md-6">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Project</div>
-                            <div class="info-value"><?= htmlspecialchars($booking['project_name'] ?? '—') ?></div>
+                            <div class="info-label text-uppercase small fw-bold" style="color:var(--text-muted, #adb5bd);">Project</div>
+                            <div class="info-value fs-15" style="color: #fff !important;"><?= htmlspecialchars($booking['project_name'] ?? '—') ?></div>
                         </div>
                         <div class="col-md-3">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Flat</div>
-                            <div class="info-value"><?= htmlspecialchars($booking['flat_name'] ?? '—') ?></div>
+                            <div class="info-label text-uppercase small fw-bold" style="color:var(--text-muted, #adb5bd);">Flat</div>
+                            <div class="info-value fs-15" style="color: #fff !important;"><?= htmlspecialchars($booking['flat_name'] ?? '—') ?></div>
                         </div>
                         <div class="col-md-3">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Floor</div>
-                            <div class="info-value"><?= $booking['floor_no'] ?? '—' ?></div>
+                            <div class="info-label text-uppercase small fw-bold" style="color:var(--text-muted, #adb5bd);">Floor</div>
+                            <div class="info-value fs-15" style="color: #fff !important;"><?= $booking['floor_no'] ?? '—' ?></div>
                         </div>
                         <div class="col-md-4">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Booking Date</div>
-                            <div class="info-value"><?= !empty($booking['booking_date']) ? date('d M Y', strtotime($booking['booking_date'])) : '—' ?></div>
+                            <div class="info-label text-uppercase small fw-bold" style="color:var(--text-muted, #adb5bd);">Booking Date</div>
+                            <div class="info-value fs-15" style="color: #fff !important;"><?= !empty($booking['booking_date']) ? date('d M Y', strtotime($booking['booking_date'])) : '—' ?></div>
                         </div>
                         <div class="col-md-4">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Agreement Value</div>
-                            <div class="info-value fw-bold text-primary">৳ <?= number_format($booking['agreement_value'] ?? 0, 2) ?></div>
+                            <div class="info-label text-uppercase small fw-bold" style="color:var(--text-muted, #adb5bd);">Agreement Value</div>
+                            <div class="info-value fw-bold text-success fs-15">৳ <?= number_format($booking['agreement_value'] ?? 0, 2) ?></div>
                         </div>
                         <div class="col-md-4">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Flat Price</div>
-                            <div class="info-value">৳ <?= number_format($booking['flat_price'] ?? 0, 2) ?></div>
+                            <div class="info-label text-uppercase small fw-bold" style="color:var(--text-muted, #adb5bd);">Flat Price</div>
+                            <div class="info-value fs-15" style="color: #fff !important;">৳ <?= number_format($booking['flat_price'] ?? 0, 2) ?></div>
                         </div>
                     </div>
                 </div>
@@ -90,7 +90,7 @@ $payments  = $payments ?? [];
                             </thead>
                             <tbody>
                                 <?php foreach ($payments as $idx => $pay): ?>
-                                <tr class="<?= $pay['verification_status'] !== 'verified' ? 'text-muted' : '' ?>">
+                                <tr style="<?= $pay['verification_status'] !== 'verified' ? 'opacity:0.6;' : '' ?>">
                                     <td><?= $idx + 1 ?></td>
                                     <td><?= date('d M Y', strtotime($pay['payment_date'])) ?></td>
                                     <td><?= ucfirst(str_replace('_', ' ', $pay['payment_type'])) ?></td>
@@ -119,7 +119,7 @@ $payments  = $payments ?? [];
         <!-- Right: Refund Calculation + Submit -->
         <div class="col-lg-4">
             <div class="card custom-card border-warning mb-3">
-                <div class="card-header bg-warning bg-opacity-10">
+                <div class="card-header border-bottom border-warning">
                     <h6 class="card-title mb-0"><i class="bi bi-calculator me-2"></i>Refund Calculation</h6>
                 </div>
                 <div class="card-body">
@@ -129,8 +129,8 @@ $payments  = $payments ?? [];
                         <!-- Total Paid (read-only) -->
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Total Verified Paid (৳)</label>
-                            <input type="text" class="form-control bg-light" 
-                                   value="<?= number_format($totalPaid, 2) ?>" readonly>
+                            <input type="text" class="form-control fw-bold text-success" 
+                                   value="<?= number_format($totalPaid, 2) ?>" readonly style="background: transparent;">
                             <input type="hidden" name="total_paid" value="<?= $totalPaid ?>">
                         </div>
 
@@ -139,15 +139,15 @@ $payments  = $payments ?? [];
                             <label class="form-label fw-semibold">Retention Amount (৳) <span class="text-danger">*</span></label>
                             <input type="number" name="retention_amount" id="retentionAmount"
                                    class="form-control" step="0.01" min="0"
-                                   max="<?= number_format($totalPaid, 2, '.', '') ?>"
                                    placeholder="Company charges to retain" required>
-                            <small class="text-muted">Amount the company will retain (non-refundable)</small>
+                            <small style="color:var(--text-muted, #adb5bd);">Amount the company will retain (non-refundable)</small>
                         </div>
 
                         <!-- Refund Amount (auto-calculated) -->
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Refund Amount (৳)</label>
-                            <div class="border rounded p-3 text-center bg-success bg-opacity-10">
+                            <input type="hidden" name="refund_amount" id="refundAmountHidden" value="0">
+                            <div class="border border-success rounded p-3 text-center" id="refundBox">
                                 <h4 class="text-success fw-bold mb-0" id="refundAmountDisplay">৳ 0.00</h4>
                             </div>
                         </div>
@@ -161,7 +161,7 @@ $payments  = $payments ?? [];
                                       placeholder="Enter the reason for refund..." required></textarea>
                         </div>
 
-                        <button type="submit" class="btn btn-warning w-100 fw-bold"
+                        <button type="submit" class="btn btn-warning w-100 fw-bold text-dark"
                                 onclick="return confirm('Submit this refund request for approval?');">
                             <i class="bi bi-send me-1"></i> Submit Refund Request
                         </button>
@@ -177,16 +177,22 @@ document.addEventListener('DOMContentLoaded', function() {
     var totalPaid = <?= $totalPaid ?>;
     var retentionInput = document.getElementById('retentionAmount');
     var display = document.getElementById('refundAmountDisplay');
+    var refundBox = document.getElementById('refundBox');
+    var hiddenRefund = document.getElementById('refundAmountHidden');
 
     function updateRefund() {
         var retention = parseFloat(retentionInput.value) || 0;
         var refund = Math.max(0, totalPaid - retention);
+        hiddenRefund.value = refund.toFixed(2);
         display.textContent = '৳ ' + refund.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        display.parentElement.className = refund > 0
-            ? 'border rounded p-3 text-center bg-success bg-opacity-10'
-            : 'border rounded p-3 text-center bg-danger bg-opacity-10';
-        if (refund <= 0) display.className = 'text-danger fw-bold mb-0';
-        else display.className = 'text-success fw-bold mb-0';
+        
+        if (refund <= 0) {
+            refundBox.className = 'border border-danger rounded p-3 text-center';
+            display.className = 'text-danger fw-bold mb-0';
+        } else {
+            refundBox.className = 'border border-success rounded p-3 text-center';
+            display.className = 'text-success fw-bold mb-0';
+        }
     }
 
     retentionInput.addEventListener('input', updateRefund);

@@ -71,6 +71,14 @@ $routes = [
     "reject-request/(\d+)" => ["controller" => "HomeController", "method" => "reject"],
     "show-request/(\d+)" => ["controller" => "HomeController", "method" => "show"],
     "logout" => ["controller" => "LoginController", "method" => "logout"],
+    "qc-audit-dashboard" => ["controller" => "QcAuditController", "method" => "dashboard"],
+    "qc-advanced-audit" => ["controller" => "QcAuditController", "method" => "advancedAudit"],
+    "api/qc-audit/materials" => ["controller" => "QcAuditController", "method" => "getAuditMaterials"],
+    "api/qc-audit/purchases" => ["controller" => "QcAuditController", "method" => "getAuditPurchases"],
+    "api/qc-audit/payments" => ["controller" => "QcAuditController", "method" => "getAuditPayments"],
+    "qc-requests" => ["controller" => "QcAuditController", "method" => "pendingRequests"],
+    "qc-approve-request" => ["controller" => "QcAuditController", "method" => "approveRequest"],
+    "api/qc-audit/audit-trail" => ["controller" => "QcAuditController", "method" => "getAuditTrail"],
 
     // Approval Request Controller
     // Approval Requests
@@ -583,6 +591,14 @@ $routes = [
         "controller" => "AccountClientController",
         "method" => "viewClientStatement"
     ],
+    'discount-statement' => [
+        "controller" => "AccountClientController",
+        "method" => "discountStatement"
+    ],
+    'discount-statement/(\d+)' => [
+        "controller" => "AccountClientController",
+        "method" => "discountStatement"
+    ],
     'management-cash-in-statement' => ["controller" => "AccountManagementController", "method" => "viewManagementStatement"],
     'management-cash-in-invoice' => ["controller" => "AccountManagementController", "method" => "viewTransactionInvoice"],
     'management-cash-out-statement' => ["controller" => "AccountManagementCashoutController", "method" => "showStatement"],
@@ -669,6 +685,7 @@ $routes = [
     "client-refund/(\d+)"         => ["controller" => "ClientRefundController", "method" => "show"],
     "client-refund-approve/(\d+)" => ["controller" => "ClientRefundController", "method" => "approve"],
     "client-refund-reject/(\d+)"  => ["controller" => "ClientRefundController", "method" => "reject"],
+    "client-refund-delete/(\d+)"  => ["controller" => "ClientRefundController", "method" => "delete"],
 
     //rafi End
 
@@ -948,8 +965,8 @@ $routes['con-quotation-select']        = ['controller' => 'Phase2\Con_QuotationC
 $routes['con-purchase-orders']         = ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'index'];
 $routes['con-purchase-order/(\d+)']    = ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'show'];
 $routes['con-purchase-order-generate/(\d+)'] = ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'generate'];
-$routes['con-purchase-order-approve/(\d+)']  = ['controller' => 'Phase2\\Con_PurchaseOrderController', 'method' => 'approvePO'];
-$routes['con-purchase-order-reject/(\d+)']   = ['controller' => 'Phase2\\Con_PurchaseOrderController', 'method' => 'rejectPO'];
+$routes['con-purchase-order-approve/(\d+)']  = ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'approvePO'];
+$routes['con-purchase-order-reject/(\d+)']   = ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'rejectPO'];
 
 $routes['con-material-receivings']             = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'index'];
 $routes['con-material-receiving-create/(\d+)'] = ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'create'];
@@ -1027,7 +1044,10 @@ $routes['con-usage-log-store']         = ['controller' => 'Phase2\Con_MaterialUs
 $routes['con-vendor-payments']              = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'index'];
 $routes['con-vendor-payment-create']        = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'create'];
 $routes['con-vendor-payment-store']         = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'store'];
-$routes['con-vendor-payment/(\d+)']         = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'show'];
+$routes['con-vendor-payment-show/(\d+)']    = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'show'];
+$routes['con-vendor-payment-document/(\d+)']= ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'addDocument'];
+$routes['con-vendor-payment-approve/(\d+)'] = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'approve'];
+$routes['con-vendor-payment-reject/(\d+)']  = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'reject'];
 $routes['con-vendor-payment-ajax-penalty']  = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPenalty'];
 $routes['con-vendor-payment-ajax-advance']  = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetAdvanceSummary'];
 $routes['con-ajax-po-by-vendor']            = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPOsByVendor'];
@@ -1118,6 +1138,15 @@ $routes['con-pending-payments']           = ['controller' => 'Phase2\\Con_Financ
 $routes['con-process-payment/([^/]+)/(\d+)'] = ['controller' => 'Phase2\\Con_FinancialTransactionController', 'method' => 'process'];
 $routes['con-payment-store']              = ['controller' => 'Phase2\\Con_FinancialTransactionController', 'method' => 'store'];
 $routes['con-transaction/(\d+)']          = ['controller' => 'Phase2\\Con_FinancialTransactionController', 'method' => 'show'];
+
+// ── Expense Adjustments ──────────────────────────────────────────────────────
+$routes['expense-adjustments']           = ['controller' => 'ExpenseAdjustmentController', 'method' => 'index'];
+$routes['expense-adjustments/create']    = ['controller' => 'ExpenseAdjustmentController', 'method' => 'create'];
+$routes['expense-adjustments/store']     = ['controller' => 'ExpenseAdjustmentController', 'method' => 'store'];
+$routes['expense-adjustments/show']      = ['controller' => 'ExpenseAdjustmentController', 'method' => 'show']; // Will use $_GET['id']
+$routes['expense-adjustments/approve']   = ['controller' => 'ExpenseAdjustmentController', 'method' => 'approve'];
+$routes['expense-adjustments/reject']    = ['controller' => 'ExpenseAdjustmentController', 'method' => 'reject'];
+$routes['expense-adjustments/add-payment'] = ['controller' => 'ExpenseAdjustmentController', 'method' => 'addPayment'];
 
 // =============================================================================
 // END PHASE 2 ROUTES

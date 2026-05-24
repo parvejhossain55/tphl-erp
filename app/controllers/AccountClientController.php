@@ -102,6 +102,27 @@ public function indexTwo($bookingId = null)
     $paymentSummary  = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
     $outstandingDues = $this->clientModel->getOutstandingEmiDues($bookingId);
 
+    // Get refund details
+    $refundDetails = null;
+    $refundPaidAmount = 0;
+    $refundStmt = $this->db->prepare("SELECT * FROM client_refund_requests WHERE booking_id = ? AND status != 'rejected' ORDER BY id DESC LIMIT 1");
+    if ($refundStmt) {
+        $refundStmt->bind_param('i', $bookingId);
+        $refundStmt->execute();
+        $refundRes = $refundStmt->get_result();
+        $refundDetails = $refundRes ? $refundRes->fetch_assoc() : null;
+        
+        if ($refundDetails && !empty($refundDetails['cashout_request_id'])) {
+            $cpStmt = $this->db->prepare("SELECT COALESCE(SUM(amount), 0) as paid_amt FROM cashout_payments WHERE cashout_request_id = ?");
+            if ($cpStmt) {
+                $cpStmt->bind_param('i', $refundDetails['cashout_request_id']);
+                $cpStmt->execute();
+                $cpRes = $cpStmt->get_result();
+                $refundPaidAmount = (float)($cpRes->fetch_assoc()['paid_amt'] ?? 0);
+            }
+        }
+    }
+
     $this->view("accounts/cashIn/clients-cash-in-history", [
         "current_route"   => "clients-cash-in-history",
         "page_title"      => "Transaction History - " . $clientDetails['client_name'],
@@ -109,6 +130,8 @@ public function indexTwo($bookingId = null)
         "transactions"    => $transactions,
         "paymentSummary"  => $paymentSummary,
         "outstandingDues" => $outstandingDues,
+        "refundDetails"   => $refundDetails,
+        "refundPaidAmount"=> $refundPaidAmount,
         "accountModel"    => $this->clientModel
     ]);
 }
@@ -316,12 +339,36 @@ public function indexTwoView($bookingId = null)
     
     $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
 
+    // Get refund details for CED view
+    $refundDetails = null;
+    $refundPaidAmount = 0;
+    $refundStmt = $this->db->prepare("SELECT * FROM client_refund_requests WHERE booking_id = ? AND status != 'rejected' ORDER BY id DESC LIMIT 1");
+    if ($refundStmt) {
+        $refundStmt->bind_param('i', $bookingId);
+        $refundStmt->execute();
+        $refundRes = $refundStmt->get_result();
+        $refundDetails = $refundRes ? $refundRes->fetch_assoc() : null;
+        
+        if ($refundDetails && !empty($refundDetails['cashout_request_id'])) {
+            $cpStmt = $this->db->prepare("SELECT COALESCE(SUM(amount), 0) as paid_amt FROM cashout_payments WHERE cashout_request_id = ?");
+            if ($cpStmt) {
+                $cpStmt->bind_param('i', $refundDetails['cashout_request_id']);
+                $cpStmt->execute();
+                $cpRes = $cpStmt->get_result();
+                $refundPaidAmount = (float)($cpRes->fetch_assoc()['paid_amt'] ?? 0);
+            }
+        }
+    }
+
     $this->view("ced/clients-cash-in-history-view", [
         "current_route" => "clients-cash-in-history-view",
         "page_title" => "Transaction History - " . $clientDetails['client_name'],
         "clientDetails" => $clientDetails,
         "transactions" => $transactions,
-        "paymentSummary" => $paymentSummary
+        "paymentSummary" => $paymentSummary,
+        "refundDetails"   => $refundDetails,
+        "refundPaidAmount"=> $refundPaidAmount,
+        "accountModel"    => $this->clientModel
     ]);
 }
 
@@ -1411,6 +1458,60 @@ public function viewClientStatement($bookingId = null)
     }
     
     // Render the statement view
+    include $viewPath;
+    exit;
+}
+
+/**
+ * Show printable Discount Statement for a booking
+ * GET: /discount-statement/{bookingId} or ?booking_id=
+ */
+public function discountStatement($bookingId = null)
+{
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    if (!$bookingId) {
+        $bookingId = $_GET['booking_id'] ?? null;
+    }
+
+    if (!$bookingId) {
+        die("Booking ID is required");
+    }
+
+    $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+    if (!$clientDetails) {
+        die("Client not found for booking ID: " . $bookingId);
+    }
+
+    $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+
+    // Fetch bulk EMI discount transactions
+    $bulkDiscountTxns = [];
+    $discStmt = $this->db->prepare("
+        SELECT lp.id, lp.payment_type, lp.amount, lp.bulk_emi_discount, lp.bulk_pay_amount, 
+               lp.payment_date, COALESCE(lp.emi_no, es.emi_no) as emi_no,
+               u.full_name as added_by_name
+        FROM lead_payments lp
+        LEFT JOIN users u ON lp.created_by = u.id
+        LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
+        WHERE lp.booking_id = ? AND lp.bulk_emi_discount > 0
+        ORDER BY lp.payment_date DESC, lp.id DESC
+    ");
+    $discStmt->bind_param('i', $bookingId);
+    $discStmt->execute();
+    $discResult = $discStmt->get_result();
+    while ($dRow = $discResult->fetch_assoc()) {
+        $bulkDiscountTxns[] = $dRow;
+    }
+
+    // Use absolute path from root
+    $root = dirname(dirname(__DIR__));
+    $viewPath = $root . '/app/views/accounts/cashIn/discount-statement.php';
+
+    if (!file_exists($viewPath)) {
+        die("View file not found at: " . $viewPath);
+    }
+
     include $viewPath;
     exit;
 }

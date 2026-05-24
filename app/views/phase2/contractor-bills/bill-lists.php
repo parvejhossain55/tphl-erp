@@ -50,6 +50,7 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
                                     'draft'          => 'warning',
                                     'submitted'      => 'info',
                                     'verified'       => 'primary',
+                                    'qc_approved'    => 'secondary',
                                     'approved'       => 'success',
                                     'rejected'       => 'danger',
                                     'paid'           => 'secondary',

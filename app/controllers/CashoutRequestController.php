@@ -246,7 +246,8 @@ class CashoutRequestController extends Controller
             "total_paid"       => $totalPaid,
             "approval_request" => $approvalRequest,
             "isAdmin"          => $isAdmin,
-             "canApproveOrReject"   => $this->canApproveOrReject(), 
+            "canApproveOrReject"   => $this->canApproveOrReject(), 
+            "canApproveQC"     => $this->canApproveQC(),
             "userRole"         => $this->userRole,
             "userId"           => $this->userId
         ]);
@@ -289,6 +290,8 @@ class CashoutRequestController extends Controller
             "total_paid"       => $totalPaid,
             "approval_request" => $approvalRequest,
             "isAdmin"          => true,
+            "canApproveOrReject" => $this->canApproveOrReject(), 
+            "canApproveQC"     => $this->canApproveQC(),
             "userRole"         => $this->userRole,
             "userId"           => $this->userId
         ]);
@@ -425,15 +428,9 @@ class CashoutRequestController extends Controller
         exit;
     }
 
-    // Approve request — roles 1 and 3 only
+    // Approve request — roles 1 and 3 only (Management), plus QC
     public function approve()
     {
-        if (!$this->canApproveOrReject()) {
-            setError("Access Denied: Only authorized approvers can approve requests.");
-            header("Location: {$GLOBALS['base_url']}/cashout-requests");
-            exit;
-        }
-
         $requestId = $_POST['id'] ?? $_GET['id'] ?? null;
         if (!$requestId) {
             setError("Request ID missing.");
@@ -448,38 +445,95 @@ class CashoutRequestController extends Controller
             exit;
         }
 
-        if (!in_array($request['display_status'], ['pending'])) {
-            setError("This request cannot be approved. Current status: " . ucfirst(str_replace('_', ' ', $request['display_status'])));
-            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
-            exit;
-        }
+        $statusAction = $_POST['status'] ?? 'approved';
+        
+        if ($statusAction === 'qc_approved') {
+            if (!$this->canApproveQC()) {
+                setError("Access Denied: You are not authorized for QC approval.");
+                header("Location: {$GLOBALS['base_url']}/cashout-requests");
+                exit;
+            }
 
-        $result = $this->cashoutModel->updateStatus($requestId, 'approved', $this->userId);
+            if ($request['display_status'] !== 'pending') {
+                setError("Request must be pending for QC approval.");
+                header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
+                exit;
+            }
 
-        if ($result) {
-            // Trigger Email Notification ON APPROVAL
-            $freshRequest = $this->cashoutModel->getRequestById($requestId);
-            $this->mailService->sendOnApproval($freshRequest, 'approved', $this->userId);
-            
-            setSuccess("Request approved successfully! Ready for payment processing.");
+            $qcNote = trim($_POST['approval_note'] ?? '');
+            if ($this->cashoutModel->updateQCStatus($requestId, $this->userId, $qcNote)) {
+                setSuccess("Request QC Approved successfully.");
+            } else {
+                setError("Failed to QC approve.");
+            }
+
         } else {
-            setError("Failed to approve request.");
+            // Management approval
+            if (!$this->canApproveOrReject()) {
+                setError("Access Denied: Only authorized approvers can approve requests.");
+                header("Location: {$GLOBALS['base_url']}/cashout-requests");
+                exit;
+            }
+
+            if (!in_array($request['display_status'], ['qc_approved', 'pending'])) {
+                setError("This request cannot be approved. Current status: " . ucfirst(str_replace('_', ' ', $request['display_status'])));
+                header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
+                exit;
+            }
+
+            $approvedAmount = !empty($_POST['approved_amount']) ? (float)$_POST['approved_amount'] : $request['amount'];
+            if ($approvedAmount > 0) {
+                $this->cashoutModel->updateApprovedAmount($requestId, $approvedAmount);
+            }
+
+            $result = $this->cashoutModel->updateStatus($requestId, 'approved', $this->userId);
+            if ($result) {
+                // Trigger Email Notification ON APPROVAL
+                $freshRequest = $this->cashoutModel->getRequestById($requestId);
+                $this->mailService->sendOnApproval($freshRequest, 'approved', $this->userId);
+                
+                setSuccess("Request approved successfully! Ready for payment processing.");
+            } else {
+                setError("Failed to approve request.");
+            }
         }
 
         header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
         exit;
     }
 
-    // Reject request — roles 1 and 3 only
+    // Reject request
     public function reject()
     {
-        if (!$this->canApproveOrReject()) {
-            setError("You are not authorized to reject requests.");
+        $requestId = $_POST['id'] ?? null;
+        if (!$requestId) {
+            setError("Request ID missing.");
+            header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
+            exit;
+        }
+
+        $request = $this->cashoutModel->getRequestById($requestId);
+        if (!$request) {
+            setError("Request not found.");
+            header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
+            exit;
+        }
+
+        $isQC = ($request['display_status'] === 'pending');
+        $isMgmt = ($request['display_status'] === 'qc_approved');
+
+        if ($isQC && !$this->canApproveQC()) {
+            setError("You are not authorized to reject as QC.");
             header("Location: {$GLOBALS['base_url']}/cashout-requests");
             exit;
         }
 
-        $requestId = $_POST['id'] ?? null;
+        if ($isMgmt && !$this->canApproveOrReject()) {
+            setError("You are not authorized to reject as Management.");
+            header("Location: {$GLOBALS['base_url']}/cashout-requests");
+            exit;
+        }
+
         $reason    = trim($_POST['rejection_reason'] ?? '');
 
         if (!$requestId) {
@@ -658,6 +712,12 @@ class CashoutRequestController extends Controller
     private function canApproveOrReject()
     {
         return in_array($this->userRole, [1, 3]);
+    }
+
+    private function canApproveQC()
+    {
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        return ($roleName === 'qc & internal audit' || hasPermission('QC & Internal Audit') || $this->canApproveOrReject());
     }
 
     /**

@@ -53,6 +53,14 @@ class Con_ContractorBillController extends Controller
         return in_array($this->userRole, [1, 3]);
     }
 
+    /** QC & Internal Audit role or specific permission check */
+    private function canApproveQC()
+    {
+        if (in_array($this->userRole, [1, 3])) return true;
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        return ($roleName === 'qc & internal audit' || hasPermission('QC & Internal Audit') || $this->canApprove());
+    }
+
     /** Roles 1, 3, 6 (Accounts) can process payments */
     private function canProcessPayment()
     {
@@ -279,6 +287,7 @@ class Con_ContractorBillController extends Controller
             'payable_amount'    => $payableAmt,
             'approval_request'  => $approvalReq,
             'canApprove'        => $this->canApprove(),
+            'canApproveQC'      => $this->canApproveQC(),
             'canProcessPayment' => $this->canProcessPayment(),
             'userRole'          => $this->userRole,
             'banks'             => $banks,
@@ -309,61 +318,94 @@ class Con_ContractorBillController extends Controller
     }
 
     // =========================================================================
-    // APPROVE — Management (roles 1,3) with adjustable amount
+    // APPROVE (QC OR MANAGEMENT)
     // =========================================================================
 
     public function approve($id)
     {
-        if (!$this->canApprove()) {
-            setError('You are not authorized to approve bills.');
-            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
-            exit;
-        }
-
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
             exit;
         }
 
         $bill = $this->billModel->find($id);
-        if (!$bill || !in_array($bill['status'], ['submitted', 'verified'])) {
-            setError('Bill is not in an approvable status.');
-            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+        if (!$bill) {
+            setError('Bill not found.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
             exit;
         }
 
-        $approvedAmount = (float)($_POST['approved_amount'] ?? $bill['bill_amount']);
-        if ($approvedAmount <= 0) {
-            $approvedAmount = (float)$bill['bill_amount'];
-        }
+        $isQcApproval = isset($_POST['status']) && $_POST['status'] === 'qc_approved';
 
-        if ($this->billModel->approve($id, $this->userId, $approvedAmount)) {
-            $this->syncApprovalRequest($id, 'approved');
-
-            // Send email notification on approval
-            try {
-                $updatedBill = $this->billModel->find($id);
-                if ($updatedBill) {
-                    // Fetch contractor and project names for the email
-                    $operator = $this->operatorModel->find($bill['operator_id'] ?? 0);
-                    $project  = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($bill['project_id'] ?? 0))->fetch_assoc();
-                    $updatedBill['contractor_name'] = $operator['name'] ?? '';
-                    $updatedBill['project_name']    = $project['name'] ?? '';
-
-                    $this->mailService->sendContractorBillOnApproval(
-                        $updatedBill,
-                        'approved',
-                        $this->userId
-                    );
-                }
-            } catch (\Exception $e) {
-                error_log("Contractor Bill email (approval) failed: " . $e->getMessage());
+        if ($isQcApproval) {
+            // -- QC APPROVAL PATH --
+            if (!$this->canApproveQC()) {
+                setError('You are not authorized for QC approval.');
+                header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+                exit;
             }
 
-            setSuccess('Bill approved with amount ৳' . number_format($approvedAmount, 2));
+            if (!in_array($bill['status'], ['submitted', 'verified'])) {
+                setError('Bill is not ready for QC approval.');
+                header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+                exit;
+            }
+
+            $qcNote = trim($_POST['approval_note'] ?? '');
+            if ($this->billModel->updateQCStatus($id, $this->userId, $qcNote)) {
+                setSuccess('Bill QC Approved successfully.');
+            } else {
+                setError('Failed to QC approve bill.');
+            }
         } else {
-            setError('Failed to approve or bill already processed.');
+            // -- MANAGEMENT APPROVAL PATH --
+            if (!$this->canApprove()) {
+                setError('You are not authorized to approve bills.');
+                header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+                exit;
+            }
+
+            if (!in_array($bill['status'], ['submitted', 'verified', 'qc_approved'])) {
+                setError('Bill is not in an approvable status.');
+                header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+                exit;
+            }
+
+            $approvedAmount = (float)($_POST['approved_amount'] ?? $bill['bill_amount']);
+            if ($approvedAmount <= 0) {
+                $approvedAmount = (float)$bill['bill_amount'];
+            }
+            $managementNote = trim($_POST['management_note'] ?? '');
+
+            if ($this->billModel->approve($id, $this->userId, $approvedAmount, $managementNote)) {
+                $this->syncApprovalRequest($id, 'approved');
+
+                // Send email notification on approval
+                try {
+                    $updatedBill = $this->billModel->find($id);
+                    if ($updatedBill) {
+                        // Fetch contractor and project names for the email
+                        $operator = $this->operatorModel->find($bill['operator_id'] ?? 0);
+                        $project  = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($bill['project_id'] ?? 0))->fetch_assoc();
+                        $updatedBill['contractor_name'] = $operator['name'] ?? '';
+                        $updatedBill['project_name']    = $project['name'] ?? '';
+
+                        $this->mailService->sendContractorBillOnApproval(
+                            $updatedBill,
+                            'approved',
+                            $this->userId
+                        );
+                    }
+                } catch (\Exception $e) {
+                    error_log("Contractor Bill email (approval) failed: " . $e->getMessage());
+                }
+
+                setSuccess('Bill approved with amount ৳' . number_format($approvedAmount, 2));
+            } else {
+                setError('Failed to approve or bill already processed.');
+            }
         }
+
         header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
         exit;
     }
@@ -374,7 +416,7 @@ class Con_ContractorBillController extends Controller
 
     public function reject($id)
     {
-        if (!$this->canApprove()) {
+        if (!$this->canApprove() && !$this->canApproveQC()) {
             setError('You are not authorized to reject bills.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
             exit;

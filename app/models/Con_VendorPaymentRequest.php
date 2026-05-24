@@ -69,7 +69,8 @@ class Con_VendorPaymentRequest extends Model
                     po.id        AS po_number,
                     u.full_name  AS created_by_name,
                     ab.full_name AS approved_by_name,
-                    ab_r.name    AS approved_by_role
+                    ab_r.name    AS approved_by_role,
+                    qc.full_name AS qc_approved_by_name
              FROM {$this->table} pr
              LEFT JOIN vendors v          ON v.id  = pr.vendor_id
              LEFT JOIN projects p         ON p.id  = pr.project_id
@@ -77,6 +78,7 @@ class Con_VendorPaymentRequest extends Model
              LEFT JOIN users u            ON u.id  = pr.created_by
              LEFT JOIN users ab           ON ab.id = pr.approved_by
              LEFT JOIN roles ab_r         ON ab_r.id = ab.role_id
+             LEFT JOIN users qc           ON qc.id = pr.qc_approved_by_id
              WHERE pr.id = ?"
         );
         $stmt->bind_param('i', $id);
@@ -222,7 +224,7 @@ class Con_VendorPaymentRequest extends Model
     public function approve($id, $userId, $approvedAmount = null)
     {
         $request = $this->find($id);
-        if (!$request || $request['status'] !== 'Submitted') return false;
+        if (!$request || !in_array($request['status'], ['Submitted', 'QC Approved'])) return false;
 
         if ($approvedAmount === null || $approvedAmount <= 0) {
             $approvedAmount = (float)($request['net_payable'] ?? 0);
@@ -231,7 +233,7 @@ class Con_VendorPaymentRequest extends Model
         $stmt = $this->db->prepare(
             "UPDATE {$this->table}
              SET status = 'Approved', approved_amount = ?, approved_by = ?, due_amount = ?
-             WHERE id = ? AND status = 'Submitted'"
+             WHERE id = ? AND status IN ('Submitted', 'QC Approved')"
         );
         $stmt->bind_param('didi', $approvedAmount, $userId, $approvedAmount, $id);
         return $stmt->execute();
