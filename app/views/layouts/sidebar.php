@@ -1224,6 +1224,63 @@
                         </a>
                     </li>
                 <?php endif; ?>
+
+                <?php if (!empty($_SESSION['active_project_id']) && ($_SESSION['active_project_workflow_version'] ?? '') === 'phase_based'): ?>
+                    <li class="slide has-sub active">
+                        <a href="javascript:void(0);" 
+                           class="sidebar__menu-item active">
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            <div class="side-menu__icon"><i class="fa-solid fa-folder-open"></i></div>
+                            <span class="sidebar__menu-label" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 150px;" title="<?= htmlspecialchars($_SESSION['active_project_name'] ?? 'Active Project') ?>">
+                                🏗️ <?= htmlspecialchars($_SESSION['active_project_name'] ?? 'Active Project') ?>
+                            </span>
+                        </a>
+                        <ul class="sidebar-menu child1" style="display:block;">
+                            <li class="slide <?= isActive('con-project-timeline', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-project-timeline', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-project-timeline/<?= $_SESSION['active_project_id'] ?>">
+                                    📅 Timeline Setup
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-phase-plan', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-phase-plan', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-phase-plan/<?= $_SESSION['active_project_id'] ?>">
+                                    🏗️ Phase Plan
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-monthly-target', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-monthly-target', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-monthly-target/<?= $_SESSION['active_project_id'] ?>">
+                                    🎯 Monthly Targets
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-weekly-progress', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-weekly-progress', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-weekly-progress/<?= $_SESSION['active_project_id'] ?>">
+                                    📝 Progress Entry
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-monthly-review', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-monthly-review', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-monthly-review/<?= $_SESSION['active_project_id'] ?>">
+                                    📊 Monthly Review
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-risk-dashboard', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-risk-dashboard', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-risk-dashboard/<?= $_SESSION['active_project_id'] ?>">
+                                    ⚠️ Risk Dashboard
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-recovery-plan', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-recovery-plan', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-recovery-plan/<?= $_SESSION['active_project_id'] ?>">
+                                    🔄 Recovery Plan
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                <?php endif; ?>
                 <?php if (hasPermission('site engineer dashboard')): ?>
                     <li class="slide ">
                         <a href="<?= $base_url ?>/con-site-engineer-dashboard"

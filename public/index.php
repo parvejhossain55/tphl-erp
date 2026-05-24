@@ -821,6 +821,12 @@ $routes['delete-soil-test']                     = ['controller' => 'Phase2\SoilT
 $routes['con-dashboard']           = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'index'];
 $routes['con-projects']            = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectsList'];
 $routes['con-project/(\d+)']       = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectDetail'];
+
+// Phase-wise Construction - Module 1: Project Timeline Setup
+$routes['con-project-timeline/(\d+)']        = ['controller' => 'Phase2\Con_ProjectTimelineController', 'method' => 'index'];
+$routes['con-project-timeline-store']         = ['controller' => 'Phase2\Con_ProjectTimelineController', 'method' => 'store'];
+$routes['con-project-timeline-edit/(\d+)']    = ['controller' => 'Phase2\Con_ProjectTimelineController', 'method' => 'edit'];
+$routes['con-project-timeline-update/(\d+)']  = ['controller' => 'Phase2\Con_ProjectTimelineController', 'method' => 'update'];
 $routes['con-ajax-workplan/(\d+)'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWorkPlan'];
 $routes['con-ajax-targets/(\d+)']  = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxTargets'];
 $routes['con-ajax-weekly/(\d+)']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWeeklyData'];

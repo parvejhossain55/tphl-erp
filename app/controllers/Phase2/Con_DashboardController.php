@@ -19,6 +19,12 @@ class Con_DashboardController extends Controller
     public function index()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        
+        // Reset active project context when returning to global dashboard
+        unset($_SESSION['active_project_id']);
+        unset($_SESSION['active_project_name']);
+        unset($_SESSION['active_project_workflow_version']);
+
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
 
         if ($userRole === 23) {
@@ -631,6 +637,11 @@ class Con_DashboardController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        // Reset active project context when returning to projects list
+        unset($_SESSION['active_project_id']);
+        unset($_SESSION['active_project_name']);
+        unset($_SESSION['active_project_workflow_version']);
+
         $sql = "
             SELECT  p.id,
                     p.name,
@@ -707,6 +718,11 @@ class Con_DashboardController extends Controller
         $project = $stmt->get_result()->fetch_assoc();
 
         if (!$project) { die("Project not found."); }
+
+        // Set active project context
+        $_SESSION['active_project_id'] = $project['id'];
+        $_SESSION['active_project_name'] = $project['name'];
+        $_SESSION['active_project_workflow_version'] = $project['workflow_version'];
 
         // Budget header (start / end date)
         $stmt2 = $this->db->prepare("
