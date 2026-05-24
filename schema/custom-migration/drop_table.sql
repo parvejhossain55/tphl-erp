@@ -135,4 +135,21 @@ DROP TABLE IF EXISTS vendor_penalties;
 DROP TABLE IF EXISTS vendor_ratings;
 DROP TABLE IF EXISTS weekly_progress_report;
 
+-- ====== Phase-wise Construction Management (New 7-Module System) ======
+DROP TABLE IF EXISTS recovery_action_items;
+DROP TABLE IF EXISTS recovery_plans;
+DROP TABLE IF EXISTS project_delay_snapshots;
+DROP TABLE IF EXISTS project_risks;
+DROP TABLE IF EXISTS monthly_phase_snapshots;
+DROP TABLE IF EXISTS monthly_progress_reviews;
+DROP TABLE IF EXISTS daily_work_item_logs;
+DROP TABLE IF EXISTS daily_progress_logs;
+DROP TABLE IF EXISTS phase_weekly_progress_items;
+DROP TABLE IF EXISTS phase_weekly_progress;
+DROP TABLE IF EXISTS phase_monthly_target_items;
+DROP TABLE IF EXISTS phase_monthly_targets;
+DROP TABLE IF EXISTS project_phases;
+DROP TABLE IF EXISTS phase_template_defaults;
+DROP TABLE IF EXISTS project_timelines;
+
 SET FOREIGN_KEY_CHECKS = 1;
