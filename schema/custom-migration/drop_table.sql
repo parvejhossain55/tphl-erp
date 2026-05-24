@@ -61,7 +61,7 @@ DROP TABLE IF EXISTS platform_budgets;
 DROP TABLE IF EXISTS units;
 DROP TABLE IF EXISTS banks;
 
--- phase2 
+-- phase2 constracution module tables
 DROP TABLE IF EXISTS land_acquisitions;
 DROP TABLE IF EXISTS land_bayana_payments;
 DROP TABLE IF EXISTS land_registrations;
@@ -125,3 +125,13 @@ DROP TABLE IF EXISTS con_security_equipments;
 DROP TABLE IF EXISTS con_security_daily_logs;
 DROP TABLE IF EXISTS con_security_incidents;
 DROP TABLE IF EXISTS con_material_categories;
+DROP TABLE IF EXISTS adjustment_transactions;
+DROP TABLE IF EXISTS con_work_order_approvals;
+DROP TABLE IF EXISTS con_work_order_items;
+DROP TABLE IF EXISTS con_work_order_updates;
+DROP TABLE IF EXISTS csv_import_logs;
+DROP TABLE IF EXISTS expense_adjustments;
+DROP TABLE IF EXISTS fund_requisitions;
+DROP TABLE IF EXISTS project_working_plan_items;
+DROP TABLE IF EXISTS qc_material_tests;
+DROP TABLE IF EXISTS qc_test_types;
