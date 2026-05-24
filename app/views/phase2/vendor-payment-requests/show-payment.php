@@ -5,6 +5,7 @@ $page_title = $page_title ?? 'Payment Request Details';
 $statusMap = [
     'Draft' => ['label' => 'Draft', 'color' => 'warning'],
     'Submitted' => ['label' => 'Submitted', 'color' => 'info'],
+    'QC Approved' => ['label' => 'QC Approved', 'color' => 'success'],
     'Approved' => ['label' => 'Approved', 'color' => 'success'],
     'Rejected' => ['label' => 'Rejected', 'color' => 'danger'],
     'Paid' => ['label' => 'Paid', 'color' => 'secondary'],
@@ -23,11 +24,13 @@ $dueAmount = $due_amount ?? 0;
 $payableAmount = $payable_amount ?? 0;
 
 $isSubmitted = ($status === 'Submitted');
+$isQCApproved = ($status === 'QC Approved');
 $isApproved = in_array($status, ['Approved', 'Partially_Paid']);
 $isRejected = ($status === 'Rejected');
 $isFullyPaid = in_array($status, ['Fully_Paid', 'Paid']);
-$canReject = $canApproveReq && !$isRejected && !$isFullyPaid;
-$showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
+$canPayReq = $canProcessPayment && $isApproved && $dueAmount > 0;
+$canReject = ($canApproveQC && $isSubmitted) || ($canApproveReq && $isQCApproved);
+$showPaymentForm = $canPayReq;
 
 // Payment type badge
 $typeBadge = match ($request['payment_type'] ?? 'Final') {
@@ -234,6 +237,107 @@ $advancePaid = (float) ($advance_paid ?? 0);
                 </div>
             </div>
 
+            <!-- Additional Documents & Notes (Post-Approval Flexibility) -->
+            <div class="card custom-card mb-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="bi bi-folder me-2"></i>Additional Documents & Notes</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-7">
+                            <?php if (empty($documents)): ?>
+                                <div class="text-center py-4 text-muted">
+                                    <i class="bi bi-chat-square-text fs-2 mb-2 d-block text-secondary"></i>
+                                    <p class="mb-0">No additional notes or documents have been added yet.</p>
+                                </div>
+                            <?php else: ?>
+                                <div class="timeline-container ps-3 mt-2" style="border-left: 2px solid #e9ecef;">
+                                    <?php foreach ($documents as $doc): ?>
+                                    <div class="mb-3 position-relative ps-4">
+                                        <div class="position-absolute" style="left: -24px; top: 0; background: #fff; border-radius: 50%; padding: 4px;">
+                                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #0d6efd;"></div>
+                                        </div>
+                                        <div class="p-3 rounded border shadow-sm">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <div>
+                                                    <strong class="text-primary"><?= htmlspecialchars($doc['uploaded_by_name']) ?></strong>
+                                                    <span class="text-muted small ms-2"><i class="bi bi-clock me-1"></i><?= date('d M Y, h:i A', strtotime($doc['created_at'])) ?></span>
+                                                </div>
+                                            </div>
+                                            <?php if (!empty($doc['note'])): ?>
+                                                <p class="mb-2 text-dark" style="font-size: 14px;"><?= nl2br(htmlspecialchars($doc['note'])) ?></p>
+                                            <?php endif; ?>
+                                            
+                                            <?php if (!empty($doc['document_path'])): ?>
+                                                <a href="<?= $base_url ?>/<?= htmlspecialchars($doc['document_path']) ?>" target="_blank" class="btn btn-sm btn-outline-primary mt-1" style="font-size: 12px;">
+                                                    <i class="bi bi-paperclip me-1"></i> View Attachment
+                                                </a>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php if (!in_array($userRole, [24])): // Hide from QC ?>
+                        <div class="col-md-5">
+                            <div class="card border-0 shadow-sm" style="background-color: #f8f9fa;">
+                                <div class="card-body">
+                                    <h6 class="mb-3 fw-bold text-primary"><i class="bi bi-pencil-square me-2"></i>Post a New Note</h6>
+                                    <form action="<?= $base_url ?>/con-vendor-payment-document/<?= $request['id'] ?>" method="POST" enctype="multipart/form-data">
+                                        <div class="mb-3">
+                                            <textarea name="note" class="form-control border-primary-subtle" rows="3" placeholder="Write your note or comment here..." style="font-size: 14px;"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-semibold text-muted">Attach File (Optional)</label>
+                                            <input type="file" name="document" class="form-control form-control-sm border-primary-subtle">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary w-100 fw-bold">
+                                            <i class="bi bi-send me-1"></i> Submit Note
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PO Stock Info (For QC Verification) -->
+            <?php if (!empty($poStocks)): ?>
+                <div class="card custom-card mb-3 border-info">
+                    <div class="card-header bg-info bg-opacity-10">
+                        <h6 class="card-title mb-0 text-info"><i class="bi bi-box-seam me-2"></i>Related PO Stock at Project</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Material</th>
+                                        <th class="text-end">Ordered (PO)</th>
+                                        <th class="text-end">Current Stock</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($poStocks as $stock): ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($stock['material_name']) ?></td>
+                                            <td class="text-end"><?= number_format($stock['po_qty'], 2) ?> <?= htmlspecialchars($stock['unit']) ?></td>
+                                            <td class="text-end fw-bold <?= $stock['current_stock'] > 0 ? 'text-success' : 'text-danger' ?>">
+                                                <?= number_format($stock['current_stock'], 2) ?> <?= htmlspecialchars($stock['unit']) ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <small class="text-muted d-block mt-2"><i class="bi bi-info-circle me-1"></i>QC & Audit must verify the stock levels before approving.</small>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <!-- Linked Penalties -->
             <?php if (!empty($penalties)): ?>
                 <div class="card custom-card mb-3">
@@ -393,10 +497,24 @@ $advancePaid = (float) ($advance_paid ?? 0);
                         <strong
                             class="text-muted"><?= date('d M Y h:i A', strtotime($request['created_at'])) ?></strong>
                     </div>
+                    <?php if (!empty($request['qc_approved_by_id'])): ?>
+                        <div class="mb-3">
+                            <small class="text-muted d-block">QC Approved By</small>
+                            <strong><?= htmlspecialchars($request['qc_approved_by_name'] ?? 'QC User') ?></strong>
+                            <strong class="text-muted d-block mt-1"><?= date('d M Y h:i A', strtotime($request['qc_approved_at'])) ?></strong>
+                            <?php if (!empty($request['qc_note'])): ?>
+                                <p class="small text-muted mt-1 fst-italic">"<?= nl2br(htmlspecialchars($request['qc_note'])) ?>"</p>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+
                     <?php if (!empty($request['approved_by_name'])): ?>
                         <div class="mb-3">
                             <small class="text-muted d-block">Approved By</small>
                             <strong><?= htmlspecialchars($request['approved_by_name']) ?></strong>
+                            <?php if (!empty($request['management_note'])): ?>
+                                <p class="small text-muted mt-1 fst-italic">"<?= nl2br(htmlspecialchars($request['management_note'])) ?>"</p>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                     <div class="mb-3">
@@ -406,31 +524,58 @@ $advancePaid = (float) ($advance_paid ?? 0);
                 </div>
             </div>
 
-            <!-- Approval Actions (Management only, Submitted status) -->
-            <?php if ($canApproveReq && $isSubmitted): ?>
+            <!-- Approval Actions (QC or Management) -->
+            <?php if (($canApproveQC && $isSubmitted) || ($canApproveReq && $isQCApproved)): ?>
                 <div class="card custom-card border-warning mb-3">
                     <div class="card-header bg-warning bg-opacity-10">
                         <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Approval Action</h6>
                     </div>
                     <div class="card-body">
-                        <form action="<?= $base_url ?>/con-vendor-payment-approve/<?= $request['id'] ?>" method="POST"
-                            id="approveVprForm" class="mb-3">
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Approved Amount (৳)</label>
-                                <input type="number" name="approved_amount" id="approveAmtInput" class="form-control"
-                                    value="<?= number_format($netPayable, 2, '.', '') ?>" step="0.01" min="0.01" required>
-                                <small class="text-muted">Net payable: ৳ <?= number_format($netPayable, 2) ?></small>
-                            </div>
-                            <button type="button" id="approveVprBtn" class="btn btn-success w-100 fw-bold">
-                                <i class="bi bi-check-circle me-1"></i> Approve Payment
-                            </button>
-                        </form>
-                        <form action="<?= $base_url ?>/con-vendor-payment-reject/<?= $request['id'] ?>" method="POST"
-                            id="rejectVprForm">
-                            <button type="button" id="rejectVprBtn" class="btn btn-outline-danger w-100 btn-sm">
-                                <i class="bi bi-x-circle me-1"></i> Reject
-                            </button>
-                        </form>
+                        <?php if ($canApproveQC && $isSubmitted): ?>
+                            <!-- QC Approval Form -->
+                            <form action="<?= $base_url ?>/con-vendor-payment-approve/<?= $request['id'] ?>" method="POST"
+                                id="approveVprForm" class="mb-3">
+                                <input type="hidden" name="status" value="QC Approved">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">QC Note (Optional)</label>
+                                    <textarea name="approval_note" class="form-control" rows="2" placeholder="Leave a note..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-info w-100 fw-bold text-white mb-2">
+                                    <i class="bi bi-check-all me-1"></i> QC Approve
+                                </button>
+                            </form>
+                            <form action="<?= $base_url ?>/con-vendor-payment-reject/<?= $request['id'] ?>" method="POST"
+                                id="rejectVprForm">
+                                <button type="button" id="rejectVprBtn" class="btn btn-outline-danger w-100 btn-sm">
+                                    <i class="bi bi-x-circle me-1"></i> Reject
+                                </button>
+                            </form>
+                        <?php elseif ($canApproveReq && $isQCApproved): ?>
+                            <!-- Management Approval Form -->
+                            <form action="<?= $base_url ?>/con-vendor-payment-approve/<?= $request['id'] ?>" method="POST"
+                                id="approveVprForm" class="mb-3">
+                                <input type="hidden" name="status" value="Approved">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Approved Amount (৳)</label>
+                                    <input type="number" name="approved_amount" id="approveAmtInput" class="form-control"
+                                        value="<?= number_format($netPayable, 2, '.', '') ?>" step="0.01" min="0.01" required>
+                                    <small class="text-muted">Net payable: ৳ <?= number_format($netPayable, 2) ?></small>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Management Note (Optional)</label>
+                                    <textarea name="approval_note" class="form-control" rows="2" placeholder="Leave a note..."></textarea>
+                                </div>
+                                <button type="button" id="approveVprBtn" class="btn btn-success w-100 fw-bold mb-2">
+                                    <i class="bi bi-check-circle me-1"></i> Approve Payment
+                                </button>
+                            </form>
+                            <form action="<?= $base_url ?>/con-vendor-payment-reject/<?= $request['id'] ?>" method="POST"
+                                id="rejectVprForm">
+                                <button type="button" id="rejectVprBtn" class="btn btn-outline-danger w-100 btn-sm">
+                                    <i class="bi bi-x-circle me-1"></i> Reject
+                                </button>
+                            </form>
+                        <?php endif; ?>
                     </div>
                 </div>
             <?php endif; ?>

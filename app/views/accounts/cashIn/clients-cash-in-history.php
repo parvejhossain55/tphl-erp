@@ -40,6 +40,13 @@ $show_breadcrumb = true;
                     <?php else: ?>
                         <span class="badge bg-success">Current</span>
                     <?php endif; ?>
+                    
+                    <?php if (isset($refundDetails) && $refundDetails['status'] === 'approved'): ?>
+                        <span class="badge bg-danger"><i class="fa-light fa-undo me-1"></i>Refund Approved</span>
+                        <?php if ($refundPaidAmount > 0): ?>
+                            <span class="badge" style="background:#2d8cf0; color:#fff;"><i class="fa-light fa-money-bill-transfer me-1"></i>Refunded Amount: TK.<?= number_format($refundPaidAmount, 2) ?></span>
+                        <?php endif; ?>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -402,14 +409,23 @@ $show_breadcrumb = true;
 
 
                 <div class="mt-3 d-flex gap-2 position ">
+                    <?php if (isset($refundDetails) && $refundDetails['status'] === 'approved'): ?>
+                        <button class="btn btn-secondary mb-3" disabled title="Refund approved, cannot add transactions">
+                            <i class="fa-light fa-ban me-2"></i> Add Transaction (Disabled)
+                        </button>
+                    <?php else: ?>
                         <a href="<?= $GLOBALS['base_url'] ?>/<?= $isShop ? 'shop-client-cash-in-form' : 'client-cash-in-form' ?>?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
                             <i class="fa-light fa-plus me-2"></i> Add Transaction
                         </a>
+                    <?php endif; ?>
                     <a href="<?= $GLOBALS['base_url'] ?>/csv-import-form" class="btn btn-info mb-3 text-white">
                         <i class="fa-light fa-file-csv me-2"></i> CSV Import
                     </a>
                     <a href="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-primary mb-3">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
+                    </a>
+                    <a href="<?= $base_url ?>/discount-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn mb-3" style="background: linear-gradient(135deg, #6c5ffc, #8b5cf6); color:#fff; border:none;">
+                        <i class="fa-light fa-tags me-2"></i> Discount Statement
                     </a>
 
                 </div>

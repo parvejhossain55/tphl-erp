@@ -36,6 +36,11 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
         color: #155724;
     }
 
+    .status-qc_approved {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+
     .status-rejected {
         background: #f8d7da;
         color: #721c24;
@@ -150,6 +155,7 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                         <select name="status" class="form-control">
                             <option value="">All Status</option>
                             <option value="pending" <?= ($filters['status'] ?? '') == 'pending' ? 'selected' : '' ?>>Pending</option>
+                            <option value="qc_approved" <?= ($filters['status'] ?? '') == 'qc_approved' ? 'selected' : '' ?>>QC Approved</option>
                             <option value="approved_by_HR" <?= ($filters['status'] ?? '') == 'approved_by_HR' ? 'selected' : '' ?>>Approved by HR</option>
                             <option value="approved_by_Admin" <?= ($filters['status'] ?? '') == 'approved_by_Admin' ? 'selected' : '' ?>>Approved by Admin</option>
                             <option value="approved_by_Super_Admin" <?= ($filters['status'] ?? '') == 'approved_by_Super_Admin' ? 'selected' : '' ?>>Approved by Super Admin</option>
@@ -234,7 +240,7 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                     $approvedBy = '';
                                     if (!empty($request['approved_by_name'])) {
                                         $approvedBy = '<div>
-                                      <small>' . htmlspecialchars($request['approved_by_name']) . '</small><br>
+                                      <small>' . htmlspecialchars($request['approved_by_name'] ?? '') . '</small><br>
                                       <small class="text-muted">
                                       ' . (!empty($request['approved_at']) ? date('d M, Y h:i A', strtotime($request['approved_at'])) : '') . '
                                       </small>
@@ -242,7 +248,7 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                     }
 
                                     // Determine status for display
-                                    $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
+                                    $displayStatus = !empty($request['display_status']) ? $request['display_status'] : (!empty($request['status']) ? $request['status'] : 'pending');
                                     ?>
 
                                     <tr>
@@ -252,16 +258,18 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <div>
-                                                    <strong><?= htmlspecialchars($request['requester_name']) ?></strong>
-                                                    <br>
-                                                    <small class="text-muted">ID: <?= $request['requested_by'] ?></small>
+                                                    <strong><?= htmlspecialchars($request['requester_name'] ?? 'System') ?></strong>
+                                                    <?php if (!empty($request['requested_by'])): ?>
+                                                        <br>
+                                                        <small class="text-muted">ID: <?= htmlspecialchars($request['requested_by']) ?></small>
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-truncate" style="max-width: 200px;"
-                                                title="<?= htmlspecialchars($request['purpose_paid_to']) ?>">
-                                                <?= htmlspecialchars($request['purpose_paid_to']) ?>
+                                                title="<?= htmlspecialchars($request['purpose_paid_to'] ?? '') ?>">
+                                                <?= htmlspecialchars($request['purpose_paid_to'] ?? '') ?>
                                             </div>
                                         </td>
                                         <td><strong class="text-primary">TK.<?= number_format($request['amount'], 2) ?></strong></td>
@@ -276,8 +284,8 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                                 <div class="d-flex flex-column">
                                                     <strong class="text-success">TK.<?= number_format($approvedAmount, 2) ?></strong>
                                                     <?php if (!empty($request['approval_note'])): ?>
-                                                        <small class="text-muted" title="<?= htmlspecialchars($request['approval_note']) ?>">
-                                                        <small class="text-muted"> <?= htmlspecialchars($request['approval_note']) ?></small>
+                                                        <small class="text-muted" title="<?= htmlspecialchars($request['approval_note'] ?? '') ?>">
+                                                        <small class="text-muted"> <?= htmlspecialchars($request['approval_note'] ?? '') ?></small>
                                                         </small>
                                                     <?php endif; ?>
 
@@ -306,6 +314,9 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                                 case 'approved_by_Admin':
                                                 case 'approved_by_Super_Admin':
                                                     $statusClass = 'status-approved';
+                                                    break;
+                                                case 'qc_approved':
+                                                    $statusClass = 'status-qc_approved';
                                                     break;
                                                 case 'rejected':
                                                     $statusClass = 'status-rejected';

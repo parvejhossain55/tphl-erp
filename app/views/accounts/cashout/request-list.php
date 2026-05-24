@@ -30,8 +30,13 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
     }
 
     .status-approved {
-        background: #7bf498;
+        background: #d4edda;
         color: #155724;
+    }
+
+    .status-qc_approved {
+        background: #e2e3e5;
+        color: #383d41;
     }
 
     .status-rejected {
@@ -189,6 +194,7 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
                             <?php if (!empty($requests)): ?>
                                 <?php foreach ($requests as $request): ?>
                                     <?php
+
                                     // Use the display_status from synced data
                                     $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
 
@@ -243,8 +249,6 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
                                                 <span class="text-success">TK.0.00</span>
                                             <?php endif; ?>
                                         </td>
-                                        // Inside your foreach loop, update this section:
-
                                         <td>
                                             <?php
                                             // Fix: Ensure we always have a status value
@@ -278,9 +282,10 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
                                             } else {
                                                 switch (strtolower($displayStatus)) { // Add strtolower for consistency
                                                     case 'approved':
-                                                    case 'approve':
                                                         $statusClass = 'status-approved';
-                                                        $statusText = 'approved';
+                                                        break;
+                                                    case 'qc_approved':
+                                                        $statusClass = 'status-qc_approved';
                                                         break;
                                                     case 'rejected':
                                                     case 'reject':

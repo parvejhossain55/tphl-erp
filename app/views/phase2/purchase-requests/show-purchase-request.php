@@ -10,6 +10,7 @@
         </nav>
     </div>
     <div class="d-flex gap-2">
+        <a href="<?= $base_url ?>/con-stocks" target="_blank" class="btn btn-info btn-sm text-white"><i class="fal fa-boxes me-1"></i> Show Stock</a>
         <a href="<?= $base_url ?>/con-purchase-requests" class="btn btn-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i> Back
         </a>
@@ -84,6 +85,12 @@
                                         </div>
                                     <?php else: ?>
                                         <div style="font-size:11px;color:var(--text-muted,#6b7280)">Awaiting approval</div>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($pr['management_note'])): ?>
+                                        <div style="font-size:11px; margin-top:5px;" class="text-muted">
+                                            <strong>Note:</strong> <?= htmlspecialchars($pr['management_note']) ?>
+                                        </div>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -162,7 +169,10 @@
                                 <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline"
                                        onsubmit="return confirm('Approve this Purchase Request?');">
                                     <input type="hidden" name="status" value="Approved">
-                                    <button type="submit" class="btn btn-success btn-sm">
+                                    <div class="mb-2">
+                                        <textarea name="approval_note" class="form-control" rows="2" placeholder="Approval Note"></textarea>
+                                    </div>
+                                    <button type="button" onclick="confirmAction(this, 'Approve this Purchase Request?')" class="btn btn-success btn-sm w-100">
                                         <i class="bi bi-check-circle me-1"></i> Approve
                                     </button>
                                 </form>
@@ -171,8 +181,8 @@
                             <?php endif; ?>
                         </div>
                     <?php elseif ($pr['status'] === 'Submitted'): ?>
-                        <div class="mt-4 p-3 bg-light rounded d-flex justify-content-between align-items-center">
-                            <span class="text-muted small">
+                        <div class="mt-4 p-3 bg-light rounded d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <span class="text-muted small w-100 mb-2">
                                 <i class="bi bi-clock-history me-1"></i>
                                 <?php if ($canApprove): ?>
                                     This PR is Submitted. Please review and Approve or Reject.
@@ -181,22 +191,20 @@
                                 <?php endif; ?>
                             </span>
                             <?php if ($canApprove && !$isReadOnly): ?>
-                            <div class="d-flex gap-2">
-                                <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline"
-                                       onsubmit="return confirm('Approve this PR?');">
-                                    <input type="hidden" name="status" value="Approved">
-                                    <button type="submit" class="btn btn-success btn-sm">
+                            <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline w-100">
+                                <input type="hidden" name="status" id="pr_status_input" value="">
+                                <div class="mb-2 w-100">
+                                    <textarea name="approval_note" class="form-control" rows="2" placeholder="Approval / Rejection Note"></textarea>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" onclick="document.getElementById('pr_status_input').value='Approved'; confirmAction(this, 'Approve this PR?')" class="btn btn-success btn-sm">
                                         <i class="bi bi-check-circle me-1"></i> Approve
                                     </button>
-                                </form>
-                                <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline"
-                                       onsubmit="return confirm('Reject this PR?');">
-                                    <input type="hidden" name="status" value="Rejected">
-                                    <button type="submit" class="btn btn-danger btn-sm">
+                                    <button type="button" onclick="document.getElementById('pr_status_input').value='Rejected'; confirmAction(this, 'Reject this PR?')" class="btn btn-danger btn-sm">
                                         <i class="bi bi-x-circle me-1"></i> Reject
                                     </button>
-                                </form>
-                            </div>
+                                </div>
+                            </form>
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
@@ -278,9 +286,8 @@
                                 </p>
                                 <?php if ($hasCST && $pr['status'] !== 'PO Issued'): ?>
                                     <?php if (!$isReadOnly): ?>
-                                        <form action="<?= $base_url ?>/con-purchase-order-generate/<?= $pr['id'] ?>" method="POST" class="d-inline"
-                                              onsubmit="return confirm('Generate Purchase Order from CST selections?');">
-                                            <button type="submit" class="btn btn-outline-success btn-sm">
+                                        <form action="<?= $base_url ?>/con-purchase-order-generate/<?= $pr['id'] ?>" method="POST" class="d-inline">
+                                            <button type="button" onclick="confirmAction(this, 'Generate Purchase Order from CST selections?')" class="btn btn-outline-success btn-sm">
                                                 <i class="bi bi-lightning me-1"></i> Generate PO
                                             </button>
                                         </form>
@@ -301,3 +308,29 @@
         </div>
     </div>
 </section>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+function confirmAction(btn, msg) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: msg,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, proceed!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            if (btn.name) {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = btn.name;
+                hidden.value = btn.value;
+                btn.form.appendChild(hidden);
+            }
+            btn.form.submit();
+        }
+    });
+}
+</script>

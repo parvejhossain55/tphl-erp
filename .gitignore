@@ -7,7 +7,7 @@ Thumbs.db
 # VS Code
 .vscode/
 *.code-workspace
-
+Readme.md
 # PhpStorm
 .idea/
 # =====================

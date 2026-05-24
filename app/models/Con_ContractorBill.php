@@ -127,10 +127,10 @@ class Con_ContractorBill extends Model
     }
 
     /** Approve with amount and approver tracking */
-    public function approve($id, $userId, $approvedAmount = null)
+    public function approve($id, $userId, $approvedAmount = null, $managementNote = null)
     {
         $bill = $this->find($id);
-        if (!$bill || !in_array($bill['status'], ['submitted', 'verified'])) return false;
+        if (!$bill || !in_array($bill['status'], ['submitted', 'verified', 'qc_approved'])) return false;
 
         if ($approvedAmount === null || $approvedAmount <= 0) {
             $approvedAmount = (float)($bill['bill_amount'] ?? 0);
@@ -138,10 +138,25 @@ class Con_ContractorBill extends Model
 
         $stmt = $this->db->prepare(
             "UPDATE {$this->table}
-             SET status = 'approved', approved_amount = ?, approved_by = ?, due_amount = ?
+             SET status = 'approved', approved_amount = ?, approved_by = ?, due_amount = ?, management_note = ?
              WHERE id = ?"
         );
-        $stmt->bind_param('didi', $approvedAmount, $userId, $approvedAmount, $id);
+        $stmt->bind_param('didis', $approvedAmount, $userId, $approvedAmount, $managementNote, $id);
+        return $stmt->execute();
+    }
+
+    /** QC Approve */
+    public function updateQCStatus($id, $userId, $qcNote = null)
+    {
+        $bill = $this->find($id);
+        if (!$bill || !in_array($bill['status'], ['submitted', 'verified'])) return false;
+
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET status = 'qc_approved', qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ?
+             WHERE id = ?"
+        );
+        $stmt->bind_param('isi', $userId, $qcNote, $id);
         return $stmt->execute();
     }
 
@@ -151,7 +166,7 @@ class Con_ContractorBill extends Model
         $stmt = $this->db->prepare(
             "UPDATE {$this->table}
              SET status = 'rejected', approved_by = ?
-             WHERE id = ? AND status IN ('submitted', 'verified')"
+             WHERE id = ? AND status IN ('submitted', 'verified', 'qc_approved')"
         );
         $stmt->bind_param('ii', $userId, $id);
         return $stmt->execute();
