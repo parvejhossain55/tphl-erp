@@ -1215,7 +1215,7 @@
                     <span class="category-name">Construction </span>
                 </li>
                 <?php endif; ?>
-                <?php if (hasPermission('Construction Management')): ?>
+                <?php if (hasPermission('Construction Management') || ($_SESSION['user']['role_id'] ?? 0) == 15): ?>
                     <li class="slide ">
                         <a href="<?= $base_url ?>/con-dashboard"
                             class="sidebar__menu-item <?= isActive('con-dashboard', $current_route) ?>">
@@ -1225,7 +1225,11 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if (!empty($_SESSION['active_project_id']) && ($_SESSION['active_project_workflow_version'] ?? '') === 'phase_based'): ?>
+                <?php 
+                $showAllPhases = ($_SESSION['active_project_workflow_version'] ?? '') === 'phase_based' 
+                    || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22]);
+                if (!empty($_SESSION['active_project_id']) && $showAllPhases): 
+                ?>
                     <li class="slide has-sub active">
                         <a href="javascript:void(0);" 
                            class="sidebar__menu-item active">

@@ -45,12 +45,21 @@ class Con_ProjectTimelineController extends Controller {
 
         $timeline = $this->model->getByProject($project_id);
 
-        $this->view('phase2/project_timeline/index', [
-            'current_route' => 'con-project-timeline',
-            'page_title' => 'Project Timeline Setup',
-            'project' => $project,
-            'timeline' => $timeline
-        ]);
+        if ($timeline) {
+            $this->view('phase2/project_timeline/project-timeline-lists', [
+                'current_route' => 'con-project-timeline',
+                'page_title' => 'Project Timeline',
+                'project' => $project,
+                'timeline' => $timeline
+            ]);
+        } else {
+            $this->view('phase2/project_timeline/create-project-timeline', [
+                'current_route' => 'con-project-timeline',
+                'page_title' => 'Initialize Project Timeline',
+                'project' => $project,
+                'timeline' => null
+            ]);
+        }
     }
 
     /**
@@ -72,7 +81,7 @@ class Con_ProjectTimelineController extends Controller {
         }
 
         // Permissions check
-        if (!hasPermission('Construction Management') && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])) {
+        if (!hasPermission('Construction Management') && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
             setError("You do not have permission to manage timelines.");
             header("Location: " . $GLOBALS['base_url'] . "/con-project/" . $project_id);
             exit;
@@ -143,8 +152,32 @@ class Con_ProjectTimelineController extends Controller {
         }
 
         $project_id = $timeline['project_id'];
-        header("Location: " . $GLOBALS['base_url'] . "/con-project-timeline/" . $project_id);
-        exit;
+        $project = $this->projectModel->find($project_id);
+
+        if (!$project) {
+            setError("Project not found.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
+        // Permissions check
+        if (!hasPermission('Construction Management') && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
+            setError("You do not have permission to manage timelines.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-project/" . $project_id);
+            exit;
+        }
+
+        // Set session variables for project-specific sidebar context
+        $_SESSION['active_project_id'] = $project['id'];
+        $_SESSION['active_project_name'] = $project['name'];
+        $_SESSION['active_project_workflow_version'] = $project['workflow_version'];
+
+        $this->view('phase2/project_timeline/create-project-timeline', [
+            'current_route' => 'con-project-timeline',
+            'page_title' => 'Edit Project Timeline',
+            'project' => $project,
+            'timeline' => $timeline
+        ]);
     }
 
     /**
@@ -168,7 +201,7 @@ class Con_ProjectTimelineController extends Controller {
         $project_id = $timeline['project_id'];
 
         // Permissions check
-        if (!hasPermission('Construction Management') && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])) {
+        if (!hasPermission('Construction Management') && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
             setError("You do not have permission to manage timelines.");
             header("Location: " . $GLOBALS['base_url'] . "/con-project/" . $project_id);
             exit;

@@ -1,5 +1,5 @@
 <?php
-$page_title = "Project Timeline Setup";
+$page_title = $timeline ? "Edit Project Timeline" : "Initialize Project Timeline";
 $page = 'Timeline Setup';
 $show_breadcrumb = false;
 $base = $GLOBALS['base_url'];
@@ -7,11 +7,11 @@ $base = $GLOBALS['base_url'];
 // Set default values if timeline exists
 $timeline_id = $timeline['id'] ?? null;
 $project_code = htmlspecialchars($timeline['project_code'] ?? '');
-$project_type = htmlspecialchars($timeline['project_type'] ?? '');
+$project_type = htmlspecialchars($timeline['project_type'] ?? 'Residential');
 $project_category = htmlspecialchars($timeline['project_category'] ?? '');
-$handover_months = (int)($timeline['handover_months'] ?? 36);
-$construction_months = (int)($timeline['construction_months'] ?? 24);
-$post_construction_months = (int)($timeline['post_construction_months'] ?? 6);
+$handover_months = $timeline ? (int)$timeline['handover_months'] : 36;
+$construction_months = $timeline ? (int)$timeline['construction_months'] : 24;
+$post_construction_months = $timeline ? (int)$timeline['post_construction_months'] : 6;
 $pre_construction_months = $handover_months - $construction_months - $post_construction_months;
 
 $project_start_date = $timeline['project_start_date'] ?? '';
@@ -390,7 +390,7 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
             <span>›</span>
             <span>Timeline Setup</span>
           </div>
-          <h4 class="tl-title"><i class="fal fa-calendar-alt me-2" style="color:#3b82f6"></i>Project Timeline Setup</h4>
+          <h4 class="tl-title"><i class="fal fa-calendar-alt me-2" style="color:#3b82f6"></i><?= $timeline_id ? 'Edit Timeline Configuration' : 'Project Timeline Setup' ?></h4>
         </div>
         <div>
           <span class="badge-workflow-type <?= $project['workflow_version'] === 'phase_based' ? 'badge-workflow-active' : '' ?>">
@@ -534,10 +534,17 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
               <textarea class="form-control textarea-description" name="description" placeholder="Timeline details or assumptions..."><?= $description ?></textarea>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100 btn-save-timeline" id="submitBtn">
-              <i class="fal fa-save"></i>
-              <?= $timeline_id ? "Update Project Timeline" : "Initialize Project Timeline" ?>
-            </button>
+            <div class="d-flex gap-2">
+              <?php if ($timeline_id): ?>
+              <a href="<?= $base ?>/con-project-timeline/<?= $project['id'] ?>" class="btn btn-secondary w-50" style="border-radius: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;">
+                Cancel
+              </a>
+              <?php endif; ?>
+              <button type="submit" class="btn btn-primary <?= $timeline_id ? 'w-50' : 'w-100' ?> btn-save-timeline" id="submitBtn">
+                <i class="fal fa-save"></i>
+                <?= $timeline_id ? "Update Timeline" : "Initialize Timeline" ?>
+              </button>
+            </div>
           </form>
         </div>
 
