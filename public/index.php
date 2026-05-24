@@ -987,6 +987,7 @@ $routes['con-boq-update/(\d+)']        = ['controller' => 'Phase2\Con_BOQControl
 $routes['con-boq-approve/(\d+)']       = ['controller' => 'Phase2\Con_BOQController', 'method' => 'approve'];
 $routes['con-boq-delete']              = ['controller' => 'Phase2\Con_BOQController', 'method' => 'delete'];
 $routes['con-ajax-boq-targets']        = ['controller' => 'Phase2\Con_BOQController', 'method' => 'ajaxGetTargetsByProject'];
+$routes['con-ajax-material-stock']     = ['controller' => 'Phase2\Con_BOQController', 'method' => 'ajaxGetMaterialStock'];
 
 
 // (Working Plan + Budget routes moved below to avoid duplicates — see lines 839+)

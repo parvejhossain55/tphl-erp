@@ -324,7 +324,7 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
               <i class="fal fa-pencil"></i>Edit BOQ
             </a>
           <?php endif; ?>
-          <?php if ($status === 'Approved'): ?>
+          <?php if ($status === 'Approved' && empty($linkedPr)): ?>
             <a href="<?= $base ?>/con-purchase-request-create?boq_id=<?= $boq['id'] ?>&project_id=<?= $boq['project_id'] ?>"
               style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;border-radius:10px;
                     padding:7px 18px;font-size:12px;font-weight:700;text-decoration:none;
@@ -399,6 +399,150 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
     <?php endif; ?>
   </div>
 </div>
+
+<?php if (!empty($linkedPr)): ?>
+  <!-- ══════════ PROCUREMENT & PAYMENT TRACKING DASHBOARD ══════════ -->
+  <div class="boq-panel" style="border: 1px solid rgba(99, 102, 241, 0.25); background: linear-gradient(180deg, rgba(99, 102, 241, 0.02) 0%, rgba(255, 255, 255, 1) 100%); margin-bottom: 22px;">
+    <div class="boq-panel-title" style="color: #4f46e5; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(99, 102, 241, 0.15); padding-bottom: 12px; margin-bottom: 20px;">
+      <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+        <div class="boq-dot" style="background: #4f46e5; box-shadow: 0 0 8px #4f46e5;"></div>
+        <i class="fal fa-truck-ramp-box" style="font-size: 16px;"></i> Procurement &amp; Payment Pipeline
+      </div>
+      <span style="font-size: 10px; font-weight: 800; background: rgba(99, 102, 241, 0.12); color: #4f46e5; padding: 4px 12px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px;">
+        Already PR Created
+      </span>
+    </div>
+
+    <!-- Main Grid: PR Info, PO Info, Payment Info -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 20px;">
+      
+      <!-- Card 1: Purchase Request -->
+      <div style="background: rgba(249, 250, 251, 0.7); border: 1px solid rgba(0,0,0,0.04); border-radius: 12px; padding: 16px; position: relative;">
+        <div style="position: absolute; right: 16px; top: 16px; font-size: 20px; color: rgba(59, 130, 246, 0.15);"><i class="fal fa-file-invoice"></i></div>
+        <div style="font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;">Purchase Request Details</div>
+        <div style="margin-bottom: 12px;">
+          <a href="<?= $base ?>/con-purchase-request/<?= $linkedPr['pr_id'] ?>" style="font-size: 15px; font-weight: 800; color: #2563eb; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+            PR-<?= $linkedPr['pr_id'] ?> <i class="fal fa-external-link" style="font-size: 11px;"></i>
+          </a>
+        </div>
+        <div style="font-size: 12.5px; margin-bottom: 6px; color: #374151;">
+          <span style="color: #6b7280;">Assigned Executive:</span> <strong style="color: #111827;"><?= htmlspecialchars($linkedPr['executive_name'] ?? 'Not Assigned Yet') ?></strong>
+        </div>
+        <div style="font-size: 12.5px; margin-bottom: 6px; color: #374151; display: flex; align-items: center; gap: 6px;">
+          <span style="color: #6b7280;">Stage/Status:</span>
+          <?php
+            $prBadgeColor = match($linkedPr['pr_status']) {
+              'Approved' => 'background: rgba(16, 185, 129, 0.1); color: #059669;',
+              'PO Issued' => 'background: rgba(59, 130, 246, 0.1); color: #2563eb;',
+              'Rejected' => 'background: rgba(239, 68, 68, 0.1); color: #dc2626;',
+              'Submitted' => 'background: rgba(6, 182, 212, 0.1); color: #0891b2;',
+              default => 'background: rgba(245, 158, 11, 0.1); color: #d97706;',
+            };
+          ?>
+          <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; <?= $prBadgeColor ?>">
+            <?= $linkedPr['pr_status'] ?>
+          </span>
+        </div>
+        <div style="font-size: 11px; color: #9ca3af; margin-top: 12px;">
+          Created: <?= date('d M Y, h:i A', strtotime($linkedPr['pr_created_at'])) ?>
+        </div>
+      </div>
+
+      <!-- Card 2: Purchase Order -->
+      <div style="background: rgba(249, 250, 251, 0.7); border: 1px solid rgba(0,0,0,0.04); border-radius: 12px; padding: 16px; position: relative;">
+        <div style="position: absolute; right: 16px; top: 16px; font-size: 20px; color: rgba(16, 185, 129, 0.15);"><i class="fal fa-file-signature"></i></div>
+        <div style="font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;">Purchase Order Status</div>
+        <?php if ($linkedPo): ?>
+          <div style="margin-bottom: 12px;">
+            <a href="<?= $base ?>/con-purchase-order/<?= $linkedPo['po_id'] ?>" style="font-size: 15px; font-weight: 800; color: #059669; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+              PO-<?= $linkedPo['po_id'] ?> <i class="fal fa-external-link" style="font-size: 11px;"></i>
+            </a>
+          </div>
+          <div style="font-size: 12.5px; margin-bottom: 6px; color: #374151;">
+            <span style="color: #6b7280;">Selected Vendor:</span> <strong style="color: #111827;"><?= !empty($vendors) ? htmlspecialchars(implode(', ', $vendors)) : 'No Vendor Assigned' ?></strong>
+          </div>
+          <div style="font-size: 12.5px; margin-bottom: 6px; color: #374151; display: flex; align-items: center; gap: 6px;">
+            <span style="color: #6b7280;">PO Status:</span>
+            <?php
+              $poBadgeColor = match($linkedPo['po_status']) {
+                'Approved' => 'background: rgba(16, 185, 129, 0.1); color: #059669;',
+                'Cancelled' => 'background: rgba(239, 68, 68, 0.1); color: #dc2626;',
+                'Issued' => 'background: rgba(59, 130, 246, 0.1); color: #2563eb;',
+                default => 'background: rgba(245, 158, 11, 0.1); color: #d97706;',
+              };
+            ?>
+            <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; <?= $poBadgeColor ?>">
+              <?= $linkedPo['po_status'] ?>
+            </span>
+          </div>
+          <div style="font-size: 11px; color: #9ca3af; margin-top: 12px;">
+            PO Date: <?= date('d M Y', strtotime($linkedPo['po_date'])) ?>
+          </div>
+        <?php else: ?>
+          <div style="display: flex; flex-direction: column; justify-content: center; height: calc(100% - 20px); text-align: center; color: #9ca3af; padding: 12px 0;">
+            <i class="fal fa-file-slash" style="font-size: 24px; margin-bottom: 6px; opacity: 0.5;"></i>
+            <span style="font-size: 12px;">No Purchase Order Generated Yet</span>
+          </div>
+        <?php endif; ?>
+      </div>
+
+      <!-- Card 3: Vendor Payments & Accounts -->
+      <div style="background: rgba(249, 250, 251, 0.7); border: 1px solid rgba(0,0,0,0.04); border-radius: 12px; padding: 16px; position: relative;">
+        <div style="position: absolute; right: 16px; top: 16px; font-size: 20px; color: rgba(245, 158, 11, 0.15);"><i class="fal fa-money-bill-wave"></i></div>
+        <div style="font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;">Payments &amp; Accounts Summary</div>
+        <?php if ($linkedPo): ?>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 12.5px; color: #374151; display: flex; justify-content: space-between;">
+              <span style="color: #6b7280;">Total Paid:</span>
+              <strong style="color: #059669; font-weight: 700;">৳<?= number_format($totalPaid, 2) ?></strong>
+            </div>
+            <div style="font-size: 12.5px; color: #374151; display: flex; justify-content: space-between; border-top: 1px dashed rgba(0,0,0,0.06); padding-top: 6px;">
+              <span style="color: #6b7280;">Payment Requests:</span>
+              <strong style="color: #111827;"><?= count($vprDetails) ?> Request(s)</strong>
+            </div>
+            <div style="margin-top: 6px; font-size: 11px;">
+              <?php if ($totalPaid > 0): ?>
+                <span class="badge bg-success" style="font-size: 10px; padding: 4px 8px;"><i class="bi bi-wallet2 me-1"></i> Paid</span>
+              <?php else: ?>
+                <span class="badge bg-warning text-dark" style="font-size: 10px; padding: 4px 8px;"><i class="bi bi-exclamation-circle me-1"></i> No Payments Disbursed</span>
+              <?php endif; ?>
+            </div>
+          </div>
+        <?php else: ?>
+          <div style="display: flex; flex-direction: column; justify-content: center; height: calc(100% - 20px); text-align: center; color: #9ca3af; padding: 12px 0;">
+            <i class="fal fa-money-bill-slash" style="font-size: 24px; margin-bottom: 6px; opacity: 0.5;"></i>
+            <span style="font-size: 12px;">Waiting for PO approval to request payment</span>
+          </div>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <!-- Bottom Stage Status & Timeline -->
+    <div style="background: rgba(99, 102, 241, 0.04); border: 1px solid rgba(99, 102, 241, 0.12); border-radius: 10px; padding: 14px 16px;">
+      <div style="display: flex; align-items: flex-start; gap: 12px;">
+        <div style="width: 24px; height: 24px; border-radius: 50%; background: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; animation: pulse 2s infinite;">
+          <i class="fal fa-spinner fa-spin" style="font-size: 11px;"></i>
+        </div>
+        <div>
+          <div style="font-size: 11px; font-weight: 700; color: #4f46e5; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">
+            Next Action / Stuck At
+          </div>
+          <div style="font-size: 13.5px; font-weight: 700; color: #1f2937;">
+            <?= htmlspecialchars($nextStepInfo) ?>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+      70% { box-shadow: 0 0 0 8px rgba(79, 70, 229, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+    }
+  </style>
+<?php endif; ?>
 
 <!-- ══════════ APPROVAL ACTION (only PM, not creator) ══════════ -->
 <?php if ($canApprove && in_array($status, ['Draft', 'Submitted'])): ?>

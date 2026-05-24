@@ -623,6 +623,7 @@ $statusColor = [
                   <th>Project</th>
                   <th>Status</th>
                   <th>Items</th>
+                  <th>Req. Date (BOQ)</th>
                   <th>Created By</th>
                   <th>Date</th>
                   <th class="text-end">Action</th>
@@ -641,6 +642,15 @@ $statusColor = [
                   </td>
                   <td>
                     <span class="badge bg-light text-dark border" style="font-size:10px"><?= (int)$apr['item_count'] ?> items</span>
+                  </td>
+                  <td style="white-space:nowrap">
+                    <?php if (!empty($apr['earliest_required_date'])): ?>
+                      <span class="badge bg-light text-danger border border-danger px-2" style="font-size:10px">
+                        <i class="bi bi-calendar-event me-1"></i><?= date('d M Y', strtotime($apr['earliest_required_date'])) ?>
+                      </span>
+                    <?php else: ?>
+                      <span class="text-muted">—</span>
+                    <?php endif; ?>
                   </td>
                   <td class="text-muted" style="font-size:11px">
                     <?= htmlspecialchars($apr['created_by_name'] ?? '—') ?>
@@ -913,6 +923,7 @@ $statusColor = [
                   <th>Version</th>
                   <th>Items</th>
                   <th>Grand Total</th>
+                  <th>Req. Date (BOQ)</th>
                   <th>Status</th>
                   <th>Submitted On</th>
                   <th style="text-align:right">Action</th>
@@ -948,6 +959,15 @@ $statusColor = [
                       </td>
                       <td style="font-weight:700;text-align:center"><?= (int) ($bq['item_count'] ?? 0) ?></td>
                       <td style="font-weight:800;color:var(--cd-primary,#198754)"><?= conFmt($bq['grand_total'] ?? 0) ?></td>
+                      <td style="white-space:nowrap">
+                        <?php if (!empty($bq['earliest_required_date'])): ?>
+                          <span class="badge bg-light text-danger border border-danger px-2" style="font-size:10.5px">
+                            <i class="fal fa-calendar-alt me-1"></i><?= date('d M Y', strtotime($bq['earliest_required_date'])) ?>
+                          </span>
+                        <?php else: ?>
+                          <span class="text-muted">—</span>
+                        <?php endif; ?>
+                      </td>
                       <td>
                         <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
               background:<?= $bqSc['bg'] ?>;color:<?= $bqSc['text'] ?>">
@@ -1223,6 +1243,7 @@ $statusColor = [
                   <th>PO</th>
                   <th>Project</th>
                   <th>Order Date</th>
+                  <th>Req. Date (BOQ)</th>
                   <th>SE Status</th>
                   <th>Created By</th>
                   <th style="text-align:right">Action</th>
@@ -1236,6 +1257,15 @@ $statusColor = [
                       <td style="font-weight:700;font-size:13px"><?= htmlspecialchars($po['project_name'] ?? '&mdash;') ?></td>
                       <td style="font-size:11px;color:var(--text-muted)">
                         <?= !empty($po['order_date']) ? date('d M Y', strtotime($po['order_date'])) : '&mdash;' ?>
+                      </td>
+                      <td style="white-space:nowrap">
+                        <?php if (!empty($po['earliest_required_date'])): ?>
+                          <span class="badge bg-light text-danger border border-danger px-2" style="font-size:11px">
+                            <i class="fal fa-calendar-alt me-1"></i><?= date('d M Y', strtotime($po['earliest_required_date'])) ?>
+                          </span>
+                        <?php else: ?>
+                          <span class="text-muted">—</span>
+                        <?php endif; ?>
                       </td>
                       <td><?php $seOk = !empty($po['approved_by_se']); ?><span
                           style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:<?= $seOk ? 'rgba(16,185,129,.12)' : ' rgba(239,68,68,.1)' ?>;color:<?= $seOk ? '#059669' : '#dc2626' ?>"><?= $seOk ? '&#10003; SE Approved' : '&#x23f3; SE Pending' ?></span>

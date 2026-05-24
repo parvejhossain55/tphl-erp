@@ -219,6 +219,151 @@ class Con_BOQController extends Controller
             $creatorInfo = $stmt->get_result()->fetch_assoc() ?? [];
         }
 
+        // Fetch linked Purchase Request details (if any)
+        $stmtPr = $this->db->prepare("
+            SELECT pr.id AS pr_id, pr.status AS pr_status, pr.created_at AS pr_created_at, pr.assigned_executive_id,
+                   exec.full_name AS executive_name
+            FROM purchase_requests pr
+            LEFT JOIN users exec ON exec.id = pr.assigned_executive_id
+            WHERE pr.bom_id = ?
+            ORDER BY pr.id DESC LIMIT 1
+        ");
+        $stmtPr->bind_param('i', $id);
+        $stmtPr->execute();
+        $linkedPr = $stmtPr->get_result()->fetch_assoc();
+
+        $linkedPo = null;
+        $vprDetails = [];
+        $totalPaid = 0.00;
+        $vendors = [];
+        $nextStepInfo = 'Create Purchase Request';
+
+        if ($linkedPr) {
+            // Find linked PO
+            $stmtPo = $this->db->prepare("
+                SELECT po.id AS po_id, po.status AS po_status, po.order_date AS po_date,
+                       po.approved_by_pm
+                FROM purchase_orders po
+                WHERE po.request_id = ?
+                ORDER BY po.id DESC LIMIT 1
+            ");
+            $stmtPo->bind_param('i', $linkedPr['pr_id']);
+            $stmtPo->execute();
+            $linkedPo = $stmtPo->get_result()->fetch_assoc();
+
+            if ($linkedPo) {
+                // Get vendors for this PO
+                $stmtVendors = $this->db->prepare("
+                    SELECT DISTINCT v.name
+                    FROM purchase_order_items poi
+                    JOIN vendors v ON v.id = poi.selected_vendor_id
+                    WHERE poi.purchase_order_id = ?
+                ");
+                $stmtVendors->bind_param('i', $linkedPo['po_id']);
+                $stmtVendors->execute();
+                $vendorRows = $stmtVendors->get_result()->fetch_all(MYSQLI_ASSOC);
+                $vendors = array_column($vendorRows, 'name');
+
+                // Get payment requests and actual amount paid for this PO
+                $stmtVpr = $this->db->prepare("
+                    SELECT vpr.id, vpr.payment_type, vpr.net_payable, vpr.status AS vpr_status,
+                           COALESCE(SUM(cft.amount_paid), 0) AS paid_amount
+                    FROM vendor_payment_requests vpr
+                    LEFT JOIN con_financial_transactions cft ON cft.ref_id = vpr.id AND cft.ref_type = 'vendor_payment'
+                    WHERE vpr.purchase_order_id = ?
+                    GROUP BY vpr.id
+                ");
+                $stmtVpr->bind_param('i', $linkedPo['po_id']);
+                $stmtVpr->execute();
+                $vprDetails = $stmtVpr->get_result()->fetch_all(MYSQLI_ASSOC);
+                
+                foreach ($vprDetails as $vpr) {
+                    $totalPaid += (float)$vpr['paid_amount'];
+                }
+            }
+
+            // Determine next step / block info
+            if ($linkedPr['pr_status'] === 'Draft') {
+                $nextStepInfo = 'Submit Purchase Request for review (Action required by Site Engineer / Creator).';
+            } elseif ($linkedPr['pr_status'] === 'Submitted') {
+                $nextStepInfo = 'Purchase Request is submitted. Awaiting approval by Project Manager / Management.';
+            } elseif ($linkedPr['pr_status'] === 'Rejected') {
+                $nextStepInfo = 'Purchase Request was Rejected. Need to revise details or create a new PR.';
+            } elseif ($linkedPr['pr_status'] === 'Approved') {
+                if (empty($linkedPr['assigned_executive_id'])) {
+                    $nextStepInfo = 'Awaiting Purchase Executive assignment by Purchase Head or Admin.';
+                } else {
+                    // Check if quotations count is at least 2
+                    $stmtQuotes = $this->db->prepare("SELECT COUNT(id) AS count FROM quotations WHERE request_id = ?");
+                    $stmtQuotes->bind_param('i', $linkedPr['pr_id']);
+                    $stmtQuotes->execute();
+                    $qCount = $stmtQuotes->get_result()->fetch_assoc()['count'] ?? 0;
+
+                    if ($qCount < 2) {
+                        $nextStepInfo = 'Purchase Executive (' . htmlspecialchars($linkedPr['executive_name']) . ') is collecting quotations. Currently ' . $qCount . ' quote(s) collected. (Min. 2 required for CST)';
+                    } else {
+                        // Check if CST winners are chosen
+                        $stmtWinners = $this->db->prepare("
+                            SELECT COUNT(ci.id) AS count 
+                            FROM comparison_items ci
+                            JOIN quotation_comparisons qc ON qc.id = ci.comparison_id
+                            WHERE qc.request_id = ? AND ci.is_selected = 1
+                        ");
+                        $stmtWinners->bind_param('i', $linkedPr['pr_id']);
+                        $stmtWinners->execute();
+                        $winCount = $stmtWinners->get_result()->fetch_assoc()['count'] ?? 0;
+
+                        if ($winCount == 0) {
+                            $nextStepInfo = 'CST Comparison in progress. Awaiting winning vendor selection.';
+                        } else {
+                            $nextStepInfo = 'CST winner selected. Awaiting Purchase Order generation.';
+                        }
+                    }
+                }
+            } elseif ($linkedPr['pr_status'] === 'PO Issued' || $linkedPo) {
+                if ($linkedPo) {
+                    if ($linkedPo['po_status'] === 'Issued' || empty($linkedPo['approved_by_pm'])) {
+                        $nextStepInfo = 'Purchase Order generated. Awaiting approval by Management/Project Manager.';
+                    } elseif ($linkedPo['po_status'] === 'Approved') {
+                        // Check material receiving status
+                        $totalRecv = (float)$totalReceived;
+                        $totalBq = (float)$totalBoqQty;
+                        if ($totalRecv <= 0) {
+                            $nextStepInfo = 'Purchase Order approved. Awaiting material dispatch and receiving at site.';
+                        } elseif ($totalRecv < $totalBq) {
+                            $nextStepInfo = 'Materials partially received at site (' . number_format($totalRecv, 2) . ' / ' . number_format($totalBq, 2) . '). Awaiting remaining delivery.';
+                        } else {
+                            // Check payment status
+                            if (empty($vprDetails)) {
+                                $nextStepInfo = 'Materials fully received. Awaiting Vendor Payment Request submission.';
+                            } else {
+                                $pendingVpr = false;
+                                $approvedVpr = false;
+                                foreach ($vprDetails as $v) {
+                                    if ($v['vpr_status'] === 'Submitted') {
+                                        $pendingVpr = true;
+                                    } elseif ($v['vpr_status'] === 'Approved' || $v['vpr_status'] === 'Partially_Paid') {
+                                        $approvedVpr = true;
+                                    }
+                                }
+                                if ($pendingVpr) {
+                                    $nextStepInfo = 'Vendor Payment Request submitted. Awaiting approval by Management.';
+                                } elseif ($approvedVpr) {
+                                    $nextStepInfo = 'Vendor Payment Request approved. Awaiting payment disbursement by Accounts.';
+                                } else {
+                                    $nextStepInfo = 'All vendor payments processed / fully paid.';
+                                }
+                            }
+                        }
+                    } elseif ($linkedPo['po_status'] === 'Cancelled') {
+                        $nextStepInfo = 'Purchase Order was Cancelled/Rejected. Need to check and regenerate PO.';
+                    }
+                } else {
+                    $nextStepInfo = 'Purchase Request updated to PO Issued. Awaiting PO retrieval.';
+                }
+            }
+        }
+
         $this->view('phase2/boq/show-boq', [
             'current_route'       => 'con-boq',
             'page_title'          => 'BOQ Details — ' . $boq['project_name'],
@@ -232,6 +377,12 @@ class Con_BOQController extends Controller
             'totalReceived'       => $totalReceived,
             'totalRemaining'      => $totalRemaining,
             'overallConsumedPct'  => $overallConsumedPct,
+            'linkedPr'            => $linkedPr,
+            'linkedPo'            => $linkedPo,
+            'vprDetails'          => $vprDetails,
+            'totalPaid'           => $totalPaid,
+            'vendors'             => $vendors,
+            'nextStepInfo'        => $nextStepInfo,
         ]);
     }
 
@@ -439,6 +590,84 @@ class Con_BOQController extends Controller
         $targets = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
         echo json_encode(['targets' => $targets]);
+        exit;
+    }
+
+    // =========================================================================
+    // AJAX — Material Stock by Project & Material (for BOQ create form)
+    // GET: ?project_id=X&material_id=Y
+    // Returns JSON
+    // =========================================================================
+    public function ajaxGetMaterialStock()
+    {
+        header('Content-Type: application/json');
+        $projectId  = (int)($_GET['project_id'] ?? 0);
+        $materialId = (int)($_GET['material_id'] ?? 0);
+
+        if (!$projectId || !$materialId) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Project and Material are required.',
+                'total_stock' => 0,
+                'unit' => '',
+                'warehouses' => []
+            ]);
+            exit;
+        }
+
+        // Fetch project name
+        $projectName = '';
+        $stmtProj = $this->db->prepare("SELECT name FROM projects WHERE id = ? LIMIT 1");
+        $stmtProj->bind_param('i', $projectId);
+        $stmtProj->execute();
+        $projRow = $stmtProj->get_result()->fetch_assoc();
+        if ($projRow) {
+            $projectName = $projRow['name'];
+        }
+
+        // Fetch material name and unit
+        $materialName = '';
+        $unit = '';
+        $stmtMat = $this->db->prepare("SELECT name, unit FROM con_materials WHERE id = ? LIMIT 1");
+        $stmtMat->bind_param('i', $materialId);
+        $stmtMat->execute();
+        $matRow = $stmtMat->get_result()->fetch_assoc();
+        if ($matRow) {
+            $materialName = $matRow['name'];
+            $unit         = $matRow['unit'];
+        }
+
+        // Fetch all warehouses for the project, LEFT JOINing their stock levels for the selected material
+        $stmtStock = $this->db->prepare("
+            SELECT w.name AS warehouse_name, COALESCE(s.current_quantity, 0) AS current_quantity
+            FROM con_warehouses w
+            LEFT JOIN con_stocks s ON s.warehouse_id = w.id AND s.material_id = ?
+            WHERE w.project_id = ?
+            ORDER BY w.name ASC
+        ");
+        $stmtStock->bind_param('ii', $materialId, $projectId);
+        $stmtStock->execute();
+        $rows = $stmtStock->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $totalStock = 0.0;
+        $warehouses = [];
+        foreach ($rows as $row) {
+            $qty = (float)$row['current_quantity'];
+            $totalStock += $qty;
+            $warehouses[] = [
+                'warehouse_name'   => $row['warehouse_name'],
+                'current_quantity' => $qty
+            ];
+        }
+
+        echo json_encode([
+            'success'       => true,
+            'project_name'  => $projectName,
+            'material_name' => $materialName,
+            'total_stock'   => $totalStock,
+            'unit'          => $unit,
+            'warehouses'    => $warehouses
+        ]);
         exit;
     }
 }

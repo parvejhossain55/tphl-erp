@@ -87,7 +87,8 @@ class Con_DashboardController extends Controller
                    u.full_name AS creator_name,
                    COALESCE(des.name, '') AS creator_designation,
                    COUNT(bi.id) AS item_count,
-                   COALESCE(SUM(bi.total_cost), 0) AS grand_total
+                   COALESCE(SUM(bi.total_cost), 0) AS grand_total,
+                   MIN(bi.required_date) AS earliest_required_date
             FROM boq_master m
             LEFT JOIN projects     p   ON p.id  = m.project_id
             LEFT JOIN users        u   ON u.id  = m.created_by
@@ -123,7 +124,11 @@ class Con_DashboardController extends Controller
             SELECT po.id, po.status, po.order_date,
                    po.approved_by_se,
                    p.name AS project_name,
-                   u.full_name AS created_by_name
+                   u.full_name AS created_by_name,
+                   (SELECT MIN(bi.required_date)
+                    FROM purchase_order_items poi
+                    JOIN boq_items bi ON bi.boq_id = pr.bom_id AND bi.material_id = poi.material_id
+                    WHERE poi.purchase_order_id = po.id) AS earliest_required_date
             FROM purchase_orders po
             JOIN purchase_requests pr ON pr.id = po.request_id
             LEFT JOIN projects p ON p.id = pr.project_id
@@ -138,7 +143,11 @@ class Con_DashboardController extends Controller
             SELECT po.id, po.status, po.order_date,
                    po.approved_by_pm,
                    p.name AS project_name,
-                   u.full_name AS created_by_name
+                   u.full_name AS created_by_name,
+                   (SELECT MIN(bi.required_date)
+                    FROM purchase_order_items poi
+                    JOIN boq_items bi ON bi.boq_id = pr.bom_id AND bi.material_id = poi.material_id
+                    WHERE poi.purchase_order_id = po.id) AS earliest_required_date
             FROM purchase_orders po
             JOIN purchase_requests pr ON pr.id = po.request_id
             LEFT JOIN projects p ON p.id = pr.project_id
@@ -349,7 +358,11 @@ class Con_DashboardController extends Controller
                        p.name  AS project_name,
                        u.full_name AS created_by_name,
                        r.name  AS created_by_role,
-                       COUNT(pri.id) AS item_count
+                       COUNT(pri.id) AS item_count,
+                       (SELECT MIN(bi.required_date)
+                        FROM purchase_request_items pri2
+                        JOIN boq_items bi ON bi.boq_id = pr.bom_id AND bi.material_id = pri2.material_id
+                        WHERE pri2.request_id = pr.id) AS earliest_required_date
                 FROM purchase_requests pr
                 LEFT JOIN projects p    ON p.id  = pr.project_id
                 LEFT JOIN users u       ON u.id  = pr.created_by

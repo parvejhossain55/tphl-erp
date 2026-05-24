@@ -124,9 +124,10 @@ $months     = ['','January','February','March','April','May','June',
                             <table class="table table-bordered align-middle" id="boqItemsTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width:45%;">Material <span class="text-danger">*</span></th>
-                                        <th style="width:22%;">Quantity <span class="text-danger">*</span></th>
-                                        <th style="width:25%;">Required Date <span class="text-danger">*</span></th>
+                                        <th style="width:40%;">Material <span class="text-danger">*</span></th>
+                                        <th style="width:12%;" class="text-center">Stock</th>
+                                        <th style="width:18%;">Quantity <span class="text-danger">*</span></th>
+                                        <th style="width:22%;">Required Date <span class="text-danger">*</span></th>
                                         <th style="width:8%;" class="text-center">Action</th>
                                     </tr>
                                 </thead>
@@ -141,6 +142,11 @@ $months     = ['','January','February','March','April','May','June',
                                                     </option>
                                                 <?php endforeach; ?>
                                             </select>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-primary check-stock-btn d-inline-flex align-items-center gap-1" style="border-radius: 6px; font-weight: 500;" title="Show Stock">
+                                                <i class="bi bi-eye-fill"></i> Show
+                                            </button>
                                         </td>
                                         <td>
                                             <div class="input-group">
@@ -318,10 +324,137 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     tbody.addEventListener('click', function (e) {
-        var btn = e.target.closest('.boq-remove-row');
-        if (btn) {
-            btn.closest('tr').remove();
+        var removeBtn = e.target.closest('.boq-remove-row');
+        if (removeBtn) {
+            removeBtn.closest('tr').remove();
+        }
+
+        var stockBtn = e.target.closest('.check-stock-btn');
+        if (stockBtn) {
+            checkStock(stockBtn);
         }
     });
 });
+
+function checkStock(btn) {
+    const row = btn.closest('tr');
+    const matSelect = row.querySelector('.boq-material');
+    const materialId = matSelect.value;
+    
+    // Select project field (handles both hidden and select element)
+    const projectField = document.querySelector('[name="project_id"]');
+    const projectId = projectField ? projectField.value : '';
+
+    if (!projectId) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Project Required',
+            text: 'Please select a Project first.',
+            confirmButtonColor: '#4f46e5'
+        });
+        return;
+    }
+
+    if (!materialId) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Material Required',
+            text: 'Please select a Material first.',
+            confirmButtonColor: '#4f46e5'
+        });
+        return;
+    }
+
+    // Show loading indicator
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+    fetch(`${BASE_URL}/con-ajax-material-stock?project_id=${projectId}&material_id=${materialId}`)
+        .then(response => response.json())
+        .then(data => {
+            // Reset button state
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+
+            if (data.success) {
+                let warehouseListHtml = '';
+                if (data.warehouses.length > 0) {
+                    data.warehouses.forEach(w => {
+                        warehouseListHtml += `
+                            <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                                <div>
+                                    <i class="bi bi-house-door text-muted me-2"></i>
+                                    <span class="fw-semibold">${w.warehouse_name}</span>
+                                </div>
+                                <span class="badge bg-light text-dark border fw-bold">${w.current_quantity.toFixed(3)} ${data.unit}</span>
+                            </div>
+                        `;
+                    });
+                } else {
+                    warehouseListHtml = `
+                        <div class="list-group-item text-center py-3 text-muted bg-light">
+                            <i class="bi bi-exclamation-circle me-1 text-warning"></i>
+                            No warehouses assigned or found for this project.
+                        </div>
+                    `;
+                }
+
+                const badgeClass = data.total_stock > 0 ? 'bg-success' : 'bg-danger';
+
+                Swal.fire({
+                    title: '<span style="font-size:18px; font-weight:700;"><i class="bi bi-box-seam text-primary me-2"></i>Project-wise Stock Inquiry</span>',
+                    html: `
+                        <div class="text-start" style="font-size:14px; font-family:inherit;">
+                            <div class="mb-2 pb-2 border-bottom">
+                                <strong>Project:</strong> <span class="text-primary fw-semibold">${data.project_name}</span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Material:</strong> <span class="text-dark fw-semibold">${data.material_name}</span>
+                            </div>
+                            <div class="card shadow-sm border-0 mb-3 overflow-hidden" style="border: 1px solid #dee2e6 !important;">
+                                <div class="card-header bg-light py-2 px-3 border-bottom-0">
+                                    <h6 class="mb-0 text-secondary fw-bold" style="font-size: 12.5px;">
+                                        <i class="bi bi-houses me-1 text-info"></i> Warehouse Stock Breakdown
+                                    </h6>
+                                </div>
+                                <div class="list-group list-group-flush border-top">
+                                    ${warehouseListHtml}
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center bg-light p-3 rounded border" style="border: 1px solid #dee2e6 !important;">
+                                <span class="fw-bold text-secondary">Total Available Stock:</span>
+                                <span class="badge ${badgeClass} px-3 py-2 fs-6 fw-bold" style="letter-spacing: 0.5px;">
+                                    ${data.total_stock.toFixed(3)} ${data.unit}
+                                </span>
+                            </div>
+                        </div>
+                    `,
+                    showCloseButton: true,
+                    confirmButtonText: 'Close',
+                    confirmButtonColor: '#4f46e5',
+                    customClass: {
+                        popup: 'shadow-lg border-0'
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message || 'Failed to fetch stock.',
+                    confirmButtonColor: '#ef4444'
+                });
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            Swal.fire({
+                icon: 'error',
+                title: 'Network Error',
+                text: 'Something went wrong while connecting to the server. Please try again.',
+                confirmButtonColor: '#ef4444'
+            });
+        });
+}
 </script>
