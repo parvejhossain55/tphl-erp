@@ -623,6 +623,7 @@ $statusColor = [
                   <th>Project</th>
                   <th>Status</th>
                   <th>Items</th>
+                  <th>Req. Date (BOQ)</th>
                   <th>Created By</th>
                   <th>Date</th>
                   <th class="text-end">Action</th>
@@ -641,6 +642,15 @@ $statusColor = [
                   </td>
                   <td>
                     <span class="badge bg-light text-dark border" style="font-size:10px"><?= (int)$apr['item_count'] ?> items</span>
+                  </td>
+                  <td style="white-space:nowrap">
+                    <?php if (!empty($apr['earliest_required_date'])): ?>
+                      <span class="badge bg-light text-danger border border-danger px-2" style="font-size:10px">
+                        <i class="bi bi-calendar-event me-1"></i><?= date('d M Y', strtotime($apr['earliest_required_date'])) ?>
+                      </span>
+                    <?php else: ?>
+                      <span class="text-muted">—</span>
+                    <?php endif; ?>
                   </td>
                   <td class="text-muted" style="font-size:11px">
                     <?= htmlspecialchars($apr['created_by_name'] ?? '—') ?>
@@ -677,9 +687,133 @@ $statusColor = [
                 <?php endforeach; ?>
               </tbody>
             </table>
+        </div>
+    <?php endif; ?>
+
+    <?php
+    $pendingLandRequisitions = $pendingLandRequisitions ?? [];
+    if (!empty($pendingLandRequisitions) && in_array($sessionRoleId, [1, 3])):
+    ?>
+        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.03)">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="sec-title" style="margin-bottom:0">
+              <div class="sec-title-dot" style="background:#10b981;animation:pulse 1.5s infinite"></div>
+              <i class="fal fa-file-invoice-dollar me-2" style="color:#10b981"></i>
+              Land Fund Requisitions &mdash; Awaiting Management Approval
+              <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
+                background:rgba(16,185,129,.12);color:#10b981">
+                <?= count($pendingLandRequisitions) ?> Pending
+              </span>
+            </div>
+            <a href="<?= $base_url ?>/con-land-requisitions" class="btn btn-sm btn-outline-success" style="font-size:11px">
+              View All Requisitions →
+            </a>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle" style="font-size:12.5px">
+              <thead class="table-light">
+                <tr>
+                  <th>#</th>
+                  <th>Project & Landowner</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Requested By</th>
+                  <th>Date</th>
+                  <th class="text-end">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($pendingLandRequisitions as $lrIndex => $lreq): ?>
+                <tr>
+                  <td><?= $lrIndex + 1 ?></td>
+                  <td>
+                    <strong><?= htmlspecialchars($lreq['project_name'] ?? 'N/A') ?></strong>
+                    <div style="font-size:11px; color:#6c757d;">Owner: <?= htmlspecialchars($lreq['land_owner_name'] ?? 'N/A') ?></div>
+                  </td>
+                  <td><span class="badge bg-secondary"><?= htmlspecialchars($lreq['requisition_type']) ?></span></td>
+                  <td class="fw-bold text-success">BDT <?= number_format($lreq['requested_amount'], 2) ?></td>
+                  <td><?= htmlspecialchars($lreq['requester_name'] ?? '—') ?></td>
+                  <td class="text-muted" style="font-size:11px"><?= date('d M Y', strtotime($lreq['created_at'])) ?></td>
+                  <td class="text-end">
+                    <a href="<?= $base_url ?>/con-land-requisitions" class="btn btn-sm btn-success" style="font-size:11px">
+                      <i class="bi bi-check-circle"></i> Review & Approve
+                    </a>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
           </div>
         </div>
     <?php endif; ?>
+
+    <?php
+    $pendingPettyCash = $pendingPettyCash ?? [];
+    if (!empty($pendingPettyCash) && in_array($sessionRoleId, [1, 3])):
+    ?>
+        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.03)">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="sec-title" style="margin-bottom:0">
+              <div class="sec-title-dot" style="background:#f59e0b;animation:pulse 1.5s infinite"></div>
+              <i class="fal fa-wallet me-2" style="color:#f59e0b"></i>
+              Fund Requisitions &mdash; Awaiting Management Approval
+              <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
+                background:rgba(245,158,11,.12);color:#f59e0b">
+                <?= count($pendingPettyCash) ?> Pending
+              </span>
+            </div>
+            <a href="<?= $base_url ?>/fund-requisitions" class="btn btn-sm btn-outline-warning text-dark" style="font-size:11px">
+              View All Requisitions &rarr;
+            </a>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle" style="font-size:12.5px">
+              <thead class="table-light">
+                <tr>
+                  <th>#</th>
+                  <th>Department & Project</th>
+                  <th>Category / Type</th>
+                  <th>Amount</th>
+                  <th>Purpose</th>
+                  <th>Requested By</th>
+                  <th>Date</th>
+                  <th class="text-end">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($pendingPettyCash as $pcIndex => $pcreq): ?>
+                <tr>
+                  <td><?= $pcIndex + 1 ?></td>
+                  <td>
+                    <strong><?= htmlspecialchars($pcreq['department_name'] ?? 'N/A') ?></strong>
+                    <div style="font-size:11px; color:#6c757d;">Project: <?= htmlspecialchars($pcreq['project_name'] ?? 'Office General') ?></div>
+                  </td>
+                  <td>
+                    <span class="badge bg-secondary"><?= htmlspecialchars($pcreq['requisition_type'] === 'petty_cash' ? 'Petty Cash' : 'General') ?></span>
+                    <div style="font-size:10px; color:#6c757d;"><?= htmlspecialchars($pcreq['category']) ?></div>
+                  </td>
+                  <td class="fw-bold text-success">BDT <?= number_format($pcreq['amount'], 2) ?></td>
+                  <td>
+                    <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= htmlspecialchars($pcreq['purpose']) ?>">
+                      <?= htmlspecialchars($pcreq['purpose']) ?>
+                    </div>
+                  </td>
+                  <td><?= htmlspecialchars($pcreq['requester_name'] ?? '—') ?></td>
+                  <td class="text-muted" style="font-size:11px"><?= date('d M Y', strtotime($pcreq['created_at'])) ?></td>
+                  <td class="text-end">
+                    <a href="<?= $base_url ?>/fund-requisitions" class="btn btn-sm btn-warning text-dark fw-bold" style="font-size:11px">
+                      <i class="bi bi-check-circle"></i> Review & Approve
+                    </a>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+    <?php endif; ?>
+
+
 
     <?php
     $pendingBudgetExtends = $pendingBudgetExtends ?? [];
@@ -789,6 +923,7 @@ $statusColor = [
                   <th>Version</th>
                   <th>Items</th>
                   <th>Grand Total</th>
+                  <th>Req. Date (BOQ)</th>
                   <th>Status</th>
                   <th>Submitted On</th>
                   <th style="text-align:right">Action</th>
@@ -824,6 +959,15 @@ $statusColor = [
                       </td>
                       <td style="font-weight:700;text-align:center"><?= (int) ($bq['item_count'] ?? 0) ?></td>
                       <td style="font-weight:800;color:var(--cd-primary,#198754)"><?= conFmt($bq['grand_total'] ?? 0) ?></td>
+                      <td style="white-space:nowrap">
+                        <?php if (!empty($bq['earliest_required_date'])): ?>
+                          <span class="badge bg-light text-danger border border-danger px-2" style="font-size:10.5px">
+                            <i class="fal fa-calendar-alt me-1"></i><?= date('d M Y', strtotime($bq['earliest_required_date'])) ?>
+                          </span>
+                        <?php else: ?>
+                          <span class="text-muted">—</span>
+                        <?php endif; ?>
+                      </td>
                       <td>
                         <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
               background:<?= $bqSc['bg'] ?>;color:<?= $bqSc['text'] ?>">
@@ -1099,6 +1243,7 @@ $statusColor = [
                   <th>PO</th>
                   <th>Project</th>
                   <th>Order Date</th>
+                  <th>Req. Date (BOQ)</th>
                   <th>SE Status</th>
                   <th>Created By</th>
                   <th style="text-align:right">Action</th>
@@ -1112,6 +1257,15 @@ $statusColor = [
                       <td style="font-weight:700;font-size:13px"><?= htmlspecialchars($po['project_name'] ?? '&mdash;') ?></td>
                       <td style="font-size:11px;color:var(--text-muted)">
                         <?= !empty($po['order_date']) ? date('d M Y', strtotime($po['order_date'])) : '&mdash;' ?>
+                      </td>
+                      <td style="white-space:nowrap">
+                        <?php if (!empty($po['earliest_required_date'])): ?>
+                          <span class="badge bg-light text-danger border border-danger px-2" style="font-size:11px">
+                            <i class="fal fa-calendar-alt me-1"></i><?= date('d M Y', strtotime($po['earliest_required_date'])) ?>
+                          </span>
+                        <?php else: ?>
+                          <span class="text-muted">—</span>
+                        <?php endif; ?>
                       </td>
                       <td><?php $seOk = !empty($po['approved_by_se']); ?><span
                           style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:<?= $seOk ? 'rgba(16,185,129,.12)' : ' rgba(239,68,68,.1)' ?>;color:<?= $seOk ? '#059669' : '#dc2626' ?>"><?= $seOk ? '&#10003; SE Approved' : '&#x23f3; SE Pending' ?></span>

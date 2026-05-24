@@ -31,6 +31,7 @@ class Con_TargetFixed extends Model
     public function getAll()
     {
         $sql = "SELECT tf.*,
+                       (SELECT id FROM boq_master WHERE target_id = tf.id LIMIT 1) AS boq_id,
                        p.name           AS project_name,
                        wo.title         AS work_order_title,
                        wo.wo_number     AS work_order_number,
@@ -72,6 +73,7 @@ class Con_TargetFixed extends Model
                     wp.year          AS plan_year,
                     wp.month         AS plan_month,
                     wp.estimated_cost AS plan_estimated_cost,
+                    wp.weight_percentage AS plan_weight_percentage,
                     wt.work_type_name AS work_type_name,
                     dt.name          AS design_type_name,
                     u.full_name      AS created_by_name,
@@ -152,22 +154,23 @@ class Con_TargetFixed extends Model
         $details     = $data['target_details'] ?? null;
 
         $sql = "INSERT INTO {$this->table}
-                (project_id, work_plan_id, work_order_id, target_title, user_id,
+                (project_id, work_plan_id, work_order_id, floor_name, target_title, user_id,
                  year, month, week_number, target_percentage,
                  is_lab_test, lab_test_date, description,
                  gain_percentage, photo_link, field_test_details,
                  lab_test_result, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.00, NULL, NULL, NULL, NOW())";
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.00, NULL, NULL, NULL, NOW())";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             error_log('Con_TargetFixed::create prepare failed: ' . $this->db->error);
             return 0;
         }
         $stmt->bind_param(
-            'iiisiiiidiss',
+            'iiissiiiidiss',
             $data['project_id'],
             $data['work_plan_id'],
             $data['work_order_id'],
+            $data['floor_name'],
             $data['target_title'],
             $data['user_id'],
             $data['year'],
@@ -196,6 +199,7 @@ class Con_TargetFixed extends Model
                 SET project_id        = ?,
                     work_plan_id      = ?,
                     work_order_id     = ?,
+                    floor_name        = ?,
                     target_title      = ?,
                     year              = ?,
                     month             = ?,
@@ -208,10 +212,11 @@ class Con_TargetFixed extends Model
                 WHERE id = ?";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            'iiisiiiidissi',
+            'iiissiiiidissi',
             $data['project_id'],
             $data['work_plan_id'],
             $data['work_order_id'],
+            $data['floor_name'],
             $data['target_title'],
             $data['year'],
             $data['month'],

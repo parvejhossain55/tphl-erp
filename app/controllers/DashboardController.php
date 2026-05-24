@@ -211,6 +211,28 @@ class DashboardController extends Controller
             $stats['total_clients'] = (int)$row['c'];
         }
 
+        // 7. Pending Land Requisitions (approved by Management, pending Accounts payment)
+        $r = $this->db->query("
+            SELECT COUNT(*) AS c, COALESCE(SUM(requested_amount), 0) AS amt
+            FROM land_fund_requisitions
+            WHERE mgmt_status = 'Approved' AND accounts_status = 'Pending'
+        ");
+        if ($r && $row = $r->fetch_assoc()) {
+            $stats['pending_land_requisitions'] = (int)$row['c'];
+            $stats['pending_land_requisition_amt'] = (float)$row['amt'];
+        }
+
+        // 8. Pending Fund Requisitions (pending Accounts disbursement)
+        $r = $this->db->query("
+            SELECT COUNT(*) AS c, COALESCE(SUM(amount), 0) AS amt
+            FROM fund_requisitions
+            WHERE status = 'approved'
+        ");
+        if ($r && $row = $r->fetch_assoc()) {
+            $stats['pending_petty_cash'] = (int)$row['c'];
+            $stats['pending_petty_cash_amt'] = (float)$row['amt'];
+        }
+
         return $stats;
     }
 }

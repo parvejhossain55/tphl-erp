@@ -87,7 +87,8 @@ class Con_DashboardController extends Controller
                    u.full_name AS creator_name,
                    COALESCE(des.name, '') AS creator_designation,
                    COUNT(bi.id) AS item_count,
-                   COALESCE(SUM(bi.total_cost), 0) AS grand_total
+                   COALESCE(SUM(bi.total_cost), 0) AS grand_total,
+                   MIN(bi.required_date) AS earliest_required_date
             FROM boq_master m
             LEFT JOIN projects     p   ON p.id  = m.project_id
             LEFT JOIN users        u   ON u.id  = m.created_by
@@ -123,7 +124,11 @@ class Con_DashboardController extends Controller
             SELECT po.id, po.status, po.order_date,
                    po.approved_by_se,
                    p.name AS project_name,
-                   u.full_name AS created_by_name
+                   u.full_name AS created_by_name,
+                   (SELECT MIN(bi.required_date)
+                    FROM purchase_order_items poi
+                    JOIN boq_items bi ON bi.boq_id = pr.bom_id AND bi.material_id = poi.material_id
+                    WHERE poi.purchase_order_id = po.id) AS earliest_required_date
             FROM purchase_orders po
             JOIN purchase_requests pr ON pr.id = po.request_id
             LEFT JOIN projects p ON p.id = pr.project_id
@@ -138,7 +143,11 @@ class Con_DashboardController extends Controller
             SELECT po.id, po.status, po.order_date,
                    po.approved_by_pm,
                    p.name AS project_name,
-                   u.full_name AS created_by_name
+                   u.full_name AS created_by_name,
+                   (SELECT MIN(bi.required_date)
+                    FROM purchase_order_items poi
+                    JOIN boq_items bi ON bi.boq_id = pr.bom_id AND bi.material_id = poi.material_id
+                    WHERE poi.purchase_order_id = po.id) AS earliest_required_date
             FROM purchase_orders po
             JOIN purchase_requests pr ON pr.id = po.request_id
             LEFT JOIN projects p ON p.id = pr.project_id
@@ -284,19 +293,43 @@ class Con_DashboardController extends Controller
 
         $pendingWorkOrders = [];
         if (in_array($userRole, [1, 3, 22])) {
-            $rWO = $this->db->query("
-                SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
-                       p.name AS project_name,
-                       c.name AS contractor_name,
-                       u.full_name AS creator_name
-                FROM con_work_orders wo
-                LEFT JOIN projects p ON p.id = wo.project_id
-                LEFT JOIN contractors c ON c.id = wo.contractor_id
-                LEFT JOIN users u ON u.id = wo.created_by
-                WHERE wo.status = 'draft'
-                ORDER BY wo.created_at DESC
-                LIMIT 10
-            ");
+            if ($userRole == 22) {
+                $rWO = $this->db->query("
+                    SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
+                           p.name AS project_name,
+                           c.name AS contractor_name,
+                           u.full_name AS creator_name
+                    FROM con_work_orders wo
+                    JOIN con_work_order_approvals wa_pm ON wa_pm.work_order_id = wo.id AND wa_pm.role_id = 22
+                    JOIN con_work_order_approvals wa_mo ON wa_mo.work_order_id = wo.id AND wa_mo.role_id = 20
+                    LEFT JOIN projects p ON p.id = wo.project_id
+                    LEFT JOIN contractors c ON c.id = wo.contractor_id
+                    LEFT JOIN users u ON u.id = wo.created_by
+                    WHERE wo.status = 'draft'
+                      AND wa_pm.status = 'pending'
+                      AND wa_mo.status != 'pending'
+                    ORDER BY wo.created_at DESC
+                    LIMIT 10
+                ");
+            } else {
+                $rWO = $this->db->query("
+                    SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
+                           p.name AS project_name,
+                           c.name AS contractor_name,
+                           u.full_name AS creator_name
+                    FROM con_work_orders wo
+                    JOIN con_work_order_approvals wa_mgmt ON wa_mgmt.work_order_id = wo.id AND wa_mgmt.role_id = 3
+                    JOIN con_work_order_approvals wa_pm ON wa_pm.work_order_id = wo.id AND wa_pm.role_id = 22
+                    LEFT JOIN projects p ON p.id = wo.project_id
+                    LEFT JOIN contractors c ON c.id = wo.contractor_id
+                    LEFT JOIN users u ON u.id = wo.created_by
+                    WHERE wo.status = 'draft'
+                      AND wa_mgmt.status = 'pending'
+                      AND wa_pm.status != 'pending'
+                    ORDER BY wo.created_at DESC
+                    LIMIT 10
+                ");
+            }
             $pendingWorkOrders = $rWO ? $rWO->fetch_all(MYSQLI_ASSOC) : [];
         }
 
@@ -325,7 +358,11 @@ class Con_DashboardController extends Controller
                        p.name  AS project_name,
                        u.full_name AS created_by_name,
                        r.name  AS created_by_role,
-                       COUNT(pri.id) AS item_count
+                       COUNT(pri.id) AS item_count,
+                       (SELECT MIN(bi.required_date)
+                        FROM purchase_request_items pri2
+                        JOIN boq_items bi ON bi.boq_id = pr.bom_id AND bi.material_id = pri2.material_id
+                        WHERE pri2.request_id = pr.id) AS earliest_required_date
                 FROM purchase_requests pr
                 LEFT JOIN projects p    ON p.id  = pr.project_id
                 LEFT JOIN users u       ON u.id  = pr.created_by
@@ -341,8 +378,37 @@ class Con_DashboardController extends Controller
             $prsForApproval = $rPRApproval ? $rPRApproval->fetch_all(MYSQLI_ASSOC) : [];
         }
 
+        // Fetch pending Land requisitions and Petty Cash requests for Management / Admin
+        $pendingLandRequisitions = [];
+        $pendingPettyCash = [];
+        if (in_array($userRole, [1, 3])) {
+            $rLandReq = $this->db->query("
+                SELECT lfr.*, la.land_owner_name, p.name as project_name, u.full_name as requester_name
+                FROM land_fund_requisitions lfr
+                LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
+                LEFT JOIN projects p ON la.project_id = p.id
+                LEFT JOIN users u ON lfr.requested_by = u.id
+                WHERE lfr.mgmt_status = 'Pending'
+                ORDER BY lfr.id DESC LIMIT 10
+            ");
+            $pendingLandRequisitions = $rLandReq ? $rLandReq->fetch_all(MYSQLI_ASSOC) : [];
+
+            $rFundReq = $this->db->query("
+                SELECT fr.*, p.name AS project_name, d.name AS department_name, u.full_name AS requester_name
+                FROM fund_requisitions fr
+                LEFT JOIN projects p ON fr.project_id = p.id
+                LEFT JOIN departments d ON fr.department_id = d.id
+                LEFT JOIN users u ON fr.requested_by = u.id
+                WHERE fr.status = 'pending'
+                ORDER BY fr.id DESC LIMIT 10
+            ");
+            $pendingPettyCash = $rFundReq ? $rFundReq->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
         $this->view('phase2/dashboard/cons-dashboard', [
             'current_route'           => 'con-dashboard',
+            'pendingLandRequisitions' => $pendingLandRequisitions,
+            'pendingPettyCash'        => $pendingPettyCash,
             'stats'                   => $stats,
             'projects'                => $projects,
             'budgetUtil'              => $budgetUtil,
@@ -427,6 +493,10 @@ class Con_DashboardController extends Controller
                 SELECT id FROM operational_fund_requests   WHERE status = 'pending'
                 UNION ALL
                 SELECT id FROM vendor_payment_requests     WHERE status = 'Submitted'
+                UNION ALL
+                SELECT id FROM fund_requisitions           WHERE status = 'pending'
+                UNION ALL
+                SELECT id FROM land_fund_requisitions      WHERE mgmt_status = 'Pending'
             ) t");
         $s['pending_approvals'] = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
 
@@ -1164,6 +1234,26 @@ class Con_DashboardController extends Controller
         $rVP = $this->db->query("SELECT vpr.*, p.name AS project_name, v.name AS vendor_name FROM vendor_payment_requests vpr JOIN projects p ON p.id = vpr.project_id LEFT JOIN vendors v ON v.id = vpr.vendor_id WHERE p.deleted_at IS NULL AND $filter ORDER BY vpr.id DESC LIMIT 5");
         $recentVendorPayments = $rVP ? $rVP->fetch_all(MYSQLI_ASSOC) : [];
 
+        $pendingWorkOrders = [];
+        if ($roleId === 20 || $isAdmin) {
+            $rWO = $this->db->query("
+                SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
+                       p.name AS project_name,
+                       c.name AS contractor_name,
+                       u.full_name AS creator_name
+                FROM con_work_orders wo
+                JOIN con_work_order_approvals wa ON wa.work_order_id = wo.id AND wa.role_id = 20
+                LEFT JOIN projects p ON p.id = wo.project_id
+                LEFT JOIN contractors c ON c.id = wo.contractor_id
+                LEFT JOIN users u ON u.id = wo.created_by
+                WHERE wo.status = 'draft'
+                  AND wa.status = 'pending'
+                ORDER BY wo.created_at DESC
+                LIMIT 10
+            ");
+            $pendingWorkOrders = $rWO ? $rWO->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
         return $this->view('phase2/dashboard/operations-dashboard', [
             'current_route'         => 'operations-dashboard',
             'isAdmin'               => $isAdmin,
@@ -1175,6 +1265,7 @@ class Con_DashboardController extends Controller
             'recentWorkingPlans'    => $recentWorkingPlans,
             'recentMaterialIssues'  => $recentMaterialIssues,
             'recentVendorPayments'  => $recentVendorPayments,
+            'pendingWorkOrders'     => $pendingWorkOrders,
         ]);
     }
 
@@ -1940,6 +2031,37 @@ class Con_DashboardController extends Controller
         }
         $myProjects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
 
+        // ── Architectural Designs (scoped) ──────────────────────────────────
+        if ($isAdmin) {
+            $rArch = $this->db->query("
+                SELECT ae.*, p.name AS project_name,
+                       COALESCE(l.name,'') AS location_name,
+                       p.project_status,
+                       u.full_name AS architect_name
+                FROM architect_engineering ae
+                LEFT JOIN projects  p ON p.id = ae.project_id
+                LEFT JOIN locations l ON l.id = p.location_id
+                LEFT JOIN users u ON u.id = ae.user_id
+                WHERE p.deleted_at IS NULL
+                ORDER BY ae.id DESC");
+            $architecturalDesigns = $rArch ? $rArch->fetch_all(MYSQLI_ASSOC) : [];
+        } else {
+            $sArch = $this->db->prepare("
+                SELECT ae.*, p.name AS project_name,
+                       COALESCE(l.name,'') AS location_name,
+                       p.project_status,
+                       u.full_name AS architect_name
+                FROM architect_engineering ae
+                JOIN  projects  p ON p.id = ae.project_id
+                LEFT JOIN locations l ON l.id = p.location_id
+                LEFT JOIN users u ON u.id = ae.user_id
+                WHERE p.deleted_at IS NULL AND p.struct_engineer_id = ?
+                ORDER BY ae.id DESC");
+            $sArch->bind_param('i', $userId);
+            $sArch->execute();
+            $architecturalDesigns = $sArch->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
         // ── Projects needing design (scoped) ─────────────────────────────────
         $projectsNeedingDesign = array_filter($myProjects, fn($p) => empty($p['design_id']));
 
@@ -1955,6 +2077,7 @@ class Con_DashboardController extends Controller
             'recentDesigns'         => $recentDesigns,
             'myProjects'            => $myProjects,
             'projectsNeedingDesign' => array_values($projectsNeedingDesign),
+            'architecturalDesigns'  => $architecturalDesigns,
         ]);
     }
 
@@ -2055,6 +2178,121 @@ class Con_DashboardController extends Controller
             'recentAssigned'   => $recentAssigned,
             'myProjects'       => $myProjects,
             'boqNotifications' => $boqNotifications,
+        ]);
+    }
+
+    // =========================================================================
+    // PROJECT PROGRESS REPORT MATRIX
+    // =========================================================================
+    public function projectProgressReport($projectId)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $projectId = (int)$projectId;
+
+        // 1. Fetch project details
+        $stmt = $this->db->prepare("SELECT * FROM projects WHERE id = ? AND deleted_at IS NULL");
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $project = $stmt->get_result()->fetch_assoc();
+        if (!$project) {
+            setError('Project not found.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
+        // 2. Fetch budgeted work types with weights (columns)
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT wt.id, wt.work_type_name, b.weight_percentage
+            FROM initial_estimate_budgets b
+            JOIN work_types wt ON wt.id = b.work_type_id
+            WHERE b.project_id = ? AND b.status = 'approved'
+            ORDER BY wt.work_type_name ASC
+        ");
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $workTypes = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 3. Fetch targets by Floor and Work Type (cell values)
+        $stmt = $this->db->prepare("
+            SELECT tf.floor_name, wp.work_type_id, 
+                   SUM(tf.target_percentage) AS total_target,
+                   SUM(tf.gain_percentage) AS total_gain
+            FROM target_fixed tf
+            JOIN project_working_plans wp ON wp.id = tf.work_plan_id
+            WHERE tf.project_id = ? AND tf.floor_name IS NOT NULL
+            GROUP BY tf.floor_name, wp.work_type_id
+        ");
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $targetData = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 4. Organize targets into 2D matrix [floor_name][work_type_id]
+        $matrix = [];
+        foreach ($targetData as $row) {
+            $matrix[$row['floor_name']][$row['work_type_id']] = [
+                'target' => (float)$row['total_target'],
+                'gain'   => (float)$row['total_gain']
+            ];
+        }
+
+        // 5. Fetch cumulative targets & achievements per work type
+        $stmt = $this->db->prepare("
+            SELECT wp.work_type_id, 
+                   SUM(tf.target_percentage) AS cumulative_target,
+                   SUM(tf.gain_percentage) AS cumulative_gain
+            FROM target_fixed tf
+            JOIN project_working_plans wp ON wp.id = tf.work_plan_id
+            WHERE tf.project_id = ?
+            GROUP BY wp.work_type_id
+        ");
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $cumulatives = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $cumulativeMap = [];
+        foreach ($cumulatives as $c) {
+            $cumulativeMap[$c['work_type_id']] = [
+                'target' => (float)$c['cumulative_target'],
+                'gain'   => (float)$c['cumulative_gain']
+            ];
+        }
+
+        // 6. Calculate progress contribution per work type and overall project progress
+        $totalProgress = 0.0;
+        foreach ($workTypes as &$wt) {
+            $wtId = $wt['id'];
+            $weight = (float)$wt['weight_percentage'];
+            
+            $cumTarget = $cumulativeMap[$wtId]['target'] ?? 0.0;
+            $cumGain   = $cumulativeMap[$wtId]['gain']   ?? 0.0;
+            
+            $wt['cumulative_target'] = $cumTarget;
+            $wt['cumulative_gain']   = $cumGain;
+            
+            // Contribution: (gain / 100) * weight
+            $contribution = ($cumGain / 100.0) * $weight;
+            $wt['contribution'] = $contribution;
+            
+            $totalProgress += $contribution;
+        }
+        unset($wt);
+
+        // Define fixed floors list matching input forms
+        $floors = [
+            'Foundation', 'Basement', 'G.floor', 
+            '1st floor', '2nd floor', '3rd floor', '4th floor', '5th floor', 
+            '6th floor', '7th floor', '8th floor', '9th floor', '10th floor', 
+            '11th floor', '12th floor', 'Roof'
+        ];
+
+        $this->view('phase2/dashboard/project-progress-report', [
+            'current_route' => 'con-dashboard',
+            'page_title'    => 'Project Progress Report — ' . $project['name'],
+            'project'       => $project,
+            'workTypes'     => $workTypes,
+            'floors'        => $floors,
+            'matrix'        => $matrix,
+            'totalProgress' => $totalProgress
         ]);
     }
 }

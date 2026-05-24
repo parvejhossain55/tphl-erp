@@ -96,11 +96,16 @@ $page_title = $page_title ?? 'Site Targets';
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <?php if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])): ?>
-                                        <a href="<?= $base_url ?>/con-boq-create?target_id=<?= $t['id'] ?>"
-                                            class="btn btn-sm btn-outline-info" title="Create BOM">
-                                            <i class="bi bi-box-seam"></i> BOM
-                                        </a>
+                                        <?php if (!empty($t['boq_id'])): ?>
+                                            <a href="<?= $base_url ?>/con-boq-show/<?= $t['boq_id'] ?>"
+                                                class="btn btn-sm btn-success text-white" title="View BOM (Already Created)">
+                                                <i class="bi bi-check-circle-fill"></i> BOM
+                                            </a>
+                                        <?php elseif (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])): ?>
+                                            <a href="<?= $base_url ?>/con-boq-create?target_id=<?= $t['id'] ?>"
+                                                class="btn btn-sm btn-outline-info" title="Create BOM">
+                                                <i class="bi bi-box-seam"></i> BOM
+                                            </a>
                                         <?php endif; ?>
                                         <a href="<?= $base_url ?>/con-target/<?= $t['id'] ?>"
                                             class="btn btn-sm btn-outline-primary" title="View">

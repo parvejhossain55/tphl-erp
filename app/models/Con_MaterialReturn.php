@@ -39,9 +39,10 @@ class Con_MaterialReturn extends Model
     {
         $stmt = $this->db->prepare(
             "SELECT mri.*, 
-                    m.name AS material_name, m.unit
+                    m.name AS material_name, m.unit, COALESCE(cat.name, 'Uncategorized') AS category_name
              FROM {$this->itemTable} mri
              JOIN con_materials m ON m.id = mri.material_item_id
+             LEFT JOIN con_material_categories cat ON cat.id = m.category_id
              WHERE mri.return_id = ?
              ORDER BY mri.id ASC"
         );

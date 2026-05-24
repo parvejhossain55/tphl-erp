@@ -188,7 +188,8 @@ function makeMaterialSelect(selectedId = '', unit = '-') {
             <option value="">-- Select Material --</option>`;
     ALL_MATERIALS.forEach(m => {
         const sel = (m.id == selectedId) ? 'selected' : '';
-        html += `<option value="${m.id}" data-unit="${m.unit}" ${sel}>${m.name} (${m.unit})</option>`;
+        const cat = m.category_name || 'Uncategorized';
+        html += `<option value="${m.id}" data-unit="${m.unit}" ${sel}>${m.name} [${cat}] (${m.unit})</option>`;
     });
     html += `</select></div>
         <small class="pr-mat-unit text-muted">${unit !== '-' ? unit : ''}</small>`;
@@ -344,9 +345,10 @@ document.getElementById('prLoadBoqItems').addEventListener('click', function () 
     tbody.innerHTML = ''; // clear existing
 
     currentBoqData.items.forEach(item => {
+        const matDisplayName = `${item.material_name} [${item.category_name || 'Uncategorized'}]`;
         const html = makePrRow(
             item.material_id,
-            item.material_name,
+            matDisplayName,
             item.unit,
             item.boq_qty,
             item.used_qty,

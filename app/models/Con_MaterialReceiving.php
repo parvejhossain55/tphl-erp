@@ -66,11 +66,12 @@ class Con_MaterialReceiving extends Model
             "SELECT mri.*,
                     poi.material_id, poi.quantity AS po_quantity, poi.unit_price,
                     poi.selected_vendor_id,
-                    m.name AS material_name, m.unit,
+                    m.name AS material_name, m.unit, COALESCE(cat.name, 'Uncategorized') AS category_name,
                     v.name AS vendor_name
              FROM {$this->itemTable} mri
              JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
              JOIN con_materials m ON m.id = poi.material_id
+             LEFT JOIN con_material_categories cat ON cat.id = m.category_id
              LEFT JOIN vendors v ON v.id = poi.selected_vendor_id
              WHERE mri.receiving_id = ?
              ORDER BY mri.id ASC"

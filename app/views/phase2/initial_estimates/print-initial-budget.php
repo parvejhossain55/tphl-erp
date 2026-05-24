@@ -719,7 +719,10 @@ $grandTotal = $budget['total_estimated_cost'] ?? 0;
                                     <td><span
                                             class="badge-pill bp-purple"><?= htmlspecialchars($item['work_type_label'] ?? $item['design_type_name'] ?? '—') ?></span>
                                     </td>
-                                    <td style="font-weight:600;"><?= htmlspecialchars($item['material_name'] ?? '—') ?></td>
+                                    <td>
+                                        <span style="font-weight:700;"><?= htmlspecialchars($item['material_name'] ?? '—') ?></span>
+                                        <br><small style="color:#6b7280; font-size:11px;">[Category: <?= htmlspecialchars($item['category_name'] ?? 'Uncategorized') ?>]</small>
+                                    </td>
                                     <td style="font-size:11px;color:#6b7280;"><?= htmlspecialchars($item['remarks'] ?? '—') ?>
                                     </td>
                                     <td class="right" style="font-size:11px;color:#9ca3af;">

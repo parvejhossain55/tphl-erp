@@ -26,12 +26,23 @@ class ProjectStructuralDesignController extends Controller {
 
         if (in_array($roleId, [1, 2, 3, 13, 15, 22])) {
             $records = $this->model->getAll();
+        } elseif ($roleId == 12) {
+            $stmt = $this->db->prepare("
+                SELECT sd.*, p.name AS project_name
+                FROM project_structural_designs sd
+                LEFT JOIN projects p ON sd.project_id = p.id
+                WHERE p.site_engineer_id = ? AND p.deleted_at IS NULL
+                ORDER BY sd.id DESC
+            ");
+            $stmt->bind_param('i', $userId);
+            $stmt->execute();
+            $records = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         } else {
             $stmt = $this->db->prepare("
                 SELECT sd.*, p.name AS project_name
                 FROM project_structural_designs sd
                 LEFT JOIN projects p ON sd.project_id = p.id
-                WHERE p.struct_engineer_id = ?
+                WHERE p.struct_engineer_id = ? AND p.deleted_at IS NULL
                 ORDER BY sd.id DESC
             ");
             $stmt->bind_param('i', $userId);
@@ -240,6 +251,12 @@ class ProjectStructuralDesignController extends Controller {
 
     // ─── CSV Import Method ────────────────────────────────────────────────
     public function importCsv() {
+        if ((int)($_SESSION['user']['role_id'] ?? 0) !== 21) {
+            setError('Only Structural Engineers can import Structure Designs.');
+            header("Location: " . $GLOBALS['base_url'] . "/structure-design");
+            exit;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: ' . $GLOBALS['base_url'] . '/structure-design');
             exit;

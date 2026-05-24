@@ -88,3 +88,18 @@ ALTER TABLE con_work_orders
   ADD COLUMN qc_approved_at DATETIME NULL AFTER qc_approved_by,
   ADD COLUMN completed_by INT NULL AFTER qc_approved_at,
   ADD COLUMN completed_at DATETIME NULL AFTER completed_by;
+
+
+
+===21-05
+ALTER TABLE initial_estimate_budgets 
+  MODIFY COLUMN status ENUM('draft','pending','pm_approved','approved','cancelled') 
+  NOT NULL DEFAULT 'draft';
+-- ② con_work_orders: document link + rate schedule JSON যোগ
+ALTER TABLE con_work_orders 
+  ADD COLUMN document_link VARCHAR(500) NULL DEFAULT NULL 
+    COMMENT 'External document/BOQ link' 
+    AFTER scope_of_work,
+  ADD COLUMN work_items JSON NULL DEFAULT NULL 
+    COMMENT 'Rate schedule items JSON (ক-১ to ক-১০)' 
+    AFTER document_link;

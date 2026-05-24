@@ -543,6 +543,64 @@ $printDate = date('d M Y, h:i A');
                 size: A4;
             }
         }
+
+        /* ── Activities & Gantt Table ────────────────────── */
+        .activities-table, .gantt-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-top: 10px;
+        }
+
+        .activities-table th, .gantt-table th {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 8px 10px;
+            font-weight: 600;
+            border: 1px solid #cbd5e1;
+            text-align: left;
+        }
+
+        .activities-table td, .gantt-table td {
+            padding: 7px 10px;
+            border: 1px solid #cbd5e1;
+            color: #334155;
+        }
+
+        .activities-table tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        .gantt-table td.gantt-cell-active {
+            background: rgba(30, 58, 95, 0.03);
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .gantt-bar-print {
+            background: rgba(30, 58, 95, 0.12) !important;
+            border-top: 1.5px solid #1e3a5f;
+            border-bottom: 1.5px solid #1e3a5f;
+            color: #1e3a5f;
+            font-weight: bold;
+            font-size: 9px;
+            text-align: center;
+            padding: 3px 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        
+        .gantt-bar-print.start-cap {
+            border-left: 3px solid #1e3a5f;
+            border-top-left-radius: 3px;
+            border-bottom-left-radius: 3px;
+        }
+
+        .gantt-bar-print.end-cap {
+            border-right: 3px solid #1e3a5f;
+            border-top-right-radius: 3px;
+            border-bottom-right-radius: 3px;
+        }
     </style>
 </head>
 
@@ -663,6 +721,157 @@ $printDate = date('d M Y, h:i A');
                         </div>
                     </div>
                 <?php endif; ?>
+            </div>
+
+            <!-- Section 1B: Activities List & Gantt Chart -->
+            <div class="section-block" style="page-break-before: auto;">
+                <div class="section-title">Schedule Activities / Phases (কাজ ও অ্যাক্টিভিটি শিডিউল)</div>
+                
+                <table class="activities-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%; text-align: center;">নং</th>
+                            <th style="width: 35%;">কাজের বিবরণ ও অবস্থান (Activity & Location)</th>
+                            <th style="width: 15%;">ফ্লোর (Floor)</th>
+                            <th style="width: 10%; text-align: center;">পরিমাণ</th>
+                            <th style="width: 11%; text-align: center;">শুরু</th>
+                            <th style="width: 10%; text-align: center;">দিন</th>
+                            <th style="width: 11%; text-align: center;">শেষ</th>
+                            <th>মন্তব্য</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($planItems)): ?>
+                            <tr>
+                                <td colspan="8" style="text-align: center; color: #64748b; padding: 15px;">No activities registered for this plan.</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($planItems as $idx => $item): ?>
+                                <tr>
+                                    <td style="text-align: center; font-weight: bold;"><?= htmlspecialchars($item['sl_no'] ?: ($idx + 1)) ?></td>
+                                    <td style="font-weight: 500;"><?= htmlspecialchars($item['activity_name']) ?></td>
+                                    <td><?= htmlspecialchars($item['floor_name'] ?: '—') ?></td>
+                                    <td style="text-align: center;"><?= htmlspecialchars($item['quantity'] ?: '1 Job') ?></td>
+                                    <td style="text-align: center;"><?= date('d M Y', strtotime($item['start_date'])) ?></td>
+                                    <td style="text-align: center; font-weight: 600;"><?= (int)$item['req_days'] ?> দিন</td>
+                                    <td style="text-align: center;"><?= date('d M Y', strtotime($item['end_date'])) ?></td>
+                                    <td style="color: #64748b; font-size: 10px;"><?= htmlspecialchars($item['remarks'] ?? '—') ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+
+                <div class="section-title" style="margin-top: 24px; margin-bottom: 12px;">Weekly Gantt Chart (সময়সূচী গ্যান্ট চার্ট)</div>
+                
+                <?php
+                // Gantt calculation logic
+                $minDate = null;
+                $maxDate = null;
+                if (!empty($planItems)) {
+                    foreach ($planItems as $item) {
+                        $sDate = $item['start_date'];
+                        $eDate = $item['end_date'];
+                        if (!$minDate || $sDate < $minDate) $minDate = $sDate;
+                        if (!$maxDate || $eDate > $maxDate) $maxDate = $eDate;
+                    }
+                }
+
+                if (!$minDate) {
+                    $minDate = sprintf('%04d-%02d-01', $plan['year'], $plan['month']);
+                    $maxDate = date('Y-m-t', strtotime($minDate));
+                } else {
+                    // Align to nearest Monday and Sunday of start/end weeks
+                    $minTime = strtotime($minDate);
+                    $maxTime = strtotime($maxDate);
+                    
+                    $startDayOfWeek = date('N', $minTime);
+                    $minTime = $minTime - ($startDayOfWeek - 1) * 86400;
+                    $minDate = date('Y-m-d', $minTime);
+                    
+                    $endDayOfWeek = date('N', $maxTime);
+                    $maxTime = $maxTime + (7 - $endDayOfWeek) * 86400;
+                    $maxDate = date('Y-m-d', $maxTime);
+                }
+
+                $weeks = [];
+                $currTime = strtotime($minDate);
+                $endTime = strtotime($maxDate);
+                $wCount = 1;
+                while ($currTime <= $endTime) {
+                    $wStart = date('Y-m-d', $currTime);
+                    $wEnd = date('Y-m-d', $currTime + 6 * 86400);
+                    $weeks[] = [
+                        'label' => 'W' . $wCount,
+                        'start' => $wStart,
+                        'end' => $wEnd,
+                        'start_display' => date('d M', strtotime($wStart)),
+                        'end_display' => date('d M', strtotime($wEnd))
+                    ];
+                    $currTime += 7 * 86400;
+                    $wCount++;
+                }
+                ?>
+
+                <table class="gantt-table" style="table-layout: fixed;">
+                    <thead>
+                        <tr>
+                            <th style="width: 200px;">Activity / Phase</th>
+                            <?php foreach ($weeks as $w): ?>
+                                <th style="text-align: center; font-size: 10px; padding: 4px;">
+                                    <div style="color: #1e3a8a; font-weight: bold;"><?= $w['label'] ?></div>
+                                    <div style="color: #64748b; font-size: 8px; font-weight: normal;"><?= $w['start_display'] ?></div>
+                                </th>
+                            <?php endforeach; ?>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($planItems)): ?>
+                            <tr>
+                                <td colspan="<?= count($weeks) + 1 ?>" style="color: #64748b; padding: 15px;">No schedule data available.</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($planItems as $idx => $item): 
+                                $itemStart = strtotime($item['start_date']);
+                                $itemEnd = strtotime($item['end_date']);
+                            ?>
+                                <tr>
+                                    <td style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<?= htmlspecialchars($item['activity_name']) ?>">
+                                        <?= htmlspecialchars($item['sl_no'] ?: ($idx+1)) ?>. <?= htmlspecialchars($item['activity_name']) ?>
+                                    </td>
+                                    <?php foreach ($weeks as $w): 
+                                        $wStart = strtotime($w['start']);
+                                        $wEnd = strtotime($w['end']);
+                                        
+                                        // Check intersection
+                                        $intersects = ($itemStart <= $wEnd && $itemEnd >= $wStart);
+                                        
+                                        // Check if start week
+                                        $isStartWeek = ($itemStart >= $wStart && $itemStart <= $wEnd);
+                                        // Check if end week
+                                        $isEndWeek = ($itemEnd >= $wStart && $itemEnd <= $wEnd);
+                                        
+                                        $barClasses = 'gantt-bar-print';
+                                        $cellClass = '';
+                                        if ($intersects) {
+                                            $cellClass = 'gantt-cell-active';
+                                            if ($isStartWeek) $barClasses .= ' start-cap';
+                                            if ($isEndWeek) $barClasses .= ' end-cap';
+                                        }
+                                    ?>
+                                        <td class="<?= $cellClass ?>" style="padding: 2px; text-align: center; height: 32px; vertical-align: middle;">
+                                            <?php if ($intersects): ?>
+                                                <div class="<?= $barClasses ?>">
+                                                    <?= $item['req_days'] ?>d
+                                                </div>
+                                            <?php endif; ?>
+                                        </td>
+                                    <?php endforeach; ?>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
 
             <!-- Section 2: Budget Summary -->

@@ -93,9 +93,10 @@ class Con_BOQ extends Model
     public function getItems($boqId)
     {
         $stmt = $this->db->prepare(
-            "SELECT i.*, m.name AS material_name, m.unit
+            "SELECT i.*, m.name AS material_name, m.unit, COALESCE(cat.name, 'Uncategorized') AS category_name
              FROM {$this->itemTable} i
              JOIN con_materials m ON m.id = i.material_id
+             LEFT JOIN con_material_categories cat ON cat.id = m.category_id
              WHERE i.boq_id = ?
              ORDER BY i.id ASC"
         );
@@ -115,6 +116,8 @@ public function getRemainingBOQ($projectId, $boqId = null) {
         $sql = "SELECT 
                     bi.material_id, 
                     m.name as material_name,
+                    m.unit,
+                    COALESCE(cat.name, 'Uncategorized') AS category_name,
                     bi.quantity as total_boq_qty,
                     COALESCE((
                         SELECT SUM(pri.quantity) 
@@ -133,6 +136,7 @@ public function getRemainingBOQ($projectId, $boqId = null) {
                 FROM boq_items bi
                 JOIN boq_master bm ON bm.id = bi.boq_id
                 JOIN con_materials m ON m.id = bi.material_id
+                LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                 WHERE bm.id = ? AND bm.status = 'Approved'";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('iii', $boqId, $boqId, $boqId);
@@ -142,6 +146,8 @@ public function getRemainingBOQ($projectId, $boqId = null) {
         $sql = "SELECT 
                     bi.material_id, 
                     m.name as material_name,
+                    m.unit,
+                    COALESCE(cat.name, 'Uncategorized') AS category_name,
                     SUM(bi.quantity) as total_boq_qty,
                     COALESCE((
                         SELECT SUM(pri.quantity) 
@@ -160,8 +166,9 @@ public function getRemainingBOQ($projectId, $boqId = null) {
                 FROM boq_items bi
                 JOIN boq_master bm ON bm.id = bi.boq_id
                 JOIN con_materials m ON m.id = bi.material_id
+                LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                 WHERE bm.project_id = ? AND bm.status = 'Approved'
-                GROUP BY bi.material_id, m.name";
+                GROUP BY bi.material_id, m.name, m.unit, cat.name";
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('iii', $projectId, $projectId, $projectId);
@@ -183,6 +190,7 @@ public function getRemainingBOQ($projectId, $boqId = null) {
                 bi.material_id,
                 m.name      AS material_name,
                 m.unit,
+                COALESCE(cat.name, 'Uncategorized') AS category_name,
                 bi.quantity AS boq_qty,
                 COALESCE((
                     SELECT SUM(poi.quantity)
@@ -205,6 +213,7 @@ public function getRemainingBOQ($projectId, $boqId = null) {
                 ), 0) AS received_qty
             FROM boq_items bi
             JOIN con_materials m ON m.id = bi.material_id
+            LEFT JOIN con_material_categories cat ON cat.id = m.category_id
             WHERE bi.boq_id = ?
             ORDER BY m.name ASC";
 
@@ -355,17 +364,19 @@ public function getRemainingBOQ($projectId, $boqId = null) {
         $del->execute();
 
         $stmt = $this->db->prepare(
-            "INSERT INTO {$this->itemTable} (boq_id, material_id, quantity, unit_cost)
-             VALUES (?, ?, ?, ?)"
+            "INSERT INTO {$this->itemTable} (boq_id, material_id, quantity, unit_cost, required_date)
+             VALUES (?, ?, ?, ?, ?)"
         );
 
         foreach ($items as $item) {
+            $reqDate = !empty($item['required_date']) ? $item['required_date'] : null;
             $stmt->bind_param(
-                'iidd',
+                'iidds',
                 $boqId,
                 $item['material_id'],
                 $item['quantity'],
-                $item['unit_cost']
+                $item['unit_cost'],
+                $reqDate
             );
             $stmt->execute();
         }

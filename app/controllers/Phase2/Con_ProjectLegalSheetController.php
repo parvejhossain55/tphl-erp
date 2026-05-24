@@ -68,7 +68,7 @@ class Con_ProjectLegalSheetController extends Controller {
         
         $this->view('phase2/project_legal_sheets/legal-sheet-lists', [
             'current_route' => 'legal-sheet-lists',
-            'page_title' => 'Project Legal Sheets',
+            'page_title' => 'Project Approval Sheets',
             'sheets' => $sheets
         ]);
     }

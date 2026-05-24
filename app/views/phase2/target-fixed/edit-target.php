@@ -28,10 +28,10 @@ $months = ['January','February','March','April','May','June','July','August','Se
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold">Project <span class="text-danger">*</span></label>
-                                <select name="project_id" class="form-select" required>
+                                <select name="project_id" id="project_id" class="form-select" required>
                                     <option value="">-- Select Project --</option>
                                     <?php foreach ($projects as $p): ?>
-                                        <option value="<?= $p['id'] ?>" <?= $t['project_id'] == $p['id'] ? 'selected' : '' ?>>
+                                        <option value="<?= $p['id'] ?>" data-building-type="<?= htmlspecialchars($p['building_type'] ?? '') ?>" <?= $t['project_id'] == $p['id'] ? 'selected' : '' ?>>
                                             <?= htmlspecialchars($p['name']) ?>
                                         </option>
                                     <?php endforeach; ?>
@@ -87,11 +87,11 @@ $months = ['January','February','March','April','May','June','July','August','Se
                         </div>
 
                         <div class="row mb-3">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label fw-semibold">Year</label>
                                 <input type="number" name="year" class="form-control" value="<?= $t['year'] ?>" min="2020" max="2035" required>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label fw-semibold">Month</label>
                                 <select name="month" class="form-select" required>
                                     <?php foreach ($months as $i => $m): ?>
@@ -99,7 +99,25 @@ $months = ['January','February','March','April','May','June','July','August','Se
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Floor Name (Optional)</label>
+                                <select name="floor_name" id="floor_name" class="form-select">
+                                    <option value="">-- Select Floor --</option>
+                                    <?php 
+                                    $floors = [
+                                        'Foundation', 'Basement', 'G.floor', 
+                                        '1st floor', '2nd floor', '3rd floor', '4th floor', '5th floor', 
+                                        '6th floor', '7th floor', '8th floor', '9th floor', '10th floor', 
+                                        '11th floor', '12th floor', 'Roof'
+                                    ];
+                                    foreach ($floors as $fl) {
+                                        $selected = ($t['floor_name'] === $fl) ? 'selected' : '';
+                                        echo '<option value="' . $fl . '" ' . $selected . '>' . $fl . '</option>';
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
                                 <label class="form-label fw-semibold">Week Number</label>
                                 <select name="week_number" class="form-select">
                                     <option value="">-- Monthly --</option>
@@ -133,9 +151,83 @@ $months = ['January','February','March','April','May','June','July','August','Se
 document.addEventListener('DOMContentLoaded', function() {
     const woSel = document.getElementById('work_order_id');
     const detailsBox = document.getElementById('woDetailsBox');
+    const projectSel = document.getElementById('project_id');
+    const floorSel = document.getElementById('floor_name');
+    const currentFloor = '<?= htmlspecialchars($t['floor_name'] ?? '') ?>';
+
+    function getFloorsFromBuildingType(buildingType) {
+        if (!buildingType) {
+            return [
+                'Foundation', 'Basement', 'G.floor', 
+                '1st floor', '2nd floor', '3rd floor', '4th floor', '5th floor', 
+                '6th floor', '7th floor', '8th floor', '9th floor', '10th floor', 
+                '11th floor', '12th floor', 'Roof'
+            ];
+        }
+        var str = buildingType.toUpperCase().replace(/\s+/g, '');
+        var parts = str.split('+');
+        var basements = [];
+        var hasGround = false;
+        var upperFloorsCount = 0;
+        parts.forEach(function(part) {
+            if (part.startsWith('B')) {
+                var numStr = part.substring(1);
+                if (numStr === '') {
+                    basements.push('Basement');
+                } else {
+                    var num = parseInt(numStr);
+                    if (!isNaN(num)) {
+                        basements.push(part);
+                    }
+                }
+            } else if (part === 'G' || part === 'GF' || part.indexOf('GROUND') !== -1) {
+                hasGround = true;
+            } else {
+                var num = parseInt(part);
+                if (!isNaN(num)) {
+                    upperFloorsCount = num;
+                }
+            }
+        });
+        basements.sort(function(a, b) {
+            var numA = parseInt(a.replace(/\D/g, '')) || 1;
+            var numB = parseInt(b.replace(/\D/g, '')) || 1;
+            return numB - numA;
+        });
+        var floorList = ['Foundation'];
+        basements.forEach(function(b) {
+            floorList.push(b);
+        });
+        if (hasGround) {
+            floorList.push('G.floor');
+        }
+        for (var i = 1; i <= upperFloorsCount; i++) {
+            var suffix = 'th';
+            if (i === 1) suffix = 'st';
+            else if (i === 2) suffix = 'nd';
+            else if (i === 3) suffix = 'rd';
+            floorList.push(i + suffix + ' floor');
+        }
+        floorList.push('Roof');
+        return floorList;
+    }
+
+    function updateFloorOptions(selectedFloor = '') {
+        if (!projectSel || !floorSel) return;
+        const opt = projectSel.options[projectSel.selectedIndex];
+        const buildingType = opt ? opt.getAttribute('data-building-type') : '';
+        const floors = getFloorsFromBuildingType(buildingType);
+        
+        let html = '<option value="">-- Select Floor --</option>';
+        floors.forEach(function(fl) {
+            const sel = fl === selectedFloor ? 'selected' : '';
+            html += '<option value="' + fl + '" ' + sel + '>' + fl + '</option>';
+        });
+        floorSel.innerHTML = html;
+    }
 
     function updateWoDetails() {
-        if(woSel.selectedIndex === -1) return;
+        if(!woSel || woSel.selectedIndex === -1) return;
         const opt = woSel.options[woSel.selectedIndex];
         if (woSel.value && (opt.dataset.desc || opt.dataset.design)) {
             let html = '';
@@ -148,9 +240,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    woSel.addEventListener('change', updateWoDetails);
+    if (woSel) {
+        woSel.addEventListener('change', updateWoDetails);
+    }
+    if (projectSel) {
+        projectSel.addEventListener('change', function() {
+            updateFloorOptions('');
+        });
+    }
     
-    // Initial call to show details if a work order is already selected
+    // Initial calls
     updateWoDetails();
+    updateFloorOptions(currentFloor);
 });
 </script>

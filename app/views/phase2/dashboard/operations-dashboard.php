@@ -135,6 +135,47 @@ $recentVendorPayments = $recentVendorPayments ?? [];
   </a>
 </div>
 
+<!-- PENDING WORK ORDERS FOR APPROVAL -->
+<?php if (!empty($pendingWorkOrders)): ?>
+<div class="rd-panel">
+  <div class="rd-panel-title">
+    <div class="rd-dot" style="background:var(--op-amber)"></div>
+    Pending Work Orders for Approval
+    <span class="badge bg-warning text-dark ms-2" style="font-size: 11px;"><?= count($pendingWorkOrders) ?></span>
+  </div>
+  <div class="table-responsive">
+    <table class="rd-table">
+      <thead>
+        <tr>
+          <th>Work Order Title</th>
+          <th>Project</th>
+          <th>Contractor</th>
+          <th>Amount</th>
+          <th>Created At</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($pendingWorkOrders as $wo): ?>
+        <tr>
+          <td><strong><?= htmlspecialchars($wo['title']) ?></strong></td>
+          <td><?= htmlspecialchars($wo['project_name'] ?? 'N/A') ?></td>
+          <td><?= htmlspecialchars($wo['contractor_name'] ?? 'N/A') ?></td>
+          <td class="fw-bold text-primary">৳<?= number_format($wo['total_amount'], 2) ?></td>
+          <td class="text-muted" style="font-size:11.5px"><?= date('d M Y', strtotime($wo['created_at'])) ?></td>
+          <td class="text-end">
+            <a href="<?= $base ?>/con-work-order/<?= $wo['id'] ?>" class="btn btn-sm btn-primary py-1 px-3">
+              <i class="bi bi-shield-check"></i> View &amp; Act
+            </a>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
 <div class="row">
   <!-- Left Column -->
   <div class="col-lg-6">

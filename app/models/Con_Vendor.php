@@ -104,11 +104,12 @@ public function getAll()
     public function getPurchaseHistory($vendorId)
     {
         $sql = "SELECT poi.*, po.id AS po_id, po.order_date, po.status AS po_status,
-                       m.name AS material_name, m.unit, p.name AS project_name
+                       m.name AS material_name, m.unit, COALESCE(cat.name, 'Uncategorized') AS category_name, p.name AS project_name
                 FROM purchase_order_items poi
                 JOIN purchase_orders po ON po.id = poi.purchase_order_id
                 JOIN purchase_requests pr ON pr.id = po.request_id
                 JOIN con_materials m ON m.id = poi.material_id
+                LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                 LEFT JOIN projects p ON p.id = pr.project_id
                 WHERE poi.selected_vendor_id = ?
                 ORDER BY po.order_date DESC";

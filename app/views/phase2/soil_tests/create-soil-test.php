@@ -28,7 +28,7 @@ $show_breadcrumb = true; ?>
                     <input type="date" name="test_date" class="form-control">
                 </div>
                 <div class="col-xl-6">
-                    <label>Lab Test Document Link</label>
+                    <label>Soil Test Document Link</label>
                     <input type="url" name="lab_test_document_link" class="form-control" placeholder="https://...">
                 </div>
                 <div class="col-xl-6">

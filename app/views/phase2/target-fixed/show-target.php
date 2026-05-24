@@ -274,9 +274,15 @@ $sc = $statusMap[$overallStatus];
           <a href="<?= $base_url ?>/con-targets" class="tgt-btn-w">
             <i class="fal fa-arrow-left"></i>Back
           </a>
-          <a href="<?= $base_url ?>/con-boq-create?target_id=<?= $t['id'] ?>" class="tgt-btn-w" style="border:none">
-            <i class="fal fa-plus-circle"></i>Create BOM
-          </a>
+          <?php if (!empty($targetBoq)): ?>
+            <a href="<?= $base_url ?>/con-boq-show/<?= $targetBoq['id'] ?>" class="tgt-btn-w" style="background:#059669;border:none">
+              <i class="fal fa-eye"></i>View BOM (Already Created)
+            </a>
+          <?php else: ?>
+            <a href="<?= $base_url ?>/con-boq-create?target_id=<?= $t['id'] ?>" class="tgt-btn-w" style="border:none">
+              <i class="fal fa-plus-circle"></i>Create BOM
+            </a>
+          <?php endif; ?>
         </div>
         <?php endif; ?>
       </div>
@@ -338,12 +344,22 @@ $sc = $statusMap[$overallStatus];
           : '<span style="background:rgba(107,114,128,.1);color:#6b7280;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700">No</span>';
         $labDateFmt = !empty($t['lab_test_date']) ? date('d M Y', strtotime($t['lab_test_date'])) : '—';
 
+        $planWeight = isset($t['plan_weight_percentage']) ? (float)$t['plan_weight_percentage'] : 0;
+        $targetPct  = isset($t['target_percentage']) ? (float)$t['target_percentage'] : 0;
+        $calculatedWeight = ($targetPct / 100) * $planWeight;
+
         $rows = [
           ['Project',      htmlspecialchars($t['project_name'] ?? '—')],
           ['Working Plan', htmlspecialchars($t['plan_description'] ?? '—')],
           ['Design Type',  '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(59,130,246,.1);color:#2563eb">' . htmlspecialchars($t['design_type_name'] ?? '—') . '</span>'],
           ['Year / Month', ($t['year'] ?? '—') . ' / ' . ($months[(int)($t['month'] ?? 0)] ?? '—')],
           ['Week',         $t['week_number'] ? 'Week ' . $t['week_number'] : 'Monthly Target'],
+          ['Working Plan Weight', number_format($planWeight, 2) . '%'],
+          ['Target Percentage (%)', number_format($targetPct, 2) . '% of Monthly Plan'],
+          ['Target Weight Contribution', '<span style="color:#2563eb;font-weight:700">' . number_format($calculatedWeight, 3) . '%</span> of Project'],
+          ['BOM / BOQ Status', !empty($targetBoq) 
+            ? '<span style="background:rgba(16,185,129,.12);color:#059669;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:700"><i class="bi bi-check-circle me-1"></i>BOM Already Created (BOM #' . $targetBoq['id'] . ')</span>' 
+            : '<span class="text-muted"><i class="bi bi-dash-circle me-1"></i>BOM Not Created Yet</span>'],
           ['Lab Test',     $labBadge],
           ['Lab Test Date', $isLabTest ? $labDateFmt : '<span class="text-muted">—</span>'],
           ['Created By',   htmlspecialchars($t['created_by_name'] ?? '—')],
@@ -368,6 +384,44 @@ $sc = $statusMap[$overallStatus];
         </div>
       <?php endif; ?>
     </div>
+
+    <!-- Planned Activities Panel -->
+    <?php if (!empty($planItems)): ?>
+    <div class="tgt-panel card__wrapper">
+      <div class="tgt-panel-title">
+        <div class="tgt-dot" style="background:var(--tgt-purple)"></div>
+        Scheduled Activities (পরিকল্পিত কাজের বিবরণ ও অবস্থান)
+      </div>
+      <div class="table-responsive">
+        <table class="table table-bordered table-striped table-sm align-middle" style="font-size:0.85rem; margin-bottom:0">
+          <thead class="table-light text-muted" style="font-size:0.8rem;">
+            <tr>
+              <th class="text-center" style="width:5%">Sl</th>
+              <th>Activity & Location</th>
+              <th>Floor</th>
+              <th class="text-center">Qty</th>
+              <th>Start Date</th>
+              <th class="text-center">Days</th>
+              <th>End Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($planItems as $idx => $item): ?>
+              <tr>
+                <td class="text-center fw-bold text-primary"><?= $idx + 1 ?></td>
+                <td><?= htmlspecialchars($item['activity_name']) ?></td>
+                <td><?= htmlspecialchars($item['floor_name'] ?? '—') ?></td>
+                <td class="text-center"><?= htmlspecialchars($item['quantity'] ?? '—') ?></td>
+                <td><?= !empty($item['start_date']) ? date('d M Y', strtotime($item['start_date'])) : '—' ?></td>
+                <td class="text-center"><?= htmlspecialchars($item['req_days']) ?></td>
+                <td><?= !empty($item['end_date']) ? date('d M Y', strtotime($item['end_date'])) : '—' ?></td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Progress -->
     <div class="tgt-panel card__wrapper">

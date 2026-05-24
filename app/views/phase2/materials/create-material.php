@@ -8,7 +8,16 @@ $show_breadcrumb = true;
     <div class="card__wrapper">
         <form action="<?= $GLOBALS['base_url'] ?>/con-material-store" method="POST">
             <div class="row gy-20">
-
+                <div class="col-xl-6">
+                    <label>Category</label>
+                    <select name="category_id" class="form-select">
+                        <option value="">— Select Category —</option>
+                        <?php foreach ($categories as $cat): ?>
+                            <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                                                                                            
                 <div class="col-xl-6">
                     <label>Material Name <span class="text-danger">*</span></label>
                     <input type="text" name="name" class="form-control" placeholder="e.g. Cement, Rod, Brick" required>
@@ -19,9 +28,12 @@ $show_breadcrumb = true;
                     <input type="text" name="unit" class="form-control" placeholder="e.g. Bag, KG, CFT, PCS" required>
                 </div>
 
+
+
                 <div class="col-xl-6">
                     <label>Minimum Stock Level</label>
-                    <input type="number" step="0.001" name="min_stock_level" class="form-control" value="0" placeholder="0.000">
+                    <input type="number" step="0.001" name="min_stock_level" class="form-control" value="0"
+                        placeholder="0.000">
                 </div>
 
                 <div class="col-12 text-center mt-4">

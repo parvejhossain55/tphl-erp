@@ -147,17 +147,24 @@ function sib_fmt($n) {
       </div>
       <div style="text-align:right">
         <?php
-        $st   = $budget['status'] ?? 'pending';
+        $st   = $budget['status'] ?? 'draft';
         $sMap = [
-          'approved'  => ['bg'=>'#fff','text'=>'#059669','icon'=>'fa-check-circle'],
-          'cancelled' => ['bg'=>'rgba(239,68,68,.2)', 'text'=>'#fff','icon'=>'fa-times-circle'],
-          'pending'   => ['bg'=>'rgba(245,158,11,.2)','text'=>'#fff','icon'=>'fa-clock'],
+          'approved'    => ['bg'=>'#fff',                    'text'=>'#059669','icon'=>'fa-check-circle'],
+          'cancelled'   => ['bg'=>'rgba(239,68,68,.2)',       'text'=>'#fff',   'icon'=>'fa-times-circle'],
+          'pm_approved' => ['bg'=>'rgba(16,185,129,.2)',      'text'=>'#fff',   'icon'=>'fa-user-check'],
+          'pending'     => ['bg'=>'rgba(245,158,11,.2)',      'text'=>'#fff',   'icon'=>'fa-clock'],
+          'draft'       => ['bg'=>'rgba(148,163,184,.25)',    'text'=>'#fff',   'icon'=>'fa-file-alt'],
         ];
-        $sc = $sMap[$st] ?? $sMap['pending'];
+        $sc = $sMap[$st] ?? $sMap['draft'];
+        $stLabel = match($st) {
+            'pm_approved' => 'PM Approved',
+            'pending'     => 'Pending PM Approval',
+            default       => ucfirst($st),
+        };
         ?>
         <div class="sib-status-pill mb-2" style="background:<?= $sc['bg'] ?>;color:<?= $sc['text'] ?>">
           <i class="fal <?= $sc['icon'] ?>"></i>
-          <?= ucfirst($st) ?>
+          <?= $stLabel ?>
         </div>
         <?php if ($st === 'approved' && !empty($budget['approved_by_name'])): ?>
         <div style="font-size:11px;color:rgba(255,255,255,.65)">
@@ -179,10 +186,15 @@ function sib_fmt($n) {
 
     <!-- Action Buttons -->
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">
-      <?php if (!$locked && $st === 'pending'): ?>
+      <?php if (!$locked && in_array($st, ['draft', 'pending'])): ?>
         <a href="<?= $base ?>/con-estimate-edit/<?= $budget['id'] ?>" class="sib-btn-w">
           <i class="fal fa-pencil"></i>Edit Budget
         </a>
+      <?php endif; ?>
+      <?php if ($st === 'draft'): ?>
+        <span class="sib-btn-w" style="background:rgba(245,158,11,.2);border-color:rgba(245,158,11,.5);cursor:default">
+          <i class="fal fa-file-alt"></i>Draft — Submit to finalize
+        </span>
       <?php endif; ?>
       <a href="<?= $base ?>/con-estimate-print/<?= $budget['id'] ?>" target="_blank" class="sib-btn-w"
          style="background:rgba(74,222,128,.15);border-color:rgba(74,222,128,.4);">
@@ -226,50 +238,78 @@ function sib_fmt($n) {
   </div>
 </div>
 
-<!-- ═══════════════ APPROVAL ACTION (only for PM/SE, never for creator) ═══════════════ -->
-<?php if ($canApprove && !$locked && $st === 'pending'): ?>
-<div class="sib-action-card">
-  <!-- Creator Info Banner -->
-  <?php if (!empty($creatorInfo)): ?>
-  <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:10px;
-    background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.15);margin-bottom:16px">
-    <div style="width:38px;height:38px;border-radius:50%;background:rgba(99,102,241,.12);
-      display:flex;align-items:center;justify-content:center;flex-shrink:0">
-      <i class="fal fa-user" style="color:#6366f1;font-size:16px"></i>
-    </div>
-    <div>
-      <div style="font-size:13px;font-weight:800;color:var(--sib-indigo,#6366f1)">
-        <?= htmlspecialchars($creatorInfo['full_name'] ?? 'Unknown') ?>
-      </div>
-      <div style="font-size:11px;color:var(--text-muted)">
-        <?= htmlspecialchars($creatorInfo['designation'] ?? 'Staff') ?>
-        &nbsp;·&nbsp;
-        <i class="fal fa-calendar me-1"></i>
-        Submitted <?= !empty($budget['created_at']) ? date('d M Y, h:i A', strtotime($budget['created_at'])) : '—' ?>
-      </div>
-    </div>
-  </div>
-  <?php endif; ?>
+<!-- ═══════════════ APPROVAL ACTION ═══════════════ -->
+<?php
+$roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+?>
 
+<?php if (!$locked && $st === 'pending' && in_array($roleId, [15, 22])): ?>
+<!-- ═══ PM APPROVAL CARD ═══════════════════════════════════════════ -->
+<div class="sib-action-card" style="border-left:4px solid #d97706">
   <div class="sib-panel-title" style="margin-bottom:14px">
     <div class="sib-dot" style="background:var(--sib-amber)"></div>
-    Pending Approval — Your Action Required
+    Step 1: PM Approval Required
+    <span style="font-size:11px;font-weight:400;color:rgba(255,255,255,.6);margin-left:8px">
+      (আপনার role: PM / Project Manager)
+    </span>
   </div>
+  <?php if (!empty($creatorInfo)): ?>
+  <div style="font-size:12px;color:rgba(255,255,255,.65);margin-bottom:12px">
+    <i class="fal fa-user me-1"></i>
+    Submitted by <strong><?= htmlspecialchars($creatorInfo['full_name'] ?? '—') ?></strong>
+    &nbsp;·&nbsp;
+    <?= !empty($budget['created_at']) ? date('d M Y, h:i A', strtotime($budget['created_at'])) : '—' ?>
+  </div>
+  <?php endif; ?>
   <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
     <form action="<?= $base ?>/con-estimate-approve/<?= $budget['id'] ?>" method="POST">
       <button type="submit" class="btn btn-sm px-4"
-        style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;border-radius:10px;font-size:12px;font-weight:700;border:none"
-        onclick="return confirm('Approve this budget? This cannot be undone.')">
-        <i class="fal fa-check-circle me-2"></i>Approve Budget
+        style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;border-radius:10px;font-size:12px;font-weight:700;border:none"
+        onclick="return confirm('PM Approval করবেন? এরপর Management Final Approve করবে।')">
+        <i class="fal fa-user-check me-2"></i>PM Approve করুন
       </button>
     </form>
     <button type="button" class="btn btn-sm px-4"
       style="background:rgba(239,68,68,.1);color:#dc2626;border:1px solid rgba(239,68,68,.3);border-radius:10px;font-size:12px;font-weight:700"
       data-bs-toggle="modal" data-bs-target="#cancelModal">
-      <i class="fal fa-times-circle me-2"></i>Reject Budget
+      <i class="fal fa-times-circle me-2"></i>Reject করুন
+    </button>
+  </div>
+</div>
+<?php endif; ?>
+
+<?php if (!$locked && $st === 'pm_approved' && $roleId === 3): ?>
+<!-- ═══ MANAGEMENT FINAL APPROVAL CARD ══════════════════════════════ -->
+<div class="sib-action-card" style="border-left:4px solid #059669">
+  <div class="sib-panel-title" style="margin-bottom:14px">
+    <div class="sib-dot" style="background:var(--sib-green)"></div>
+    Step 2: Management Final Approval
+    <span style="font-size:11px;font-weight:400;color:rgba(255,255,255,.6);margin-left:8px">
+      (PM Approved — আপনার final approval বাকি)
+    </span>
+  </div>
+  <?php if (!empty($budget['approved_by_name'])): ?>
+  <div style="font-size:12px;color:rgba(255,255,255,.65);margin-bottom:12px">
+    <i class="fal fa-user-check me-1"></i>
+    PM Approved by <strong><?= htmlspecialchars($budget['approved_by_name']) ?></strong>
+    &nbsp;·&nbsp;
+    <?= !empty($budget['approval_date']) ? date('d M Y', strtotime($budget['approval_date'])) : '—' ?>
+  </div>
+  <?php endif; ?>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+    <form action="<?= $base ?>/con-estimate-approve/<?= $budget['id'] ?>" method="POST">
+      <button type="submit" class="btn btn-sm px-4"
+        style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;border-radius:10px;font-size:12px;font-weight:700;border:none"
+        onclick="return confirm('Final Approve করবেন? এরপর আর edit করা যাবে না।')">
+        <i class="fal fa-check-circle me-2"></i>Final Approve করুন
+      </button>
+    </form>
+    <button type="button" class="btn btn-sm px-4"
+      style="background:rgba(239,68,68,.1);color:#dc2626;border:1px solid rgba(239,68,68,.3);border-radius:10px;font-size:12px;font-weight:700"
+      data-bs-toggle="modal" data-bs-target="#cancelModal">
+      <i class="fal fa-times-circle me-2"></i>Reject করুন
     </button>
     <span style="font-size:11px;color:var(--text-muted)">
-      <i class="fal fa-info-circle me-1"></i>Once approved, items cannot be edited.
     </span>
   </div>
 </div>
@@ -388,7 +428,10 @@ function sib_fmt($n) {
               <?= htmlspecialchars($item['work_type_label'] ?? $item['design_type_name'] ?? '—') ?>
             </span>
           </td>
-          <td style="font-weight:600"><?= htmlspecialchars($item['material_name'] ?? '—') ?></td>
+          <td>
+            <span style="font-weight:700"><?= htmlspecialchars($item['material_name'] ?? '—') ?></span>
+            <br><small class="text-muted">[Category: <?= htmlspecialchars($item['category_name'] ?? 'Uncategorized') ?>]</small>
+          </td>
           <td style="font-size:11px;color:var(--text-muted)"><?= htmlspecialchars($item['remarks'] ?? '—') ?></td>
           <td class="text-right" style="color:var(--text-muted);font-size:11px"><?= htmlspecialchars($item['material_unit'] ?? '') ?></td>
           <td class="text-right"><?= number_format($item['estimated_qty'], 3) ?></td>

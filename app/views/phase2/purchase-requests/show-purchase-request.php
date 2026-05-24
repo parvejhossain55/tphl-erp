@@ -110,15 +110,29 @@
                                     <th>Material</th>
                                     <th>Unit</th>
                                     <th class="text-end">Requested Qty</th>
+                                    <th class="text-center">Required Date (BOQ)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($items as $i => $item): ?>
                                 <tr>
                                     <td><?= $i + 1 ?></td>
-                                    <td class="fw-bold"><?= htmlspecialchars($item['material_name']) ?></td>
+                                    <td>
+                                        <span class="fw-bold"><?= htmlspecialchars($item['material_name']) ?></span>
+                                        <br><small class="text-muted">[Category: <?= htmlspecialchars($item['category_name'] ?? 'Uncategorized') ?>]</small>
+                                    </td>
                                     <td><?= htmlspecialchars($item['unit']) ?></td>
                                     <td class="text-end"><?= number_format($item['quantity'], 3) ?></td>
+                                    <td class="text-center">
+                                        <?php if (!empty($item['boq_required_date'])): ?>
+                                            <span class="badge bg-light text-dark border border-secondary px-2 py-1">
+                                                <i class="bi bi-calendar-event me-1 text-primary"></i>
+                                                <?= date('d M Y', strtotime($item['boq_required_date'])) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -128,25 +142,25 @@
                     <!-- Status Actions -->
                     <?php
                     $sessionRole = (int)($_SESSION['user']['role_id'] ?? 0);
-                    $canApprove  = in_array($sessionRole, [3, 15, 22]); // Super Admin, Project Manager, PM Head
+                    $isReadOnly  = in_array($sessionRole, [12, 15]); // Site Engineer and Project Manager are read-only
+                    $canApprove  = in_array($sessionRole, [3, 22]) && !$isReadOnly; // PM Head and Super Admin (exclude PM)
                     ?>
                     <?php if ($pr['status'] === 'Draft'): ?>
                         <div class="mt-4 p-3 bg-light rounded d-flex justify-content-between align-items-center">
                             <span class="text-muted small">
-                                <i class="bi bi-info-circle me-1"></i> This PR is a Draft. Submit or approve it.
+                                <i class="bi bi-info-circle me-1"></i> This PR is a Draft.
                             </span>
+                            <?php if (!$isReadOnly): ?>
                             <div class="d-flex gap-2">
-                                <?php if ($canApprove || true): // creator can submit ?>
                                 <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline">
                                     <input type="hidden" name="status" value="Submitted">
                                     <button type="submit" class="btn btn-info btn-sm">
                                         <i class="bi bi-send me-1"></i> Submit
                                     </button>
                                 </form>
-                                <?php endif; ?>
                                 <?php if ($canApprove): ?>
                                 <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Approve this Purchase Request?');">
+                                       onsubmit="return confirm('Approve this Purchase Request?');">
                                     <input type="hidden" name="status" value="Approved">
                                     <button type="submit" class="btn btn-success btn-sm">
                                         <i class="bi bi-check-circle me-1"></i> Approve
@@ -154,6 +168,7 @@
                                 </form>
                                 <?php endif; ?>
                             </div>
+                            <?php endif; ?>
                         </div>
                     <?php elseif ($pr['status'] === 'Submitted'): ?>
                         <div class="mt-4 p-3 bg-light rounded d-flex justify-content-between align-items-center">
@@ -162,20 +177,20 @@
                                 <?php if ($canApprove): ?>
                                     This PR is Submitted. Please review and Approve or Reject.
                                 <?php else: ?>
-                                    Awaiting approval by Purchase Team Leader.
+                                    Awaiting approval.
                                 <?php endif; ?>
                             </span>
-                            <?php if ($canApprove): ?>
+                            <?php if ($canApprove && !$isReadOnly): ?>
                             <div class="d-flex gap-2">
                                 <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Approve this PR?');">
+                                       onsubmit="return confirm('Approve this PR?');">
                                     <input type="hidden" name="status" value="Approved">
                                     <button type="submit" class="btn btn-success btn-sm">
                                         <i class="bi bi-check-circle me-1"></i> Approve
                                     </button>
                                 </form>
                                 <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Reject this PR?');">
+                                       onsubmit="return confirm('Reject this PR?');">
                                     <input type="hidden" name="status" value="Rejected">
                                     <button type="submit" class="btn btn-danger btn-sm">
                                         <i class="bi bi-x-circle me-1"></i> Reject
@@ -207,10 +222,14 @@
                                     <?= count($quotations) ?> quotation(s) collected
                                 </p>
                                 <?php if ($pr['status'] === 'Approved'): ?>
-                                    <a href="<?= $base_url ?>/con-quotation-create/<?= $pr['id'] ?>"
-                                       class="btn btn-outline-info btn-sm">
-                                        <i class="bi bi-plus me-1"></i> Add Quotation
-                                    </a>
+                                    <?php if (!$isReadOnly): ?>
+                                        <a href="<?= $base_url ?>/con-quotation-create/<?= $pr['id'] ?>"
+                                           class="btn btn-outline-info btn-sm">
+                                            <i class="bi bi-plus me-1"></i> Add Quotation
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary">Awaiting Quotations</span>
+                                    <?php endif; ?>
                                 <?php else: ?>
                                     <span class="badge bg-success"><i class="bi bi-check"></i> Done</span>
                                 <?php endif; ?>
@@ -228,10 +247,19 @@
                                     <?= $hasCST ? 'Winner selected' : 'Compare & select lowest' ?>
                                 </p>
                                 <?php if (count($quotations) >= 2): ?>
-                                    <a href="<?= $base_url ?>/con-quotation-compare/<?= $pr['id'] ?>"
-                                       class="btn btn-outline-warning btn-sm">
-                                        <i class="bi bi-eye me-1"></i> <?= $hasCST ? 'View CST' : 'Compare Now' ?>
-                                    </a>
+                                    <?php if ($hasCST): ?>
+                                        <a href="<?= $base_url ?>/con-quotation-compare/<?= $pr['id'] ?>"
+                                           class="btn btn-outline-warning btn-sm">
+                                            <i class="bi bi-eye me-1"></i> View CST
+                                        </a>
+                                    <?php elseif (!$isReadOnly): ?>
+                                        <a href="<?= $base_url ?>/con-quotation-compare/<?= $pr['id'] ?>"
+                                           class="btn btn-outline-warning btn-sm">
+                                            <i class="bi bi-eye me-1"></i> Compare Now
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary">Awaiting CST selection</span>
+                                    <?php endif; ?>
                                 <?php else: ?>
                                     <span class="badge bg-secondary">Need ≥ 2 quotes</span>
                                 <?php endif; ?>
@@ -249,12 +277,16 @@
                                     <?= ($pr['status'] === 'PO Issued') ? 'PO Generated' : 'Auto-generate from CST' ?>
                                 </p>
                                 <?php if ($hasCST && $pr['status'] !== 'PO Issued'): ?>
-                                    <form action="<?= $base_url ?>/con-purchase-order-generate/<?= $pr['id'] ?>" method="POST" class="d-inline"
-                                          onsubmit="return confirm('Generate Purchase Order from CST selections?');">
-                                        <button type="submit" class="btn btn-outline-success btn-sm">
-                                            <i class="bi bi-lightning me-1"></i> Generate PO
-                                        </button>
-                                    </form>
+                                    <?php if (!$isReadOnly): ?>
+                                        <form action="<?= $base_url ?>/con-purchase-order-generate/<?= $pr['id'] ?>" method="POST" class="d-inline"
+                                              onsubmit="return confirm('Generate Purchase Order from CST selections?');">
+                                            <button type="submit" class="btn btn-outline-success btn-sm">
+                                                <i class="bi bi-lightning me-1"></i> Generate PO
+                                            </button>
+                                        </form>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary">Awaiting PO generation</span>
+                                    <?php endif; ?>
                                 <?php elseif ($pr['status'] === 'PO Issued'): ?>
                                     <span class="badge bg-success"><i class="bi bi-check"></i> PO Created</span>
                                 <?php else: ?>

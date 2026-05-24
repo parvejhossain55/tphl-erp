@@ -728,6 +728,36 @@ $routes['con-land-visibility-studies/edit'] = ['controller' => 'Phase2\LandVisib
 $routes['con-land-visibility-studies/update'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'update'];
 $routes['delete-land-visibility-study']         = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'delete'];
 
+// Land Acquisitions routes
+$routes['con-land-acquisitions'] = ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'index'];
+$routes['con-land-acquisitions/create'] = ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'create'];
+$routes['con-land-acquisitions/store'] = ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'store'];
+$routes['con-land-acquisitions/edit'] = ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'edit'];
+$routes['con-land-acquisitions/update'] = ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'update'];
+$routes['con-land-acquisitions/delete'] = ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'delete'];
+
+// Land Requisitions routes
+$routes['con-land-requisitions'] = ['controller' => 'Phase2\LandRequisitionController', 'method' => 'index'];
+$routes['con-land-requisitions/create'] = ['controller' => 'Phase2\LandRequisitionController', 'method' => 'create'];
+$routes['con-land-requisitions/store'] = ['controller' => 'Phase2\LandRequisitionController', 'method' => 'store'];
+$routes['con-land-requisitions/approve'] = ['controller' => 'Phase2\LandRequisitionController', 'method' => 'approve'];
+$routes['con-land-requisitions/pay'] = ['controller' => 'Phase2\LandRequisitionController', 'method' => 'pay'];
+$routes['con-land-requisitions/delete'] = ['controller' => 'Phase2\LandRequisitionController', 'method' => 'delete'];
+
+// Land Monthly Reports routes
+$routes['con-land-monthly-reports'] = ['controller' => 'Phase2\LandReportController', 'method' => 'index'];
+$routes['con-land-monthly-reports/generate'] = ['controller' => 'Phase2\LandReportController', 'method' => 'generate'];
+
+// Fund Requisitions routes
+$routes['fund-requisitions'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'index'];
+$routes['fund-requisitions/store'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'store'];
+$routes['fund-requisitions/approve'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'approve'];
+$routes['fund-requisitions/pay'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'pay'];
+$routes['fund-requisitions/delete'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'delete'];
+$routes['fund-requisitions/show/(\d+)'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'show'];
+$routes['fund-requisitions/store-expense'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'storeExpense'];
+$routes['fund-requisitions/delete-expense'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'deleteExpense'];
+
 $routes['con-architect-engineering'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'index'];
 $routes['con-architect-engineering/create'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'create'];
 $routes['con-architect-engineering/store'] = ['controller' => 'Phase2\ArchitectEngineeringController', 'method' => 'store'];
@@ -789,6 +819,9 @@ $routes['project-architecture-dashboard']        = ['controller' => 'Phase2\Con_
 $routes['project-structural-design-dashboard']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectStructuralDesignDashboard'];
 $routes['estimator-dashboard']                   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'estimatorDashboard'];
 $routes['purchase-executive-dashboard']          = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'purchaseExecutiveDashboard'];
+
+// Monthly work report
+$routes['con-monthly-work-report']               = ['controller' => 'Phase2\Con_MonthlyWorkReportController', 'method' => 'index'];
 
 // ── Site IT & Security Operations ──────────────────────────────────────────────
 $routes['con-security-systems'] = ['controller' => 'Phase2\Con_SecurityOperationsController', 'method' => 'systemLists'];
@@ -871,6 +904,10 @@ $routes['con-material-store']          = ['controller' => 'Phase2\Con_MaterialCo
 $routes['con-material-edit/(\d+)']     = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'edit'];
 $routes['con-material-update/(\d+)']   = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'update'];
 $routes['con-materials-import']        = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'importCsv'];
+$routes['con-material-delete/(\d+)']   = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'delete'];
+$routes['con-material-category-store']          = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'storeCategory'];
+$routes['con-material-category-update/(\d+)']   = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'updateCategory'];
+$routes['con-material-category-delete/(\d+)']   = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'deleteCategory'];
 
 $routes['con-warehouses']              = ['controller' => 'Phase2\WarehouseController', 'method' => 'index'];
 $routes['con-warehouse-create']        = ['controller' => 'Phase2\WarehouseController', 'method' => 'create'];
@@ -950,6 +987,7 @@ $routes['con-boq-update/(\d+)']        = ['controller' => 'Phase2\Con_BOQControl
 $routes['con-boq-approve/(\d+)']       = ['controller' => 'Phase2\Con_BOQController', 'method' => 'approve'];
 $routes['con-boq-delete']              = ['controller' => 'Phase2\Con_BOQController', 'method' => 'delete'];
 $routes['con-ajax-boq-targets']        = ['controller' => 'Phase2\Con_BOQController', 'method' => 'ajaxGetTargetsByProject'];
+$routes['con-ajax-material-stock']     = ['controller' => 'Phase2\Con_BOQController', 'method' => 'ajaxGetMaterialStock'];
 
 
 // (Working Plan + Budget routes moved below to avoid duplicates — see lines 839+)
@@ -1041,6 +1079,9 @@ $routes['con-material-issue/(\d+)']          = ['controller' => 'Phase2\Con_Mate
 
 
 // ── Vendor Penalties ──────────────────────────────────────────────────────
+$routes['con-ajax-wo-drawings']            = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetDrawings'];
+$routes['con-ajax-wo-check']               = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxCheckExistingWO'];
+$routes['con-ajax-wo-work-types']          = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetWorkTypesByDesign'];
 $routes['con-vendor-penalties']              = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'index'];
 $routes['con-vendor-penalty-create']         = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'create'];
 $routes['con-vendor-penalty-store']          = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'store'];
@@ -1069,6 +1110,7 @@ $routes['con-ajax-wo-by-project']          = ['controller' => 'Phase2\\Con_WorkO
 $routes['con-ajax-wo-work-plans']          = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetWorkPlans'];
 $routes['con-ajax-wo-targets']             = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetTargets'];
 $routes['con-ajax-wo-drawings']            = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetDrawings'];
+$routes['con-ajax-wo-check']               = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxCheckExistingWO'];
 
 // ── Financial Transactions ─────────────────────────────────────────────────
 $routes['con-transactions']               = ['controller' => 'Phase2\\Con_FinancialTransactionController', 'method' => 'index'];
@@ -1090,6 +1132,7 @@ $routes['con-working-plan-update/(\d+)']  = ['controller' => 'Phase2\Con_Working
 $routes['con-working-plan-delete/(\d+)']  = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'delete'];
 $routes['con-working-plan-view/(\d+)']    = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'show'];
 $routes['con-working-plan-print/(\d+)']   = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'printView'];
+$routes['con-project-progress-report/(\d+)'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectProgressReport'];
 
 // ── Budget Extension Requests ─────────────────────────────────────────────────
 $routes['con-budget-extends']             = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'budgetExtends'];
@@ -1100,6 +1143,7 @@ $routes['con-budget-extend-reject/(\d+)'] = ['controller' => 'Phase2\Con_Working
 
 // ── AJAX: Cascade project → plans + budgets ───────────────────────────────
 $routes['con-ajax-project-data']           = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'ajaxGetProjectData'];
+$routes['con-ajax-budget-estimate']        = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'ajaxGetBudgetEstimate'];
 // ── AJAX: Cascade project → targets ──────────────────────────────────────
 $routes['con-ajax-project-targets']        = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'ajaxGetProjectTargets'];
 

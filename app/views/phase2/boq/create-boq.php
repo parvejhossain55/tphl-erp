@@ -45,7 +45,7 @@ $months     = ['','January','February','March','April','May','June',
                         <input type="hidden" name="design_type_id" id="design_type_id_hidden" value="<?= $targetData['design_type_id'] ?? '' ?>">
 
                         <!-- ── Row 1: Project + Version + Status ── -->
-                        <div class="row mb-3">
+                        <div class="row mb-3 ">
                             <div class="col-md-5">
                                 <label class="form-label fw-bold">Project <span class="text-danger">*</span></label>
                                 <?php if (!empty($targetData)): ?>
@@ -64,11 +64,11 @@ $months     = ['','January','February','March','April','May','June',
                                     </select>
                                 <?php endif; ?>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 d-none">
                                 <label class="form-label fw-bold">Version</label>
                                 <input type="text" name="version" class="form-control" value="1.0" required>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="form-label fw-bold">Initial Status</label>
                                 <select name="status" class="form-select">
                                     <option value="Draft">Draft</option>
@@ -125,9 +125,9 @@ $months     = ['','January','February','March','April','May','June',
                                 <thead class="table-light">
                                     <tr>
                                         <th style="width:40%;">Material <span class="text-danger">*</span></th>
+                                        <th style="width:12%;" class="text-center">Stock</th>
                                         <th style="width:18%;">Quantity <span class="text-danger">*</span></th>
-                                        <th style="width:18%;">Est. Unit Cost <span class="text-danger">*</span></th>
-                                        <th style="width:16%;" class="text-end">Total</th>
+                                        <th style="width:22%;">Required Date <span class="text-danger">*</span></th>
                                         <th style="width:8%;" class="text-center">Action</th>
                                     </tr>
                                 </thead>
@@ -138,10 +138,15 @@ $months     = ['','January','February','March','April','May','June',
                                                 <option value="">-- Select Material --</option>
                                                 <?php foreach ($materials as $m): ?>
                                                     <option value="<?= $m['id'] ?>" data-unit="<?= $m['unit'] ?>">
-                                                        <?= htmlspecialchars($m['name']) ?> (<?= $m['unit'] ?>)
+                                                        <?= htmlspecialchars($m['name']) ?> [<?= htmlspecialchars($m['category_name'] ?? 'Uncategorized') ?>] (<?= htmlspecialchars($m['unit']) ?>)
                                                     </option>
                                                 <?php endforeach; ?>
                                             </select>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-primary check-stock-btn d-inline-flex align-items-center gap-1" style="border-radius: 6px; font-weight: 500;" title="Show Stock">
+                                                <i class="bi bi-eye-fill"></i> Show
+                                            </button>
                                         </td>
                                         <td>
                                             <div class="input-group">
@@ -151,10 +156,9 @@ $months     = ['','January','February','March','April','May','June',
                                             </div>
                                         </td>
                                         <td>
-                                            <input type="number" step="0.01" name="unit_cost[]"
-                                                   class="form-control boq-cost" required min="0">
+                                            <input type="date" name="required_date[]"
+                                                   class="form-control boq-req-date" required>
                                         </td>
-                                        <td class="text-end fw-bold boq-row-total">0.00</td>
                                         <td class="text-center">
                                             <button type="button" class="btn btn-sm btn-outline-danger boq-remove-row"
                                                     style="display:none;" title="Remove">
@@ -163,15 +167,6 @@ $months     = ['','January','February','March','April','May','June',
                                         </td>
                                     </tr>
                                 </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td colspan="3" class="text-end fw-bold py-3">Grand Total Estimated Cost:</td>
-                                        <td class="text-end fw-bold py-3 text-primary fs-6">
-                                            <span id="boqGrandTotal">0.00</span>
-                                        </td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot>
                             </table>
                         </div>
 
@@ -231,9 +226,12 @@ document.getElementById('project_id').addEventListener('change', function () {
                 data.targets.forEach(t => {
                     const wk  = t.week_number ? ' · Week ' + t.week_number : '';
                     const mon = MONTHS[parseInt(t.month)] || '';
-                    const label = t.target_title
+                    let label = t.target_title
                         + ' [' + mon + ' ' + t.year + wk + ']'
                         + (t.design_type_name ? ' — ' + t.design_type_name : '');
+                    if (t.boq_id) {
+                        label += ' (BOM Already Created)';
+                    }
 
                     const opt = document.createElement('option');
                     opt.value = t.id;
@@ -245,6 +243,7 @@ document.getElementById('project_id').addEventListener('change', function () {
                     opt.dataset.year            = t.year;
                     opt.dataset.month           = t.month;
                     opt.dataset.week            = t.week_number || '';
+                    opt.dataset.boqId           = t.boq_id           || '';
                     sel.appendChild(opt);
                 });
             } else {
@@ -274,6 +273,8 @@ document.getElementById('target_select').addEventListener('change', function () 
     // Info card
     const card = document.getElementById('targetInfoCard');
     const txt  = document.getElementById('targetInfoText');
+    const saveBtn = document.querySelector('#boqForm button[type="submit"]');
+
     if (this.value) {
         const mon = MONTHS[parseInt(opt.dataset.month)] || '';
         const wk  = opt.dataset.week ? ' · Week ' + opt.dataset.week : '';
@@ -281,44 +282,31 @@ document.getElementById('target_select').addEventListener('change', function () 
         info     += ' | Period: ' + mon + ' ' + (opt.dataset.year || '') + wk;
         if (opt.dataset.targetPct) info += ' | Target: <strong>' + parseFloat(opt.dataset.targetPct).toFixed(1) + '%</strong>';
         if (opt.dataset.designTypeName) info += ' | Design: <strong>' + opt.dataset.designTypeName + '</strong>';
+        
+        if (opt.dataset.boqId) {
+            info += '<br><div class="alert alert-danger mt-2 mb-0 py-2 fw-semibold" style="font-size:12.5px;"><i class="bi bi-exclamation-triangle-fill me-1"></i> A BOM has already been created for this target. <a href="' + BASE_URL + '/con-boq-show/' + opt.dataset.boqId + '" class="fw-bold text-danger text-decoration-underline" target="_blank">View BOM #' + opt.dataset.boqId + '</a>. Saving is disabled to prevent duplicates.</div>';
+            if (saveBtn) saveBtn.disabled = true;
+        } else {
+            if (saveBtn) saveBtn.disabled = false;
+        }
+        
         txt.innerHTML = info;
         card.classList.remove('d-none');
     } else {
         card.classList.add('d-none');
+        if (saveBtn) saveBtn.disabled = false;
     }
 });
 
-// ── BOQ Item Calculations ────────────────────────────────────────────────
+// ── BOQ Item Event Listeners ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
     var tbody = document.getElementById('boqItemsBody');
-
-    function recalc() {
-        var grandTotal = 0;
-        tbody.querySelectorAll('tr').forEach(function (row) {
-            var qty  = parseFloat(row.querySelector('.boq-qty').value)  || 0;
-            var cost = parseFloat(row.querySelector('.boq-cost').value) || 0;
-            var total = qty * cost;
-            row.querySelector('.boq-row-total').textContent = total.toLocaleString(undefined, {
-                minimumFractionDigits: 2, maximumFractionDigits: 2
-            });
-            grandTotal += total;
-        });
-        document.getElementById('boqGrandTotal').textContent = grandTotal.toLocaleString(undefined, {
-            minimumFractionDigits: 2, maximumFractionDigits: 2
-        });
-    }
 
     tbody.addEventListener('change', function (e) {
         if (e.target.classList.contains('boq-material')) {
             var opt  = e.target.options[e.target.selectedIndex];
             var unit = opt.getAttribute('data-unit') || '-';
             e.target.closest('tr').querySelector('.boq-unit').textContent = unit;
-        }
-    });
-
-    tbody.addEventListener('input', function (e) {
-        if (e.target.classList.contains('boq-qty') || e.target.classList.contains('boq-cost')) {
-            recalc();
         }
     });
 
@@ -331,17 +319,142 @@ document.addEventListener('DOMContentLoaded', function () {
         matSel.selectedIndex = 0;
         newRow.querySelectorAll('input').forEach(function (inp) { inp.value = ''; });
         newRow.querySelector('.boq-unit').textContent = '-';
-        newRow.querySelector('.boq-row-total').textContent = '0.00';
         newRow.querySelector('.boq-remove-row').style.display = '';
         tbody.appendChild(newRow);
     });
 
     tbody.addEventListener('click', function (e) {
-        var btn = e.target.closest('.boq-remove-row');
-        if (btn) {
-            btn.closest('tr').remove();
-            recalc();
+        var removeBtn = e.target.closest('.boq-remove-row');
+        if (removeBtn) {
+            removeBtn.closest('tr').remove();
+        }
+
+        var stockBtn = e.target.closest('.check-stock-btn');
+        if (stockBtn) {
+            checkStock(stockBtn);
         }
     });
 });
+
+function checkStock(btn) {
+    const row = btn.closest('tr');
+    const matSelect = row.querySelector('.boq-material');
+    const materialId = matSelect.value;
+    
+    // Select project field (handles both hidden and select element)
+    const projectField = document.querySelector('[name="project_id"]');
+    const projectId = projectField ? projectField.value : '';
+
+    if (!projectId) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Project Required',
+            text: 'Please select a Project first.',
+            confirmButtonColor: '#4f46e5'
+        });
+        return;
+    }
+
+    if (!materialId) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Material Required',
+            text: 'Please select a Material first.',
+            confirmButtonColor: '#4f46e5'
+        });
+        return;
+    }
+
+    // Show loading indicator
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+    fetch(`${BASE_URL}/con-ajax-material-stock?project_id=${projectId}&material_id=${materialId}`)
+        .then(response => response.json())
+        .then(data => {
+            // Reset button state
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+
+            if (data.success) {
+                let warehouseListHtml = '';
+                if (data.warehouses.length > 0) {
+                    data.warehouses.forEach(w => {
+                        warehouseListHtml += `
+                            <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                                <div>
+                                    <i class="bi bi-house-door text-muted me-2"></i>
+                                    <span class="fw-semibold">${w.warehouse_name}</span>
+                                </div>
+                                <span class="badge bg-light text-dark border fw-bold">${w.current_quantity.toFixed(3)} ${data.unit}</span>
+                            </div>
+                        `;
+                    });
+                } else {
+                    warehouseListHtml = `
+                        <div class="list-group-item text-center py-3 text-muted bg-light">
+                            <i class="bi bi-exclamation-circle me-1 text-warning"></i>
+                            No warehouses assigned or found for this project.
+                        </div>
+                    `;
+                }
+
+                const badgeClass = data.total_stock > 0 ? 'bg-success' : 'bg-danger';
+
+                Swal.fire({
+                    title: '<span style="font-size:18px; font-weight:700;"><i class="bi bi-box-seam text-primary me-2"></i>Project-wise Stock Inquiry</span>',
+                    html: `
+                        <div class="text-start" style="font-size:14px; font-family:inherit;">
+                            <div class="mb-2 pb-2 border-bottom">
+                                <strong>Project:</strong> <span class="text-primary fw-semibold">${data.project_name}</span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Material:</strong> <span class="text-dark fw-semibold">${data.material_name}</span>
+                            </div>
+                            <div class="card shadow-sm border-0 mb-3 overflow-hidden" style="border: 1px solid #dee2e6 !important;">
+                                <div class="card-header bg-light py-2 px-3 border-bottom-0">
+                                    <h6 class="mb-0 text-secondary fw-bold" style="font-size: 12.5px;">
+                                        <i class="bi bi-houses me-1 text-info"></i> Warehouse Stock Breakdown
+                                    </h6>
+                                </div>
+                                <div class="list-group list-group-flush border-top">
+                                    ${warehouseListHtml}
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center bg-light p-3 rounded border" style="border: 1px solid #dee2e6 !important;">
+                                <span class="fw-bold text-secondary">Total Available Stock:</span>
+                                <span class="badge ${badgeClass} px-3 py-2 fs-6 fw-bold" style="letter-spacing: 0.5px;">
+                                    ${data.total_stock.toFixed(3)} ${data.unit}
+                                </span>
+                            </div>
+                        </div>
+                    `,
+                    showCloseButton: true,
+                    confirmButtonText: 'Close',
+                    confirmButtonColor: '#4f46e5',
+                    customClass: {
+                        popup: 'shadow-lg border-0'
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message || 'Failed to fetch stock.',
+                    confirmButtonColor: '#ef4444'
+                });
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            Swal.fire({
+                icon: 'error',
+                title: 'Network Error',
+                text: 'Something went wrong while connecting to the server. Please try again.',
+                confirmButtonColor: '#ef4444'
+            });
+        });
+}
 </script>

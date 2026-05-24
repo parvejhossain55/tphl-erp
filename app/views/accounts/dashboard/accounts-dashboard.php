@@ -400,6 +400,40 @@ function getStatusBadge($status)
     </div>
 
     <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
+        <a href="<?= $GLOBALS['base_url'] ?>/con-land-requisitions" class="text-decoration-none">
+            <div class="card__wrapper h-100 dashboard-card ops-card" style="border-left: 3px solid #10b981;">
+                <div class="d-flex align-items-center gap-2 h-100">
+                    <div class="card__icon icon-success">
+                        <span><i class="fa-light fa-file-invoice-dollar"></i></span>
+                    </div>
+                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-1 text-muted" style="font-size:0.75rem;">Land Requisitions</h6>
+                        <h4 class="card__title mb-0"><?= $ops['pending_land_requisitions'] ?? 0 ?></h4>
+                        <small class="text-success" style="font-size:0.68rem;">TK.<?= number_format($ops['pending_land_requisition_amt'] ?? 0, 0) ?></small>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
+        <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions" class="text-decoration-none">
+            <div class="card__wrapper h-100 dashboard-card ops-card" style="border-left: 3px solid #f59e0b;">
+                <div class="d-flex align-items-center gap-2 h-100">
+                    <div class="card__icon icon-warning">
+                        <span><i class="fa-light fa-wallet"></i></span>
+                    </div>
+                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-1 text-muted" style="font-size:0.75rem;">Fund Requisitions</h6>
+                        <h4 class="card__title mb-0"><?= $ops['pending_petty_cash'] ?? 0 ?></h4>
+                        <small class="text-warning" style="font-size:0.68rem;">TK.<?= number_format($ops['pending_petty_cash_amt'] ?? 0, 0) ?></small>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
         <a href="<?= $GLOBALS['base_url'] ?>/central-statement" class="text-decoration-none">
             <div class="card__wrapper h-100 dashboard-card ops-card">
                 <div class="d-flex align-items-center gap-2 h-100">

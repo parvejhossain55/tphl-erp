@@ -30,6 +30,7 @@ class Con_Stock extends Model
         $sql = "SELECT s.*,
                        m.name AS material_name, m.unit, m.min_stock_level,
                        w.name AS warehouse_name,
+                       COALESCE(cat.name, 'Uncategorized') AS category_name,
                        COALESCE(NULLIF(s.unit_price, 0), poi_price.unit_price, 0) AS unit_price,
                        (s.current_quantity * COALESCE(NULLIF(s.unit_price, 0), poi_price.unit_price, 0)) AS stock_value,
                        last_out.quantity      AS last_issued_qty,
@@ -37,6 +38,7 @@ class Con_Stock extends Model
                        isu.full_name          AS last_issued_by_name
                 FROM {$this->table} s
                 JOIN con_materials  m ON m.id = s.material_id
+                LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                 JOIN con_warehouses w ON w.id = s.warehouse_id
                 LEFT JOIN {$this->latestPriceSubquery()} ON poi_price.material_id = s.material_id
                 LEFT JOIN (
@@ -90,10 +92,12 @@ class Con_Stock extends Model
         $sql = "SELECT s.*,
                        m.name AS material_name, m.unit, m.min_stock_level,
                        w.name AS warehouse_name,
+                       COALESCE(cat.name, 'Uncategorized') AS category_name,
                        COALESCE(NULLIF(s.unit_price, 0), poi_price.unit_price, 0) AS unit_price,
                        (s.current_quantity * COALESCE(NULLIF(s.unit_price, 0), poi_price.unit_price, 0)) AS stock_value
                 FROM {$this->table} s
                 JOIN con_materials m ON m.id = s.material_id
+                LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                 JOIN con_warehouses w ON w.id = s.warehouse_id
                 LEFT JOIN {$this->latestPriceSubquery()} ON poi_price.material_id = s.material_id
                 WHERE s.current_quantity > 0
@@ -111,6 +115,7 @@ class Con_Stock extends Model
         $sql = "SELECT s.*,
                        m.name AS material_name, m.unit, m.min_stock_level,
                        w.name AS warehouse_name,
+                       COALESCE(cat.name, 'Uncategorized') AS category_name,
                        COALESCE(NULLIF(s.unit_price, 0), poi_price.unit_price, 0) AS unit_price,
                        (s.current_quantity * COALESCE(NULLIF(s.unit_price, 0), poi_price.unit_price, 0)) AS stock_value,
                        (m.min_stock_level - s.current_quantity) AS deficit,
@@ -119,6 +124,7 @@ class Con_Stock extends Model
                             ELSE 0 END AS stock_pct
                 FROM {$this->table} s
                 JOIN con_materials m ON m.id = s.material_id
+                LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                 JOIN con_warehouses w ON w.id = s.warehouse_id
                 LEFT JOIN {$this->latestPriceSubquery()} ON poi_price.material_id = s.material_id
                 WHERE s.current_quantity < m.min_stock_level
@@ -188,6 +194,7 @@ class Con_Stock extends Model
         $breakdownSql = "SELECT pr.project_id,
                                 poi.material_id,
                                 m.name AS material_name, m.unit,
+                                COALESCE(cat.name, 'Uncategorized') AS category_name,
                                 SUM(mri.received_quantity) AS total_received,
                                 AVG(poi.unit_price)        AS avg_price,
                                 SUM(mri.received_quantity * poi.unit_price) AS total_value
@@ -197,9 +204,10 @@ class Con_Stock extends Model
                          JOIN purchase_orders   po      ON po.id = mr.purchase_order_id
                          JOIN purchase_requests pr      ON pr.id = po.request_id
                          JOIN con_materials m            ON m.id  = poi.material_id
+                         LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                          WHERE mri.status = 'Accepted'
                            AND mr.overall_status IN ('Accepted','Partially Accepted')
-                         GROUP BY pr.project_id, poi.material_id
+                         GROUP BY pr.project_id, poi.material_id, m.name, m.unit, cat.name
                          ORDER BY pr.project_id ASC, total_value DESC";
 
         $bResult    = $this->db->query($breakdownSql);
@@ -391,6 +399,7 @@ class Con_Stock extends Model
                 m.id AS material_id,
                 m.name AS material_name,
                 m.unit,
+                COALESCE(cat.name, 'Uncategorized') AS category_name,
                 iei.estimated_qty AS initial_budget_qty,
                 COALESCE(received.total_received, 0) AS total_received,
                 (iei.estimated_qty - COALESCE(received.total_received, 0)) AS available_qty
@@ -400,6 +409,7 @@ class Con_Stock extends Model
             LEFT JOIN design_types dt ON dt.id = wt.design_type_id
             JOIN initial_estimate_items iei ON iei.budget_id = ieb.id
             JOIN con_materials m ON m.id = iei.material_id
+            LEFT JOIN con_material_categories cat ON cat.id = m.category_id
             LEFT JOIN (
                 -- Simple: received qty per project + material, no boq_master dependency
                 SELECT

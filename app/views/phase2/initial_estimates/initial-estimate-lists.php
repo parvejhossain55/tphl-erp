@@ -60,7 +60,9 @@
                                     $sc = match($b['status']) {
                                         'approved'  => 'bg-success',
                                         'cancelled' => 'bg-danger',
-                                        default     => 'bg-warning text-dark',
+                                        'pending'   => 'bg-warning text-dark',
+                                        'draft'     => 'bg-secondary',
+                                        default     => 'bg-secondary',
                                     };
                                     ?>
                                     <span class="badge <?= $sc ?>"><?= ucfirst($b['status']) ?></span>
@@ -77,7 +79,7 @@
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     <?php if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])): ?>
-                                        <?php if ($b['status'] === 'pending'): ?>
+                                        <?php if (in_array($b['status'], ['draft', 'pending'])): ?>
                                             <a href="<?= $base_url ?>/con-estimate-edit/<?= $b['id'] ?>"
                                                class="btn btn-sm btn-outline-warning ms-1" title="Edit">
                                                 <i class="bi bi-pencil-square"></i>

@@ -20,7 +20,7 @@ class Con_MaterialIssue extends Model
     public function getAll()
     {
         $sql = "SELECT mi.*, p.name AS project_name, w.name AS warehouse_name,
-                       m.name AS material_name, m.unit,
+                       m.name AS material_name, m.unit, COALESCE(cat.name, 'Uncategorized') AS category_name,
                        u.full_name AS issued_by_name,
                        wp.work_description AS work_plan_name,
                        tf.target_title AS target_name
@@ -28,6 +28,7 @@ class Con_MaterialIssue extends Model
                 LEFT JOIN projects p ON p.id = mi.project_id
                 LEFT JOIN con_warehouses w ON w.id = mi.warehouse_id
                 LEFT JOIN con_materials m ON m.id = mi.material_id
+                LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                 LEFT JOIN users u ON u.id = mi.issued_by
                 LEFT JOIN project_working_plans wp ON wp.id = mi.work_plan_id
                 LEFT JOIN target_fixed tf ON tf.id = mi.target_id
@@ -40,7 +41,7 @@ class Con_MaterialIssue extends Model
     {
         $stmt = $this->db->prepare(
             "SELECT mi.*, p.name AS project_name, w.name AS warehouse_name,
-                    m.name AS material_name, m.unit,
+                    m.name AS material_name, m.unit, COALESCE(cat.name, 'Uncategorized') AS category_name,
                     u.full_name AS issued_by_name,
                     wp.work_description AS work_plan_name,
                     tf.target_title AS target_name
@@ -48,6 +49,7 @@ class Con_MaterialIssue extends Model
              LEFT JOIN projects p ON p.id = mi.project_id
              LEFT JOIN con_warehouses w ON w.id = mi.warehouse_id
              LEFT JOIN con_materials m ON m.id = mi.material_id
+             LEFT JOIN con_material_categories cat ON cat.id = m.category_id
              LEFT JOIN users u ON u.id = mi.issued_by
              LEFT JOIN project_working_plans wp ON wp.id = mi.work_plan_id
              LEFT JOIN target_fixed tf ON tf.id = mi.target_id

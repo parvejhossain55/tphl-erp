@@ -30,7 +30,7 @@
                 <input type="date" name="test_date" class="form-control" value="<?= $record['test_date'] ?? '' ?>">
             </div>
             <div class="col-xl-6">
-                <label>Lab Test Document Link</label>
+                <label>Soil Test Document Link</label>
                 <input type="url" name="lab_test_document_link" class="form-control"
                     value="<?= htmlspecialchars($record['lab_test_document_link'] ?? '') ?>" placeholder="https://...">
             </div>

@@ -13,6 +13,7 @@ $externalDesigners     = $externalDesigners     ?? 0;
 $recentDesigns         = $recentDesigns         ?? [];
 $myProjects            = $myProjects            ?? [];
 $projectsNeedingDesign = $projectsNeedingDesign ?? [];
+$architecturalDesigns  = $architecturalDesigns  ?? [];
 
 $coveragePct = $myProjectsCount > 0 ? round($projectsWithDesign / $myProjectsCount * 100, 1) : 0;
 $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
@@ -206,6 +207,7 @@ $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
     <a href="<?= $base ?>/structure-design" class="sd-btn-white"><i class="fal fa-list"></i> All Designs</a>
     <a href="<?= $base ?>/structure-design/create" class="sd-btn-white"><i class="fal fa-plus"></i> Add Design</a>
     <a href="<?= $base ?>/con-projects" class="sd-btn-white"><i class="fal fa-building"></i> Projects</a>
+    <a href="#sec-architectural-designs" class="sd-btn-white"><i class="fal fa-drafting-compass"></i> Architectural Designs</a>
   </div>
 </div>
 
@@ -406,6 +408,69 @@ $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
              style="background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#fff;border-radius:10px;font-size:12px;font-weight:700;padding:8px 20px">
             <i class="fal fa-plus me-2"></i>Add New Structure Design
           </a>
+        </div>
+      <?php endif; ?>
+    </div>
+
+    <!-- Assigned Architectural Designs -->
+    <div id="sec-architectural-designs" class="sd-panel section-anchor">
+      <div class="sd-panel-title">
+        <div class="sd-dot" style="background:var(--sd-amber)"></div>
+        Assigned Architectural Designs
+        <span style="margin-left:auto;font-size:10px;font-weight:700;background:rgba(245,158,11,0.1);color:var(--sd-amber);padding:3px 10px;border-radius:20px">
+          <?= count($architecturalDesigns) ?> Designs
+        </span>
+      </div>
+
+      <?php if (empty($architecturalDesigns)): ?>
+        <div class="empty-msg">No architectural designs found for your projects</div>
+      <?php else: ?>
+        <div class="row">
+          <?php foreach ($architecturalDesigns as $ad): ?>
+            <div class="col-md-6">
+              <div class="design-card" style="border-left: 4px solid var(--sd-amber);">
+                <div class="design-proj"><?= htmlspecialchars($ad['project_name'] ?? 'N/A') ?></div>
+                <div class="design-meta">
+                  <i class="fal fa-map-marker-alt me-1"></i><?= htmlspecialchars($ad['location_name'] ?: 'N/A') ?>
+                </div>
+                <div class="design-meta" style="margin-top: 4px;">
+                  <i class="fal fa-user me-1"></i>Architect: <?= htmlspecialchars($ad['architect_name'] ?: 'N/A') ?>
+                </div>
+                <div class="design-meta" style="margin-top: 4px;">
+                  <i class="fal fa-calendar me-1"></i>Uploaded: <?= date('d M Y', strtotime($ad['created_at'])) ?>
+                </div>
+                
+                <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                  <?php
+                    $status = $ad['status'] ?? 'draft';
+                    $statusBg = 'rgba(148, 163, 184, 0.1)';
+                    $statusColor = '#64748b';
+                    if ($status === 'fully') {
+                        $statusBg = 'rgba(16, 185, 129, 0.1)';
+                        $statusColor = '#10b981';
+                    } elseif ($status === 'partially') {
+                        $statusBg = 'rgba(59, 130, 246, 0.1)';
+                        $statusColor = '#3b82f6';
+                    }
+                  ?>
+                  <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:<?= $statusBg ?>;color:<?= $statusColor ?>">
+                    <i class="fas fa-check-circle me-1"></i><?= ucfirst($status) ?> Approved
+                  </span>
+                </div>
+
+                <?php if (!empty($ad['full_architecture_design_link'])): ?>
+                  <div style="margin-top:12px">
+                    <a href="<?= htmlspecialchars($ad['full_architecture_design_link']) ?>" target="_blank"
+                       style="font-size:11px;color:var(--sd-amber);text-decoration:none;border:1px solid var(--sd-amber);padding:4px 10px;border-radius:6px;display:inline-block;transition:all 0.18s;"
+                       onmouseover="this.style.background='var(--sd-amber)';this.style.color='#fff';"
+                       onmouseout="this.style.background='transparent';this.style.color='var(--sd-amber)';">
+                      <i class="fal fa-external-link-alt me-1"></i>View Architecture Design
+                    </a>
+                  </div>
+                <?php endif; ?>
+              </div>
+            </div>
+          <?php endforeach; ?>
         </div>
       <?php endif; ?>
     </div>

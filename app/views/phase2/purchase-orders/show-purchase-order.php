@@ -195,7 +195,10 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
               $grandTotal += $lt; ?>
               <tr>
                 <td><?= $i + 1 ?></td>
-                <td class="fw-bold"><?= htmlspecialchars($item['material_name']) ?></td>
+                <td>
+                  <span class="fw-bold"><?= htmlspecialchars($item['material_name']) ?></span>
+                  <br><small class="text-muted">[Category: <?= htmlspecialchars($item['category_name'] ?? 'Uncategorized') ?>]</small>
+                </td>
                 <td><?= htmlspecialchars($item['vendor_name']) ?></td>
                 <td><?= htmlspecialchars($item['unit']) ?></td>
                 <td class="text-end"><?= number_format($item['quantity'], 3) ?></td>
@@ -235,7 +238,10 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
           <tbody>
             <?php foreach ($pendingItems as $pi): ?>
               <tr>
-                <td class="fw-bold"><?= htmlspecialchars($pi['material_name']) ?></td>
+                <td>
+                  <span class="fw-bold"><?= htmlspecialchars($pi['material_name']) ?></span>
+                  <br><small class="text-muted">[Category: <?= htmlspecialchars($pi['category_name'] ?? 'Uncategorized') ?>]</small>
+                </td>
                 <td><?= htmlspecialchars($pi['vendor_name']) ?></td>
                 <td class="text-end"><?= number_format($pi['quantity'], 3) ?></td>
                 <td class="text-end text-success"><?= number_format($pi['received_total'], 3) ?></td>
@@ -484,7 +490,10 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
                 <?php foreach ($boqItems as $bi => $bitem): ?>
                   <tr>
                     <td><?= $bi + 1 ?></td>
-                    <td class="fw-bold"><?= htmlspecialchars($bitem['material_name']) ?></td>
+                    <td>
+                      <span class="fw-bold"><?= htmlspecialchars($bitem['material_name']) ?></span>
+                      <br><small class="text-muted">[Category: <?= htmlspecialchars($bitem['category_name'] ?? 'Uncategorized') ?>]</small>
+                    </td>
                     <td><?= htmlspecialchars($bitem['unit']) ?></td>
                     <td class="text-end"><?= number_format($bitem['quantity'], 3) ?></td>
                     <td class="text-end">৳ <?= number_format($bitem['unit_cost'], 2) ?></td>

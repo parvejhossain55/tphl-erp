@@ -56,7 +56,7 @@ class Con_TargetFixedController extends Controller
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
-        $rProjs = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND $filter ORDER BY name ASC");
+        $rProjs = $this->db->query("SELECT id, name, building_type FROM projects WHERE deleted_at IS NULL AND $filter ORDER BY name ASC");
         $projects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
         $workPlans = $this->workPlanModel->getAll();
 
@@ -99,6 +99,7 @@ class Con_TargetFixedController extends Controller
             'project_id'        => $_POST['project_id']        ?? null,
             'work_plan_id'      => $_POST['work_plan_id']      ?? null,
             'work_order_id'     => !empty($_POST['work_order_id']) ? $_POST['work_order_id'] : null,
+            'floor_name'        => !empty($_POST['floor_name']) ? $_POST['floor_name'] : null,
             'target_title'      => trim($_POST['target_title'] ?? ''),
             'user_id'           => $_SESSION['user']['id']     ?? null,
             'year'              => $_POST['year']              ?? date('Y'),
@@ -187,6 +188,18 @@ class Con_TargetFixedController extends Controller
         $reportsStmt->execute();
         $weeklyReports = $reportsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
+        // Fetch child activity items of this working plan
+        $planItems = [];
+        if (!empty($target['work_plan_id'])) {
+            $planItems = $this->workPlanModel->getItems((int)$target['work_plan_id']);
+        }
+
+        // Check if BOM/BOQ is already created for this target
+        $boqStmt = $this->db->prepare("SELECT id, status FROM boq_master WHERE target_id = ? LIMIT 1");
+        $boqStmt->bind_param('i', $id);
+        $boqStmt->execute();
+        $targetBoq = $boqStmt->get_result()->fetch_assoc();
+
         $this->view('phase2/target-fixed/show-target', [
             'current_route'   => 'con-targets',
             'page_title'      => 'Target Detail',
@@ -198,6 +211,8 @@ class Con_TargetFixedController extends Controller
             'creatorInfo'     => $creatorInfo,
             'currentRoleId'   => $currentRoleId,
             'weeklyReports'   => $weeklyReports,
+            'planItems'       => $planItems,
+            'targetBoq'       => $targetBoq,
         ]);
     }
 
@@ -229,7 +244,7 @@ class Con_TargetFixedController extends Controller
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
-        $rProjs = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND $filter ORDER BY name ASC");
+        $rProjs = $this->db->query("SELECT id, name, building_type FROM projects WHERE deleted_at IS NULL AND $filter ORDER BY name ASC");
         $projects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
         $workPlans = $this->workPlanModel->getAll();
 
@@ -273,6 +288,7 @@ class Con_TargetFixedController extends Controller
             'project_id'        => $_POST['project_id']        ?? null,
             'work_plan_id'      => $_POST['work_plan_id']      ?? null,
             'work_order_id'     => !empty($_POST['work_order_id']) ? $_POST['work_order_id'] : null,
+            'floor_name'        => !empty($_POST['floor_name']) ? $_POST['floor_name'] : null,
             'target_title'      => trim($_POST['target_title'] ?? ''),
             'year'              => $_POST['year']              ?? date('Y'),
             'month'             => $_POST['month']             ?? date('n'),

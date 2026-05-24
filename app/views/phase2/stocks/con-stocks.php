@@ -147,7 +147,10 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                         ?>
                                         <tr>
                                             <td><?= $i + 1 ?></td>
-                                            <td><div class="fw-bold"><?= htmlspecialchars($row['material_name']) ?></div></td>
+                                            <td>
+                                                <div class="fw-bold"><?= htmlspecialchars($row['material_name']) ?></div>
+                                                <small class="text-muted">[Category: <?= htmlspecialchars($row['category_name'] ?? 'Uncategorized') ?>]</small>
+                                            </td>
                                             <td><?= htmlspecialchars($row['warehouse_name']) ?></td>
                                             <td class="fw-bold <?= $isLow ? 'text-danger' : 'text-primary' ?>">
                                                 <?= number_format($row['current_quantity'], 3) ?>
@@ -226,7 +229,10 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                         ?>
                                         <tr>
                                             <td><?= $i + 1 ?></td>
-                                            <td><div class="fw-bold"><?= htmlspecialchars($row['material_name']) ?></div></td>
+                                            <td>
+                                                <div class="fw-bold"><?= htmlspecialchars($row['material_name']) ?></div>
+                                                <small class="text-muted">[Category: <?= htmlspecialchars($row['category_name'] ?? 'Uncategorized') ?>]</small>
+                                            </td>
                                             <td><?= htmlspecialchars($row['warehouse_name']) ?></td>
                                             <td class="fw-bold text-primary"><?= number_format($row['current_quantity'], 3) ?></td>
                                             <td><?= htmlspecialchars($row['unit']) ?></td>
@@ -326,7 +332,10 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                                         <tbody>
                                                             <?php foreach ($proj['materials'] as $mat): ?>
                                                             <tr>
-                                                                <td class="fw-semibold"><?= htmlspecialchars($mat['material_name']) ?></td>
+                                                                 <td>
+                                                                     <span class="fw-semibold"><?= htmlspecialchars($mat['material_name']) ?></span>
+                                                                     <br><small class="text-muted">[Category: <?= htmlspecialchars($mat['category_name'] ?? 'Uncategorized') ?>]</small>
+                                                                 </td>
                                                                 <td class="text-end text-primary fw-bold"><?= number_format($mat['total_received'] ?? 0, 3) ?></td>
                                                                 <td class="text-end fw-bold <?= ($mat['total_issued'] ?? 0) > 0 ? 'text-danger' : 'text-muted' ?>">
                                                                     <?= ($mat['total_issued'] ?? 0) > 0 ? number_format($mat['total_issued'], 3) : '-' ?>
@@ -478,7 +487,10 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                         ?>
                                         <tr>
                                             <td><?= $i + 1 ?></td>
-                                            <td><div class="fw-bold text-danger"><?= htmlspecialchars($row['material_name']) ?></div></td>
+                                            <td>
+                                                <div class="fw-bold text-danger"><?= htmlspecialchars($row['material_name']) ?></div>
+                                                <small class="text-muted">[Category: <?= htmlspecialchars($row['category_name'] ?? 'Uncategorized') ?>]</small>
+                                            </td>
                                             <td><?= htmlspecialchars($row['warehouse_name']) ?></td>
                                             <td class="fw-bold text-danger"><?= number_format($row['current_quantity'], 3) ?></td>
                                             <td><?= number_format($row['min_stock_level'], 2) ?></td>
@@ -569,9 +581,10 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                                                     $barIssued    = $issuedPct >= 100 ? 'bg-danger' : ($issuedPct >= 80 ? 'bg-warning' : 'bg-primary');
                                                                 ?>
                                                                 <tr>
-                                                                    <td class="fw-semibold">
-                                                                        <?= htmlspecialchars($mat['material_name']) ?>
+                                                                    <td>
+                                                                        <span class="fw-semibold"><?= htmlspecialchars($mat['material_name']) ?></span>
                                                                         <small class="text-muted">(<?= $mat['unit'] ?>)</small>
+                                                                        <br><small class="text-muted">[Category: <?= htmlspecialchars($mat['category_name'] ?? 'Uncategorized') ?>]</small>
                                                                     </td>
                                                                     <td class="text-end fw-bold"><?= number_format($budgetQty, 3) ?></td>
                                                                     <td class="text-end text-primary fw-bold"><?= number_format($receivedQty, 3) ?></td>

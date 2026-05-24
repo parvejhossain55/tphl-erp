@@ -61,7 +61,7 @@ class Con_WorkingPlanController extends Controller
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
-        $rProjs = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND $filter ORDER BY name ASC");
+        $rProjs = $this->db->query("SELECT id, name, building_type FROM projects WHERE deleted_at IS NULL AND $filter ORDER BY name ASC");
         $projects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
 
         $budgets     = $this->budgetModel->getAll();
@@ -146,50 +146,117 @@ class Con_WorkingPlanController extends Controller
 
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        $data = [
-            'project_id'        => (int)   ($_POST['project_id']        ?? 0),
-            'initial_budget_id' => (int)   ($_POST['initial_budget_id'] ?? 0),
-            'work_type_id'      => (int)   ($_POST['work_type_id']      ?? 0),
-            'year'              => (int)   ($_POST['year']              ?? date('Y')),
-            'month'             => (int)   ($_POST['month']             ?? date('n')),
-            'work_description'  =>          trim($_POST['work_description'] ?? ''),
-            'planned_quantity'  => (float) ($_POST['planned_quantity']  ?? 0),
-            'estimated_cost'    => (float) ($_POST['estimated_cost']    ?? 0),
-            'weight_percentage' => (float) ($_POST['weight_percentage'] ?? 0),
-            'created_by'        => (int)   ($_SESSION['user']['id']     ?? 0),
-        ];
+        $projectId = (int)($_POST['project_id'] ?? 0);
+        $year      = (int)($_POST['year'] ?? date('Y'));
+        $month     = (int)($_POST['month'] ?? date('n'));
+        $createdById = (int)($_SESSION['user']['id'] ?? 0);
 
-        if (!$data['project_id'] || !$data['initial_budget_id']) {
-            setError('Project and Budget are required.');
+        if (!$projectId) {
+            setError('Project is required.');
             header("Location: {$GLOBALS['base_url']}/con-working-plan-create");
             exit;
         }
 
-        // Validate weight percentage
-        if ($data['weight_percentage'] > 0) {
-            $budget = $this->budgetModel->find($data['initial_budget_id']);
-            $totalWeight = (float)($budget['weight_percentage'] ?? 0);
-            
-            $allocQuery = $this->db->query("SELECT SUM(weight_percentage) as allocated FROM project_working_plans WHERE initial_budget_id = " . $data['initial_budget_id']);
-            $allocated = (float)($allocQuery->fetch_assoc()['allocated'] ?? 0);
-            
-            if (($allocated + $data['weight_percentage']) > $totalWeight) {
-                $remaining = max(0, $totalWeight - $allocated);
-                setError("Cannot allocate {$data['weight_percentage']}%. Only {$remaining}% is remaining for this budget.");
-                header("Location: {$GLOBALS['base_url']}/con-working-plan-create");
-                exit;
-            }
+        $sections = $_POST['sections'] ?? [];
+
+        if (empty($sections)) {
+            setError('At least one Work Type section is required.');
+            header("Location: {$GLOBALS['base_url']}/con-working-plan-create");
+            exit;
         }
 
-        $result = $this->model->createPlan($data);
-        if ($result['ok']) {
-            setSuccess('Working plan entry added successfully.');
+        $this->db->begin_transaction();
+        try {
+            foreach ($sections as $index => $sec) {
+                $initialBudgetId = (int)($sec['initial_budget_id'] ?? 0);
+                $workTypeId      = (int)($sec['work_type_id'] ?? 0);
+                $estimatedCost   = (float)($sec['estimated_cost'] ?? 0);
+                $weightPct       = (float)($sec['weight_percentage'] ?? 0);
+                $secItems        = $sec['items'] ?? [];
+
+                if (!$initialBudgetId) {
+                    throw new \Exception("Budget is required for section " . ($index + 1));
+                }
+
+                // Process activity items for this section
+                $activityNames = [];
+                foreach ($secItems as $item) {
+                    if (!empty($item['activity_name'])) {
+                        $activityNames[] = trim($item['activity_name']);
+                    }
+                }
+                $workDesc = implode(', ', $activityNames);
+                if (strlen($workDesc) > 500) {
+                    $workDesc = substr($workDesc, 0, 497) . '...';
+                }
+
+                $data = [
+                    'project_id'        => $projectId,
+                    'initial_budget_id' => $initialBudgetId,
+                    'work_type_id'      => $workTypeId,
+                    'year'              => $year,
+                    'month'             => $month,
+                    'work_description'  => $workDesc,
+                    'planned_quantity'  => (float) count($secItems),
+                    'estimated_cost'    => $estimatedCost,
+                    'weight_percentage' => $weightPct,
+                    'created_by'        => $createdById,
+                ];
+
+                // Validate weight percentage for this section
+                if ($data['weight_percentage'] > 0) {
+                    $budget = $this->budgetModel->find($data['initial_budget_id']);
+                    $totalWeight = (float)($budget['weight_percentage'] ?? 0);
+                    
+                    $allocQuery = $this->db->query("SELECT SUM(weight_percentage) as allocated FROM project_working_plans WHERE initial_budget_id = " . $data['initial_budget_id']);
+                    $allocated = (float)($allocQuery->fetch_assoc()['allocated'] ?? 0);
+                    
+                    if (($allocated + $data['weight_percentage']) > $totalWeight) {
+                        $remaining = max(0, $totalWeight - $allocated);
+                        throw new \Exception("Cannot allocate {$data['weight_percentage']}% for Budget #{$initialBudgetId}. Only {$remaining}% is remaining.");
+                    }
+                }
+
+                $stmt = $this->db->prepare(
+                    "INSERT INTO project_working_plans
+                          (project_id, initial_budget_id, work_type_id, year, month,
+                           work_description, planned_quantity, estimated_cost, weight_percentage, created_by,
+                           approved_status)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')"
+                );
+                $stmt->bind_param(
+                    'iiiiisdddi',
+                    $data['project_id'],
+                    $data['initial_budget_id'],
+                    $data['work_type_id'],
+                    $data['year'],
+                    $data['month'],
+                    $data['work_description'],
+                    $data['planned_quantity'],
+                    $data['estimated_cost'],
+                    $data['weight_percentage'],
+                    $data['created_by']
+                );
+                if (!$stmt->execute()) {
+                    throw new \Exception("Failed to save plan for budget ID: " . $initialBudgetId);
+                }
+                $planId = $this->db->insert_id;
+
+                if (!empty($secItems)) {
+                    $this->model->addItems($planId, $secItems);
+                }
+            }
+
+            $this->db->commit();
+            setSuccess('All working plan entries added successfully.');
             header("Location: {$GLOBALS['base_url']}/con-working-plans");
-        } else {
-            setError($result['error']);
+            exit;
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            setError($e->getMessage());
             header("Location: {$GLOBALS['base_url']}/con-working-plan-create");
+            exit;
         }
-        exit;
     }
 
     // =========================================================================
@@ -220,7 +287,7 @@ class Con_WorkingPlanController extends Controller
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
-        $rProjs = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND $filter ORDER BY name ASC");
+        $rProjs = $this->db->query("SELECT id, name, building_type FROM projects WHERE deleted_at IS NULL AND $filter ORDER BY name ASC");
         $projects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
 
         $budgets     = $this->budgetModel->getAll();
@@ -240,11 +307,13 @@ class Con_WorkingPlanController extends Controller
         unset($b);
         
         $designTypes = $this->designTypeModel->getAll();
+        $planItems = $this->model->getItems((int)$id);
 
         $this->view('phase2/working_plans/edit-working-plan', [
             'current_route' => 'con-working-plans',
             'page_title'    => 'Edit Working Plan',
             'plan'          => $plan,
+            'planItems'     => $planItems,
             'projects'      => $projects,
             'budgets'       => $budgets,
             'designTypes'   => $designTypes,
@@ -263,14 +332,26 @@ class Con_WorkingPlanController extends Controller
             exit;
         }
 
+        $items = $_POST['wi_items'] ?? [];
+        $activityNames = [];
+        foreach ($items as $item) {
+            if (!empty($item['activity_name'])) {
+                $activityNames[] = trim($item['activity_name']);
+            }
+        }
+        $workDesc = implode(', ', $activityNames);
+        if (strlen($workDesc) > 500) {
+            $workDesc = substr($workDesc, 0, 497) . '...';
+        }
+
         $data = [
             'project_id'        => (int)   ($_POST['project_id']        ?? 0),
             'initial_budget_id' => (int)   ($_POST['initial_budget_id'] ?? 0),
             'work_type_id'      => (int)   ($_POST['work_type_id']      ?? 0),
             'year'              => (int)   ($_POST['year']              ?? date('Y')),
             'month'             => (int)   ($_POST['month']             ?? date('n')),
-            'work_description'  =>          trim($_POST['work_description'] ?? ''),
-            'planned_quantity'  => (float) ($_POST['planned_quantity']  ?? 0),
+            'work_description'  =>          $workDesc,
+            'planned_quantity'  => (float) count($items),
             'estimated_cost'    => (float) ($_POST['estimated_cost']    ?? 0),
             'weight_percentage' => (float) ($_POST['weight_percentage'] ?? 0),
         ];
@@ -291,7 +372,7 @@ class Con_WorkingPlanController extends Controller
             }
         }
 
-        $result = $this->model->updatePlan($id, $data);
+        $result = $this->model->updatePlan($id, $data, $items);
         if ($result['ok']) {
             setSuccess('Working plan updated.');
         } else {
@@ -341,12 +422,16 @@ class Con_WorkingPlanController extends Controller
         // Budget summary
         $budgetSummary = $this->model->getBudgetSummary($plan['initial_budget_id']);
 
+        // Fetch child plan items
+        $planItems = $this->model->getItems((int)$id);
+
         $this->view('phase2/working_plans/view-working-plan', [
             'current_route'  => 'con-working-plans',
             'page_title'     => 'Working Plan — ' . ($plan['project_name'] ?? 'Details'),
             'plan'           => $plan,
             'projectPlans'   => $projectPlans,
             'budgetSummary'  => $budgetSummary,
+            'planItems'      => $planItems,
         ]);
     }
 
@@ -366,6 +451,9 @@ class Con_WorkingPlanController extends Controller
 
         // Budget summary
         $budgetSummary = $this->model->getBudgetSummary($plan['initial_budget_id']);
+
+        // Fetch child plan items
+        $planItems = $this->model->getItems((int)$id);
 
         // Extract variables for the view
         $base_url = $GLOBALS['base_url'];
@@ -651,6 +739,92 @@ class Con_WorkingPlanController extends Controller
             'budgets'     => $budgets,
             'work_types'  => $workTypes,
             'work_orders' => $workOrders
+        ]);
+        exit;
+    }
+
+    // =========================================================================
+    // AJAX — Get detailed budget estimation & previous cost
+    // GET /con-ajax-budget-estimate?budget_id=N&year=YYYY&month=MM
+    // =========================================================================
+    public function ajaxGetBudgetEstimate()
+    {
+        header('Content-Type: application/json');
+        $budgetId = (int)($_GET['budget_id'] ?? 0);
+        $year     = (int)($_GET['year']      ?? 0);
+        $month    = (int)($_GET['month']     ?? 0);
+
+        if (!$budgetId) {
+            echo json_encode([
+                'success'       => false,
+                'error'         => 'Invalid Budget ID',
+                'materials'     => [],
+                'labors'        => [],
+                'previous_cost' => 0
+            ]);
+            exit;
+        }
+
+        // 1. Fetch budget metadata & design_type_id
+        $stmt = $this->db->prepare("
+            SELECT b.*, wt.design_type_id 
+            FROM initial_estimate_budgets b
+            LEFT JOIN work_types wt ON wt.id = b.work_type_id
+            WHERE b.id = ?
+        ");
+        $stmt->bind_param('i', $budgetId);
+        $stmt->execute();
+        $budget = $stmt->get_result()->fetch_assoc();
+
+        if (!$budget) {
+            echo json_encode([
+                'success'       => false,
+                'error'         => 'Budget not found',
+                'materials'     => [],
+                'labors'        => [],
+                'previous_cost' => 0
+            ]);
+            exit;
+        }
+
+        // 2. Fetch materials (initial_estimate_items)
+        $stmtMat = $this->db->prepare("
+            SELECT i.*, m.name AS material_name
+            FROM initial_estimate_items i
+            LEFT JOIN con_materials m ON m.id = i.material_id
+            WHERE i.budget_id = ?
+            ORDER BY i.sl_no ASC, i.id ASC
+        ");
+        $stmtMat->bind_param('i', $budgetId);
+        $stmtMat->execute();
+        $materials = $stmtMat->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 3. Fetch labors (initial_estimate_labors)
+        $stmtLab = $this->db->prepare("
+            SELECT * FROM initial_estimate_labors
+            WHERE budget_id = ?
+            ORDER BY id ASC
+        ");
+        $stmtLab->bind_param('i', $budgetId);
+        $stmtLab->execute();
+        $labors = $stmtLab->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 4. Calculate previous cost if year and month are provided
+        $previousCost = 0;
+        if ($year > 0 && $month > 0) {
+            $projectId    = (int)($budget['project_id'] ?? 0);
+            $designTypeId = (int)($budget['design_type_id'] ?? 0);
+            if ($projectId > 0 && $designTypeId > 0) {
+                $previousCost = $this->model->getPreviousCost($projectId, $designTypeId, $year, $month);
+            }
+        }
+
+        echo json_encode([
+            'success'       => true,
+            'budget'        => $budget,
+            'materials'     => $materials,
+            'labors'        => $labors,
+            'previous_cost' => $previousCost
         ]);
         exit;
     }
