@@ -19,8 +19,6 @@ if ($current_server == 1) {
 }
 
 
-
-
 ///////////////////////////////////////////////
 // Project Testing Server
 
