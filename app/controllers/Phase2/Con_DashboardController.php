@@ -19,6 +19,12 @@ class Con_DashboardController extends Controller
     public function index()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        
+        // Reset active project context when returning to global dashboard
+        unset($_SESSION['active_project_id']);
+        unset($_SESSION['active_project_name']);
+        unset($_SESSION['active_project_workflow_version']);
+
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
 
         if ($userRole === 23) {
@@ -631,6 +637,11 @@ class Con_DashboardController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        // Reset active project context when returning to projects list
+        unset($_SESSION['active_project_id']);
+        unset($_SESSION['active_project_name']);
+        unset($_SESSION['active_project_workflow_version']);
+
         $sql = "
             SELECT  p.id,
                     p.name,
@@ -640,6 +651,7 @@ class Con_DashboardController extends Controller
                     p.plot_size,
                     p.plot_no,
                     p.block_no,
+                    p.workflow_version,
                     COALESCE(l.name,'')  AS location_name,
                     COALESCE(prog.progress_pct, 0)    AS progress_pct,
                     COALESCE(bud.total_budget, 0)      AS total_budget,
@@ -680,7 +692,7 @@ class Con_DashboardController extends Controller
         }
 
         return $this->view('phase2/dashboard/con-projects', [
-            'current_route' => 'con-dashboard',
+            'current_route' => 'con-projects',
             'projects'      => $projects,
             'statusCounts'  => $statusCounts,
         ]);
@@ -707,6 +719,11 @@ class Con_DashboardController extends Controller
         $project = $stmt->get_result()->fetch_assoc();
 
         if (!$project) { die("Project not found."); }
+
+        // Set active project context
+        $_SESSION['active_project_id'] = $project['id'];
+        $_SESSION['active_project_name'] = $project['name'];
+        $_SESSION['active_project_workflow_version'] = $project['workflow_version'];
 
         // Budget header (start / end date)
         $stmt2 = $this->db->prepare("
@@ -2182,7 +2199,8 @@ class Con_DashboardController extends Controller
     }
 
     // =========================================================================
-    // PROJECT PROGRESS REPORT MATRIX
+    // PROJECT PROGRESS REPORT — Phase Hierarchy (Draft Plan)
+    // Timeline: Phase → Phase Items (weight%) → Monthly Target actuals
     // =========================================================================
     public function projectProgressReport($projectId)
     {
@@ -2200,99 +2218,113 @@ class Con_DashboardController extends Controller
             exit;
         }
 
-        // 2. Fetch budgeted work types with weights (columns)
-        $stmt = $this->db->prepare("
-            SELECT DISTINCT wt.id, wt.work_type_name, b.weight_percentage
-            FROM initial_estimate_budgets b
-            JOIN work_types wt ON wt.id = b.work_type_id
-            WHERE b.project_id = ? AND b.status = 'approved'
-            ORDER BY wt.work_type_name ASC
+        // 2. Fetch project timeline (start/end dates)
+        $tStmt = $this->db->prepare("SELECT * FROM project_timelines WHERE project_id = ? LIMIT 1");
+        $tStmt->bind_param('i', $projectId);
+        $tStmt->execute();
+        $timeline = $tStmt->get_result()->fetch_assoc() ?? [];
+
+        // 3. Fetch ALL phases for this project (ordered)
+        $pStmt = $this->db->prepare("
+            SELECT pp.*
+            FROM project_phases pp
+            WHERE pp.project_id = ?
+            ORDER BY pp.phase_order ASC
         ");
-        $stmt->bind_param('i', $projectId);
-        $stmt->execute();
-        $workTypes = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $pStmt->bind_param('i', $projectId);
+        $pStmt->execute();
+        $phases = $pStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        // 3. Fetch targets by Floor and Work Type (cell values)
-        $stmt = $this->db->prepare("
-            SELECT tf.floor_name, wp.work_type_id, 
-                   SUM(tf.target_percentage) AS total_target,
-                   SUM(tf.gain_percentage) AS total_gain
-            FROM target_fixed tf
-            JOIN project_working_plans wp ON wp.id = tf.work_plan_id
-            WHERE tf.project_id = ? AND tf.floor_name IS NOT NULL
-            GROUP BY tf.floor_name, wp.work_type_id
-        ");
-        $stmt->bind_param('i', $projectId);
-        $stmt->execute();
-        $targetData = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        // 4. For each phase, fetch phase items + their actual progress from monthly targets
+        $totalProjectProgress = 0.0;
+        $phaseData = [];
 
-        // 4. Organize targets into 2D matrix [floor_name][work_type_id]
-        $matrix = [];
-        foreach ($targetData as $row) {
-            $matrix[$row['floor_name']][$row['work_type_id']] = [
-                'target' => (float)$row['total_target'],
-                'gain'   => (float)$row['total_gain']
-            ];
+        foreach ($phases as &$phase) {
+            $phaseId     = (int)$phase['id'];
+            $phaseWeight = (float)$phase['weight_percentage'];
+
+            // Fetch phase sub-items
+            $iStmt = $this->db->prepare("
+                SELECT ppi.*
+                FROM project_phase_items ppi
+                WHERE ppi.phase_id = ?
+                ORDER BY ppi.item_order ASC
+            ");
+            $iStmt->bind_param('i', $phaseId);
+            $iStmt->execute();
+            $items = $iStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+            // For each item: get cumulative actual from monthly target items
+            $phaseActualPct = 0.0;
+            $totalWeight    = 0.0;
+
+            foreach ($items as &$item) {
+                $itemId     = (int)$item['id'];
+                $itemWeight = (float)$item['weight_pct'];
+
+                // Sum actual_progress_pct from phase_monthly_target_items linked to this phase_item
+                $actStmt = $this->db->prepare("
+                    SELECT COALESCE(AVG(pmti.actual_progress_pct), 0) AS avg_actual,
+                           COALESCE(SUM(pmti.actual_qty), 0)          AS total_actual_qty,
+                           COALESCE(SUM(pmti.monthly_target_qty), 0)  AS total_target_qty,
+                           COUNT(pmti.id)                              AS month_count
+                    FROM phase_monthly_target_items pmti
+                    INNER JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
+                    WHERE pmt.phase_id = ? AND pmti.work_item_name LIKE ?
+                ");
+                $nameLike = '%' . $item['item_name'] . '%';
+                $actStmt->bind_param('is', $phaseId, $nameLike);
+                $actStmt->execute();
+                $actRow = $actStmt->get_result()->fetch_assoc();
+
+                // Use existing actual_progress if monthly target has data, else use ppi.actual_progress
+                $monthlyActual = (float)($actRow['avg_actual'] ?? 0);
+                $existingActual = (float)($item['actual_progress'] ?? 0);
+
+                // Use the higher of the two (monthly target data takes priority if available)
+                $itemActual = ($actRow['month_count'] > 0) ? $monthlyActual : $existingActual;
+                $itemActual = min(100, $itemActual);
+
+                $item['computed_actual'] = $itemActual;
+                $item['monthly_actual_qty'] = (float)($actRow['total_actual_qty'] ?? 0);
+                $item['monthly_target_qty'] = (float)($actRow['total_target_qty'] ?? 0);
+                $item['monthly_count'] = (int)($actRow['month_count'] ?? 0);
+
+                // Weighted contribution to phase
+                $phaseActualPct += ($itemActual * $itemWeight / 100);
+                $totalWeight    += $itemWeight;
+
+                // Recovery flag: item has target but no progress
+                $item['needs_recovery'] = ($itemActual < 50 && $item['monthly_count'] > 0);
+            }
+            unset($item);
+
+            $phaseActualPct = min(100, $phaseActualPct);
+            $phase['items'] = $items;
+            $phase['computed_actual'] = $phaseActualPct;
+
+            // Phase contribution to project
+            $phaseContrib = ($phaseActualPct / 100) * $phaseWeight;
+            $phase['contribution'] = $phaseContrib;
+            $totalProjectProgress += $phaseContrib;
+
+            // Monthly targets count for this phase
+            $mtCount = $this->db->prepare("SELECT COUNT(*) AS c FROM phase_monthly_targets WHERE phase_id = ?");
+            $mtCount->bind_param('i', $phaseId);
+            $mtCount->execute();
+            $phase['monthly_target_count'] = (int)($mtCount->get_result()->fetch_assoc()['c'] ?? 0);
         }
+        unset($phase);
 
-        // 5. Fetch cumulative targets & achievements per work type
-        $stmt = $this->db->prepare("
-            SELECT wp.work_type_id, 
-                   SUM(tf.target_percentage) AS cumulative_target,
-                   SUM(tf.gain_percentage) AS cumulative_gain
-            FROM target_fixed tf
-            JOIN project_working_plans wp ON wp.id = tf.work_plan_id
-            WHERE tf.project_id = ?
-            GROUP BY wp.work_type_id
-        ");
-        $stmt->bind_param('i', $projectId);
-        $stmt->execute();
-        $cumulatives = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-        $cumulativeMap = [];
-        foreach ($cumulatives as $c) {
-            $cumulativeMap[$c['work_type_id']] = [
-                'target' => (float)$c['cumulative_target'],
-                'gain'   => (float)$c['cumulative_gain']
-            ];
-        }
-
-        // 6. Calculate progress contribution per work type and overall project progress
-        $totalProgress = 0.0;
-        foreach ($workTypes as &$wt) {
-            $wtId = $wt['id'];
-            $weight = (float)$wt['weight_percentage'];
-            
-            $cumTarget = $cumulativeMap[$wtId]['target'] ?? 0.0;
-            $cumGain   = $cumulativeMap[$wtId]['gain']   ?? 0.0;
-            
-            $wt['cumulative_target'] = $cumTarget;
-            $wt['cumulative_gain']   = $cumGain;
-            
-            // Contribution: (gain / 100) * weight
-            $contribution = ($cumGain / 100.0) * $weight;
-            $wt['contribution'] = $contribution;
-            
-            $totalProgress += $contribution;
-        }
-        unset($wt);
-
-        // Define fixed floors list matching input forms
-        $floors = [
-            'Foundation', 'Basement', 'G.floor', 
-            '1st floor', '2nd floor', '3rd floor', '4th floor', '5th floor', 
-            '6th floor', '7th floor', '8th floor', '9th floor', '10th floor', 
-            '11th floor', '12th floor', 'Roof'
-        ];
+        $totalProjectProgress = min(100, $totalProjectProgress);
 
         $this->view('phase2/dashboard/project-progress-report', [
-            'current_route' => 'con-dashboard',
-            'page_title'    => 'Project Progress Report — ' . $project['name'],
-            'project'       => $project,
-            'workTypes'     => $workTypes,
-            'floors'        => $floors,
-            'matrix'        => $matrix,
-            'totalProgress' => $totalProgress
+            'current_route'        => 'con-dashboard',
+            'page_title'           => 'Project Progress — ' . $project['name'],
+            'project'              => $project,
+            'timeline'             => $timeline,
+            'phases'               => $phases,
+            'totalProjectProgress' => $totalProjectProgress,
         ]);
     }
-}
+}

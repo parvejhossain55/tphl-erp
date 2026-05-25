@@ -4,6 +4,7 @@ namespace Phase2;
 use Controller;
 use Con_WorkType;
 use Con_DesignType;
+use Con_PhaseTemplate;
 
 class Con_WorkTypeController extends Controller {
     protected $db;
@@ -22,12 +23,23 @@ class Con_WorkTypeController extends Controller {
     }
 
     public function index() {
-        $records = $this->model->getAll();
+        $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
+        if ($currentPage < 1) $currentPage = 1;
+        $perPage = 10;
+        $offset = ($currentPage - 1) * $perPage;
+
+        $totalRecords = $this->model->countAll();
+        $totalPages = ceil($totalRecords / $perPage);
+
+        $records = $this->model->getPaginated($perPage, $offset);
 
         $this->view('phase2/work_types/work-type-lists', [
             'current_route' => 'con-work-types',
             'records' => $records,
-            'page_title'   => 'Work Types'
+            'page_title'   => 'Work Types',
+            'currentPage'  => $currentPage,
+            'totalPages'   => $totalPages,
+            'offset'       => $offset
         ]);
     }
 
@@ -39,11 +51,14 @@ class Con_WorkTypeController extends Controller {
         }
 
         $designTypes = $this->designTypeModel->getAll();
+        $phaseTemplateModel = new Con_PhaseTemplate($this->db);
+        $phases = $phaseTemplateModel->getAll();
         
         $this->view('phase2/work_types/create-work-type', [
             'current_route' => 'con-work-types',
             'page_title' => 'Add Work Type',
-            'designTypes' => $designTypes
+            'designTypes' => $designTypes,
+            'phases' => $phases
         ]);
     }
 
@@ -57,6 +72,7 @@ class Con_WorkTypeController extends Controller {
         $data = [
             'design_type_id' => $_POST['design_type_id'] ?? null,
             'work_type_name' => trim($_POST['work_type_name'] ?? ''),
+            'default_phase_name' => !empty($_POST['default_phase_name']) ? trim($_POST['default_phase_name']) : null,
             'description'    => trim($_POST['description'] ?? ''),
             'created_by'     => $_SESSION['user']['id'],
         ];
@@ -92,12 +108,15 @@ class Con_WorkTypeController extends Controller {
         }
 
         $designTypes = $this->designTypeModel->getAll();
+        $phaseTemplateModel = new Con_PhaseTemplate($this->db);
+        $phases = $phaseTemplateModel->getAll();
 
         $this->view('phase2/work_types/edit-work-type', [
             'current_route' => 'con-work-types',
             'page_title'  => 'Edit Work Type',
             'record'      => $record,
-            'designTypes' => $designTypes
+            'designTypes' => $designTypes,
+            'phases' => $phases
         ]);
     }
 
@@ -111,6 +130,7 @@ class Con_WorkTypeController extends Controller {
         $data = [
             'design_type_id' => $_POST['design_type_id'] ?? null,
             'work_type_name' => trim($_POST['work_type_name'] ?? ''),
+            'default_phase_name' => !empty($_POST['default_phase_name']) ? trim($_POST['default_phase_name']) : null,
             'description'    => trim($_POST['description'] ?? '')
         ];
 

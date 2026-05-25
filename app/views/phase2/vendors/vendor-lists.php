@@ -40,7 +40,7 @@
                         <?php if (!empty($vendors)): ?>
                             <?php foreach ($vendors as $i => $v): ?>
                             <tr>
-                                <td><?= $i + 1 ?></td>
+                                <td><?= ($offset ?? 0) + $i + 1 ?></td>
                                 <td class="fw-bold"><?= htmlspecialchars($v['name']) ?></td>
                                 <td><?= htmlspecialchars($v['phone'] ?? '—') ?></td>
                                 <td><?= htmlspecialchars($v['email'] ?? '—') ?></td>
@@ -99,6 +99,12 @@
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+            <!-- Pagination -->
+            <div class="row my-3">
+                <div class="col-12 d-flex justify-content-center">
+                    <?= paginateLinksSecondary($base_url . "/con-vendors", $currentPage, $totalPages); ?>
+                </div>
             </div>
         </div>
     </div>

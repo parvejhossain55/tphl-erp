@@ -1215,13 +1215,83 @@
                     <span class="category-name">Construction </span>
                 </li>
                 <?php endif; ?>
-                <?php if (hasPermission('Construction Management')): ?>
+                <?php if (hasPermission('Construction Management') || ($_SESSION['user']['role_id'] ?? 0) == 15): ?>
                     <li class="slide ">
                         <a href="<?= $base_url ?>/con-dashboard"
                             class="sidebar__menu-item <?= isActive('con-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">Constrution Dashboard</span>
                         </a>
+                    </li>
+                <?php endif; ?>
+
+                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])): ?>
+                    <li class="slide">
+                        <a href="<?= $base_url ?>/con-projects"
+                            class="sidebar__menu-item <?= isActive('con-projects', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-building-circle-check"></i></div>
+                            <span class="sidebar__menu-label">Phase Projects</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
+                <?php 
+                $showAllPhases = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22]);
+                if (!empty($_SESSION['active_project_id']) && $showAllPhases): 
+                ?>
+                    <li class="slide has-sub active">
+                        <a href="javascript:void(0);" 
+                           class="sidebar__menu-item active">
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            <div class="side-menu__icon"><i class="fa-solid fa-folder-open"></i></div>
+                            <span class="sidebar__menu-label" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 150px;" title="<?= htmlspecialchars($_SESSION['active_project_name'] ?? 'Active Project') ?>">
+                                <?= htmlspecialchars($_SESSION['active_project_name'] ?? 'Active Project') ?>
+                            </span>
+                        </a>
+                        <ul class="sidebar-menu child1" style="display:block;">
+                            <li class="slide <?= isActive('con-project-timeline', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-project-timeline', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-project-timeline/<?= $_SESSION['active_project_id'] ?>">
+                                    Timeline Setup
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-phase-plan', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-phase-plan', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-phase-plan/<?= $_SESSION['active_project_id'] ?>">
+                                    Phase Plan
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-monthly-target', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-monthly-target', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-monthly-targets/<?= $_SESSION['active_project_id'] ?? 0 ?>">
+                                    Monthly Targets
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-weekly-progress', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-weekly-progress', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-weekly-progress/<?= $_SESSION['active_project_id'] ?>">
+                                    Progress Entry
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-monthly-review', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-monthly-review', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-monthly-review/<?= $_SESSION['active_project_id'] ?>">
+                                    Monthly Review
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-risk-dashboard', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-risk-dashboard', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-risk-dashboard/<?= $_SESSION['active_project_id'] ?>">
+                                    Risk Dashboard
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-recovery-plan', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-recovery-plan', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-recovery-plan/<?= $_SESSION['active_project_id'] ?>">
+                                    Recovery Plan
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                 <?php endif; ?>
                 <?php if (hasPermission('site engineer dashboard')): ?>
@@ -2134,6 +2204,33 @@
                         </a>
                     </li>
                 <?php endif; ?>
+
+                <!-- ====== ASSET MANAGEMENT ====== -->
+                <?php if (hasPermission('Asset Management') || hasPermission('QC & Internal Audit') || in_array($_SESSION['user']['role_id'] ?? 0, [1,20, 3])): ?>
+                    <li class="slide has-sub <?= isActive(['asset-products', 'assets', 'asset-extra-purchases'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['asset-products', 'assets', 'asset-extra-purchases'], $current_route) ? 'menu-open active' : '' ?>">
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            <div class="side-menu__icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+                            <span class="sidebar__menu-label">Asset Management</span>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide <?= isActive('asset-products', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('asset-products', $current_route) ?>"
+                                    href="<?= $base_url ?>/asset-products">Products Master</a>
+                            </li>
+                            <li class="slide <?= isActive('assets', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('assets', $current_route) ?>"
+                                    href="<?= $base_url ?>/assets">All Assets</a>
+                            </li>
+                            <li class="slide <?= isActive('asset-extra-purchases', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('asset-extra-purchases', $current_route) ?>"
+                                    href="<?= $base_url ?>/asset-extra-purchases">Extra Purchases</a>
+                            </li>
+                        </ul>
+                    </li>
+                <?php endif; ?>
+
 
                 <!-- ==================== END PHASE 2 ==================== -->
 

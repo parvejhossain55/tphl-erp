@@ -221,6 +221,18 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
         <span class="doc-status-pill" style="background:<?=$sc['bg']?>;color:<?=$sc['text']?>">
           <?= htmlspecialchars($project['project_status'] ?? 'Unknown') ?>
         </span>
+        <?php if (($project['workflow_version'] ?? 'legacy') === 'phase_based'): ?>
+        <span class="doc-status-pill" style="background:rgba(16,185,129,.12);color:#10b981;font-weight:700">
+          <i class="fal fa-sliders-h-square me-1"></i> Phase-based
+        </span>
+        <?php else: ?>
+        <span class="doc-status-pill" style="background:rgba(100,116,139,.12);color:#64748b;font-weight:700">
+          <i class="fal fa-history me-1"></i> Legacy
+        </span>
+        <?php endif; ?>
+        <a href="<?= $base ?>/con-project-timeline/<?= $project['id'] ?>" class="btn btn-xs btn-outline-primary py-1 px-2" style="font-size:11px;font-weight:700;border-radius:6px;text-decoration:none">
+          <i class="fal fa-calendar-alt me-1"></i> Timeline Setup
+        </a>
         <?php if (!empty($project['location_name'])): ?>
         <span style="font-size:12px;color:var(--text-muted)"><i class="fal fa-map-marker-alt me-1"></i><?= htmlspecialchars($project['location_name']) ?></span>
         <?php endif; ?>
