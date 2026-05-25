@@ -827,6 +827,36 @@ $routes['con-project-timeline/(\d+)']        = ['controller' => 'Phase2\Con_Proj
 $routes['con-project-timeline-store']         = ['controller' => 'Phase2\Con_ProjectTimelineController', 'method' => 'store'];
 $routes['con-project-timeline-edit/(\d+)']    = ['controller' => 'Phase2\Con_ProjectTimelineController', 'method' => 'edit'];
 $routes['con-project-timeline-update/(\d+)']  = ['controller' => 'Phase2\Con_ProjectTimelineController', 'method' => 'update'];
+
+// Phase-wise Construction - Module 2: Phase Plan
+$routes['con-phase-plan/(\d+)']         = ['controller' => 'Phase2\Con_PhasePlanController', 'method' => 'index'];
+$routes['con-phase-plan-update/(\d+)']  = ['controller' => 'Phase2\Con_PhasePlanController', 'method' => 'update'];
+$routes['con-phase-add']                 = ['controller' => 'Phase2\Con_PhasePlanController', 'method' => 'addPhase'];
+$routes['con-phase-delete/(\d+)']       = ['controller' => 'Phase2\Con_PhasePlanController', 'method' => 'delete'];
+$routes['con-phase-template-json']       = ['controller' => 'Phase2\Con_PhasePlanController', 'method' => 'ajaxGetTemplate'];
+
+// Phase-wise Construction - Module 3: Phase Sub-items (BOQ Level 2)
+$routes['con-phase-items/(\d+)']            = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'index'];
+$routes['con-phase-items-update/(\d+)']     = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'update'];
+$routes['con-phase-items-delete/(\d+)']     = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'delete'];
+$routes['con-phase-items-progress']         = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'ajaxUpdateProgress'];
+
+// Phase-wise Construction - Module 4: Monthly Target Planner
+$routes['con-monthly-targets/(\d+)']        = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'index'];
+$routes['con-monthly-target/(\d+)']         = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'show'];
+$routes['con-monthly-target-create/(\d+)']  = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'create'];
+$routes['con-monthly-target-status/(\d+)']  = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'updateStatus'];
+$routes['con-monthly-target-save/(\d+)']    = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'saveItems'];
+$routes['con-monthly-item-add']             = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'addItem'];
+$routes['con-monthly-item-delete/(\d+)']    = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'deleteItem'];
+$routes['con-monthly-target-delete/(\d+)']  = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'deleteTarget'];
+$routes['con-monthly-worktypes']            = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'ajaxWorkTypes'];
+
+// Phase-wise Construction - Module 5: Daily / Weekly Progress Entry
+$routes['con-weekly-progress/(\d+)']        = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'show'];
+$routes['con-weekly-progress-save']         = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'saveDailyLog'];
+$routes['con-weekly-progress-submit']       = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'submitWeeklyUpdate'];
+
 $routes['con-ajax-workplan/(\d+)'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWorkPlan'];
 $routes['con-ajax-targets/(\d+)']  = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxTargets'];
 $routes['con-ajax-weekly/(\d+)']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWeeklyData'];

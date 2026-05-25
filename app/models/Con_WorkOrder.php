@@ -44,6 +44,80 @@ class Con_WorkOrder extends Model
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
+    public function countAllWithRelations($userId = null, $roleId = null)
+    {
+        $allowedRoles = [1, 3, 15, 22];
+        $where = "1=1";
+
+        if ($userId && !in_array($roleId, $allowedRoles)) {
+            $where = "wo.created_by = " . (int)$userId;
+        }
+
+        $sql = "SELECT COUNT(*) AS total FROM {$this->table} wo WHERE {$where}";
+        $result = $this->db->query($sql);
+        $row = $result ? $result->fetch_assoc() : null;
+        return $row ? (int)$row['total'] : 0;
+    }
+
+    public function getPaginatedWithRelations($limit, $offset, $userId = null, $roleId = null)
+    {
+        $allowedRoles = [1, 3, 15, 22];
+        $where = "1=1";
+
+        if ($userId && !in_array($roleId, $allowedRoles)) {
+            $where = "wo.created_by = " . (int)$userId;
+        }
+
+        $sql = "SELECT wo.*,
+                       p.name          AS project_name,
+                       c.name          AS contractor_name,
+                       c.trade         AS contractor_trade,
+                       wt.work_type_name AS work_type_name,
+                       dt2.name        AS design_type_name,
+                       u.full_name     AS created_by_name,
+                       ab.full_name    AS approved_by_name,
+                       qc.full_name    AS qc_approved_by_name,
+                       cm.full_name    AS completed_by_name
+                FROM {$this->table} wo
+                LEFT JOIN projects p       ON p.id  = wo.project_id
+                LEFT JOIN contractors c    ON c.id  = wo.contractor_id
+                LEFT JOIN work_types wt    ON wt.id = wo.work_type_id
+                LEFT JOIN project_drawings pd ON pd.id = wo.design_id
+                LEFT JOIN design_types dt2 ON dt2.id = pd.design_type_id
+                LEFT JOIN users u          ON u.id  = wo.created_by
+                LEFT JOIN users ab         ON ab.id = wo.approved_by
+                LEFT JOIN users qc         ON qc.id = wo.qc_approved_by
+                LEFT JOIN users cm         ON cm.id = wo.completed_by
+                WHERE {$where}
+                ORDER BY wo.created_at DESC
+                LIMIT ? OFFSET ?";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('ii', $limit, $offset);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function getStatusCounts($userId = null, $roleId = null)
+    {
+        $allowedRoles = [1, 3, 15, 22];
+        $where = "1=1";
+
+        if ($userId && !in_array($roleId, $allowedRoles)) {
+            $where = "wo.created_by = " . (int)$userId;
+        }
+
+        $sql = "SELECT status, COUNT(*) AS count FROM {$this->table} wo WHERE {$where} GROUP BY status";
+        $result = $this->db->query($sql);
+        $counts = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $counts[$row['status']] = (int)$row['count'];
+            }
+        }
+        return $counts;
+    }
+
     // =========================================================================
     // FIND single WO with full relations
     // =========================================================================

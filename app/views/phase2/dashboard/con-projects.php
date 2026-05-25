@@ -6,6 +6,10 @@ $base = $GLOBALS['base_url'];
 $projects = $projects ?? [];
 $statusCounts = $statusCounts ?? [];
 
+// Check if current user can access phase-based workflow
+$userRoleId = $_SESSION['user']['role_id'] ?? 0;
+$canPhaseWork = in_array($userRoleId, [1, 3, 15, 22]);
+
 function cpFmt($n)
 {
   $n = (float) $n;
@@ -473,8 +477,13 @@ $statusMeta = [
           $budgetUsedPct = ($pr['total_budget'] > 0) ? round($pr['total_spent'] / $pr['total_budget'] * 100, 1) : 0;
           $startDate = $pr['start_date'] ? date('M Y', strtotime($pr['start_date'])) : '—';
           $endDate = $pr['end_date'] ? date('M Y', strtotime($pr['end_date'])) : '—';
+          $isPhaseBased = ($pr['workflow_version'] ?? '') === 'phase_based';
+          // Card href: phase-based যাবে timeline এ, regular যাবে project detail এ
+          $cardHref = ($canPhaseWork && $isPhaseBased)
+              ? $base . '/con-project-timeline/' . $pr['id']
+              : $base . '/con-project/' . $pr['id'];
           ?>
-          <a href="<?= $base ?>/con-project/<?= $pr['id'] ?>" class="cp-card" data-status="<?= htmlspecialchars($status) ?>"
+          <a href="<?= $cardHref ?>" class="cp-card" data-status="<?= htmlspecialchars($status) ?>"
             data-name="<?= htmlspecialchars(strtolower($pr['name'])) ?>"
             data-loc="<?= htmlspecialchars(strtolower($pr['location_name'])) ?>" data-progress="<?= $pct ?>"
             data-budget="<?= $pr['total_budget'] ?>" data-id="<?= $pr['id'] ?>">
@@ -543,14 +552,20 @@ $statusMeta = [
             <!-- Footer -->
             <div class="cp-card-footer">
               <div class="cp-footer-stat">
-                <?php if ($pr['total_floors']): ?>
+                <?php if ($isPhaseBased): ?>
+                  <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(99,102,241,.12);color:#6366f1;letter-spacing:.3px;">⚡ Phase-Based</span>
+                <?php elseif ($pr['total_floors']): ?>
                   <i class="fal fa-layer-group me-1"></i><strong><?= $pr['total_floors'] ?></strong> Floors
                 <?php else: ?>
                   <i class="fal fa-ruler-combined me-1"></i>Plot:
                   <strong><?= $pr['plot_size'] ? $pr['plot_size'] . ' sqft' : '—' ?></strong>
                 <?php endif; ?>
               </div>
-              <div class="cp-view-btn">View Details <i class="fal fa-arrow-right ms-1"></i></div>
+              <?php if ($canPhaseWork && $isPhaseBased): ?>
+                <div class="cp-view-btn" style="background:rgba(99,102,241,.12);color:#6366f1">Open Phase Work <i class="fal fa-arrow-right ms-1"></i></div>
+              <?php else: ?>
+                <div class="cp-view-btn">View Details <i class="fal fa-arrow-right ms-1"></i></div>
+              <?php endif; ?>
             </div>
 
           </a>

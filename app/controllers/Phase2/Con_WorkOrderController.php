@@ -59,7 +59,16 @@ class Con_WorkOrderController extends Controller
     // =========================================================================
     public function index()
     {
-        $workOrders = $this->model->getAllWithRelations($this->userId, $this->userRole);
+        $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
+        if ($currentPage < 1) $currentPage = 1;
+        $perPage = 10;
+        $offset = ($currentPage - 1) * $perPage;
+
+        $totalRecords = $this->model->countAllWithRelations($this->userId, $this->userRole);
+        $totalPages = ceil($totalRecords / $perPage);
+
+        $workOrders = $this->model->getPaginatedWithRelations($perPage, $offset, $this->userId, $this->userRole);
+        $statusCounts = $this->model->getStatusCounts($this->userId, $this->userRole);
 
         $this->view('phase2/work-orders/work-order-list', [
             'current_route' => 'con-work-orders',
@@ -67,6 +76,11 @@ class Con_WorkOrderController extends Controller
             'workOrders'    => $workOrders,
             'canCreate'     => $this->canCreate(),
             'userRole'      => $this->userRole,
+            'currentPage'   => $currentPage,
+            'totalPages'    => $totalPages,
+            'offset'        => $offset,
+            'totalRecords'  => $totalRecords,
+            'statusCounts'  => $statusCounts,
         ]);
     }
 

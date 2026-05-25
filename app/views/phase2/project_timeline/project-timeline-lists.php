@@ -448,10 +448,15 @@ function formatTimelineDate($dateStr) {
           </div>
 
           <!-- Edit Action Button -->
-          <div class="mt-4">
+          <div class="mt-4 d-flex flex-column gap-2">
             <a href="<?= $base ?>/con-project-timeline-edit/<?= $timeline_id ?>" class="btn btn-primary w-100 btn-edit-timeline">
               <i class="fal fa-edit"></i>
               Edit Timeline Configuration
+            </a>
+            <a href="<?= $base ?>/con-phase-plan/<?= $project['id'] ?>" class="btn w-100 btn-edit-timeline"
+               style="background:rgba(99,102,241,.1);color:#6366f1;border:1px solid rgba(99,102,241,.25);">
+              <i class="fal fa-sitemap"></i>
+              Go to Phase Plan
             </a>
           </div>
         </div>

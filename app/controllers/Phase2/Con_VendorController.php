@@ -19,12 +19,23 @@ class Con_VendorController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        $vendors = $this->vendorModel->getAll();
+        $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
+        if ($currentPage < 1) $currentPage = 1;
+        $perPage = 10;
+        $offset = ($currentPage - 1) * $perPage;
+
+        $totalRecords = $this->vendorModel->countAll();
+        $totalPages = ceil($totalRecords / $perPage);
+
+        $vendors = $this->vendorModel->getPaginated($perPage, $offset);
 
         $this->view('phase2/vendors/vendor-lists', [
             'current_route' => 'con-vendors',
             'page_title'    => 'Vendors & Suppliers',
             'vendors'       => $vendors,
+            'currentPage'   => $currentPage,
+            'totalPages'    => $totalPages,
+            'offset'        => $offset,
         ]);
     }
 

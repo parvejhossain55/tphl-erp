@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 24, 2026 at 07:10 AM
+-- Generation Time: May 25, 2026 at 01:37 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,29 @@ SET time_zone = "+00:00";
 --
 -- Database: `tphl_db`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `adjustment_transactions`
+--
+
+CREATE TABLE `adjustment_transactions` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `adjustment_id` int(10) UNSIGNED NOT NULL COMMENT 'FK to expense_adjustments.id',
+  `transaction_type` enum('cashin','cashout') NOT NULL COMMENT 'Cashin for Returns, Cashout for Extras',
+  `amount` decimal(15,2) NOT NULL,
+  `payment_date` date NOT NULL,
+  `payment_method` varchar(50) NOT NULL,
+  `transaction_ref` varchar(255) DEFAULT NULL,
+  `bank_id` int(11) DEFAULT NULL,
+  `bank_account_no` varchar(100) DEFAULT NULL,
+  `cheque_no` varchar(100) DEFAULT NULL,
+  `online_type` varchar(50) DEFAULT NULL,
+  `disbursement_proof` text DEFAULT NULL COMMENT 'JSON array of paths',
+  `created_by` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -56,14 +79,12 @@ CREATE TABLE `approval_requests` (
 INSERT INTO `approval_requests` (`id`, `department`, `request_type`, `title`, `source_table`, `source_id`, `request_amount`, `approved_amount`, `requested_days`, `approved_days`, `approved_by`, `approved_at`, `status`, `requested_by`, `approve_role`, `meta_data`, `created_at`, `updated_at`, `approval_note`) VALUES
 (1, 'Accounts', 'cashout', '[Project: The Premium Nobel Court] Cashout Request: test request bill', 'cashout_requests', 1, 10000.00, NULL, NULL, NULL, 6, '2026-03-31 11:26:04', 'approved', 5, 'management', '{\"purpose\":\"test request bill\",\"payment_method\":\"cash\",\"requester_name\":\"Mr. Jisan\",\"description\":\"test bill\",\"project_id\":1,\"project_name\":\"The Premium Nobel Court\",\"office\":null}', '2026-03-31 11:24:58', '2026-03-31 11:26:04', NULL),
 (2, 'HR', 'salary', 'Salary Approval', 'payslips', 1, 21100.00, 21100.00, NULL, NULL, 110, '2026-04-04 11:38:08', 'approved', 4, 'management', '{\"employee_id\":\"1\",\"month\":\"31 March 2026\"}', '2026-03-31 11:47:19', '2026-04-04 11:38:08', NULL),
-(3, 'Accounts', 'cashout', '[Project: The Legacy Residence] Cashout Request: Test from developer', 'cashout_requests', 2, 2000.00, NULL, NULL, NULL, NULL, NULL, 'pending', 1, 'management', '{\"purpose\":\"Test from developer\",\"payment_method\":\"cash\",\"requester_name\":\"Farzana\",\"description\":\"Test cashout\",\"project_id\":\"5\",\"project_name\":\"The Legacy Residence\",\"office\":null}', '2026-04-08 09:10:29', '2026-04-08 09:10:29', NULL),
+(3, 'Accounts', 'cashout', '[Project: The Legacy Residence] Cashout Request: Test from developer', 'cashout_requests', 2, 2000.00, NULL, NULL, NULL, NULL, NULL, 'approved', 1, 'management', '{\"purpose\":\"Test from developer\",\"payment_method\":\"cash\",\"requester_name\":\"Farzana\",\"description\":\"Test cashout\",\"project_id\":\"5\",\"project_name\":\"The Legacy Residence\",\"office\":null}', '2026-04-08 09:10:29', '2026-05-21 07:05:20', NULL),
 (4, 'HR', 'salary', 'Salary Approval', 'payslips', 2, 29000.00, NULL, NULL, NULL, NULL, NULL, 'pending', 4, 'management', '{\"employee_id\":\"1\",\"month\":\"10 April 2026\"}', '2026-04-10 10:20:42', '2026-04-10 10:20:42', NULL),
 (5, 'Accounts', 'cashout', 'Cashout Request: Construction fee', 'cashout_requests', 3, 40000.00, 30000.00, NULL, NULL, 6, '2026-04-10 10:59:01', 'partial', 5, 'management', '{\"purpose\":\"Construction fee\",\"payment_method\":\"cash\",\"requester_name\":\"Mr. Jisan\",\"description\":\"construction for the legacy residence\",\"project_id\":null,\"project_name\":null,\"office\":null}', '2026-04-10 10:55:49', '2026-04-10 10:59:01', 'test note'),
-(6, 'Accounts', 'cashout', 'Cashout Request: Vendor Payment', 'cashout_requests', 1, 100000.00, NULL, NULL, NULL, NULL, NULL, 'pending', 5, 'management', '{\"purpose\":\"Vendor Payment\",\"payment_method\":\"cash\",\"requester_name\":\"Mr. Jisan\",\"description\":\"\",\"project_id\":null,\"project_name\":null,\"office\":null}', '2026-04-17 08:53:36', '2026-04-17 08:53:36', NULL),
+(6, 'Accounts', 'cashout', 'Cashout Request: Vendor Payment', 'cashout_requests', 1, 100000.00, NULL, NULL, NULL, NULL, NULL, 'approved', 5, 'management', '{\"purpose\":\"Vendor Payment\",\"payment_method\":\"cash\",\"requester_name\":\"Mr. Jisan\",\"description\":\"\",\"project_id\":null,\"project_name\":null,\"office\":null}', '2026-04-17 08:53:36', '2026-05-21 07:05:20', NULL),
 (7, 'construction', 'vendor_payment', 'Vendor Payment — Vendor - 1 | test project from developer', 'vendor_payment_requests', 1, 50000.00, NULL, 0, NULL, 6, '2026-05-07 13:30:01', 'approved', 120, 'management', NULL, '2026-05-07 13:28:37', '2026-05-07 13:30:01', NULL),
-(8, 'construction', 'work_order', 'Work Order — Structural work | Al. Mannan | test project from developer', 'con_work_orders', 1, 2400000.00, NULL, 0, NULL, 131, '2026-05-17 10:17:07', 'approved', 120, 'management', NULL, '2026-05-17 10:13:38', '2026-05-17 10:17:07', NULL),
-(9, 'construction', 'vendor_payment', 'Vendor Payment — Ehsan (BSRM) | test project from developer', 'vendor_payment_requests', 1, 50000.00, NULL, 0, NULL, NULL, NULL, 'pending', 120, 'management', NULL, '2026-05-17 13:23:43', '2026-05-17 13:23:43', NULL),
-(10, 'construction', 'work_order', 'Work Order — Structural | Al. Mannan | test project from developer', 'con_work_orders', 1, 28000.00, NULL, 0, NULL, 128, '2026-05-23 07:04:15', 'approved', 120, 'management', NULL, '2026-05-23 05:33:37', '2026-05-23 07:04:15', NULL);
+(8, 'Sales', 'discount', 'Lead Booking Discount Approval', 'lead_bookings', 3, 30000.00, 30000.00, NULL, NULL, 6, '2026-05-16 04:57:15', 'approved', 6, 'management', '{\"lead_id\":\"6016\",\"flat_id\":\"3044\"}', '2026-05-16 04:56:44', '2026-05-16 04:57:15', NULL);
 
 -- --------------------------------------------------------
 
@@ -87,7 +108,7 @@ CREATE TABLE `architect_engineering` (
 --
 
 INSERT INTO `architect_engineering` (`id`, `project_id`, `user_id`, `full_architecture_design_link`, `notes`, `status`, `created_by`, `created_at`) VALUES
-(1, 13, 122, 'https://kgarch.com/how-does-the-architectural-design-process-work', 'Test', 'fully', 122, '2026-05-17 04:30:17');
+(1, 13, 122, 'https://kgarch.com/how-does-the-architectural-design-process-work', 'Test', 'fully', 122, '2026-05-05 13:04:45');
 
 -- --------------------------------------------------------
 
@@ -202,8 +223,11 @@ CREATE TABLE `boq_items` (
 --
 
 INSERT INTO `boq_items` (`id`, `boq_id`, `material_id`, `quantity`, `unit_cost`, `required_date`) VALUES
-(1, 1, 4, 200.000, 0.0000, '2026-05-23'),
-(2, 1, 2, 100.000, 0.0000, '2026-05-23');
+(1, 1, 4, 1000.000, 100.0000, NULL),
+(2, 1, 2, 10000.000, 50.0000, NULL),
+(3, 2, 4, 200.000, 100.0000, NULL),
+(4, 2, 2, 500.000, 20.0000, NULL),
+(5, 2, 1, 300.000, 150.0000, NULL);
 
 -- --------------------------------------------------------
 
@@ -230,7 +254,8 @@ CREATE TABLE `boq_master` (
 --
 
 INSERT INTO `boq_master` (`id`, `project_id`, `target_id`, `design_type_id`, `version`, `status`, `approved_by`, `approved_at`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 13, 1, NULL, '1.0', 'Approved', 120, '2026-05-24 03:50:48', 123, '2026-05-23 12:04:50', '2026-05-24 03:50:48');
+(1, 13, 1, NULL, '1.0', 'Approved', 120, '2026-05-05 13:35:25', 123, '2026-05-05 13:33:18', '2026-05-05 13:35:25'),
+(2, 13, 3, NULL, '1.0', 'Approved', 120, '2026-05-07 12:24:08', 123, '2026-05-07 12:23:35', '2026-05-07 12:24:08');
 
 -- --------------------------------------------------------
 
@@ -256,13 +281,6 @@ CREATE TABLE `budget_extend_requests` (
   `docs_link` varchar(500) DEFAULT NULL COMMENT 'External cloud link for supporting docs'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `budget_extend_requests`
---
-
-INSERT INTO `budget_extend_requests` (`id`, `project_id`, `initial_budget_id`, `requested_by`, `title`, `amount`, `reason`, `status`, `approved_by`, `approved_at`, `remarks`, `created_at`, `updated_at`, `attachment_file`, `docs_link`) VALUES
-(1, 13, 1, 125, 'Transport', -10000.0000, 'Transport 10000 less', 'Pending', NULL, NULL, NULL, '2026-05-17 05:47:27', NULL, NULL, '');
-
 -- --------------------------------------------------------
 
 --
@@ -273,7 +291,7 @@ CREATE TABLE `cache` (
   `key` varchar(255) NOT NULL,
   `value` mediumtext NOT NULL,
   `expiration` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `cache`
@@ -305,7 +323,7 @@ CREATE TABLE `cameras` (
   `status` enum('active','inactive') DEFAULT 'active',
   `last_heartbeat` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `cameras`
@@ -326,7 +344,7 @@ CREATE TABLE `camera_logs` (
   `event_type` varchar(50) DEFAULT NULL,
   `message` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -374,13 +392,17 @@ CREATE TABLE `cashout_requests` (
   `bank_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'FK → banks.id; set when payment_method = bank',
   `transaction_ref` varchar(100) DEFAULT NULL,
   `attachment_path` text DEFAULT NULL COMMENT 'JSON array of requester-uploaded attachment file paths',
-  `status` enum('pending','approved','rejected','partially_paid','fully_paid') NOT NULL DEFAULT 'pending',
+  `status` enum('pending','qc_approved','approved','rejected','partially_paid','fully_paid') DEFAULT 'pending',
   `approved_by` int(11) DEFAULT NULL,
+  `qc_approved_by_id` int(11) DEFAULT NULL,
+  `qc_approved_at` datetime DEFAULT NULL,
+  `qc_note` text DEFAULT NULL,
   `approved_at` datetime DEFAULT NULL,
   `rejected_by` int(11) DEFAULT NULL,
   `rejected_at` datetime DEFAULT NULL,
   `rejection_reason` text DEFAULT NULL,
   `approval_note` text DEFAULT NULL,
+  `management_note` text DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Cashout requests with single-step approval';
@@ -397,7 +419,7 @@ CREATE TABLE `chat_messages` (
   `message` text NOT NULL,
   `reply` text NOT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -497,9 +519,7 @@ CREATE TABLE `comparison_items` (
 INSERT INTO `comparison_items` (`id`, `comparison_id`, `material_id`, `vendor_id`, `unit_price`, `is_selected`, `created_by`) VALUES
 (1, 1, 2, 2, 20.0000, 1, 127),
 (2, 1, 1, 2, 200.0000, 1, 127),
-(3, 1, 4, 2, 15.0000, 1, 132),
-(4, 1, 2, 2, 20.0000, 1, 132),
-(5, 1, 5, 2, 100.0000, 1, 132);
+(3, 2, 4, 5, 19.0000, 1, 137);
 
 -- --------------------------------------------------------
 
@@ -517,7 +537,7 @@ CREATE TABLE `contacts` (
   `contact_status` enum('pending','contacted','closed') NOT NULL DEFAULT 'pending' COMMENT 'Track follow-up status',
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `contacts`
@@ -553,15 +573,15 @@ CREATE TABLE `contractors` (
 
 INSERT INTO `contractors` (`id`, `name`, `role`, `trade`, `phone`, `nid_number`, `address`, `daily_rate`, `status`, `created_by`, `created_at`, `updated_at`) VALUES
 (1, 'Md. Rahim', 'Contractor', 'Masonry', '01711223344', '1990123456789', 'Dhaka, Bangladesh', 1200.00, 'active', 120, '2026-05-05 13:42:21', NULL),
-(2, 'Md. Rasel Shaik', 'Contractor', 'construction', '1925115431', NULL, '965/1/1, East Shewrapara, Mirpur, Dhaka, 1216', NULL, 'active', 120, '2026-05-17 06:49:24', NULL),
-(3, 'Al. Mannan', 'Contractor', 'construction', '1722195900', NULL, 'Shadu Para, Ashulia, Savar, Dhaka', NULL, 'active', 120, '2026-05-17 06:49:24', NULL),
-(4, 'Md. Forhad Hossain', 'Contractor', 'construction', '1964814119', NULL, 'Jomda Para, Nagarkunda, savar, Dhaka', NULL, 'active', 120, '2026-05-17 06:49:24', NULL),
-(5, 'Md. Altaf Hossain', 'Contractor', 'construction', '1770359886', NULL, 'Kurigram Sadar, Kurigram', NULL, 'active', 120, '2026-05-17 06:49:24', NULL),
-(6, 'Md. Firoz Mia', 'Contractor', 'construction', '1954591115', NULL, 'Mohammadpur, Bosila, Dhaka', NULL, 'active', 120, '2026-05-17 06:49:24', NULL),
-(7, 'Md. Abbas', 'Contractor', 'construction', '1721604774', NULL, 'Mirpur, Dhaka', NULL, 'active', 120, '2026-05-17 06:49:24', NULL),
-(8, 'Shak Golam Kibria Masud', 'Contractor', 'construction', '1712088144', NULL, 'Uttar Nondi Para, Khilgao, Dhaka', NULL, 'active', 120, '2026-05-17 06:49:24', NULL),
-(9, 'Md, Rejaul Karim', 'Contractor', 'construction', '1798208918', NULL, 'Dottopara, Birulia, Savar, Dhaka', NULL, 'active', 120, '2026-05-17 06:49:24', NULL),
-(10, 'Md. Jual Mia', 'Contractor', 'construction', '1841011616', NULL, 'Dottopara, Birulia, Savar, Dhaka', NULL, 'active', 120, '2026-05-17 06:49:24', NULL);
+(2, 'Md. Rasel Shaik', 'Contractor', 'construction', '1925115431', NULL, '965/1/1, East Shewrapara, Mirpur, Dhaka, 1216', NULL, 'active', 120, '2026-05-17 06:52:22', NULL),
+(3, 'Al. Mannan', 'Contractor', 'construction', '1722195900', NULL, 'Shadu Para, Ashulia, Savar, Dhaka', NULL, 'active', 120, '2026-05-17 06:52:22', NULL),
+(4, 'Md. Forhad Hossain', 'Contractor', 'construction', '1964814119', NULL, 'Jomda Para, Nagarkunda, savar, Dhaka', NULL, 'active', 120, '2026-05-17 06:52:22', NULL),
+(5, 'Md. Altaf Hossain', 'Contractor', 'construction', '1770359886', NULL, 'Kurigram Sadar, Kurigram', NULL, 'active', 120, '2026-05-17 06:52:22', NULL),
+(6, 'Md. Firoz Mia', 'Contractor', 'construction', '1954591115', NULL, 'Mohammadpur, Bosila, Dhaka', NULL, 'active', 120, '2026-05-17 06:52:22', NULL),
+(7, 'Md. Abbas', 'Contractor', 'construction', '1721604774', NULL, 'Mirpur, Dhaka', NULL, 'active', 120, '2026-05-17 06:52:22', NULL),
+(8, 'Shak Golam Kibria Masud', 'Contractor', 'construction', '1712088144', NULL, 'Uttar Nondi Para, Khilgao, Dhaka', NULL, 'active', 120, '2026-05-17 06:52:22', NULL),
+(9, 'Md, Rejaul Karim', 'Contractor', 'construction', '1798208918', NULL, 'Dottopara, Birulia, Savar, Dhaka', NULL, 'active', 120, '2026-05-17 06:52:22', NULL),
+(10, 'Md. Jual Mia', 'Contractor', 'construction', '1841011616', NULL, 'Dottopara, Birulia, Savar, Dhaka', NULL, 'active', 120, '2026-05-17 06:52:22', NULL);
 
 -- --------------------------------------------------------
 
@@ -585,7 +605,11 @@ CREATE TABLE `contractor_bill_requests` (
   `verified_at` timestamp NULL DEFAULT NULL,
   `verification_note` text DEFAULT NULL,
   `approved_amount` decimal(15,2) DEFAULT NULL,
-  `status` enum('draft','submitted','verified','approved','rejected','paid','partially_paid','fully_paid') NOT NULL DEFAULT 'draft',
+  `qc_approved_by_id` int(11) DEFAULT NULL,
+  `qc_approved_at` datetime DEFAULT NULL,
+  `qc_note` text DEFAULT NULL,
+  `management_note` text DEFAULT NULL,
+  `status` enum('draft','submitted','verified','qc_approved','approved','rejected','paid','partially_paid','fully_paid') DEFAULT 'draft',
   `due_amount` decimal(10,2) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
@@ -661,8 +685,8 @@ INSERT INTO `con_materials` (`id`, `category_id`, `name`, `unit`, `min_stock_lev
 (1, NULL, 'Cement - Holcim 50kg', 'Bags', 100.000, 123, '2026-05-05 13:09:31', NULL),
 (2, NULL, 'Bricks', 'Pcs', 1000.000, 123, '2026-05-05 13:09:31', NULL),
 (3, NULL, 'Reinforcement Steel', 'Ton', 5.000, 123, '2026-05-05 13:09:31', NULL),
-(4, 11, 'Aggregate/Stone', 'CFT', 100.000, 123, '2026-05-05 13:09:31', '2026-05-21 07:25:15'),
-(5, 8, 'Tiles', 'SFT', 200.000, 123, '2026-05-05 13:09:31', '2026-05-21 07:25:29'),
+(4, NULL, 'Aggregate/Stone', 'CFT', 100.000, 123, '2026-05-05 13:09:31', '2026-05-05 13:09:43'),
+(5, NULL, 'Tiles', 'SFT', 200.000, 123, '2026-05-05 13:09:31', NULL),
 (6, NULL, 'Sand', 'CFT', 100.000, 123, '2026-05-05 13:09:31', NULL);
 
 -- --------------------------------------------------------
@@ -676,26 +700,9 @@ CREATE TABLE `con_material_categories` (
   `name` varchar(150) NOT NULL,
   `description` varchar(255) DEFAULT NULL,
   `created_by` int(10) UNSIGNED DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `con_material_categories`
---
-
-INSERT INTO `con_material_categories` (`id`, `name`, `description`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'Steel / Rod', 'All types of steel rods and bars', NULL, '2026-05-21 06:51:56', '2026-05-21 06:51:56'),
-(2, 'Cement', 'Cement bags of all brands', NULL, '2026-05-21 06:51:56', '2026-05-21 06:51:56'),
-(3, 'Sand', 'Sand,', NULL, '2026-05-21 06:51:56', '2026-05-21 07:18:04'),
-(4, 'Brick', 'All types of bricks', NULL, '2026-05-21 06:51:56', '2026-05-21 06:51:56'),
-(5, 'Paint & Chemical', 'Paint, thinner, waterproofing chemicals', NULL, '2026-05-21 06:51:56', '2026-05-21 06:51:56'),
-(6, 'Plumbing & Sanitary', 'Pipes, fittings, sanitary items', NULL, '2026-05-21 06:51:56', '2026-05-21 06:51:56'),
-(7, 'Electrical', 'Wires, switches, conduits', NULL, '2026-05-21 06:51:56', '2026-05-21 06:51:56'),
-(8, 'Tiles & Finishing', 'Floor tiles, wall tiles, grout', NULL, '2026-05-21 06:51:56', '2026-05-21 06:51:56'),
-(9, 'Wood & Shuttering', 'Timber, plywood, shuttering materials', NULL, '2026-05-21 06:51:56', '2026-05-21 06:51:56'),
-(10, 'Other', 'Miscellaneous materials', NULL, '2026-05-21 06:51:56', '2026-05-21 06:51:56'),
-(11, 'Stone/Aggregrate', 'stone chips, gravel', 127, '2026-05-21 07:18:33', '2026-05-21 07:18:33');
 
 -- --------------------------------------------------------
 
@@ -717,6 +724,13 @@ CREATE TABLE `con_material_issues` (
   `issue_date` date NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `con_material_issues`
+--
+
+INSERT INTO `con_material_issues` (`id`, `project_id`, `warehouse_id`, `material_id`, `quantity`, `issued_to`, `purpose`, `target_id`, `work_plan_id`, `issued_by`, `issue_date`, `created_at`) VALUES
+(1, 13, 1, 2, 300.000, 1, 'Column cast', 3, 1, 123, '2026-05-07', '2026-05-07 12:59:51');
 
 -- --------------------------------------------------------
 
@@ -749,19 +763,12 @@ CREATE TABLE `con_security_daily_logs` (
   `approval_status` enum('Pending','Approved') DEFAULT 'Pending',
   `approved_by` int(11) DEFAULT NULL,
   `verified_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `status` enum('Pending','Resolved') DEFAULT 'Pending',
   `resolved_by` int(11) DEFAULT NULL,
   `resolved_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `con_security_daily_logs`
---
-
-INSERT INTO `con_security_daily_logs` (`id`, `project_id`, `operator_id`, `log_date`, `checklist_data`, `condition_status`, `remarks`, `approval_status`, `approved_by`, `verified_at`, `created_at`, `updated_at`, `status`, `resolved_by`, `resolved_at`) VALUES
-(1, 13, 128, '2026-05-17', '{\"cctv\":\"Issue\",\"access_control\":\"Okay\",\"intercom\":\"Issue\",\"bms\":\"Okay\",\"fire_alarm\":\"Okay\"}', 'Issue Found', 'the test daily log found', 'Pending', NULL, NULL, '2026-05-17 09:11:41', '2026-05-17 09:11:41', 'Pending', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -781,16 +788,9 @@ CREATE TABLE `con_security_equipments` (
   `warranty_expiry` date DEFAULT NULL,
   `status` enum('Good','Damaged','Sent to Repair','Replaced') DEFAULT 'Good',
   `created_by` int(11) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `con_security_equipments`
---
-
-INSERT INTO `con_security_equipments` (`id`, `security_system_id`, `project_id`, `system_type`, `equipment_name`, `serial_number`, `mac_address`, `location_area`, `warranty_expiry`, `status`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 1, 13, 'CCTV', 'Equipment Test 1', '1', '1672354', '', '2026-05-17', 'Good', 128, '2026-05-17 09:09:33', '2026-05-17 09:09:33');
 
 -- --------------------------------------------------------
 
@@ -808,22 +808,14 @@ CREATE TABLE `con_security_incidents` (
   `priority` enum('Low','Medium','High','Critical') DEFAULT 'Medium',
   `status` enum('Pending','In Progress','Resolved','Approved') DEFAULT 'Pending',
   `reported_by` int(11) NOT NULL,
-  `reported_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `reported_at` timestamp NULL DEFAULT current_timestamp(),
   `resolved_at` timestamp NULL DEFAULT NULL,
   `approved_by` int(11) DEFAULT NULL,
   `verified_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `resolved_by` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `con_security_incidents`
---
-
-INSERT INTO `con_security_incidents` (`id`, `project_id`, `security_system_id`, `equipment_id`, `issue_title`, `description`, `priority`, `status`, `reported_by`, `reported_at`, `resolved_at`, `approved_by`, `verified_at`, `created_at`, `updated_at`, `resolved_by`) VALUES
-(1, 13, NULL, NULL, 'Auto-Generated Incident from Daily Log', 'Issue reported during daily log on 2026-05-17. Remarks: the test daily log found', 'Medium', 'Pending', 128, '2026-05-17 09:11:41', NULL, NULL, NULL, '2026-05-17 09:11:41', '2026-05-17 09:11:41', NULL),
-(2, 13, 1, 1, 'dsrfet', 'ererytry', 'Medium', 'Resolved', 128, '2026-05-17 09:28:44', '2026-05-17 09:48:43', NULL, NULL, '2026-05-17 09:28:44', '2026-05-17 09:48:43', 120);
 
 -- --------------------------------------------------------
 
@@ -839,16 +831,9 @@ CREATE TABLE `con_security_systems` (
   `installation_date` date DEFAULT NULL,
   `status` enum('Active','Inactive','Under Maintenance') DEFAULT 'Active',
   `created_by` int(11) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `con_security_systems`
---
-
-INSERT INTO `con_security_systems` (`id`, `project_id`, `system_type`, `vendor_id`, `installation_date`, `status`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 13, 'CCTV', NULL, '2026-05-17', 'Active', 128, '2026-05-17 08:05:04', '2026-05-17 08:05:04');
 
 -- --------------------------------------------------------
 
@@ -865,6 +850,14 @@ CREATE TABLE `con_stocks` (
   `total_value` decimal(15,2) DEFAULT 0.00,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `con_stocks`
+--
+
+INSERT INTO `con_stocks` (`id`, `material_id`, `warehouse_id`, `current_quantity`, `unit_price`, `total_value`, `updated_at`) VALUES
+(1, 2, 1, 200.000, 20.00, 10000.00, '2026-05-07 12:59:51'),
+(2, 1, 1, 300.000, 200.00, 60000.00, NULL);
 
 -- --------------------------------------------------------
 
@@ -883,6 +876,15 @@ CREATE TABLE `con_stock_movements` (
   `moved_by` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `con_stock_movements`
+--
+
+INSERT INTO `con_stock_movements` (`id`, `material_id`, `warehouse_id`, `type`, `quantity`, `ref_type`, `ref_id`, `moved_by`, `created_at`) VALUES
+(1, 2, 1, 'IN', 500.000, 'material_receiving', 1, 120, '2026-05-07 12:58:35'),
+(2, 1, 1, 'IN', 300.000, 'material_receiving', 1, 120, '2026-05-07 12:58:35'),
+(3, 2, 1, 'OUT', 300.000, 'material_issue', 1, 123, '2026-05-07 12:59:51');
 
 -- --------------------------------------------------------
 
@@ -924,7 +926,7 @@ CREATE TABLE `con_work_orders` (
   `description` text DEFAULT NULL,
   `scope_of_work` text DEFAULT NULL,
   `document_link` varchar(500) DEFAULT NULL COMMENT 'External document/BOQ link',
-  `work_items` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'Rate schedule items JSON' CHECK (json_valid(`work_items`)),
+  `work_items` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'Rate schedule items JSON (ক-১ to ক-১০)' CHECK (json_valid(`work_items`)),
   `notes` text DEFAULT NULL,
   `unit` varchar(50) DEFAULT NULL,
   `unit_rate` decimal(15,2) DEFAULT NULL,
@@ -951,13 +953,6 @@ CREATE TABLE `con_work_orders` (
   `work_plan_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `con_work_orders`
---
-
-INSERT INTO `con_work_orders` (`id`, `project_id`, `contractor_id`, `work_type_id`, `design_id`, `boq_id`, `wo_number`, `title`, `description`, `scope_of_work`, `document_link`, `work_items`, `notes`, `unit`, `unit_rate`, `quantity`, `total_amount`, `start_date`, `end_date`, `advance_percent`, `running_percent`, `retention_percent`, `advance_amount`, `retention_amount`, `status`, `rejection_reason`, `created_by`, `approved_by`, `approved_at`, `qc_approved_by`, `qc_approved_at`, `completed_by`, `completed_at`, `created_at`, `target_id`, `work_plan_id`) VALUES
-(1, 13, 3, NULL, 3, NULL, 'WO-2026-0001', 'Structural', 'Test data', '', NULL, NULL, '', 'sqft', 28000.00, 1.00, 28000.00, '2026-05-23', '2026-08-20', 20.00, 70.00, 10.00, 5600.00, 2800.00, 'approved', NULL, 120, 6, '2026-05-23 13:07:06', NULL, NULL, NULL, NULL, '2026-05-23 05:33:37', NULL, NULL);
-
 -- --------------------------------------------------------
 
 --
@@ -972,18 +967,9 @@ CREATE TABLE `con_work_order_approvals` (
   `action_by` int(11) DEFAULT NULL,
   `action_at` datetime DEFAULT NULL,
   `remarks` text DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `con_work_order_approvals`
---
-
-INSERT INTO `con_work_order_approvals` (`id`, `work_order_id`, `role_id`, `status`, `action_by`, `action_at`, `remarks`, `created_at`, `updated_at`) VALUES
-(1, 1, 20, 'approved', 128, '2026-05-23 13:04:15', 'Approved', '2026-05-23 06:36:16', '2026-05-23 07:04:15'),
-(2, 1, 22, 'approved', 131, '2026-05-23 13:05:49', 'Approved', '2026-05-23 06:36:16', '2026-05-23 07:05:49'),
-(3, 1, 3, 'approved', 6, '2026-05-23 13:07:06', 'Approved', '2026-05-23 06:36:16', '2026-05-23 07:07:06');
 
 -- --------------------------------------------------------
 
@@ -1002,17 +988,8 @@ CREATE TABLE `con_work_order_items` (
   `rate` decimal(12,2) NOT NULL DEFAULT 0.00,
   `amount` decimal(14,2) GENERATED ALWAYS AS (`quantity` * `rate`) STORED,
   `sort_order` int(11) NOT NULL DEFAULT 0,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `con_work_order_items`
---
-
-INSERT INTO `con_work_order_items` (`id`, `work_order_id`, `sl_no`, `description`, `location`, `unit`, `quantity`, `rate`, `sort_order`, `created_at`) VALUES
-(1, 1, '1', '<p>Test data </p>', 'soil test', 'sqft', 5.000, 1000.00, 0, '2026-05-23 05:33:37'),
-(2, 1, '4', 'ফাউন্ডেশন হতে বেজমেন্টের বটম স্ল্যাব পর্যন্ত — পাইল ক্যাপ, মাটি কাটা, লেভেল-ড্রেসিং, সলিং/সিসি, ওয়াটার ট্যাংক, পাইল ভাঙা, সাটারিং, রড বাঁধা, ঢালাই, প্লাস্টার ইত্যাদি সকল কাজ', 'Basement', 'sqft', 5.000, 1000.00, 3, '2026-05-23 05:33:37'),
-(3, 1, '5', 'বেজমেন্ট বটম স্ল্যাবের উপর হতে কলাম, ওয়াল, ট্যাংক, বেজমেন্ট টপ স্ল্যাব পর্যন্ত — সাটারিং, রড, ঢালাই, গাঁথুনি, দরজার ফ্রেম, প্লাস্টার সকল কাজ', 'Basement', 'sqft', 15.000, 1200.00, 4, '2026-05-23 05:33:37');
+  `created_at` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1023,11 +1000,93 @@ INSERT INTO `con_work_order_items` (`id`, `work_order_id`, `sl_no`, `description
 CREATE TABLE `con_work_order_updates` (
   `id` int(11) NOT NULL,
   `work_order_id` int(11) NOT NULL,
-  `update_date` date NOT NULL,
-  `update_notes` text DEFAULT NULL COMMENT '?? ?? ???????? ??????',
-  `updated_by` int(11) NOT NULL DEFAULT 0,
+  `update_date` date NOT NULL COMMENT 'কোন তারিখে update হয়েছে',
+  `update_notes` text DEFAULT NULL COMMENT 'কী কী পরিবর্তন হয়েছে',
+  `updated_by` int(11) NOT NULL DEFAULT 0 COMMENT 'admin user id',
+  `created_at` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `csv_import_logs`
+--
+
+CREATE TABLE `csv_import_logs` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `filename` varchar(255) NOT NULL,
+  `total_rows` int(11) NOT NULL DEFAULT 0,
+  `success_count` int(11) NOT NULL DEFAULT 0,
+  `error_count` int(11) NOT NULL DEFAULT 0,
+  `error_details` longtext DEFAULT NULL COMMENT 'JSON array of row-level errors',
+  `status` enum('pending','processing','completed','failed') DEFAULT 'pending',
+  `created_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `daily_progress_logs`
+--
+
+CREATE TABLE `daily_progress_logs` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `weekly_progress_id` int(10) UNSIGNED NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `log_date` date NOT NULL COMMENT 'Specific site day e.g. 2026-08-16',
+  `labour_count` int(11) NOT NULL DEFAULT 0 COMMENT 'Workers on site',
+  `cement_bags` int(11) NOT NULL DEFAULT 0,
+  `concrete_mt` decimal(8,2) NOT NULL DEFAULT 0.00,
+  `concrete_cft` decimal(8,2) NOT NULL DEFAULT 0.00,
+  `materials_used` int(11) NOT NULL DEFAULT 0,
+  `equipment_active` int(11) NOT NULL DEFAULT 0,
+  `weather` varchar(100) DEFAULT NULL,
+  `temperature_celsius` decimal(4,1) DEFAULT NULL,
+  `safety_ok` tinyint(1) NOT NULL DEFAULT 0,
+  `qc_checked` tinyint(1) NOT NULL DEFAULT 0,
+  `site_remarks` text DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Daily work report ??? one row per calendar day within a week';
+
+--
+-- Dumping data for table `daily_progress_logs`
+--
+
+INSERT INTO `daily_progress_logs` (`id`, `weekly_progress_id`, `project_id`, `log_date`, `labour_count`, `cement_bags`, `concrete_mt`, `concrete_cft`, `materials_used`, `equipment_active`, `weather`, `temperature_celsius`, `safety_ok`, `qc_checked`, `site_remarks`, `created_by`, `created_at`) VALUES
+(1, 1, 13, '2026-05-01', 20, 5, 45.00, 500.00, 5, 2, 'Clear', 32.0, 1, 1, '0', 120, '2026-05-25 05:53:06'),
+(2, 1, 13, '2026-05-03', 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, 0, 0, NULL, NULL, '2026-05-25 06:24:33'),
+(3, 1, 13, '2026-05-02', 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, 0, 0, NULL, NULL, '2026-05-25 06:35:56'),
+(4, 1, 13, '2026-06-26', 30, 500, 0.00, 500.00, 0, 4, 'Clear', 30.0, 1, 1, '0', 120, '2026-05-25 08:03:03'),
+(5, 1, 13, '2026-06-27', 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, 0, 0, NULL, NULL, '2026-05-25 08:05:41');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `daily_work_item_logs`
+--
+
+CREATE TABLE `daily_work_item_logs` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `daily_log_id` int(10) UNSIGNED NOT NULL,
+  `target_item_id` int(10) UNSIGNED NOT NULL,
+  `work_type_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `qty_done_today` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Qty done in item unit (CFT / MT / SFT...)',
+  `unit` varchar(50) DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `item_status` varchar(30) NOT NULL DEFAULT 'In Progress',
+  `responsible_team` varchar(100) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Daily qty log per work item';
+
+--
+-- Dumping data for table `daily_work_item_logs`
+--
+
+INSERT INTO `daily_work_item_logs` (`id`, `daily_log_id`, `target_item_id`, `work_type_id`, `qty_done_today`, `unit`, `remarks`, `created_at`, `item_status`, `responsible_team`) VALUES
+(1, 1, 1, NULL, 100.00, 'CFT', '', '2026-05-25 06:46:31', 'In Progress', NULL),
+(8, 4, 1, 14, 200.00, 'CFT', '', '2026-05-25 11:33:12', 'In Progress', 'Structural Team');
 
 -- --------------------------------------------------------
 
@@ -1135,10 +1194,15 @@ CREATE TABLE `design_types` (
 --
 
 INSERT INTO `design_types` (`id`, `name`, `status`, `created_by`, `created_at`) VALUES
-(1, 'Structural', 'active', NULL, '2026-05-23 05:13:16'),
-(2, 'Electrical', 'active', NULL, '2026-05-23 05:13:16'),
-(3, 'Plumbing', 'active', NULL, '2026-05-23 05:15:30'),
-(4, 'Fire Work', 'active', NULL, '2026-05-23 05:15:30');
+(1, 'Foundation', 'active', 124, '2026-05-05 13:05:24'),
+(2, 'Electrical', 'active', 124, '2026-05-05 13:05:24'),
+(3, 'Plumbing', 'active', 124, '2026-05-05 13:05:24'),
+(4, 'Fire Safety', 'active', 124, '2026-05-05 13:05:24'),
+(5, 'Structural', 'active', 124, '2026-05-05 13:05:24'),
+(6, 'Architectural', 'active', 124, '2026-05-05 13:05:24'),
+(7, 'HVAC', 'active', 124, '2026-05-05 13:05:24'),
+(8, 'Interior Design', 'active', 124, '2026-05-05 13:05:24'),
+(9, 'Landscape Design', 'active', 124, '2026-05-05 13:05:24');
 
 -- --------------------------------------------------------
 
@@ -1158,6 +1222,32 @@ CREATE TABLE `emi_schedules` (
   `due_emi_amount` decimal(12,2) DEFAULT NULL,
   `service_fee` float DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `emi_schedules`
+--
+
+INSERT INTO `emi_schedules` (`id`, `lead_booking_id`, `emi_no`, `emi_amount`, `due_date`, `status`, `lead_payment_id`, `created_at`, `due_emi_amount`, `service_fee`) VALUES
+(1, 2, 1, 145000.00, '2026-05-16', 'paid', 4, '2026-05-16 04:34:54', 0.00, 14500),
+(2, 2, 2, 140000.00, '2026-05-16', 'paid', 5, '2026-05-16 04:35:36', 0.00, 14000),
+(3, 2, 3, 145000.00, '2026-05-16', 'paid', 7, '2026-05-16 04:50:23', 0.00, 14500),
+(4, 2, 4, 145000.00, '2026-05-16', 'paid', 8, '2026-05-16 04:50:23', 0.00, 14500),
+(5, 2, 5, 145000.00, '2026-05-16', 'paid', 9, '2026-05-16 04:50:23', 0.00, 14500),
+(6, 2, 6, 145000.00, '2026-05-16', 'paid', 10, '2026-05-16 04:52:30', 0.00, 14500),
+(7, 2, 7, 145000.00, '2026-05-16', 'paid', 11, '2026-05-16 04:52:30', 0.00, 14500),
+(8, 2, 8, 145000.00, '2026-05-16', 'paid', 12, '2026-05-16 04:52:30', 0.00, 14500),
+(9, 2, 9, 145000.00, '2026-05-16', 'paid', 13, '2026-05-16 04:52:30', 0.00, 14500),
+(10, 2, 10, 110001.00, '2026-05-16', 'paid', 14, '2026-05-16 04:52:30', 0.00, 11000),
+(11, 3, 1, 58000.00, '2026-05-16', 'paid', 19, '2026-05-16 05:51:40', 0.00, 0),
+(12, 3, 2, 58000.00, '2026-05-16', 'paid', 20, '2026-05-16 05:51:40', 0.00, 0),
+(13, 3, 3, 58000.00, '2026-05-16', 'paid', 21, '2026-05-16 05:52:22', 0.00, 0),
+(14, 3, 4, 58000.00, '2026-05-16', 'paid', 22, '2026-05-16 05:52:22', 0.00, 0),
+(15, 3, 5, 58000.00, '2026-05-16', 'paid', 23, '2026-05-16 05:52:22', 0.00, 0),
+(16, 3, 6, 58000.00, '2026-05-16', 'paid', 24, '2026-05-16 05:52:22', 0.00, 0),
+(17, 3, 7, 58000.00, '2026-05-16', 'paid', 25, '2026-05-16 05:52:22', 0.00, 0),
+(18, 3, 8, 58000.00, '2026-05-16', 'paid', 26, '2026-05-16 05:52:22', 0.00, 0),
+(19, 3, 9, 58000.00, '2026-05-16', 'paid', 27, '2026-05-16 05:52:22', 0.00, 0),
+(20, 3, 10, 48000.00, '2026-05-16', 'paid', 28, '2026-05-16 05:52:22', 10000.00, 0);
 
 -- --------------------------------------------------------
 
@@ -1291,7 +1381,13 @@ INSERT INTO `employees` (`id`, `user_id`, `full_name`, `employee_id`, `username`
 (84, 102, 'Mehedi Hasan Rudro', '1016', 'Rudro', 'rudro@gmail.com', '6', '01872356456', '', '', '', 'N/A', '', '', 5, 21, NULL, 'Corporate Office', NULL, 20000, 10000, '', '', 1, '$2y$10$XxLwCnZt5cjg9QBylzGmAeyv2y9s7kZbd5/XYy.KvFuIRNrDn20ly', '', '', '', '', '', '', 'permanent', 'active', '', 4, NULL, '2026-04-02 08:14:46', '2026-04-06 06:00:19', 0),
 (85, 103, 'Mehedi Hasan Shuvo', '1062', 'hasan shuvo', 'shuvo.tphl@gmail.com', '', '01901365048', '', '', '', 'Dhaka', '', '', 1, 17, '1997-01-01', 'Site Office', '2025-01-01', 17000, 8500, '', '', 1, '$2y$10$rts1Nni4rEy54sI1pCeba.Nlm09BRsYEb8u0FTGCGPcCKqYjK4UN6', 'EBL', '', '', '', '', '', 'permanent', 'active', '', 4, NULL, '2026-04-03 13:29:06', '2026-04-08 07:34:48', 5),
 (87, NULL, 'Shazzadur Rahman Shoumic', '1105', 'Shazzad', 'shazzadur.tphl@gmail.com', '', '01765562314', '', '', '', '', '', '', 1, 20, NULL, 'Site Office', NULL, 15000, 10000, '', '', 1, '$2y$10$/F/oMEU1PNlAm8dETfSq9u.gDczxHcAGsAsqYcc10G.xsRdYB3Uxy', '', '', '', '', '', '', 'permanent', 'active', '', 4, NULL, '2026-04-12 11:46:52', '2026-04-12 11:46:52', 5),
-(90, NULL, 'Shohanur Rahman', '1200', 'Shohanur Rahman', 'shohan.tphl@gmail.com', '', '', '', '', '', '', '', '', 5, 13, NULL, 'Site Office', '2026-04-01', 16000, 8000, '', '', 1, '$2y$10$LuYvMYXmH5rRUvlLTS7I3uH1i0YDAtlkSV23vZv/i3Rgl6thWYQvO', '', '', '', '', '', '', 'permanent', 'active', '', 4, NULL, '2026-04-17 13:13:21', '2026-04-17 13:13:21', 0);
+(90, NULL, 'Shohanur Rahman', '1200', 'Shohanur Rahman', 'shohan.tphl@gmail.com', '', '', '', '', '', '', '', '', 5, 13, NULL, 'Site Office', '2026-04-01', 16000, 8000, '', '', 1, '$2y$10$LuYvMYXmH5rRUvlLTS7I3uH1i0YDAtlkSV23vZv/i3Rgl6thWYQvO', '', '', '', '', '', '', 'permanent', 'active', '', 4, NULL, '2026-04-17 13:13:21', '2026-04-17 13:13:21', 0),
+(91, NULL, 'Tamjid Chowdhury', '0', 'Tamjid Chowdhury', 'tamjid.tphl@gmail.com', '', '01711111111', '', '', '', 'Dhaka', '', '', 1, 43, NULL, 'Corporate Office', NULL, 17000, 7500, '', '', 1, '$2y$10$fhfNheGMNhBiehdE.qOi2e98.a6PS7y6aDPeKb7640vDq6ohXeZfC', '', '', '', '', '', '', 'permanent', 'active', '', 6, NULL, '2026-05-13 10:58:31', '2026-05-13 10:58:31', 11),
+(94, NULL, 'Md. Nazmul Islam Robin', '01', 'Md. Nazmul Islam Robin', 'robintphl@gmail.com', '', '01711111111', '', '', '', 'Dhaka', '', '', 1, 15, NULL, 'Corporate Office', NULL, 17000, 7000, '', '', 1, '$2y$10$0KlpJ3PNg3UTyDZ7zJJfpuh6Man2mfs1txh1fha3wSUSmRaC3CfMS', '', '', '', '', '', '', 'permanent', 'active', '', 6, NULL, '2026-05-13 11:07:27', '2026-05-13 11:07:27', 11),
+(95, NULL, 'Nazmus Sakib', '', 'Nazmus', 'Nazmus.tphl@gmail.com', '', '', '', '', '', '', '', '', 1, 15, NULL, 'Site Office', NULL, 17000, 7000, '', '', 1, '$2y$10$OpTbuP0zB.qkANDgQ1bwP.Jhu2fxTIPYCBy88PrqF2PWWQLdJbtWK', '', '', '', '', '', '', 'permanent', 'active', '', 6, NULL, '2026-05-13 11:36:11', '2026-05-13 11:36:11', 9),
+(97, NULL, 'Nehemiah Biswas Prottoy', '03', 'Nehemiah Biswas Prottoy', 'prottoy.tphl@gmail.com', '', '', '', '', '', '', '', '', 1, 15, NULL, 'Corporate Office', NULL, 7000, 17000, '', '', 1, '$2y$10$UfVR5Iiq4w5sLS31.R30QOaUsWJV8o77uZd7EWP5depdgbgSTEacW', '', '', '', '', '', '', 'permanent', 'active', '', 6, NULL, '2026-05-13 11:41:00', '2026-05-13 11:41:00', 9),
+(98, NULL, 'Mst. Sania Khatun', '04', 'Mst. Sania Khatun', 'sania.tphl@gmail.com', '', '', '', '', '', '', '', '', 1, 15, NULL, 'Site Office', NULL, 17000, 7000, '', '', 1, '$2y$10$ee9IIpVq9RQ5t4QweJOV9.m.n4NSsIQukeNG7F/ixP5Z9AZLuMwSS', '', '', '', '', '', '', 'permanent', 'active', '', 6, NULL, '2026-05-13 11:44:56', '2026-05-13 11:44:56', 9),
+(99, NULL, 'Irfan Kabir Abir', '1225', 'Irfan Kabir Abir', 'rfan85.tphl@gmail.com', '', '', '', '', '', '', '', '', 1, 15, NULL, 'Site Office', NULL, 17000, 7000, '', '', 1, '$2y$10$pZ1QpZcAmd8iPUQV0KL.qOYl0Ihs/sZcPZT7zFDbYF8CO5vFWaUSW', '', '', '', '', '', '', 'permanent', 'active', '', 6, NULL, '2026-05-13 11:57:09', '2026-05-13 11:57:09', 3);
 
 -- --------------------------------------------------------
 
@@ -1506,7 +1602,19 @@ INSERT INTO `employee_leave_balances` (`id`, `employee_id`, `leave_type_id`, `re
 (171, 87, 1, 20, '2026-04-12 11:46:52', '2026-04-12 11:46:52'),
 (172, 87, 2, 12, '2026-04-12 11:46:52', '2026-04-12 11:46:52'),
 (173, 90, 1, 20, '2026-04-17 13:13:21', '2026-04-17 13:13:21'),
-(174, 90, 2, 12, '2026-04-17 13:13:21', '2026-04-17 13:13:21');
+(174, 90, 2, 12, '2026-04-17 13:13:21', '2026-04-17 13:13:21'),
+(175, 91, 1, 20, '2026-05-13 10:58:31', '2026-05-13 10:58:31'),
+(176, 91, 2, 12, '2026-05-13 10:58:31', '2026-05-13 10:58:31'),
+(177, 94, 1, 20, '2026-05-13 11:07:27', '2026-05-13 11:07:27'),
+(178, 94, 2, 12, '2026-05-13 11:07:27', '2026-05-13 11:07:27'),
+(179, 95, 1, 20, '2026-05-13 11:36:11', '2026-05-13 11:36:11'),
+(180, 95, 2, 12, '2026-05-13 11:36:11', '2026-05-13 11:36:11'),
+(181, 97, 1, 20, '2026-05-13 11:41:00', '2026-05-13 11:41:00'),
+(182, 97, 2, 12, '2026-05-13 11:41:00', '2026-05-13 11:41:00'),
+(183, 98, 1, 20, '2026-05-13 11:44:56', '2026-05-13 11:44:56'),
+(184, 98, 2, 12, '2026-05-13 11:44:56', '2026-05-13 11:44:56'),
+(185, 99, 1, 20, '2026-05-13 11:57:09', '2026-05-13 11:57:09'),
+(186, 99, 2, 12, '2026-05-13 11:57:09', '2026-05-13 11:57:09');
 
 -- --------------------------------------------------------
 
@@ -1579,6 +1687,33 @@ INSERT INTO `emp_weekly_day_off` (`id`, `employee_id`, `day_off_name`, `created_
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `expense_adjustments`
+--
+
+CREATE TABLE `expense_adjustments` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(11) NOT NULL COMMENT 'User who is making the adjustment request',
+  `cashout_request_id` int(11) NOT NULL COMMENT 'FK to cashout_requests.id',
+  `adjustment_type` enum('return','extra') NOT NULL COMMENT 'Return unused money or request extra money',
+  `title` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `amount` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `approved_amount` decimal(15,2) DEFAULT NULL,
+  `due_amount` decimal(15,2) DEFAULT NULL COMMENT 'Amount remaining to be paid/received',
+  `document` text DEFAULT NULL COMMENT 'JSON array of paths',
+  `note` text DEFAULT NULL,
+  `project_id` int(11) DEFAULT NULL,
+  `office` varchar(255) DEFAULT NULL,
+  `status` enum('pending','approved','rejected','partially_paid','fully_paid') NOT NULL DEFAULT 'pending',
+  `approved_by` int(11) DEFAULT NULL,
+  `approved_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `flats`
 --
 
@@ -1616,723 +1751,732 @@ CREATE TABLE `flats` (
 --
 
 INSERT INTO `flats` (`id`, `project_id`, `sqft`, `bhk`, `land_share_value`, `development_charges`, `bedroom`, `bathroom`, `balcony`, `drawing_dining_kitchen`, `common_dining`, `floor_no`, `flat_name`, `facing_site`, `is_shop`, `unit_type`, `price_value`, `shop_service_charge`, `facilities`, `created_by`, `status`, `upload_from`, `created_at`, `deleted_at`, `updated_at`, `is_booked`) VALUES
-(1, 13, 1200, 3, 2000000, 300000.00, 3, 2, 2, 1, 1, 4, 'B4', 'North', 0, 'residential', 7500000.00, NULL, 'Playground, Security, Lift', 6, 'sold', 'From company csv', '2026-05-13 06:08:06', NULL, '2026-05-13 06:08:06', 1),
-(2, 13, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 1, 6, '6A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-13 06:08:06', NULL, '2026-05-13 06:08:06', 0),
-(3, 13, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 1, 6, '6B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-13 06:08:06', NULL, '2026-05-13 06:08:06', 0),
-(4, 19, 1200, 2, 3600000, 150000.00, 2, 2, 4, 1, 0, NULL, '1A', 'South', 0, 'residential', 6483000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(5, 19, 1200, 2, 3600000, 150000.00, 2, 2, 2, 1, 0, NULL, '1B', 'South', 0, 'residential', 6483000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(6, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '2A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(7, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '3A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(8, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '4A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(9, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '5A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(10, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '6A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(11, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '7A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(12, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '8A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(13, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '9A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(14, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '1A', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(15, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '1B', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(16, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '1C', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(17, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '1D', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(18, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '2A', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(19, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '2B', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(20, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '2C', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(21, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '2D', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(22, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '3A', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(23, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '3B', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(24, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '3C', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(25, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '3D', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(26, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '4A', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(27, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '4B', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(28, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '4C', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(29, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '4D', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(30, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '5A', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(31, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '5B', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(32, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '5C', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(33, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '5D', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(34, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '6A', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(35, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '6B', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(36, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '6C', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(37, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '6D', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(38, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '7A', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(39, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '7B', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(40, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '7C', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(41, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '7D', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(42, 20, 3400, 5, 9000000, 600000.00, 5, 5, 4, 2, 0, NULL, '8A+9A', 'South', 0, 'residential', 18012000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(43, 20, 3400, 5, 9000000, 600000.00, 5, 5, 4, 2, 0, NULL, '8B+9B', 'South', 0, 'residential', 18012000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(44, 20, 3500, 5, 9000000, 600000.00, 5, 5, 4, 2, 0, NULL, '8C+9C', 'North', 0, 'residential', 18264000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(45, 20, 3500, 5, 9000000, 600000.00, 5, 5, 4, 2, 0, NULL, '8D+9D', 'North', 0, 'residential', 18264000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(46, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '1A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(47, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '1B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(48, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '1C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(49, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '2A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(50, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '2B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(51, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '2C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(52, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '3A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(53, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '3B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(54, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '3C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(55, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '4A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(56, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '4B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(57, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '4C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(58, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '5A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(59, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '5B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(60, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '5C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(61, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '6A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(62, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '6B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(63, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '6C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(64, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '7A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(65, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '7B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(66, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '7C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(67, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '8A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(68, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '8B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(69, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '8C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(70, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '9A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(71, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '9B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(72, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '9C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(73, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '10A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(74, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '10B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(75, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '10C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(76, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '11A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(77, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '11B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(78, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '11C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(79, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '12A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(80, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '12B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 1),
-(81, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '12C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(82, 20, 1150, 2, 4159550, 150000.00, 2, 2, 2, 1, 0, NULL, '1A', 'South', 0, 'residential', 7302166.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(83, 20, 1350, 2, 4882950, 150000.00, 2, 2, 3, 1, 0, NULL, '1B', 'South-East', 0, 'residential', 8519934.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(84, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '2A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(85, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '3A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(86, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '4A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(87, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '5A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(88, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '6A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(89, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '7A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(90, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '8A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(91, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '9A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 09:26:26', NULL, '2026-05-13 09:26:26', 0),
-(92, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 14, '14-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(93, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 14, '14-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(94, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 14, '14-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(95, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 14, '14-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(96, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 13, '13-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(97, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 13, '13-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(98, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 13, '13-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(99, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 13, '13-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(100, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 12, '12-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(101, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 12, '12-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(102, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 12, '12-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(103, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 12, '12-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(104, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 11, '11-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(105, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 11, '11-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(106, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 11, '11-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(107, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 11, '11-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(108, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 10, '10-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(109, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 10, '10-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(110, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 10, '10-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(111, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 10, '10-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(112, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 9, '9-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(113, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 9, '9-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(114, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 9, '9-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(115, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 9, '9-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(116, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 8, '8-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(117, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 8, '8-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(118, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 8, '8-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(119, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 8, '8-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(120, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 7, '7-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(121, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 7, '7-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(122, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 7, '7-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(123, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 7, '7-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(124, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 6, '6-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(125, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 6, '6-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(126, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 6, '6-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(127, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 6, '6-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(128, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 5, '5-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(129, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 5, '5-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(130, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 5, '5-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(131, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 5, '5-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(132, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 4, '4-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(133, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 4, '4-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(134, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 4, '4-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(135, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 4, '4-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(136, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 3, '3-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(137, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 3, '3-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(138, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 3, '3-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(139, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 3, '3-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(140, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 2, '2-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(141, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 2, '2-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 1),
-(142, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 2, '2-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(143, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 2, '2-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(144, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 1, '1-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(145, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 1, '1-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(146, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 1, '1-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(147, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 1, '1-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 10:52:36', NULL, '2026-05-13 10:52:36', 0),
-(403, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '6A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(404, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '6B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(405, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '6C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(406, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '6D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(407, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '6F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(408, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '6G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(409, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '6H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(410, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '7A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0);
+(1, 19, 1200, 2, 3600000, 150000.00, 2, 2, 4, 1, 0, NULL, '1A', 'South', 0, 'residential', 6483000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(2, 19, 1200, 2, 3600000, 150000.00, 2, 2, 2, 1, 0, NULL, '1B', 'South', 0, 'residential', 6483000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(3, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '2A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(4, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '3A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(5, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '4A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(6, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '5A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(7, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '6A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(8, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '7A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(9, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '8A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(10, 19, 2250, 4, 7200000, 300000.00, 4, 4, 6, 1, 0, NULL, '9A', 'South', 0, 'residential', 12966000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(11, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '1A', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(12, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '1B', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(13, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '1C', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(14, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '1D', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(15, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '2A', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(16, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '2B', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(17, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '2C', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(18, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '2D', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(19, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '3A', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(20, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '3B', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(21, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '3C', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(22, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '3D', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(23, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '4A', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(24, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '4B', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(25, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '4C', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(26, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '4D', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(27, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '5A', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(28, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '5B', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(29, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '5C', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(30, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '5D', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(31, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '6A', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(32, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '6B', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(33, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '6C', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(34, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '6D', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(35, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '7A', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(36, 20, 1700, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '7B', 'South', 0, 'residential', 9006000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(37, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '7C', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(38, 20, 1750, 3, 4500000, 300000.00, 3, 3, 3, 2, 0, NULL, '7D', 'North', 0, 'residential', 9132000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(39, 20, 3400, 5, 9000000, 600000.00, 5, 5, 4, 2, 0, NULL, '8A+9A', 'South', 0, 'residential', 18012000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(40, 20, 3400, 5, 9000000, 600000.00, 5, 5, 4, 2, 0, NULL, '8B+9B', 'South', 0, 'residential', 18012000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(41, 20, 3500, 5, 9000000, 600000.00, 5, 5, 4, 2, 0, NULL, '8C+9C', 'North', 0, 'residential', 18264000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(42, 20, 3500, 5, 9000000, 600000.00, 5, 5, 4, 2, 0, NULL, '8D+9D', 'North', 0, 'residential', 18264000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(43, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '1A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(44, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '1B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(45, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '1C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(46, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '2A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(47, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '2B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(48, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '2C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(49, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '3A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(50, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '3B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(51, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '3C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(52, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '4A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(53, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '4B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(54, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '4C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(55, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '5A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(56, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '5B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(57, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '5C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(58, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '6A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(59, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '6B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(60, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '6C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(61, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '7A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(62, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '7B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(63, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '7C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(64, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '8A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(65, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '8B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(66, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '8C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(67, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '9A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(68, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '9B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(69, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '9C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(70, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '10A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(71, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '10B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(72, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '10C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(73, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '11A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(74, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '11B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(75, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '11C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(76, 20, 1950, 3, 6825000, 300000.00, 3, 3, 4, 2, 0, NULL, '12A', 'North-West', 0, 'residential', 12339000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(77, 20, 2000, 3, 7000000, 300000.00, 3, 4, 4, 2, 0, NULL, '12B', 'North-East', 0, 'residential', 12640000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'sold', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 1),
+(78, 20, 1750, 3, 6125000, 300000.00, 3, 3, 3, 1, 0, NULL, '12C', 'South-West', 0, 'residential', 11135000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening,Swimming pool, basketball court, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(79, 20, 1150, 2, 4159550, 150000.00, 2, 2, 2, 1, 0, NULL, '1A', 'South', 0, 'residential', 7302166.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(80, 20, 1350, 2, 4882950, 150000.00, 2, 2, 3, 1, 0, NULL, '1B', 'South-East', 0, 'residential', 8519934.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(81, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '2A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(82, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '3A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(83, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '4A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(84, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '5A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(85, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '6A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(86, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '7A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(87, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '8A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(88, 20, 2350, 4, 8500000, 300000.00, 4, 4, 5, 2, 0, NULL, '9A', 'South', 0, 'residential', 14910000.00, NULL, 'Security, Lift,Convention Hall, Prayer Room, Rooftop Gardening, kids zone', 6, 'available', 'From company csv', '2026-05-13 11:29:29', NULL, '2026-05-13 11:29:29', 0),
+(89, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 14, '14-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(90, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 14, '14-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(91, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 14, '14-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(92, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 14, '14-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(93, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 13, '13-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(94, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 13, '13-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(95, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 13, '13-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(96, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 13, '13-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(97, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 12, '12-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(98, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 12, '12-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(99, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 12, '12-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(100, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 12, '12-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(101, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 11, '11-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(102, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 11, '11-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(103, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 11, '11-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(104, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 11, '11-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(105, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 10, '10-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(106, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 10, '10-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(107, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 10, '10-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(108, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 10, '10-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(109, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 9, '9-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(110, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 9, '9-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(111, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 9, '9-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(112, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 9, '9-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(113, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 8, '8-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(114, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 8, '8-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(115, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 8, '8-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(116, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 8, '8-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(117, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 7, '7-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(118, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 7, '7-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(119, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 7, '7-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(120, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 7, '7-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(121, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 6, '6-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(122, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 6, '6-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(123, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 6, '6-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(124, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 6, '6-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(125, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 5, '5-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(126, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 5, '5-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(127, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 5, '5-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(128, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 5, '5-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(129, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 4, '4-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(130, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 4, '4-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(131, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 4, '4-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(132, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 4, '4-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(133, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 3, '3-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(134, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 3, '3-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(135, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 3, '3-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(136, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 3, '3-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(137, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 2, '2-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(138, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 2, '2-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 1),
+(139, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 2, '2-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(140, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 2, '2-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(141, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 1, '1-A', 'South-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(142, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 1, '1-B', 'South-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(143, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 1, '1-C', 'North-East', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(144, 5, 1790, 3, 2595500, 150000.00, 3, 3, 3, 1, 1, 1, '1-D', 'North-West', 0, 'residential', 8200525.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 11:30:15', NULL, '2026-05-13 11:30:15', 0),
+(145, 6, 2250, 4, 3262500, 180000.00, 4, 4, 4, 1, 0, NULL, '14-A', 'South-West', 0, 'residential', 10299375.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(146, 6, 2150, 4, 3117500, 180000.00, 4, 4, 4, 1, 0, NULL, '14-B', 'South-East', 0, 'residential', 9849625.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(147, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '14-C', 'North-East', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(148, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '14-D', 'North-West', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(149, 6, 2250, 4, 2452500, 180000.00, 4, 4, 4, 1, 0, NULL, '13-A', 'South-West', 0, 'residential', 10299375.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(150, 6, 2150, 4, 3117500, 180000.00, 4, 4, 4, 1, 0, NULL, '13-B', 'South-East', 0, 'residential', 9849625.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(151, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '13-C', 'North-East', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(152, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '13-D', 'North-West', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(153, 6, 2250, 4, 2452500, 180000.00, 4, 4, 4, 1, 0, NULL, '12-A', 'South-West', 0, 'residential', 10299375.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(154, 6, 2150, 4, 2343500, 180000.00, 4, 4, 4, 1, 0, NULL, '12-B', 'South-East', 0, 'residential', 9849625.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(155, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '12-C', 'North-East', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(156, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '12-D', 'North-West', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(157, 6, 2250, 4, 2452500, 180000.00, 4, 4, 4, 1, 0, NULL, '11-A', 'South-West', 0, 'residential', 10299375.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(158, 6, 2150, 4, 2343500, 180000.00, 4, 4, 4, 1, 0, NULL, '11-B', 'South-East', 0, 'residential', 9849625.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(159, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '11-C', 'North-East', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0);
 INSERT INTO `flats` (`id`, `project_id`, `sqft`, `bhk`, `land_share_value`, `development_charges`, `bedroom`, `bathroom`, `balcony`, `drawing_dining_kitchen`, `common_dining`, `floor_no`, `flat_name`, `facing_site`, `is_shop`, `unit_type`, `price_value`, `shop_service_charge`, `facilities`, `created_by`, `status`, `upload_from`, `created_at`, `deleted_at`, `updated_at`, `is_booked`) VALUES
-(411, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '7D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(412, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '7F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(413, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '7G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(414, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '8A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(415, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '8B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(416, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '8F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(417, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '9A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(418, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '9B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(419, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '9F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(420, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '9H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(421, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '10A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(422, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '10B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(423, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '10F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(424, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '10G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(425, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '10H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(426, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '11A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(427, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '11B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(428, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '11D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(429, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '11F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(430, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '11G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(431, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '11H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(432, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '12A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(433, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '12B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(434, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '12C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(435, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '12D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(436, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '12F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(437, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '12G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(438, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '12H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(439, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '13A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(440, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '13B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(441, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '13D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(442, 12, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '13E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(443, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '13F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(444, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '13G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(445, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '13H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(446, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '14A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(447, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '14B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(448, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '14C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(449, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '14F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(450, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '14G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(451, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '14H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(452, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '15A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(453, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '15B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(454, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '15C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(455, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '15F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(456, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '15G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(457, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '15H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(458, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '16A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(459, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '16B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(460, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '16C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(461, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '16D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(462, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '16F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(463, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '16G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(464, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '16H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(465, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '17A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(466, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '17B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(467, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '17C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(468, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '17D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(469, 12, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '17E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(470, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '17F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(471, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '17G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(472, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '17H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(473, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '18A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(474, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '18B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(475, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '18C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(476, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '18D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(477, 12, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '18E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(478, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '18F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(479, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '18G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(480, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '18H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:28', NULL, '2026-05-14 08:59:28', 0),
-(481, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '19A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(482, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '19C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(483, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '19D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(484, 12, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '19E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(485, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '19F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(486, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '19G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(487, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '19H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(488, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '20A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(489, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '20B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(490, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '20C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(491, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '20D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(492, 12, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '20E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(493, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '20F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(494, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '20G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(495, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '20H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(496, 12, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '6A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(497, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '6B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(498, 12, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '6C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(499, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '6E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(500, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '6F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(501, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '6H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(502, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '6I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(503, 12, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '7A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(504, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '7E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(505, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '7F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(506, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '7I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(507, 12, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '8A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(508, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '8B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(509, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '8E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(510, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '8F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(511, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '8H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(512, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '8I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(513, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '9B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(514, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '9E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(515, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '9F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(516, 12, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '9G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(517, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '9H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(518, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '9I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(519, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '10B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(520, 12, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '10C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(521, 12, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '10D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(522, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '10E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(523, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '10F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(524, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '10H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(525, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '10I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(526, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '11B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(527, 12, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '11C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(528, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '11F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(529, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '11H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(530, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '11I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(531, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '12B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(532, 12, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '12C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(533, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '12E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(534, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '12F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(535, 12, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '12G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(536, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '12H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(537, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '12I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(538, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '13A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(539, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '13B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(540, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '13C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(541, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '13E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(542, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '13F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(543, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '13H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(544, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '13I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(545, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '14B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(546, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '14C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(547, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '14E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(548, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '14F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(549, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '14H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(550, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '14I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(551, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '15A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(552, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '15B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(553, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '15C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(554, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '15E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(555, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '15F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(556, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '15H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(557, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '15I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(558, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '16A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(559, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '16B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(560, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '16C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(561, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '16E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(562, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '16F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(563, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '16G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(564, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '16H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0);
+(160, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '11-D', 'North-West', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(161, 6, 2250, 4, 2452500, 180000.00, 4, 4, 4, 1, 0, NULL, '10-A', 'South-West', 0, 'residential', 10299375.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(162, 6, 2150, 4, 2343500, 180000.00, 4, 4, 4, 1, 0, NULL, '10-B', 'South-East', 0, 'residential', 9849625.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(163, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '10-C', 'North-East', 0, 'residential', 10029525.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(164, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '10-D', 'North-West', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(165, 6, 2250, 4, 2452500, 180000.00, 4, 4, 4, 1, 0, NULL, '9-A', 'South-West', 0, 'residential', 10299375.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(166, 6, 2150, 4, 2343500, 180000.00, 4, 4, 4, 1, 0, NULL, '9-B', 'South-East', 0, 'residential', 9849625.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(167, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '9-C', 'North-East', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(168, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '9-D', 'North-West', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(169, 6, 2250, 4, 2452500, 180000.00, 4, 4, 4, 1, 0, NULL, '8-A', 'South-West', 0, 'residential', 10299375.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(170, 6, 2150, 4, 2343500, 180000.00, 4, 4, 4, 1, 0, NULL, '8-B', 'South-East', 0, 'residential', 9849625.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(171, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '8-C', 'North-East', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(172, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '8-D', 'North-West', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(173, 6, 2250, 4, 2452500, 180000.00, 4, 4, 4, 1, 0, NULL, '7-A', 'South-West', 0, 'residential', 10299375.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(174, 6, 2150, 4, 2343500, 180000.00, 4, 4, 4, 1, 0, NULL, '7-B', 'South-East', 0, 'residential', 9849625.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(175, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '7-C', 'North-East', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(176, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '7-D', 'North-West', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(177, 6, 2250, 4, 2452500, 180000.00, 4, 4, 4, 1, 0, NULL, '6-A', 'South-West', 0, 'residential', 10299375.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(178, 6, 2150, 4, 3117500, 180000.00, 4, 4, 4, 1, 0, NULL, '6-B', 'South-East', 0, 'residential', 9849625.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(179, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '6-C', 'North-East', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(180, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '6-D', 'North-West', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(181, 6, 2250, 4, 3262500, 180000.00, 4, 4, 4, 1, 0, NULL, '5-A', 'South-West', 0, 'residential', 10299375.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(182, 6, 2150, 4, 3117500, 180000.00, 4, 4, 4, 1, 0, NULL, '5-B', 'South-East', 0, 'residential', 9849625.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(183, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '5-C', 'North-East', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(184, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '5-D', 'North-West', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(185, 6, 2250, 4, 2452500, 180000.00, 4, 4, 4, 1, 0, NULL, '4-A', 'South-West', 0, 'residential', 10299375.00, NULL, NULL, 6, 'sold', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 1),
+(186, 6, 2150, 4, 3117500, 180000.00, 4, 4, 4, 1, 0, NULL, '4-B', 'South-East', 0, 'residential', 9849625.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(187, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '4-C', 'North-East', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(188, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '4-D', 'North-West', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(189, 6, 2250, 4, 3262500, 180000.00, 4, 4, 4, 1, 0, NULL, '3-A', 'South-West', 0, 'residential', 10299375.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(190, 6, 2150, 4, 3117500, 180000.00, 4, 4, 4, 1, 0, NULL, '3-B', 'South-East', 0, 'residential', 9849625.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(191, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '3-C', 'North-East', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(192, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '3-D', 'North-West', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(193, 6, 2250, 4, 3262500, 180000.00, 4, 4, 4, 1, 0, NULL, '2-A', 'South-West', 0, 'residential', 10299375.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(194, 6, 2150, 4, 3117500, 180000.00, 4, 4, 4, 1, 0, NULL, '2-B', 'South-East', 0, 'residential', 9849625.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(195, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '2-C', 'North-East', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(196, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '2-D', 'North-West', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(197, 6, 2250, 4, 3262500, 180000.00, 4, 4, 4, 1, 0, NULL, '1-A', 'South-West', 0, 'residential', 10299375.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(198, 6, 2150, 4, 3117500, 180000.00, 4, 4, 4, 1, 0, NULL, '1-B', 'South-East', 0, 'residential', 9849625.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(199, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '1-C', 'North-East', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(200, 6, 2190, 4, 3175500, 180000.00, 4, 4, 4, 1, 0, NULL, '1-D', 'North-West', 0, 'residential', 10029525.00, NULL, NULL, 6, 'available', 'From company csv', '2026-05-13 12:35:53', NULL, '2026-05-13 12:35:53', 0),
+(201, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 14, '14-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 1),
+(202, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 14, '14-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(203, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 14, '14-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(204, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 14, '14-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(205, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 13, '13-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 1),
+(206, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 13, '13-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 1),
+(207, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 13, '13-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 1),
+(208, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 13, '13-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(209, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 12, '12-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(210, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 12, '12-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(211, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 12, '12-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(212, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 12, '12-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 1),
+(213, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 11, '11-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(214, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 11, '11-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(215, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 11, '11-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(216, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 11, '11-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 1),
+(217, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 10, '10-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(218, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 10, '10-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(219, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 10, '10-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(220, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 10, '10-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(221, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 9, '9-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(222, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 9, '9-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(223, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 9, '9-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(224, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 9, '9-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(225, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 8, '8-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(226, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 8, '8-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(227, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 8, '8-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(228, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 8, '8-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(229, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 7, '7-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(230, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 7, '7-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(231, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 7, '7-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(232, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 7, '7-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(233, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 6, '6-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(234, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 6, '6-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(235, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 6, '6-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(236, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 6, '6-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(237, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 5, '5-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(238, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 5, '5-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(239, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 5, '5-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(240, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 5, '5-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(241, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 4, '4-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(242, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 4, '4-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(243, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 4, '4-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(244, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 4, '4-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(245, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 3, '3-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(246, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 3, '3-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(247, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 3, '3-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(248, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 3, '3-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(249, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 2, '2-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(250, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 2, '2-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(251, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 2, '2-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(252, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 2, '2-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(253, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 1, '1-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(254, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 1, '1-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(255, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 1, '1-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(256, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 1, '1-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-13 12:46:21', NULL, '2026-05-13 12:46:21', 0),
+(257, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 14, '14-A', 'South-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(258, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 14, '14-B', 'South-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(259, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 14, '14-C', 'North-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(260, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 14, '14-D', 'North-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(261, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 13, '13-A', 'South-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(262, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 13, '13-B', 'South-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(263, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 13, '13-C', 'North-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(264, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 13, '13-D', 'North-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(265, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 12, '12-A', 'South-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(266, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 12, '12-B', 'South-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(267, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 12, '12-C', 'North-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(268, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 12, '12-D', 'North-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(269, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 11, '11-A', 'South-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(270, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 11, '11-B', 'South-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(271, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 11, '11-C', 'North-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(272, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 11, '11-D', 'North-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(273, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 10, '10-A', 'South-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(274, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 10, '10-B', 'South-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(275, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 10, '10-C', 'North-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(276, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 10, '10-D', 'North-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(277, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 9, '9-A', 'South-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(278, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 9, '9-B', 'South-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(279, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 9, '9-C', 'North-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(280, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 9, '9-D', 'North-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(281, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 8, '8-A', 'South-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(282, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 8, '8-B', 'South-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(283, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 8, '8-C', 'North-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(284, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 8, '8-D', 'North-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(285, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 7, '7-A', 'South-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(286, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 7, '7-B', 'South-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(287, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 7, '7-C', 'North-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(288, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 7, '7-D', 'North-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(289, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 6, '6-A', 'South-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(290, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 6, '6-B', 'South-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(291, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 6, '6-C', 'North-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(292, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 6, '6-D', 'North-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(293, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 5, '5-A', 'South-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(294, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 5, '5-B', 'South-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(295, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 5, '5-C', 'North-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(296, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 5, '5-D', 'North-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(297, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 4, '4-A', 'South-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(298, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 4, '4-B', 'South-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(299, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 4, '4-C', 'North-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(300, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 4, '4-D', 'North-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(301, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 3, '3-A', 'South-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(302, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 3, '3-B', 'South-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(303, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 3, '3-C', 'North-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(304, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 3, '3-D', 'North-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(305, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 2, '2-A', 'South-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(306, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 2, '2-B', 'South-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(307, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 2, '2-C', 'North-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(308, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 2, '2-D', 'North-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1);
 INSERT INTO `flats` (`id`, `project_id`, `sqft`, `bhk`, `land_share_value`, `development_charges`, `bedroom`, `bathroom`, `balcony`, `drawing_dining_kitchen`, `common_dining`, `floor_no`, `flat_name`, `facing_site`, `is_shop`, `unit_type`, `price_value`, `shop_service_charge`, `facilities`, `created_by`, `status`, `upload_from`, `created_at`, `deleted_at`, `updated_at`, `is_booked`) VALUES
-(565, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '16I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(566, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '17A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(567, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '17B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(568, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '17C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(569, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '17E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(570, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '17F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(571, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '17G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(572, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '17H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(573, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '17I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(574, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '18A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(575, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '18B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(576, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '18C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(577, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '18D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(578, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '18E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(579, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '18F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(580, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '18H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(581, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '18I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(582, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '19B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(583, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '19C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(584, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '19D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(585, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '19E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(586, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '19F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(587, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '19G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(588, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '19H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(589, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '19I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(590, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '20A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(591, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '20B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(592, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '20C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(593, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '20D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(594, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '20E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(595, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '20F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(596, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '20G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(597, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '20H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(598, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '20I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(599, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '6A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(600, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '6B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(601, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '6D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(602, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '6E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(603, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '6F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(604, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '6G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(605, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '6H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(606, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '6I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(607, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '7A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(608, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '7B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(609, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '7D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(610, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '7E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(611, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '7F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(612, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '7G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(613, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '7H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(614, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '7I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(615, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '8A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(616, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '8B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(617, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '8C', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(618, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '8D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(619, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '8E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(620, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '8G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(621, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '8H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(622, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '8I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(623, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '9A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(624, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '9B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(625, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '9C', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(626, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '9D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(627, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '9E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(628, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '9F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(629, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '9G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(630, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '9H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(631, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '10A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(632, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '10B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(633, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '10D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(634, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '10E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(635, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '10F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(636, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '10G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(637, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '10H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(638, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '10I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(639, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '11A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(640, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '11B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(641, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '11D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(642, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '11E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(643, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '11F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(644, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '11G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(645, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '11H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(646, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '11I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(647, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '12A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(648, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '12B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(649, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '12C', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(650, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '12D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(651, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '12E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(652, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '12F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(653, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '12G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(654, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '12H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(655, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '12I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(656, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '13A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(657, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '13B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 08:59:29', NULL, '2026-05-14 08:59:29', 0),
-(658, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 14, '14-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-14 09:16:36', NULL, '2026-05-14 09:16:36', 1),
-(659, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 14, '14-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:36', NULL, '2026-05-14 09:16:36', 0),
-(660, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 14, '14-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:36', NULL, '2026-05-14 09:16:36', 0),
-(661, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 14, '14-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:36', NULL, '2026-05-14 09:16:36', 0),
-(662, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 13, '13-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 1),
-(663, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 13, '13-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 1),
-(664, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 13, '13-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 1),
-(665, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 13, '13-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(666, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 12, '12-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(667, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 12, '12-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(668, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 12, '12-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(669, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 12, '12-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 1),
-(670, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 11, '11-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(671, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 11, '11-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(672, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 11, '11-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(673, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 11, '11-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 1),
-(674, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 10, '10-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(675, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 10, '10-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(676, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 10, '10-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(677, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 10, '10-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(678, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 9, '9-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(679, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 9, '9-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(680, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 9, '9-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(681, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 9, '9-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(682, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 8, '8-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(683, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 8, '8-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(684, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 8, '8-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(685, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 8, '8-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(686, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 7, '7-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(687, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 7, '7-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(688, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 7, '7-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(689, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 7, '7-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(690, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 6, '6-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(691, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 6, '6-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(692, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 6, '6-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(693, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 6, '6-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(694, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 5, '5-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(695, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 5, '5-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(696, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 5, '5-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(697, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 5, '5-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(698, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 4, '4-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(699, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 4, '4-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(700, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 4, '4-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(701, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 4, '4-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(702, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 3, '3-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(703, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 3, '3-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(704, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 3, '3-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(705, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 3, '3-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(706, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 2, '2-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(707, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 2, '2-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(708, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 2, '2-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(709, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 2, '2-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0);
+(309, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 1, '1-A', 'South-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(310, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 1, '1-B', 'South-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(311, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 1, '1-C', 'North-East', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(312, 50, 1250, 3, 1362500, 1100000.00, 3, 3, 3, 1, 1, 1, '1-D', 'North-West', 0, 'residential', 5281500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'sold', 'From company csv', '2026-05-13 12:47:18', NULL, '2026-05-13 12:47:18', 1),
+(2653, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '6-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2654, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '6-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2655, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '6-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2656, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '6-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2657, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '6-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2658, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '6-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2659, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '6-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2660, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '7-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2661, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '7-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2662, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '7-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2663, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '7-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2664, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '8-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2665, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '8-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2666, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '8-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2667, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '9-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2668, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '9-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2669, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '9-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2670, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '9-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2671, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '10-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2672, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '10-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2673, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '10-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2674, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '10-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2675, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '10-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2676, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '11-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2677, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '11-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2678, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '11-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2679, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '11-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2680, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '11-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:44', NULL, '2026-05-14 09:51:44', 0),
+(2681, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '11-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2682, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '12-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2683, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '12-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2684, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '12-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2685, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '12-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2686, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '12-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2687, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '12-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2688, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '12-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2689, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '13-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2690, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '13-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2691, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '13-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2692, 12, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '13-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2693, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '13-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2694, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '13-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2695, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '13-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2696, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '14-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2697, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '14-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2698, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '14-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2699, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '14-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2700, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '14-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2701, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '14-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2702, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '15-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2703, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '15-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2704, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '15-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2705, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '15-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2706, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '15-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2707, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '15-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2708, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '16-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2709, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '16-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2710, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '16-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2711, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '16-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2712, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '16-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2713, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '16-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2714, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '16-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2715, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '17-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2716, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '17-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2717, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '17-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2718, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '17-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2719, 12, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '17-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2720, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '17-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2721, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '17-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2722, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '17-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2723, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '18-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2724, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '18-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2725, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '18-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2726, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '18-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2727, 12, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '18-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2728, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '18-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2729, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '18-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2730, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '18-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2731, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '19-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2732, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '19-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2733, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '19-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2734, 12, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '19-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2735, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '19-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2736, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '19-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2737, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '19-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2738, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '20-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2739, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '20-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2740, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '20-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2741, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '20-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2742, 12, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '20-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2743, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '20-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2744, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '20-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2745, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '20-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2746, 12, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '6-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2747, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '6-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2748, 12, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '6-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2749, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '6-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2750, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '6-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2751, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '6-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2752, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '6-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2753, 12, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '7-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2754, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '7-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2755, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '7-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2756, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '7-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2757, 12, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '8-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2758, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '8-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2759, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '8-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2760, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '8-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2761, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '8-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2762, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '8-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2763, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '9-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2764, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '9-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2765, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '9-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2766, 12, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '9-G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2767, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '9-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2768, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '9-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2769, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '10-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2770, 12, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '10-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2771, 12, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '10-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2772, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '10-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2773, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '10-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2774, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '10-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2775, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '10-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2776, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '11-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2777, 12, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '11-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2778, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '11-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2779, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '11-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2780, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '11-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2781, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '12-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2782, 12, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '12-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2783, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '12-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2784, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '12-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2785, 12, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '12-G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2786, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '12-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2787, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '12-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2788, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '13-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2789, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '13-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2790, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '13-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2791, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '13-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2792, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '13-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2793, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '13-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2794, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '13-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2795, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '14-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2796, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '14-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2797, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '14-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2798, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '14-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2799, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '14-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2800, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '14-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2801, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '15-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0);
 INSERT INTO `flats` (`id`, `project_id`, `sqft`, `bhk`, `land_share_value`, `development_charges`, `bedroom`, `bathroom`, `balcony`, `drawing_dining_kitchen`, `common_dining`, `floor_no`, `flat_name`, `facing_site`, `is_shop`, `unit_type`, `price_value`, `shop_service_charge`, `facilities`, `created_by`, `status`, `upload_from`, `created_at`, `deleted_at`, `updated_at`, `is_booked`) VALUES
-(710, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 1, '1-A', 'South-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(711, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 1, '1-B', 'South-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(712, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 1, '1-C', 'North-East', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(713, 51, 1680, 3, 3780000, 0.00, 3, 3, 3, 1, 1, 1, '1-D', 'North-West', 0, 'residential', 25200000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Jogging Road,School Market,Mosque,Power Plant,EV Power Station, LPG Substation', 6, 'available', 'From company csv', '2026-05-14 09:16:37', NULL, '2026-05-14 09:16:37', 0),
-(714, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '6-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(715, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '6-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(716, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '6-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(717, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '6-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(718, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '6-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(719, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '6-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(720, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '6-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(721, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '7-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(722, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '7-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(723, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '7-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(724, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '7-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(725, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '8-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(726, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '8-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(727, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '8-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(728, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '9-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(729, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '9-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(730, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '9-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(731, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '9-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(732, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '10-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(733, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '10-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(734, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '10-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(735, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '10-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(736, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '10-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(737, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '11-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(738, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '11-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(739, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '11-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(740, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '11-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(741, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '11-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(742, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '11-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(743, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '12-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(744, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '12-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(745, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '12-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(746, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '12-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(747, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '12-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(748, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '12-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(749, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '12-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(750, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '13-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(751, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '13-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(752, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '13-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(753, 12, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '13-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(754, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '13-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(755, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '13-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(756, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '13-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(757, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '14-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(758, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '14-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(759, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '14-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(760, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '14-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(761, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '14-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(762, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '14-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(763, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '15-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(764, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '15-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(765, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '15-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(766, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '15-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(767, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '15-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(768, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '15-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(769, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '16-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(770, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '16-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(771, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '16-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(772, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '16-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(773, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '16-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(774, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '16-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(775, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '16-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(776, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '17-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(777, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '17-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(778, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '17-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(779, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '17-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(780, 12, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '17-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(781, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '17-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(782, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '17-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(783, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '17-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(784, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '18-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(785, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '18-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(786, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '18-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(787, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '18-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(788, 12, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '18-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(789, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '18-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(790, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '18-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(791, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '18-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(792, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '19-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(793, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '19-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(794, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '19-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(795, 12, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '19-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(796, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '19-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(797, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '19-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(798, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '19-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(799, 12, 1565, 3, 1956250, 156500.00, 3, 2, 3, 1, 0, NULL, '20-A', 'North', 0, 'residential', 6103500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(800, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '20-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(801, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '20-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(802, 12, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '20-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(803, 12, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '20-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(804, 12, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '20-F', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(805, 12, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '20-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(806, 12, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '20-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(807, 12, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '6-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(808, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '6-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(809, 12, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '6-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(810, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '6-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(811, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '6-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(812, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '6-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(813, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '6-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(814, 12, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '7-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(815, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '7-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(816, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '7-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(817, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '7-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(818, 12, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '8-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(819, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '8-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(820, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '8-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(821, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '8-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(822, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '8-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(823, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '8-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(824, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '9-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(825, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '9-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(826, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '9-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(827, 12, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '9-G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(828, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '9-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(829, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '9-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(830, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '10-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(831, 12, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '10-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(832, 12, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '10-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(833, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '10-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(834, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '10-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(835, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '10-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(836, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '10-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(837, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '11-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(838, 12, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '11-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(839, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '11-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(840, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '11-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(841, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '11-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(842, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '12-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(843, 12, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '12-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(844, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '12-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(845, 12, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '12-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(846, 12, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '12-G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(847, 12, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '12-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(848, 12, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '12-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(849, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '13-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(850, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '13-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(851, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '13-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(852, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '13-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(853, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '13-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(854, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '13-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(855, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '13-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(856, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '14-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(857, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '14-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(858, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '14-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(859, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '14-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(860, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '14-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(861, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '14-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(862, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '15-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0);
+(2802, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '15-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2803, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '15-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2804, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '15-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2805, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '15-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2806, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '15-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2807, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '15-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2808, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '16-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2809, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '16-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2810, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '16-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2811, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '16-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2812, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '16-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2813, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '16-G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2814, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '16-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2815, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '16-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2816, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '17-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2817, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '17-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2818, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '17-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2819, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '17-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2820, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '17-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2821, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '17-G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2822, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '17-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2823, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '17-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2824, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '18-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2825, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '18-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2826, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '18-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2827, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '18-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2828, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '18-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2829, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '18-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2830, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '18-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2831, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '18-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2832, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '19-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2833, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '19-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2834, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '19-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2835, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '19-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2836, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '19-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2837, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '19-G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2838, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '19-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2839, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '19-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2840, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '20-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2841, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '20-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2842, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '20-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2843, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '20-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2844, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '20-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2845, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '20-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2846, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '20-G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2847, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '20-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2848, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '20-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2849, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '6-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2850, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '6-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2851, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '6-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2852, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '6-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2853, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '6-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2854, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '6-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2855, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '6-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2856, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '6-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2857, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '7-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2858, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '7-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2859, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '7-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2860, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '7-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2861, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '7-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2862, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '7-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2863, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '7-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2864, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '7-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2865, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '8-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2866, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '8-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2867, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '8-C', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2868, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '8-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2869, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '8-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2870, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '8-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2871, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '8-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2872, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '8-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2873, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '9-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2874, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '9-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2875, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '9-C', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2876, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '9-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2877, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '9-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2878, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '9-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2879, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '9-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2880, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '9-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2881, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '10-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2882, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '10-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2883, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '10-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2884, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '10-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2885, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '10-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2886, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '10-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2887, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '10-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2888, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '10-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2889, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '11-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2890, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '11-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2891, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '11-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2892, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '11-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2893, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '11-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2894, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '11-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2895, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '11-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2896, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '11-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2897, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '12-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2898, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '12-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2899, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '12-C', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2900, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '12-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2901, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '12-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2902, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '12-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2903, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '12-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2904, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '12-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2905, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '12-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2906, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '13-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2907, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '13-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2908, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '13-C', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2909, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '13-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2910, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '13-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2911, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '13-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2912, 29, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '13-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2913, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '13-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2914, 29, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '13-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2915, 29, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '14-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2916, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '14-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2917, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '14-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2918, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '14-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2919, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '14-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2920, 29, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '14-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2921, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '14-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2922, 29, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '14-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2923, 29, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '15-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2924, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '15-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2925, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '15-C', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2926, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '15-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2927, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '15-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2928, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '15-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2929, 29, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '15-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2930, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '15-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2931, 29, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '15-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2932, 29, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '16-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2933, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '16-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2934, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '16-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2935, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '16-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2936, 29, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '16-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2937, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '16-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2938, 29, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '16-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2939, 29, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '17-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2940, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '17-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2941, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '17-C', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2942, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '17-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2943, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '17-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2944, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '17-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2945, 29, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '17-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2946, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '17-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2947, 29, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '17-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2948, 29, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '18-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2949, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '18-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2950, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '18-C', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2951, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '18-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2952, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '18-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2953, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '18-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2954, 29, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '18-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0);
 INSERT INTO `flats` (`id`, `project_id`, `sqft`, `bhk`, `land_share_value`, `development_charges`, `bedroom`, `bathroom`, `balcony`, `drawing_dining_kitchen`, `common_dining`, `floor_no`, `flat_name`, `facing_site`, `is_shop`, `unit_type`, `price_value`, `shop_service_charge`, `facilities`, `created_by`, `status`, `upload_from`, `created_at`, `deleted_at`, `updated_at`, `is_booked`) VALUES
-(863, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '15-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(864, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '15-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(865, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '15-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(866, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '15-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(867, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '15-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(868, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '15-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(869, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '16-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(870, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '16-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(871, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '16-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(872, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '16-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(873, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '16-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(874, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '16-G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(875, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '16-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(876, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '16-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(877, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '17-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(878, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '17-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(879, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '17-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(880, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '17-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(881, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '17-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(882, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '17-G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(883, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '17-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(884, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '17-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(885, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '18-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(886, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '18-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(887, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '18-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(888, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '18-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(889, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '18-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(890, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '18-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(891, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '18-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(892, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '18-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(893, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '19-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(894, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '19-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(895, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '19-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(896, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '19-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(897, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '19-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(898, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '19-G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(899, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '19-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(900, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '19-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(901, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '20-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(902, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '20-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(903, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '20-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(904, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '20-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(905, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '20-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(906, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '20-F', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(907, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '20-G', 'WEST', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(908, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '20-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(909, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '20-I', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(910, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '6-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(911, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '6-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(912, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '6-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(913, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '6-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(914, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '6-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(915, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '6-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(916, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '6-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(917, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '6-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(918, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '7-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(919, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '7-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(920, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '7-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(921, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '7-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(922, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '7-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(923, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '7-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(924, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '7-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(925, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '7-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(926, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '8-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(927, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '8-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(928, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '8-C', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(929, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '8-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(930, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '8-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(931, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '8-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(932, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '8-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(933, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '8-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(934, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '9-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(935, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '9-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(936, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '9-C', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(937, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '9-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(938, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '9-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(939, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '9-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(940, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '9-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(941, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '9-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(942, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '10-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(943, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '10-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(944, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '10-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(945, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '10-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(946, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '10-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(947, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '10-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(948, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '10-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(949, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '10-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(950, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '11-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(951, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '11-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(952, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '11-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(953, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '11-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(954, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '11-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(955, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '11-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(956, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '11-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(957, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '11-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(958, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '12-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(959, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '12-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(960, 28, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '12-C', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(961, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '12-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(962, 28, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '12-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(963, 28, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '12-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(964, 28, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '12-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(965, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '12-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(966, 28, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '12-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(967, 28, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '13-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0),
-(968, 28, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '13-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 10:33:51', NULL, '2026-05-14 10:33:51', 0);
+(2955, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '18-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2956, 29, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '18-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2957, 29, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '19-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2958, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '19-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2959, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '19-C', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2960, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '19-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2961, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '19-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2962, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '19-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2963, 29, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '19-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2964, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '19-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2965, 29, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '19-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2966, 29, 775, 2, 968750, 77500.00, 2, 1, 1, 1, 0, NULL, '20-A', 'WEST', 0, 'residential', 3022500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2967, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '20-B', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2968, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '20-C', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2969, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '20-D', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2970, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '20-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2971, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '20-F', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2972, 29, 825, 2, 1031250, 82500.00, 2, 1, 1, 1, 0, NULL, '20-G', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2973, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '20-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2974, 29, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '20-I', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'available', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 0),
+(2975, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '6-G', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2976, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '6-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2977, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '7-H', 'WEST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2978, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '7-G', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2979, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '7-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2980, 29, 825, 2, 1031250, 82500.00, 2, 2, 1, 1, 0, NULL, '7-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2981, 29, 800, 2, 1000000, 80000.00, 2, 1, 1, 1, 0, NULL, '7-B', 'EAST', 0, 'residential', 3120000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2982, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '8-G', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2983, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '8-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2984, 29, 825, 2, 1031250, 82500.00, 2, 2, 1, 1, 0, NULL, '8-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2985, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '9-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2986, 29, 825, 2, 1031250, 82500.00, 2, 2, 1, 1, 0, NULL, '9-C', 'EAST', 0, 'residential', 3217500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2987, 29, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '9-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2988, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '10-G', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2989, 29, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '10-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2990, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '11-G', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2991, 29, 2055, 4, 2568750, 205500.00, 4, 3, 4, 1, 0, NULL, '11-E', 'NORTH', 0, 'residential', 8014500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2992, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '11-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2993, 29, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '11-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2994, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '12-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2995, 29, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '12-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2996, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '13-G', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2997, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '13-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2998, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '14-G', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(2999, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '14-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3000, 29, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '14-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3001, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '15-G', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3002, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '15-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3003, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '16-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3004, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '17-D', 'EAST', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3005, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '18-G', 'West', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3006, 29, 1310, 3, 1637500, 131000.00, 3, 3, 3, 1, 0, NULL, '19-A', 'SOUTH', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3007, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '6-C', 'East', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3008, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '7-C', 'East', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3009, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '8-F', 'West', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3010, 29, 1310, 3, 1637500, 131000.00, 3, 2, 2, 1, 0, NULL, '9-I', 'South', 0, 'residential', 5109000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3011, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '10-C', 'East', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3012, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '11-C', 'East', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3013, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '14-C', 'East', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3014, 29, 1230, 3, 1537500, 123000.00, 3, 3, 3, 1, 0, NULL, '16-F', 'West', 0, 'residential', 4797000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3015, 29, 1395, 3, 1743750, 139500.00, 3, 3, 3, 1, 0, NULL, '16-C', 'East', 0, 'residential', 5440500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3016, 29, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '6-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3017, 29, 1655, 3, 2068750, 165500.00, 3, 3, 3, 1, 0, NULL, '7-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3018, 29, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '7-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3019, 29, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '7-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3020, 29, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '7-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3021, 29, 1655, 3, 2068750, 165500.00, 3, 2, 3, 1, 0, NULL, '8-H', 'North', 0, 'residential', 6454500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3022, 29, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '8-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3023, 29, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '8-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3024, 29, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '8-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3025, 29, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '8-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3026, 29, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '9-G', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3027, 29, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '9-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3028, 29, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '9-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3029, 29, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '9-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3030, 29, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '10-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3031, 29, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '10-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3032, 29, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '10-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3033, 29, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '11-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3034, 29, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '11-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3035, 29, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '12-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3036, 29, 725, 2, 906250, 72500.00, 2, 2, 1, 1, 0, NULL, '13-C', 'South', 0, 'residential', 2827500.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3037, 29, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '14-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3038, 29, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '14-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3039, 29, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '15-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3040, 29, 790, 2, 987500, 79000.00, 2, 2, 1, 1, 0, NULL, '15-D', 'South', 0, 'residential', 3081000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3041, 29, 830, 2, 1037500, 83000.00, 2, 2, 1, 1, 0, NULL, '16-E', 'South', 0, 'residential', 3237000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3042, 29, 580, 1, 725000, 58000.00, 1, 1, 1, 1, 0, NULL, '19-B', 'South', 0, 'residential', 2262000.00, NULL, 'Gym,Restaurant,Kids Zoone,Swiming Pool,Football Turf,Prayer Zone,Indoor Gaming,Community Hall,Senior Citizenship Club', 6, 'sold', 'From company csv', '2026-05-14 09:51:45', NULL, '2026-05-14 09:51:45', 1),
+(3043, 13, 1200, 3, 500000, 50000.00, 3, 3, 1, 0, 0, 1, 'Unit-A1', 'north', 0, 'residential', 2000000.00, NULL, 'Gym, Mosque etc', 6, 'booked', 'Manually Add', '2026-05-16 03:57:33', NULL, '2026-05-16 03:57:33', 1),
+(3044, 13, 136, 0, 300000, 0.00, 0, 0, 0, 0, 0, 1, 'shop 1', 'north', 1, 'commercial', 1000000.00, 12, '', 6, 'booked', 'Manually Add', '2026-05-16 03:58:36', NULL, '2026-05-16 03:58:36', 1),
+(3045, 21, 1600, 4, 1520000, 0.00, 4, 3, 3, 1, 1, 9, '9-B', 'South-West', 0, 'residential', 5130000.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'available', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 0),
+(3046, 21, 1600, 4, 1520000, 0.00, 4, 3, 3, 1, 1, 9, '9-A', 'South-East', 0, 'residential', 5130001.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'available', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 0),
+(3047, 21, 1600, 4, 1520000, 0.00, 4, 3, 3, 1, 1, 8, '8-B', 'South-West', 0, 'residential', 5130002.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1),
+(3048, 21, 1600, 4, 1520000, 0.00, 4, 3, 3, 1, 1, 8, '8-A', 'South-East', 0, 'residential', 5130003.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1),
+(3049, 21, 1600, 4, 1520000, 0.00, 4, 3, 3, 1, 1, 7, '7-B', 'South-West', 0, 'residential', 5130004.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1),
+(3050, 21, 1600, 4, 1520000, 0.00, 4, 3, 3, 1, 1, 7, '7-A', 'South-East', 0, 'residential', 5130005.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1),
+(3051, 21, 1600, 4, 1520010, 0.00, 4, 3, 3, 1, 1, 6, '6-B', 'South-West', 0, 'residential', 5130006.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1),
+(3052, 21, 1600, 4, 1520010, 0.00, 4, 3, 3, 1, 1, 6, '6-A', 'South-East', 0, 'residential', 5130007.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1),
+(3053, 21, 1600, 4, 1520010, 0.00, 4, 3, 3, 1, 1, 5, '5-B', 'South-West', 0, 'residential', 5130008.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1),
+(3054, 21, 1600, 4, 1520010, 0.00, 4, 3, 3, 1, 1, 5, '5-A', 'South-East', 0, 'residential', 5130009.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1),
+(3055, 21, 1600, 4, 1520010, 0.00, 4, 3, 3, 1, 1, 4, '4-B', 'South-West', 0, 'residential', 5130010.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1),
+(3056, 21, 1600, 4, 1520010, 0.00, 4, 3, 3, 1, 1, 4, '4-A', 'South-East', 0, 'residential', 5130011.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1),
+(3057, 21, 1600, 4, 1520010, 0.00, 4, 3, 3, 1, 1, 3, '3-B', 'South-West', 0, 'residential', 5130012.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1),
+(3058, 21, 1600, 4, 1520010, 0.00, 4, 3, 3, 1, 1, 3, '3-A', 'South-East', 0, 'residential', 5130013.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1),
+(3059, 21, 1600, 4, 1520010, 0.00, 4, 3, 3, 1, 1, 2, '2-B', 'South-West', 0, 'residential', 5130014.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1),
+(3060, 21, 1600, 4, 1520020, 0.00, 4, 3, 3, 1, 1, 2, '2-A', 'South-East', 0, 'residential', 5130015.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1),
+(3061, 21, 1600, 4, 1520020, 0.00, 4, 3, 3, 1, 1, 1, '1-B', 'South-West', 0, 'residential', 5130016.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1),
+(3062, 21, 1600, 4, 1520020, 0.00, 4, 3, 3, 1, 1, 1, '1-A', 'South-East', 0, 'residential', 5130017.00, NULL, 'Pessenger lift,rooftop garden,generstor,open sky green tarace', 6, 'sold', 'From company csv', '2026-05-16 12:09:05', NULL, '2026-05-16 12:09:05', 1);
 
 -- --------------------------------------------------------
 
@@ -2386,16 +2530,9 @@ CREATE TABLE `fund_requisitions` (
   `paid_by` int(11) DEFAULT NULL,
   `paid_at` timestamp NULL DEFAULT NULL,
   `payment_method` varchar(50) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `fund_requisitions`
---
-
-INSERT INTO `fund_requisitions` (`id`, `department_id`, `project_id`, `requested_by`, `requisition_type`, `category`, `amount`, `purpose`, `receipt_path`, `payment_attachment_path`, `status`, `approved_by`, `approved_at`, `approval_note`, `accounts_note`, `paid_by`, `paid_at`, `payment_method`, `created_at`, `updated_at`) VALUES
-(1, 18, NULL, 121, 'general', 'Other Expense', 10000.00, 'advance expense', NULL, 'uploads/payments/payment_1779338115_6274.png', 'paid', 6, '2026-05-21 04:34:26', 'ok', 'paid ', 5, '2026-05-21 04:35:15', 'Cash', '2026-05-21 04:21:56', '2026-05-21 04:35:15');
 
 -- --------------------------------------------------------
 
@@ -2416,13 +2553,6 @@ CREATE TABLE `fund_requisition_expenses` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `fund_requisition_expenses`
---
-
-INSERT INTO `fund_requisition_expenses` (`id`, `fund_requisition_id`, `project_id`, `other_project_name`, `amount`, `purpose`, `attachment_path`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 1, NULL, 'transport', 2000.00, '0', NULL, 121, '2026-05-21 04:46:09', '2026-05-21 04:46:09');
-
 -- --------------------------------------------------------
 
 --
@@ -2438,15 +2568,7 @@ CREATE TABLE `head_notifications` (
   `url` varchar(255) DEFAULT NULL,
   `is_read` tinyint(1) DEFAULT 0,
   `created_at` timestamp NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
---
--- Dumping data for table `head_notifications`
---
-
-INSERT INTO `head_notifications` (`id`, `user_id`, `type`, `title`, `message`, `url`, `is_read`, `created_at`) VALUES
-(1, 132, '', 'New Purchase Request Assigned', 'Purchase Request PR-1 has been assigned to you for Quotation/CST processing.', '/TPHL-ERP/con-quotation-create/1', 0, '2026-05-17 12:32:29'),
-(2, 132, '', 'New Purchase Request Assigned', 'Purchase Request PR-1 has been assigned to you for Quotation/CST processing.', '/TPHL-ERP/con-quotation-create/1', 0, '2026-05-24 04:42:45');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -2481,7 +2603,6 @@ CREATE TABLE `initial_estimate_budgets` (
   `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
   `architecture_id` int(10) UNSIGNED NOT NULL,
-  `drawing_id` int(11) DEFAULT NULL COMMENT 'Links to project_drawings.id',
   `work_type_id` int(11) DEFAULT NULL,
   `total_area_sqft` decimal(12,2) DEFAULT NULL,
   `material_cost_total` decimal(15,2) DEFAULT 0.00,
@@ -2493,22 +2614,23 @@ CREATE TABLE `initial_estimate_budgets` (
   `total_estimated_cost` decimal(15,2) DEFAULT 0.00,
   `weight_percentage` decimal(5,2) NOT NULL DEFAULT 100.00,
   `status` enum('draft','pending','pm_approved','approved','cancelled') NOT NULL DEFAULT 'draft',
-  `status_reason` varchar(500) DEFAULT NULL,
   `approved_by` int(11) DEFAULT NULL,
   `approval_date` timestamp NULL DEFAULT NULL,
   `start_date` date DEFAULT NULL,
   `end_date` date DEFAULT NULL,
   `created_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
+  `drawing_id` int(11) DEFAULT NULL COMMENT 'Links to project_drawings.id',
+  `status_reason` varchar(500) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `initial_estimate_budgets`
 --
 
-INSERT INTO `initial_estimate_budgets` (`id`, `project_id`, `architecture_id`, `drawing_id`, `work_type_id`, `total_area_sqft`, `material_cost_total`, `labor_cost_total`, `other_costs`, `budget_link`, `work_details`, `other_cost_detail`, `total_estimated_cost`, `weight_percentage`, `status`, `status_reason`, `approved_by`, `approval_date`, `start_date`, `end_date`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 13, 1, 3, NULL, 3200.00, 99998.80, 7999904.00, 10000.00, '', NULL, 'transport', 8109902.80, 100.00, 'pm_approved', NULL, 120, '2026-05-23 10:38:57', '2026-05-23', '2029-05-10', 120, '2026-05-23 10:38:29', '2026-05-23 11:00:41');
+INSERT INTO `initial_estimate_budgets` (`id`, `project_id`, `architecture_id`, `work_type_id`, `total_area_sqft`, `material_cost_total`, `labor_cost_total`, `other_costs`, `budget_link`, `work_details`, `other_cost_detail`, `total_estimated_cost`, `weight_percentage`, `status`, `approved_by`, `approval_date`, `start_date`, `end_date`, `created_by`, `created_at`, `updated_at`, `drawing_id`, `status_reason`) VALUES
+(1, 13, 1, 0, 1200.00, 624995.00, 4200000.00, 100000.00, '', NULL, 'Transport', 4924995.00, 100.00, 'approved', 120, '2026-05-07 11:57:22', '2026-05-07', '2030-07-07', 123, '2026-05-07 11:55:55', '2026-05-07 11:57:22', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -2540,10 +2662,9 @@ CREATE TABLE `initial_estimate_items` (
 --
 
 INSERT INTO `initial_estimate_items` (`id`, `budget_id`, `design_type_id`, `material_id`, `material_unit`, `estimated_qty`, `unit_cost_approx`, `remarks`, `work_type_id`, `sl_no`, `location_desc`, `nos`, `length_ft`, `width_ft`, `height_ft`, `volume_qty`) VALUES
-(1, 1, 1, 2, 'Pcs', 400.000, 20.00, '', 2, 1, 'C1:Grid(E/4),(F/1),(A/1),(A/8)=04 Nos', 5.000, 4.000, 2.000, 10.000, 400.000),
-(2, 1, 1, 1, 'Bags', 256.000, 200.00, '', 2, 2, 'C1:Grid(E/4),(F/1),(A/1),(A/8)=04 Nos', 4.000, 4.000, 4.000, 4.000, 256.000),
-(3, 1, 1, 2, 'Pcs', 160.000, 30.00, '', 3, 1, 'C1:Grid(E/4),(F/1),(A/1),(A/8)=04 Nos', 5.000, 4.000, 4.000, 2.000, 160.000),
-(4, 1, 1, 1, 'Bags', 120.000, 299.99, '', 1, 1, 'C1:Grid(E/4),(F/1),(A/1),(A/8)=04 Nos', 2.000, 10.000, 3.000, 2.000, 120.000);
+(1, 1, 6, 4, 'CFT', 10000.000, 15.00, 'work In Foundation', 2, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(2, 1, 6, 2, 'Pcs', 15000.000, 25.00, 'work In Foundation', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(3, 1, 6, 1, 'Bags', 500.000, 199.99, 'work In Foundation', 2, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -2567,8 +2688,8 @@ CREATE TABLE `initial_estimate_labors` (
 --
 
 INSERT INTO `initial_estimate_labors` (`id`, `budget_id`, `design_type_id`, `labor_type_name`, `rate_per_sqft`, `area_sqft`, `description`, `work_type_id`) VALUES
-(1, 1, 1, 'Civil Work', 3200.00, 1200.00, 'test civil', 0),
-(2, 1, 1, 'Electric work', 3200.00, 1299.97, 'test electric', 0);
+(1, 1, 6, 'Contractor', 1500.00, 1200.00, 'test electric', 2),
+(2, 1, 6, 'Civil Worker', 2000.00, 1200.00, 'Test work details', 1);
 
 -- --------------------------------------------------------
 
@@ -2597,13 +2718,6 @@ CREATE TABLE `land_acquisitions` (
   `registration_complete_date` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `land_acquisitions`
---
-
-INSERT INTO `land_acquisitions` (`id`, `project_id`, `land_owner_name`, `land_owner_phone`, `total_area`, `area_unit`, `price_per_unit`, `total_amount`, `location`, `status`, `remarks`, `created_by`, `created_at`, `updated_at`, `bayana_status`, `bayana_complete_date`, `registration_status`, `registration_complete_date`) VALUES
-(1, 13, 'Mr Owner', '01442873454', 5.0000, 'katha', 500000.00, 2500000.00, 'Dhaka', 'registered', 'bayna', 121, '2026-05-20 10:23:13', '2026-05-20 11:13:37', 'complete', '2026-05-20', 'complete', NULL);
-
 -- --------------------------------------------------------
 
 --
@@ -2623,14 +2737,6 @@ CREATE TABLE `land_bayana_payments` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `land_bayana_payments`
---
-
-INSERT INTO `land_bayana_payments` (`id`, `land_acquisition_id`, `payment_amount`, `payment_date`, `payment_method`, `transaction_no`, `bayana_document_link`, `remarks`, `created_by`, `created_at`, `updated_at`) VALUES
-(2, 1, 50000.00, '2026-05-20', 'Bank', '76544', 'https://docs.google.com/spreadsheets/d/1kCngFNn76Q6IjeLauS-9JUHoDrvF28T17HXG_6ouT2s/edit?gid=0#gid=0', 'Add', 121, '2026-05-20 10:37:52', NULL),
-(3, 1, 450000.00, '2026-05-20', 'Bank', '76544', 'https://docs.google.com/spreadsheets/d/1kCngFNn76Q6IjeLauS-9JUHoDrvF28T17HXG_6ouT2s/edit?gid=0#gid=0', 'test', 121, '2026-05-20 10:59:47', NULL);
 
 -- --------------------------------------------------------
 
@@ -2661,13 +2767,25 @@ CREATE TABLE `land_fund_requisitions` (
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
 --
--- Dumping data for table `land_fund_requisitions`
+-- Table structure for table `land_monthly_reports`
 --
 
-INSERT INTO `land_fund_requisitions` (`id`, `land_acquisition_id`, `requisition_type`, `requested_amount`, `purpose`, `req_attachment_path`, `requested_by`, `mgmt_status`, `mgmt_by`, `mgmt_note`, `mgmt_approved_at`, `accounts_status`, `accounts_by`, `accounts_note`, `accounts_paid_at`, `payment_method`, `transaction_no`, `attachment_path`, `created_at`, `updated_at`) VALUES
-(2, 1, 'Bayana', 500000.00, 'Bayna', 'uploads/receipts/land_req_1779273056_7135.png', 121, 'Approved', 6, 'Approved', '2026-05-20 10:31:34', 'Paid', 5, 'Approved bayna ', '2026-05-20 10:33:38', 'Bank', '823176476254', 'uploads/receipts/land_receipt_1779273218_7568.png', '2026-05-20 10:30:56', '2026-05-20 10:33:38'),
-(3, 1, 'Registration', 2000000.00, 'Registre', NULL, 121, 'Approved', 6, 'ok', '2026-05-20 11:08:45', 'Paid', 5, 'Paid r', '2026-05-20 11:09:44', 'Cash', '823176476254', 'uploads/receipts/land_receipt_1779275384_4420.png', '2026-05-20 11:07:51', '2026-05-20 11:09:44');
+CREATE TABLE `land_monthly_reports` (
+  `id` int(11) NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `report_month` varchar(20) NOT NULL,
+  `total_lands` int(11) DEFAULT 0,
+  `total_area` decimal(10,4) DEFAULT 0.0000,
+  `total_bayana` decimal(15,2) DEFAULT 0.00,
+  `total_registered` decimal(15,2) DEFAULT 0.00,
+  `total_cost` decimal(15,2) DEFAULT 0.00,
+  `summary_notes` text DEFAULT NULL,
+  `created_by` int(11) NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -2690,13 +2808,6 @@ CREATE TABLE `land_registrations` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `land_registrations`
---
-
-INSERT INTO `land_registrations` (`id`, `land_acquisition_id`, `registration_no`, `registration_date`, `sub_registry_office`, `registration_cost`, `mutation_status`, `mutation_date`, `deed_document_link`, `remarks`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 1, '1234345', '2026-05-20', '', 2000000.00, 'Completed', '2026-05-20', '', 'paid', 121, '2026-05-20 11:13:37', NULL);
 
 -- --------------------------------------------------------
 
@@ -2724,7 +2835,8 @@ CREATE TABLE `land_visibility_study` (
 --
 
 INSERT INTO `land_visibility_study` (`id`, `project_id`, `land_legal_doc_status`, `digital_survey_report_link`, `govt_approval_doc_link`, `others_doc_link`, `qc_reviewed_by_id`, `qc_approval_status`, `qc_reviewed_at`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 13, 'Verified', 'https://www.shutterstock.com/image-photo/aerial-drone-view-development-land-simister-2738802653?trackingId=5d2842a3-d158-4abc-a778-c714cfa13f84&listId=searchResults', 'https://www.shutterstock.com/image-photo/aerial-drone-view-development-land-simister-2738802653?trackingId=5d2842a3-d158-4abc-a778-c714cfa13f84&listId=searchResults', '', NULL, 'Pending', NULL, 121, '2026-05-17 04:22:12', NULL);
+(1, 13, 'Verified', 'https://www.shutterstock.com/image-photo/aerial-drone-view-development-land-simister-2738802653?trackingId=5d2842a3-d158-4abc-a778-c714cfa13f84&listId=searchResults', 'https://www.shutterstock.com/image-photo/aerial-drone-view-development-land-simister-2738802653?trackingId=5d2842a3-d158-4abc-a778-c714cfa13f84&listId=searchResults', '', NULL, 'Pending', NULL, 121, '2026-05-05 13:01:25', NULL),
+(2, 9, 'Verified', 'https://thepremiumhomesltd.com/TPHL-ERP/my-all-assigned-leads', 'https://thepremiumhomesltd.com/TPHL-ERP/my-all-assigned-leads', '', NULL, 'Pending', NULL, 121, '2026-05-18 07:22:52', NULL);
 
 -- --------------------------------------------------------
 
@@ -6798,26 +6910,26 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (4242, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'MD Ibrahim Mia', 'Assistantprofessor', 'tetul jhora college', '8801789496202', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
 (4243, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Sha alam molla', 'à¦ªà§à¦°à¦¬à¦¾à¦¸à§€', 'na', '0096890857126', 'not_called', NULL, 'Oman', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
 (4244, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Faisal A. Sagar', 'Chief marketing officer', 'Extra1degree', '8801911143480', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4245, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'rakib', 'merchandiser', 'Redan S.A.', '8801689786339', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4246, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'MD Moinul Haq', 'private job', 'le Meridien Dhaka', '8801671515853', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4247, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'à¦œà¦¿à¦¹à¦¾à¦¨à§à¦° à¦°à¦¹à¦®à¦¾à¦¨ à¦¸à§à¦œà¦¨', 'business', 'm/s niloy Enterprise', '8801716109570', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4248, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Md Kaizer Bin Ashab', 'Assistant Officer', 'Eastern Bank PLC.', '8801746400308', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4249, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Shariful alam', 'partnar', 'Al hadi overseas', '8801733992916', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4250, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'N Morshed Khan', 'General Manager, M-Commerce Payments', 'bKash Limited', '8801711109887', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4251, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Sajib Ahammed', 'Accounts Manager', 'Ahammed', '8801756515159', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4252, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Shahadat Hossain Parvej', 'Former Graphic Artist', 'Adobe', '8801782430741', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4253, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Abu Bakkar', 'Owner', 'Tours & Travel Home', '8801935196070', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4254, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Raihanul Islam', 'Co-Founder & CEO', 'Toogle', '8801707000980', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4255, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Habibur Rahman', 'à¦“à§Ÿà§‡à¦Ÿà¦¾à¦°', 'Yildizlar', '00966571884691', 'not_called', NULL, 'Saudi Arabia', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4256, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Yasir Arafat', 'fee', 'à¦†à¦®à¦¾à¦°', '8801719123028', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4257, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Nirjhar Kumar Saha', 'Specialist (consultant)', 'Ibrahim Cardiac Hospital &Research institute.', '8801778186727', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4258, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Jahid Hussain', 'Founder', 'Export Sheba à¦à¦•à§à¦¸à¦ªà§‹à¦°à§à¦Ÿ à¦¸à§‡à¦¬à¦¾', '8801731838995', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4259, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Md Ziaur Rahman', 'Manager', 'SCSL', '8801721463878', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4260, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Anwar Hossain', 'cook chif', 'Agosta Naousa Paros', '00306998513962', 'not_called', NULL, 'Greece', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4261, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Dulal Roy', 'AVP, sales', 'akhtar group.', '8801712022050', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4262, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Rashed Alam', 'Software engineer', 'VC World, Complete Software & IT Solution', '8801950344503', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4263, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Md Golam Hossain', 'Hotel working', 'Student', '8801670739672', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
-(4264, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Md. Sadat Khan', 'Governance Specialist', 'DSMC, SCRDP, LGED', '8801720072481', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 119, '2026-04-19 05:55:11', '2026-04-19 05:55:11', 'local', 9, NULL, NULL, 0),
+(4245, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'rakib', 'merchandiser', 'Redan S.A.', '8801689786339', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:30:11', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:30:11', 'local', 9, NULL, NULL, 0),
+(4246, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'MD Moinul Haq', 'private job', 'le Meridien Dhaka', '8801671515853', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:30:11', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:30:11', 'local', 9, NULL, NULL, 0),
+(4247, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'à¦œà¦¿à¦¹à¦¾à¦¨à§à¦° à¦°à¦¹à¦®à¦¾à¦¨ à¦¸à§à¦œà¦¨', 'business', 'm/s niloy Enterprise', '8801716109570', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:30:11', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:30:11', 'local', 9, NULL, NULL, 0),
+(4248, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Md Kaizer Bin Ashab', 'Assistant Officer', 'Eastern Bank PLC.', '8801746400308', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:30:11', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:30:11', 'local', 9, NULL, NULL, 0),
+(4249, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Shariful alam', 'partnar', 'Al hadi overseas', '8801733992916', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:30:11', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:30:11', 'local', 9, NULL, NULL, 0),
+(4250, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'N Morshed Khan', 'General Manager, M-Commerce Payments', 'bKash Limited', '8801711109887', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:30:11', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:30:11', 'local', 9, NULL, NULL, 0),
+(4251, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Sajib Ahammed', 'Accounts Manager', 'Ahammed', '8801756515159', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:30:11', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:30:11', 'local', 9, NULL, NULL, 0),
+(4252, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Shahadat Hossain Parvej', 'Former Graphic Artist', 'Adobe', '8801782430741', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:30:11', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:30:11', 'local', 9, NULL, NULL, 0),
+(4253, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Abu Bakkar', 'Owner', 'Tours & Travel Home', '8801935196070', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:30:11', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:30:11', 'local', 9, NULL, NULL, 0),
+(4254, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Raihanul Islam', 'Co-Founder & CEO', 'Toogle', '8801707000980', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:30:11', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:30:11', 'local', 9, NULL, NULL, 0),
+(4255, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Habibur Rahman', 'à¦“à§Ÿà§‡à¦Ÿà¦¾à¦°', 'Yildizlar', '00966571884691', 'not_called', NULL, 'Saudi Arabia', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:02:48', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:02:48', 'local', 9, NULL, NULL, 0),
+(4256, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Yasir Arafat', 'fee', 'à¦†à¦®à¦¾à¦°', '8801719123028', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:02:48', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:02:48', 'local', 9, NULL, NULL, 0),
+(4257, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Nirjhar Kumar Saha', 'Specialist (consultant)', 'Ibrahim Cardiac Hospital &Research institute.', '8801778186727', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:02:48', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:02:48', 'local', 9, NULL, NULL, 0),
+(4258, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Jahid Hussain', 'Founder', 'Export Sheba à¦à¦•à§à¦¸à¦ªà§‹à¦°à§à¦Ÿ à¦¸à§‡à¦¬à¦¾', '8801731838995', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:02:48', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:02:48', 'local', 9, NULL, NULL, 0),
+(4259, 'P. Homes ll Regular studio apartment ll per day 10$ Ongoing ll Jan 05, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Md Ziaur Rahman', 'Manager', 'SCSL', '8801721463878', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:02:48', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:02:48', 'local', 9, NULL, NULL, 0),
+(4260, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Anwar Hossain', 'cook chif', 'Agosta Naousa Paros', '00306998513962', 'not_called', NULL, 'Greece', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:02:48', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:02:48', 'local', 9, NULL, NULL, 0),
+(4261, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Dulal Roy', 'AVP, sales', 'akhtar group.', '8801712022050', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:02:48', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:02:48', 'local', 9, NULL, NULL, 0),
+(4262, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Rashed Alam', 'Software engineer', 'VC World, Complete Software & IT Solution', '8801950344503', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:02:48', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:02:48', 'local', 9, NULL, NULL, 0),
+(4263, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Md Golam Hossain', 'Hotel working', 'Student', '8801670739672', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:02:48', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:02:48', 'local', 9, NULL, NULL, 0),
+(4264, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Md. Sadat Khan', 'Governance Specialist', 'DSMC, SCRDP, LGED', '8801720072481', 'not_called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 135, '2026-05-21 09:02:48', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-05-21 09:02:48', 'local', 9, NULL, NULL, 0),
 (4265, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Moinuddin', 'private service', 'E Consultancy', '8801682437343', 'called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 11:09:26', 'local', 9, NULL, NULL, 0),
 (4266, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Shahjalal Kayser', 'business', 'Super National Sports', '8801962523035', 'called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 11:09:29', 'local', 9, NULL, NULL, 0),
 (4267, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Dr. Rakib Bin Kashem', 'Medicine specialist', 'Dhaka medical college', '8801711152824', 'called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 11:09:22', 'local', 9, NULL, NULL, 0),
@@ -6826,9 +6938,9 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (4270, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Sadi Khan', 'Account manager', 'S Zishan Overseas', '8801777808611', 'called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 11:09:16', 'local', 9, NULL, NULL, 0),
 (4271, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'SM Nazrul Islam', 'DQ', 'Govt job', '8801717584043', 'called', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 09:41:38', 'local', 9, NULL, NULL, 0),
 (4272, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'A K M Akramul Bari', 'Doctor', 'MOHFW', '8801819633993', 'called', 'busy ..wp text sent', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 09:41:23', 'local', 9, NULL, NULL, 0),
-(4273, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Kazi Khorshd', 'à¦¸à§à¦¬à¦ªà§à¦¨ à¦šà¦¾à¦•à¦°à¦¿ à¦•à¦°à¦¿', 'Kazi Khorshd', '8801606095151', 'called', 'wp msg sent..call didn\'t rcv', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 09:30:23', 'local', 9, NULL, NULL, 0),
-(4274, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Atikur Rahman', 'mid lavel job', 'ABC', '8801875293008', 'called', 'busy now..contact with me eveninig,wp knock', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 09:27:04', 'local', 9, NULL, NULL, 0);
+(4273, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Kazi Khorshd', 'à¦¸à§à¦¬à¦ªà§à¦¨ à¦šà¦¾à¦•à¦°à¦¿ à¦•à¦°à¦¿', 'Kazi Khorshd', '8801606095151', 'called', 'wp msg sent..call didn\'t rcv', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 09:30:23', 'local', 9, NULL, NULL, 0);
 INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `uploaded_from`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `team_id`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
+(4274, 'P. Homes ll Sky Point villa ll per day 10$ Ongoing ll 27 Jan, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Atikur Rahman', 'mid lavel job', 'ABC', '8801875293008', 'called', 'busy now..contact with me eveninig,wp knock', 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 34, '2026-04-19 07:11:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 22, '2026-04-19 05:55:11', '2026-04-19 09:27:04', 'local', 9, NULL, NULL, 0),
 (4275, '', 'facebook', '1200 sqft', '2', '2026-04-14', '1', 'at holiday', 'test lead from developer', 'Business owner', 'ABC', '01234567891', 'not_called', NULL, 'Dhaka', NULL, 'Hot', NULL, NULL, 'BDT', NULL, '01944667441', 'admin@socialorg.com', 1, 0, NULL, 'afasdfasd', 'father', 'mother', '2026-04-22', '', NULL, NULL, NULL, 'asdfasd', NULL, '', 12, '', 'WA Messaging', 'asdf', 'From Campaign', NULL, 'public', 'active', 'booked', NULL, 'Not Interested', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-04-26 06:13:22', '2026-04-26 06:32:56', 'local', 0, NULL, NULL, 0),
 (4276, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Ahammed Bashir', 'Italy\'', 'Fincantieri', '00393200456037', 'received', NULL, 'Italy', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 87, '2026-04-28 07:22:15', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 21, '2026-04-28 05:10:42', '2026-04-28 08:59:41', 'local', 2, NULL, NULL, 0),
 (4277, 'The Premium Signature Heights ll Apr 16, 2026', 'fb', NULL, NULL, NULL, NULL, NULL, 'Mohammad Kawser Ahmed', 'Student', 'Student', '8801935624571', 'received', NULL, 'Bangladesh', NULL, NULL, NULL, NULL, 'BDT', NULL, NULL, NULL, 0, 87, '2026-04-28 07:22:15', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Campaign', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 21, '2026-04-28 05:10:42', '2026-04-28 09:29:19', 'local', 2, NULL, NULL, 0),
@@ -6907,9 +7019,9 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (5200, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Shirin', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '447000000000', '1556423444', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
 (5201, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Aklima Akter', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '967000000000', '1826017518', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
 (5202, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md. Kamruzzaman Bhuiyan', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '11.08838303', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
-(5203, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Ashraf Uddin Patwary', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '257000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
-(5204, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Ferdaushi Asma Zulfiqar', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '448000000000', '1710456910', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0);
+(5203, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Ashraf Uddin Patwary', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '257000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0);
 INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `uploaded_from`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `team_id`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
+(5204, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Ferdaushi Asma Zulfiqar', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '448000000000', '1710456910', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
 (5205, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md.Ekramul Hasan', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1722236940', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
 (5206, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Mokter Hossain', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '4920000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
 (5207, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Mohammad Masum Billah', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '27678071595', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
@@ -6997,9 +7109,9 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (5289, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'MD Juwel Rana', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1303616911', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
 (5290, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Titu Mia', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1630302520', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
 (5291, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Shemu Zaman', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '447000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
-(5292, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md Abdur Rahman', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '19176508024', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
-(5293, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md Ashraful Abedein', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1342640918', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0);
+(5292, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md Abdur Rahman', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '19176508024', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0);
 INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `uploaded_from`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `team_id`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
+(5293, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md Ashraful Abedein', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1342640918', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
 (5294, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Wais Kurny Khan Nakhatra', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1841419807', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
 (5295, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Badduzaman', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1841419807', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
 (5296, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Abdus Salam Akon& Salma Begum', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1405698982', '49 1577 3331207', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
@@ -7087,9 +7199,9 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (5378, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Sazzadul Ahmed', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '18503219432', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
 (5379, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Mohammad Mosleh Uddin', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '966 53 153 4038', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:26', '2026-05-12 10:39:26', 'local', NULL, NULL, NULL, 0),
 (5380, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md Hedayet ullah', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1911035115', '97433174504', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
-(5381, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md Nayeemul Haque', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '7535123925', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
-(5382, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Jesmin Akter', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '880 1818-062340', '61456439131', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0);
+(5381, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md Nayeemul Haque', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '7535123925', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0);
 INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `uploaded_from`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `team_id`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
+(5382, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Jesmin Akter', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '880 1818-062340', '61456439131', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5383, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md Kamrul Hasan', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '244000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5384, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Foysol Ahmed, Jennifer Hossain', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '16477056760', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5385, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Kohinoor Begum, Jamil Ahmed', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '13472836572', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
@@ -7177,9 +7289,9 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (5467, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'MD. Baqibillah Mallik', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '819000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5468, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Goutom Kumar Banik', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '448000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5469, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'MD Abul Kalam', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '96565163274', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
-(5470, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Qamrun Nahar Akhter', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1690202713', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
-(5471, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Goutom Kumar Banik', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '448000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0);
+(5470, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Qamrun Nahar Akhter', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1690202713', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0);
 INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `uploaded_from`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `team_id`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
+(5471, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Goutom Kumar Banik', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '448000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5472, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Hannan Mia From Green Palace', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '354000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5473, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Naila Parvin', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1646500-3352', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5474, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Halima Khanam Sadia', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1768449977', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
@@ -7267,9 +7379,9 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (5556, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md. Mohsin Hossain', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '601000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5557, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md.Nure Alom', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1719939942', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5558, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Muktar Akter', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '19294622000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
-(5559, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Sohanur Rahman Sohan', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1853105827', '966 54 847 4715', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
-(5560, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md. Moinul Alam Chowdhary', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1922494640', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0);
+(5559, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Sohanur Rahman Sohan', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1853105827', '966 54 847 4715', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0);
 INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `uploaded_from`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `team_id`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
+(5560, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md. Moinul Alam Chowdhary', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1922494640', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5561, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Shima Sadeka', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1625171810', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5562, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md. Arif Uddin', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1749825875', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5563, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Mohammad Delowar Hossain', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '96566024520', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
@@ -7357,9 +7469,9 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (5645, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Humayra Adiba Hafsa', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '16432945584', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5646, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Ashraf Ali', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '967000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5647, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Ashraf Ali', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '967000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
-(5648, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md Asraf Ali Mia', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '48577625585', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
-(5649, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Murad Hossain', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '39 389 524 0784', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0);
+(5648, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md Asraf Ali Mia', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '48577625585', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0);
 INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `uploaded_from`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `team_id`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
+(5649, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Murad Hossain', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '39 389 524 0784', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5650, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Azizur Rahman Mozumder', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '8800000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5651, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'MD Habibur Rahman', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1719242674', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5652, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Mohammad Abdul Gaffar', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1727651075', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
@@ -7448,9 +7560,9 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (5735, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Mohammad Habibur Rahman', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '448000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5736, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Shahnur Reza', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '171525237', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5737, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Nazma Begum/Miftahul Jannat', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '307000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
-(5738, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Nipul Hawladar', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '394000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
-(5739, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Nipul Hawladar', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '394000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0);
+(5738, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Nipul Hawladar', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '394000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0);
 INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `uploaded_from`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `team_id`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
+(5739, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Nipul Hawladar', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '394000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5740, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'NAYMA AFREEN', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '880 1624?637118', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5741, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Nayeem Prodhan', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1922395280', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5742, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Rohima Bagum', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1712229949', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
@@ -7538,9 +7650,9 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (5824, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Shahin Alam', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '967000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5825, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md. Masud Rana', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1711408300', '1711993827', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5826, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md. Suman', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1977789032', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
-(5827, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Asma Khatun', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1732806873', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
-(5828, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Mohammad Ariful Islam', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1790371659', '1575005941', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0);
+(5827, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Asma Khatun', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1732806873', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0);
 INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `uploaded_from`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `team_id`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
+(5828, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Mohammad Ariful Islam', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1790371659', '1575005941', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5829, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Sadiya Khanom Kanta', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '0 1977-642749', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5830, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Irin Sormila', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1710524844', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
 (5831, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Mohammad Ashraful Alam', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1919417903', '819000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:27', '2026-05-12 10:39:27', 'local', NULL, NULL, NULL, 0),
@@ -7628,9 +7740,9 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (5913, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Nazmus Sakib', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '19293938421', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
 (5914, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Nazmus Sakib', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '19293938421', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
 (5915, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Anwar Shahadat Hossain', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1616441204', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
-(5916, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md. Rabbi Khan', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '393000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
-(5917, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Tasniya Akhter Zahan', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1716088788', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0);
+(5916, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md. Rabbi Khan', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '393000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0);
 INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `uploaded_from`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `team_id`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
+(5917, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Tasniya Akhter Zahan', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1716088788', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
 (5918, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Mst. Samsun Nahar Laboni', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1912843777', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
 (5919, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Syed Ayub Ali', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1 (917) 250-4623', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
 (5920, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Syed Ayub Ali', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1 (917) 250-4623', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
@@ -7718,9 +7830,9 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (6002, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Khondokar Mehedi Hasan Rasel', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1729418912', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
 (6003, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Mohammad Mehedi Miron Khan', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1552371766', '447000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
 (6004, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Rina Akhter', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '4920000000000', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
-(6005, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Rokon Mia', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1706292127', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
-(6006, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Ruhul Amin', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1400239381', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0);
+(6005, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Rokon Mia', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1706292127', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0);
 INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_are_you_interested_in`, `which_floor_are_you_for_shop`, `when_are_you_planning_to_buy`, `would_you_like_to_schedule_a_site_visit`, `when_is_the_best_time_to_contact_you`, `full_name`, `job_title`, `company_name`, `phone_number`, `call_status`, `call_note`, `city`, `lead_name`, `lead_type`, `company`, `value_amount`, `currency`, `phone`, `alt_phone_number`, `email`, `source_type_id`, `assigned_id`, `assigned_at`, `address`, `father_name`, `mother_name`, `dob`, `nid_or_passport`, `present_add_bn`, `permanent_add_bn`, `identity_type`, `permanent_address`, `pref_location_id`, `designation`, `project_id`, `pref_flat_size`, `communication_type`, `tags`, `uploaded_from`, `description`, `visibility`, `status`, `last_lead_action`, `deleted_at`, `lead_quality`, `lead_image`, `lead_name_bn`, `father_name_bn`, `mother_name_bn`, `profession_bn`, `nationality`, `religion`, `nominee_name`, `nomi_father_name`, `nomi_mother_name`, `nomi_profession`, `relation_with_lead`, `nomi_dob`, `nomi_nid_passport`, `nomi_phone`, `nomi_email`, `nomi_present_add`, `nomi_permanent_address`, `nomi_image`, `created_by`, `created_at`, `updated_at`, `residency_type`, `team_id`, `country`, `preferred_contact_time`, `has_pending_followup`) VALUES
+(6006, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Ruhul Amin', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1400239381', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
 (6007, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Tareq Ahmed', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1201665-9364', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
 (6008, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Tajul Islam', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '33753431199', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
 (6009, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Hasina Akter Zinnat', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '16469454292', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
@@ -7729,7 +7841,8 @@ INSERT INTO `leads` (`id`, `campaign_name`, `platform`, `which_apartment_size_ar
 (6012, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md.Mohshin Alam', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1710458477', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
 (6013, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md.Rubel Hasan', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '96896354199', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
 (6014, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md Moienuddin Shikder', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1710851713', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
-(6015, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md Moienuddin Shikder', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1710851713', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0);
+(6015, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Md Moienuddin Shikder', NULL, NULL, NULL, 'not_called', NULL, NULL, NULL, NULL, NULL, NULL, 'BDT', '1710851713', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'From Company csv', NULL, 'public', 'active', 'new', NULL, 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-12 10:39:28', '2026-05-12 10:39:28', 'local', NULL, NULL, NULL, 0),
+(6016, '', 'facebook', '1200 sqft', '2', '2026-05-05', '1', 'at holiday', 'test lead from developer', 'Business owner', 'ABC', '01234567891', 'not_called', NULL, 'Dhaka', NULL, 'Hot', NULL, NULL, 'BDT', NULL, '', 'admin@socialorg.com', 1, 0, NULL, '', 'father ', 'mother', '2026-05-05', '', NULL, NULL, NULL, '', NULL, '', 0, '', 'WA Messaging', '', 'From Campaign', NULL, 'public', 'active', 'booked', NULL, 'Not Interested', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 6, '2026-05-16 03:52:39', '2026-05-16 04:29:44', 'local', 0, NULL, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -7758,15 +7871,21 @@ CREATE TABLE `lead_bookings` (
   `landshare_status` enum('active','completed','cancelled') DEFAULT 'active',
   `payment_status` enum('unpaid','partial','paid') DEFAULT 'unpaid',
   `uploaded_from` enum('From Company csv','Manually Add') NOT NULL DEFAULT 'Manually Add',
-  `attachment_image` varchar(200) DEFAULT NULL
+  `attachment_image` varchar(200) DEFAULT NULL,
+  `transfer_status` tinyint(1) DEFAULT 0,
+  `transfer_date` date DEFAULT NULL,
+  `transfer_note` text DEFAULT NULL,
+  `transfer_updated_by` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `lead_bookings`
 --
 
-INSERT INTO `lead_bookings` (`id`, `lead_id`, `project_id`, `flat_id`, `agreement_value`, `discount_amount`, `booking_date`, `booking_status`, `created_by`, `sales_by_id`, `sales_agent_old`, `deleted_at`, `created_at`, `updated_at`, `approval_status`, `approved_amount`, `service_fee_balance`, `landshare_status`, `payment_status`, `uploaded_from`, `attachment_image`) VALUES
-(1, 4353, 51, 710, 2000000.00, NULL, '2026-05-16', 'booked', 2, 0, NULL, NULL, '2026-05-16 05:14:23', '2026-05-16 05:14:23', 'not_required', NULL, NULL, 'active', 'unpaid', 'Manually Add', NULL);
+INSERT INTO `lead_bookings` (`id`, `lead_id`, `project_id`, `flat_id`, `agreement_value`, `discount_amount`, `booking_date`, `booking_status`, `created_by`, `sales_by_id`, `sales_agent_old`, `deleted_at`, `created_at`, `updated_at`, `approval_status`, `approved_amount`, `service_fee_balance`, `landshare_status`, `payment_status`, `uploaded_from`, `attachment_image`, `transfer_status`, `transfer_date`, `transfer_note`, `transfer_updated_by`) VALUES
+(1, 6016, 51, 253, 2000000.00, NULL, '2026-05-16', 'booked', 6, 0, NULL, NULL, '2026-05-16 03:53:33', '2026-05-16 03:53:33', 'not_required', NULL, NULL, 'active', 'unpaid', 'Manually Add', NULL, 0, NULL, NULL, NULL),
+(2, 6016, 13, 3043, 400000.00, NULL, '2026-05-16', 'completed', 6, 0, NULL, NULL, '2026-05-16 03:59:42', '2026-05-16 04:53:14', 'not_required', NULL, NULL, 'active', 'paid', 'Manually Add', NULL, 0, NULL, NULL, NULL),
+(3, 6016, 13, 3044, 300000.00, 30000, '2026-05-21', 'completed', 6, 0, NULL, NULL, '2026-05-16 04:56:44', '2026-05-16 05:53:33', 'approved', 30000.00, NULL, 'active', 'paid', 'Manually Add', NULL, 0, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -8323,10 +8442,11 @@ INSERT INTO `lead_follow_ups` (`id`, `lead_id`, `project_id`, `flat_id`, `follow
 CREATE TABLE `lead_payments` (
   `id` int(10) UNSIGNED NOT NULL,
   `booking_id` int(10) UNSIGNED NOT NULL,
-  `payment_type` enum('booking_money','registration','emi','land_share','development_charge','emi_due_settlement') NOT NULL,
+  `payment_type` enum('booking_money','registration','emi','land_share','development_charge','emi_due_settlement','shop_service_charge') NOT NULL,
   `amount` decimal(12,2) NOT NULL,
   `bulk_emi_discount` decimal(15,2) DEFAULT 0.00,
   `due_emi_amount` decimal(12,2) DEFAULT 0.00,
+  `bulk_pay_amount` decimal(12,2) DEFAULT 0.00,
   `parent_payment_id` int(10) UNSIGNED DEFAULT NULL,
   `settlement_type` enum('emi_due_settlement') DEFAULT NULL,
   `land_share_amount` decimal(12,2) DEFAULT 0.00,
@@ -8351,6 +8471,40 @@ CREATE TABLE `lead_payments` (
   `attachment_paths` text DEFAULT NULL COMMENT 'JSON array of proof-of-payment file paths (uploads/transactions/)',
   `rejection_reason` text DEFAULT NULL COMMENT 'Mandatory reason text entered by Accounts when rejecting'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `lead_payments`
+--
+
+INSERT INTO `lead_payments` (`id`, `booking_id`, `payment_type`, `amount`, `bulk_emi_discount`, `due_emi_amount`, `bulk_pay_amount`, `parent_payment_id`, `settlement_type`, `land_share_amount`, `payment_method`, `payment_status`, `payment_date`, `emi_no`, `total_emi_no`, `transaction_ref`, `bank_name`, `bank_id`, `bank_account_no`, `cheque_no`, `service_fee`, `online_type`, `created_by`, `created_at`, `verification_status`, `attachment_image`, `verified_by`, `verified_at`, `attachment_paths`, `rejection_reason`) VALUES
+(1, 2, 'booking_money', 400000.00, 0.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, 10, '33', '', NULL, '', '', NULL, '', 6, '2026-05-16 04:01:07', 'verified', '', 6, '2026-05-16 04:29:44', NULL, NULL),
+(2, 2, 'registration', 100000.00, 0.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '122334', '', NULL, '', '', NULL, '', 6, '2026-05-16 04:30:48', 'verified', '', 6, '2026-05-16 04:31:07', NULL, NULL),
+(3, 2, 'development_charge', 50000.00, 0.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-05-16 04:31:28', 'verified', NULL, 6, '2026-05-16 04:31:35', NULL, NULL),
+(4, 2, 'emi', 145000.00, 0.00, 0.00, 145000.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 14500, 'bKash', 6, '2026-05-16 04:34:54', 'verified', NULL, 6, '2026-05-16 04:35:03', NULL, NULL),
+(5, 2, 'emi', 140000.00, 0.00, 0.00, 140000.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 14000, 'bKash', 6, '2026-05-16 04:35:36', 'verified', NULL, 6, '2026-05-16 04:35:45', NULL, NULL),
+(6, 2, 'emi', 5000.00, 0.00, 0.00, 0.00, 5, 'emi_due_settlement', 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 500, 'bKash', 6, '2026-05-16 04:36:03', 'verified', NULL, 6, '2026-05-16 04:36:11', NULL, NULL),
+(7, 2, 'emi', 145000.00, 34999.00, 0.00, 435000.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 14500, 'bKash', 6, '2026-05-16 04:50:23', 'verified', NULL, 6, '2026-05-16 04:50:38', NULL, NULL),
+(8, 2, 'emi', 145000.00, 0.00, 0.00, NULL, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 14500, 'bKash', 6, '2026-05-16 04:50:23', 'verified', NULL, 6, '2026-05-16 04:50:47', NULL, NULL),
+(9, 2, 'emi', 145000.00, 0.00, 0.00, NULL, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 14500, 'bKash', 6, '2026-05-16 04:50:23', 'verified', NULL, 6, '2026-05-16 04:50:54', NULL, NULL),
+(10, 2, 'emi', 145000.00, 0.00, 0.00, 690001.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 14500, 'bKash', 6, '2026-05-16 04:52:30', 'verified', NULL, 6, '2026-05-16 04:52:41', NULL, NULL),
+(11, 2, 'emi', 145000.00, 0.00, 0.00, NULL, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 14500, 'bKash', 6, '2026-05-16 04:52:30', 'verified', NULL, 6, '2026-05-16 04:52:49', NULL, NULL),
+(12, 2, 'emi', 145000.00, 0.00, 0.00, NULL, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 14500, 'bKash', 6, '2026-05-16 04:52:30', 'verified', NULL, 6, '2026-05-16 04:52:56', NULL, NULL),
+(13, 2, 'emi', 145000.00, 0.00, 0.00, NULL, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 14500, 'bKash', 6, '2026-05-16 04:52:30', 'verified', NULL, 6, '2026-05-16 04:53:05', NULL, NULL),
+(14, 2, 'emi', 110001.00, 0.00, 0.00, NULL, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 11000, 'bKash', 6, '2026-05-16 04:52:30', 'verified', NULL, 6, '2026-05-16 04:53:14', NULL, NULL),
+(15, 3, 'booking_money', 269999.99, 0.00, 0.00, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, 10, 'trx345', '', NULL, '', '', NULL, '', 6, '2026-05-16 05:08:18', 'verified', '', 6, '2026-05-16 05:09:36', NULL, NULL),
+(16, 3, 'land_share', 0.01, 0.00, 0.00, 0.00, NULL, NULL, 0.01, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-05-16 05:33:01', 'verified', NULL, 6, '2026-05-16 05:33:11', NULL, NULL),
+(17, 3, 'registration', 0.01, 0.00, NULL, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-05-16 05:39:11', 'verified', NULL, 6, '2026-05-16 05:39:18', NULL, NULL),
+(18, 3, 'shop_service_charge', 120000.00, 0.00, NULL, 0.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-05-16 05:50:46', 'verified', NULL, 6, '2026-05-16 05:50:54', NULL, NULL),
+(19, 3, 'emi', 58000.00, 10000.00, 0.00, 116000.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-05-16 05:51:40', 'verified', NULL, 6, '2026-05-16 05:51:47', NULL, NULL),
+(20, 3, 'emi', 58000.00, 0.00, 0.00, NULL, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-05-16 05:51:40', 'verified', NULL, 6, '2026-05-16 05:51:55', NULL, NULL),
+(21, 3, 'emi', 58000.00, 0.00, 0.00, 454000.00, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-05-16 05:52:22', 'verified', NULL, 6, '2026-05-16 05:52:34', NULL, NULL),
+(22, 3, 'emi', 58000.00, 0.00, 0.00, NULL, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-05-16 05:52:22', 'verified', NULL, 6, '2026-05-16 05:52:42', NULL, NULL),
+(23, 3, 'emi', 58000.00, 0.00, 0.00, NULL, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-05-16 05:52:22', 'verified', NULL, 6, '2026-05-16 05:52:50', NULL, NULL),
+(24, 3, 'emi', 58000.00, 0.00, 0.00, NULL, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-05-16 05:52:22', 'verified', NULL, 6, '2026-05-16 05:52:58', NULL, NULL),
+(25, 3, 'emi', 58000.00, 0.00, 0.00, NULL, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-05-16 05:52:22', 'verified', NULL, 6, '2026-05-16 05:53:07', NULL, NULL),
+(26, 3, 'emi', 58000.00, 0.00, 0.00, NULL, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-05-16 05:52:22', 'verified', NULL, 6, '2026-05-16 05:53:13', NULL, NULL),
+(27, 3, 'emi', 58000.00, 0.00, 0.00, NULL, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-05-16 05:52:22', 'verified', NULL, 6, '2026-05-16 05:53:25', NULL, NULL),
+(28, 3, 'emi', 48000.00, 0.00, 0.00, NULL, NULL, NULL, 0.00, 'cash', 'paid', '2026-05-16', NULL, NULL, '', '', NULL, '', '', 0, 'bKash', 6, '2026-05-16 05:52:22', 'verified', NULL, 6, '2026-05-16 05:53:33', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -8543,7 +8697,7 @@ CREATE TABLE `management_categories` (
   `created_by` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -8627,6 +8781,13 @@ CREATE TABLE `material_receiving` (
   `pm_approved_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `material_receiving`
+--
+
+INSERT INTO `material_receiving` (`id`, `purchase_order_id`, `received_by`, `receiving_date`, `received_status`, `site_eng_note`, `site_eng_photo`, `qc_checked_by`, `qc_note`, `qc_photo`, `overall_status`, `created_by`, `warehouse_id`, `notes`, `created_at`, `updated_at`, `pm_checked_by`, `pm_note`, `pm_approved_at`) VALUES
+(1, 1, 127, '2026-05-07', 'Full', 'Received', NULL, 126, 'Accept', NULL, 'Accepted', 127, 1, '', '2026-05-07 12:47:43', '2026-05-07 12:58:35', 120, '', '2026-05-07 12:58:35');
+
 -- --------------------------------------------------------
 
 --
@@ -8648,6 +8809,14 @@ CREATE TABLE `material_receiving_items` (
   `attachment` varchar(500) DEFAULT NULL,
   `created_by` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `material_receiving_items`
+--
+
+INSERT INTO `material_receiving_items` (`id`, `receiving_id`, `purchase_order_item_id`, `ordered_quantity`, `received_quantity`, `status`, `return_quantity`, `penalty_applied`, `site_engineer_checked`, `qc_checked`, `issue_reason`, `attachment`, `created_by`) VALUES
+(1, 1, 1, 500.000, 500.000, 'Accepted', 0.000, 0, 0, 1, NULL, NULL, 127),
+(2, 1, 2, 300.000, 300.000, 'Accepted', 0.000, 0, 0, 1, NULL, NULL, 127);
 
 -- --------------------------------------------------------
 
@@ -8681,6 +8850,59 @@ CREATE TABLE `material_return_items` (
   `return_qty` decimal(15,2) NOT NULL,
   `unit_price` decimal(15,2) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `monthly_phase_snapshots`
+--
+
+CREATE TABLE `monthly_phase_snapshots` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `review_id` int(10) UNSIGNED NOT NULL,
+  `phase_id` int(10) UNSIGNED NOT NULL,
+  `planned_pct` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `actual_pct` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `variance_pct` decimal(5,2) NOT NULL DEFAULT 0.00 COMMENT 'planned - actual',
+  `status` enum('Achieved','At Risk','Delayed','Not Started') NOT NULL DEFAULT 'Not Started',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 5: Phase-level snapshot per monthly review';
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `monthly_progress_reviews`
+--
+
+CREATE TABLE `monthly_progress_reviews` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `review_month` date NOT NULL COMMENT 'First day of review month e.g. 2026-08-01',
+  `review_month_number` tinyint(4) NOT NULL,
+  `review_year` year(4) NOT NULL,
+  `planned_progress_pct` decimal(5,2) DEFAULT NULL COMMENT 'Cumulative planned % of total project',
+  `actual_progress_pct` decimal(5,2) DEFAULT NULL COMMENT 'Cumulative actual % of total project',
+  `delay_gap_pct` decimal(5,2) DEFAULT NULL COMMENT 'planned - actual (negative = behind)',
+  `performance_score` decimal(5,2) DEFAULT NULL COMMENT '0-100 score',
+  `risk_status` enum('Low','Medium','High','Critical') NOT NULL DEFAULT 'Medium',
+  `material_delay_pct` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `labour_shortage_pct` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `contractor_delay_pct` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `drawing_pending_pct` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `weather_issue_pct` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `payment_delay_pct` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `approval_delay_pct` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `next_month_recovery_target` decimal(5,2) DEFAULT NULL COMMENT '+% needed next month',
+  `extra_workload_needed` decimal(5,2) DEFAULT NULL,
+  `critical_focal_area` varchar(200) DEFAULT NULL,
+  `expected_revised_progress` decimal(5,2) DEFAULT NULL,
+  `review_status` enum('Draft','Submitted','Management Approved') NOT NULL DEFAULT 'Draft',
+  `submitted_by` int(11) DEFAULT NULL,
+  `approved_by` int(11) DEFAULT NULL,
+  `approved_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 5: Monthly progress review ??? KPIs, delays, recovery summary';
 
 -- --------------------------------------------------------
 
@@ -8793,7 +9015,7 @@ CREATE TABLE `payslip_details` (
   `created_by` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -8808,7 +9030,7 @@ CREATE TABLE `payslip_items` (
   `description` text DEFAULT NULL,
   `created_by` int(11) DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `payslip_items`
@@ -8887,8 +9109,9 @@ INSERT INTO `permissions` (`id`, `name`, `status`, `created_by`, `created_at`, `
 (48, 'Project structure design', 1, 6, '2026-04-29 06:04:01', '2026-04-29 06:04:01'),
 (49, 'QC Dashboard', 1, 6, '2026-05-05 04:22:33', '2026-05-05 04:22:33'),
 (50, 'Work Order', 1, 6, '2026-05-10 12:36:34', '2026-05-10 12:36:34'),
-(51, 'Project Manage', 1, 6, '2026-05-17 04:02:24', '2026-05-17 04:02:24'),
-(52, 'Security Operations', 1, 128, '2026-05-17 07:54:19', '2026-05-17 07:54:19');
+(51, 'Project Manage', 1, 6, '2026-05-17 04:03:06', '2026-05-17 04:03:06'),
+(52, 'site engineer dashboard', 1, 6, '2026-05-17 19:25:18', '2026-05-17 19:25:18'),
+(53, 'Security Operations', 1, 128, '2026-05-17 19:37:11', '2026-05-17 19:37:11');
 
 -- --------------------------------------------------------
 
@@ -8907,7 +9130,7 @@ CREATE TABLE `personal_access_tokens` (
   `expires_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `personal_access_tokens`
@@ -8921,6 +9144,247 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 (5, 'App\\Models\\OnboardClient', 2, 'onboard-client', 'ce3cafbff5660c8fea29fb233264fe87cc30a35e29ab0cabc50e629dcdb8ccb9', '[\"*\"]', '2026-02-17 03:52:04', NULL, '2026-02-17 03:51:52', '2026-02-17 03:52:04'),
 (6, 'App\\Models\\OnboardClient', 3, 'onboard-client', 'e92286bbd37589f387f496582e3aacafb03063a89ae49f9143b5f62df1ab4d7c', '[\"*\"]', '2026-02-21 11:32:47', NULL, '2026-02-21 10:29:47', '2026-02-21 11:32:47'),
 (7, 'App\\Models\\OnboardClient', 3, 'onboard-client', 'b23fc29f72107b0178d8fa4d62c3e20edb0f69d69a22585ae301885a174a21b6', '[\"*\"]', '2026-02-21 21:40:15', NULL, '2026-02-21 21:40:04', '2026-02-21 21:40:15');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `phase_item_template_defaults`
+--
+
+CREATE TABLE `phase_item_template_defaults` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `phase_name` varchar(150) NOT NULL,
+  `item_name` varchar(255) NOT NULL,
+  `item_order` tinyint(4) NOT NULL DEFAULT 1,
+  `weight_pct` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `design_type_id` int(10) UNSIGNED DEFAULT NULL,
+  `work_type_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `phase_item_template_defaults`
+--
+
+INSERT INTO `phase_item_template_defaults` (`id`, `phase_name`, `item_name`, `item_order`, `weight_pct`, `design_type_id`, `work_type_id`, `created_at`) VALUES
+(1, 'Structure', 'Footing & Column Pedestal', 1, 20.00, 5, 14, '2026-05-25 04:34:18'),
+(2, 'Structure', 'Grade Beam & UGWR Top Slab', 2, 5.00, 5, 14, '2026-05-25 04:34:18'),
+(3, 'Structure', 'GF Column, Stair etc', 3, 4.00, 5, 14, '2026-05-25 04:34:18'),
+(4, 'Structure', '1st Floor Slab', 4, 9.00, 5, 14, '2026-05-25 04:34:18'),
+(5, 'Structure', 'Typical Floor Column (5x3%)', 5, 15.00, 5, 14, '2026-05-25 04:34:18'),
+(6, 'Structure', '2nd to Roof Slab (5x8%)', 6, 40.00, 5, 14, '2026-05-25 04:34:18'),
+(7, 'Structure', 'Roof Top', 7, 7.00, 5, 14, '2026-05-25 04:34:18'),
+(8, 'Brick Work', 'Ground Floor & Basement Brickwork', 1, 20.00, 6, 16, '2026-05-25 04:34:18'),
+(9, 'Brick Work', 'Typical Floor Brickwork', 2, 60.00, 6, 16, '2026-05-25 04:34:18'),
+(10, 'Brick Work', 'Rooftop & Parapet Wall', 3, 20.00, 6, 16, '2026-05-25 04:34:18'),
+(11, 'Wood Work', 'Door Frame Installation', 1, 40.00, 6, 17, '2026-05-25 04:34:18'),
+(12, 'Wood Work', 'Door Shutter Fitting', 2, 40.00, 6, 18, '2026-05-25 04:34:18'),
+(13, 'Wood Work', 'Wooden Cabinets & Decorative Panelling', 3, 20.00, 6, 18, '2026-05-25 04:34:18'),
+(14, 'Metal Work', 'Main Boundary Gate', 1, 30.00, 6, 19, '2026-05-25 04:34:18'),
+(15, 'Metal Work', 'Staircase & Balcony Railings', 2, 50.00, 6, 19, '2026-05-25 04:34:18'),
+(16, 'Metal Work', 'Window Safety Grills', 3, 20.00, 6, 19, '2026-05-25 04:34:18'),
+(17, 'Plumbing & Sanitary', 'Underground Sewerage & Water Lines', 1, 30.00, 3, 20, '2026-05-25 04:34:18'),
+(18, 'Plumbing & Sanitary', 'Vertical Shaft Piping Riser', 2, 30.00, 3, 20, '2026-05-25 04:34:18'),
+(19, 'Plumbing & Sanitary', 'Toilet Concealed Piping', 3, 20.00, 3, 20, '2026-05-25 04:34:18'),
+(20, 'Plumbing & Sanitary', 'Sanitary Fixture & CP Fittings', 4, 20.00, 3, 22, '2026-05-25 04:34:18'),
+(21, 'Electrical Work', 'Slab Conduit Piping', 1, 25.00, 2, 23, '2026-05-25 04:34:18'),
+(22, 'Electrical Work', 'Wall Chipping & Box Fixing', 2, 25.00, 2, 24, '2026-05-25 04:34:18'),
+(23, 'Electrical Work', 'Cable Pulling & Wiring', 3, 30.00, 2, 25, '2026-05-25 04:34:18'),
+(24, 'Electrical Work', 'Switchboards & Light Fixtures', 4, 20.00, 2, 26, '2026-05-25 04:34:18'),
+(25, 'Plaster Work', 'Internal Wall & Ceiling Plaster', 1, 60.00, 6, 27, '2026-05-25 04:34:18'),
+(26, 'Plaster Work', 'External Wall Plastering', 2, 40.00, 6, 27, '2026-05-25 04:34:18'),
+(27, 'General Floor Tiles', 'Lobby & Common Area Tiles', 1, 30.00, 6, 28, '2026-05-25 04:34:18'),
+(28, 'General Floor Tiles', 'Flat Internal Floor Tiles', 2, 70.00, 6, 28, '2026-05-25 04:34:18'),
+(29, 'Toilet & Kitchen Wall Tiles', 'Bathroom Wall & Floor Tiles', 1, 70.00, 6, 28, '2026-05-25 04:34:18'),
+(30, 'Toilet & Kitchen Wall Tiles', 'Kitchen Wall & Counter Tiles', 2, 30.00, 6, 29, '2026-05-25 04:34:18'),
+(31, 'Aluminium Work', 'Window Frame Installation', 1, 50.00, 6, 30, '2026-05-25 04:34:18'),
+(32, 'Aluminium Work', 'Glass Shutter Fitting', 2, 50.00, 6, 31, '2026-05-25 04:34:18'),
+(33, 'EME', 'Generator & Sub-station Set', 1, 30.00, 2, 32, '2026-05-25 04:34:18'),
+(34, 'EME', 'Lift / Elevator System', 2, 40.00, 2, 33, '2026-05-25 04:34:18'),
+(35, 'EME', 'Fire Fighting Piping & Alarm', 3, 30.00, 4, 34, '2026-05-25 04:34:18'),
+(36, 'Paint Work', 'Internal Wall Painting (Putty + Color)', 1, 65.00, 6, 35, '2026-05-25 04:34:18'),
+(37, 'Paint Work', 'External Paint (Weather Coat)', 2, 35.00, 6, 36, '2026-05-25 04:34:18'),
+(38, 'Others Civil Work', 'Internal Road & Pavement', 1, 40.00, 9, 37, '2026-05-25 04:34:18'),
+(39, 'Others Civil Work', 'Site Boundary Wall', 2, 30.00, 6, 27, '2026-05-25 04:34:18'),
+(40, 'Others Civil Work', 'Landscaping & Drainage', 3, 30.00, 9, 37, '2026-05-25 04:34:18'),
+(41, 'Utility Connection & Bill', 'DESCO/DPDC Electricity Line', 1, 40.00, 6, 38, '2026-05-25 04:34:18'),
+(42, 'Utility Connection & Bill', 'WASA Water & Sewer Connection', 2, 30.00, 6, 38, '2026-05-25 04:34:18'),
+(43, 'Utility Connection & Bill', 'Gas/LPG System Connection', 3, 30.00, 6, 38, '2026-05-25 04:34:18');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `phase_monthly_targets`
+--
+
+CREATE TABLE `phase_monthly_targets` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `phase_id` int(10) UNSIGNED NOT NULL,
+  `target_month` date NOT NULL COMMENT 'First day of month e.g. 2026-08-01',
+  `target_month_number` tinyint(4) NOT NULL COMMENT '1-12',
+  `target_year` year(4) NOT NULL,
+  `total_target_weight_pct` decimal(5,2) DEFAULT NULL COMMENT '% of total project this month contributes',
+  `planning_status` enum('Draft','In Review','Approved') NOT NULL DEFAULT 'Draft',
+  `responsible_team` varchar(150) DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 3: Monthly target plan header ??? one per project+phase+month';
+
+--
+-- Dumping data for table `phase_monthly_targets`
+--
+
+INSERT INTO `phase_monthly_targets` (`id`, `project_id`, `phase_id`, `target_month`, `target_month_number`, `target_year`, `total_target_weight_pct`, `planning_status`, `responsible_team`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 13, 17, '2026-05-01', 5, '2026', NULL, 'Approved', 'Structural Team', 120, '2026-05-25 05:27:14', '2026-05-25 06:03:35');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `phase_monthly_target_items`
+--
+
+CREATE TABLE `phase_monthly_target_items` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `target_id` int(10) UNSIGNED NOT NULL,
+  `work_type_id` bigint(20) UNSIGNED DEFAULT NULL COMMENT 'Optional ref to work_types for categorization',
+  `work_item_name` varchar(200) NOT NULL,
+  `unit` varchar(50) DEFAULT NULL COMMENT 'CFT / MT / SFT / Bags / Nos / Days',
+  `monthly_target_qty` decimal(12,2) DEFAULT NULL,
+  `actual_qty` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Actual quantity achieved',
+  `planned_progress_pct` decimal(5,2) DEFAULT NULL COMMENT 'Planned completion % by month end',
+  `actual_progress_pct` decimal(5,2) NOT NULL DEFAULT 0.00 COMMENT 'Actual % achieved this month',
+  `start_date` date DEFAULT NULL,
+  `end_date` date DEFAULT NULL,
+  `responsible_team` varchar(150) DEFAULT NULL,
+  `priority` enum('High','Medium','Low') NOT NULL DEFAULT 'Medium',
+  `status` enum('Draft','Ready','Approved','At Risk','Critical') NOT NULL DEFAULT 'Draft',
+  `week_1_qty` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `week_2_qty` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `week_3_qty` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `week_4_qty` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `sort_order` int(11) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 3: Work items under each monthly target plan';
+
+--
+-- Dumping data for table `phase_monthly_target_items`
+--
+
+INSERT INTO `phase_monthly_target_items` (`id`, `target_id`, `work_type_id`, `work_item_name`, `unit`, `monthly_target_qty`, `actual_qty`, `planned_progress_pct`, `actual_progress_pct`, `start_date`, `end_date`, `responsible_team`, `priority`, `status`, `week_1_qty`, `week_2_qty`, `week_3_qty`, `week_4_qty`, `sort_order`, `created_at`) VALUES
+(1, 1, NULL, 'Footing & Column Pedestal', 'CFT', 3500.00, 300.00, 99.70, 8.57, '2026-05-26', '2026-06-09', NULL, 'High', 'Draft', 1000.00, 1000.00, 500.00, 1000.00, 1, '2026-05-25 05:51:18'),
+(2, 1, NULL, 'Grade Beam & UGWR Top Slab', 'CFT', 40.00, 0.00, 30.00, 0.00, '2026-06-09', '2026-06-25', NULL, 'Medium', 'Draft', 500.00, 10.00, 10.00, 10.00, 2, '2026-05-25 06:06:00');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `phase_template_defaults`
+--
+
+CREATE TABLE `phase_template_defaults` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `phase_name` varchar(150) NOT NULL,
+  `phase_order` tinyint(4) NOT NULL,
+  `default_weight_percentage` decimal(5,2) NOT NULL COMMENT 'Must sum to 100 across all rows',
+  `description` text DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Global phase template ??? cloned into project_phases on first access';
+
+--
+-- Dumping data for table `phase_template_defaults`
+--
+
+INSERT INTO `phase_template_defaults` (`id`, `phase_name`, `phase_order`, `default_weight_percentage`, `description`, `is_active`, `created_at`) VALUES
+(15, 'Pre-Construction', 1, 0.00, 'Design finalization, approvals, permits, site mobilization', 1, '2026-05-24 11:31:00'),
+(16, 'Structure', 2, 35.00, 'Footing, columns, beams, slabs ù full structural works', 1, '2026-05-24 11:31:00'),
+(17, 'Brick Work', 3, 6.00, 'GF to roof brickwork and partition', 1, '2026-05-24 11:31:00'),
+(18, 'Wood Work', 4, 5.00, 'Door frames, shutters, accessories', 1, '2026-05-24 11:31:00'),
+(19, 'Metal Work', 5, 2.00, 'Window grill, railings, gates', 1, '2026-05-24 11:31:00'),
+(20, 'Plumbing & Sanitary', 6, 6.00, 'uPVC lines, GI lines, fixtures and fittings', 1, '2026-05-24 11:31:00'),
+(21, 'Electrical Work', 7, 7.00, 'Conduiting, cabling, switch-socket', 1, '2026-05-24 11:31:00'),
+(22, 'Plaster Work', 8, 4.00, 'Ceiling, internal wall, outside plaster', 1, '2026-05-24 11:31:00'),
+(23, 'General Floor Tiles', 9, 6.00, 'General floor, verandah, lobby, stair tiles', 1, '2026-05-24 11:31:00'),
+(24, 'Toilet & Kitchen Wall Tiles', 10, 3.00, 'Bath wall, kitchen wall, bath/kitchen floor', 1, '2026-05-24 11:31:00'),
+(25, 'Aluminium Work', 11, 4.00, 'Window frames, glass shutters, verandah sliding', 1, '2026-05-24 11:31:00'),
+(26, 'EME', 12, 10.00, 'Lift, generator, substation, PABX, fire extinguisher', 1, '2026-05-24 11:31:00'),
+(27, 'Paint Work', 13, 3.00, 'Putty, internal wall coats, outside paint', 1, '2026-05-24 11:31:00'),
+(28, 'Others Civil Work', 14, 6.00, 'Boundary wall, roof paver, pavement, lintel, etc.', 1, '2026-05-24 11:31:00'),
+(29, 'Utility Connection & Bill', 15, 3.00, 'DESA/DESCO, TITAS, WASA, utility bills', 1, '2026-05-24 11:31:00');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `phase_weekly_progress`
+--
+
+CREATE TABLE `phase_weekly_progress` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `phase_id` int(10) UNSIGNED NOT NULL,
+  `target_id` int(10) UNSIGNED NOT NULL COMMENT 'FK phase_monthly_targets',
+  `week_number` tinyint(4) NOT NULL COMMENT '1, 2, 3, or 4 within the month',
+  `week_start_date` date NOT NULL,
+  `week_end_date` date NOT NULL,
+  `overall_progress_pct` decimal(5,2) NOT NULL DEFAULT 0.00 COMMENT 'Overall % for this week',
+  `total_planned_qty` decimal(12,2) DEFAULT NULL,
+  `total_achieved_qty` decimal(12,2) DEFAULT NULL,
+  `labour_used` int(11) NOT NULL DEFAULT 0,
+  `cement_used_bags` int(11) NOT NULL DEFAULT 0,
+  `concrete_poured_mt` decimal(8,2) NOT NULL DEFAULT 0.00,
+  `concrete_poured_cft` decimal(8,2) NOT NULL DEFAULT 0.00,
+  `materials_used` int(11) NOT NULL DEFAULT 0,
+  `equipment_active` int(11) NOT NULL DEFAULT 0,
+  `weather_condition` varchar(100) DEFAULT NULL,
+  `temperature_celsius` decimal(4,1) DEFAULT NULL,
+  `site_engineer_remarks` text DEFAULT NULL,
+  `safety_ok` tinyint(1) NOT NULL DEFAULT 0,
+  `qc_checked` tinyint(1) NOT NULL DEFAULT 0,
+  `material_received` tinyint(1) NOT NULL DEFAULT 0,
+  `entry_status` enum('Draft','Submitted','Approved') NOT NULL DEFAULT 'Draft',
+  `submitted_by` int(11) DEFAULT NULL,
+  `submitted_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Weekly progress entry header ??? one per week per monthly target';
+
+--
+-- Dumping data for table `phase_weekly_progress`
+--
+
+INSERT INTO `phase_weekly_progress` (`id`, `project_id`, `phase_id`, `target_id`, `week_number`, `week_start_date`, `week_end_date`, `overall_progress_pct`, `total_planned_qty`, `total_achieved_qty`, `labour_used`, `cement_used_bags`, `concrete_poured_mt`, `concrete_poured_cft`, `materials_used`, `equipment_active`, `weather_condition`, `temperature_celsius`, `site_engineer_remarks`, `safety_ok`, `qc_checked`, `material_received`, `entry_status`, `submitted_by`, `submitted_at`, `created_at`, `updated_at`) VALUES
+(1, 13, 17, 1, 1, '2026-06-26', '2026-07-02', 15.00, 1500.00, 300.00, 50, 505, 45.00, 1000.00, 5, 6, NULL, NULL, NULL, 0, 0, 0, 'Draft', NULL, NULL, '2026-05-25 05:53:06', '2026-05-25 11:33:12');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `phase_weekly_progress_items`
+--
+
+CREATE TABLE `phase_weekly_progress_items` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `weekly_progress_id` int(10) UNSIGNED NOT NULL,
+  `target_item_id` int(10) UNSIGNED NOT NULL,
+  `planned_qty` decimal(12,2) DEFAULT NULL,
+  `achieved_qty` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `today_progress_qty` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Qty done on latest entry day',
+  `percent_complete` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `responsible_team` varchar(150) DEFAULT NULL,
+  `status` enum('Not Started','In Progress','Completed','Delayed','Pending QA') NOT NULL DEFAULT 'Not Started',
+  `has_issue_flag` tinyint(1) NOT NULL DEFAULT 0,
+  `photo_path` varchar(500) DEFAULT NULL,
+  `remarks_action` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Item-level weekly progress update';
+
+--
+-- Dumping data for table `phase_weekly_progress_items`
+--
+
+INSERT INTO `phase_weekly_progress_items` (`id`, `weekly_progress_id`, `target_item_id`, `planned_qty`, `achieved_qty`, `today_progress_qty`, `percent_complete`, `responsible_team`, `status`, `has_issue_flag`, `photo_path`, `remarks_action`, `created_at`) VALUES
+(1, 1, 1, 1000.00, 300.00, 0.00, 30.00, 'Structural Team', 'In Progress', 0, NULL, NULL, '2026-05-25 05:53:06'),
+(2, 1, 2, 500.00, 0.00, 0.00, 0.00, 'Structural Team', 'Not Started', 0, NULL, NULL, '2026-05-25 08:03:03');
 
 -- --------------------------------------------------------
 
@@ -8957,6 +9421,7 @@ INSERT INTO `platform_budgets` (`id`, `source_id`, `month`, `budget`, `spent`, `
 CREATE TABLE `projects` (
   `id` int(11) NOT NULL,
   `name` varchar(255) NOT NULL,
+  `workflow_version` enum('legacy','phase_based') NOT NULL DEFAULT 'legacy' COMMENT 'legacy=old target_fixed system | phase_based=new 7-module lifecycle',
   `slug` text DEFAULT NULL,
   `location_id` int(11) DEFAULT NULL,
   `community_id` int(11) NOT NULL,
@@ -9014,48 +9479,77 @@ CREATE TABLE `projects` (
 -- Dumping data for table `projects`
 --
 
-INSERT INTO `projects` (`id`, `name`, `slug`, `location_id`, `community_id`, `building_type`, `total_share`, `unit_per_floor`, `floor_wise_unit_meta`, `types`, `image`, `image2`, `image3`, `front_road`, `price_range`, `hover_text`, `tag`, `plot_size`, `plot_no`, `block_no`, `brochure_link`, `description`, `apartment_count`, `amenities_details`, `amenities_image`, `map_image`, `map_link`, `project_map_location`, `passenger_lift`, `cargo_lift`, `created_by`, `created_at`, `updated_at`, `rooftop_gardening`, `swimming_pool`, `convention`, `electricity_backup`, `car_parking`, `project_sale_status`, `service_charge_per_emi`, `project_status`, `pm_id`, `site_engineer_id`, `landman_id`, `struct_engineer_id`, `operation_head_id`, `draftsman_id`, `architect_id`, `estimator_id`, `qc_id`, `deleted_at`, `operator_id`, `purchase_user_id`) VALUES
-(5, 'The Legacy Residence', NULL, 2, 2, 'B2+B1+G+14', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1790},{\"unit_name\":\"B\",\"sqft\":1790},{\"unit_name\":\"C\",\"sqft\":1790},{\"unit_name\":\"D\",\"sqft\":1790}]}', '3 Bedroom', 'projects_69d5fee900d47.jpeg', '', '', '50 ', '50 Lac - 1 Crore BDT', NULL, NULL, 13.91, '2', 'B', 'https://drive.google.com/file/d/1PF3KEcpfxBw0Ecz9pHzBsCkFk2SaMgoT/view?usp=drive_link', '<p>The Legacy Residence represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 2, '2026-04-08 06:17:20', '2026-04-08 07:08:25', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(6, 'The Maple Heights', NULL, 2, 2, 'B2+B1+G+14', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2250},{\"unit_name\":\"B\",\"sqft\":2150},{\"unit_name\":\"C\",\"sqft\":2190},{\"unit_name\":\"D\",\"sqft\":2190}]}', '4 Bedroom', 'projects_69d5ff07e1c77.jpeg', '', '', '30', '1 Crore - 2 Crore BDT', NULL, NULL, 14.58, '2', 'B', 'https://drive.google.com/file/d/1MeywaLCcU3IET53mkHMnL4dXiukEvQ-5/view?usp=drive_link', '<p>The Maple Heights represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 2, '2026-04-08 06:22:49', '2026-04-08 07:08:55', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(7, 'The Premium Signature Heights', NULL, 1, 3, 'B+G+12', 36, 3, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1950},{\"unit_name\":\"B\",\"sqft\":2000},{\"unit_name\":\"C\",\"sqft\":1750}]}', '3 Bedroom', 'projects_69d5ff409b76f.jpeg', '', '', '25', '1 Crore - 2 Crore BDT', NULL, NULL, 16.88, '6168 U, 6168 M, 6168 T', 'N', 'https://drive.google.com/file/d/1MDZY987dskuwdA2n-zH68W6XsjCSNgUc/view?usp=drive_link', '<p class=\"text-base sm:text-lg leading-relaxed text-neutral-700 max-w-xl animate-fade-up delay-200\">The Signature Heights is designed as an home, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', '', '', 'https://maps.app.goo.gl/nVMLyaaQGiqZn6fi6', '23°48\'38.2', 2, 0, 29, '2026-04-08 06:57:40', '2026-04-29 05:45:26', 1, NULL, 1, 1, 1, 'On Sale', 12.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(9, 'The Crown Pavilion', 'the-crown-pavilion', 2, 2, 'B1+G+14', 126, 9, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":635},{\"unit_name\":\"B\",\"sqft\":900},{\"unit_name\":\"C\",\"sqft\":680},{\"unit_name\":\"D\",\"sqft\":785},{\"unit_name\":\"E\",\"sqft\":715},{\"unit_name\":\"F\",\"sqft\":755},{\"unit_name\":\"G\",\"sqft\":610},{\"unit_name\":\"H\",\"sqft\":1100},{\"unit_name\":\"I\",\"sqft\":1140}]}', '1, 2, 3 Bedroom', 'projects_69d5fe85e4a00.jpeg', '', '', '30', 'Under 50 Lac BDT', '', NULL, 12.77, '2', 'B', 'https://drive.google.com/file/d/1WWOYZU0AGGHb6uJDe1SOhOEHsIbJFGpN/view?usp=drive_link', '<p>The Premium Crown Pavilion is designed as an studio oasis, where lush greenery meets contemporary modern architecture. With coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 2, '2026-04-08 07:06:45', '2026-04-08 07:06:45', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(12, 'TPRC Crown Tower', 'tprc-crown-tower', 3, 1, 'B3+B2+B1+G+20', 135, 9, '{\"typical_floor\":[{\"unit_name\":\"B\",\"sqft\":800},{\"unit_name\":\"C\",\"sqft\":825},{\"unit_name\":\"D\",\"sqft\":1230},{\"unit_name\":\"E\",\"sqft\":2055},{\"unit_name\":\"F\",\"sqft\":2055},{\"unit_name\":\"G\",\"sqft\":1395},{\"unit_name\":\"H\",\"sqft\":800},{\"unit_name\":\"I\",\"sqft\":775}]}', 'Residential', NULL, NULL, NULL, '40 Feet', '50 Lac - 1 Crore BDT', NULL, NULL, 71, '14', 'I', '', '', 0, '', NULL, NULL, '', '', 2, 1, 32, '2026-04-19 04:09:44', '2026-05-06 10:38:31', 1, NULL, 1, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(13, 'test project from developer', 'test-project-from-developer', 2, 2, 'B+G+9', 10, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1200}]}', '3  Bedrooms', NULL, NULL, NULL, '30', '50 Lac - 1 Crore BDT', NULL, NULL, 72.5, '12', 'B', 'link', '', 1, '', NULL, NULL, '', '', 2, 1, 132, '2026-04-26 06:18:34', '2026-05-17 12:09:36', 0, NULL, 0, 0, 0, 'On Sale', 10.00, NULL, 120, 123, 121, 129, NULL, 124, 122, 125, 126, NULL, 128, 132),
-(14, 'The Premium  Velinor', 'the-premium-velinor-1', 1, 3, 'G+8', 16, 2, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1550},{\"unit_name\":\"B\",\"sqft\":1549}]}', '', NULL, NULL, NULL, '25', '50 Lac - 1 Crore BDT', NULL, NULL, 6, '5512,5513', 'N', 'https://drive.google.com/file/d/1yLfDmgSSieHuhfOK61ZPgf_AoXW6Xo-n/view', '<p>The Premium velinor is designed as an urban oasis, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 0, '', NULL, NULL, '', '', 1, 0, 6, '2026-05-03 04:09:14', '2026-05-10 08:40:33', 1, NULL, 1, 1, 1, 'Sold Out', 12.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(15, 'The Premium Studio Suite 3.0', 'the-premium-studio-suite-3-0', 2, 2, 'G+9', 36, 4, '{\"typical_floor\":[{\"unit_name\":\"(A)\",\"sqft\":800}]}', 'Studio Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 5, '', 'D', 'https://drive.google.com/file/d/1uzJrwuzeB2Rv_NO-B4mX06u5Zg7TN_w2/view?usp=drive_link', '', 36, '', 'project_69f6caef36111.webp', NULL, '', '', 0, 0, 22, '2026-05-03 04:11:27', '2026-05-08 06:21:26', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, 124, NULL, NULL, NULL, NULL, NULL, NULL),
-(16, 'The premium Ariston', 'the-premium-ariston', 1, 3, 'G+9', 9, 1, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2050},{\"unit_name\":\"B\",\"sqft\":1049}]}', '', NULL, NULL, NULL, '25', '1 Crore - 2 Crore BDT', '', NULL, 5, '', 'N', 'https://drive.google.com/file/d/1v8ne9A8Mx2BQXx4tQfN21f3hOeMGOWt8/view', '<p>The Premium Ariston is designed as an oasis, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', NULL, NULL, '', '', 1, 0, 36, '2026-05-03 04:21:59', '2026-05-03 04:21:59', 0, 0, 0, 0, 0, 'Sold Out', 12.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(17, 'The Premium Southpoint Villa', 'the-premium-southpoint-villa', 2, 2, 'B+G+9', 18, 2, '{\"typical_floor\":[{\"unit_name\":\"2\",\"sqft\":1600}]}', '', NULL, NULL, NULL, '35', 'Under 50 Lac BDT', NULL, NULL, 5, '05', 'A', '', '', 0, '', NULL, NULL, '', '', 1, 0, 6, '2026-05-03 04:49:37', '2026-05-10 08:36:58', 0, NULL, 0, 0, 0, 'Sold Out', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(19, 'The Premium Armonia', 'the-premium-armonia', 1, 3, 'G+9', 10, 1, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2250},{\"unit_name\":\"B\",\"sqft\":1050}]}', '', NULL, NULL, NULL, '25', '50 Lac - 1 Crore BDT', NULL, NULL, 5, '', 'N', 'https://drive.google.com/file/d/1BUZdgAYG0ETRqfdE4emBkdBVfUWZuOXX/view', '<p>The Premium Armonia celebrates nature and sustainable living in Dhakas One of the most popular area. With extensive green spaces, rooftop gardens, and eco-friendly features, this development offers a harmonious blend of urban convenience and natural beauty.</p>', 1, '', NULL, NULL, '', '', 1, 0, 36, '2026-05-03 05:16:34', '2026-05-09 04:04:38', 1, NULL, 1, 1, 1, 'On Sale', 12.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(20, 'The Premium Twelfth Heights', 'the-premium-twelfth-heights', 1, 3, 'B+G+9', 32, 4, '{\"typical_floor\":[{\"unit_name\":\"B\",\"sqft\":1700},{\"unit_name\":\"C\",\"sqft\":1750},{\"unit_name\":\"D\",\"sqft\":1749}]}', '', NULL, NULL, NULL, '25', '1 Crore - 2 Crore BDT', NULL, NULL, 12, '', 'N', 'https://drive.google.com/file/d/1Bh_wRkxVuZkOGe5MQvWpDDASaG5WVabD/view', '<p>The Premium Twelfeth Heights is designed as an home, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 0, '', NULL, NULL, '', '', 2, 0, 6, '2026-05-03 05:25:29', '2026-05-10 08:38:27', 0, NULL, 0, 0, 0, 'Sold Out', 12.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(21, 'The Premium Dream Palace ', 'the-premium-dream-palace', 2, 4, 'B+G+9', 18, 2, '{\"typical_floor\":[{\"unit_name\":\"2\",\"sqft\":1600}]}', 'B+G+9', 'project_69f6e6f617119.webp', NULL, NULL, '60', '50 Lac - 1 Crore BDT', '', NULL, 5, '', 'F', 'https://drive.google.com/file/d/1ytbREUTcj6exjL11PlkRONqP3mXFRphC/view?usp=drive_link', '', 18, '', 'project_69f6e6f62838b.webp', NULL, 'https://maps.app.goo.gl/n6mvS1oBezu5a5fLA', 'https://maps.app.goo.gl/n6mvS1oBezu5a5fLA', 1, 0, 25, '2026-05-03 06:11:02', '2026-05-03 06:11:02', 1, 0, 0, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(22, 'The Premium Lake View Terrace ', 'the-premium-lake-view-terrace-1', 2, 4, 'B+G+9', 18, 2, '{\"typical_floor\":[{\"unit_name\":\"2\",\"sqft\":1600}]}', 'B+G+9', 'projects_69f6e8631a5ee.png', NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 5, '', 'H', 'https://drive.google.com/file/d/1ZZOtvGeRPOBKwJ_j-FzDhi6LUs4ffBys/view?usp=drive_link ', '', 18, '', 'projects_69f6e8632b98c.png', 'projects_69f6e86322a02.png', 'https://maps.app.goo.gl/pe5o2BxGpYg8gwZX6', 'https://maps.app.goo.gl/pe5o2BxGpYg8gwZX6', 1, 0, 25, '2026-05-03 06:14:39', '2026-05-03 06:17:07', 1, NULL, 0, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(27, 'The Premium Skypoint Villa', 'the-premium-skypoint-villa', 2, 4, 'B+G+9', 36, 4, NULL, 'B+G+9', NULL, NULL, NULL, '30', 'Under 50 Lac BDT', NULL, NULL, 9, '10/11E', 'D', '', '', 36, '', NULL, NULL, '', '', 1, 0, 6, '2026-05-05 12:39:09', '2026-05-10 08:28:59', 1, NULL, 0, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(28, 'TPRC Majesty Tower', 'tprc-majesty-tower', 3, 1, 'B3+B2+B1+G+20', 120, 8, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1655},{\"unit_name\":\"B\",\"sqft\":580},{\"unit_name\":\"C\",\"sqft\":725},{\"unit_name\":\"D\",\"sqft\":790},{\"unit_name\":\"E\",\"sqft\":830},{\"unit_name\":\"F\",\"sqft\":725},{\"unit_name\":\"G\",\"sqft\":580},{\"unit_name\":\"H\",\"sqft\":1565}]}', 'Condominium', NULL, NULL, NULL, '40', '50 Lac - 1 Crore BDT', '', NULL, 71, '14', '', '', '', 3, '', NULL, NULL, '', '', 0, 0, 32, '2026-05-05 12:39:16', '2026-05-05 12:39:16', 0, 0, 0, 0, 0, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(29, 'TPRC Imperial', 'tprc-imperial', 3, 1, 'B3+B2+B1+G+20', 135, 9, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":775},{\"unit_name\":\"B\",\"sqft\":800},{\"unit_name\":\"C\",\"sqft\":1395},{\"unit_name\":\"D\",\"sqft\":2055},{\"unit_name\":\"E\",\"sqft\":2055},{\"unit_name\":\"F\",\"sqft\":1230},{\"unit_name\":\"G\",\"sqft\":825},{\"unit_name\":\"H\",\"sqft\":800},{\"unit_name\":\"I\",\"sqft\":1310}]}', 'Condominium', NULL, NULL, NULL, '40', '50 Lac - 1 Crore BDT', '', NULL, 71, '14', 'I', '', '', NULL, '', NULL, NULL, '', '', 2, 1, 32, '2026-05-05 12:44:05', '2026-05-05 12:44:05', 0, 0, 0, 0, 0, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(31, 'The Premium Fortune Residence', 'the-premium-fortune-residence', 2, 4, 'G+7', 14, 2, '{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}', 'G+7', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, 3, '23', 'H', '', '', 14, '', NULL, NULL, '', '', 1, 0, 25, '2026-05-06 10:34:39', '2026-05-06 10:34:39', 1, 0, 0, 1, 0, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(32, 'The Premium Luxoria Residence', 'the-premium-luxoria-residence', 2, 4, 'G+7', 14, 2, '{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}', 'G+7', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 3, '', 'Shornali', '', '', 14, '', NULL, NULL, '', '', 1, 0, 6, '2026-05-06 10:39:31', '2026-05-10 08:33:44', 1, NULL, 0, 1, 0, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(33, 'The Premium Aurora View', 'the-premium-aurora-view-1', 2, 4, 'B+G+9', 18, 2, '{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1600}]}', 'B+G+9', NULL, NULL, NULL, '25', '50 Lac - 1 Crore BDT', NULL, NULL, 5, '', 'K', 'https://drive.google.com/file/d/1R4xhjovd2fUYGSm0jf9KpMfsf9GxWy6A/view?usp=drive_link', '', 18, '', NULL, NULL, '', '', 1, 0, 22, '2026-05-06 10:43:13', '2026-05-08 06:27:50', 1, NULL, 0, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(34, 'The Premium Southern Residence', 'the-premium-southern-residence', 2, 4, 'G+7', 14, 2, '{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}', 'G+7', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, 3, '', 'F', '', '', 14, '', NULL, NULL, '', '', 1, 0, 25, '2026-05-06 10:46:22', '2026-05-06 10:46:22', 1, 0, 0, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(35, 'The Premium Breeze Residence', 'the-premium-breeze-residence', 2, 4, 'G+7', 14, 2, '{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}', 'G+7', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, 3, '', 'H', '', '', 14, '', NULL, NULL, '', '', 1, 0, 25, '2026-05-06 10:50:17', '2026-05-06 10:50:17', 1, 0, 0, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(36, 'The Premium Urban Residence ', 'the-premium-urban-residence', 2, 4, 'G+7', 14, 2, '{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}', 'G+7', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, 3, '', '', '', '', 14, '', NULL, NULL, '', '', 0, 0, 25, '2026-05-06 10:52:59', '2026-05-06 10:52:59', 1, 0, 0, 1, 0, 'Sold Out', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(37, 'The Premium studio suite 7.0', 'the-premium-studio-suite-7-0-1', 2, 4, 'G+9', 36, 4, '{\"typical_floor\":[{\"unit_name\":\"A,B,C,D\",\"sqft\":800}]}', 'G+9', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, 5, '', 'D', '', '', 36, '', NULL, NULL, '', '', 1, 0, 25, '2026-05-06 10:57:25', '2026-05-06 10:57:25', 1, 0, 0, 1, 0, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(38, 'The Premium Studio Suite 6.0', 'the-premium-studio-suite-6-0', 2, 4, 'G+9', 72, 8, NULL, 'Studio Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 5, '', 'D', 'https://drive.google.com/file/d/1B4E2T1eyiiwvhAro2SX8gsJMeNkBrMEM/view?usp=drive_link', '', 1, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-07 05:20:47', '2026-05-08 06:16:36', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(39, 'The Premium Studio Suite 2.0', 'the-premium-studio-suite-2-0-1', 2, 4, 'G+9', 126, 14, NULL, 'Studio Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 10, '', 'D', 'https://drive.google.com/file/d/1uzJrwuzeB2Rv_NO-B4mX06u5Zg7TN_w2/view?usp=drive_link', '', 1, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-07 05:30:40', '2026-05-08 06:20:09', 1, NULL, 1, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(40, 'The Premium Studio Suite 1.0', 'the-premium-studio-suite-1-0', 2, 4, 'G+9', 72, 8, NULL, 'Studio Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, NULL, '', '', '', '', NULL, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-07 05:32:11', '2026-05-07 05:32:11', 1, 0, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(41, 'The Premium Studio Suite 5.0', 'the-premium-studio-suite-5-0-1', 2, 4, 'G+9', 72, 8, NULL, 'Studio Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, NULL, '', '', 'https://drive.google.com/file/d/19FixkjcPO_o2SyHJL1p682H2bLQIOasI/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-07 05:33:47', '2026-05-08 06:18:31', 1, NULL, 1, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(42, 'The Premium Studio Suite 4.0', 'the-premium-studio-suite-4-0-1', 2, 4, 'G+9', 63, 8, NULL, 'Studio Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 8, '', 'F', 'https://drive.google.com/file/d/1tK8xCqAfZTZsYULBGybfUodjR3eJsiq4/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-07 05:36:27', '2026-05-08 06:19:23', 1, NULL, 1, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(43, 'SUNLEAF GARDEN (TPSG)', 'sunleaf-garden-tpsg-1', 2, 4, 'B+G+9', 18, 2, NULL, 'Single Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, NULL, '', '', 'https://drive.google.com/file/d/1ZMckdZAtWUOTofZtDfVRfyHQicNXgUaI/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-08 05:40:07', '2026-05-08 06:26:38', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(44, 'The Premium Classic Residence', 'the-premium-classic-residence', 2, 4, 'G+7', 14, 2, '{\"typical_floor\":[{\"unit_name\":\"(A,B,)\",\"sqft\":1000}]}', 'Single Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, NULL, '', 'E', 'https://drive.google.com/file/d/1B9j6seJQMRtVol-olK6FbepEhfGeoMfL/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 6, '2026-05-08 05:43:02', '2026-05-10 08:29:42', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(45, 'FLORAL HAVEN (TPFH)', 'floral-haven-tpfh-1', 2, 4, 'B+G+9', 18, 2, '{\"typical_floor\":[{\"unit_name\":\"(A,B,)\",\"sqft\":1600}]}', 'Single Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, NULL, '', '', 'https://drive.google.com/file/d/1zUUyyN30RSw0asQHyRXcbzVnez3rcpu4/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-08 05:48:11', '2026-05-08 06:23:58', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(46, 'The Premium Green Heaven', 'the-premium-green-heaven', 2, 4, 'B+G+9', 18, 2, NULL, 'Single Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 5, '', '', 'https://drive.google.com/file/d/1ieZxyKkpDCQigWxB1G4_RqSsJtAGk0BA/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 6, '2026-05-08 05:57:20', '2026-05-10 08:32:17', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(47, 'The Premium Harmony Residence', 'the-premium-harmony-residence', 2, 4, 'B+G+9', 18, 2, NULL, 'Single Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 5, '', '', 'https://drive.google.com/file/d/1LSRYMw514gmBoGnTbjv8W3VS3WOFrJac/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 6, '2026-05-08 06:02:20', '2026-05-10 08:31:16', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(48, 'The Premium Glory Garden', 'the-premium-glory-garden', 2, 4, 'B+G+9', 36, 4, NULL, 'Single Project', NULL, NULL, NULL, ' Road: 35 & 25 Feet', 'Under 50 Lac BDT', NULL, NULL, 9, '', '', 'https://drive.google.com/file/d/12g_t6p0qPBOjHb4sMtrJIOq13lR-1Ziy/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 6, '2026-05-08 06:07:44', '2026-05-10 08:32:48', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(49, 'The Premium Prestige Heights', 'the-premium-prestige-heights', 1, 3, 'G+9', 10, 1, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2349}]}', '', NULL, NULL, NULL, '25', '1 Crore - 2 Crore BDT', '', NULL, 5.65, '', 'N', '', '<p>The Premium Prestige Heights celebrates nature and sustainable living in Dhakas One of the most popular area. With extensive green spaces, rooftop gardens, and eco-friendly features, this development offers a harmonious blend of urban convenience and natural beauty.</p>', NULL, '', NULL, NULL, '', '', 1, 0, 36, '2026-05-09 04:15:09', '2026-05-09 04:15:09', 1, 0, 1, 1, 1, 'On Sale', 12.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(50, 'The Noble Court', 'the-noble-court', 2, 2, '', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1250},{\"unit_name\":\"B\",\"sqft\":1250},{\"unit_name\":\"C\",\"sqft\":1250},{\"unit_name\":\"D\",\"sqft\":1250}]}', '3 BED ROOM', NULL, NULL, NULL, '30 FEET', '50 Lac - 1 Crore BDT', '', NULL, 10.86, '2', 'B', 'https://drive.google.com/drive/folders/1XW8WIgf1y2OpB3UTD7doLgRSYgawRU8W', '', 1, '', NULL, NULL, 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 0, 14, '2026-05-09 05:45:31', '2026-05-09 05:45:31', 1, 0, 1, 1, 1, 'On Sale', 15.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(51, 'The Velvet Heights', 'the-velvet-heights', 2, 2, 'B1+B2+G+14', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1680},{\"unit_name\":\"B\",\"sqft\":1680},{\"unit_name\":\"C\",\"sqft\":1680},{\"unit_name\":\"D\",\"sqft\":1680}]}', '3 BEDROOM', NULL, NULL, NULL, '50 FEET', '1 Crore - 2 Crore BDT', NULL, NULL, NULL, '', 'B', '', '', 1, '', NULL, NULL, '', '', 2, 1, 6, '2026-05-11 11:50:22', '2026-05-14 09:16:14', 0, NULL, 0, 0, 0, 'On Sale', 15.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(52, 'The Premium Monarch Residence,', 'the-premium-monarch-residence', 2, 4, 'G+7', 14, 2, NULL, 'Studio Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, 3, '', '', '', '', NULL, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-12 06:22:26', '2026-05-12 06:22:26', 1, 0, 1, 1, 0, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(53, 'The Premium Orchid Residence,', 'the-premium-orchid-residence', 2, 4, 'G+7', 14, 2, NULL, 'Single Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, 3, '', '', '', '', NULL, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-12 06:26:03', '2026-05-12 06:26:03', 1, 0, 1, 1, 0, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(54, 'The Premium  Green Valley ', 'the-premium-green-valley', 2, 4, 'B+G+9', 18, 2, NULL, 'Single Project', NULL, NULL, NULL, '', 'Under 50 Lac BDT', '', NULL, 5, '', 'k', '', '', NULL, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-12 06:32:14', '2026-05-12 06:32:14', 1, 0, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `projects` (`id`, `name`, `workflow_version`, `slug`, `location_id`, `community_id`, `building_type`, `total_share`, `unit_per_floor`, `floor_wise_unit_meta`, `types`, `image`, `image2`, `image3`, `front_road`, `price_range`, `hover_text`, `tag`, `plot_size`, `plot_no`, `block_no`, `brochure_link`, `description`, `apartment_count`, `amenities_details`, `amenities_image`, `map_image`, `map_link`, `project_map_location`, `passenger_lift`, `cargo_lift`, `created_by`, `created_at`, `updated_at`, `rooftop_gardening`, `swimming_pool`, `convention`, `electricity_backup`, `car_parking`, `project_sale_status`, `service_charge_per_emi`, `project_status`, `pm_id`, `site_engineer_id`, `landman_id`, `struct_engineer_id`, `operation_head_id`, `draftsman_id`, `architect_id`, `estimator_id`, `qc_id`, `deleted_at`, `operator_id`, `purchase_user_id`) VALUES
+(5, 'The Legacy Residence', 'legacy', NULL, 2, 2, 'B2+B1+G+14', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1790},{\"unit_name\":\"B\",\"sqft\":1790},{\"unit_name\":\"C\",\"sqft\":1790},{\"unit_name\":\"D\",\"sqft\":1790}]}', '3 Bedroom', 'projects_69d5fee900d47.jpeg', '', '', '50 ', '50 Lac - 1 Crore BDT', NULL, NULL, 13.91, '2', 'B', 'https://drive.google.com/file/d/1PF3KEcpfxBw0Ecz9pHzBsCkFk2SaMgoT/view?usp=drive_link', '<p>The Legacy Residence represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 2, '2026-04-08 06:17:20', '2026-04-08 07:08:25', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(6, 'The Maple Heights', 'legacy', NULL, 2, 2, 'B2+B1+G+14', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2250},{\"unit_name\":\"B\",\"sqft\":2150},{\"unit_name\":\"C\",\"sqft\":2190},{\"unit_name\":\"D\",\"sqft\":2190}]}', '4 Bedroom', 'projects_69d5ff07e1c77.jpeg', '', '', '30', '1 Crore - 2 Crore BDT', NULL, NULL, 14.58, '2', 'B', 'https://drive.google.com/file/d/1MeywaLCcU3IET53mkHMnL4dXiukEvQ-5/view?usp=drive_link', '<p>The Maple Heights represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 2, '2026-04-08 06:22:49', '2026-04-08 07:08:55', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(7, 'The Premium Signature Heights', 'legacy', NULL, 1, 3, 'B+G+12', 36, 3, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1950},{\"unit_name\":\"B\",\"sqft\":2000},{\"unit_name\":\"C\",\"sqft\":1750}]}', '3 Bedroom', 'projects_69d5ff409b76f.jpeg', '', '', '25', '1 Crore - 2 Crore BDT', NULL, NULL, 16.88, '6168 U, 6168 M, 6168 T', 'N', 'https://drive.google.com/file/d/1MDZY987dskuwdA2n-zH68W6XsjCSNgUc/view?usp=drive_link', '<p class=\"text-base sm:text-lg leading-relaxed text-neutral-700 max-w-xl animate-fade-up delay-200\">The Signature Heights is designed as an home, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', '', '', 'https://maps.app.goo.gl/nVMLyaaQGiqZn6fi6', '23°48\'38.2', 2, 0, 29, '2026-04-08 06:57:40', '2026-04-29 05:45:26', 1, NULL, 1, 1, 1, 'On Sale', 12.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(9, 'The Crown Pavilion', 'legacy', 'the-crown-pavilion-1', 2, 2, 'B1+G+14', 126, 9, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":635},{\"unit_name\":\"B\",\"sqft\":900},{\"unit_name\":\"C\",\"sqft\":680},{\"unit_name\":\"D\",\"sqft\":785},{\"unit_name\":\"E\",\"sqft\":715},{\"unit_name\":\"F\",\"sqft\":755},{\"unit_name\":\"G\",\"sqft\":610},{\"unit_name\":\"H\",\"sqft\":1100},{\"unit_name\":\"I\",\"sqft\":1140}]}', '1, 2, 3 Bedroom', 'projects_69d5fe85e4a00.jpeg', '', '', '30', 'Under 50 Lac BDT', NULL, NULL, 12.77, '2', 'B', 'https://drive.google.com/file/d/1WWOYZU0AGGHb6uJDe1SOhOEHsIbJFGpN/view?usp=drive_link', '<p>The Premium Crown Pavilion is designed as an studio oasis, where lush greenery meets contemporary modern architecture. With coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 138, '2026-04-08 07:06:45', '2026-05-18 05:48:07', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, 120, 123, 121, 129, NULL, 124, 122, 125, 126, NULL, 128, 127),
+(12, 'TPRC Crown Tower', 'legacy', 'tprc-crown-tower', 3, 1, 'B3+B2+B1+G+20', 135, 9, '{\"typical_floor\":[{\"unit_name\":\"B\",\"sqft\":800},{\"unit_name\":\"C\",\"sqft\":825},{\"unit_name\":\"D\",\"sqft\":1230},{\"unit_name\":\"E\",\"sqft\":2055},{\"unit_name\":\"F\",\"sqft\":2055},{\"unit_name\":\"G\",\"sqft\":1395},{\"unit_name\":\"H\",\"sqft\":800},{\"unit_name\":\"I\",\"sqft\":775}]}', 'Residential', NULL, NULL, NULL, '40 Feet', '50 Lac - 1 Crore BDT', NULL, NULL, 71, '14', 'I', '', '', 0, '', NULL, NULL, '', '', 2, 1, 32, '2026-04-19 04:09:44', '2026-05-06 10:38:31', 1, NULL, 1, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(13, 'test project from developer', 'phase_based', 'test-project-from-developer-2', 2, 2, 'B+G+9', 10, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1200}]}', '3  Bedrooms', NULL, NULL, NULL, '30', '50 Lac - 1 Crore BDT', NULL, NULL, 72.5, '12', 'B', 'link', '', 1, '', NULL, NULL, '', '', 2, 1, 6, '2026-04-26 06:18:34', '2026-05-24 10:07:23', 0, NULL, 0, 0, 0, 'On Sale', 10.00, NULL, 120, 123, 121, 129, NULL, 124, 122, 125, 126, NULL, 128, NULL),
+(14, 'The Premium  Velinor', 'legacy', 'the-premium-velinor-1', 1, 3, 'G+8', 16, 2, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1550},{\"unit_name\":\"B\",\"sqft\":1549}]}', '', NULL, NULL, NULL, '25', '50 Lac - 1 Crore BDT', NULL, NULL, 6, '5512,5513', 'N', 'https://drive.google.com/file/d/1yLfDmgSSieHuhfOK61ZPgf_AoXW6Xo-n/view', '<p>The Premium velinor is designed as an urban oasis, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 0, '', NULL, NULL, '', '', 1, 0, 6, '2026-05-03 04:09:14', '2026-05-10 08:40:33', 1, NULL, 1, 1, 1, 'Sold Out', 12.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(15, 'The Premium Studio Suite 3.0', 'legacy', 'the-premium-studio-suite-3-0', 2, 2, 'G+9', 36, 4, '{\"typical_floor\":[{\"unit_name\":\"(A)\",\"sqft\":800}]}', 'Studio Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 5, '', 'D', 'https://drive.google.com/file/d/1uzJrwuzeB2Rv_NO-B4mX06u5Zg7TN_w2/view?usp=drive_link', '', 36, '', 'project_69f6caef36111.webp', NULL, '', '', 0, 0, 22, '2026-05-03 04:11:27', '2026-05-08 06:21:26', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, 124, NULL, NULL, NULL, NULL, NULL, NULL),
+(16, 'The premium Ariston', 'legacy', 'the-premium-ariston', 1, 3, 'G+9', 9, 1, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2050},{\"unit_name\":\"B\",\"sqft\":1049}]}', '', NULL, NULL, NULL, '25', '1 Crore - 2 Crore BDT', '', NULL, 5, '', 'N', 'https://drive.google.com/file/d/1v8ne9A8Mx2BQXx4tQfN21f3hOeMGOWt8/view', '<p>The Premium Ariston is designed as an oasis, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', NULL, NULL, '', '', 1, 0, 36, '2026-05-03 04:21:59', '2026-05-03 04:21:59', 0, 0, 0, 0, 0, 'Sold Out', 12.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(17, 'The Premium Southpoint Villa', 'legacy', 'the-premium-southpoint-villa', 2, 2, 'B+G+9', 18, 2, '{\"typical_floor\":[{\"unit_name\":\"2\",\"sqft\":1600}]}', '', NULL, NULL, NULL, '35', 'Under 50 Lac BDT', NULL, NULL, 5, '05', 'A', '', '', 0, '', NULL, NULL, '', '', 1, 0, 6, '2026-05-03 04:49:37', '2026-05-10 08:36:58', 0, NULL, 0, 0, 0, 'Sold Out', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(19, 'The Premium Armonia', 'legacy', 'the-premium-armonia', 1, 3, 'G+9', 10, 1, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2250},{\"unit_name\":\"B\",\"sqft\":1050}]}', '', NULL, NULL, NULL, '25', '50 Lac - 1 Crore BDT', NULL, NULL, 5, '', 'N', 'https://drive.google.com/file/d/1BUZdgAYG0ETRqfdE4emBkdBVfUWZuOXX/view', '<p>The Premium Armonia celebrates nature and sustainable living in Dhakas One of the most popular area. With extensive green spaces, rooftop gardens, and eco-friendly features, this development offers a harmonious blend of urban convenience and natural beauty.</p>', 1, '', NULL, NULL, '', '', 1, 0, 36, '2026-05-03 05:16:34', '2026-05-09 04:04:38', 1, NULL, 1, 1, 1, 'On Sale', 12.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(20, 'The Premium Twelfth Heights', 'legacy', 'the-premium-twelfth-heights', 1, 3, 'B+G+9', 32, 4, '{\"typical_floor\":[{\"unit_name\":\"B\",\"sqft\":1700},{\"unit_name\":\"C\",\"sqft\":1750},{\"unit_name\":\"D\",\"sqft\":1749}]}', '', NULL, NULL, NULL, '25', '1 Crore - 2 Crore BDT', NULL, NULL, 12, '', 'N', 'https://drive.google.com/file/d/1Bh_wRkxVuZkOGe5MQvWpDDASaG5WVabD/view', '<p>The Premium Twelfeth Heights is designed as an home, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 0, '', NULL, NULL, '', '', 2, 0, 6, '2026-05-03 05:25:29', '2026-05-10 08:38:27', 0, NULL, 0, 0, 0, 'Sold Out', 12.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(21, 'The Premium Dream Palace ', 'legacy', 'the-premium-dream-palace', 2, 4, 'B+G+9', 18, 2, '{\"typical_floor\":[{\"unit_name\":\"2\",\"sqft\":1600}]}', 'B+G+9', 'project_69f6e6f617119.webp', NULL, NULL, '60', '50 Lac - 1 Crore BDT', '', NULL, 5, '', 'F', 'https://drive.google.com/file/d/1ytbREUTcj6exjL11PlkRONqP3mXFRphC/view?usp=drive_link', '', 18, '', 'project_69f6e6f62838b.webp', NULL, 'https://maps.app.goo.gl/n6mvS1oBezu5a5fLA', 'https://maps.app.goo.gl/n6mvS1oBezu5a5fLA', 1, 0, 25, '2026-05-03 06:11:02', '2026-05-03 06:11:02', 1, 0, 0, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(22, 'The Premium Lake View Terrace ', 'legacy', 'the-premium-lake-view-terrace-1', 2, 4, 'B+G+9', 18, 2, '{\"typical_floor\":[{\"unit_name\":\"2\",\"sqft\":1600}]}', 'B+G+9', 'projects_69f6e8631a5ee.png', NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 5, '', 'H', 'https://drive.google.com/file/d/1ZZOtvGeRPOBKwJ_j-FzDhi6LUs4ffBys/view?usp=drive_link ', '', 18, '', 'projects_69f6e8632b98c.png', 'projects_69f6e86322a02.png', 'https://maps.app.goo.gl/pe5o2BxGpYg8gwZX6', 'https://maps.app.goo.gl/pe5o2BxGpYg8gwZX6', 1, 0, 25, '2026-05-03 06:14:39', '2026-05-03 06:17:07', 1, NULL, 0, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(27, 'The Premium Skypoint Villa', 'legacy', 'the-premium-skypoint-villa', 2, 4, 'B+G+9', 36, 4, NULL, 'B+G+9', NULL, NULL, NULL, '30', 'Under 50 Lac BDT', NULL, NULL, 9, '10/11E', 'D', '', '', 36, '', NULL, NULL, '', '', 1, 0, 6, '2026-05-05 12:39:09', '2026-05-10 08:28:59', 1, NULL, 0, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(28, 'TPRC Majesty Tower', 'legacy', 'tprc-majesty-tower', 3, 1, 'B3+B2+B1+G+20', 120, 8, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1655},{\"unit_name\":\"B\",\"sqft\":580},{\"unit_name\":\"C\",\"sqft\":725},{\"unit_name\":\"D\",\"sqft\":790},{\"unit_name\":\"E\",\"sqft\":830},{\"unit_name\":\"F\",\"sqft\":725},{\"unit_name\":\"G\",\"sqft\":580},{\"unit_name\":\"H\",\"sqft\":1565}]}', 'Condominium', NULL, NULL, NULL, '40', '50 Lac - 1 Crore BDT', '', NULL, 71, '14', '', '', '', 3, '', NULL, NULL, '', '', 0, 0, 32, '2026-05-05 12:39:16', '2026-05-05 12:39:16', 0, 0, 0, 0, 0, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(29, 'TPRC Imperial Tower', 'legacy', 'tprc-imperial-tower', 3, 1, 'B3+B2+B1+G+20', 135, 9, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":775},{\"unit_name\":\"B\",\"sqft\":800},{\"unit_name\":\"C\",\"sqft\":1395},{\"unit_name\":\"D\",\"sqft\":2055},{\"unit_name\":\"E\",\"sqft\":2055},{\"unit_name\":\"F\",\"sqft\":1230},{\"unit_name\":\"G\",\"sqft\":825},{\"unit_name\":\"H\",\"sqft\":800},{\"unit_name\":\"I\",\"sqft\":1310}]}', 'Condominium', NULL, NULL, NULL, '40', '50 Lac - 1 Crore BDT', NULL, NULL, 71, '14', 'I', '', '', 0, '', NULL, NULL, '', '', 2, 1, 6, '2026-05-05 12:44:05', '2026-05-14 05:50:15', 0, NULL, 0, 0, 0, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(31, 'The Premium Fortune Residence', 'legacy', 'the-premium-fortune-residence', 2, 4, 'G+7', 14, 2, '{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}', 'G+7', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, 3, '23', 'H', '', '', 14, '', NULL, NULL, '', '', 1, 0, 25, '2026-05-06 10:34:39', '2026-05-06 10:34:39', 1, 0, 0, 1, 0, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(32, 'The Premium Luxoria Residence', 'legacy', 'the-premium-luxoria-residence', 2, 4, 'G+7', 14, 2, '{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}', 'G+7', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 3, '', 'Shornali', '', '', 14, '', NULL, NULL, '', '', 1, 0, 6, '2026-05-06 10:39:31', '2026-05-10 08:33:44', 1, NULL, 0, 1, 0, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(33, 'The Premium Aurora View', 'legacy', 'the-premium-aurora-view-1', 2, 4, 'B+G+9', 18, 2, '{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1600}]}', 'B+G+9', NULL, NULL, NULL, '25', '50 Lac - 1 Crore BDT', NULL, NULL, 5, '', 'K', 'https://drive.google.com/file/d/1R4xhjovd2fUYGSm0jf9KpMfsf9GxWy6A/view?usp=drive_link', '', 18, '', NULL, NULL, '', '', 1, 0, 22, '2026-05-06 10:43:13', '2026-05-08 06:27:50', 1, NULL, 0, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(34, 'The Premium Southern Residence', 'legacy', 'the-premium-southern-residence', 2, 4, 'G+7', 14, 2, '{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}', 'G+7', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, 3, '', 'F', '', '', 14, '', NULL, NULL, '', '', 1, 0, 25, '2026-05-06 10:46:22', '2026-05-06 10:46:22', 1, 0, 0, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(35, 'The Premium Breeze Residence', 'legacy', 'the-premium-breeze-residence', 2, 4, 'G+7', 14, 2, '{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}', 'G+7', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, 3, '', 'H', '', '', 14, '', NULL, NULL, '', '', 1, 0, 25, '2026-05-06 10:50:17', '2026-05-06 10:50:17', 1, 0, 0, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(36, 'The Premium Urban Residence ', 'legacy', 'the-premium-urban-residence', 2, 4, 'G+7', 14, 2, '{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}', 'G+7', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, 3, '', '', '', '', 14, '', NULL, NULL, '', '', 0, 0, 25, '2026-05-06 10:52:59', '2026-05-06 10:52:59', 1, 0, 0, 1, 0, 'Sold Out', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(37, 'The Premium studio suite 7.0', 'legacy', 'the-premium-studio-suite-7-0-1', 2, 4, 'G+9', 36, 4, '{\"typical_floor\":[{\"unit_name\":\"A,B,C,D\",\"sqft\":800}]}', 'G+9', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, 5, '', 'D', '', '', 36, '', NULL, NULL, '', '', 1, 0, 25, '2026-05-06 10:57:25', '2026-05-06 10:57:25', 1, 0, 0, 1, 0, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(38, 'The Premium Studio Suite 6.0', 'legacy', 'the-premium-studio-suite-6-0', 2, 4, 'G+9', 72, 8, NULL, 'Studio Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 5, '', 'D', 'https://drive.google.com/file/d/1B4E2T1eyiiwvhAro2SX8gsJMeNkBrMEM/view?usp=drive_link', '', 1, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-07 05:20:47', '2026-05-08 06:16:36', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(39, 'The Premium Studio Suite 2.0', 'legacy', 'the-premium-studio-suite-2-0-1', 2, 4, 'G+9', 126, 14, NULL, 'Studio Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 10, '', 'D', 'https://drive.google.com/file/d/1uzJrwuzeB2Rv_NO-B4mX06u5Zg7TN_w2/view?usp=drive_link', '', 1, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-07 05:30:40', '2026-05-08 06:20:09', 1, NULL, 1, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(40, 'The Premium Studio Suite 1.0', 'legacy', 'the-premium-studio-suite-1-0', 2, 4, 'G+9', 72, 8, NULL, 'Studio Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, NULL, '', '', '', '', NULL, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-07 05:32:11', '2026-05-07 05:32:11', 1, 0, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(41, 'The Premium Studio Suite 5.0', 'legacy', 'the-premium-studio-suite-5-0-1', 2, 4, 'G+9', 72, 8, NULL, 'Studio Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, NULL, '', '', 'https://drive.google.com/file/d/19FixkjcPO_o2SyHJL1p682H2bLQIOasI/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-07 05:33:47', '2026-05-08 06:18:31', 1, NULL, 1, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(42, 'The Premium Studio Suite 4.0', 'legacy', 'the-premium-studio-suite-4-0-1', 2, 4, 'G+9', 63, 8, NULL, 'Studio Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 8, '', 'F', 'https://drive.google.com/file/d/1tK8xCqAfZTZsYULBGybfUodjR3eJsiq4/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-07 05:36:27', '2026-05-08 06:19:23', 1, NULL, 1, 1, 1, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(43, 'SUNLEAF GARDEN (TPSG)', 'legacy', 'sunleaf-garden-tpsg-1', 2, 4, 'B+G+9', 18, 2, NULL, 'Single Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, NULL, '', '', 'https://drive.google.com/file/d/1ZMckdZAtWUOTofZtDfVRfyHQicNXgUaI/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-08 05:40:07', '2026-05-08 06:26:38', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(44, 'The Premium Classic Residence', 'legacy', 'the-premium-classic-residence', 2, 4, 'G+7', 14, 2, '{\"typical_floor\":[{\"unit_name\":\"(A,B,)\",\"sqft\":1000}]}', 'Single Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, NULL, '', 'E', 'https://drive.google.com/file/d/1B9j6seJQMRtVol-olK6FbepEhfGeoMfL/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 6, '2026-05-08 05:43:02', '2026-05-10 08:29:42', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(45, 'FLORAL HAVEN (TPFH)', 'legacy', 'floral-haven-tpfh-1', 2, 4, 'B+G+9', 18, 2, '{\"typical_floor\":[{\"unit_name\":\"(A,B,)\",\"sqft\":1600}]}', 'Single Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, NULL, '', '', 'https://drive.google.com/file/d/1zUUyyN30RSw0asQHyRXcbzVnez3rcpu4/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-08 05:48:11', '2026-05-08 06:23:58', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(46, 'The Premium Green Heaven', 'legacy', 'the-premium-green-heaven', 2, 4, 'B+G+9', 18, 2, NULL, 'Single Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 5, '', '', 'https://drive.google.com/file/d/1ieZxyKkpDCQigWxB1G4_RqSsJtAGk0BA/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 6, '2026-05-08 05:57:20', '2026-05-10 08:32:17', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(47, 'The Premium Harmony Residence', 'legacy', 'the-premium-harmony-residence', 2, 4, 'B+G+9', 18, 2, NULL, 'Single Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 5, '', '', 'https://drive.google.com/file/d/1LSRYMw514gmBoGnTbjv8W3VS3WOFrJac/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 6, '2026-05-08 06:02:20', '2026-05-10 08:31:16', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(48, 'The Premium Glory Garden', 'legacy', 'the-premium-glory-garden', 2, 4, 'B+G+9', 36, 4, NULL, 'Single Project', NULL, NULL, NULL, ' Road: 35 & 25 Feet', 'Under 50 Lac BDT', NULL, NULL, 9, '', '', 'https://drive.google.com/file/d/12g_t6p0qPBOjHb4sMtrJIOq13lR-1Ziy/view?usp=drive_link', '', 0, '', NULL, NULL, '', '', 0, 0, 6, '2026-05-08 06:07:44', '2026-05-10 08:32:48', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(49, 'The Premium Prestige Heights', 'legacy', 'the-premium-prestige-heights', 1, 3, 'G+9', 10, 1, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2349}]}', '', NULL, NULL, NULL, '25', '1 Crore - 2 Crore BDT', '', NULL, 5.65, '', 'N', '', '<p>The Premium Prestige Heights celebrates nature and sustainable living in Dhakas One of the most popular area. With extensive green spaces, rooftop gardens, and eco-friendly features, this development offers a harmonious blend of urban convenience and natural beauty.</p>', NULL, '', NULL, NULL, '', '', 1, 0, 36, '2026-05-09 04:15:09', '2026-05-09 04:15:09', 1, 0, 1, 1, 1, 'On Sale', 12.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(50, 'The Noble Court', 'legacy', 'the-noble-court', 2, 2, '', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1250},{\"unit_name\":\"B\",\"sqft\":1250},{\"unit_name\":\"C\",\"sqft\":1250},{\"unit_name\":\"D\",\"sqft\":1250}]}', '3 BED ROOM', NULL, NULL, NULL, '30 FEET', '50 Lac - 1 Crore BDT', '', NULL, 10.86, '2', 'B', 'https://drive.google.com/drive/folders/1XW8WIgf1y2OpB3UTD7doLgRSYgawRU8W', '', 1, '', NULL, NULL, 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 0, 14, '2026-05-09 05:45:31', '2026-05-09 05:45:31', 1, 0, 1, 1, 1, 'On Sale', 15.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(51, 'The Velvet Heights', 'legacy', 'the-velvet-heights', 2, 2, 'B1+B2+G+14', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1680},{\"unit_name\":\"B\",\"sqft\":1680},{\"unit_name\":\"C\",\"sqft\":1680},{\"unit_name\":\"D\",\"sqft\":1680}]}', '3 BEDROOM', NULL, NULL, NULL, '50 FEET', '1 Crore - 2 Crore BDT', NULL, NULL, NULL, '', 'B', '', '', 1, '', NULL, NULL, '', '', 2, 1, 6, '2026-05-11 11:50:22', '2026-05-13 12:44:23', 0, NULL, 0, 0, 0, 'On Sale', 15.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(52, 'The Premium Monarch Residence,', 'legacy', 'the-premium-monarch-residence', 2, 4, 'G+7', 14, 2, NULL, 'Studio Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, 3, '', '', '', '', NULL, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-12 06:22:26', '2026-05-12 06:22:26', 1, 0, 1, 1, 0, 'On Sale', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(53, 'The Premium Orchid Residence,', 'legacy', 'the-premium-orchid-residence', 2, 4, 'G+7', 14, 2, NULL, 'Single Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', '', NULL, 3, '', '', '', '', NULL, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-12 06:26:03', '2026-05-12 06:26:03', 1, 0, 1, 1, 0, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(54, 'The Premium  Green Valley ', 'legacy', 'the-premium-green-valley', 2, 4, 'B+G+9', 18, 2, NULL, 'Single Project', NULL, NULL, NULL, '', 'Under 50 Lac BDT', '', NULL, 5, '', 'k', '', '', NULL, '', NULL, NULL, '', '', 0, 0, 22, '2026-05-12 06:32:14', '2026-05-12 06:32:14', 1, 0, 1, 1, 1, 'Sold Out', 10.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `project_delay_snapshots`
+--
+
+CREATE TABLE `project_delay_snapshots` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `snapshot_date` date NOT NULL,
+  `total_delay_days` int(11) NOT NULL DEFAULT 0,
+  `critical_risks_count` int(11) NOT NULL DEFAULT 0,
+  `time_risk_level` enum('Low','Medium','High','Critical') NOT NULL DEFAULT 'Low',
+  `budget_risk_amount` decimal(15,2) DEFAULT NULL COMMENT 'Forecasted budget overrun amount',
+  `handover_risk_level` enum('Low','Medium','High','Critical') NOT NULL DEFAULT 'Low',
+  `original_handover_date` date DEFAULT NULL,
+  `forecast_handover_date` date DEFAULT NULL,
+  `material_delay_count` int(11) NOT NULL DEFAULT 0,
+  `labour_shortage_count` int(11) NOT NULL DEFAULT 0,
+  `contractor_delay_count` int(11) NOT NULL DEFAULT 0,
+  `design_pending_count` int(11) NOT NULL DEFAULT 0,
+  `approval_delay_count` int(11) NOT NULL DEFAULT 0,
+  `weather_count` int(11) NOT NULL DEFAULT 0,
+  `payment_delay_count` int(11) NOT NULL DEFAULT 0,
+  `confidence_level_pct` decimal(5,2) DEFAULT NULL COMMENT 'Forecast confidence % e.g. 62%',
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 6: Periodic delay source analytics snapshot';
 
 -- --------------------------------------------------------
 
@@ -9066,6 +9560,7 @@ INSERT INTO `projects` (`id`, `name`, `slug`, `location_id`, `community_id`, `bu
 CREATE TABLE `project_drawings` (
   `id` int(10) UNSIGNED NOT NULL,
   `project_id` int(11) NOT NULL,
+  `phase_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Optional: which construction phase this drawing belongs to',
   `design_type_id` int(10) UNSIGNED NOT NULL,
   `is_in_house` tinyint(1) NOT NULL DEFAULT 1,
   `user_id` int(11) DEFAULT NULL,
@@ -9085,11 +9580,8 @@ CREATE TABLE `project_drawings` (
 -- Dumping data for table `project_drawings`
 --
 
-INSERT INTO `project_drawings` (`id`, `project_id`, `design_type_id`, `is_in_house`, `user_id`, `designer_name`, `designer_designation`, `designer_company`, `approved_by_id`, `approval_date`, `design_link`, `version`, `status`, `created_by`, `created_at`) VALUES
-(1, 13, 2, 1, 124, '', '', '', NULL, NULL, 'https://demediciassociates.com/service/construction-design/', '1.0', 'Submitted', 124, '2026-05-17 05:02:09'),
-(2, 13, 4, 1, 124, '', '', '', NULL, NULL, 'https://demediciassociates.com/service/construction-design/', '1.0', 'Submitted', 124, '2026-05-17 05:02:40'),
-(3, 13, 1, 1, 124, NULL, NULL, NULL, NULL, NULL, 'https://comfotec.net/the-role-of-bim-in-power-efficient-electrical-design-unlocking-performance-in-modern-construction/', '1.0', 'Approved', 124, '2026-05-17 10:05:40'),
-(4, 13, 3, 1, 124, NULL, NULL, NULL, NULL, NULL, 'https://comfotec.net/the-role-of-bim-in-power-efficient-electrical-design-unlocking-performance-in-modern-construction/', '1.0', 'Approved', 124, '2026-05-17 10:06:22');
+INSERT INTO `project_drawings` (`id`, `project_id`, `phase_id`, `design_type_id`, `is_in_house`, `user_id`, `designer_name`, `designer_designation`, `designer_company`, `approved_by_id`, `approval_date`, `design_link`, `version`, `status`, `created_by`, `created_at`) VALUES
+(1, 13, NULL, 6, 1, 124, NULL, NULL, NULL, NULL, NULL, 'https://demediciassociates.com/service/construction-design/', '1.0', 'Approved', 124, '2026-05-05 13:05:56');
 
 -- --------------------------------------------------------
 
@@ -9108,14 +9600,125 @@ CREATE TABLE `project_legal_sheets` (
   `remark` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
 
 --
--- Dumping data for table `project_legal_sheets`
+-- Table structure for table `project_phases`
 --
 
-INSERT INTO `project_legal_sheets` (`id`, `project_id`, `sheet_type`, `title`, `version`, `link`, `submitted_by`, `remark`, `created_at`, `updated_at`) VALUES
-(1, 13, 'Amin', 'Amin Sheet', 'V1', 'https://drive.google.com/', 124, 'Test', '2026-05-17 05:15:04', '2026-05-17 05:15:04');
+CREATE TABLE `project_phases` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `phase_name` varchar(150) NOT NULL,
+  `phase_order` tinyint(4) NOT NULL DEFAULT 1,
+  `phase_type` enum('pre_construction','construction','finishing') NOT NULL DEFAULT 'construction',
+  `weight_percentage` decimal(5,2) NOT NULL DEFAULT 0.00 COMMENT 'All phases must sum to 100%',
+  `planned_start_date` date DEFAULT NULL,
+  `planned_end_date` date DEFAULT NULL,
+  `actual_start_date` date DEFAULT NULL,
+  `actual_end_date` date DEFAULT NULL,
+  `planned_progress` decimal(5,2) NOT NULL DEFAULT 0.00 COMMENT '% within this phase planned',
+  `actual_progress` decimal(5,2) NOT NULL DEFAULT 0.00 COMMENT '% within this phase achieved',
+  `status` enum('Not Started','In Progress','Completed','At Risk','Delayed') NOT NULL DEFAULT 'Not Started',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 2: Per-project phase definitions cloned from phase_template_defaults';
+
+--
+-- Dumping data for table `project_phases`
+--
+
+INSERT INTO `project_phases` (`id`, `project_id`, `phase_name`, `phase_order`, `phase_type`, `weight_percentage`, `planned_start_date`, `planned_end_date`, `actual_start_date`, `actual_end_date`, `planned_progress`, `actual_progress`, `status`, `created_at`, `updated_at`) VALUES
+(16, 13, 'Pre-Construction', 1, 'pre_construction', 0.00, '2026-05-24', '2026-06-24', NULL, NULL, 0.00, 0.00, 'Completed', '2026-05-24 11:37:05', '2026-05-24 12:03:54'),
+(17, 13, 'Structure', 2, 'construction', 35.00, '2026-06-26', '2026-05-30', NULL, NULL, 0.00, 0.00, 'In Progress', '2026-05-24 11:37:05', '2026-05-25 06:03:35'),
+(18, 13, 'Brick Work', 3, 'construction', 6.00, '2027-01-24', '2027-12-24', NULL, NULL, 0.00, 0.00, 'Not Started', '2026-05-24 11:37:05', '2026-05-24 11:48:00'),
+(19, 13, 'Wood Work', 4, 'construction', 5.00, '2027-09-24', '2028-01-24', NULL, NULL, 0.00, 0.00, 'Not Started', '2026-05-24 11:37:05', '2026-05-24 11:48:00'),
+(20, 13, 'Metal Work', 5, 'construction', 2.00, '2027-08-24', '2027-12-24', NULL, NULL, 0.00, 0.00, 'Not Started', '2026-05-24 11:37:05', '2026-05-24 11:48:00'),
+(21, 13, 'Plumbing & Sanitary', 6, 'construction', 6.00, '2027-01-24', '2027-12-24', NULL, NULL, 0.00, 0.00, 'Not Started', '2026-05-24 11:37:05', '2026-05-24 11:48:00'),
+(22, 13, 'Electrical Work', 7, 'construction', 7.00, '2027-01-24', '2028-01-24', NULL, NULL, 0.00, 0.00, 'Not Started', '2026-05-24 11:37:05', '2026-05-24 11:48:00'),
+(23, 13, 'Plaster Work', 8, 'construction', 4.00, '2027-09-24', '2028-01-24', NULL, NULL, 0.00, 0.00, 'Not Started', '2026-05-24 11:37:05', '2026-05-24 11:48:00'),
+(24, 13, 'General Floor Tiles', 9, 'construction', 6.00, '2027-10-24', '2028-02-24', NULL, NULL, 0.00, 0.00, 'Not Started', '2026-05-24 11:37:05', '2026-05-24 11:48:00'),
+(25, 13, 'Toilet & Kitchen Wall Tiles', 10, 'construction', 3.00, '2027-11-24', '2028-02-24', NULL, NULL, 0.00, 0.00, 'Not Started', '2026-05-24 11:37:05', '2026-05-24 11:48:00'),
+(26, 13, 'Aluminium Work', 11, 'construction', 4.00, '2027-10-24', '2028-02-24', NULL, NULL, 0.00, 0.00, 'Not Started', '2026-05-24 11:37:05', '2026-05-24 11:48:00'),
+(27, 13, 'EME', 12, 'construction', 10.00, '2027-06-24', '2028-02-24', NULL, NULL, 0.00, 0.00, 'Not Started', '2026-05-24 11:37:05', '2026-05-24 11:48:00'),
+(28, 13, 'Paint Work', 13, 'construction', 3.00, '2027-12-24', '2028-03-24', NULL, NULL, 0.00, 0.00, 'Not Started', '2026-05-24 11:37:05', '2026-05-24 11:48:00'),
+(29, 13, 'Others Civil Work', 14, 'finishing', 6.00, '2027-06-24', '2028-03-24', NULL, NULL, 0.00, 0.00, 'Not Started', '2026-05-24 11:37:05', '2026-05-24 12:03:54'),
+(30, 13, 'Utility Connection & Bill', 15, 'finishing', 3.00, '2028-01-24', '2028-03-24', NULL, NULL, 0.00, 0.00, 'Not Started', '2026-05-24 11:37:05', '2026-05-24 12:03:54');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `project_phase_items`
+--
+
+CREATE TABLE `project_phase_items` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `phase_id` int(10) UNSIGNED NOT NULL,
+  `item_name` varchar(255) NOT NULL,
+  `item_order` tinyint(4) NOT NULL DEFAULT 1,
+  `weight_pct` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `planned_progress` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `actual_progress` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `design_type_id` int(10) UNSIGNED DEFAULT NULL,
+  `work_type_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `status` enum('Not Started','In Progress','Completed','At Risk') NOT NULL DEFAULT 'Not Started',
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `project_phase_items`
+--
+
+INSERT INTO `project_phase_items` (`id`, `phase_id`, `item_name`, `item_order`, `weight_pct`, `planned_progress`, `actual_progress`, `design_type_id`, `work_type_id`, `status`, `notes`, `created_at`, `updated_at`) VALUES
+(1, 17, 'Footing & Column Pedestal', 1, 20.00, 0.00, 0.00, NULL, NULL, 'Not Started', NULL, '2026-05-24 12:23:32', '2026-05-25 09:55:21'),
+(2, 17, 'Grade Beam & UGWR Top Slab', 2, 5.00, 0.00, 0.00, NULL, NULL, 'Not Started', NULL, '2026-05-24 12:23:32', '2026-05-25 09:55:21'),
+(3, 17, 'GF Column, Stair etc', 3, 4.00, 0.00, 0.00, NULL, NULL, 'Not Started', NULL, '2026-05-24 12:23:32', '2026-05-25 09:55:21'),
+(4, 17, '1st Floor Slab', 4, 9.00, 0.00, 0.00, NULL, NULL, 'Not Started', NULL, '2026-05-24 12:23:32', '2026-05-25 09:55:21'),
+(5, 17, 'Typical Floor Column (5x3%)', 5, 15.00, 0.00, 0.00, NULL, NULL, 'Not Started', NULL, '2026-05-24 12:23:32', '2026-05-25 09:55:21'),
+(6, 17, '2nd to Roof Slab (5x8%)', 6, 40.00, 0.00, 0.00, NULL, NULL, 'Not Started', NULL, '2026-05-24 12:23:32', '2026-05-25 09:55:21'),
+(7, 17, 'Roof Top', 7, 7.00, 0.00, 0.00, NULL, NULL, 'Not Started', NULL, '2026-05-24 12:23:32', '2026-05-25 09:55:21'),
+(8, 18, 'GF Brick Work', 1, 6.00, 0.00, 0.00, 6, NULL, 'Not Started', NULL, '2026-05-24 12:23:49', NULL),
+(9, 18, '1st Floor Brick Work', 2, 18.00, 0.00, 0.00, 6, NULL, 'Not Started', NULL, '2026-05-24 12:23:49', NULL),
+(10, 18, '2nd Floor Brick Work', 3, 18.00, 0.00, 0.00, 6, NULL, 'Not Started', NULL, '2026-05-24 12:23:49', NULL),
+(11, 18, '3rd Floor Brick Work', 4, 18.00, 0.00, 0.00, 6, NULL, 'Not Started', NULL, '2026-05-24 12:23:49', NULL),
+(12, 18, '4th Floor Brick Work', 5, 18.00, 0.00, 0.00, 6, NULL, 'Not Started', NULL, '2026-05-24 12:23:49', NULL),
+(13, 18, '5th Floor Brick Work', 6, 18.00, 0.00, 0.00, 6, NULL, 'Not Started', NULL, '2026-05-24 12:23:49', NULL),
+(14, 18, 'Roof Top Brick Work', 7, 4.00, 0.00, 0.00, 6, NULL, 'Not Started', NULL, '2026-05-24 12:23:49', NULL),
+(15, 30, 'DESA / DESCO', 1, 35.00, 0.00, 0.00, 2, NULL, 'Not Started', NULL, '2026-05-24 12:26:53', NULL),
+(16, 30, 'TITAS', 2, 20.00, 0.00, 0.00, NULL, NULL, 'Not Started', NULL, '2026-05-24 12:26:53', NULL),
+(17, 30, 'WASA', 3, 15.00, 0.00, 0.00, 3, NULL, 'Not Started', NULL, '2026-05-24 12:26:54', NULL),
+(18, 30, 'Utility Bills', 4, 30.00, 0.00, 0.00, NULL, NULL, 'Not Started', NULL, '2026-05-24 12:26:54', NULL),
+(19, 23, 'Ceiling Plaster', 1, 20.00, 0.00, 0.00, 6, NULL, 'Not Started', NULL, '2026-05-24 12:27:05', NULL),
+(20, 23, 'Internal Wall Plaster', 2, 50.00, 0.00, 0.00, 6, NULL, 'Not Started', NULL, '2026-05-24 12:27:05', NULL),
+(21, 23, 'Outside Plaster / Facing Bricks', 3, 30.00, 0.00, 0.00, 6, NULL, 'Not Started', NULL, '2026-05-24 12:27:05', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `project_risks`
+--
+
+CREATE TABLE `project_risks` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `phase_id` int(10) UNSIGNED DEFAULT NULL,
+  `risk_code` varchar(20) DEFAULT NULL COMMENT 'Auto: R-101, R-102...',
+  `issue_description` text NOT NULL,
+  `category` enum('Labour','Material','Design Quality','Approval Delay','Contractor Delay','Weather','Budget','Other') NOT NULL DEFAULT 'Other',
+  `impact` enum('Very High','High','Medium','Low') NOT NULL DEFAULT 'Medium',
+  `likelihood` enum('Very High','High','Medium','Low') NOT NULL DEFAULT 'Medium',
+  `severity` enum('Critical','High','Medium','Low') NOT NULL DEFAULT 'Medium',
+  `owner` varchar(150) DEFAULT NULL,
+  `due_date` date DEFAULT NULL,
+  `status` enum('Open','In Progress','Resolved','Closed') NOT NULL DEFAULT 'Open',
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 6: Risk register ??? tracks all project risks with heatmap data';
 
 -- --------------------------------------------------------
 
@@ -9137,12 +9740,38 @@ CREATE TABLE `project_structural_designs` (
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
 --
--- Dumping data for table `project_structural_designs`
+-- Table structure for table `project_timelines`
 --
 
-INSERT INTO `project_structural_designs` (`id`, `project_id`, `designer_type`, `designer_name`, `company_name`, `designer_phone`, `designer_address`, `design_link`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 13, 'internal', 'Mr Structural Designer1', NULL, NULL, NULL, 'https://demediciassociates.com/service/construction-design/', 129, '2026-05-17 05:16:52', '2026-05-17 05:16:52');
+CREATE TABLE `project_timelines` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `project_code` varchar(50) DEFAULT NULL,
+  `project_type` varchar(100) DEFAULT NULL COMMENT 'Residential / Commercial / Industrial',
+  `project_category` varchar(100) DEFAULT NULL COMMENT 'High Rise / Low Rise / Industrial Shed',
+  `handover_months` int(11) NOT NULL COMMENT 'Total timeline in months e.g. 48',
+  `construction_months` int(11) NOT NULL COMMENT 'Construction period in months e.g. 32',
+  `post_construction_months` int(11) NOT NULL DEFAULT 6 COMMENT 'Post construction months e.g. 6',
+  `project_start_date` date NOT NULL COMMENT 'Project kickoff date',
+  `construction_start_date` date NOT NULL COMMENT 'On-site construction start',
+  `construction_end_date` date NOT NULL COMMENT 'Construction completion date',
+  `expected_handover_date` date NOT NULL COMMENT 'Final handover to client',
+  `current_status` enum('Planning','Pre-Construction','Construction','Post-Construction','Handover','Completed') NOT NULL DEFAULT 'Planning',
+  `description` text DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 1: Project timeline setup ??? one row per project';
+
+--
+-- Dumping data for table `project_timelines`
+--
+
+INSERT INTO `project_timelines` (`id`, `project_id`, `project_code`, `project_type`, `project_category`, `handover_months`, `construction_months`, `post_construction_months`, `project_start_date`, `construction_start_date`, `construction_end_date`, `expected_handover_date`, `current_status`, `description`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, 13, 'TPD-2026', 'Residential', 'High rise Building', 36, 21, 9, '2026-05-24', '2026-06-26', '2028-03-26', '2029-05-24', 'Pre-Construction', 'Project kickoff', 120, '2026-05-24 10:07:23', '2026-05-25 03:54:38');
 
 -- --------------------------------------------------------
 
@@ -9173,8 +9802,7 @@ CREATE TABLE `project_working_plans` (
 --
 
 INSERT INTO `project_working_plans` (`id`, `project_id`, `initial_budget_id`, `work_type_id`, `year`, `month`, `work_description`, `planned_quantity`, `estimated_cost`, `weight_percentage`, `created_by`, `approved_status`, `approved_by`, `created_at`, `updated_at`) VALUES
-(2, 13, 1, 2, 2026, 5, 'test work, test work 2', 2.000, 50000.00, 2.70, 123, 'Pending', NULL, '2026-05-23 11:06:18', NULL),
-(3, 13, 1, 3, 2026, 5, 'test work 2', 1.000, 20000.00, 2.70, 123, 'Pending', NULL, '2026-05-23 11:06:18', NULL);
+(1, 13, 1, 2, 2026, 5, 'Slub, Column, Beam, Footing', 0.000, 100000.00, 0.00, 123, 'Pending', NULL, '2026-05-07 12:06:13', NULL);
 
 -- --------------------------------------------------------
 
@@ -9185,30 +9813,21 @@ INSERT INTO `project_working_plans` (`id`, `project_id`, `initial_budget_id`, `w
 CREATE TABLE `project_working_plan_items` (
   `id` int(11) NOT NULL,
   `working_plan_id` int(10) UNSIGNED NOT NULL,
-  `initial_budget_id` int(10) UNSIGNED DEFAULT NULL,
-  `work_type_id` bigint(20) UNSIGNED DEFAULT NULL,
   `sl_no` varchar(20) NOT NULL DEFAULT '',
   `activity_name` text NOT NULL,
   `floor_name` varchar(50) DEFAULT NULL,
   `quantity` varchar(50) NOT NULL DEFAULT '1 Job',
   `start_date` date NOT NULL,
   `req_days` int(11) NOT NULL DEFAULT 1,
-  `estimated_cost` decimal(15,2) DEFAULT 0.00,
-  `weight_percentage` decimal(5,2) DEFAULT 0.00,
   `end_date` date NOT NULL,
   `remarks` text DEFAULT NULL,
   `sort_order` int(11) NOT NULL DEFAULT 0,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `project_working_plan_items`
---
-
-INSERT INTO `project_working_plan_items` (`id`, `working_plan_id`, `initial_budget_id`, `work_type_id`, `sl_no`, `activity_name`, `floor_name`, `quantity`, `start_date`, `req_days`, `estimated_cost`, `weight_percentage`, `end_date`, `remarks`, `sort_order`, `created_at`) VALUES
-(7, 2, NULL, NULL, '1', 'test work ', 'Foundation', '1 Job', '2026-05-23', 5, 0.00, 0.00, '2026-05-27', 'test', 1, '2026-05-23 11:06:18'),
-(8, 2, NULL, NULL, '2', 'test work 2', 'Foundation', '1 Job', '2026-05-23', 5, 0.00, 0.00, '2026-05-27', 'test', 2, '2026-05-23 11:06:18'),
-(9, 3, NULL, NULL, '3', 'test work 2', 'Foundation', '1 Job', '2026-05-23', 5, 0.00, 0.00, '2026-05-27', 'rtertg', 1, '2026-05-23 11:06:18');
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `initial_budget_id` int(10) UNSIGNED DEFAULT NULL,
+  `work_type_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `estimated_cost` decimal(15,2) DEFAULT 0.00,
+  `weight_percentage` decimal(5,2) DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -9253,6 +9872,14 @@ CREATE TABLE `purchase_orders` (
   `pm_approved_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `purchase_orders`
+--
+
+INSERT INTO `purchase_orders` (`id`, `request_id`, `created_by`, `status`, `order_date`, `created_at`, `updated_at`, `approved_by_se`, `approved_by_pm`, `se_approved_at`, `pm_approved_at`) VALUES
+(1, 2, 127, 'Fully Received', '2026-05-07', '2026-05-07 12:36:10', '2026-05-07 12:58:35', 0, 120, NULL, '2026-05-07 12:36:36'),
+(2, 1, 137, 'Issued', '2026-05-18', '2026-05-18 05:59:28', '2026-05-18 12:32:46', 0, 120, NULL, '2026-05-18 12:32:46');
+
 -- --------------------------------------------------------
 
 --
@@ -9270,6 +9897,15 @@ CREATE TABLE `purchase_order_items` (
   `created_by` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `purchase_order_items`
+--
+
+INSERT INTO `purchase_order_items` (`id`, `purchase_order_id`, `material_id`, `selected_vendor_id`, `quantity`, `unit_price`, `created_by`) VALUES
+(1, 1, 2, 2, 500.000, 20.0000, 127),
+(2, 1, 1, 2, 300.000, 200.0000, 127),
+(3, 2, 4, 5, 1000.000, 19.0000, 137);
+
 -- --------------------------------------------------------
 
 --
@@ -9286,6 +9922,11 @@ CREATE TABLE `purchase_requests` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
   `approved_by_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `qc_approved_by_id` int(11) DEFAULT NULL,
+  `qc_approved_at` datetime DEFAULT NULL,
+  `qc_note` text DEFAULT NULL,
+  `management_note` text DEFAULT NULL,
+  `management_approved_amount` decimal(15,2) DEFAULT NULL,
   `assigned_executive_id` int(11) DEFAULT NULL,
   `approved_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -9294,8 +9935,10 @@ CREATE TABLE `purchase_requests` (
 -- Dumping data for table `purchase_requests`
 --
 
-INSERT INTO `purchase_requests` (`id`, `project_id`, `bom_id`, `created_by`, `status`, `notes`, `created_at`, `updated_at`, `approved_by_id`, `assigned_executive_id`, `approved_at`) VALUES
-(1, 13, 1, 123, 'Approved', 'Challan - 1', '2026-05-24 04:25:34', '2026-05-24 04:42:45', 120, 132, '2026-05-24 04:41:55');
+INSERT INTO `purchase_requests` (`id`, `project_id`, `bom_id`, `created_by`, `status`, `notes`, `created_at`, `updated_at`, `approved_by_id`, `qc_approved_by_id`, `qc_approved_at`, `qc_note`, `management_note`, `management_approved_amount`, `assigned_executive_id`, `approved_at`) VALUES
+(1, 13, NULL, 123, 'PO Issued', '', '2026-05-05 13:35:55', '2026-05-18 05:59:28', NULL, NULL, NULL, NULL, NULL, NULL, 137, NULL),
+(2, 13, 2, 127, 'PO Issued', 'challan-3', '2026-05-07 12:31:13', '2026-05-07 12:36:10', 127, NULL, NULL, NULL, NULL, NULL, NULL, '2026-05-07 12:33:29'),
+(3, 13, 1, 127, 'Submitted', '', '2026-05-18 05:52:38', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -9316,8 +9959,11 @@ CREATE TABLE `purchase_request_items` (
 --
 
 INSERT INTO `purchase_request_items` (`id`, `request_id`, `material_id`, `quantity`, `created_by`) VALUES
-(1, 1, 4, 200.000, 123),
-(2, 1, 2, 100.000, 123);
+(1, 1, 4, 1000.000, 123),
+(2, 2, 2, 500.000, 127),
+(3, 2, 1, 300.000, 127),
+(4, 3, 4, 1000.000, 127),
+(5, 3, 2, 10000.000, 127);
 
 -- --------------------------------------------------------
 
@@ -9340,11 +9986,6 @@ CREATE TABLE `qc_checklists` (
 --
 
 INSERT INTO `qc_checklists` (`id`, `work_type_id`, `material_item_id`, `checklist_item_name`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 1, NULL, 'Soil bearing capacity test conducted', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
-(2, 1, NULL, 'Footing depth matches approved drawing', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
-(3, 1, NULL, 'Footing size & reinforcement verified', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
-(4, 1, NULL, 'Concrete grade matches specification', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
-(5, 1, NULL, 'Compaction test done before pouring', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
 (6, 2, NULL, 'Floor plan dimensions match approved drawing', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
 (7, 2, NULL, 'Column positions verified against layout', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
 (8, 2, NULL, 'Elevation levels checked with datum', 126, '2026-05-11 07:05:02', '2026-05-11 07:05:02'),
@@ -9409,6 +10050,13 @@ CREATE TABLE `qc_material_tests` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `qc_material_tests`
+--
+
+INSERT INTO `qc_material_tests` (`id`, `project_id`, `work_type_id`, `test_type_id`, `material_receiving_id`, `test_name`, `test_date`, `age_of_sample`, `required_value`, `result_value`, `test_status`, `lab_report_link`, `attachment`, `created_by`, `created_at`) VALUES
+(1, NULL, NULL, NULL, 1, 'GRN-1 Test material', NULL, NULL, NULL, '100', 'pass', '', NULL, 126, '2026-05-07 12:49:14');
+
 -- --------------------------------------------------------
 
 --
@@ -9450,6 +10098,18 @@ CREATE TABLE `quotations` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `quotations`
+--
+
+INSERT INTO `quotations` (`id`, `request_id`, `vendor_id`, `validity_date`, `status`, `attachment`, `created_by`, `created_at`) VALUES
+(1, 1, 1, '2026-05-05', 'Active', NULL, 123, '2026-05-05 14:09:05'),
+(2, 1, 2, '2026-05-06', 'Active', NULL, 123, '2026-05-05 14:09:35'),
+(3, 2, 1, '2026-05-07', 'Active', NULL, 127, '2026-05-07 12:34:26'),
+(4, 2, 2, '2026-05-07', 'Active', NULL, 127, '2026-05-07 12:34:53'),
+(5, 1, 1, '2026-05-18', 'Active', NULL, 137, '2026-05-18 05:56:32'),
+(6, 1, 5, '2026-05-19', 'Active', NULL, 137, '2026-05-18 05:56:54');
+
 -- --------------------------------------------------------
 
 --
@@ -9462,6 +10122,14 @@ CREATE TABLE `quotation_comparisons` (
   `prepared_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `quotation_comparisons`
+--
+
+INSERT INTO `quotation_comparisons` (`id`, `request_id`, `prepared_by`, `created_at`) VALUES
+(1, 2, 127, '2026-05-07 12:35:30'),
+(2, 1, 137, '2026-05-18 05:58:28');
 
 -- --------------------------------------------------------
 
@@ -9478,6 +10146,80 @@ CREATE TABLE `quotation_items` (
   `total_price` decimal(15,2) GENERATED ALWAYS AS (`quantity` * `unit_price`) STORED,
   `created_by` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `quotation_items`
+--
+
+INSERT INTO `quotation_items` (`id`, `quotation_id`, `material_id`, `quantity`, `unit_price`, `created_by`) VALUES
+(1, 0, 4, 1000.000, 100.0000, 123),
+(2, 0, 4, 1000.000, 100.0000, 123),
+(3, 0, 4, 1000.000, 100.0000, 123),
+(4, 0, 4, 1000.000, 100.0000, 127),
+(5, 0, 4, 1000.000, 20.0000, 123),
+(6, 1, 4, 1000.000, 100.0000, 123),
+(7, 2, 4, 1000.000, 120.0000, 123),
+(8, 3, 2, 500.000, 24.0000, 127),
+(9, 3, 1, 300.000, 200.0000, 127),
+(10, 4, 2, 500.000, 20.0000, 127),
+(11, 4, 1, 300.000, 200.0000, 127),
+(12, 5, 4, 1000.000, 20.0000, 137),
+(13, 6, 4, 1000.000, 19.0000, 137);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `recovery_action_items`
+--
+
+CREATE TABLE `recovery_action_items` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `recovery_plan_id` int(10) UNSIGNED NOT NULL,
+  `action_item` text NOT NULL,
+  `category` enum('Labour','Procurement','MEP','Execution','Logistics','Design','Finance') NOT NULL DEFAULT 'Execution',
+  `priority` enum('High','Medium','Low') NOT NULL DEFAULT 'Medium',
+  `owner` varchar(150) DEFAULT NULL,
+  `start_date` date DEFAULT NULL,
+  `due_date` date DEFAULT NULL,
+  `expected_impact` varchar(100) DEFAULT NULL COMMENT 'e.g. +5% Progress',
+  `dependency` varchar(200) DEFAULT NULL,
+  `status` enum('Open','In Progress','Completed','Blocked') NOT NULL DEFAULT 'Open',
+  `approval_status` enum('Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 7: Action items within a recovery plan';
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `recovery_plans`
+--
+
+CREATE TABLE `recovery_plans` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `project_id` int(11) NOT NULL,
+  `review_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Linked monthly review',
+  `recovery_month` date NOT NULL COMMENT 'Month this plan targets',
+  `delay_carry_forward_pct` decimal(5,2) DEFAULT NULL COMMENT '% delay from previous month',
+  `recovery_target_pct` decimal(5,2) DEFAULT NULL COMMENT '+% to recover this month',
+  `projected_extra_progress_pct` decimal(5,2) DEFAULT NULL COMMENT 'Total extra % achievable',
+  `critical_focus_areas_count` tinyint(4) NOT NULL DEFAULT 0,
+  `additional_labour` int(11) NOT NULL DEFAULT 0,
+  `extra_budget_lac` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT 'In Lacs',
+  `extra_working_hours` int(11) NOT NULL DEFAULT 0,
+  `contractor_teams_added` tinyint(4) NOT NULL DEFAULT 0,
+  `project_manager_notes` text DEFAULT NULL,
+  `final_decision` enum('Approve','Approve with Conditions','Hold') DEFAULT NULL,
+  `decision_conditions` text DEFAULT NULL,
+  `decision_by` int(11) DEFAULT NULL,
+  `decision_at` datetime DEFAULT NULL,
+  `approval_status` enum('Draft','PM Submitted','Management Review','Finance Clearance','Approved','Rejected') NOT NULL DEFAULT 'Draft',
+  `pm_submitted_at` datetime DEFAULT NULL,
+  `management_reviewed_at` datetime DEFAULT NULL,
+  `finance_cleared_at` datetime DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 7: Recovery plan ??? management action plan when behind schedule';
 
 -- --------------------------------------------------------
 
@@ -9520,7 +10262,7 @@ INSERT INTO `roles` (`id`, `name`, `created_by`, `created_at`, `updated_at`) VAL
 (20, 'Site Operator', NULL, '2026-04-26 04:03:50', '2026-04-26 04:03:50'),
 (21, 'Structure designer', NULL, '2026-04-26 05:13:09', '2026-04-26 05:13:09'),
 (22, 'Project Manager Head', NULL, '2026-04-30 06:42:24', '2026-04-30 06:42:24'),
-(23, ' Purchase executive', NULL, '2026-05-17 11:34:08', '2026-05-17 11:34:08');
+(23, ' Purchase executive', NULL, '2026-05-17 11:36:33', '2026-05-17 11:36:33');
 
 -- --------------------------------------------------------
 
@@ -9596,6 +10338,27 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `created_at`, 
 (574, 17, 38, '2026-05-07 11:16:53', '2026-05-07 11:16:53'),
 (575, 17, 35, '2026-05-07 11:16:53', '2026-05-07 11:16:53'),
 (576, 17, 36, '2026-05-07 11:16:53', '2026-05-07 11:16:53'),
+(612, 15, 41, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(613, 15, 26, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(614, 15, 45, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(615, 15, 40, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(616, 15, 31, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(617, 15, 28, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(618, 15, 27, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(619, 15, 33, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(620, 15, 44, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(621, 15, 43, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(622, 15, 38, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(623, 15, 34, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(624, 15, 29, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(625, 15, 46, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(626, 15, 48, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(627, 15, 32, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(628, 15, 35, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(629, 15, 30, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(630, 15, 36, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(631, 15, 50, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
+(632, 15, 42, '2026-05-10 12:37:13', '2026-05-10 12:37:13'),
 (633, 3, 10, '2026-05-10 12:37:23', '2026-05-10 12:37:23'),
 (634, 3, 3, '2026-05-10 12:37:23', '2026-05-10 12:37:23'),
 (635, 3, 1, '2026-05-10 12:37:23', '2026-05-10 12:37:23'),
@@ -9633,49 +10396,27 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `created_at`, 
 (667, 3, 36, '2026-05-10 12:37:23', '2026-05-10 12:37:23'),
 (668, 3, 50, '2026-05-10 12:37:23', '2026-05-10 12:37:23'),
 (669, 3, 42, '2026-05-10 12:37:23', '2026-05-10 12:37:23'),
-(680, 15, 47, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(681, 15, 41, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(682, 15, 26, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(683, 15, 45, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(684, 15, 40, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(685, 15, 31, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(686, 15, 28, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(687, 15, 27, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(688, 15, 33, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(689, 15, 44, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(690, 15, 43, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(691, 15, 38, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(692, 15, 34, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(693, 15, 29, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(694, 15, 46, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(695, 15, 48, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(696, 15, 32, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(697, 15, 35, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(698, 15, 30, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(699, 15, 36, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(700, 15, 50, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(701, 15, 42, '2026-05-16 04:31:20', '2026-05-16 04:31:20'),
-(702, 12, 47, '2026-05-16 04:31:33', '2026-05-16 04:31:33'),
-(703, 12, 26, '2026-05-16 04:31:33', '2026-05-16 04:31:33'),
-(704, 12, 40, '2026-05-16 04:31:33', '2026-05-16 04:31:33'),
-(705, 12, 28, '2026-05-16 04:31:33', '2026-05-16 04:31:33'),
-(706, 12, 27, '2026-05-16 04:31:33', '2026-05-16 04:31:33'),
-(707, 12, 33, '2026-05-16 04:31:33', '2026-05-16 04:31:33'),
-(708, 12, 34, '2026-05-16 04:31:33', '2026-05-16 04:31:33'),
-(709, 12, 46, '2026-05-16 04:31:33', '2026-05-16 04:31:33'),
-(710, 12, 32, '2026-05-16 04:31:33', '2026-05-16 04:31:33'),
-(711, 12, 30, '2026-05-16 04:31:33', '2026-05-16 04:31:33'),
-(712, 12, 42, '2026-05-16 04:31:33', '2026-05-16 04:31:33'),
-(713, 22, 26, '2026-05-17 04:03:38', '2026-05-17 04:03:38'),
-(714, 22, 51, '2026-05-17 04:03:38', '2026-05-17 04:03:38'),
-(715, 22, 50, '2026-05-17 04:03:38', '2026-05-17 04:03:38'),
-(716, 20, 47, '2026-05-17 07:54:46', '2026-05-17 07:54:46'),
-(717, 20, 45, '2026-05-17 07:54:46', '2026-05-17 07:54:46'),
-(718, 20, 43, '2026-05-17 07:54:46', '2026-05-17 07:54:46'),
-(719, 20, 46, '2026-05-17 07:54:46', '2026-05-17 07:54:46'),
-(720, 20, 35, '2026-05-17 07:54:46', '2026-05-17 07:54:46'),
-(721, 20, 52, '2026-05-17 07:54:46', '2026-05-17 07:54:46'),
-(723, 23, 35, '2026-05-17 11:42:10', '2026-05-17 11:42:10');
+(670, 22, 26, '2026-05-17 04:03:24', '2026-05-17 04:03:24'),
+(671, 22, 51, '2026-05-17 04:03:24', '2026-05-17 04:03:24'),
+(672, 22, 50, '2026-05-17 04:03:24', '2026-05-17 04:03:24'),
+(674, 23, 35, '2026-05-17 18:18:13', '2026-05-17 18:18:13'),
+(700, 12, 45, '2026-05-17 19:27:57', '2026-05-17 19:27:57'),
+(701, 12, 40, '2026-05-17 19:27:57', '2026-05-17 19:27:57'),
+(702, 12, 28, '2026-05-17 19:27:57', '2026-05-17 19:27:57'),
+(703, 12, 27, '2026-05-17 19:27:57', '2026-05-17 19:27:57'),
+(704, 12, 33, '2026-05-17 19:27:57', '2026-05-17 19:27:57'),
+(705, 12, 34, '2026-05-17 19:27:57', '2026-05-17 19:27:57'),
+(706, 12, 46, '2026-05-17 19:27:57', '2026-05-17 19:27:57'),
+(707, 12, 32, '2026-05-17 19:27:57', '2026-05-17 19:27:57'),
+(708, 12, 52, '2026-05-17 19:27:57', '2026-05-17 19:27:57'),
+(709, 12, 30, '2026-05-17 19:27:57', '2026-05-17 19:27:57'),
+(710, 12, 42, '2026-05-17 19:27:57', '2026-05-17 19:27:57'),
+(711, 20, 47, '2026-05-17 19:37:33', '2026-05-17 19:37:33'),
+(712, 20, 45, '2026-05-17 19:37:33', '2026-05-17 19:37:33'),
+(713, 20, 43, '2026-05-17 19:37:33', '2026-05-17 19:37:33'),
+(714, 20, 46, '2026-05-17 19:37:33', '2026-05-17 19:37:33'),
+(715, 20, 35, '2026-05-17 19:37:33', '2026-05-17 19:37:33'),
+(716, 20, 53, '2026-05-17 19:37:33', '2026-05-17 19:37:33');
 
 -- --------------------------------------------------------
 
@@ -9811,7 +10552,7 @@ CREATE TABLE `soil_tests` (
 --
 
 INSERT INTO `soil_tests` (`id`, `project_id`, `site_engineer_id`, `field_data`, `field_test_doc_link`, `lab_test_document_link`, `test_date`, `created_by`, `created_at`) VALUES
-(1, 13, 123, NULL, 'https://demediciassociates.com/service/construction-design/', 'https://demediciassociates.com/service/construction-design/', '2026-05-17', 123, '2026-05-17 05:18:40');
+(1, 13, 123, NULL, 'https://demediciassociates.com/service/construction-design/', 'https://demediciassociates.com/service/construction-design/', '2026-05-07', 123, '2026-05-07 11:37:34');
 
 -- --------------------------------------------------------
 
@@ -9856,7 +10597,9 @@ CREATE TABLE `target_fixed` (
 --
 
 INSERT INTO `target_fixed` (`id`, `project_id`, `work_plan_id`, `work_order_id`, `floor_name`, `target_title`, `user_id`, `year`, `month`, `week_number`, `target_percentage`, `gain_percentage`, `photo_link`, `field_test_details`, `lab_test_result`, `approved_by_site_eng`, `approved_by_qc`, `approved_by_pc`, `approved_by_pd`, `approved_by_manager`, `qc_reviewed_by_id`, `is_lab_test`, `lab_test_date`, `target_details`, `description`, `qc_reviewed_at`, `created_at`, `updated_at`, `manager_approved_by_id`) VALUES
-(1, 13, 2, 1, 'Foundation', 'Construction Foundation', 123, 2026, 5, 1, 20.00, 0.00, NULL, NULL, NULL, 0, 0, 0, 0, 1, NULL, 0, NULL, NULL, '<p>work description khudg mbhdfhg jhsdfjhg jhsdjfg</p>', NULL, '2026-05-23 11:26:23', '2026-05-23 11:43:59', NULL);
+(1, 13, 1, NULL, NULL, '0', 123, 2026, 5, 1, 25.00, 0.00, NULL, NULL, NULL, 0, 1, 0, 0, 1, 126, 0, NULL, 'test', NULL, '2026-05-05 13:28:44', '2026-05-05 13:20:01', '2026-05-05 13:29:15', NULL),
+(2, 13, 1, NULL, NULL, 'Test Week 1', 123, 2026, 5, 1, 25.00, 0.00, NULL, NULL, NULL, 0, 0, 0, 0, 0, NULL, 0, NULL, 'Column,Beam,Footing', NULL, NULL, '2026-05-07 12:07:42', NULL, NULL),
+(3, 13, 1, NULL, NULL, 'Column Cast', 120, 2026, 5, 1, 25.00, 80.00, NULL, '1 column error', 'test 80', 0, 1, 0, 0, 1, 126, 0, NULL, 'Column\r\nBeam\r\nFooting', NULL, '2026-05-07 13:12:59', '2026-05-07 12:09:08', '2026-05-07 13:12:59', NULL);
 
 -- --------------------------------------------------------
 
@@ -9992,11 +10735,11 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `email`, `designation_id`, `address`, `nid`, `role_id`, `password`, `photo`, `media_link1`, `media_link2`, `last_logout`, `created_by`, `created_at`, `updated_at`, `team_id`) VALUES
 (1, 0, 'Farzana', 'farzana', '01873244236', 'farzana.tphl@gmail.com', 28, 'Dhaka', '123', 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, '', '', '2026-04-09 05:34:11', 6, '2026-02-22 06:47:08', '2026-04-30 04:25:17', 0),
-(2, NULL, 'Sojib', 'sojib', '01798342755', 'sales@gmail.com', 1, 'Dhaka', NULL, 5, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-05-16 12:11:45', NULL, '2026-02-22 06:47:08', '2026-05-16 06:11:45', NULL),
+(2, NULL, 'Sojib', 'sojib', '01798342755', 'sales@gmail.com', 1, 'Dhaka', NULL, 5, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-05-09 04:45:14', NULL, '2026-02-22 06:47:08', '2026-05-09 04:45:14', NULL),
 (3, 1, 'Fahim', 'Fahim', '01790128471', 'fahim@gmail.com', 0, 'Mohammadpur, Dhaka-1207', '23445', 8, '$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG', NULL, '', '', '2026-04-19 05:54:47', 4, '2026-02-23 03:24:25', '2026-04-19 05:54:47', 0),
 (4, 1008, 'Md. Jasim Uddin', 'Jasim Uddin', '01762013007', 'hr@gmail.com', 14, 'House:01, Road:03, Block: B, Section:02, Mirpur, Dhaka-1216.', '1903663282', 4, '$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry', NULL, '', '', '2026-04-24 12:21:28', 4, '2026-02-23 05:44:19', '2026-04-24 12:21:28', NULL),
-(5, 0, 'Mr. Jisan', 'Mr. Jisan', '01390128223', 'accounts@gmail.com', 3, 'Mohammadpur, Dhaka-1207', '2345676', 6, '$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6', NULL, '', '', '2026-05-21 10:46:40', 6, '2026-02-23 06:11:06', '2026-05-21 04:46:40', NULL),
-(6, 1, 'Management', 'Management', '01933657804', 'management@gmail.com', 0, 'dhaka', '32453', 3, '$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW', NULL, '', '', '2026-05-23 13:25:12', 110, '2026-03-29 03:44:44', '2026-05-23 07:25:12', 0),
+(5, 0, 'Mr. Jisan', 'Mr. Jisan', '01390128223', 'accounts@gmail.com', 3, 'Mohammadpur, Dhaka-1207', '2345676', 6, '$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6', NULL, '', '', '2026-04-08 09:48:37', 6, '2026-02-23 06:11:06', '2026-04-08 09:48:37', NULL),
+(6, 1, 'Management', 'Management', '01933657804', 'management@gmail.com', 0, 'dhaka', '32453', 3, '$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW', NULL, '', '', '2026-05-23 15:31:30', 110, '2026-03-29 03:44:44', '2026-05-23 15:31:30', 0),
 (7, NULL, 'CED', 'CED', '01872364346', 'ced@gmail.com', 1, 'Dhaka', '823445', 7, '$2y$10$a51psvUGsp/WsSE5cY2xNuKpuKSNoG/QZNNxxfWs0I.eSPM1KPAX.', NULL, '', '', '2026-03-31 12:05:54', 6, '2026-03-29 04:01:38', '2026-03-31 12:05:54', NULL),
 (8, NULL, 'Sales Team Head', 'Sales Head', '01327488234', 'sales-head@gmail.com', 1, 'Dhaka', '09231943', 9, '$2y$10$Hr8gjcm14bLK/Ns6ws/pt.jz0PA5ObSc.jo4Z7epS23UsEkVDUXn.', NULL, '', '', '2026-04-08 09:30:55', 1, '2026-03-29 04:16:47', '2026-04-08 09:30:55', NULL),
 (9, 3, 'Md. rafi', 'admin_39_', '01234567890', 'rafi@easytechx.com', 9, 'ADDL Tower, Dhanmondi 27/A', '', 8, '$2y$10$nId2sBtusb0qFr2136IMrOZVDVkHq8RTjbsJIzgZ8GpaDXDTMhhHG', NULL, '', '', '2026-03-29 10:24:18', 0, '2026-03-29 10:23:39', '2026-03-30 16:36:23', NULL),
@@ -10015,8 +10758,8 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (25, 17, 'Rakib Al Hasan', 'rakibal hasan', '01958253321', 'rakib.tphl@gmail.com', 20, 'Daffodil smart city, Birulia savar Dhaka', '', 5, '$2y$10$yBQjX3SvmWQXO2cA.ol4B.zPmjIqbyUiqysRN7HTZfXLlo4Z95qfq', NULL, '', '', '2026-04-16 12:12:39', 0, '2026-03-30 06:43:56', '2026-04-16 12:12:39', 8),
 (26, 18, 'Md. Nazmul Khan Shihab', 'khan Shihab', '01958253326', 'shihab.tphl@gmail.com', 20, '2450/11,East Dandabor, Palashbari, Savar cantonment -1344, Savar, Dhaka', '', 8, '$2y$10$b/geGkDCcdjnJY4j931Ia.YyXu1/FBrONUVr8jCr9csPFZXJ8BYMi', NULL, '', '', '2026-03-30 06:50:40', 0, '2026-03-30 06:50:40', '2026-04-12 11:58:01', 10),
 (27, 19, 'Munshi Aiman Kabir', 'aiman kabir', '01958253318', 'aiman.tphl@gmail.com', 20, 'Savar, Dhaka', '', 8, '$2y$10$lxze0zOCDKCiYZanahnfO.8tgO6v4MZiK8OBHsMxiXr7/4qH3s2FO', NULL, '', '', '2026-03-30 07:01:11', 0, '2026-03-30 07:01:11', '2026-04-16 07:46:31', 4),
-(28, 20, 'Md. Tariqul Islam Illion', 'tariqul islam', '0 1958-2533', 'illion.tphl@gmail.com', 20, 'Ashulia Model Town, Khagan Bazar, Birulia, Savar, Dhaka', '', 8, '$2y$10$Sj/S3IIUnt4EttdRVs/lXOCGvn9i/funVCadYEXd0ENgLdmEXSZF6', NULL, '', '', '2026-03-30 07:06:02', 0, '2026-03-30 07:06:02', '2026-04-16 08:25:07', 11),
-(29, 21, 'Shafia Afrin Shahana', 'Shafia Afrin Shahana', '01335258332', 'shafia.tphl@gmail.com', 15, 'Apon Bazar Samiti Market, Rayerbag, Jatrabari, Dhaka', '', 5, '$2y$10$jg9yoH8rHsH2A7wrOb6D8urj1iUv889LWfvhL3dU95RDg8t7HIYpK', NULL, '', '', '2026-05-14 11:22:46', 0, '2026-03-30 07:56:24', '2026-05-14 05:22:46', 11),
+(28, 20, 'Md. Tariqul Islam Illion', 'tariqul islam', '0 1958-2533', 'illion.tphl@gmail.com', 20, 'Ashulia Model Town, Khagan Bazar, Birulia, Savar, Dhaka', '', 0, '$2y$10$Sj/S3IIUnt4EttdRVs/lXOCGvn9i/funVCadYEXd0ENgLdmEXSZF6', NULL, '', '', '2026-03-30 07:06:02', 6, '2026-03-30 07:06:02', '2026-05-13 11:11:43', 0),
+(29, 21, 'Shafia Afrin Shahana', 'Shafia Afrin Shahana', '01335258332', 'shafia.tphl@gmail.com', 15, 'Apon Bazar Samiti Market, Rayerbag, Jatrabari, Dhaka', '', 5, '$2y$10$jg9yoH8rHsH2A7wrOb6D8urj1iUv889LWfvhL3dU95RDg8t7HIYpK', NULL, '', '', '2026-05-13 11:15:12', 0, '2026-03-30 07:56:24', '2026-05-13 11:15:12', 11),
 (30, 22, 'Abir Ahmed', 'Abir Ahmed', '01335258328', 'abir0.tphl@gmail.com', 15, 'Poshu Hospital Para, Magura Sadar,Magura', '', 8, '$2y$10$IU8I8sJvyYl06UUHgy8XHuzHv66J7mAfVdPACHogEpVjTZ8Wuq2bG', NULL, '', '', '2026-03-30 08:29:14', 0, '2026-03-30 08:29:14', '2026-04-12 11:58:59', 10),
 (31, 23, 'Shanawaz Khan', 'Shanawaz Khan', '01335258330', 'shanawaz.tphl@gmail.com', 15, 'House-12,Road-4,Block-J,Banasree Meradia Khilgaon Dhaka 1219', '', 8, '$2y$10$Px7TN7veOADIqwYdPfISbOLfxqwEkSq9S1R8sTPWDUpAYRo4hb4uS', NULL, '', '', '2026-05-09 04:03:04', 0, '2026-03-30 08:42:17', '2026-05-09 04:03:04', 3),
 (32, 24, 'Md. Saiful Islam Jony', 'saiful jony', '01958253340', 'saif.thpl@gmail.com', 21, '104/A/9 Buddhibi Road,Mohammadpur,Dhaka-1207', '', 5, '$2y$10$iJlvDYNOYQ5.AFtGpin74uRVIvXn//mKEgfeHXBvVTXXvqLEteiJa', NULL, '', '', '2026-04-20 05:23:04', 0, '2026-03-30 08:46:37', '2026-04-20 05:23:04', 12),
@@ -10048,14 +10791,14 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (66, 52, 'Md. Sakib Al Hasan', 'Md. Sakib Al Hasan', '01335258325', 'sakibhasan.tphl@gmail.com', 17, 'Changone, Ahulia, Dhaka 1341', '', 8, '$2y$10$A/mGm65CzDyqbYojepkTpOWidQpnLF4HkAhx0vkylEh38peYQuX26', NULL, '', '', '2026-03-30 10:25:00', 0, '2026-03-30 10:25:00', '2026-04-12 12:09:24', 6),
 (67, 53, 'Md Asim Akram', 'Md Asim Akram', '01335258308', 'akram.tphl@gmail.com', 15, 'N/A', '', 8, '$2y$10$FYOiBtICro0TkZQIb4VfhOwX5a0nUwvvFVxi2oZD3gp6ZDK75ngoW', NULL, '', '', '2026-04-13 05:25:31', 0, '2026-03-30 10:31:00', '2026-04-13 05:25:31', 6),
 (68, 54, 'Rakib Hasan Rubai', 'Rakib Rubai', '01335258309', 'rubai.tphl@gmail.com', 13, 'Nobabgonj Bazar, Lalbagh , Dhaka -1205', '', 5, '$2y$10$hRRDNYUbrDDK2dgBOaM/TOSCNK3VDn0TMTAfHfkMgI8Ar59HNZb1O', NULL, '', '', '2026-04-15 09:54:03', 0, '2026-03-30 10:31:59', '2026-04-15 09:54:03', 7),
-(69, 55, 'Md. Rawnak Hassan Seyam', 'Md. Rawnak Hassan Seyam', '01335-25832', 'rawnak.tphl@gmail.com', 20, 'N/A', '', 2, '$2y$10$GKoc1DcZdbOmsLGSBPsJU.6NaH/06m1BMsff0OFZGr05BZYXR5BgS', NULL, '', '', '2026-03-30 10:35:13', 0, '2026-03-30 10:35:13', '2026-04-16 15:19:42', 0),
+(69, 55, 'Md. Rawnak Hassan Seyam', 'Md. Rawnak Hassan Seyam', '01335-25832', 'rawnak.tphl@gmail.com', 20, 'N/A', '', 2, '$2y$10$GKoc1DcZdbOmsLGSBPsJU.6NaH/06m1BMsff0OFZGr05BZYXR5BgS', NULL, '', '', '2026-03-30 10:35:13', 6, '2026-03-30 10:35:13', '2026-05-13 11:10:27', 0),
 (70, 56, 'Zannatul Ferdous', 'Zannatul Ferdous', '01335258315', 'zannatul.tphl@gmail.com', 20, 'Ghoshbagh,Ashulia, Dhaka', '', 8, '$2y$10$N5VFRRAr6NPeO2sNHAv6hOhir6DidyOkV8l6C54kSifQZw/MVhYiG', NULL, '', '', '2026-03-30 10:35:17', 0, '2026-03-30 10:35:17', '2026-04-12 11:53:03', 8),
 (71, 57, 'Mst. Mahzabin Reza', 'MST. MAHZABIN REZA', '01335258311', 'mahzabin.tphl@gmail.com', 23, 'N/A', '', 8, '$2y$10$Y1Zl3QED4PDxFZhq9szMzOObIZ2wSz/pd0Dqy2e9zB8zJi4Yy4E4y', NULL, '', '', '2026-03-30 10:40:34', 0, '2026-03-30 10:40:34', '2026-04-12 12:15:01', 13),
 (72, 58, 'Md. Ali Haider Abdullah', 'Md. Ali Haider Abdullah', '0 1958-2533', 'tphl.alihaider@gmail.com', 17, 'N/A', '', 8, '$2y$10$/T5eDgeej3P.JoXuhChGceCnDHOceBwixNyIGehU4lHJ0xHtdqDFe', NULL, '', '', '2026-03-30 10:41:19', 0, '2026-03-30 10:41:19', '2026-04-12 11:43:16', 5),
 (73, 59, 'Tanvir Hossain Jian', 'Tanvir Hossain Jian', '01335258314', 'tanvir.tphl@gmail.com', 20, 'Uttor badda, Abdullah bag masjid', '', 8, '$2y$10$8YxvgfxnkLTwgnksEVIeRu3dLINjXElLIbY6LUvy4.t6K3HzQ3b2a', NULL, '', '', '2026-03-30 10:44:55', 0, '2026-03-30 10:44:55', '2026-04-12 11:58:20', 10),
 (74, 60, 'Ahnaf Adil Roxy', 'Ahnaf Adil Roxy', '01335-25832', 'roxy.tphl@gmail.com', 13, '', '4213421763', 8, '$2y$10$EidwlET76JrkaxbXZWi1b.WHbW2IdKsfzevS5cbMDnLM3pJPk/arK', NULL, '', '', '2026-03-30 10:45:59', 0, '2026-03-30 10:45:59', '2026-03-30 16:36:23', NULL),
 (75, 61, 'Md.Tamim', 'Md.Tamim', '01308212749', 'tamim.tphl@gmail.com', 23, 'Dattapara, Birulia,Savar, Dhaka 1216', '', 8, '$2y$10$vP/q95cSabGHgVL9h3sBw.MWwc8JGYQiRXLarqEx6zl8p6A43uwk2', NULL, '', '', '2026-03-30 10:49:04', 0, '2026-03-30 10:49:04', '2026-03-30 16:36:23', NULL),
-(76, 63, 'Akhoy kumer Nibir Roy', 'Akhoy kumer Nibir Roy', '01335258301', 'akhoy.tphl@gmail.com', 15, 'N/A', '', 8, '$2y$10$/A2yZtrb7UELabmGdPX.IuVuX/LcgmoxPoe0CV56vCoxJGAfGOUie', NULL, '', '', '2026-03-30 10:54:37', 0, '2026-03-30 10:54:37', '2026-04-12 12:08:09', 11),
+(76, 63, 'Akhoy kumer Nibir Roy', 'Akhoy kumer Nibir Roy', '01335258301', 'akhoy.tphl@gmail.com', 15, 'N/A', '', 0, '$2y$10$/A2yZtrb7UELabmGdPX.IuVuX/LcgmoxPoe0CV56vCoxJGAfGOUie', NULL, '', '', '2026-03-30 10:54:37', 6, '2026-03-30 10:54:37', '2026-05-13 11:09:13', 0),
 (77, 64, 'Md. Amanullah Aman', 'Md. Amanullah Aman', '01335258306', 'aman.tphl@gmail.com', 20, 'South Bhandaria-8550, Bhandaria, Pirojpur', '', 8, '$2y$10$GvrxHKdWRY2m3tvvUsFMRuAgqeM6L993ISeHJG/42UBRYVYI6UnQ6', 'users_69eaf30d55fcd.jpeg', '', '', '2026-03-30 10:56:23', 77, '2026-03-30 10:56:23', '2026-04-24 04:35:25', 0),
 (78, 65, 'Abu Naym', 'Abu Naym', '01335258312', 'naymtphl@gmail.com', 20, 'Ati-1312, Keraniganj, Dhaka', '', 8, '$2y$10$CojmU9mTBwgDjkx4CfkdYeaQ57vvBBDxV/seIXX4jy.25RgK19WMG', 'users_69cb90acdaad5.jpg', '', '', '2026-04-19 05:10:00', 0, '2026-03-30 10:59:42', '2026-04-20 05:23:44', 12),
 (79, 66, 'Md. Sakib Inam', 'Md. Sakib Inam', '01335258310', 'sakibinam.tphl@gmail.com', 16, 'N/A', '', 8, '$2y$10$uhKw9sTOb03dEHxMvZb/KekSOvQ6RjfanioES3ZW5pOa4m.VkexNO', NULL, '', '', '2026-03-30 11:00:09', 0, '2026-03-30 11:00:09', '2026-04-18 04:34:42', 12),
@@ -10075,7 +10818,7 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (95, 81, 'Riya', 'Riya', '01778234546', 'riya@gmail.com', 28, 'Dhaka', '34', 5, '$2y$10$cUYgCjvi4yiNDYS8mTGWsOkEvOJR32hiN/5Dsku7ULURP.tcviqpK', NULL, '', '', '2026-04-04 11:27:15', 4, '2026-03-31 06:40:46', '2026-04-04 11:27:15', 0),
 (98, 82, 'S.A Arnob', 'S.A Arnob', '01958253347', 'arnob.tphl@gmail.com', 20, 'Dottopara, Asuliya, Dhaka', '', 8, '$2y$10$aaooqfFW63prXcheowgGMeuZAHV88qpV1JQMljfQiHbOv2qCKtFdy', NULL, '', '', '2026-03-31 08:18:16', 0, '2026-03-31 08:18:16', '2026-04-12 11:41:08', 4),
 (100, 83, 'Md. Mamunur Rahman', 'Md. Mamunur Rahman', '01958253342', 'mamunur.tphl@gmail.com', 19, '', '1947418776', 7, '$2y$10$ADpw3aS2xygSq6zySs.GaOoDAhv9XTdf3jXLxpZeyQ8fJinfXiZwG', NULL, '', '', '2026-03-31 08:58:36', 0, '2026-03-31 08:58:36', '2026-03-31 08:58:36', 2),
-(102, 84, 'Mehedi Hasan Rudro', 'Rudro', '01872356456', 'rudro@gmail.com', 21, 'N/A', '', 11, '$2y$10$XZKNktLIkAjqt/eY93vvFuKVMkut4pqaro7pZDaJm1PCHN7EApKra', NULL, '', '', '2026-05-14 11:09:26', 4, '2026-04-02 08:14:46', '2026-05-14 05:09:26', 0),
+(102, 84, 'Mehedi Hasan Rudro', 'Rudro', '01872356456', 'rudro@gmail.com', 21, 'N/A', '', 11, '$2y$10$XZKNktLIkAjqt/eY93vvFuKVMkut4pqaro7pZDaJm1PCHN7EApKra', NULL, '', '', '2026-05-14 05:32:11', 4, '2026-04-02 08:14:46', '2026-05-14 05:32:11', 0),
 (103, 85, 'Mehedi Hasan Shuvo', 'hasan shuvo', '01901365048', 'shuvo.tphl@gmail.com', 17, 'Dhaka', '', 5, '$2y$10$IQykvHC0cycV2VPhGMjfz.h6JdRuJzPkX4fw20XGlbQlHrPo4hKbu', NULL, '', '', '2026-04-09 04:00:41', 0, '2026-04-03 13:29:06', '2026-04-09 04:00:41', 5),
 (105, 11, 'Mr. Ibrahim Khalil', 'ibrahim khalil', '01958253319', 'ibrahimkhalil.tphl@gmail.com', 20, '5/9, Dakkhin Rajashon, Savar, Dhaka', '', 8, '$2y$10$qExZ9v2Jozj5g9ct4UC3TeFToO.2UTmVBXrWXXmDmmjelR0co0hTG', NULL, '', '', '2026-04-04 05:57:01', 0, '2026-04-04 05:57:01', '2026-04-12 11:54:39', 9),
 (110, NULL, 'Mainul Hassan Dulon', 'Mainul H. Dulon', '01933657804', 'ceo@dpremiumhomes.com', 29, 'Dhaka', '', 3, '$2y$10$8Z5Mj0/6UMu4MDupWjOnGOv6CvqtAqS5E0SdhEiOBvEp.oUszI5/e', NULL, '', '', '2026-04-08 11:18:00', 6, '2026-04-04 11:35:30', '2026-04-08 11:18:00', 0),
@@ -10087,19 +10830,25 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (117, 86, 'Test Employee', 'Test', '01790128472', 'test3@gmail.com', 32, 'Mohammadpur, Dhaka-1207', '', 0, '$2y$10$sw5JwFNK.bYOVVwur2/1FOxpkSV/FOm7WWdLEfTzh//K3GkkykKQW', NULL, '', '', '2026-04-10 10:07:16', 0, '2026-04-10 10:07:16', '2026-04-10 10:07:16', 0),
 (118, 87, 'Shazzadur Rahman Shoumic', 'Shazzad', '01765562314', 'shazzadur.tphl@gmail.com', 20, '', '', 8, '$2y$10$TX/Hto3FA3ypCs4fd8al4euM8Mh1vmGy/3mIbgelj8wuiwLDJw0/6', NULL, '', '', '2026-04-12 11:46:52', 0, '2026-04-12 11:46:52', '2026-04-12 11:46:52', 5),
 (119, 90, 'Shohanur Rahaman', 'Shohanur Rahaman', '01958253372', 'shohan.tphl@gmail.com', 13, 'Khagan Ashulia', '', 11, '$2y$10$AIzAW5dhzVr58q5NyyyBueMXK5aTZHZwHOyGVa3EEz842ZAWUsxZK', NULL, '', '', '2026-04-19 04:42:58', 119, '2026-04-17 13:13:21', '2026-04-19 04:42:58', 0),
-(120, NULL, 'Project Manager1', 'Project Manager1', '01876123454', 'project.manager1@gmail.com', 36, 'Dhaka', '', 15, '$2y$10$GhwOi2FtFs9pBw7GkpZaCefIBQhTiY9GoQLUgUKfBDa9p.XtUvlXu', NULL, '', '', '2026-05-24 10:42:24', 6, '2026-04-26 03:55:58', '2026-05-24 04:42:24', 0),
-(121, NULL, 'Land Man1', 'Land Man1', '01993878733', 'land.manager1@gmail.com', 33, 'Dhaka', '', 14, '$2y$10$0Zg/ELOPJh5n.sSZkO2i8eMKon1lIWKj5lHQq2cLgbKrqVaYZcUhO', NULL, '', '', '2026-05-21 11:45:20', 6, '2026-04-26 03:56:52', '2026-05-21 05:45:20', 0),
-(122, NULL, 'Mr. Architect1', 'Mr. Architect1', '01875438578', 'architecture1@gmail.com', 34, 'Dhaka', '', 18, '$2y$10$uYzkPN7DDLAanWYNsI02.OvkqvUIS35JblMvG0NRUHLTaXBemryL2', NULL, '', '', '2026-05-21 14:51:01', 6, '2026-04-26 03:58:02', '2026-05-21 08:51:01', 0),
-(123, NULL, 'Mr. Site Engineer1', 'Mr. Site Engineer1', '01987328476', 'site.engineer1@gmail.com', 38, 'Dhaka', '', 12, '$2y$10$C.kuqYaBXt7SNIuwlDSoi.NySk5tcj67PFfUBFUqWc1bYrnCqCqIi', NULL, '', '', '2026-05-23 18:21:45', 6, '2026-04-26 03:58:54', '2026-05-23 12:21:45', 0),
-(124, NULL, 'Mr. Draftsman1', 'Mr. Draftsman1', '01763425454', 'draftsman1@gmail.com', 35, 'dhaka', '', 16, '$2y$10$GpWdksQaMYX5TguAlFBFYO/ygwnc8af9LA0SqWRf./0oVspQwc.De', NULL, '', '', '2026-05-21 11:17:54', 6, '2026-04-26 03:59:33', '2026-05-21 05:17:54', 0),
-(125, NULL, 'Mr Estimator1', 'Mr Estimator1', '', 'estimator1@gmail.com', 37, 'dhaka', '', 19, '$2y$10$NgvBE.GRBJt0HNyQmSqua.PeaLLgA2oWcVuGhwv7Im31Jz6SgAjay', NULL, '', '', '2026-05-17 12:39:09', 6, '2026-04-26 04:00:08', '2026-05-17 06:39:09', 0),
-(126, NULL, 'Mr. QC1', 'Mr. QC1', '01986378256', 'qc1@gmail.com', 43, 'Dhaka', '', 13, '$2y$10$paZNUceDQ1b3BWWwfP6jReGr3d9ZLqKdMwisIHzdYTR0toYXK3GXi', NULL, '', '', '2026-05-09 03:30:48', 6, '2026-04-26 04:00:52', '2026-05-09 03:30:48', 0),
-(127, NULL, 'Mr Purchase Head1', 'Mr Purchase Head1', '01782354543', 'purchase1@gmail.com', 42, 'Dhaka', '', 17, '$2y$10$WWHjM9YQBDTjCW7Dvf6KC.5mbo/0tJPW.WOLTXy2Ahhfz2xnoAPEe', NULL, '', '', '2026-05-24 10:45:31', 6, '2026-04-26 04:01:41', '2026-05-24 04:45:31', 0),
-(128, NULL, 'Mr Site Operators1', 'Mr Site Operators1', '01723876324', 'operations1@gmail.com', 38, 'Dhaka', '', 20, '$2y$10$NN/GFnq6O6qtzqFyavU4EO4eOwgFH5JJi8J409SIOJZfvrNPlsT5q', NULL, '', '', '2026-05-23 13:06:01', 6, '2026-04-26 04:05:25', '2026-05-23 07:06:01', 0),
-(129, NULL, 'Mr Structural Designer1', 'Mr Structure Designer1', '01653247632', 'structural.designer1@gmail.com', 15, 'Dhaka', '', 21, '$2y$10$tzAM7hH8kzCv2PnyRdzMneFlpt2yMJBcbMCvxSp2Zj16X/GNO6i4G', NULL, '', '', '2026-05-21 12:08:48', 6, '2026-04-26 05:41:57', '2026-05-21 06:08:48', 0),
+(120, NULL, 'Project Manager1', 'Project Manager1', '01876123454', 'project.manager1@gmail.com', 36, 'Dhaka', '', 15, '$2y$10$GhwOi2FtFs9pBw7GkpZaCefIBQhTiY9GoQLUgUKfBDa9p.XtUvlXu', NULL, '', '', '2026-05-24 15:40:54', 6, '2026-04-26 03:55:58', '2026-05-24 09:40:54', 0),
+(121, NULL, 'Land Man1', 'Land Man1', '01993878733', 'land.manager1@gmail.com', 33, 'Dhaka', '', 14, '$2y$10$0Zg/ELOPJh5n.sSZkO2i8eMKon1lIWKj5lHQq2cLgbKrqVaYZcUhO', NULL, '', '', '2026-05-23 05:03:50', 6, '2026-04-26 03:56:52', '2026-05-23 05:03:50', 0),
+(122, NULL, 'Mr. Architect1', 'Mr. Architect1', '01875438578', 'architecture1@gmail.com', 34, 'Dhaka', '', 18, '$2y$10$uYzkPN7DDLAanWYNsI02.OvkqvUIS35JblMvG0NRUHLTaXBemryL2', NULL, '', '', '2026-05-23 05:09:18', 6, '2026-04-26 03:58:02', '2026-05-23 05:09:18', 0),
+(123, NULL, 'Mr. Site Engineer1', 'Mr. Site Engineer1', '01987328476', 'site.engineer1@gmail.com', 38, 'Dhaka', '', 12, '$2y$10$C.kuqYaBXt7SNIuwlDSoi.NySk5tcj67PFfUBFUqWc1bYrnCqCqIi', NULL, '', '', '2026-05-18 12:32:12', 6, '2026-04-26 03:58:54', '2026-05-18 12:32:12', 0),
+(124, NULL, 'Mr. Draftsman1', 'Mr. Draftsman1', '01763425454', 'draftsman1@gmail.com', 35, 'dhaka', '', 16, '$2y$10$GpWdksQaMYX5TguAlFBFYO/ygwnc8af9LA0SqWRf./0oVspQwc.De', NULL, '', '', '2026-05-23 05:23:16', 6, '2026-04-26 03:59:33', '2026-05-23 05:23:16', 0),
+(125, NULL, 'Mr Estimator1', 'Mr Estimator1', '', 'estimator1@gmail.com', 37, 'dhaka', '', 19, '$2y$10$NgvBE.GRBJt0HNyQmSqua.PeaLLgA2oWcVuGhwv7Im31Jz6SgAjay', NULL, '', '', '2026-05-18 12:06:48', 6, '2026-04-26 04:00:08', '2026-05-18 12:06:48', 0),
+(126, NULL, 'Mr. QC1', 'Mr. QC1', '01986378256', 'qc1@gmail.com', 43, 'Dhaka', '', 13, '$2y$10$paZNUceDQ1b3BWWwfP6jReGr3d9ZLqKdMwisIHzdYTR0toYXK3GXi', NULL, '', '', '2026-05-18 12:37:00', 6, '2026-04-26 04:00:52', '2026-05-18 12:37:00', 0),
+(127, NULL, 'Mr Purchase Head1', 'Mr Purchase Head1', '01782354543', 'purchase1@gmail.com', 42, 'Dhaka', '', 17, '$2y$10$WWHjM9YQBDTjCW7Dvf6KC.5mbo/0tJPW.WOLTXy2Ahhfz2xnoAPEe', NULL, '', '', '2026-05-18 07:02:41', 6, '2026-04-26 04:01:41', '2026-05-18 07:02:41', 0),
+(128, NULL, 'Mr Site Operators1', 'Mr Site Operators1', '01723876324', 'operations1@gmail.com', 38, 'Dhaka', '', 20, '$2y$10$NN/GFnq6O6qtzqFyavU4EO4eOwgFH5JJi8J409SIOJZfvrNPlsT5q', NULL, '', '', '2026-05-17 19:37:41', 6, '2026-04-26 04:05:25', '2026-05-17 19:37:41', 0),
+(129, NULL, 'Mr Structural Designer1', 'Mr Structure Designer1', '01653247632', 'structural.designer1@gmail.com', 15, 'Dhaka', '', 21, '$2y$10$tzAM7hH8kzCv2PnyRdzMneFlpt2yMJBcbMCvxSp2Zj16X/GNO6i4G', NULL, '', '', '2026-05-18 11:47:43', 6, '2026-04-26 05:41:57', '2026-05-18 11:47:43', 0),
 (130, NULL, 'M.H Jony', 'M.H Jony', '01861685153', 'admin@gmail.com', 28, 'Dhaka', '', 1, '$2y$10$ZsoxIYkWS/zUeQjawL6/4.9oL7L21uVMvqu/7bIAQq6r4OL29eByy', NULL, '', '', '2026-05-02 04:44:05', 130, '2026-05-02 04:34:07', '2026-05-02 04:44:05', 0),
-(131, NULL, 'Project Manager Head', 'Project Manager Head', '01787364634', 'project.manager.head@gmail.com', 36, 'Dhaka', '', 22, '$2y$10$qo.rHq7Tc.aOhfLVf9LWsugtNFUsIgQgoWi4XbiddKS1axNQSbaN2', NULL, '', '', '2026-05-23 18:25:20', 6, '2026-05-16 04:49:04', '2026-05-23 12:25:20', 0),
-(132, NULL, 'Purchase executive', 'Purchase executive', '01790120923', 'purchase.executive1@gmail.com', 15, 'Dhaka', '', 23, '$2y$10$XDQXL23Dghw4olcwZpEO9.nRIO7vOj/ge0aTAQLdYz1A/amQO0IJm', NULL, '', '', '2026-05-17 19:15:46', 131, '2026-05-17 11:40:33', '2026-05-17 13:15:46', 0);
+(131, 91, 'Tamjid Chowdhury', 'Tamjid Chowdhury', '01711111111', 'tamjid.tphl@gmail.com', 43, 'Dhaka', '', 8, '$2y$10$eIiFrakD3xjjCre.joh9QOYdHUd404LHwfN7/ve915KZ6qv33EDWu', NULL, '', '', '2026-05-13 11:48:35', 0, '2026-05-13 10:58:31', '2026-05-13 11:48:35', 11),
+(132, 94, 'Md. Nazmul Islam Robin', 'Md. Nazmul Islam Robin', '01711111111', 'robintphl@gmail.com', 15, 'Dhaka', '', 8, '$2y$10$UwAYoAFri6gXhS8H0CMQMuPmviXy6KFdypiqAAniO.cNSvzqT/3Se', NULL, '', '', '2026-05-24 15:25:57', 0, '2026-05-13 11:07:27', '2026-05-24 09:25:57', 11),
+(133, 95, 'Nazmus Sakib', 'Nazmus', '', 'Nazmus.tphl@gmail.com', 15, '', '', 8, '$2y$10$PJ8XliE0vfcgQdQPXwMRf.Mx/3J.QEVWZY125PcaR5YHGHZcC7xdC', NULL, '', '', '2026-05-13 11:36:11', 0, '2026-05-13 11:36:11', '2026-05-13 11:36:11', 9),
+(134, 97, 'Nehemiah Biswas Prottoy', 'Nehemiah Biswas Prottoy', '', 'prottoy.tphl@gmail.com', 15, '', '', 8, '$2y$10$c3NHOint06moTU8hFBAUJOD0gyRwcsFcAzXLu7gjbD8YNwrx./vry', NULL, '', '', '2026-05-13 11:41:00', 0, '2026-05-13 11:41:00', '2026-05-13 11:41:00', 9),
+(135, 98, 'Mst. Sania Khatun', 'Mst. Sania Khatun', '', 'sania.tphl@gmail.com', 15, '', '', 8, '$2y$10$BsSiQVv1B17SuGJVfEH8S.NX2OHHXaZCrs7zg8hGAVlThrGd4lBZm', NULL, '', '', '2026-05-13 11:44:56', 0, '2026-05-13 11:44:56', '2026-05-13 11:44:56', 9),
+(136, 99, 'Irfan Kabir Abir', 'Irfan Kabir Abir', '', 'rfan85.tphl@gmail.com', 15, '', '', 8, '$2y$10$8Jd7KDaHOW1p/qvpUlK9feSACKBvGpeh9tD.g.jpZBPJr4XEU4nBe', NULL, '', '', '2026-05-13 11:57:09', 0, '2026-05-13 11:57:09', '2026-05-13 11:57:09', 3),
+(137, NULL, 'Mr Purchase Executive', 'Mr Purchase Executive', '01987387434', 'purchase.executive1@gmail.com', 15, 'Dhaka', '', 23, '$2y$10$mkIgzsJd1h0CJlBJNvXKh.dVbnJnhXWRA.o6dGx8qsMv0Tv132rJu', NULL, '', '', '2026-05-18 06:00:52', 6, '2026-05-17 11:39:47', '2026-05-18 06:00:52', 0),
+(138, NULL, 'Project Manager Head', 'project.manager1@gmail.com', '01847363455', 'project.manager.head@gmail.com', 36, 'Dhaka', '', 22, '$2y$10$6L/QBuSQ1AEhS07jnJNeReoBI9l5ir74f1eNFi56LXSNWDle35rgK', NULL, '', '', '2026-05-18 06:10:18', 6, '2026-05-17 16:54:08', '2026-05-18 06:10:18', 0);
 
 -- --------------------------------------------------------
 
@@ -10126,13 +10875,15 @@ CREATE TABLE `vendors` (
 --
 
 INSERT INTO `vendors` (`id`, `name`, `phone`, `email`, `address`, `company_name`, `rating`, `status`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 'KSRM vendor', '01332523479', NULL, 'Dhaka, Bangladesh', NULL, 5.00, 'active', 120, '2026-05-17 12:33:47', NULL),
-(2, 'Ehsan (BSRM)', '01777764625', NULL, 'Dhaka Bangladesh', NULL, 5.00, 'active', 120, '2026-05-17 12:33:47', NULL),
-(3, 'Avijit (Shah Ready mix)', '01958634539', NULL, 'Dhaka Bangladesh', NULL, 5.00, 'active', 120, '2026-05-17 12:33:47', NULL),
-(4, 'Holcim', '01723076794', NULL, 'Dhaka Bangladesh', NULL, 5.00, 'active', 120, '2026-05-17 12:33:47', NULL),
-(5, 'Mir Concrete Ltd.', '01755514064', NULL, 'Dhaka Bangladesh', NULL, 5.00, 'active', 120, '2026-05-17 12:33:47', NULL),
-(6, 'Jakir (Dottopara Enterprise)', '01894006780', NULL, 'Ashulia, Bangladesh', NULL, 5.00, 'active', 120, '2026-05-17 12:33:47', NULL),
-(7, 'Tanvir (Brothers Traders)', '01327662401', NULL, 'Ashulia, Bangladesh', NULL, 5.00, 'active', 120, '2026-05-17 12:33:47', NULL);
+(1, 'ABC Suppliers Ltd', '01711223344', 'abcvendor@abc.com', 'Dhaka, Bangladesh', NULL, 5.00, 'active', 120, '2026-05-05 13:41:56', NULL),
+(2, 'Vendor - 1', '+8801790128472', '', 'Mohammadpur, Dhaka-1207', NULL, 5.00, 'active', 123, '2026-05-05 13:44:36', NULL),
+(3, 'KSRM vendor', '01332523479', NULL, 'Dhaka, Bangladesh', NULL, 5.00, 'active', 6, '2026-05-17 12:34:47', NULL),
+(4, 'Ehsan (BSRM)', '01777764625', NULL, 'Dhaka Bangladesh', NULL, 5.00, 'active', 6, '2026-05-17 12:34:47', NULL),
+(5, 'Avijit (Shah Ready mix)', '01958634539', NULL, 'Dhaka Bangladesh', NULL, 5.00, 'active', 6, '2026-05-17 12:34:47', NULL),
+(6, 'Holcim', '01723076794', NULL, 'Dhaka Bangladesh', NULL, 5.00, 'active', 6, '2026-05-17 12:34:47', NULL),
+(7, 'Mir Concrete Ltd.', '01755514064', NULL, 'Dhaka Bangladesh', NULL, 5.00, 'active', 6, '2026-05-17 12:34:47', NULL),
+(8, 'Jakir (Dottopara Enterprise)', '01894006780', NULL, 'Ashulia, Bangladesh', NULL, 5.00, 'active', 6, '2026-05-17 12:34:47', NULL),
+(9, 'Tanvir (Brothers Traders)', '01327662401', NULL, 'Ashulia, Bangladesh', NULL, 5.00, 'active', 6, '2026-05-17 12:34:47', NULL);
 
 -- --------------------------------------------------------
 
@@ -10153,7 +10904,11 @@ CREATE TABLE `vendor_payment_requests` (
   `penalty_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
   `net_payable_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
   `qc_verified` tinyint(1) NOT NULL DEFAULT 0,
-  `status` enum('Draft','Submitted','Approved','Rejected','Paid','Partially_Paid','Fully_Paid') NOT NULL DEFAULT 'Draft',
+  `qc_approved_by_id` int(11) DEFAULT NULL,
+  `qc_approved_at` datetime DEFAULT NULL,
+  `qc_note` text DEFAULT NULL,
+  `management_note` text DEFAULT NULL,
+  `status` enum('Draft','Submitted','QC Approved','Approved','Rejected','Paid','Partially_Paid','Fully_Paid') DEFAULT 'Draft',
   `approved_amount` decimal(16,4) DEFAULT NULL,
   `net_payable` decimal(10,2) NOT NULL DEFAULT 0.00,
   `payment_attachment` varchar(255) DEFAULT NULL,
@@ -10223,10 +10978,21 @@ CREATE TABLE `weekly_progress_report` (
   `approved_by_pm` int(11) DEFAULT NULL,
   `manpower_count` smallint(5) UNSIGNED DEFAULT NULL,
   `approved_by_qc` int(11) DEFAULT NULL,
+  `qc_gain_percentage` decimal(5,2) DEFAULT 0.00,
+  `qc_photo` varchar(255) DEFAULT NULL,
+  `qc_field_test_details` text DEFAULT NULL,
+  `qc_lab_test_result` text DEFAULT NULL,
   `created_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `work_order_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `weekly_progress_report`
+--
+
+INSERT INTO `weekly_progress_report` (`id`, `project_id`, `site_engineer_id`, `work_plan_id`, `week_no`, `target_id`, `work_done`, `progress_percentage`, `report_date`, `progress_image`, `weather_condition`, `approved_by_pm`, `manpower_count`, `approved_by_qc`, `qc_gain_percentage`, `qc_photo`, `qc_field_test_details`, `qc_lab_test_result`, `created_by`, `created_at`, `work_order_id`) VALUES
+(1, 13, 123, 1, 1, 3, 'First week work done', 90.00, '2026-05-07', NULL, 'average', 120, 10, 126, 0.00, NULL, NULL, NULL, 123, '2026-05-07 13:00:49', NULL);
 
 -- --------------------------------------------------------
 
@@ -10271,6 +11037,7 @@ CREATE TABLE `whatsapp_messages` (
 CREATE TABLE `work_types` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `design_type_id` bigint(20) UNSIGNED NOT NULL,
+  `default_phase_name` varchar(150) DEFAULT NULL COMMENT 'Suggested construction phase for this work type',
   `work_type_name` varchar(255) NOT NULL,
   `description` text DEFAULT NULL,
   `created_by` bigint(20) UNSIGNED NOT NULL,
@@ -10282,49 +11049,49 @@ CREATE TABLE `work_types` (
 -- Dumping data for table `work_types`
 --
 
-INSERT INTO `work_types` (`id`, `design_type_id`, `work_type_name`, `description`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 1, 'Soil Analysis & Footing Design', '<p>Test data </p>', 123, '2026-05-05 13:07:56', '2026-05-23 05:17:04'),
-(2, 1, 'Floor Plan & Elevation', '<p>test </p>', 123, '2026-05-05 13:08:27', '2026-05-23 05:17:08'),
-(3, 1, 'Slab Reinforcement Detail', '<p>Slab Reinforcement Detail from structural</p>', 120, '2026-05-17 09:59:41', '2026-05-23 05:17:13'),
-(4, 2, '3D Exterior Elevation & Rendering', '<p>বিল্ডিংটি তৈরি হওয়ার পর বাহির থেকে দেখতে কেমন আকর্ষণীয় দেখাবে, তার থ্রিডি (3D) মডেল, গ্লাস রিফ্লেকশন এবং কালার কম্বিনেশন ফাইনাল করা।</p>', 120, '2026-05-17 10:00:08', '2026-05-23 05:17:16'),
-(5, 2, 'Lighting & Power Layout', '<p>প্রতিটি ফ্ল্যাটের ভেতরে ও বাইরে লাইট, ফ্যান, এসি, ওভেন, গিজার এবং সুইচ-বোর্ডের নিখুঁত পয়েন্ট এবং ক্যাবল রুট ড্রয়িং।</p>', 120, '2026-05-17 10:02:20', '2026-05-17 10:02:20'),
-(6, 3, 'Water Supply & Overhead Tank Layout', '<p>ওয়াসা বা গভীর নলকূপ থেকে আন্ডারগ্রাউন্ড রিজার্ভ ট্যাংক এবং ছাদের মেইন ওভারহেড ট্যাংকে পানি তোলার পাইপলাইন ডায়াগ্রাম।</p>', 120, '2026-05-17 10:03:41', '2026-05-17 10:03:41'),
-(39, 1, 'বেজমেন্ট বটম স্ল্যাব (Basement Bottom Slab)', 'ফাউন্ডেশন হতে বেজমেন্টের বটম স্ল্যাব পর্যন্ত — পাইল ক্যাপ, মাটি কাটা, লেভেল-ড্রেসিং, সলিং/সিসি, ওয়াটার ট্যাংক, পাইল ভাঙা, সাটারিং, রড বাঁধা, ঢালাই, প্লাস্টার ইত্যাদি সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(40, 1, 'বেজমেন্ট টপ স্ল্যাব (Basement Top Slab)', 'বেজমেন্ট বটম স্ল্যাবের উপর হতে কলাম, ওয়াল, ট্যাংক, বেজমেন্ট টপ স্ল্যাব পর্যন্ত — সাটারিং, রড, ঢালাই, গাঁথুনি, দরজার ফ্রেম, প্লাস্টার সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(41, 1, 'গ্রাউন্ড ফ্লোর স্ল্যাব (Ground Floor Slab)', 'বেজমেন্ট টপ হতে গ্রাউন্ড ফ্লোর স্ল্যাব পর্যন্ত — কলাম, বিম, স্ল্যাব, সাটারিং, রড, ঢালাই, গাঁথুনি, প্লাস্টার সকল সিভিল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(42, 1, 'টিপিক্যাল ফ্লোর স্ল্যাব (Typical Floor Slab)', 'প্রতিটি টিপিক্যাল ফ্লোর — স্ল্যাব থেকে উপরের স্ল্যাব পর্যন্ত কলাম, বিম, ডাউন স্ল্যাব, ফলস স্ল্যাব, রড, ঢালাই, গাঁথুনি, দরজার ফ্রেম ও গ্রিল ফিটিং, প্লাস্টার সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(43, 1, 'রুফটপ ফ্লোর (Rooftop Floor)', 'সর্বোচ্চ টিপিক্যাল ফ্লোর থেকে রুফটপ স্ল্যাব পর্যন্ত — কলাম, বিম, ছাদ স্ল্যাব, সিঁড়ি মাথা, ওয়াটার ট্যাংক স্ল্যাব, রড, ঢালাই, গাঁথুনি, প্লাস্টার সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(44, 1, 'মেশিন রুম ও পানির ট্যাংক (Machine Room & Tank)', 'রুফটপের উপর লিফট মেশিন রুম এবং ওভারহেড পানির ট্যাংক — কলাম, ওয়াল, স্ল্যাব, রড, ঢালাই, প্লাস্টার সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(45, 1, 'প্যারাপেট ওয়াল (Parapet Wall)', 'ছাদের চারদিকে প্যারাপেট ওয়াল — রড, ঢালাই, গাঁথুনি, প্লাস্টার, মসলা সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(46, 1, 'বাউন্ডারি ওয়াল (Boundary Wall)', 'প্রজেক্টের চারদিকে বাউন্ডারি ওয়াল ও প্রবেশদ্বার গেট কলাম — ফুটিং, কলাম, গাঁথুনি, প্লাস্টার সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(47, 1, 'রিটেইনিং ওয়াল (Retaining Wall)', 'প্রয়োজনে রিটেইনিং ওয়াল ও এক্সটার্নাল পাইল ক্যাপ — সাটারিং, রড, ঢালাই, ওয়াটারপ্রুফিং সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(48, 1, 'স্টেয়ার কেস (Staircase)', 'সিঁড়ির সম্পূর্ণ কাঠামো — ল্যান্ডিং, রাইজার, ট্রেড, হ্যান্ড্রেইল ব্র্যাকেট, রড, ঢালাই, ফিনিশিং সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(49, 2, 'পয়েন্ট ওয়্যারিং (Point Wiring)', 'প্রতিটি ফ্লোরের বৈদ্যুতিক পয়েন্ট ওয়্যারিং — লাইট পয়েন্ট, ফ্যান পয়েন্ট, সকেট পয়েন্ট, সুইচ বোর্ড, কন্ডুইট পাইপ, তার, বক্স সহ সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(50, 2, 'মেইন DB প্যানেল (Main Distribution Board)', 'প্রতিটি ফ্লোরে মেইন ডিস্ট্রিবিউশন বোর্ড স্থাপন — MCB, RCBO, বাসবার, প্যানেল বোর্ড বক্স সহ সংযোগ কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(51, 2, 'সাব DB প্যানেল (Sub Distribution Board)', 'প্রতিটি ইউনিটে সাব ডিস্ট্রিবিউশন বোর্ড — MCB, ওয়্যারিং, সংযোগ সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(52, 2, 'মেইন ক্যাবল লাইন (Main Cable Wiring)', 'মেইন সার্ভিস কেবল হতে মিটার রুম ও ফ্লোর DB পর্যন্ত আর্মড ক্যাবল টানা — ক্যাবল ট্রে, কন্ডুইট, লাগিং সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(53, 2, 'লিফট পয়েন্ট (Lift Electrical Point)', 'লিফটের বৈদ্যুতিক সংযোগ — মেশিন রুম হতে লিফট পিট পর্যন্ত ক্যাবল, প্যানেল সংযোগ সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(54, 2, 'আর্থিং (Earthing & Grounding)', 'সম্পূর্ণ বিল্ডিং আর্থিং সিস্টেম — আর্থ পিট, কপার স্ট্রিপ, আর্থ ওয়্যার সংযোগ সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(55, 2, 'জেনারেটর সংযোগ (Generator Connection)', 'ব্যাকআপ জেনারেটর থেকে ATS প্যানেল ও মেইন বোর্ড পর্যন্ত সংযোগ — ক্যাবল, ATS, চেঞ্জওভার সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(56, 2, 'CCTV ও ইন্টারকম (CCTV & Intercom)', 'CCTV ক্যামেরা, DVR, কন্ডুইট, ইন্টারকম সিস্টেম — স্থাপন ও ওয়্যারিং সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(57, 3, 'পানি সরবরাহ লাইন (Water Supply Line)', 'পাম্প হতে ওভারহেড ট্যাংক ও প্রতিটি ফ্লোরে পানি সরবরাহ পাইপলাইন — GI/PPR পাইপ, ফিটিং, ভালভ সহ সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(58, 3, 'ড্রেনেজ ও স্যুয়ারেজ লাইন (Drainage & Sewerage)', 'প্রতিটি ফ্লোরের স্যানিটারি ড্রেনেজ — PVC পাইপ, বেন্ড, ট্র্যাপ, ক্লিনআউট, মেইন সার্ভিস লাইন পর্যন্ত সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(59, 3, 'স্যানিটারি ফিটিং (Sanitary Fitting)', 'প্রতিটি ব্যাথরুম ও টয়লেটে স্যানিটারি ফিটিং — কমোড, বেসিন, বাথটাব, ঝর্ণা, নল, মিক্সার সকল স্থাপন কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(60, 3, 'ওভারহেড ট্যাংক ও পাম্প (Overhead Tank & Pump)', 'রুফটপে ওভারহেড ট্যাংক স্থাপন, পাম্প মোটর, পাইপলাইন সংযোগ, ভালভ সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(61, 3, 'আন্ডারগ্রাউন্ড রিজার্ভার (Underground Reservoir)', 'বেজমেন্টে আন্ডারগ্রাউন্ড পানির রিজার্ভার — পাম্প, সাকশন লাইন, ওভারফ্লো, ক্লিন আউট সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(62, 3, 'রেইন ওয়াটার ড্রেনেজ (Rain Water Drainage)', 'ছাদ ও বারান্দার বৃষ্টির পানি নিষ্কাশন — রেইন ওয়াটার পাইপ, গটার, আউটলেট সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(63, 3, 'গ্যাস লাইন (Gas Line)', 'বিল্ডিংয়ে গ্যাস পাইপলাইন — মেইন কানেকশন হতে প্রতিটি ফ্লোর ও ইউনিটে GI পাইপ, কক, রেগুলেটর সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(64, 4, 'ফায়ার হাইড্র্যান্ট সিস্টেম (Fire Hydrant System)', 'প্রতিটি ফ্লোরে ফায়ার হাইড্র্যান্ট — GI পাইপ, হাইড্র্যান্ট ভালভ, হোস রিল, ক্যাবিনেট সহ সম্পূর্ণ সিস্টেম', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(65, 4, 'স্প্রিংকলার সিস্টেম (Sprinkler System)', 'অটোমেটিক ফায়ার স্প্রিংকলার — পাইপলাইন, স্প্রিংকলার হেড, প্রেশার ট্যাংক, ভালভ সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(66, 4, 'ফায়ার অ্যালার্ম সিস্টেম (Fire Alarm System)', 'ফায়ার অ্যালার্ম প্যানেল, স্মোক ডিটেক্টর, হিট ডিটেক্টর, ম্যানুয়াল কল পয়েন্ট, সাইরেন — ওয়্যারিং সহ সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(67, 4, 'ফায়ার পাম্প রুম (Fire Pump Room)', 'ফায়ার পাম্প, জকি পাম্প, কন্ট্রোল প্যানেল, সাকশন ও ডিসচার্জ লাইন — সম্পূর্ণ পাম্প রুম স্থাপন কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(68, 4, 'পোর্টেবল ফায়ার এক্সটিংগুইশার (Portable Extinguisher)', 'প্রতিটি ফ্লোরে ও সিঁড়ির কাছে পোর্টেবল অগ্নি নির্বাপক যন্ত্র — ABC টাইপ, CO2 টাইপ স্থাপন ও ব্র্যাকেট সহ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(69, 4, 'ইমার্জেন্সি এক্সিট সাইনেজ (Emergency Exit Signage)', 'ইমার্জেন্সি এক্সিট সাইন, ইলিউমিনেটেড এক্সিট বোর্ড, ইমার্জেন্সি লাইট — সকল ফ্লোরে স্থাপন কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14'),
-(70, 4, 'ফায়ার ডোর (Fire Door)', 'ফায়ার রেটেড দরজা স্থাপন — সিঁড়ি ঘর, করিডোর, বেজমেন্ট — ফ্রেম, ক্লোজার, হার্ডওয়্যার সহ সকল কাজ', 1, '2026-05-23 05:22:14', '2026-05-23 05:22:14');
+INSERT INTO `work_types` (`id`, `design_type_id`, `default_phase_name`, `work_type_name`, `description`, `created_by`, `created_at`, `updated_at`) VALUES
+(2, 6, NULL, 'Floor Plan & Elevation', '<p>test </p>', 123, '2026-05-05 13:08:27', '2026-05-05 13:08:27'),
+(10, 5, 'Structure', 'Earth Excavation & Backfilling', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(11, 5, 'Structure', 'Soling & PCC Work', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(12, 5, 'Structure', 'Rebar Fabrication & Binding', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(13, 5, 'Structure', 'Shuttering & Centering Formwork', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(14, 5, 'Structure', 'Concrete Casting & Pouring', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(15, 5, 'Structure', 'Concrete Curing & De-shuttering', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(16, 6, 'Brick Work', 'Brick Wall Construction - 5\" / 10\"', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(17, 6, 'Wood Work', 'Door Frame (Chowkat) Fixing', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(18, 6, 'Wood Work', 'Door Shutter Fixing', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(19, 6, 'Metal Work', 'MS Grill & Railing Fabrication & Fixing', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(20, 3, 'Plumbing & Sanitary', 'Water & Sewer Pipe Laying & Jointing', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(21, 3, 'Plumbing & Sanitary', 'Pressure Testing of Water Lines', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(22, 3, 'Plumbing & Sanitary', 'Sanitary Ware & CP Fittings Installation', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(23, 2, 'Electrical Work', 'PVC Conduit Laying in Slabs', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(24, 2, 'Electrical Work', 'Wall Chasing & Box Fixing', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(25, 2, 'Electrical Work', 'Cable Pulling & Wiring', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(26, 2, 'Electrical Work', 'Switch & Socket Fitting', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(27, 6, 'Plaster Work', 'Cement Sand Plastering', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(28, 6, 'General Floor Tiles', 'Tile Fixing with Adhesives/Cement', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(29, 6, 'Toilet & Kitchen Wall Tiles', 'Kitchen Granite Top Installation', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(30, 6, 'Aluminium Work', 'Window Frame Fixing', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(31, 6, 'Aluminium Work', 'Glass Shutter Sliding Installation', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(32, 2, 'EME', 'EME Equipment & Cabling Work', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(33, 2, 'EME', 'Lift Guide Rail & Cabin Installation', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(34, 4, 'EME', 'Fire Hydrant Piping Installation', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(35, 6, 'Paint Work', 'Wall Sanding & Putty Coating', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(36, 6, 'Paint Work', 'Interior & Exterior Double Coat Paint', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(37, 9, 'Others Civil Work', 'Pavement / Road CC Casting', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(38, 6, 'Utility Connection & Bill', 'Utility Meter & Connection Line Setup', NULL, 0, '2026-05-25 04:34:17', '2026-05-25 04:34:17'),
+(39, 5, 'Structure', 'Soil Analysis & Footing Design', '', 120, '2026-05-25 04:49:09', '2026-05-25 04:49:09');
 
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `adjustment_transactions`
+--
+ALTER TABLE `adjustment_transactions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_adjustment` (`adjustment_id`);
 
 --
 -- Indexes for table `approval_requests`
@@ -10501,14 +11268,14 @@ ALTER TABLE `con_financial_transactions`
 ALTER TABLE `con_materials`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_material_name` (`name`),
-  ADD KEY `fk_material_category` (`category_id`);
+  ADD KEY `fk_con_materials_category_id` (`category_id`);
 
 --
 -- Indexes for table `con_material_categories`
 --
 ALTER TABLE `con_material_categories`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `uq_category_name` (`name`);
+  ADD UNIQUE KEY `name` (`name`);
 
 --
 -- Indexes for table `con_material_issues`
@@ -10601,6 +11368,27 @@ ALTER TABLE `con_work_order_updates`
   ADD KEY `idx_wo_update` (`work_order_id`);
 
 --
+-- Indexes for table `csv_import_logs`
+--
+ALTER TABLE `csv_import_logs`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `daily_progress_logs`
+--
+ALTER TABLE `daily_progress_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_dpl_day` (`weekly_progress_id`,`log_date`);
+
+--
+-- Indexes for table `daily_work_item_logs`
+--
+ALTER TABLE `daily_work_item_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_dwil_log` (`daily_log_id`),
+  ADD KEY `idx_dwil_item` (`target_item_id`);
+
+--
 -- Indexes for table `departments`
 --
 ALTER TABLE `departments`
@@ -10671,6 +11459,15 @@ ALTER TABLE `emp_attendances`
 --
 ALTER TABLE `emp_weekly_day_off`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `expense_adjustments`
+--
+ALTER TABLE `expense_adjustments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_user` (`user_id`),
+  ADD KEY `idx_cashout` (`cashout_request_id`),
+  ADD KEY `idx_status` (`status`);
 
 --
 -- Indexes for table `flats`
@@ -10748,6 +11545,12 @@ ALTER TABLE `land_bayana_payments`
 -- Indexes for table `land_fund_requisitions`
 --
 ALTER TABLE `land_fund_requisitions`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `land_monthly_reports`
+--
+ALTER TABLE `land_monthly_reports`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -10895,6 +11698,21 @@ ALTER TABLE `material_return_items`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `monthly_phase_snapshots`
+--
+ALTER TABLE `monthly_phase_snapshots`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_mps_review` (`review_id`),
+  ADD KEY `fk_mps_phase` (`phase_id`);
+
+--
+-- Indexes for table `monthly_progress_reviews`
+--
+ALTER TABLE `monthly_progress_reviews`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_mpr_month` (`project_id`,`review_month`);
+
+--
 -- Indexes for table `notifications`
 --
 ALTER TABLE `notifications`
@@ -10957,6 +11775,52 @@ ALTER TABLE `personal_access_tokens`
   ADD KEY `tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`);
 
 --
+-- Indexes for table `phase_item_template_defaults`
+--
+ALTER TABLE `phase_item_template_defaults`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_phase_name` (`phase_name`);
+
+--
+-- Indexes for table `phase_monthly_targets`
+--
+ALTER TABLE `phase_monthly_targets`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_pmt_month` (`project_id`,`phase_id`,`target_month`),
+  ADD KEY `idx_pmt_phase` (`phase_id`);
+
+--
+-- Indexes for table `phase_monthly_target_items`
+--
+ALTER TABLE `phase_monthly_target_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_pmti_target` (`target_id`);
+
+--
+-- Indexes for table `phase_template_defaults`
+--
+ALTER TABLE `phase_template_defaults`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_phase_order` (`phase_order`);
+
+--
+-- Indexes for table `phase_weekly_progress`
+--
+ALTER TABLE `phase_weekly_progress`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_pwp_week` (`project_id`,`phase_id`,`target_id`,`week_number`),
+  ADD KEY `idx_pwp_target` (`target_id`),
+  ADD KEY `fk_pwp_phase` (`phase_id`);
+
+--
+-- Indexes for table `phase_weekly_progress_items`
+--
+ALTER TABLE `phase_weekly_progress_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_pwpi_weekly` (`weekly_progress_id`),
+  ADD KEY `idx_pwpi_item` (`target_item_id`);
+
+--
 -- Indexes for table `platform_budgets`
 --
 ALTER TABLE `platform_budgets`
@@ -10971,6 +11835,14 @@ ALTER TABLE `projects`
   ADD KEY `community_id` (`community_id`);
 
 --
+-- Indexes for table `project_delay_snapshots`
+--
+ALTER TABLE `project_delay_snapshots`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_pds_project` (`project_id`),
+  ADD KEY `idx_pds_date` (`snapshot_date`);
+
+--
 -- Indexes for table `project_drawings`
 --
 ALTER TABLE `project_drawings`
@@ -10979,7 +11851,8 @@ ALTER TABLE `project_drawings`
   ADD KEY `idx_pd_design_type` (`design_type_id`),
   ADD KEY `idx_pd_user` (`user_id`),
   ADD KEY `idx_pd_approved_by` (`approved_by_id`),
-  ADD KEY `idx_pd_created_by` (`created_by`);
+  ADD KEY `idx_pd_created_by` (`created_by`),
+  ADD KEY `fk_pd_phase` (`phase_id`);
 
 --
 -- Indexes for table `project_legal_sheets`
@@ -10990,10 +11863,42 @@ ALTER TABLE `project_legal_sheets`
   ADD KEY `idx_sheet_type` (`sheet_type`);
 
 --
+-- Indexes for table `project_phases`
+--
+ALTER TABLE `project_phases`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_pp_project` (`project_id`),
+  ADD KEY `idx_pp_order` (`project_id`,`phase_order`);
+
+--
+-- Indexes for table `project_phase_items`
+--
+ALTER TABLE `project_phase_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `work_type_id` (`work_type_id`),
+  ADD KEY `idx_phase_id` (`phase_id`),
+  ADD KEY `idx_design_type` (`design_type_id`);
+
+--
+-- Indexes for table `project_risks`
+--
+ALTER TABLE `project_risks`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_pr_project` (`project_id`),
+  ADD KEY `idx_pr_phase` (`phase_id`);
+
+--
 -- Indexes for table `project_structural_designs`
 --
 ALTER TABLE `project_structural_designs`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `project_timelines`
+--
+ALTER TABLE `project_timelines`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_pt_project` (`project_id`);
 
 --
 -- Indexes for table `project_working_plans`
@@ -11007,9 +11912,7 @@ ALTER TABLE `project_working_plans`
 --
 ALTER TABLE `project_working_plan_items`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `fk_pwpi_working_plan` (`working_plan_id`),
-  ADD KEY `fk_pwpi_initial_budget` (`initial_budget_id`),
-  ADD KEY `fk_pwpi_work_type` (`work_type_id`);
+  ADD KEY `fk_pwpi_working_plan` (`working_plan_id`);
 
 --
 -- Indexes for table `property_reviews`
@@ -11107,6 +12010,20 @@ ALTER TABLE `quotation_items`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_qi_quotation` (`quotation_id`),
   ADD KEY `idx_qi_material` (`material_id`);
+
+--
+-- Indexes for table `recovery_action_items`
+--
+ALTER TABLE `recovery_action_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_rai_plan` (`recovery_plan_id`);
+
+--
+-- Indexes for table `recovery_plans`
+--
+ALTER TABLE `recovery_plans`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_rp_project` (`project_id`);
 
 --
 -- Indexes for table `roles`
@@ -11263,10 +12180,16 @@ ALTER TABLE `work_types`
 --
 
 --
+-- AUTO_INCREMENT for table `adjustment_transactions`
+--
+ALTER TABLE `adjustment_transactions`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `approval_requests`
 --
 ALTER TABLE `approval_requests`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `architect_engineering`
@@ -11290,19 +12213,19 @@ ALTER TABLE `blogs`
 -- AUTO_INCREMENT for table `boq_items`
 --
 ALTER TABLE `boq_items`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `boq_master`
 --
 ALTER TABLE `boq_master`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `budget_extend_requests`
 --
 ALTER TABLE `budget_extend_requests`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `cameras`
@@ -11356,7 +12279,7 @@ ALTER TABLE `company_bank_accounts`
 -- AUTO_INCREMENT for table `comparison_items`
 --
 ALTER TABLE `comparison_items`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `contacts`
@@ -11398,13 +12321,13 @@ ALTER TABLE `con_materials`
 -- AUTO_INCREMENT for table `con_material_categories`
 --
 ALTER TABLE `con_material_categories`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `con_material_issues`
 --
 ALTER TABLE `con_material_issues`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `con_material_issue_items`
@@ -11416,37 +12339,37 @@ ALTER TABLE `con_material_issue_items`
 -- AUTO_INCREMENT for table `con_security_daily_logs`
 --
 ALTER TABLE `con_security_daily_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `con_security_equipments`
 --
 ALTER TABLE `con_security_equipments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `con_security_incidents`
 --
 ALTER TABLE `con_security_incidents`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `con_security_systems`
 --
 ALTER TABLE `con_security_systems`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `con_stocks`
 --
 ALTER TABLE `con_stocks`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `con_stock_movements`
 --
 ALTER TABLE `con_stock_movements`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `con_warehouses`
@@ -11458,25 +12381,43 @@ ALTER TABLE `con_warehouses`
 -- AUTO_INCREMENT for table `con_work_orders`
 --
 ALTER TABLE `con_work_orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `con_work_order_approvals`
 --
 ALTER TABLE `con_work_order_approvals`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `con_work_order_items`
 --
 ALTER TABLE `con_work_order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `con_work_order_updates`
 --
 ALTER TABLE `con_work_order_updates`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `csv_import_logs`
+--
+ALTER TABLE `csv_import_logs`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `daily_progress_logs`
+--
+ALTER TABLE `daily_progress_logs`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `daily_work_item_logs`
+--
+ALTER TABLE `daily_work_item_logs`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `departments`
@@ -11494,19 +12435,19 @@ ALTER TABLE `designations`
 -- AUTO_INCREMENT for table `design_types`
 --
 ALTER TABLE `design_types`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `emi_schedules`
 --
 ALTER TABLE `emi_schedules`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `employees`
 --
 ALTER TABLE `employees`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=91;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=100;
 
 --
 -- AUTO_INCREMENT for table `employee_leaves`
@@ -11518,7 +12459,7 @@ ALTER TABLE `employee_leaves`
 -- AUTO_INCREMENT for table `employee_leave_balances`
 --
 ALTER TABLE `employee_leave_balances`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=175;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=187;
 
 --
 -- AUTO_INCREMENT for table `employee_tasks`
@@ -11539,10 +12480,16 @@ ALTER TABLE `emp_weekly_day_off`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
+-- AUTO_INCREMENT for table `expense_adjustments`
+--
+ALTER TABLE `expense_adjustments`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `flats`
 --
 ALTER TABLE `flats`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=969;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3063;
 
 --
 -- AUTO_INCREMENT for table `flat_purchase_rules`
@@ -11554,19 +12501,19 @@ ALTER TABLE `flat_purchase_rules`
 -- AUTO_INCREMENT for table `fund_requisitions`
 --
 ALTER TABLE `fund_requisitions`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `fund_requisition_expenses`
 --
 ALTER TABLE `fund_requisition_expenses`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `head_notifications`
 --
 ALTER TABLE `head_notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `holidays`
@@ -11584,7 +12531,7 @@ ALTER TABLE `initial_estimate_budgets`
 -- AUTO_INCREMENT for table `initial_estimate_items`
 --
 ALTER TABLE `initial_estimate_items`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `initial_estimate_labors`
@@ -11596,43 +12543,49 @@ ALTER TABLE `initial_estimate_labors`
 -- AUTO_INCREMENT for table `land_acquisitions`
 --
 ALTER TABLE `land_acquisitions`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `land_bayana_payments`
 --
 ALTER TABLE `land_bayana_payments`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `land_fund_requisitions`
 --
 ALTER TABLE `land_fund_requisitions`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `land_monthly_reports`
+--
+ALTER TABLE `land_monthly_reports`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `land_registrations`
 --
 ALTER TABLE `land_registrations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `land_visibility_study`
 --
 ALTER TABLE `land_visibility_study`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `leads`
 --
 ALTER TABLE `leads`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6016;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6017;
 
 --
 -- AUTO_INCREMENT for table `lead_bookings`
 --
 ALTER TABLE `lead_bookings`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `lead_follow_ups`
@@ -11644,7 +12597,7 @@ ALTER TABLE `lead_follow_ups`
 -- AUTO_INCREMENT for table `lead_payments`
 --
 ALTER TABLE `lead_payments`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `lead_sources`
@@ -11698,13 +12651,13 @@ ALTER TABLE `manpower_requisitions`
 -- AUTO_INCREMENT for table `material_receiving`
 --
 ALTER TABLE `material_receiving`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `material_receiving_items`
 --
 ALTER TABLE `material_receiving_items`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `material_returns`
@@ -11717,6 +12670,18 @@ ALTER TABLE `material_returns`
 --
 ALTER TABLE `material_return_items`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `monthly_phase_snapshots`
+--
+ALTER TABLE `monthly_phase_snapshots`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `monthly_progress_reviews`
+--
+ALTER TABLE `monthly_progress_reviews`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `notifications`
@@ -11758,13 +12723,49 @@ ALTER TABLE `payslip_items`
 -- AUTO_INCREMENT for table `permissions`
 --
 ALTER TABLE `permissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=53;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
 
 --
 -- AUTO_INCREMENT for table `personal_access_tokens`
 --
 ALTER TABLE `personal_access_tokens`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `phase_item_template_defaults`
+--
+ALTER TABLE `phase_item_template_defaults`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
+
+--
+-- AUTO_INCREMENT for table `phase_monthly_targets`
+--
+ALTER TABLE `phase_monthly_targets`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `phase_monthly_target_items`
+--
+ALTER TABLE `phase_monthly_target_items`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `phase_template_defaults`
+--
+ALTER TABLE `phase_template_defaults`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
+
+--
+-- AUTO_INCREMENT for table `phase_weekly_progress`
+--
+ALTER TABLE `phase_weekly_progress`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `phase_weekly_progress_items`
+--
+ALTER TABLE `phase_weekly_progress_items`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `platform_budgets`
@@ -11779,34 +12780,64 @@ ALTER TABLE `projects`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=55;
 
 --
+-- AUTO_INCREMENT for table `project_delay_snapshots`
+--
+ALTER TABLE `project_delay_snapshots`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `project_drawings`
 --
 ALTER TABLE `project_drawings`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `project_legal_sheets`
 --
 ALTER TABLE `project_legal_sheets`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `project_phases`
+--
+ALTER TABLE `project_phases`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+
+--
+-- AUTO_INCREMENT for table `project_phase_items`
+--
+ALTER TABLE `project_phase_items`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+
+--
+-- AUTO_INCREMENT for table `project_risks`
+--
+ALTER TABLE `project_risks`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `project_structural_designs`
 --
 ALTER TABLE `project_structural_designs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `project_timelines`
+--
+ALTER TABLE `project_timelines`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `project_working_plans`
 --
 ALTER TABLE `project_working_plans`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `project_working_plan_items`
 --
 ALTER TABLE `project_working_plan_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `property_reviews`
@@ -11818,25 +12849,25 @@ ALTER TABLE `property_reviews`
 -- AUTO_INCREMENT for table `purchase_orders`
 --
 ALTER TABLE `purchase_orders`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `purchase_order_items`
 --
 ALTER TABLE `purchase_order_items`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `purchase_requests`
 --
 ALTER TABLE `purchase_requests`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `purchase_request_items`
 --
 ALTER TABLE `purchase_request_items`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `qc_checklists`
@@ -11860,7 +12891,7 @@ ALTER TABLE `qc_inspection_items`
 -- AUTO_INCREMENT for table `qc_material_tests`
 --
 ALTER TABLE `qc_material_tests`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `qc_test_types`
@@ -11872,18 +12903,30 @@ ALTER TABLE `qc_test_types`
 -- AUTO_INCREMENT for table `quotations`
 --
 ALTER TABLE `quotations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `quotation_comparisons`
 --
 ALTER TABLE `quotation_comparisons`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `quotation_items`
 --
 ALTER TABLE `quotation_items`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+
+--
+-- AUTO_INCREMENT for table `recovery_action_items`
+--
+ALTER TABLE `recovery_action_items`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `recovery_plans`
+--
+ALTER TABLE `recovery_plans`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -11896,7 +12939,7 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT for table `role_permissions`
 --
 ALTER TABLE `role_permissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=724;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=717;
 
 --
 -- AUTO_INCREMENT for table `sales_targets`
@@ -11932,7 +12975,7 @@ ALTER TABLE `soil_tests`
 -- AUTO_INCREMENT for table `target_fixed`
 --
 ALTER TABLE `target_fixed`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `tasks`
@@ -11956,13 +12999,13 @@ ALTER TABLE `units`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=133;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=139;
 
 --
 -- AUTO_INCREMENT for table `vendors`
 --
 ALTER TABLE `vendors`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `vendor_payment_requests`
@@ -11986,7 +13029,7 @@ ALTER TABLE `vendor_ratings`
 -- AUTO_INCREMENT for table `weekly_progress_report`
 --
 ALTER TABLE `weekly_progress_report`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `whatsapp_campaigns`
@@ -12004,7 +13047,7 @@ ALTER TABLE `whatsapp_messages`
 -- AUTO_INCREMENT for table `work_types`
 --
 ALTER TABLE `work_types`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=71;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 
 --
 -- Constraints for dumped tables
@@ -12014,7 +13057,7 @@ ALTER TABLE `work_types`
 -- Constraints for table `con_materials`
 --
 ALTER TABLE `con_materials`
-  ADD CONSTRAINT `fk_material_category` FOREIGN KEY (`category_id`) REFERENCES `con_material_categories` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+  ADD CONSTRAINT `fk_con_materials_category_id` FOREIGN KEY (`category_id`) REFERENCES `con_material_categories` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `con_security_equipments`
@@ -12047,17 +13090,75 @@ ALTER TABLE `con_work_order_updates`
   ADD CONSTRAINT `fk_wou_wo` FOREIGN KEY (`work_order_id`) REFERENCES `con_work_orders` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `daily_progress_logs`
+--
+ALTER TABLE `daily_progress_logs`
+  ADD CONSTRAINT `fk_dpl_week` FOREIGN KEY (`weekly_progress_id`) REFERENCES `phase_weekly_progress` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `daily_work_item_logs`
+--
+ALTER TABLE `daily_work_item_logs`
+  ADD CONSTRAINT `fk_dwil_item` FOREIGN KEY (`target_item_id`) REFERENCES `phase_monthly_target_items` (`id`),
+  ADD CONSTRAINT `fk_dwil_log` FOREIGN KEY (`daily_log_id`) REFERENCES `daily_progress_logs` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `fund_requisition_expenses`
 --
 ALTER TABLE `fund_requisition_expenses`
   ADD CONSTRAINT `fk_fre_requisition` FOREIGN KEY (`fund_requisition_id`) REFERENCES `fund_requisitions` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `monthly_phase_snapshots`
+--
+ALTER TABLE `monthly_phase_snapshots`
+  ADD CONSTRAINT `fk_mps_phase` FOREIGN KEY (`phase_id`) REFERENCES `project_phases` (`id`),
+  ADD CONSTRAINT `fk_mps_review` FOREIGN KEY (`review_id`) REFERENCES `monthly_progress_reviews` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `phase_monthly_targets`
+--
+ALTER TABLE `phase_monthly_targets`
+  ADD CONSTRAINT `fk_pmt_phase` FOREIGN KEY (`phase_id`) REFERENCES `project_phases` (`id`);
+
+--
+-- Constraints for table `phase_monthly_target_items`
+--
+ALTER TABLE `phase_monthly_target_items`
+  ADD CONSTRAINT `fk_pmti_target` FOREIGN KEY (`target_id`) REFERENCES `phase_monthly_targets` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `phase_weekly_progress`
+--
+ALTER TABLE `phase_weekly_progress`
+  ADD CONSTRAINT `fk_pwp_phase` FOREIGN KEY (`phase_id`) REFERENCES `project_phases` (`id`),
+  ADD CONSTRAINT `fk_pwp_target` FOREIGN KEY (`target_id`) REFERENCES `phase_monthly_targets` (`id`);
+
+--
+-- Constraints for table `phase_weekly_progress_items`
+--
+ALTER TABLE `phase_weekly_progress_items`
+  ADD CONSTRAINT `fk_pwpi_item` FOREIGN KEY (`target_item_id`) REFERENCES `phase_monthly_target_items` (`id`),
+  ADD CONSTRAINT `fk_pwpi_progress` FOREIGN KEY (`weekly_progress_id`) REFERENCES `phase_weekly_progress` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `project_drawings`
+--
+ALTER TABLE `project_drawings`
+  ADD CONSTRAINT `fk_pd_phase` FOREIGN KEY (`phase_id`) REFERENCES `project_phases` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `project_phase_items`
+--
+ALTER TABLE `project_phase_items`
+  ADD CONSTRAINT `project_phase_items_ibfk_1` FOREIGN KEY (`phase_id`) REFERENCES `project_phases` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `project_phase_items_ibfk_2` FOREIGN KEY (`design_type_id`) REFERENCES `design_types` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `project_phase_items_ibfk_3` FOREIGN KEY (`work_type_id`) REFERENCES `work_types` (`id`) ON DELETE SET NULL;
+
+--
 -- Constraints for table `project_working_plan_items`
 --
 ALTER TABLE `project_working_plan_items`
-  ADD CONSTRAINT `fk_pwpi_initial_budget` FOREIGN KEY (`initial_budget_id`) REFERENCES `initial_estimate_budgets` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_pwpi_work_type` FOREIGN KEY (`work_type_id`) REFERENCES `work_types` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_pwpi_working_plan` FOREIGN KEY (`working_plan_id`) REFERENCES `project_working_plans` (`id`) ON DELETE CASCADE;
 
 --
@@ -12079,6 +13180,12 @@ ALTER TABLE `qc_inspections`
 ALTER TABLE `qc_inspection_items`
   ADD CONSTRAINT `fk_ins_checklist` FOREIGN KEY (`qc_checklist_id`) REFERENCES `qc_checklists` (`id`),
   ADD CONSTRAINT `fk_ins_master` FOREIGN KEY (`qc_inspection_id`) REFERENCES `qc_inspections` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `recovery_action_items`
+--
+ALTER TABLE `recovery_action_items`
+  ADD CONSTRAINT `fk_rai_plan` FOREIGN KEY (`recovery_plan_id`) REFERENCES `recovery_plans` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

@@ -30,6 +30,7 @@ $show_breadcrumb = true;
                             <th>#</th>
                             <th>Work Type Name</th>
                             <th>Design Type</th>
+                            <th>Default Phase</th>
                             <th>Description</th>
                             <th>Created By</th>
                             <th>Action</th>
@@ -39,11 +40,16 @@ $show_breadcrumb = true;
                         <?php if (!empty($records)): ?>
                             <?php foreach ($records as $index => $row): ?>
                                 <tr>
-                                    <td><?= $index + 1 ?></td>
+                                    <td><?= ($offset ?? 0) + $index + 1 ?></td>
                                     <td class="fw-semibold"><?= htmlspecialchars($row['work_type_name']) ?></td>
                                     <td>
                                         <span class="badge bg-info">
                                             <?= htmlspecialchars($row['design_type_name'] ?? 'N/A') ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">
+                                            <?= htmlspecialchars($row['default_phase_name'] ?? 'N/A') ?>
                                         </span>
                                     </td>
                                     <td><?= ($row['description'] ?? 'N/A') ?></td>
@@ -65,11 +71,17 @@ $show_breadcrumb = true;
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-4">No work types found.</td>
+                                <td colspan="7" class="text-center text-muted py-4">No work types found.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+            <!-- Pagination -->
+            <div class="row mt-3">
+                <div class="col-12 d-flex justify-content-center">
+                    <?= paginateLinksSecondary($GLOBALS['base_url'] . "/con-work-types", $currentPage, $totalPages); ?>
+                </div>
             </div>
         </div>
     </div>
