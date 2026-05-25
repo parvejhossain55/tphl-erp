@@ -4,7 +4,7 @@
 // 2 = Project Testing Server
 // 3 = Production Server
 
-$current_server = 3; 
+$current_server = 1; 
 
 ///////////////////////////////////////////////
 // Local Development Server
@@ -17,8 +17,6 @@ if ($current_server == 1) {
         "db_name" => "tphl_db",
     ];
 }
-
-
 
 
 ///////////////////////////////////////////////
