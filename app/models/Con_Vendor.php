@@ -37,6 +37,37 @@ public function getAll()
     return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
 }
 
+public function countAll()
+{
+    $sql = "SELECT COUNT(*) as total FROM vendors";
+    $result = $this->db->query($sql);
+    $row = $result ? $result->fetch_assoc() : null;
+    return $row ? (int)$row['total'] : 0;
+}
+
+public function getPaginated($limit, $offset)
+{
+    $sql = "SELECT 
+                v.*, 
+                u.full_name AS created_by_name,
+                COUNT(DISTINCT po.id) AS total_orders,
+                COUNT(DISTINCT CASE 
+                    WHEN vp.penalty_status = 'Approved' THEN vp.id 
+                END) AS penalty_count
+            FROM vendors v
+            LEFT JOIN users u ON u.id = v.created_by
+            LEFT JOIN purchase_order_items poi ON poi.selected_vendor_id = v.id
+            LEFT JOIN purchase_orders po ON po.id = poi.purchase_order_id
+            LEFT JOIN vendor_penalties vp ON vp.vendor_id = v.id
+            GROUP BY v.id
+            ORDER BY v.name ASC
+            LIMIT ? OFFSET ?";
+    $stmt = $this->db->prepare($sql);
+    $stmt->bind_param('ii', $limit, $offset);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
     public function find($id)
     {
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id=?");

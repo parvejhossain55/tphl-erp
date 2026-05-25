@@ -43,11 +43,8 @@ $statusLabels = [
 
     <!-- Stats Cards -->
     <?php
-    $statusCount = [];
-    foreach ($workOrders as $wo) {
-        $statusCount[$wo['status']] = ($statusCount[$wo['status']] ?? 0) + 1;
-    }
-    $total = count($workOrders);
+    $statusCount = $statusCounts ?? [];
+    $total = $totalRecords ?? count($workOrders);
     ?>
     <div class="row  my-4">
         <div class="col-6 col-md-2">
@@ -137,7 +134,7 @@ $statusLabels = [
                         <?php else: ?>
                             <?php foreach ($workOrders as $i => $wo): ?>
                                 <tr>
-                                    <td><?= $i + 1 ?></td>
+                                    <td><?= ($offset ?? 0) + $i + 1 ?></td>
                                     <td>
                                         <a href="<?= $base_url ?>/con-work-order/<?= $wo['id'] ?>" class="fw-semibold text-primary">
                                             <?= htmlspecialchars($wo['wo_number'] ?? 'WO-') ?>
@@ -186,6 +183,12 @@ $statusLabels = [
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+            <!-- Pagination -->
+            <div class="row my-3 px-3">
+                <div class="col-12 d-flex justify-content-center">
+                    <?= paginateLinksSecondary($base_url . "/con-work-orders", $currentPage, $totalPages); ?>
+                </div>
             </div>
         </div>
     </div>

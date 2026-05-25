@@ -7,7 +7,7 @@ $show_breadcrumb = true;
     <div class="card__wrapper shadow-sm">
         <form action="<?= $GLOBALS['base_url'] ?>/con-work-type-update/<?= $record['id'] ?>" method="POST">
             <div class="row gy-20">
-                <div class="col-xl-6">
+                <div class="col-xl-4">
                     <label class="form-label fw-bold">Design Type <span class="text-danger">*</span></label>
                     <select name="design_type_id" class="form-select" required>
                         <option value="">-- Select Design Type --</option>
@@ -18,9 +18,20 @@ $show_breadcrumb = true;
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-xl-6">
+                <div class="col-xl-4">
                     <label class="form-label fw-bold">Work Type Name <span class="text-danger">*</span></label>
                     <input type="text" name="work_type_name" class="form-control" required value="<?= htmlspecialchars($record['work_type_name']) ?>">
+                </div>
+                <div class="col-xl-4">
+                    <label class="form-label fw-bold">Default Phase Name</label>
+                    <select name="default_phase_name" class="form-select">
+                        <option value="">-- Select Default Phase --</option>
+                        <?php foreach ($phases as $p): ?>
+                            <option value="<?= htmlspecialchars($p['phase_name']) ?>" <?= (isset($record['default_phase_name']) && $record['default_phase_name'] === $p['phase_name']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($p['phase_name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
                 <div class="col-xl-12 mt-3">
                     <label class="form-label fw-bold">Description</label>
