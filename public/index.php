@@ -22,12 +22,10 @@ require_once __DIR__ . '/../vendor/autoload.php';
 //     exit;
 // }
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-// Enable debug
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// Removed duplicate session_start() — already called at line 2-4
+// Production: errors hidden from users (check server error_log instead)
+error_reporting(0);
+ini_set('display_errors', 0);
 
 $root = dirname(__DIR__);
 $GLOBALS['base_url'] = '/TPHL-ERP';
