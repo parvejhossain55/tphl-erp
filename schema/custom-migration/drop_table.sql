@@ -135,4 +135,29 @@ DROP TABLE IF EXISTS vendor_penalties;
 DROP TABLE IF EXISTS vendor_ratings;
 DROP TABLE IF EXISTS weekly_progress_report;
 
+-- ====== Phase 2: Progress & Timeline Module (21 missing tables) ======
+DROP TABLE IF EXISTS daily_progress_logs;
+DROP TABLE IF EXISTS daily_work_item_logs;
+DROP TABLE IF EXISTS monthly_phase_snapshots;
+DROP TABLE IF EXISTS monthly_progress_reviews;
+DROP TABLE IF EXISTS phase_item_template_defaults;
+DROP TABLE IF EXISTS phase_monthly_target_items;
+DROP TABLE IF EXISTS phase_monthly_targets;
+DROP TABLE IF EXISTS phase_template_defaults;
+DROP TABLE IF EXISTS phase_weekly_progress;
+DROP TABLE IF EXISTS phase_weekly_progress_items;
+DROP TABLE IF EXISTS project_delay_snapshots;
+DROP TABLE IF EXISTS project_extra_assets;
+DROP TABLE IF EXISTS project_phase_items;
+DROP TABLE IF EXISTS project_phases;
+DROP TABLE IF EXISTS project_risks;
+DROP TABLE IF EXISTS project_timelines;
+DROP TABLE IF EXISTS recovery_action_items;
+DROP TABLE IF EXISTS recovery_plans;
+
+-- ====== Office Asset Module ======
+DROP TABLE IF EXISTS asset_movement_logs;
+DROP TABLE IF EXISTS office_asset_products;
+DROP TABLE IF EXISTS office_assets;
+
 SET FOREIGN_KEY_CHECKS = 1;

@@ -126,6 +126,44 @@ INSERT INTO `architect_engineering` VALUES (1,13,122,'https://kgarch.com/how-doe
 UNLOCK TABLES;
 
 --
+-- Table structure for table `asset_movement_logs`
+--
+
+DROP TABLE IF EXISTS `asset_movement_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `asset_movement_logs` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `asset_id` int unsigned NOT NULL COMMENT 'FK → office_assets.id',
+  `action` enum('assigned','transferred','returned','maintenance','repair_requested','repaired','disposed','status_change','purchased') COLLATE utf8mb4_general_ci NOT NULL,
+  `from_location` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `to_location` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `from_user_id` int DEFAULT NULL,
+  `to_user_id` int DEFAULT NULL,
+  `from_project_id` int DEFAULT NULL,
+  `to_project_id` int DEFAULT NULL,
+  `old_condition` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `new_condition` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `notes` text COLLATE utf8mb4_general_ci,
+  `performed_by` int NOT NULL COMMENT 'users.id',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_asset` (`asset_id`),
+  KEY `idx_action` (`action`),
+  KEY `idx_performed_by` (`performed_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `asset_movement_logs`
+--
+
+LOCK TABLES `asset_movement_logs` WRITE;
+/*!40000 ALTER TABLE `asset_movement_logs` DISABLE KEYS */;
+/*!40000 ALTER TABLE `asset_movement_logs` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `banks`
 --
 
@@ -305,11 +343,11 @@ DROP TABLE IF EXISTS `cache`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `cache` (
-  `key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `value` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `expiration` int NOT NULL,
   PRIMARY KEY (`key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -336,7 +374,7 @@ CREATE TABLE `camera_logs` (
   `message` text,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -367,7 +405,7 @@ CREATE TABLE `cameras` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `project_id` (`project_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -485,7 +523,7 @@ CREATE TABLE `chat_messages` (
   `reply` text NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -718,7 +756,7 @@ CREATE TABLE `con_material_categories` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -847,7 +885,7 @@ CREATE TABLE `con_security_daily_logs` (
   `resolved_by` int DEFAULT NULL,
   `resolved_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -883,7 +921,7 @@ CREATE TABLE `con_security_equipments` (
   PRIMARY KEY (`id`),
   KEY `security_system_id` (`security_system_id`),
   CONSTRAINT `con_security_equipments_ibfk_1` FOREIGN KEY (`security_system_id`) REFERENCES `con_security_systems` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -922,7 +960,7 @@ CREATE TABLE `con_security_incidents` (
   PRIMARY KEY (`id`),
   KEY `equipment_id` (`equipment_id`),
   CONSTRAINT `con_security_incidents_ibfk_1` FOREIGN KEY (`equipment_id`) REFERENCES `con_security_equipments` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -952,7 +990,7 @@ CREATE TABLE `con_security_systems` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1134,13 +1172,13 @@ CREATE TABLE `con_work_order_updates` (
   `id` int NOT NULL AUTO_INCREMENT,
   `work_order_id` int NOT NULL,
   `update_date` date NOT NULL COMMENT 'কোন তারিখে update হয়েছে',
-  `update_notes` text COLLATE utf8mb4_general_ci COMMENT 'কী কী পরিবর্তন হয়েছে',
+  `update_notes` text COLLATE utf8mb4_unicode_ci COMMENT 'কী কী পরিবর্তন হয়েছে',
   `updated_by` int NOT NULL DEFAULT '0' COMMENT 'admin user id',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_wo_update` (`work_order_id`),
   CONSTRAINT `fk_wou_wo` FOREIGN KEY (`work_order_id`) REFERENCES `con_work_orders` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1199,7 +1237,7 @@ CREATE TABLE `con_work_orders` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `wo_number` (`wo_number`),
   KEY `idx_project_design` (`project_id`,`design_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1220,16 +1258,16 @@ DROP TABLE IF EXISTS `contacts`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `contacts` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `subject` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `contact_status` enum('pending','contacted','closed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending' COMMENT 'Track follow-up status',
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `subject` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `contact_status` enum('pending','contacted','closed') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending' COMMENT 'Track follow-up status',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1356,6 +1394,78 @@ CREATE TABLE `csv_import_logs` (
 LOCK TABLES `csv_import_logs` WRITE;
 /*!40000 ALTER TABLE `csv_import_logs` DISABLE KEYS */;
 /*!40000 ALTER TABLE `csv_import_logs` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `daily_progress_logs`
+--
+
+DROP TABLE IF EXISTS `daily_progress_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `daily_progress_logs` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `weekly_progress_id` int unsigned NOT NULL,
+  `project_id` int NOT NULL,
+  `log_date` date NOT NULL COMMENT 'Specific site day e.g. 2026-08-16',
+  `labour_count` int NOT NULL DEFAULT '0' COMMENT 'Workers on site',
+  `cement_bags` int NOT NULL DEFAULT '0',
+  `concrete_mt` decimal(8,2) NOT NULL DEFAULT '0.00',
+  `concrete_cft` decimal(8,2) NOT NULL DEFAULT '0.00',
+  `materials_used` int NOT NULL DEFAULT '0',
+  `equipment_active` int NOT NULL DEFAULT '0',
+  `weather` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `temperature_celsius` decimal(4,1) DEFAULT NULL,
+  `safety_ok` tinyint(1) NOT NULL DEFAULT '0',
+  `qc_checked` tinyint(1) NOT NULL DEFAULT '0',
+  `site_remarks` text COLLATE utf8mb4_general_ci,
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_dpl_day` (`weekly_progress_id`,`log_date`),
+  CONSTRAINT `fk_dpl_week` FOREIGN KEY (`weekly_progress_id`) REFERENCES `phase_weekly_progress` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Daily work report — one row per calendar day within a week';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `daily_progress_logs`
+--
+
+LOCK TABLES `daily_progress_logs` WRITE;
+/*!40000 ALTER TABLE `daily_progress_logs` DISABLE KEYS */;
+/*!40000 ALTER TABLE `daily_progress_logs` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `daily_work_item_logs`
+--
+
+DROP TABLE IF EXISTS `daily_work_item_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `daily_work_item_logs` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `daily_log_id` int unsigned NOT NULL,
+  `target_item_id` int unsigned NOT NULL,
+  `qty_done_today` decimal(12,2) NOT NULL DEFAULT '0.00' COMMENT 'Qty done in item unit (CFT / MT / SFT...)',
+  `unit` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `remarks` text COLLATE utf8mb4_general_ci,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_dwil_log` (`daily_log_id`),
+  KEY `idx_dwil_item` (`target_item_id`),
+  CONSTRAINT `fk_dwil_item` FOREIGN KEY (`target_item_id`) REFERENCES `phase_monthly_target_items` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_dwil_log` FOREIGN KEY (`daily_log_id`) REFERENCES `daily_progress_logs` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Daily qty log per work item';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `daily_work_item_logs`
+--
+
+LOCK TABLES `daily_work_item_logs` WRITE;
+/*!40000 ALTER TABLE `daily_work_item_logs` DISABLE KEYS */;
+/*!40000 ALTER TABLE `daily_work_item_logs` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -1877,7 +1987,7 @@ CREATE TABLE `fund_requisitions` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1908,7 +2018,7 @@ CREATE TABLE `head_notifications` (
   PRIMARY KEY (`id`),
   KEY `idx_user_read` (`user_id`,`is_read`),
   KEY `idx_type` (`type`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2195,7 +2305,7 @@ CREATE TABLE `land_monthly_reports` (
   `created_by` int NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2782,8 +2892,8 @@ DROP TABLE IF EXISTS `management_categories`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `management_categories` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `category_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `category_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `status` tinyint(1) DEFAULT '1' COMMENT '1=Active, 0=Inactive',
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2792,7 +2902,7 @@ CREATE TABLE `management_categories` (
   UNIQUE KEY `category_name` (`category_name`),
   KEY `idx_status` (`status`),
   KEY `idx_created_by` (`created_by`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3018,6 +3128,88 @@ LOCK TABLES `material_returns` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `monthly_phase_snapshots`
+--
+
+DROP TABLE IF EXISTS `monthly_phase_snapshots`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `monthly_phase_snapshots` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `review_id` int unsigned NOT NULL,
+  `phase_id` int unsigned NOT NULL,
+  `planned_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `actual_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `variance_pct` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT 'planned - actual',
+  `status` enum('Achieved','At Risk','Delayed','Not Started') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Not Started',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_mps_review` (`review_id`),
+  KEY `fk_mps_phase` (`phase_id`),
+  CONSTRAINT `fk_mps_phase` FOREIGN KEY (`phase_id`) REFERENCES `project_phases` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_mps_review` FOREIGN KEY (`review_id`) REFERENCES `monthly_progress_reviews` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 5: Phase-level snapshot per monthly review';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `monthly_phase_snapshots`
+--
+
+LOCK TABLES `monthly_phase_snapshots` WRITE;
+/*!40000 ALTER TABLE `monthly_phase_snapshots` DISABLE KEYS */;
+/*!40000 ALTER TABLE `monthly_phase_snapshots` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `monthly_progress_reviews`
+--
+
+DROP TABLE IF EXISTS `monthly_progress_reviews`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `monthly_progress_reviews` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `project_id` int NOT NULL,
+  `review_month` date NOT NULL COMMENT 'First day of review month e.g. 2026-08-01',
+  `review_month_number` tinyint NOT NULL,
+  `review_year` year NOT NULL,
+  `planned_progress_pct` decimal(5,2) DEFAULT NULL COMMENT 'Cumulative planned % of total project',
+  `actual_progress_pct` decimal(5,2) DEFAULT NULL COMMENT 'Cumulative actual % of total project',
+  `delay_gap_pct` decimal(5,2) DEFAULT NULL COMMENT 'planned - actual (negative = behind)',
+  `performance_score` decimal(5,2) DEFAULT NULL COMMENT '0-100 score',
+  `risk_status` enum('Low','Medium','High','Critical') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
+  `material_delay_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `labour_shortage_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `contractor_delay_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `drawing_pending_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `weather_issue_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `payment_delay_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `approval_delay_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `next_month_recovery_target` decimal(5,2) DEFAULT NULL COMMENT '+% needed next month',
+  `extra_workload_needed` decimal(5,2) DEFAULT NULL,
+  `critical_focal_area` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `expected_revised_progress` decimal(5,2) DEFAULT NULL,
+  `review_status` enum('Draft','Submitted','Management Approved') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
+  `submitted_by` int DEFAULT NULL,
+  `approved_by` int DEFAULT NULL,
+  `approved_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_mpr_month` (`project_id`,`review_month`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 5: Monthly progress review — KPIs, delays, recovery summary';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `monthly_progress_reviews`
+--
+
+LOCK TABLES `monthly_progress_reviews` WRITE;
+/*!40000 ALTER TABLE `monthly_progress_reviews` DISABLE KEYS */;
+/*!40000 ALTER TABLE `monthly_progress_reviews` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `notifications`
 --
 
@@ -3047,6 +3239,87 @@ LOCK TABLES `notifications` WRITE;
 /*!40000 ALTER TABLE `notifications` DISABLE KEYS */;
 INSERT INTO `notifications` VALUES (1,1,1,6,'New task assigned: Task-1',0,'2026-03-31 04:42:24'),(2,1,2,4,'New task assigned: Test Task',0,'2026-03-31 09:02:09'),(3,95,3,4,'New task assigned: Task -2',0,'2026-03-31 09:04:29'),(4,3,4,68,'New task assigned: Test Task 1',1,'2026-04-06 15:49:52'),(5,1,5,6,'New task assigned: Test Task From developer',0,'2026-04-08 09:07:02'),(6,1,6,68,'New task assigned: Test Task From',0,'2026-04-08 10:43:38'),(7,3,7,4,'New task assigned: Test task to Fahim',0,'2026-04-10 10:23:57');
 /*!40000 ALTER TABLE `notifications` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `office_asset_products`
+--
+
+DROP TABLE IF EXISTS `office_asset_products`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `office_asset_products` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `product_code` varchar(50) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'e.g. OAP-001, ELEC-001',
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `category` enum('Electronics','Furniture','Vehicle','IT Equipment','Office Supplies','Machinery','Safety Equipment','Other') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Other',
+  `brand` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `model` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `unit` varchar(50) COLLATE utf8mb4_general_ci DEFAULT 'Piece' COMMENT 'Piece, Set, Unit etc.',
+  `unit_price` decimal(15,2) DEFAULT '0.00' COMMENT 'Standard/reference price',
+  `description` text COLLATE utf8mb4_general_ci,
+  `image_path` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `status` enum('active','inactive') COLLATE utf8mb4_general_ci DEFAULT 'active',
+  `created_by` int NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `product_code` (`product_code`),
+  KEY `idx_code` (`product_code`),
+  KEY `idx_category` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `office_asset_products`
+--
+
+LOCK TABLES `office_asset_products` WRITE;
+/*!40000 ALTER TABLE `office_asset_products` DISABLE KEYS */;
+/*!40000 ALTER TABLE `office_asset_products` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `office_assets`
+--
+
+DROP TABLE IF EXISTS `office_assets`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `office_assets` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `asset_code` varchar(50) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'e.g. AST-2026-0001',
+  `product_id` int unsigned NOT NULL COMMENT 'FK → office_asset_products.id',
+  `project_id` int DEFAULT NULL COMMENT 'NULL = Head Office',
+  `department_id` int DEFAULT NULL,
+  `assigned_to` int DEFAULT NULL COMMENT 'users.id — who is using it',
+  `location` varchar(255) COLLATE utf8mb4_general_ci DEFAULT 'Head Office',
+  `purchase_date` date DEFAULT NULL,
+  `purchase_price` decimal(15,2) DEFAULT '0.00',
+  `warranty_expiry` date DEFAULT NULL,
+  `serial_no` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `condition_status` enum('new','ok','used','need_repair','repairing','repaired','damaged','disposed','sold') COLLATE utf8mb4_general_ci DEFAULT 'new',
+  `asset_status` enum('in_use','in_store','transferred','disposed','maintenance','sold') COLLATE utf8mb4_general_ci DEFAULT 'in_store',
+  `remarks` text COLLATE utf8mb4_general_ci,
+  `created_by` int NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `asset_code` (`asset_code`),
+  KEY `idx_asset_code` (`asset_code`),
+  KEY `idx_product` (`product_id`),
+  KEY `idx_project` (`project_id`),
+  KEY `idx_status` (`asset_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `office_assets`
+--
+
+LOCK TABLES `office_assets` WRITE;
+/*!40000 ALTER TABLE `office_assets` DISABLE KEYS */;
+/*!40000 ALTER TABLE `office_assets` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -3142,7 +3415,7 @@ CREATE TABLE `payslip_details` (
   PRIMARY KEY (`id`),
   KEY `payslip_id` (`payslip_id`),
   KEY `payslip_item_id` (`payslip_item_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3169,7 +3442,7 @@ CREATE TABLE `payslip_items` (
   `created_by` int DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3233,7 +3506,7 @@ CREATE TABLE `permissions` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=54 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=56 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3242,7 +3515,7 @@ CREATE TABLE `permissions` (
 
 LOCK TABLES `permissions` WRITE;
 /*!40000 ALTER TABLE `permissions` DISABLE KEYS */;
-INSERT INTO `permissions` VALUES (1,'Add Role',1,NULL,'2025-12-04 12:12:58','2025-12-04 12:12:58'),(2,'View Role',1,NULL,'2025-12-04 12:17:47','2025-12-04 12:17:47'),(3,'Add Permission',1,NULL,'2025-12-06 05:51:07','2025-12-06 05:51:07'),(4,'Show Permission',1,NULL,'2025-12-06 05:51:25','2025-12-06 05:51:25'),(5,'Add Task',1,NULL,'2025-12-10 04:26:45','2025-12-10 04:26:45'),(6,'Hr Manage',1,12,'2025-12-17 09:52:36','2025-12-17 09:52:36'),(7,'Sales & Business',1,NULL,'2026-01-04 01:08:25','2026-01-04 01:08:25'),(8,'Payroll Manage',1,NULL,'2026-01-04 01:11:05','2026-01-04 01:11:05'),(10,'Accounts Manage',1,NULL,'2026-01-04 01:11:51','2026-01-04 01:11:51'),(11,'Role & Permission',1,NULL,'2026-01-04 01:17:03','2026-01-04 01:17:03'),(12,'CED Manage',1,NULL,'2026-01-04 04:29:51','2026-01-04 04:29:51'),(13,'Task Manage',1,NULL,'2026-01-04 04:32:50','2026-01-04 04:32:50'),(14,'Others',1,NULL,'2026-01-04 05:04:47','2026-01-04 05:04:47'),(15,'Add Lead',1,12,'2026-01-31 05:23:20','2026-01-31 05:23:20'),(16,'User Manage',1,12,'2026-01-31 12:22:53','2026-01-31 12:22:53'),(17,'Add User',1,12,'2026-01-31 12:23:02','2026-01-31 12:23:02'),(19,'View Lead',1,12,'2026-02-01 12:06:45','2026-02-01 12:06:45'),(20,'My Leave Request',1,12,'2026-02-08 12:00:34','2026-02-08 12:00:34'),(21,'Camera Manage',1,2,'2026-02-21 17:24:42','2026-02-21 17:24:42'),(22,'Upload CSV',1,6,'2026-03-30 16:41:45','2026-03-30 16:41:45'),(23,'Digital Marketing Panel',1,6,'2026-04-02 08:10:46','2026-04-02 08:10:46'),(24,'Sales team Performance',1,6,'2026-04-07 10:13:35','2026-04-07 10:13:35'),(25,'Manpower Requisition',1,6,'2026-04-07 12:49:19','2026-04-07 12:49:19'),(26,'Construction Management',1,6,'2026-04-16 00:38:18','2026-04-16 00:38:18'),(27,'Land Study',1,6,'2026-04-20 22:37:41','2026-04-20 22:37:41'),(28,'Inventory Receiving',1,6,'2026-04-20 22:38:55','2026-04-20 22:38:55'),(29,'Project Drawing',1,6,'2026-04-20 22:45:11','2026-04-20 22:45:11'),(30,'Soil tests',1,6,'2026-04-20 22:46:02','2026-04-20 22:46:02'),(31,'Estimate Budget',1,6,'2026-04-20 22:46:33','2026-04-20 22:46:33'),(32,'Project Target Set',1,6,'2026-04-20 22:47:23','2026-04-20 22:47:23'),(33,'Material Issue',1,6,'2026-04-20 22:47:41','2026-04-20 22:47:41'),(34,'Project Draft Design',1,6,'2026-04-21 23:13:46','2026-04-21 23:13:46'),(35,'Purchase order',1,6,'2026-04-21 23:15:54','2026-04-21 23:15:54'),(36,'Vendor Manage',1,6,'2026-04-21 23:16:11','2026-04-21 23:16:11'),(37,'Estimator dashboard',1,6,'2026-04-21 23:16:57','2026-04-21 23:16:57'),(38,'Procurement Manage',1,6,'2026-04-21 23:18:51','2026-04-21 23:18:51'),(39,'Architect Design',1,6,'2026-04-22 00:04:48','2026-04-22 00:04:48'),(40,'Draft Design',1,6,'2026-04-22 00:05:02','2026-04-22 00:05:02'),(41,'Budget Extend',1,6,'2026-04-22 00:05:51','2026-04-22 00:05:51'),(42,'Working Plan',1,6,'2026-04-22 00:06:18','2026-04-22 00:06:18'),(43,'Operation manage',1,6,'2026-04-22 00:09:23','2026-04-22 00:09:23'),(44,'Material Manage',1,6,'2026-04-22 00:11:03','2026-04-22 00:11:03'),(45,'Contractor Bill',1,6,'2026-04-22 00:12:47','2026-04-22 00:12:47'),(46,'Project Report',1,6,'2026-04-22 00:13:06','2026-04-22 00:13:06'),(47,'Bill & Payments',1,122,'2026-04-23 01:38:32','2026-04-23 01:38:32'),(48,'Project structure design',1,6,'2026-04-29 06:04:01','2026-04-29 06:04:01'),(49,'QC Dashboard',1,6,'2026-05-05 04:22:33','2026-05-05 04:22:33'),(50,'Work Order',1,6,'2026-05-10 12:36:34','2026-05-10 12:36:34'),(51,'Project Manage',1,6,'2026-05-17 04:03:06','2026-05-17 04:03:06'),(52,'site engineer dashboard',1,6,'2026-05-17 19:25:18','2026-05-17 19:25:18'),(53,'Security Operations',1,128,'2026-05-17 19:37:11','2026-05-17 19:37:11');
+INSERT INTO `permissions` VALUES (1,'Add Role',1,NULL,'2025-12-04 12:12:58','2025-12-04 12:12:58'),(2,'View Role',1,NULL,'2025-12-04 12:17:47','2025-12-04 12:17:47'),(3,'Add Permission',1,NULL,'2025-12-06 05:51:07','2025-12-06 05:51:07'),(4,'Show Permission',1,NULL,'2025-12-06 05:51:25','2025-12-06 05:51:25'),(5,'Add Task',1,NULL,'2025-12-10 04:26:45','2025-12-10 04:26:45'),(6,'Hr Manage',1,12,'2025-12-17 09:52:36','2025-12-17 09:52:36'),(7,'Sales & Business',1,NULL,'2026-01-04 01:08:25','2026-01-04 01:08:25'),(8,'Payroll Manage',1,NULL,'2026-01-04 01:11:05','2026-01-04 01:11:05'),(10,'Accounts Manage',1,NULL,'2026-01-04 01:11:51','2026-01-04 01:11:51'),(11,'Role & Permission',1,NULL,'2026-01-04 01:17:03','2026-01-04 01:17:03'),(12,'CED Manage',1,NULL,'2026-01-04 04:29:51','2026-01-04 04:29:51'),(13,'Task Manage',1,NULL,'2026-01-04 04:32:50','2026-01-04 04:32:50'),(14,'Others',1,NULL,'2026-01-04 05:04:47','2026-01-04 05:04:47'),(15,'Add Lead',1,12,'2026-01-31 05:23:20','2026-01-31 05:23:20'),(16,'User Manage',1,12,'2026-01-31 12:22:53','2026-01-31 12:22:53'),(17,'Add User',1,12,'2026-01-31 12:23:02','2026-01-31 12:23:02'),(19,'View Lead',1,12,'2026-02-01 12:06:45','2026-02-01 12:06:45'),(20,'My Leave Request',1,12,'2026-02-08 12:00:34','2026-02-08 12:00:34'),(21,'Camera Manage',1,2,'2026-02-21 17:24:42','2026-02-21 17:24:42'),(22,'Upload CSV',1,6,'2026-03-30 16:41:45','2026-03-30 16:41:45'),(23,'Digital Marketing Panel',1,6,'2026-04-02 08:10:46','2026-04-02 08:10:46'),(24,'Sales team Performance',1,6,'2026-04-07 10:13:35','2026-04-07 10:13:35'),(25,'Manpower Requisition',1,6,'2026-04-07 12:49:19','2026-04-07 12:49:19'),(26,'Construction Management',1,6,'2026-04-16 00:38:18','2026-04-16 00:38:18'),(27,'Land Study',1,6,'2026-04-20 22:37:41','2026-04-20 22:37:41'),(28,'Inventory Receiving',1,6,'2026-04-20 22:38:55','2026-04-20 22:38:55'),(29,'Project Drawing',1,6,'2026-04-20 22:45:11','2026-04-20 22:45:11'),(30,'Soil tests',1,6,'2026-04-20 22:46:02','2026-04-20 22:46:02'),(31,'Estimate Budget',1,6,'2026-04-20 22:46:33','2026-04-20 22:46:33'),(32,'Project Target Set',1,6,'2026-04-20 22:47:23','2026-04-20 22:47:23'),(33,'Material Issue',1,6,'2026-04-20 22:47:41','2026-04-20 22:47:41'),(34,'Project Draft Design',1,6,'2026-04-21 23:13:46','2026-04-21 23:13:46'),(35,'Purchase order',1,6,'2026-04-21 23:15:54','2026-04-21 23:15:54'),(36,'Vendor Manage',1,6,'2026-04-21 23:16:11','2026-04-21 23:16:11'),(37,'Estimator dashboard',1,6,'2026-04-21 23:16:57','2026-04-21 23:16:57'),(38,'Procurement Manage',1,6,'2026-04-21 23:18:51','2026-04-21 23:18:51'),(39,'Architect Design',1,6,'2026-04-22 00:04:48','2026-04-22 00:04:48'),(40,'Draft Design',1,6,'2026-04-22 00:05:02','2026-04-22 00:05:02'),(41,'Budget Extend',1,6,'2026-04-22 00:05:51','2026-04-22 00:05:51'),(42,'Working Plan',1,6,'2026-04-22 00:06:18','2026-04-22 00:06:18'),(43,'Operation manage',1,6,'2026-04-22 00:09:23','2026-04-22 00:09:23'),(44,'Material Manage',1,6,'2026-04-22 00:11:03','2026-04-22 00:11:03'),(45,'Contractor Bill',1,6,'2026-04-22 00:12:47','2026-04-22 00:12:47'),(46,'Project Report',1,6,'2026-04-22 00:13:06','2026-04-22 00:13:06'),(47,'Bill & Payments',1,122,'2026-04-23 01:38:32','2026-04-23 01:38:32'),(48,'Project structure design',1,6,'2026-04-29 06:04:01','2026-04-29 06:04:01'),(49,'QC Dashboard',1,6,'2026-05-05 04:22:33','2026-05-05 04:22:33'),(50,'Work Order',1,6,'2026-05-10 12:36:34','2026-05-10 12:36:34'),(51,'Project Manage',1,6,'2026-05-17 04:03:06','2026-05-17 04:03:06'),(52,'site engineer dashboard',1,6,'2026-05-17 19:25:18','2026-05-17 19:25:18'),(53,'Security Operations',1,128,'2026-05-17 19:37:11','2026-05-17 19:37:11'),(54,'QC & Internal Audit',1,NULL,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(55,'Asset Management',1,NULL,'2026-05-24 10:25:08','2026-05-24 10:25:08');
 /*!40000 ALTER TABLE `permissions` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -3255,11 +3528,11 @@ DROP TABLE IF EXISTS `personal_access_tokens`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `personal_access_tokens` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `tokenable_type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `tokenable_type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `tokenable_id` bigint unsigned NOT NULL,
-  `name` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `token` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `abilities` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `name` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `token` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `abilities` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `last_used_at` timestamp NULL DEFAULT NULL,
   `expires_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
@@ -3267,7 +3540,7 @@ CREATE TABLE `personal_access_tokens` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `token` (`token`),
   KEY `tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3278,6 +3551,236 @@ LOCK TABLES `personal_access_tokens` WRITE;
 /*!40000 ALTER TABLE `personal_access_tokens` DISABLE KEYS */;
 INSERT INTO `personal_access_tokens` VALUES (1,'App\\Models\\OnboardClient',1,'onboard-client','7e24226295485ceac5b2f5d81d02c236b5a160f988449891f39e42cdae87e72d','[\"*\"]','2026-02-08 04:28:21',NULL,'2026-02-08 04:20:34','2026-02-08 04:28:21'),(2,'App\\Models\\OnboardClient',1,'onboard-client','903f420ab84ed7fefe35bb26f11ab0f683c3bcde22b8cbd787bf03e613fa8d98','[\"*\"]','2026-02-08 04:31:41',NULL,'2026-02-08 04:28:39','2026-02-08 04:31:41'),(3,'App\\Models\\OnboardClient',1,'onboard-client','13aab24d14d21706763b5fa533c05d4a310b76acdcb2ac433578794223a04582','[\"*\"]','2026-02-08 04:39:06',NULL,'2026-02-08 04:36:40','2026-02-08 04:39:06'),(4,'App\\Models\\OnboardClient',1,'onboard-client','4561e3242fb548617bc199392d02366d885d02efbdbdfd5a5df6288142b2f49d','[\"*\"]','2026-02-09 23:31:48',NULL,'2026-02-09 23:31:22','2026-02-09 23:31:48'),(5,'App\\Models\\OnboardClient',2,'onboard-client','ce3cafbff5660c8fea29fb233264fe87cc30a35e29ab0cabc50e629dcdb8ccb9','[\"*\"]','2026-02-17 03:52:04',NULL,'2026-02-17 03:51:52','2026-02-17 03:52:04'),(6,'App\\Models\\OnboardClient',3,'onboard-client','e92286bbd37589f387f496582e3aacafb03063a89ae49f9143b5f62df1ab4d7c','[\"*\"]','2026-02-21 11:32:47',NULL,'2026-02-21 10:29:47','2026-02-21 11:32:47'),(7,'App\\Models\\OnboardClient',3,'onboard-client','b23fc29f72107b0178d8fa4d62c3e20edb0f69d69a22585ae301885a174a21b6','[\"*\"]','2026-02-21 21:40:15',NULL,'2026-02-21 21:40:04','2026-02-21 21:40:15');
 /*!40000 ALTER TABLE `personal_access_tokens` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `phase_item_template_defaults`
+--
+
+DROP TABLE IF EXISTS `phase_item_template_defaults`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `phase_item_template_defaults` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `phase_name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `item_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `item_order` tinyint NOT NULL DEFAULT '1',
+  `weight_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `design_type_id` int unsigned DEFAULT NULL,
+  `work_type_id` bigint unsigned DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_pitd_phase_name` (`phase_name`),
+  KEY `fk_pitd_wtype` (`work_type_id`),
+  KEY `fk_pitd_dtype` (`design_type_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `phase_item_template_defaults`
+--
+
+LOCK TABLES `phase_item_template_defaults` WRITE;
+/*!40000 ALTER TABLE `phase_item_template_defaults` DISABLE KEYS */;
+/*!40000 ALTER TABLE `phase_item_template_defaults` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `phase_monthly_target_items`
+--
+
+DROP TABLE IF EXISTS `phase_monthly_target_items`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `phase_monthly_target_items` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `target_id` int unsigned NOT NULL,
+  `work_type_id` bigint unsigned DEFAULT NULL COMMENT 'Optional ref to work_types for categorization',
+  `work_item_name` varchar(200) COLLATE utf8mb4_general_ci NOT NULL,
+  `unit` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'CFT / MT / SFT / Bags / Nos / Days',
+  `monthly_target_qty` decimal(12,2) DEFAULT NULL,
+  `planned_progress_pct` decimal(5,2) DEFAULT NULL COMMENT 'Planned completion % by month end',
+  `start_date` date DEFAULT NULL,
+  `end_date` date DEFAULT NULL,
+  `responsible_team` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `priority` enum('High','Medium','Low') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
+  `status` enum('Draft','Ready','Approved','At Risk','Critical') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
+  `week_1_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `week_2_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `week_3_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `week_4_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `sort_order` int NOT NULL DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_pmti_target` (`target_id`),
+  CONSTRAINT `fk_pmti_target` FOREIGN KEY (`target_id`) REFERENCES `phase_monthly_targets` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 3: Work items under each monthly target plan';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `phase_monthly_target_items`
+--
+
+LOCK TABLES `phase_monthly_target_items` WRITE;
+/*!40000 ALTER TABLE `phase_monthly_target_items` DISABLE KEYS */;
+/*!40000 ALTER TABLE `phase_monthly_target_items` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `phase_monthly_targets`
+--
+
+DROP TABLE IF EXISTS `phase_monthly_targets`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `phase_monthly_targets` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `project_id` int NOT NULL,
+  `phase_id` int unsigned NOT NULL,
+  `target_month` date NOT NULL COMMENT 'First day of month e.g. 2026-08-01',
+  `target_month_number` tinyint NOT NULL COMMENT '1-12',
+  `target_year` year NOT NULL,
+  `total_target_weight_pct` decimal(5,2) DEFAULT NULL COMMENT '% of total project this month contributes',
+  `planning_status` enum('Draft','In Review','Approved') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
+  `responsible_team` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_pmt_month` (`project_id`,`phase_id`,`target_month`),
+  KEY `idx_pmt_phase` (`phase_id`),
+  CONSTRAINT `fk_pmt_phase` FOREIGN KEY (`phase_id`) REFERENCES `project_phases` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 3: Monthly target plan header — one per project+phase+month';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `phase_monthly_targets`
+--
+
+LOCK TABLES `phase_monthly_targets` WRITE;
+/*!40000 ALTER TABLE `phase_monthly_targets` DISABLE KEYS */;
+/*!40000 ALTER TABLE `phase_monthly_targets` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `phase_template_defaults`
+--
+
+DROP TABLE IF EXISTS `phase_template_defaults`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `phase_template_defaults` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `phase_name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `phase_order` tinyint NOT NULL,
+  `default_weight_percentage` decimal(5,2) NOT NULL COMMENT 'Must sum to 100 across all rows',
+  `description` text COLLATE utf8mb4_general_ci,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_phase_order` (`phase_order`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Global phase template — cloned into project_phases on first access';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `phase_template_defaults`
+--
+
+LOCK TABLES `phase_template_defaults` WRITE;
+/*!40000 ALTER TABLE `phase_template_defaults` DISABLE KEYS */;
+INSERT INTO `phase_template_defaults` VALUES (1,'Foundation & Piling',1,12.00,NULL,1,'2026-05-24 12:20:13'),(2,'Basement & Substructure',2,11.00,NULL,1,'2026-05-24 12:20:13'),(3,'Super Structure',3,28.00,NULL,1,'2026-05-24 12:20:13'),(4,'Masonry & Partition',4,12.00,NULL,1,'2026-05-24 12:20:13'),(5,'MEP & Utilities',5,18.00,NULL,1,'2026-05-24 12:20:13'),(6,'Finishing & Handover',6,19.00,NULL,1,'2026-05-24 12:20:13');
+/*!40000 ALTER TABLE `phase_template_defaults` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `phase_weekly_progress`
+--
+
+DROP TABLE IF EXISTS `phase_weekly_progress`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `phase_weekly_progress` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `project_id` int NOT NULL,
+  `phase_id` int unsigned NOT NULL,
+  `target_id` int unsigned NOT NULL COMMENT 'FK phase_monthly_targets',
+  `week_number` tinyint NOT NULL COMMENT '1, 2, 3, or 4 within the month',
+  `week_start_date` date NOT NULL,
+  `week_end_date` date NOT NULL,
+  `overall_progress_pct` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT 'Overall % for this week',
+  `total_planned_qty` decimal(12,2) DEFAULT NULL,
+  `total_achieved_qty` decimal(12,2) DEFAULT NULL,
+  `labour_used` int NOT NULL DEFAULT '0',
+  `cement_used_bags` int NOT NULL DEFAULT '0',
+  `concrete_poured_mt` decimal(8,2) NOT NULL DEFAULT '0.00',
+  `concrete_poured_cft` decimal(8,2) NOT NULL DEFAULT '0.00',
+  `materials_used` int NOT NULL DEFAULT '0',
+  `equipment_active` int NOT NULL DEFAULT '0',
+  `weather_condition` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `temperature_celsius` decimal(4,1) DEFAULT NULL,
+  `site_engineer_remarks` text COLLATE utf8mb4_general_ci,
+  `safety_ok` tinyint(1) NOT NULL DEFAULT '0',
+  `qc_checked` tinyint(1) NOT NULL DEFAULT '0',
+  `material_received` tinyint(1) NOT NULL DEFAULT '0',
+  `entry_status` enum('Draft','Submitted','Approved') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
+  `submitted_by` int DEFAULT NULL,
+  `submitted_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_pwp_week` (`project_id`,`phase_id`,`target_id`,`week_number`),
+  KEY `idx_pwp_target` (`target_id`),
+  KEY `fk_pwp_phase` (`phase_id`),
+  CONSTRAINT `fk_pwp_phase` FOREIGN KEY (`phase_id`) REFERENCES `project_phases` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_pwp_target` FOREIGN KEY (`target_id`) REFERENCES `phase_monthly_targets` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Weekly progress entry header — one per week per monthly target';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `phase_weekly_progress`
+--
+
+LOCK TABLES `phase_weekly_progress` WRITE;
+/*!40000 ALTER TABLE `phase_weekly_progress` DISABLE KEYS */;
+/*!40000 ALTER TABLE `phase_weekly_progress` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `phase_weekly_progress_items`
+--
+
+DROP TABLE IF EXISTS `phase_weekly_progress_items`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `phase_weekly_progress_items` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `weekly_progress_id` int unsigned NOT NULL,
+  `target_item_id` int unsigned NOT NULL,
+  `planned_qty` decimal(12,2) DEFAULT NULL,
+  `achieved_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `today_progress_qty` decimal(12,2) NOT NULL DEFAULT '0.00' COMMENT 'Qty done on latest entry day',
+  `percent_complete` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `responsible_team` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `status` enum('Not Started','In Progress','Completed','Delayed','Pending QA') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Not Started',
+  `has_issue_flag` tinyint(1) NOT NULL DEFAULT '0',
+  `photo_path` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `remarks_action` text COLLATE utf8mb4_general_ci,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_pwpi_weekly` (`weekly_progress_id`),
+  KEY `idx_pwpi_item` (`target_item_id`),
+  CONSTRAINT `fk_pwpi_item` FOREIGN KEY (`target_item_id`) REFERENCES `phase_monthly_target_items` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_pwpi_progress` FOREIGN KEY (`weekly_progress_id`) REFERENCES `phase_weekly_progress` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Item-level weekly progress update';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `phase_weekly_progress_items`
+--
+
+LOCK TABLES `phase_weekly_progress_items` WRITE;
+/*!40000 ALTER TABLE `phase_weekly_progress_items` DISABLE KEYS */;
+/*!40000 ALTER TABLE `phase_weekly_progress_items` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -3309,6 +3812,49 @@ LOCK TABLES `platform_budgets` WRITE;
 /*!40000 ALTER TABLE `platform_budgets` DISABLE KEYS */;
 INSERT INTO `platform_budgets` VALUES (1,1,'2026-04-01',300000.00,200000.00,94,'2026-04-04 11:49:29','2026-04-04 11:49:29',NULL),(2,2,'2026-04-01',50000.00,40000.00,94,'2026-04-10 10:33:09','2026-04-10 10:33:09',NULL);
 /*!40000 ALTER TABLE `platform_budgets` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `project_delay_snapshots`
+--
+
+DROP TABLE IF EXISTS `project_delay_snapshots`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `project_delay_snapshots` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `project_id` int NOT NULL,
+  `snapshot_date` date NOT NULL,
+  `total_delay_days` int NOT NULL DEFAULT '0',
+  `critical_risks_count` int NOT NULL DEFAULT '0',
+  `time_risk_level` enum('Low','Medium','High','Critical') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Low',
+  `budget_risk_amount` decimal(15,2) DEFAULT NULL COMMENT 'Forecasted budget overrun amount',
+  `handover_risk_level` enum('Low','Medium','High','Critical') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Low',
+  `original_handover_date` date DEFAULT NULL,
+  `forecast_handover_date` date DEFAULT NULL,
+  `material_delay_count` int NOT NULL DEFAULT '0',
+  `labour_shortage_count` int NOT NULL DEFAULT '0',
+  `contractor_delay_count` int NOT NULL DEFAULT '0',
+  `design_pending_count` int NOT NULL DEFAULT '0',
+  `approval_delay_count` int NOT NULL DEFAULT '0',
+  `weather_count` int NOT NULL DEFAULT '0',
+  `payment_delay_count` int NOT NULL DEFAULT '0',
+  `confidence_level_pct` decimal(5,2) DEFAULT NULL COMMENT 'Forecast confidence % e.g. 62%',
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_pds_project` (`project_id`),
+  KEY `idx_pds_date` (`snapshot_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 6: Periodic delay source analytics snapshot';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `project_delay_snapshots`
+--
+
+LOCK TABLES `project_delay_snapshots` WRITE;
+/*!40000 ALTER TABLE `project_delay_snapshots` DISABLE KEYS */;
+/*!40000 ALTER TABLE `project_delay_snapshots` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -3354,6 +3900,67 @@ INSERT INTO `project_drawings` VALUES (1,13,6,1,124,NULL,NULL,NULL,NULL,NULL,'ht
 UNLOCK TABLES;
 
 --
+-- Table structure for table `project_extra_assets`
+--
+
+DROP TABLE IF EXISTS `project_extra_assets`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `project_extra_assets` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `project_id` int NOT NULL,
+  `product_id` int unsigned DEFAULT NULL COMMENT 'FK → office_asset_products.id (NULL if manual entry)',
+  `item_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Manual entry if product not in master',
+  `quantity` int NOT NULL DEFAULT '1',
+  `unit_price` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `total_price` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `justification` text COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Why is this purchase needed?',
+  `attachment` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `purchase_head_status` enum('pending','approved','rejected') COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `purchase_head_by` int DEFAULT NULL,
+  `purchase_head_at` timestamp NULL DEFAULT NULL,
+  `purchase_head_note` text COLLATE utf8mb4_general_ci,
+  `qc_audit_status` enum('pending','approved','rejected') COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `qc_audit_by` int DEFAULT NULL,
+  `qc_audit_at` timestamp NULL DEFAULT NULL,
+  `qc_audit_note` text COLLATE utf8mb4_general_ci,
+  `mgmt_status` enum('pending','approved','rejected') COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `mgmt_by` int DEFAULT NULL,
+  `mgmt_at` timestamp NULL DEFAULT NULL,
+  `mgmt_note` text COLLATE utf8mb4_general_ci,
+  `payment_status` enum('unpaid','paid') COLLATE utf8mb4_general_ci DEFAULT 'unpaid',
+  `paid_by` int DEFAULT NULL,
+  `paid_at` timestamp NULL DEFAULT NULL,
+  `payment_method` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `payment_attachment` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `overall_status` enum('pending','in_review','approved','rejected','paid','purchased') COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `requested_by` int NOT NULL,
+  `purchase_date` date DEFAULT NULL,
+  `vendor_name` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `invoice_no` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `purchase_document` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `purchase_note` text COLLATE utf8mb4_general_ci,
+  `purchase_confirmed_by` int DEFAULT NULL,
+  `purchase_confirmed_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_project` (`project_id`),
+  KEY `idx_overall` (`overall_status`),
+  KEY `idx_requested_by` (`requested_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `project_extra_assets`
+--
+
+LOCK TABLES `project_extra_assets` WRITE;
+/*!40000 ALTER TABLE `project_extra_assets` DISABLE KEYS */;
+/*!40000 ALTER TABLE `project_extra_assets` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `project_legal_sheets`
 --
 
@@ -3363,18 +3970,18 @@ DROP TABLE IF EXISTS `project_legal_sheets`;
 CREATE TABLE `project_legal_sheets` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `project_id` bigint unsigned NOT NULL,
-  `sheet_type` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `title` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `version` varchar(50) COLLATE utf8mb4_general_ci DEFAULT 'V1',
-  `link` text COLLATE utf8mb4_general_ci NOT NULL,
+  `sheet_type` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `version` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'V1',
+  `link` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `submitted_by` bigint unsigned NOT NULL,
-  `remark` text COLLATE utf8mb4_general_ci,
+  `remark` text COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_project_id` (`project_id`),
   KEY `idx_sheet_type` (`sheet_type`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3384,6 +3991,119 @@ CREATE TABLE `project_legal_sheets` (
 LOCK TABLES `project_legal_sheets` WRITE;
 /*!40000 ALTER TABLE `project_legal_sheets` DISABLE KEYS */;
 /*!40000 ALTER TABLE `project_legal_sheets` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `project_phase_items`
+--
+
+DROP TABLE IF EXISTS `project_phase_items`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `project_phase_items` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `phase_id` int unsigned NOT NULL,
+  `item_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `item_order` tinyint NOT NULL DEFAULT '1',
+  `weight_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `planned_progress` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `actual_progress` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `design_type_id` int unsigned DEFAULT NULL,
+  `work_type_id` bigint unsigned DEFAULT NULL,
+  `status` enum('Not Started','In Progress','Completed','At Risk') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Not Started',
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_ppi_phase` (`phase_id`),
+  KEY `fk_ppi_wtype` (`work_type_id`),
+  KEY `fk_ppi_dtype` (`design_type_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `project_phase_items`
+--
+
+LOCK TABLES `project_phase_items` WRITE;
+/*!40000 ALTER TABLE `project_phase_items` DISABLE KEYS */;
+/*!40000 ALTER TABLE `project_phase_items` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `project_phases`
+--
+
+DROP TABLE IF EXISTS `project_phases`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `project_phases` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `project_id` int NOT NULL,
+  `phase_name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `phase_order` tinyint NOT NULL DEFAULT '1',
+  `weight_percentage` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT 'All phases must sum to 100%',
+  `planned_start_date` date DEFAULT NULL,
+  `planned_end_date` date DEFAULT NULL,
+  `actual_start_date` date DEFAULT NULL,
+  `actual_end_date` date DEFAULT NULL,
+  `planned_progress` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '% within this phase planned',
+  `actual_progress` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '% within this phase achieved',
+  `status` enum('Not Started','In Progress','Completed','At Risk','Delayed') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Not Started',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `phase_type` enum('pre_construction','construction','finishing') COLLATE utf8mb4_general_ci DEFAULT 'construction',
+  PRIMARY KEY (`id`),
+  KEY `idx_pp_project` (`project_id`),
+  KEY `idx_pp_order` (`project_id`,`phase_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 2: Per-project phase definitions cloned from phase_template_defaults';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `project_phases`
+--
+
+LOCK TABLES `project_phases` WRITE;
+/*!40000 ALTER TABLE `project_phases` DISABLE KEYS */;
+/*!40000 ALTER TABLE `project_phases` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `project_risks`
+--
+
+DROP TABLE IF EXISTS `project_risks`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `project_risks` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `project_id` int NOT NULL,
+  `phase_id` int unsigned DEFAULT NULL,
+  `risk_code` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Auto: R-101, R-102...',
+  `issue_description` text COLLATE utf8mb4_general_ci NOT NULL,
+  `category` enum('Labour','Material','Design Quality','Approval Delay','Contractor Delay','Weather','Budget','Other') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Other',
+  `impact` enum('Very High','High','Medium','Low') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
+  `likelihood` enum('Very High','High','Medium','Low') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
+  `severity` enum('Critical','High','Medium','Low') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
+  `owner` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `due_date` date DEFAULT NULL,
+  `status` enum('Open','In Progress','Resolved','Closed') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Open',
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_pr_project` (`project_id`),
+  KEY `idx_pr_phase` (`phase_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 6: Risk register — tracks all project risks with heatmap data';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `project_risks`
+--
+
+LOCK TABLES `project_risks` WRITE;
+/*!40000 ALTER TABLE `project_risks` DISABLE KEYS */;
+/*!40000 ALTER TABLE `project_risks` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -3416,6 +4136,45 @@ CREATE TABLE `project_structural_designs` (
 LOCK TABLES `project_structural_designs` WRITE;
 /*!40000 ALTER TABLE `project_structural_designs` DISABLE KEYS */;
 /*!40000 ALTER TABLE `project_structural_designs` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `project_timelines`
+--
+
+DROP TABLE IF EXISTS `project_timelines`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `project_timelines` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `project_id` int NOT NULL,
+  `project_code` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `project_type` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Residential / Commercial / Industrial',
+  `project_category` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'High Rise / Low Rise / Industrial Shed',
+  `handover_months` int NOT NULL COMMENT 'Total timeline in months e.g. 48',
+  `construction_months` int NOT NULL COMMENT 'Construction period in months e.g. 32',
+  `post_construction_months` int NOT NULL DEFAULT '6' COMMENT 'Post construction months e.g. 6',
+  `project_start_date` date NOT NULL COMMENT 'Project kickoff date',
+  `construction_start_date` date NOT NULL COMMENT 'On-site construction start',
+  `construction_end_date` date NOT NULL COMMENT 'Construction completion date',
+  `expected_handover_date` date NOT NULL COMMENT 'Final handover to client',
+  `current_status` enum('Planning','Pre-Construction','Construction','Post-Construction','Handover','Completed') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Planning',
+  `description` text COLLATE utf8mb4_general_ci,
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_pt_project` (`project_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 1: Project timeline setup — one row per project';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `project_timelines`
+--
+
+LOCK TABLES `project_timelines` WRITE;
+/*!40000 ALTER TABLE `project_timelines` DISABLE KEYS */;
+/*!40000 ALTER TABLE `project_timelines` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -3890,7 +4649,7 @@ CREATE TABLE `qc_test_types` (
   `description` text,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3994,6 +4753,88 @@ INSERT INTO `quotations` VALUES (1,1,1,'2026-05-05','Active',NULL,123,'2026-05-0
 UNLOCK TABLES;
 
 --
+-- Table structure for table `recovery_action_items`
+--
+
+DROP TABLE IF EXISTS `recovery_action_items`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `recovery_action_items` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `recovery_plan_id` int unsigned NOT NULL,
+  `action_item` text COLLATE utf8mb4_general_ci NOT NULL,
+  `category` enum('Labour','Procurement','MEP','Execution','Logistics','Design','Finance') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Execution',
+  `priority` enum('High','Medium','Low') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
+  `owner` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `start_date` date DEFAULT NULL,
+  `due_date` date DEFAULT NULL,
+  `expected_impact` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'e.g. +5% Progress',
+  `dependency` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `status` enum('Open','In Progress','Completed','Blocked') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Open',
+  `approval_status` enum('Pending','Approved','Rejected') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_rai_plan` (`recovery_plan_id`),
+  CONSTRAINT `fk_rai_plan` FOREIGN KEY (`recovery_plan_id`) REFERENCES `recovery_plans` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 7: Action items within a recovery plan';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `recovery_action_items`
+--
+
+LOCK TABLES `recovery_action_items` WRITE;
+/*!40000 ALTER TABLE `recovery_action_items` DISABLE KEYS */;
+/*!40000 ALTER TABLE `recovery_action_items` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `recovery_plans`
+--
+
+DROP TABLE IF EXISTS `recovery_plans`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `recovery_plans` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `project_id` int NOT NULL,
+  `review_id` int unsigned DEFAULT NULL COMMENT 'Linked monthly review',
+  `recovery_month` date NOT NULL COMMENT 'Month this plan targets',
+  `delay_carry_forward_pct` decimal(5,2) DEFAULT NULL COMMENT '% delay from previous month',
+  `recovery_target_pct` decimal(5,2) DEFAULT NULL COMMENT '+% to recover this month',
+  `projected_extra_progress_pct` decimal(5,2) DEFAULT NULL COMMENT 'Total extra % achievable',
+  `critical_focus_areas_count` tinyint NOT NULL DEFAULT '0',
+  `additional_labour` int NOT NULL DEFAULT '0',
+  `extra_budget_lac` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT 'In Lacs',
+  `extra_working_hours` int NOT NULL DEFAULT '0',
+  `contractor_teams_added` tinyint NOT NULL DEFAULT '0',
+  `project_manager_notes` text COLLATE utf8mb4_general_ci,
+  `final_decision` enum('Approve','Approve with Conditions','Hold') COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `decision_conditions` text COLLATE utf8mb4_general_ci,
+  `decision_by` int DEFAULT NULL,
+  `decision_at` datetime DEFAULT NULL,
+  `approval_status` enum('Draft','PM Submitted','Management Review','Finance Clearance','Approved','Rejected') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
+  `pm_submitted_at` datetime DEFAULT NULL,
+  `management_reviewed_at` datetime DEFAULT NULL,
+  `finance_cleared_at` datetime DEFAULT NULL,
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_rp_project` (`project_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 7: Recovery plan — management action plan when behind schedule';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `recovery_plans`
+--
+
+LOCK TABLES `recovery_plans` WRITE;
+/*!40000 ALTER TABLE `recovery_plans` DISABLE KEYS */;
+/*!40000 ALTER TABLE `recovery_plans` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `role_permissions`
 --
 
@@ -4009,7 +4850,7 @@ CREATE TABLE `role_permissions` (
   PRIMARY KEY (`id`),
   KEY `permission_id` (`permission_id`),
   KEY `role_id` (`role_id`,`permission_id`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=717 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=728 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4018,7 +4859,7 @@ CREATE TABLE `role_permissions` (
 
 LOCK TABLES `role_permissions` WRITE;
 /*!40000 ALTER TABLE `role_permissions` DISABLE KEYS */;
-INSERT INTO `role_permissions` VALUES (26,7,12,'2026-02-05 07:06:27','2026-02-05 07:06:27'),(27,7,13,'2026-02-05 07:06:27','2026-02-05 07:06:27'),(79,11,13,'2026-04-02 08:11:08','2026-04-02 08:11:08'),(80,11,22,'2026-04-02 08:11:08','2026-04-02 08:11:08'),(85,10,23,'2026-04-02 08:11:48','2026-04-02 08:11:48'),(86,10,13,'2026-04-02 08:11:48','2026-04-02 08:11:48'),(87,10,19,'2026-04-02 08:11:48','2026-04-02 08:11:48'),(88,8,15,'2026-04-06 09:20:46','2026-04-06 09:20:46'),(89,8,20,'2026-04-06 09:20:46','2026-04-06 09:20:46'),(90,8,13,'2026-04-06 09:20:46','2026-04-06 09:20:46'),(120,5,17,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(121,5,20,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(122,5,7,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(123,5,24,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(124,5,13,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(133,1,10,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(134,1,3,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(135,1,1,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(136,1,5,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(137,1,21,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(138,1,12,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(139,1,6,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(140,1,25,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(141,1,14,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(142,1,11,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(143,1,7,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(144,1,24,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(145,1,4,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(146,1,13,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(147,1,2,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(164,4,6,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(165,4,25,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(166,4,20,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(167,4,8,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(168,4,24,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(169,4,13,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(170,9,25,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(171,9,24,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(172,9,13,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(173,9,19,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(177,6,10,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(178,6,25,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(179,6,20,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(180,6,13,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(417,14,27,'2026-04-30 04:56:20','2026-04-30 04:56:20'),(437,16,34,'2026-04-30 04:58:52','2026-04-30 04:58:52'),(442,19,41,'2026-04-30 05:30:57','2026-04-30 05:30:57'),(443,19,31,'2026-04-30 05:30:57','2026-04-30 05:30:57'),(470,21,48,'2026-04-30 05:33:10','2026-04-30 05:33:10'),(476,18,39,'2026-05-04 06:53:40','2026-05-04 06:53:40'),(477,13,49,'2026-05-05 04:23:42','2026-05-05 04:23:42'),(573,17,44,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(574,17,38,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(575,17,35,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(576,17,36,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(612,15,41,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(613,15,26,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(614,15,45,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(615,15,40,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(616,15,31,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(617,15,28,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(618,15,27,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(619,15,33,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(620,15,44,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(621,15,43,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(622,15,38,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(623,15,34,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(624,15,29,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(625,15,46,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(626,15,48,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(627,15,32,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(628,15,35,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(629,15,30,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(630,15,36,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(631,15,50,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(632,15,42,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(633,3,10,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(634,3,3,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(635,3,1,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(636,3,5,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(637,3,39,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(638,3,47,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(639,3,41,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(640,3,21,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(641,3,12,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(642,3,26,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(643,3,45,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(644,3,31,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(645,3,6,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(646,3,28,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(647,3,27,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(648,3,25,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(649,3,33,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(650,3,44,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(651,3,43,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(652,3,14,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(653,3,8,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(654,3,38,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(655,3,34,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(656,3,29,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(657,3,46,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(658,3,48,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(659,3,32,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(660,3,35,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(661,3,11,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(662,3,7,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(663,3,24,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(664,3,4,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(665,3,30,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(666,3,13,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(667,3,36,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(668,3,50,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(669,3,42,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(670,22,26,'2026-05-17 04:03:24','2026-05-17 04:03:24'),(671,22,51,'2026-05-17 04:03:24','2026-05-17 04:03:24'),(672,22,50,'2026-05-17 04:03:24','2026-05-17 04:03:24'),(674,23,35,'2026-05-17 18:18:13','2026-05-17 18:18:13'),(700,12,45,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(701,12,40,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(702,12,28,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(703,12,27,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(704,12,33,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(705,12,34,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(706,12,46,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(707,12,32,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(708,12,52,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(709,12,30,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(710,12,42,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(711,20,47,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(712,20,45,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(713,20,43,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(714,20,46,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(715,20,35,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(716,20,53,'2026-05-17 19:37:33','2026-05-17 19:37:33');
+INSERT INTO `role_permissions` VALUES (26,7,12,'2026-02-05 07:06:27','2026-02-05 07:06:27'),(27,7,13,'2026-02-05 07:06:27','2026-02-05 07:06:27'),(79,11,13,'2026-04-02 08:11:08','2026-04-02 08:11:08'),(80,11,22,'2026-04-02 08:11:08','2026-04-02 08:11:08'),(85,10,23,'2026-04-02 08:11:48','2026-04-02 08:11:48'),(86,10,13,'2026-04-02 08:11:48','2026-04-02 08:11:48'),(87,10,19,'2026-04-02 08:11:48','2026-04-02 08:11:48'),(88,8,15,'2026-04-06 09:20:46','2026-04-06 09:20:46'),(89,8,20,'2026-04-06 09:20:46','2026-04-06 09:20:46'),(90,8,13,'2026-04-06 09:20:46','2026-04-06 09:20:46'),(120,5,17,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(121,5,20,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(122,5,7,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(123,5,24,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(124,5,13,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(133,1,10,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(134,1,3,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(135,1,1,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(136,1,5,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(137,1,21,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(138,1,12,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(139,1,6,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(140,1,25,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(141,1,14,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(142,1,11,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(143,1,7,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(144,1,24,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(145,1,4,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(146,1,13,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(147,1,2,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(164,4,6,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(165,4,25,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(166,4,20,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(167,4,8,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(168,4,24,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(169,4,13,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(170,9,25,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(171,9,24,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(172,9,13,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(173,9,19,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(177,6,10,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(178,6,25,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(179,6,20,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(180,6,13,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(417,14,27,'2026-04-30 04:56:20','2026-04-30 04:56:20'),(437,16,34,'2026-04-30 04:58:52','2026-04-30 04:58:52'),(442,19,41,'2026-04-30 05:30:57','2026-04-30 05:30:57'),(443,19,31,'2026-04-30 05:30:57','2026-04-30 05:30:57'),(470,21,48,'2026-04-30 05:33:10','2026-04-30 05:33:10'),(476,18,39,'2026-05-04 06:53:40','2026-05-04 06:53:40'),(477,13,49,'2026-05-05 04:23:42','2026-05-05 04:23:42'),(573,17,44,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(574,17,38,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(575,17,35,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(576,17,36,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(612,15,41,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(613,15,26,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(614,15,45,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(615,15,40,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(616,15,31,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(617,15,28,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(618,15,27,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(619,15,33,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(620,15,44,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(621,15,43,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(622,15,38,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(623,15,34,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(624,15,29,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(625,15,46,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(626,15,48,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(627,15,32,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(628,15,35,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(629,15,30,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(630,15,36,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(631,15,50,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(632,15,42,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(633,3,10,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(634,3,3,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(635,3,1,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(636,3,5,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(637,3,39,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(638,3,47,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(639,3,41,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(640,3,21,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(641,3,12,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(642,3,26,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(643,3,45,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(644,3,31,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(645,3,6,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(646,3,28,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(647,3,27,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(648,3,25,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(649,3,33,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(650,3,44,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(651,3,43,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(652,3,14,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(653,3,8,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(654,3,38,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(655,3,34,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(656,3,29,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(657,3,46,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(658,3,48,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(659,3,32,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(660,3,35,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(661,3,11,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(662,3,7,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(663,3,24,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(664,3,4,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(665,3,30,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(666,3,13,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(667,3,36,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(668,3,50,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(669,3,42,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(670,22,26,'2026-05-17 04:03:24','2026-05-17 04:03:24'),(671,22,51,'2026-05-17 04:03:24','2026-05-17 04:03:24'),(672,22,50,'2026-05-17 04:03:24','2026-05-17 04:03:24'),(674,23,35,'2026-05-17 18:18:13','2026-05-17 18:18:13'),(700,12,45,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(701,12,40,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(702,12,28,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(703,12,27,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(704,12,33,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(705,12,34,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(706,12,46,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(707,12,32,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(708,12,52,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(709,12,30,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(710,12,42,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(711,20,47,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(712,20,45,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(713,20,43,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(714,20,46,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(715,20,35,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(716,20,53,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(717,24,54,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(718,25,54,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(719,24,49,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(720,25,49,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(721,20,55,'2026-05-24 10:25:21','2026-05-24 10:25:21'),(722,1,55,'2026-05-24 10:25:32','2026-05-24 10:25:32'),(723,3,55,'2026-05-24 10:25:42','2026-05-24 10:25:42'),(724,24,55,'2026-05-24 10:25:52','2026-05-24 10:25:52'),(725,25,55,'2026-05-24 10:26:02','2026-05-24 10:26:02'),(726,17,55,'2026-05-24 10:26:11','2026-05-24 10:26:11'),(727,6,55,'2026-05-24 10:26:22','2026-05-24 10:26:22');
 /*!40000 ALTER TABLE `role_permissions` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -4036,7 +4877,7 @@ CREATE TABLE `roles` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4045,7 +4886,7 @@ CREATE TABLE `roles` (
 
 LOCK TABLES `roles` WRITE;
 /*!40000 ALTER TABLE `roles` DISABLE KEYS */;
-INSERT INTO `roles` VALUES (1,'Admin',NULL,'2025-12-06 04:14:57','2025-12-06 04:14:57'),(2,'Employee',NULL,'2025-12-06 08:25:53','2025-12-06 08:25:53'),(3,'super Admin',NULL,'2025-12-06 11:09:07','2025-12-06 11:09:07'),(4,'HR',NULL,'2025-12-17 06:46:21','2025-12-17 06:46:21'),(5,'Sales Manager',NULL,'2026-01-04 01:14:34','2026-01-04 01:14:34'),(6,'Accounts ',NULL,'2026-01-04 01:15:42','2026-01-04 01:15:42'),(7,'Clients Experiment',NULL,'2026-01-04 04:34:42','2026-01-04 04:34:42'),(8,'Sales Executive',NULL,'2026-01-30 04:37:41','2026-01-30 04:37:41'),(9,'Sales Team Head',NULL,'2026-02-01 12:06:29','2026-02-01 12:06:29'),(10,'Head Of Digital Marketing Team',NULL,'2026-03-30 16:42:44','2026-03-30 16:42:44'),(11,'Executive Of Digital Marketing Team',NULL,'2026-04-02 08:11:08','2026-04-02 08:11:08'),(12,'Site Engineer ',NULL,'2026-04-20 22:49:11','2026-04-20 22:49:11'),(13,'Quality Controller(QC)',NULL,'2026-04-20 22:51:54','2026-04-20 22:51:54'),(14,'Land Manager',NULL,'2026-04-21 23:12:11','2026-04-21 23:12:11'),(15,'Project Manager',NULL,'2026-04-21 23:12:57','2026-04-21 23:12:57'),(16,'Draftsman ',NULL,'2026-04-21 23:15:23','2026-04-21 23:15:23'),(17,'Purchase team leader',NULL,'2026-04-21 23:17:55','2026-04-21 23:17:55'),(18,'Project Architecture ',NULL,'2026-04-21 23:25:26','2026-04-21 23:25:26'),(19,'Estimator',NULL,'2026-04-22 02:35:08','2026-04-22 02:35:08'),(20,'Site Operator',NULL,'2026-04-26 04:03:50','2026-04-26 04:03:50'),(21,'Structure designer',NULL,'2026-04-26 05:13:09','2026-04-26 05:13:09'),(22,'Project Manager Head',NULL,'2026-04-30 06:42:24','2026-04-30 06:42:24'),(23,' Purchase executive',NULL,'2026-05-17 11:36:33','2026-05-17 11:36:33');
+INSERT INTO `roles` VALUES (1,'Admin',NULL,'2025-12-06 04:14:57','2025-12-06 04:14:57'),(2,'Employee',NULL,'2025-12-06 08:25:53','2025-12-06 08:25:53'),(3,'super Admin',NULL,'2025-12-06 11:09:07','2025-12-06 11:09:07'),(4,'HR',NULL,'2025-12-17 06:46:21','2025-12-17 06:46:21'),(5,'Sales Manager',NULL,'2026-01-04 01:14:34','2026-01-04 01:14:34'),(6,'Accounts ',NULL,'2026-01-04 01:15:42','2026-01-04 01:15:42'),(7,'Clients Experiment',NULL,'2026-01-04 04:34:42','2026-01-04 04:34:42'),(8,'Sales Executive',NULL,'2026-01-30 04:37:41','2026-01-30 04:37:41'),(9,'Sales Team Head',NULL,'2026-02-01 12:06:29','2026-02-01 12:06:29'),(10,'Head Of Digital Marketing Team',NULL,'2026-03-30 16:42:44','2026-03-30 16:42:44'),(11,'Executive Of Digital Marketing Team',NULL,'2026-04-02 08:11:08','2026-04-02 08:11:08'),(12,'Site Engineer ',NULL,'2026-04-20 22:49:11','2026-04-20 22:49:11'),(13,'Quality Controller(QC)',NULL,'2026-04-20 22:51:54','2026-04-20 22:51:54'),(14,'Land Manager',NULL,'2026-04-21 23:12:11','2026-04-21 23:12:11'),(15,'Project Manager',NULL,'2026-04-21 23:12:57','2026-04-21 23:12:57'),(16,'Draftsman ',NULL,'2026-04-21 23:15:23','2026-04-21 23:15:23'),(17,'Purchase team leader',NULL,'2026-04-21 23:17:55','2026-04-21 23:17:55'),(18,'Project Architecture ',NULL,'2026-04-21 23:25:26','2026-04-21 23:25:26'),(19,'Estimator',NULL,'2026-04-22 02:35:08','2026-04-22 02:35:08'),(20,'Site Operator',NULL,'2026-04-26 04:03:50','2026-04-26 04:03:50'),(21,'Structure designer',NULL,'2026-04-26 05:13:09','2026-04-26 05:13:09'),(22,'Project Manager Head',NULL,'2026-04-30 06:42:24','2026-04-30 06:42:24'),(23,' Purchase executive',NULL,'2026-05-17 11:36:33','2026-05-17 11:36:33'),(24,'QC & Internal Audit Head',NULL,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(25,'QC & Internal Audit Executive',NULL,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(26,'QC & Internal Audit Head',NULL,'2026-05-24 09:32:16','2026-05-24 09:32:16'),(27,'QC & Internal Audit Executive',NULL,'2026-05-24 09:32:16','2026-05-24 09:32:16'),(28,'QC & Internal Audit Head',NULL,'2026-05-24 09:32:17','2026-05-24 09:32:17'),(29,'QC & Internal Audit Executive',NULL,'2026-05-24 09:32:17','2026-05-24 09:32:17');
 /*!40000 ALTER TABLE `roles` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -4402,7 +5243,7 @@ CREATE TABLE `users` (
   UNIQUE KEY `email` (`email`),
   KEY `role_id` (`role_id`),
   KEY `fk_user_employee` (`employee_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=139 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=141 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4411,7 +5252,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,0,'Farzana','farzana','01873244236','farzana.tphl@gmail.com',28,'Dhaka','123',1,'$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS',NULL,'','','2026-04-09 05:34:11',6,'2026-02-22 06:47:08','2026-04-30 04:25:17',0),(2,NULL,'Sojib','sojib','01798342755','sales@gmail.com',1,'Dhaka',NULL,5,'$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS',NULL,NULL,NULL,'2026-05-09 04:45:14',NULL,'2026-02-22 06:47:08','2026-05-09 04:45:14',NULL),(3,1,'Fahim','Fahim','01790128471','fahim@gmail.com',0,'Mohammadpur, Dhaka-1207','23445',8,'$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG',NULL,'','','2026-04-19 05:54:47',4,'2026-02-23 03:24:25','2026-04-19 05:54:47',0),(4,1008,'Md. Jasim Uddin','Jasim Uddin','01762013007','hr@gmail.com',14,'House:01, Road:03, Block: B, Section:02, Mirpur, Dhaka-1216.','1903663282',4,'$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry',NULL,'','','2026-04-24 12:21:28',4,'2026-02-23 05:44:19','2026-04-24 12:21:28',NULL),(5,0,'Mr. Jisan','Mr. Jisan','01390128223','accounts@gmail.com',3,'Mohammadpur, Dhaka-1207','2345676',6,'$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6',NULL,'','','2026-04-08 09:48:37',6,'2026-02-23 06:11:06','2026-04-08 09:48:37',NULL),(6,1,'Management','Management','01933657804','management@gmail.com',0,'dhaka','32453',3,'$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW',NULL,'','','2026-05-23 15:31:30',110,'2026-03-29 03:44:44','2026-05-23 15:31:30',0),(7,NULL,'CED','CED','01872364346','ced@gmail.com',1,'Dhaka','823445',7,'$2y$10$a51psvUGsp/WsSE5cY2xNuKpuKSNoG/QZNNxxfWs0I.eSPM1KPAX.',NULL,'','','2026-03-31 12:05:54',6,'2026-03-29 04:01:38','2026-03-31 12:05:54',NULL),(8,NULL,'Sales Team Head','Sales Head','01327488234','sales-head@gmail.com',1,'Dhaka','09231943',9,'$2y$10$Hr8gjcm14bLK/Ns6ws/pt.jz0PA5ObSc.jo4Z7epS23UsEkVDUXn.',NULL,'','','2026-04-08 09:30:55',1,'2026-03-29 04:16:47','2026-04-08 09:30:55',NULL),(9,3,'Md. rafi','admin_39_','01234567890','rafi@easytechx.com',9,'ADDL Tower, Dhanmondi 27/A','',8,'$2y$10$nId2sBtusb0qFr2136IMrOZVDVkHq8RTjbsJIzgZ8GpaDXDTMhhHG',NULL,'','','2026-03-29 10:24:18',0,'2026-03-29 10:23:39','2026-03-30 16:36:23',NULL),(11,5,'Bornali Haque','Bornali Haque','01335258340','bornalihaque.tphl@gmail.com',13,'RUAP, Uttara 18, Dhaka','',2,'$2y$10$R9YSZd3L1v262q20VEtdG.dyT9xPRWmHFtjeTvwao5i8i24T5Hpm.',NULL,'','','2026-03-31 08:48:42',0,'2026-03-29 10:31:45','2026-04-11 08:52:14',0),(12,8,'Sanjana Hossain Moure','sanjana moure','01901310848','moure.tphl@gmail.com',15,'Mirpur-2 water tank, Block - F, road -3, Dhaka -1216','',8,'$2y$10$2J2ciVq5whQHb80.zq0zYuQcH.eb0B3pagwhnmx9TEsy.elK3J1ry',NULL,'','','2026-03-30 05:15:10',0,'2026-03-30 05:15:10','2026-03-30 16:36:23',NULL),(13,9,'Md. Rabbi Hossain','rabbi hossain','0 1901-3108','rabbihossain.tphl@gmail.com',20,'Baro Bazar, Ashulia Model Town, Savar, Dhaka.','',8,'$2y$10$uWAvlmxoW/gvdDhxn.IT9.HU7.NBPwqpbWipciGD0eZWdJQ6z9vvG',NULL,'','','2026-03-30 05:15:44',0,'2026-03-30 05:15:44','2026-04-12 11:40:43',4),(14,7,'Saleh Ahamed','saleh ahmed','0 1901-3650','saleh.tphl@gmail.com',21,'','',5,'$2y$10$fsUbevYAvi9OQguKgaiyEOzj/63NgEbIFqoqshjTVDdjkBrNhQ.Sq',NULL,'','','2026-04-30 05:27:15',0,'2026-03-30 05:18:44','2026-04-30 05:27:15',4),(15,6,'Md. Kawsar Ahammed','kowsar ahammed','01901310845','kawsar.tphl@gmail.com',21,'Vill: Bhubangati, Post: Biswarigacha, Thana: Dhunat, Zilla: Bogura','',5,'$2y$10$o4oawe3QpdDiLJTIH4chT.gwAdLBA52i.HFtGH.M1KDmjzkTfFDZy',NULL,'','','2026-04-25 03:54:29',0,'2026-03-30 05:19:07','2026-04-25 03:54:29',0),(16,0,'Ashfaque Bhuiyan Omi','Ashfaque Omi','01958253303','ashfaqueomi.tphl25@gmail.com',20,'Darul Aman Housing, Mirpur-2, Dhaka - 1206','',2,'$2y$10$29JSW4M8FbD3VNZnoUD8AOXB5LRrqo7vS22WMNfWezI11UlsObVCa',NULL,'','','2026-03-30 05:19:52',0,'2026-03-30 05:19:52','2026-03-30 16:36:23',NULL),(18,10,'Mehnaz Ahmed','mehnaz ahmed','0 1901-3650','mehnaz.tphl@gmail.com',20,'South chayabithi, Joydebpur, Gazipur','9160336244',8,'$2y$10$edszxcW7aAhMpXKVGUIZZePVtP.RhKwPuC8vA2baFfd8jmrYS8mEG',NULL,'','','2026-03-30 05:26:05',0,'2026-03-30 05:26:05','2026-03-30 16:36:23',NULL),(19,11,'Mr. Ibrahim Khalil','ibrahim khalil','01958253319','ibrahim.tphl@gmail.com',20,'5/9, Dakkhin Rajashon, Savar, Dhaka','2805006299',8,'$2y$10$iSTZaE4q9PCH.qM.53lFp.4EuEh2KoQKQRkD/q4SGrvV9Un84T1Pa',NULL,'','','2026-03-30 05:30:21',0,'2026-03-30 05:30:21','2026-03-30 16:36:23',NULL),(20,12,'Shammi Akther','shammi akhter','0 1901-3108','shammi.tphl@gmail.com',20,'13 no sector ,uttara.','',5,'$2y$10$bOb3g/W82j7pq3Jk9s520uIK1KOulFlbRWN4NVT55EC/1NxigzSJm',NULL,'','','2026-05-07 11:05:31',0,'2026-03-30 05:35:10','2026-05-07 11:05:31',10),(21,13,'Rejwan Ahmed','rejwan ahmad','01901365040','rejwantphl@gmail.com',21,'Sreemangal, Moulvibazar.','',5,'$2y$10$kQcMOXqxvt92qxB0nnSFtexGzH.iIcEQMC66.kOAasjnr943R9lBG',NULL,'','','2026-03-30 05:40:37',0,'2026-03-30 05:40:37','2026-04-06 06:29:52',2),(22,14,'MD. Feroz Ahamed','feroz ahamed','01958253327','feroz.tphl@gmail.com',20,'Savar, Dhaka','',5,'$2y$10$7hG94FPqPG5HzIWpCm/8QufyocDjtDn.onUagAcqBZEMNRvMX6Z/e',NULL,'','','2026-04-07 04:40:50',0,'2026-03-30 05:47:14','2026-04-07 04:40:50',9),(23,15,'Mojammel Haque','mojammel haque','01958253324','mojammel.tphl@gmail.com',21,'B-4, G-1, Sher-E-Bangla Nagar Staff Quarter, Dhaka-1207','',5,'$2y$10$U15bgAj.WrcLRkMMhITZXOezRY5D9EqGXHeNN79JuKjwaygBddySy',NULL,'','','2026-05-06 10:46:45',6,'2026-03-30 05:51:15','2026-05-06 10:46:45',0),(25,17,'Rakib Al Hasan','rakibal hasan','01958253321','rakib.tphl@gmail.com',20,'Daffodil smart city, Birulia savar Dhaka','',5,'$2y$10$yBQjX3SvmWQXO2cA.ol4B.zPmjIqbyUiqysRN7HTZfXLlo4Z95qfq',NULL,'','','2026-04-16 12:12:39',0,'2026-03-30 06:43:56','2026-04-16 12:12:39',8),(26,18,'Md. Nazmul Khan Shihab','khan Shihab','01958253326','shihab.tphl@gmail.com',20,'2450/11,East Dandabor, Palashbari, Savar cantonment -1344, Savar, Dhaka','',8,'$2y$10$b/geGkDCcdjnJY4j931Ia.YyXu1/FBrONUVr8jCr9csPFZXJ8BYMi',NULL,'','','2026-03-30 06:50:40',0,'2026-03-30 06:50:40','2026-04-12 11:58:01',10),(27,19,'Munshi Aiman Kabir','aiman kabir','01958253318','aiman.tphl@gmail.com',20,'Savar, Dhaka','',8,'$2y$10$lxze0zOCDKCiYZanahnfO.8tgO6v4MZiK8OBHsMxiXr7/4qH3s2FO',NULL,'','','2026-03-30 07:01:11',0,'2026-03-30 07:01:11','2026-04-16 07:46:31',4),(28,20,'Md. Tariqul Islam Illion','tariqul islam','0 1958-2533','illion.tphl@gmail.com',20,'Ashulia Model Town, Khagan Bazar, Birulia, Savar, Dhaka','',0,'$2y$10$Sj/S3IIUnt4EttdRVs/lXOCGvn9i/funVCadYEXd0ENgLdmEXSZF6',NULL,'','','2026-03-30 07:06:02',6,'2026-03-30 07:06:02','2026-05-13 11:11:43',0),(29,21,'Shafia Afrin Shahana','Shafia Afrin Shahana','01335258332','shafia.tphl@gmail.com',15,'Apon Bazar Samiti Market, Rayerbag, Jatrabari, Dhaka','',5,'$2y$10$jg9yoH8rHsH2A7wrOb6D8urj1iUv889LWfvhL3dU95RDg8t7HIYpK',NULL,'','','2026-05-13 11:15:12',0,'2026-03-30 07:56:24','2026-05-13 11:15:12',11),(30,22,'Abir Ahmed','Abir Ahmed','01335258328','abir0.tphl@gmail.com',15,'Poshu Hospital Para, Magura Sadar,Magura','',8,'$2y$10$IU8I8sJvyYl06UUHgy8XHuzHv66J7mAfVdPACHogEpVjTZ8Wuq2bG',NULL,'','','2026-03-30 08:29:14',0,'2026-03-30 08:29:14','2026-04-12 11:58:59',10),(31,23,'Shanawaz Khan','Shanawaz Khan','01335258330','shanawaz.tphl@gmail.com',15,'House-12,Road-4,Block-J,Banasree Meradia Khilgaon Dhaka 1219','',8,'$2y$10$Px7TN7veOADIqwYdPfISbOLfxqwEkSq9S1R8sTPWDUpAYRo4hb4uS',NULL,'','','2026-05-09 04:03:04',0,'2026-03-30 08:42:17','2026-05-09 04:03:04',3),(32,24,'Md. Saiful Islam Jony','saiful jony','01958253340','saif.thpl@gmail.com',21,'104/A/9 Buddhibi Road,Mohammadpur,Dhaka-1207','',5,'$2y$10$iJlvDYNOYQ5.AFtGpin74uRVIvXn//mKEgfeHXBvVTXXvqLEteiJa',NULL,'','','2026-04-20 05:23:04',0,'2026-03-30 08:46:37','2026-04-20 05:23:04',12),(33,25,'Aranya Bhowmick Dhrubo','Aranya Bhowmick Dhrubo','01335258329','dhrubo.tphl@gmail.com',20,'15 Shah-Shaheb Lane Narinda, Dhaka','',8,'$2y$10$U/nrFg9Eyc.ss5Oi2gFWV.BgzE8NXmjGHyhD9aY2VLUaGv9dr8KwO',NULL,'','','2026-03-30 08:47:19',0,'2026-03-30 08:47:19','2026-04-12 11:55:20',2),(34,26,'Tabassum Akter Soma','tabassum soma','01958253374','soma.tphl@gmail.com',23,'Ashulia Model Town, Savar, Dhaka','',8,'$2y$10$tfmvA.ksOc8S9hmYTwU5Xut8ERUg7YztJfCydw1f9.K4jRF.HKBom','users_69d480ed67778.jpg','','','2026-03-30 08:50:26',0,'2026-03-30 08:50:26','2026-04-12 11:54:19',9),(35,27,'Sadat Hossain','Sadat Hossain','01335258331','sadathossain11@gmail.com',15,'116, Jagannath Saha Road, Lalbagh, Dhaka-1211','',8,'$2y$10$cRtbvkGvyjShTPIsq0egPO4PYdXmFT3jJ5NzOBGAKeu823cA2CA7K',NULL,'','','2026-03-30 08:52:52',0,'2026-03-30 08:52:52','2026-04-12 12:09:57',6),(36,28,'Md. Ajizul Islam Manik','ajizul manik','01958253338','manik.tphl@gmail.com',20,'1/B , Nondipara, Dhaka ,1219','',5,'$2y$10$fGHgvRrPvCdxk8IUbwWnse1eebLaQ2c6q3h4pbfPmGkOb.hP60IH.',NULL,'','','2026-05-09 04:19:04',0,'2026-03-30 08:56:43','2026-05-09 04:19:04',3),(37,29,'Tasnur Aman Satu','aman satu','01958253363','satu.tphl@gmail.com',20,'kumkumari- Midha bari','',8,'$2y$10$B8RxH6k07S5uVYeOQdAySusGhyguSq1rwA5ZNa7DcFbo.kd7jwNCe',NULL,'','','2026-03-30 09:00:39',0,'2026-03-30 09:00:39','2026-04-12 11:53:21',8),(38,30,'Md. Tasdikul Hasan Sikder','Md. Tasdikul Hasan Sikder','01335258317','tasdik.tphl@gmail.com',13,'523 East Kazipara, Dhaka, Mirpur-1216','',8,'$2y$10$hvyLcozNhFKHKyzSHob2LurUMAn1cka7WeuKy6354xGTxHOCEFMv.',NULL,'','','2026-03-30 09:03:57',0,'2026-03-30 09:03:57','2026-04-12 11:59:21',10),(40,31,'Qazi Nadeem Javed','Qazi Nadeem Javed','‪0195825333','nadeem.tphl@gmail.com',25,'Sector 10 Road 7 uttara','2350020026',2,'$2y$10$HwTS4uTRRrfpsjH0iIssnO2q8R1aJb/JKRdGmr8vK3Od7JyC8RaU.',NULL,'','','2026-03-30 09:09:53',0,'2026-03-30 09:09:53','2026-03-30 16:36:23',NULL),(41,32,'Nayeemur Rahman','Nayeemur Rahman','01335258318','nayeemtonmoytphl@gmail.com',15,'Road No. 4, F Block, Mirpur-2','',8,'$2y$10$vNpgHQwRP33k2ftwwnzuuO8mJSGtb2K6MSgQyyzBm5hlu1pxQKt0.',NULL,'','','2026-03-30 09:12:53',0,'2026-03-30 09:12:53','2026-04-12 11:57:29',3),(42,33,'Mahin - Al Beruni','Mahin - Al Beruni','01958253328','tphl.mahin@gmail.com',26,'House 40/3, Varalipara, Boro Bangram, Sopura, Shah Mokhdum, Rajshahi - 6203','8710606925',2,'$2y$10$w0GwPk82B7c/775XmUq6V.XOJnByBk5qE3Ux5I6nJB.0m2d0NhGWW',NULL,'','','2026-03-30 09:16:00',0,'2026-03-30 09:16:00','2026-03-30 16:36:23',NULL),(44,35,'Md. Momidul Islam','Md. Momidul Islam','01958253335','momidul.tphl@gmail.com',20,'Nolbata, Hatiandaha, Singra, Natore','',5,'$2y$10$EBQ3p.5EUXFhu8yNczeCdeEXYQT4DVq.eNcdL32sCZsICVTFc1/ry',NULL,'','','2026-04-09 11:09:59',0,'2026-03-30 09:23:02','2026-04-09 11:09:59',13),(48,36,'Rifat Ahsan','Rifat Ahsan','01958583350','rifat.tphl@gmail.com',20,'Khilkhet kha para','4213633714',8,'$2y$10$O3uQB5h/6KwsPWex8ESVzee39365moqUtNr9DIoqhxeJJM1JDLB4e',NULL,'','','2026-03-30 09:32:02',0,'2026-03-30 09:30:56','2026-03-30 16:36:23',NULL),(51,38,'Sudipto Azad Hriday','Sudipto Azad Hriday','01901365046','sudiptoazad.tphl@gmail.com',17,'38, Road 3B, Mohammadia Housing Limited, Mohammadpur, Dhaka-1207','9151890663',8,'$2y$10$BMBC8TMV0h.nDrahyrmUO.dhGkDQwII8Ov.UT/Hg.JVRBA6wTMUY2',NULL,'','','2026-03-30 09:38:33',0,'2026-03-30 09:38:33','2026-03-30 16:36:23',NULL),(53,39,'Al Mubin Shuvo','Al Mubin Shuvo','01335258302','almubintphl@gmail.com',15,'Kumarkhali,Kushtia','',8,'$2y$10$mXwL/qloJHAWt2lal/Y9HO4yO0sCjGHKGgr1/AckNXExlPEy1iaKS',NULL,'','','2026-05-02 11:55:02',0,'2026-03-30 09:40:37','2026-05-02 11:55:02',11),(54,40,'France Roy','France Roy','01335258303','franceroy.tphl26@gmail.com',13,'N/A','',8,'$2y$10$Vo6DJxaJpxggwx.KMaNnWuioSOc6n06nnQh/dignLkfcZQM5Re7Pa',NULL,'','','2026-04-15 10:49:21',0,'2026-03-30 09:41:04','2026-04-15 10:49:21',5),(55,41,'Md. Anwar Parvez','Md. Anwar Parvez','01335258305','anwar.tphl@gmail.com',13,'N/A','',8,'$2y$10$nD6apWdkQA9A4pxQ2WK.TuXjrF./xCNaUOMtnxEXIhYBUEm6ec5v.',NULL,'','','2026-03-30 09:44:21',0,'2026-03-30 09:44:21','2026-04-16 12:12:32',7),(56,42,'Nafisa Anjum','Nafisa Anjum','01335258319','nafisaanjum.tphl@gmail.com',23,'Ilisha Road, Ward No-1, Bhola Pourashava.\r\nBhola Sadar, District- Bhola.','8727836291',8,'$2y$10$Njcwsx0qybiXNWr6I4xU6OXrnNZ0Gez0PTeiI9mymsLEByvmFtFau',NULL,'','','2026-03-30 09:48:38',0,'2026-03-30 09:48:38','2026-03-30 16:36:23',NULL),(57,43,'Md.Minhazul Islam Sumon','Md. Minhazul Islam Sumon','01607037251','sumon.tphl@gmail.com',20,'Datta para, birulia,Savar,Dhaka','6445593269',0,'$2y$10$Vxxg305sx5c9QTdS1nZe5Ow1VTzQGDXu6Vo101UVl3iRJTGWLHPmq',NULL,'','','2026-03-30 09:56:21',0,'2026-03-30 09:56:21','2026-03-30 16:36:23',NULL),(58,44,'Md Tarekul Islam','Md Tarekul Islam','01335258316','tarekul.tphl@gmail.com',16,'Kalai, Joypurhat','',8,'$2y$10$FgfGch01R5MmOmV06QbSE.Ztcu6ohd1xekC57B9SwWwuMmnbs1KSq',NULL,'','','2026-03-30 09:59:28',0,'2026-03-30 09:59:28','2026-04-12 12:13:49',12),(59,45,'Kazi Jahid Hasan','Kazi Jahid Hasan','01335258339','jahid.tphl@gmail.com',23,'Shah Ali Thana, Mirpur 1, Dhaka, 1229','',8,'$2y$10$o1c8bwaEWyTgxCs8OKnmy.155Q2E1XV.Y5Zt2/N.AwJB9HhD39PbC',NULL,'','','2026-03-30 10:03:44',0,'2026-03-30 10:03:44','2026-04-12 12:10:37',6),(60,46,'H M Nazmul Alam','H M Nazmul Alam','01335258313','nazmulshakib.tphl@gmail.com',15,'Tulashar, Shilpakala Academy, Aminbag, Shariatpur Sadar','',8,'$2y$10$j8oSuPOI0BarG10VQLdlgu3XQLs9u4HXgl7l1S1GgnNFTSjDm5X2C','users_69cb86772a604.jpg','','','2026-03-30 10:05:23',0,'2026-03-30 10:05:23','2026-04-12 11:58:36',10),(61,47,'Mst. Tamanna Aktar Meghna','Mst. Tamanna Aktar Meghna','01958253348','tamanna.tphl@gmail.com',23,'Khagan, Birulia, savar, 1340','',8,'$2y$10$GAromZnC1DJDwjgu1qW4.eU0/aoDJbqvJPr3oyFS3HflvESXRJTwi',NULL,'','','2026-03-30 10:07:57',0,'2026-03-30 10:07:57','2026-04-12 11:53:50',8),(62,48,'Md. Rayhan Kabir Roni','Md. Rayhan Kabir Roni','01335-25832','rayhan.tphl@gmail.com',15,'Palashbari,Gaibandha','',8,'$2y$10$nN8hAqbsVXHTLsh.zHew2.nqBcRmvzezxII7SAQl3DPS8vx9/0NHy',NULL,'','','2026-04-28 10:40:13',0,'2026-03-30 10:09:50','2026-04-28 10:40:13',3),(63,49,'Sayed Al Shahab','Sayed Al Shahab','01335258322','shahab.tphl@gmail.com',15,'\" Village/Street: Rouha, Post Office:Niamatpur - 2310, Karimganj, Kishoreganj\"','',8,'$2y$10$bjXDvIEqOg9VeQ5bhNDq5exrakmbZyDeQ9w8WES/Ia06fay.8Mfgi',NULL,'','','2026-03-30 10:16:53',0,'2026-03-30 10:16:53','2026-04-12 12:15:37',13),(64,50,'Rafiqul Islam','Rafiqul Islam','01958253345','rafiqul.tphl@gmail.com',20,'Khalpar,Tarabo,Rupganj,Narayanganj, post code:1460','',8,'$2y$10$2N5KDT5gZ0UCL6S8SeRxWuZ3fxTOOWUgw3LABYD4NHzmf06UsJGNS','users_69d34f1238f61.jpeg','','','2026-03-30 10:20:00',0,'2026-03-30 10:20:00','2026-04-12 12:11:33',7),(65,51,'Md. Mahabubur Rahman Mehedee','Md. Mahabubur Rahman Mehedee','01335258307','mehedee.tphl@gmail.com',21,'N/A','',8,'$2y$10$8RKSqAv7Ir8wx2sEjdhPR.h.toEB4e5Xhoj1IGdstx2f89Hd/gKse',NULL,'','','2026-03-30 10:24:57',0,'2026-03-30 10:24:57','2026-04-12 12:13:29',12),(66,52,'Md. Sakib Al Hasan','Md. Sakib Al Hasan','01335258325','sakibhasan.tphl@gmail.com',17,'Changone, Ahulia, Dhaka 1341','',8,'$2y$10$A/mGm65CzDyqbYojepkTpOWidQpnLF4HkAhx0vkylEh38peYQuX26',NULL,'','','2026-03-30 10:25:00',0,'2026-03-30 10:25:00','2026-04-12 12:09:24',6),(67,53,'Md Asim Akram','Md Asim Akram','01335258308','akram.tphl@gmail.com',15,'N/A','',8,'$2y$10$FYOiBtICro0TkZQIb4VfhOwX5a0nUwvvFVxi2oZD3gp6ZDK75ngoW',NULL,'','','2026-04-13 05:25:31',0,'2026-03-30 10:31:00','2026-04-13 05:25:31',6),(68,54,'Rakib Hasan Rubai','Rakib Rubai','01335258309','rubai.tphl@gmail.com',13,'Nobabgonj Bazar, Lalbagh , Dhaka -1205','',5,'$2y$10$hRRDNYUbrDDK2dgBOaM/TOSCNK3VDn0TMTAfHfkMgI8Ar59HNZb1O',NULL,'','','2026-04-15 09:54:03',0,'2026-03-30 10:31:59','2026-04-15 09:54:03',7),(69,55,'Md. Rawnak Hassan Seyam','Md. Rawnak Hassan Seyam','01335-25832','rawnak.tphl@gmail.com',20,'N/A','',2,'$2y$10$GKoc1DcZdbOmsLGSBPsJU.6NaH/06m1BMsff0OFZGr05BZYXR5BgS',NULL,'','','2026-03-30 10:35:13',6,'2026-03-30 10:35:13','2026-05-13 11:10:27',0),(70,56,'Zannatul Ferdous','Zannatul Ferdous','01335258315','zannatul.tphl@gmail.com',20,'Ghoshbagh,Ashulia, Dhaka','',8,'$2y$10$N5VFRRAr6NPeO2sNHAv6hOhir6DidyOkV8l6C54kSifQZw/MVhYiG',NULL,'','','2026-03-30 10:35:17',0,'2026-03-30 10:35:17','2026-04-12 11:53:03',8),(71,57,'Mst. Mahzabin Reza','MST. MAHZABIN REZA','01335258311','mahzabin.tphl@gmail.com',23,'N/A','',8,'$2y$10$Y1Zl3QED4PDxFZhq9szMzOObIZ2wSz/pd0Dqy2e9zB8zJi4Yy4E4y',NULL,'','','2026-03-30 10:40:34',0,'2026-03-30 10:40:34','2026-04-12 12:15:01',13),(72,58,'Md. Ali Haider Abdullah','Md. Ali Haider Abdullah','0 1958-2533','tphl.alihaider@gmail.com',17,'N/A','',8,'$2y$10$/T5eDgeej3P.JoXuhChGceCnDHOceBwixNyIGehU4lHJ0xHtdqDFe',NULL,'','','2026-03-30 10:41:19',0,'2026-03-30 10:41:19','2026-04-12 11:43:16',5),(73,59,'Tanvir Hossain Jian','Tanvir Hossain Jian','01335258314','tanvir.tphl@gmail.com',20,'Uttor badda, Abdullah bag masjid','',8,'$2y$10$8YxvgfxnkLTwgnksEVIeRu3dLINjXElLIbY6LUvy4.t6K3HzQ3b2a',NULL,'','','2026-03-30 10:44:55',0,'2026-03-30 10:44:55','2026-04-12 11:58:20',10),(74,60,'Ahnaf Adil Roxy','Ahnaf Adil Roxy','01335-25832','roxy.tphl@gmail.com',13,'','4213421763',8,'$2y$10$EidwlET76JrkaxbXZWi1b.WHbW2IdKsfzevS5cbMDnLM3pJPk/arK',NULL,'','','2026-03-30 10:45:59',0,'2026-03-30 10:45:59','2026-03-30 16:36:23',NULL),(75,61,'Md.Tamim','Md.Tamim','01308212749','tamim.tphl@gmail.com',23,'Dattapara, Birulia,Savar, Dhaka 1216','',8,'$2y$10$vP/q95cSabGHgVL9h3sBw.MWwc8JGYQiRXLarqEx6zl8p6A43uwk2',NULL,'','','2026-03-30 10:49:04',0,'2026-03-30 10:49:04','2026-03-30 16:36:23',NULL),(76,63,'Akhoy kumer Nibir Roy','Akhoy kumer Nibir Roy','01335258301','akhoy.tphl@gmail.com',15,'N/A','',0,'$2y$10$/A2yZtrb7UELabmGdPX.IuVuX/LcgmoxPoe0CV56vCoxJGAfGOUie',NULL,'','','2026-03-30 10:54:37',6,'2026-03-30 10:54:37','2026-05-13 11:09:13',0),(77,64,'Md. Amanullah Aman','Md. Amanullah Aman','01335258306','aman.tphl@gmail.com',20,'South Bhandaria-8550, Bhandaria, Pirojpur','',8,'$2y$10$GvrxHKdWRY2m3tvvUsFMRuAgqeM6L993ISeHJG/42UBRYVYI6UnQ6','users_69eaf30d55fcd.jpeg','','','2026-03-30 10:56:23',77,'2026-03-30 10:56:23','2026-04-24 04:35:25',0),(78,65,'Abu Naym','Abu Naym','01335258312','naymtphl@gmail.com',20,'Ati-1312, Keraniganj, Dhaka','',8,'$2y$10$CojmU9mTBwgDjkx4CfkdYeaQ57vvBBDxV/seIXX4jy.25RgK19WMG','users_69cb90acdaad5.jpg','','','2026-04-19 05:10:00',0,'2026-03-30 10:59:42','2026-04-20 05:23:44',12),(79,66,'Md. Sakib Inam','Md. Sakib Inam','01335258310','sakibinam.tphl@gmail.com',16,'N/A','',8,'$2y$10$uhKw9sTOb03dEHxMvZb/KekSOvQ6RjfanioES3ZW5pOa4m.VkexNO',NULL,'','','2026-03-30 11:00:09',0,'2026-03-30 11:00:09','2026-04-18 04:34:42',12),(80,67,'Md Bakhtiar Hasan','Md Bakhtiar Hasan','01335258300','bakhtiar.tphl@gmail.com',13,'N/A','',0,'$2y$10$3KjxMU.PqmWBXo77Kd3nbO4vYx55T4pByMR7U.kHE91Sro2ch8sLe',NULL,'','','2026-03-30 11:10:48',0,'2026-03-30 11:10:48','2026-04-11 04:35:06',0),(81,68,'Md Lutfor Rahaman','Md Lutfor Rahaman','01335258334','lutfor.tphl@gmail.com',27,'Vill: Asapur, PO: Phancherkanda, Thana: Ghior, Dist: Manikganj, Dhaka','7350928797',2,'$2y$10$SiSPnIWXvfbAy0DznRqjNebZp6fjgF0LGkHEVG7NPoNy8.J2fdc9O',NULL,'','','2026-03-30 11:17:42',0,'2026-03-30 11:17:42','2026-03-30 16:36:23',NULL),(82,69,'Dipto Kumar Roy','Dipto Kumar Roy','01958253358','dipto.tphl@gmail.com',20,'Khagan,Ashulia,Saver Dhaka','2851653333',2,'$2y$10$pB9uAIYgkG6tt/yMZQzVUuiQzSe3shbNwKlu45kAtQqlTrNGZ/JPu',NULL,'','','2026-03-30 11:19:42',0,'2026-03-30 11:19:42','2026-03-30 16:36:23',NULL),(83,70,'B. M Shaharear Hasan','B. M Shaharear Hasan','01917331397','shaharear.tphl@gmail.com',27,'Korotoa road, latifpur kolony, Bogra','7318135568',6,'$2y$10$IR.UVy4pARa366NVJj3DGejR6j1MB0KlvUqEi5kvhJeZSLVd3RenW',NULL,'','','2026-03-30 11:22:17',0,'2026-03-30 11:22:17','2026-03-30 16:36:23',NULL),(84,71,'MD. Sakhawat Hossain Emon','MD. Sakhawat Hossain Emon','01335258335','emon.tphl@gmail.com',23,'Block-A, Lane-6, Mirpur-6, Dhaka 1216','1962405062',2,'$2y$10$zbxbowLRq8arKWPKWtXlmutMu0HgAD/L0jo0QOuiV5v1tzE/5MBoK',NULL,'','','2026-03-30 11:22:57',0,'2026-03-30 11:22:57','2026-03-30 16:36:23',NULL),(85,72,'MD. Zamiul Islam','MD. Zamiul Islam','01335258338','zamiul.tphl@gmail.com',17,'130/6/A Baganbari,  Madatek, Basabo, Dhaka -1214.','5086466165',2,'$2y$10$JNlsOeAu7vANay8HvhgzTu8qrFZTw42wEfb9hvza857xBIdxSE5kq',NULL,'','','2026-03-30 11:25:48',0,'2026-03-30 11:25:48','2026-03-30 16:36:23',NULL),(86,73,'MD. Ahadul Islam','MD. Ahadul Islam','01314010972','asif.tphl@gmail.com',23,'Amula Dahabharatta, Nikrail, Bhuapur.','3314775515',2,'$2y$10$YlJmkkdgPI02YYTHw5G/o.tJE.7k/v6D34A6bHyNdlPuQztkA1IFe',NULL,'','','2026-03-30 11:26:09',0,'2026-03-30 11:26:09','2026-03-30 16:36:23',NULL),(87,74,'Sadman Islam Sakib','Sadman Islam Sakib','01958253344','sakib.tphl@gmail.com',21,'H-12, Kusumbag Residential Area, North Bisil  Road, Mirpur-1,Dhaka-1216','',8,'$2y$10$EZYoIwrFc/RwFFaj299PeOTVK1Jjf4pVV8dFhN0apKOxd6.BoIP9C','users_69d4989074172.jpg','','','2026-04-22 10:19:56',0,'2026-03-30 11:33:39','2026-04-22 10:19:56',2),(88,75,'Mahaananda Kumar Saha','Mahaananda Kumar Saha','01335258327','mahaanandakumarsaha@gmail.com',22,'Faridpur, sadarpur,hatkrishnapur','5506251882',2,'$2y$10$IawCX1UOcrjxps1aO4QTWeip4b8tKdN3JGDyduTJtnqLNYVuIzYXu',NULL,'','','2026-03-30 11:34:33',0,'2026-03-30 11:34:33','2026-03-30 16:36:23',NULL),(90,79,'Moonmoon Akter Oishy','Moonmoon Akter Oishy','01958253355','oishytphl@gmail.com',24,'Road No -1,  B - 45 Bank Town,  Savar','1047316906',2,'$2y$10$Sdqb84cXh8GKU9Okw2rRSe7k3N6a0riQJVPBDqnRhqa9px28WsDY.',NULL,'','','2026-03-30 11:43:09',0,'2026-03-30 11:43:09','2026-03-30 16:36:23',NULL),(91,76,'Rubina Islam','Rubina Islam','01958253349','rubinatphl49@gmail.com',15,'','',2,'$2y$10$r8GdWRKSpeZjr24W1pjGn.uaye6s/.clnO7G8ESZI3NnV844NrnCS',NULL,'','','2026-03-30 11:44:43',0,'2026-03-30 11:44:43','2026-03-30 16:36:23',NULL),(92,80,'Afrin Jahan Anika','Afrin Jahan Anika','01958253335','anika.tphl@gmail.com',13,'39/b senpara porbota mirpur 10','1032936708',2,'$2y$10$nBTOuqyG5vmEhBfJADloguSRdoA383Hrd.mFIuseKxOXG3bkfZYZG',NULL,'','','2026-03-30 11:52:36',0,'2026-03-30 11:52:36','2026-03-30 16:36:23',NULL),(94,0,'Mehedi H. Jony','Mehedi H. Jony','01861685153','mehedihjony.tphl@gmail.com',28,'Dhaka','',10,'$2y$10$YO/Y1hPq8lo0NTFbWbSX5u1hyUYn.i0F1s3KcNN9Xx8Askz3/5q0O',NULL,'','','2026-04-27 06:07:13',6,'2026-03-30 16:43:54','2026-04-27 06:07:13',0),(95,81,'Riya','Riya','01778234546','riya@gmail.com',28,'Dhaka','34',5,'$2y$10$cUYgCjvi4yiNDYS8mTGWsOkEvOJR32hiN/5Dsku7ULURP.tcviqpK',NULL,'','','2026-04-04 11:27:15',4,'2026-03-31 06:40:46','2026-04-04 11:27:15',0),(98,82,'S.A Arnob','S.A Arnob','01958253347','arnob.tphl@gmail.com',20,'Dottopara, Asuliya, Dhaka','',8,'$2y$10$aaooqfFW63prXcheowgGMeuZAHV88qpV1JQMljfQiHbOv2qCKtFdy',NULL,'','','2026-03-31 08:18:16',0,'2026-03-31 08:18:16','2026-04-12 11:41:08',4),(100,83,'Md. Mamunur Rahman','Md. Mamunur Rahman','01958253342','mamunur.tphl@gmail.com',19,'','1947418776',7,'$2y$10$ADpw3aS2xygSq6zySs.GaOoDAhv9XTdf3jXLxpZeyQ8fJinfXiZwG',NULL,'','','2026-03-31 08:58:36',0,'2026-03-31 08:58:36','2026-03-31 08:58:36',2),(102,84,'Mehedi Hasan Rudro','Rudro','01872356456','rudro@gmail.com',21,'N/A','',11,'$2y$10$XZKNktLIkAjqt/eY93vvFuKVMkut4pqaro7pZDaJm1PCHN7EApKra',NULL,'','','2026-05-14 05:32:11',4,'2026-04-02 08:14:46','2026-05-14 05:32:11',0),(103,85,'Mehedi Hasan Shuvo','hasan shuvo','01901365048','shuvo.tphl@gmail.com',17,'Dhaka','',5,'$2y$10$IQykvHC0cycV2VPhGMjfz.h6JdRuJzPkX4fw20XGlbQlHrPo4hKbu',NULL,'','','2026-04-09 04:00:41',0,'2026-04-03 13:29:06','2026-04-09 04:00:41',5),(105,11,'Mr. Ibrahim Khalil','ibrahim khalil','01958253319','ibrahimkhalil.tphl@gmail.com',20,'5/9, Dakkhin Rajashon, Savar, Dhaka','',8,'$2y$10$qExZ9v2Jozj5g9ct4UC3TeFToO.2UTmVBXrWXXmDmmjelR0co0hTG',NULL,'','','2026-04-04 05:57:01',0,'2026-04-04 05:57:01','2026-04-12 11:54:39',9),(110,NULL,'Mainul Hassan Dulon','Mainul H. Dulon','01933657804','ceo@dpremiumhomes.com',29,'Dhaka','',3,'$2y$10$8Z5Mj0/6UMu4MDupWjOnGOv6CvqtAqS5E0SdhEiOBvEp.oUszI5/e',NULL,'','','2026-04-08 11:18:00',6,'2026-04-04 11:35:30','2026-04-08 11:18:00',0),(112,NULL,'Ejaz Ur Rahman','Ejaz Ur Rahman','01738822694','dceo@dpremiumhomes.com',31,'Dhaka','',3,'$2y$10$BKhqSTbXDhPI4toSjpUiH.QnGD.lvBC5o5fB8IhwrVpolh1E0RIh2',NULL,'','','2026-04-04 12:40:57',6,'2026-04-04 12:29:06','2026-04-04 12:50:30',0),(113,NULL,'Mahfuza Shikder Tanha','Mahfuza Shikder Tanha','01721316211','pd@dpremiumhomes.com',32,'Dhaka','',3,'$2y$10$uSiCIm/rYxSI2Q5jXfsOBuz8w4.dja8GlRNx5WYsUdkc7AzjHiBA6',NULL,'','','2026-04-04 12:41:12',6,'2026-04-04 12:30:16','2026-04-04 12:51:08',0),(114,NULL,'Md. Rayhan Bhuiyan','Md. Rayhan Bhuiyan','01689-58433','coo@dpremiumhomes.com',30,'Dhaka','',3,'$2y$10$099WG2xiU7I7762yH70l5e4KtEODir4przyxvpdHPB.GPPToQ7huC',NULL,'','','2026-04-04 12:56:53',110,'2026-04-04 12:56:53','2026-04-08 11:17:49',0),(115,62,'Md. Abul Hasan Hasib','Md. Abul Hasan Hasib','01335258320','hasib.tphl@gmail.com',21,'N/A','',8,'$2y$10$lzrZhqIiXpnom1CIBmwptuuVKJBUsTDJ3x85HjDOElQ.eR3EPLzry',NULL,'','','2026-04-07 09:26:45',0,'2026-04-07 09:26:45','2026-04-12 12:15:19',13),(116,12,'Nahian','rafi','01123456789','nahian.easytechx@gmail.com',14,'asdfadf','55555534434',8,'$2y$10$RHjmhMhmgwE/OuuD2c92suYCaEZlm5RN0UhhFbAz2hRBKdeXj6Fe2',NULL,'','','2026-04-08 10:14:38',6,'2026-04-08 10:14:38','2026-04-08 10:15:58',0),(117,86,'Test Employee','Test','01790128472','test3@gmail.com',32,'Mohammadpur, Dhaka-1207','',0,'$2y$10$sw5JwFNK.bYOVVwur2/1FOxpkSV/FOm7WWdLEfTzh//K3GkkykKQW',NULL,'','','2026-04-10 10:07:16',0,'2026-04-10 10:07:16','2026-04-10 10:07:16',0),(118,87,'Shazzadur Rahman Shoumic','Shazzad','01765562314','shazzadur.tphl@gmail.com',20,'','',8,'$2y$10$TX/Hto3FA3ypCs4fd8al4euM8Mh1vmGy/3mIbgelj8wuiwLDJw0/6',NULL,'','','2026-04-12 11:46:52',0,'2026-04-12 11:46:52','2026-04-12 11:46:52',5),(119,90,'Shohanur Rahaman','Shohanur Rahaman','01958253372','shohan.tphl@gmail.com',13,'Khagan Ashulia','',11,'$2y$10$AIzAW5dhzVr58q5NyyyBueMXK5aTZHZwHOyGVa3EEz842ZAWUsxZK',NULL,'','','2026-04-19 04:42:58',119,'2026-04-17 13:13:21','2026-04-19 04:42:58',0),(120,NULL,'Project Manager1','Project Manager1','01876123454','project.manager1@gmail.com',36,'Dhaka','',15,'$2y$10$GhwOi2FtFs9pBw7GkpZaCefIBQhTiY9GoQLUgUKfBDa9p.XtUvlXu',NULL,'','','2026-05-18 12:35:01',6,'2026-04-26 03:55:58','2026-05-18 12:35:01',0),(121,NULL,'Land Man1','Land Man1','01993878733','land.manager1@gmail.com',33,'Dhaka','',14,'$2y$10$0Zg/ELOPJh5n.sSZkO2i8eMKon1lIWKj5lHQq2cLgbKrqVaYZcUhO',NULL,'','','2026-05-23 05:03:50',6,'2026-04-26 03:56:52','2026-05-23 05:03:50',0),(122,NULL,'Mr. Architect1','Mr. Architect1','01875438578','architecture1@gmail.com',34,'Dhaka','',18,'$2y$10$uYzkPN7DDLAanWYNsI02.OvkqvUIS35JblMvG0NRUHLTaXBemryL2',NULL,'','','2026-05-23 05:09:18',6,'2026-04-26 03:58:02','2026-05-23 05:09:18',0),(123,NULL,'Mr. Site Engineer1','Mr. Site Engineer1','01987328476','site.engineer1@gmail.com',38,'Dhaka','',12,'$2y$10$C.kuqYaBXt7SNIuwlDSoi.NySk5tcj67PFfUBFUqWc1bYrnCqCqIi',NULL,'','','2026-05-18 12:32:12',6,'2026-04-26 03:58:54','2026-05-18 12:32:12',0),(124,NULL,'Mr. Draftsman1','Mr. Draftsman1','01763425454','draftsman1@gmail.com',35,'dhaka','',16,'$2y$10$GpWdksQaMYX5TguAlFBFYO/ygwnc8af9LA0SqWRf./0oVspQwc.De',NULL,'','','2026-05-23 05:23:16',6,'2026-04-26 03:59:33','2026-05-23 05:23:16',0),(125,NULL,'Mr Estimator1','Mr Estimator1','','estimator1@gmail.com',37,'dhaka','',19,'$2y$10$NgvBE.GRBJt0HNyQmSqua.PeaLLgA2oWcVuGhwv7Im31Jz6SgAjay',NULL,'','','2026-05-18 12:06:48',6,'2026-04-26 04:00:08','2026-05-18 12:06:48',0),(126,NULL,'Mr. QC1','Mr. QC1','01986378256','qc1@gmail.com',43,'Dhaka','',13,'$2y$10$paZNUceDQ1b3BWWwfP6jReGr3d9ZLqKdMwisIHzdYTR0toYXK3GXi',NULL,'','','2026-05-18 12:37:00',6,'2026-04-26 04:00:52','2026-05-18 12:37:00',0),(127,NULL,'Mr Purchase Head1','Mr Purchase Head1','01782354543','purchase1@gmail.com',42,'Dhaka','',17,'$2y$10$WWHjM9YQBDTjCW7Dvf6KC.5mbo/0tJPW.WOLTXy2Ahhfz2xnoAPEe',NULL,'','','2026-05-18 07:02:41',6,'2026-04-26 04:01:41','2026-05-18 07:02:41',0),(128,NULL,'Mr Site Operators1','Mr Site Operators1','01723876324','operations1@gmail.com',38,'Dhaka','',20,'$2y$10$NN/GFnq6O6qtzqFyavU4EO4eOwgFH5JJi8J409SIOJZfvrNPlsT5q',NULL,'','','2026-05-17 19:37:41',6,'2026-04-26 04:05:25','2026-05-17 19:37:41',0),(129,NULL,'Mr Structural Designer1','Mr Structure Designer1','01653247632','structural.designer1@gmail.com',15,'Dhaka','',21,'$2y$10$tzAM7hH8kzCv2PnyRdzMneFlpt2yMJBcbMCvxSp2Zj16X/GNO6i4G',NULL,'','','2026-05-18 11:47:43',6,'2026-04-26 05:41:57','2026-05-18 11:47:43',0),(130,NULL,'M.H Jony','M.H Jony','01861685153','admin@gmail.com',28,'Dhaka','',1,'$2y$10$ZsoxIYkWS/zUeQjawL6/4.9oL7L21uVMvqu/7bIAQq6r4OL29eByy',NULL,'','','2026-05-02 04:44:05',130,'2026-05-02 04:34:07','2026-05-02 04:44:05',0),(131,91,'Tamjid Chowdhury','Tamjid Chowdhury','01711111111','tamjid.tphl@gmail.com',43,'Dhaka','',8,'$2y$10$eIiFrakD3xjjCre.joh9QOYdHUd404LHwfN7/ve915KZ6qv33EDWu',NULL,'','','2026-05-13 11:48:35',0,'2026-05-13 10:58:31','2026-05-13 11:48:35',11),(132,94,'Md. Nazmul Islam Robin','Md. Nazmul Islam Robin','01711111111','robintphl@gmail.com',15,'Dhaka','',8,'$2y$10$UwAYoAFri6gXhS8H0CMQMuPmviXy6KFdypiqAAniO.cNSvzqT/3Se',NULL,'','','2026-05-13 11:16:41',0,'2026-05-13 11:07:27','2026-05-13 11:16:41',11),(133,95,'Nazmus Sakib','Nazmus','','Nazmus.tphl@gmail.com',15,'','',8,'$2y$10$PJ8XliE0vfcgQdQPXwMRf.Mx/3J.QEVWZY125PcaR5YHGHZcC7xdC',NULL,'','','2026-05-13 11:36:11',0,'2026-05-13 11:36:11','2026-05-13 11:36:11',9),(134,97,'Nehemiah Biswas Prottoy','Nehemiah Biswas Prottoy','','prottoy.tphl@gmail.com',15,'','',8,'$2y$10$c3NHOint06moTU8hFBAUJOD0gyRwcsFcAzXLu7gjbD8YNwrx./vry',NULL,'','','2026-05-13 11:41:00',0,'2026-05-13 11:41:00','2026-05-13 11:41:00',9),(135,98,'Mst. Sania Khatun','Mst. Sania Khatun','','sania.tphl@gmail.com',15,'','',8,'$2y$10$BsSiQVv1B17SuGJVfEH8S.NX2OHHXaZCrs7zg8hGAVlThrGd4lBZm',NULL,'','','2026-05-13 11:44:56',0,'2026-05-13 11:44:56','2026-05-13 11:44:56',9),(136,99,'Irfan Kabir Abir','Irfan Kabir Abir','','rfan85.tphl@gmail.com',15,'','',8,'$2y$10$8Jd7KDaHOW1p/qvpUlK9feSACKBvGpeh9tD.g.jpZBPJr4XEU4nBe',NULL,'','','2026-05-13 11:57:09',0,'2026-05-13 11:57:09','2026-05-13 11:57:09',3),(137,NULL,'Mr Purchase Executive','Mr Purchase Executive','01987387434','purchase.executive1@gmail.com',15,'Dhaka','',23,'$2y$10$mkIgzsJd1h0CJlBJNvXKh.dVbnJnhXWRA.o6dGx8qsMv0Tv132rJu',NULL,'','','2026-05-18 06:00:52',6,'2026-05-17 11:39:47','2026-05-18 06:00:52',0),(138,NULL,'Project Manager Head','project.manager1@gmail.com','01847363455','project.manager.head@gmail.com',36,'Dhaka','',22,'$2y$10$6L/QBuSQ1AEhS07jnJNeReoBI9l5ir74f1eNFi56LXSNWDle35rgK',NULL,'','','2026-05-18 06:10:18',6,'2026-05-17 16:54:08','2026-05-18 06:10:18',0);
+INSERT INTO `users` VALUES (1,0,'Farzana','farzana','01873244236','farzana.tphl@gmail.com',28,'Dhaka','123',1,'$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS',NULL,'','','2026-04-09 05:34:11',6,'2026-02-22 06:47:08','2026-04-30 04:25:17',0),(2,NULL,'Sojib','sojib','01798342755','sales@gmail.com',1,'Dhaka',NULL,5,'$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS',NULL,NULL,NULL,'2026-05-09 04:45:14',NULL,'2026-02-22 06:47:08','2026-05-09 04:45:14',NULL),(3,1,'Fahim','Fahim','01790128471','fahim@gmail.com',0,'Mohammadpur, Dhaka-1207','23445',8,'$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG',NULL,'','','2026-04-19 05:54:47',4,'2026-02-23 03:24:25','2026-04-19 05:54:47',0),(4,1008,'Md. Jasim Uddin','Jasim Uddin','01762013007','hr@gmail.com',14,'House:01, Road:03, Block: B, Section:02, Mirpur, Dhaka-1216.','1903663282',4,'$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry',NULL,'','','2026-04-24 12:21:28',4,'2026-02-23 05:44:19','2026-04-24 12:21:28',NULL),(5,0,'Mr. Jisan','Mr. Jisan','01390128223','accounts@gmail.com',3,'Mohammadpur, Dhaka-1207','2345676',6,'$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6',NULL,'','','2026-04-08 09:48:37',6,'2026-02-23 06:11:06','2026-04-08 09:48:37',NULL),(6,1,'Management','Management','01933657804','management@gmail.com',0,'dhaka','32453',3,'$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW',NULL,'','','2026-05-23 15:31:30',110,'2026-03-29 03:44:44','2026-05-23 15:31:30',0),(7,NULL,'CED','CED','01872364346','ced@gmail.com',1,'Dhaka','823445',7,'$2y$10$a51psvUGsp/WsSE5cY2xNuKpuKSNoG/QZNNxxfWs0I.eSPM1KPAX.',NULL,'','','2026-03-31 12:05:54',6,'2026-03-29 04:01:38','2026-03-31 12:05:54',NULL),(8,NULL,'Sales Team Head','Sales Head','01327488234','sales-head@gmail.com',1,'Dhaka','09231943',9,'$2y$10$Hr8gjcm14bLK/Ns6ws/pt.jz0PA5ObSc.jo4Z7epS23UsEkVDUXn.',NULL,'','','2026-04-08 09:30:55',1,'2026-03-29 04:16:47','2026-04-08 09:30:55',NULL),(9,3,'Md. rafi','admin_39_','01234567890','rafi@easytechx.com',9,'ADDL Tower, Dhanmondi 27/A','',8,'$2y$10$nId2sBtusb0qFr2136IMrOZVDVkHq8RTjbsJIzgZ8GpaDXDTMhhHG',NULL,'','','2026-03-29 10:24:18',0,'2026-03-29 10:23:39','2026-03-30 16:36:23',NULL),(11,5,'Bornali Haque','Bornali Haque','01335258340','bornalihaque.tphl@gmail.com',13,'RUAP, Uttara 18, Dhaka','',2,'$2y$10$R9YSZd3L1v262q20VEtdG.dyT9xPRWmHFtjeTvwao5i8i24T5Hpm.',NULL,'','','2026-03-31 08:48:42',0,'2026-03-29 10:31:45','2026-04-11 08:52:14',0),(12,8,'Sanjana Hossain Moure','sanjana moure','01901310848','moure.tphl@gmail.com',15,'Mirpur-2 water tank, Block - F, road -3, Dhaka -1216','',8,'$2y$10$2J2ciVq5whQHb80.zq0zYuQcH.eb0B3pagwhnmx9TEsy.elK3J1ry',NULL,'','','2026-03-30 05:15:10',0,'2026-03-30 05:15:10','2026-03-30 16:36:23',NULL),(13,9,'Md. Rabbi Hossain','rabbi hossain','0 1901-3108','rabbihossain.tphl@gmail.com',20,'Baro Bazar, Ashulia Model Town, Savar, Dhaka.','',8,'$2y$10$uWAvlmxoW/gvdDhxn.IT9.HU7.NBPwqpbWipciGD0eZWdJQ6z9vvG',NULL,'','','2026-03-30 05:15:44',0,'2026-03-30 05:15:44','2026-04-12 11:40:43',4),(14,7,'Saleh Ahamed','saleh ahmed','0 1901-3650','saleh.tphl@gmail.com',21,'','',5,'$2y$10$fsUbevYAvi9OQguKgaiyEOzj/63NgEbIFqoqshjTVDdjkBrNhQ.Sq',NULL,'','','2026-04-30 05:27:15',0,'2026-03-30 05:18:44','2026-04-30 05:27:15',4),(15,6,'Md. Kawsar Ahammed','kowsar ahammed','01901310845','kawsar.tphl@gmail.com',21,'Vill: Bhubangati, Post: Biswarigacha, Thana: Dhunat, Zilla: Bogura','',5,'$2y$10$o4oawe3QpdDiLJTIH4chT.gwAdLBA52i.HFtGH.M1KDmjzkTfFDZy',NULL,'','','2026-04-25 03:54:29',0,'2026-03-30 05:19:07','2026-04-25 03:54:29',0),(16,0,'Ashfaque Bhuiyan Omi','Ashfaque Omi','01958253303','ashfaqueomi.tphl25@gmail.com',20,'Darul Aman Housing, Mirpur-2, Dhaka - 1206','',2,'$2y$10$29JSW4M8FbD3VNZnoUD8AOXB5LRrqo7vS22WMNfWezI11UlsObVCa',NULL,'','','2026-03-30 05:19:52',0,'2026-03-30 05:19:52','2026-03-30 16:36:23',NULL),(18,10,'Mehnaz Ahmed','mehnaz ahmed','0 1901-3650','mehnaz.tphl@gmail.com',20,'South chayabithi, Joydebpur, Gazipur','9160336244',8,'$2y$10$edszxcW7aAhMpXKVGUIZZePVtP.RhKwPuC8vA2baFfd8jmrYS8mEG',NULL,'','','2026-03-30 05:26:05',0,'2026-03-30 05:26:05','2026-03-30 16:36:23',NULL),(19,11,'Mr. Ibrahim Khalil','ibrahim khalil','01958253319','ibrahim.tphl@gmail.com',20,'5/9, Dakkhin Rajashon, Savar, Dhaka','2805006299',8,'$2y$10$iSTZaE4q9PCH.qM.53lFp.4EuEh2KoQKQRkD/q4SGrvV9Un84T1Pa',NULL,'','','2026-03-30 05:30:21',0,'2026-03-30 05:30:21','2026-03-30 16:36:23',NULL),(20,12,'Shammi Akther','shammi akhter','0 1901-3108','shammi.tphl@gmail.com',20,'13 no sector ,uttara.','',5,'$2y$10$bOb3g/W82j7pq3Jk9s520uIK1KOulFlbRWN4NVT55EC/1NxigzSJm',NULL,'','','2026-05-07 11:05:31',0,'2026-03-30 05:35:10','2026-05-07 11:05:31',10),(21,13,'Rejwan Ahmed','rejwan ahmad','01901365040','rejwantphl@gmail.com',21,'Sreemangal, Moulvibazar.','',5,'$2y$10$kQcMOXqxvt92qxB0nnSFtexGzH.iIcEQMC66.kOAasjnr943R9lBG',NULL,'','','2026-03-30 05:40:37',0,'2026-03-30 05:40:37','2026-04-06 06:29:52',2),(22,14,'MD. Feroz Ahamed','feroz ahamed','01958253327','feroz.tphl@gmail.com',20,'Savar, Dhaka','',5,'$2y$10$7hG94FPqPG5HzIWpCm/8QufyocDjtDn.onUagAcqBZEMNRvMX6Z/e',NULL,'','','2026-04-07 04:40:50',0,'2026-03-30 05:47:14','2026-04-07 04:40:50',9),(23,15,'Mojammel Haque','mojammel haque','01958253324','mojammel.tphl@gmail.com',21,'B-4, G-1, Sher-E-Bangla Nagar Staff Quarter, Dhaka-1207','',5,'$2y$10$U15bgAj.WrcLRkMMhITZXOezRY5D9EqGXHeNN79JuKjwaygBddySy',NULL,'','','2026-05-06 10:46:45',6,'2026-03-30 05:51:15','2026-05-06 10:46:45',0),(25,17,'Rakib Al Hasan','rakibal hasan','01958253321','rakib.tphl@gmail.com',20,'Daffodil smart city, Birulia savar Dhaka','',5,'$2y$10$yBQjX3SvmWQXO2cA.ol4B.zPmjIqbyUiqysRN7HTZfXLlo4Z95qfq',NULL,'','','2026-04-16 12:12:39',0,'2026-03-30 06:43:56','2026-04-16 12:12:39',8),(26,18,'Md. Nazmul Khan Shihab','khan Shihab','01958253326','shihab.tphl@gmail.com',20,'2450/11,East Dandabor, Palashbari, Savar cantonment -1344, Savar, Dhaka','',8,'$2y$10$b/geGkDCcdjnJY4j931Ia.YyXu1/FBrONUVr8jCr9csPFZXJ8BYMi',NULL,'','','2026-03-30 06:50:40',0,'2026-03-30 06:50:40','2026-04-12 11:58:01',10),(27,19,'Munshi Aiman Kabir','aiman kabir','01958253318','aiman.tphl@gmail.com',20,'Savar, Dhaka','',8,'$2y$10$lxze0zOCDKCiYZanahnfO.8tgO6v4MZiK8OBHsMxiXr7/4qH3s2FO',NULL,'','','2026-03-30 07:01:11',0,'2026-03-30 07:01:11','2026-04-16 07:46:31',4),(28,20,'Md. Tariqul Islam Illion','tariqul islam','0 1958-2533','illion.tphl@gmail.com',20,'Ashulia Model Town, Khagan Bazar, Birulia, Savar, Dhaka','',0,'$2y$10$Sj/S3IIUnt4EttdRVs/lXOCGvn9i/funVCadYEXd0ENgLdmEXSZF6',NULL,'','','2026-03-30 07:06:02',6,'2026-03-30 07:06:02','2026-05-13 11:11:43',0),(29,21,'Shafia Afrin Shahana','Shafia Afrin Shahana','01335258332','shafia.tphl@gmail.com',15,'Apon Bazar Samiti Market, Rayerbag, Jatrabari, Dhaka','',5,'$2y$10$jg9yoH8rHsH2A7wrOb6D8urj1iUv889LWfvhL3dU95RDg8t7HIYpK',NULL,'','','2026-05-13 11:15:12',0,'2026-03-30 07:56:24','2026-05-13 11:15:12',11),(30,22,'Abir Ahmed','Abir Ahmed','01335258328','abir0.tphl@gmail.com',15,'Poshu Hospital Para, Magura Sadar,Magura','',8,'$2y$10$IU8I8sJvyYl06UUHgy8XHuzHv66J7mAfVdPACHogEpVjTZ8Wuq2bG',NULL,'','','2026-03-30 08:29:14',0,'2026-03-30 08:29:14','2026-04-12 11:58:59',10),(31,23,'Shanawaz Khan','Shanawaz Khan','01335258330','shanawaz.tphl@gmail.com',15,'House-12,Road-4,Block-J,Banasree Meradia Khilgaon Dhaka 1219','',8,'$2y$10$Px7TN7veOADIqwYdPfISbOLfxqwEkSq9S1R8sTPWDUpAYRo4hb4uS',NULL,'','','2026-05-09 04:03:04',0,'2026-03-30 08:42:17','2026-05-09 04:03:04',3),(32,24,'Md. Saiful Islam Jony','saiful jony','01958253340','saif.thpl@gmail.com',21,'104/A/9 Buddhibi Road,Mohammadpur,Dhaka-1207','',5,'$2y$10$iJlvDYNOYQ5.AFtGpin74uRVIvXn//mKEgfeHXBvVTXXvqLEteiJa',NULL,'','','2026-04-20 05:23:04',0,'2026-03-30 08:46:37','2026-04-20 05:23:04',12),(33,25,'Aranya Bhowmick Dhrubo','Aranya Bhowmick Dhrubo','01335258329','dhrubo.tphl@gmail.com',20,'15 Shah-Shaheb Lane Narinda, Dhaka','',8,'$2y$10$U/nrFg9Eyc.ss5Oi2gFWV.BgzE8NXmjGHyhD9aY2VLUaGv9dr8KwO',NULL,'','','2026-03-30 08:47:19',0,'2026-03-30 08:47:19','2026-04-12 11:55:20',2),(34,26,'Tabassum Akter Soma','tabassum soma','01958253374','soma.tphl@gmail.com',23,'Ashulia Model Town, Savar, Dhaka','',8,'$2y$10$tfmvA.ksOc8S9hmYTwU5Xut8ERUg7YztJfCydw1f9.K4jRF.HKBom','users_69d480ed67778.jpg','','','2026-03-30 08:50:26',0,'2026-03-30 08:50:26','2026-04-12 11:54:19',9),(35,27,'Sadat Hossain','Sadat Hossain','01335258331','sadathossain11@gmail.com',15,'116, Jagannath Saha Road, Lalbagh, Dhaka-1211','',8,'$2y$10$cRtbvkGvyjShTPIsq0egPO4PYdXmFT3jJ5NzOBGAKeu823cA2CA7K',NULL,'','','2026-03-30 08:52:52',0,'2026-03-30 08:52:52','2026-04-12 12:09:57',6),(36,28,'Md. Ajizul Islam Manik','ajizul manik','01958253338','manik.tphl@gmail.com',20,'1/B , Nondipara, Dhaka ,1219','',5,'$2y$10$fGHgvRrPvCdxk8IUbwWnse1eebLaQ2c6q3h4pbfPmGkOb.hP60IH.',NULL,'','','2026-05-09 04:19:04',0,'2026-03-30 08:56:43','2026-05-09 04:19:04',3),(37,29,'Tasnur Aman Satu','aman satu','01958253363','satu.tphl@gmail.com',20,'kumkumari- Midha bari','',8,'$2y$10$B8RxH6k07S5uVYeOQdAySusGhyguSq1rwA5ZNa7DcFbo.kd7jwNCe',NULL,'','','2026-03-30 09:00:39',0,'2026-03-30 09:00:39','2026-04-12 11:53:21',8),(38,30,'Md. Tasdikul Hasan Sikder','Md. Tasdikul Hasan Sikder','01335258317','tasdik.tphl@gmail.com',13,'523 East Kazipara, Dhaka, Mirpur-1216','',8,'$2y$10$hvyLcozNhFKHKyzSHob2LurUMAn1cka7WeuKy6354xGTxHOCEFMv.',NULL,'','','2026-03-30 09:03:57',0,'2026-03-30 09:03:57','2026-04-12 11:59:21',10),(40,31,'Qazi Nadeem Javed','Qazi Nadeem Javed','‪0195825333','nadeem.tphl@gmail.com',25,'Sector 10 Road 7 uttara','2350020026',2,'$2y$10$HwTS4uTRRrfpsjH0iIssnO2q8R1aJb/JKRdGmr8vK3Od7JyC8RaU.',NULL,'','','2026-03-30 09:09:53',0,'2026-03-30 09:09:53','2026-03-30 16:36:23',NULL),(41,32,'Nayeemur Rahman','Nayeemur Rahman','01335258318','nayeemtonmoytphl@gmail.com',15,'Road No. 4, F Block, Mirpur-2','',8,'$2y$10$vNpgHQwRP33k2ftwwnzuuO8mJSGtb2K6MSgQyyzBm5hlu1pxQKt0.',NULL,'','','2026-03-30 09:12:53',0,'2026-03-30 09:12:53','2026-04-12 11:57:29',3),(42,33,'Mahin - Al Beruni','Mahin - Al Beruni','01958253328','tphl.mahin@gmail.com',26,'House 40/3, Varalipara, Boro Bangram, Sopura, Shah Mokhdum, Rajshahi - 6203','8710606925',2,'$2y$10$w0GwPk82B7c/775XmUq6V.XOJnByBk5qE3Ux5I6nJB.0m2d0NhGWW',NULL,'','','2026-03-30 09:16:00',0,'2026-03-30 09:16:00','2026-03-30 16:36:23',NULL),(44,35,'Md. Momidul Islam','Md. Momidul Islam','01958253335','momidul.tphl@gmail.com',20,'Nolbata, Hatiandaha, Singra, Natore','',5,'$2y$10$EBQ3p.5EUXFhu8yNczeCdeEXYQT4DVq.eNcdL32sCZsICVTFc1/ry',NULL,'','','2026-04-09 11:09:59',0,'2026-03-30 09:23:02','2026-04-09 11:09:59',13),(48,36,'Rifat Ahsan','Rifat Ahsan','01958583350','rifat.tphl@gmail.com',20,'Khilkhet kha para','4213633714',8,'$2y$10$O3uQB5h/6KwsPWex8ESVzee39365moqUtNr9DIoqhxeJJM1JDLB4e',NULL,'','','2026-03-30 09:32:02',0,'2026-03-30 09:30:56','2026-03-30 16:36:23',NULL),(51,38,'Sudipto Azad Hriday','Sudipto Azad Hriday','01901365046','sudiptoazad.tphl@gmail.com',17,'38, Road 3B, Mohammadia Housing Limited, Mohammadpur, Dhaka-1207','9151890663',8,'$2y$10$BMBC8TMV0h.nDrahyrmUO.dhGkDQwII8Ov.UT/Hg.JVRBA6wTMUY2',NULL,'','','2026-03-30 09:38:33',0,'2026-03-30 09:38:33','2026-03-30 16:36:23',NULL),(53,39,'Al Mubin Shuvo','Al Mubin Shuvo','01335258302','almubintphl@gmail.com',15,'Kumarkhali,Kushtia','',8,'$2y$10$mXwL/qloJHAWt2lal/Y9HO4yO0sCjGHKGgr1/AckNXExlPEy1iaKS',NULL,'','','2026-05-02 11:55:02',0,'2026-03-30 09:40:37','2026-05-02 11:55:02',11),(54,40,'France Roy','France Roy','01335258303','franceroy.tphl26@gmail.com',13,'N/A','',8,'$2y$10$Vo6DJxaJpxggwx.KMaNnWuioSOc6n06nnQh/dignLkfcZQM5Re7Pa',NULL,'','','2026-04-15 10:49:21',0,'2026-03-30 09:41:04','2026-04-15 10:49:21',5),(55,41,'Md. Anwar Parvez','Md. Anwar Parvez','01335258305','anwar.tphl@gmail.com',13,'N/A','',8,'$2y$10$nD6apWdkQA9A4pxQ2WK.TuXjrF./xCNaUOMtnxEXIhYBUEm6ec5v.',NULL,'','','2026-03-30 09:44:21',0,'2026-03-30 09:44:21','2026-04-16 12:12:32',7),(56,42,'Nafisa Anjum','Nafisa Anjum','01335258319','nafisaanjum.tphl@gmail.com',23,'Ilisha Road, Ward No-1, Bhola Pourashava.\r\nBhola Sadar, District- Bhola.','8727836291',8,'$2y$10$Njcwsx0qybiXNWr6I4xU6OXrnNZ0Gez0PTeiI9mymsLEByvmFtFau',NULL,'','','2026-03-30 09:48:38',0,'2026-03-30 09:48:38','2026-03-30 16:36:23',NULL),(57,43,'Md.Minhazul Islam Sumon','Md. Minhazul Islam Sumon','01607037251','sumon.tphl@gmail.com',20,'Datta para, birulia,Savar,Dhaka','6445593269',0,'$2y$10$Vxxg305sx5c9QTdS1nZe5Ow1VTzQGDXu6Vo101UVl3iRJTGWLHPmq',NULL,'','','2026-03-30 09:56:21',0,'2026-03-30 09:56:21','2026-03-30 16:36:23',NULL),(58,44,'Md Tarekul Islam','Md Tarekul Islam','01335258316','tarekul.tphl@gmail.com',16,'Kalai, Joypurhat','',8,'$2y$10$FgfGch01R5MmOmV06QbSE.Ztcu6ohd1xekC57B9SwWwuMmnbs1KSq',NULL,'','','2026-03-30 09:59:28',0,'2026-03-30 09:59:28','2026-04-12 12:13:49',12),(59,45,'Kazi Jahid Hasan','Kazi Jahid Hasan','01335258339','jahid.tphl@gmail.com',23,'Shah Ali Thana, Mirpur 1, Dhaka, 1229','',8,'$2y$10$o1c8bwaEWyTgxCs8OKnmy.155Q2E1XV.Y5Zt2/N.AwJB9HhD39PbC',NULL,'','','2026-03-30 10:03:44',0,'2026-03-30 10:03:44','2026-04-12 12:10:37',6),(60,46,'H M Nazmul Alam','H M Nazmul Alam','01335258313','nazmulshakib.tphl@gmail.com',15,'Tulashar, Shilpakala Academy, Aminbag, Shariatpur Sadar','',8,'$2y$10$j8oSuPOI0BarG10VQLdlgu3XQLs9u4HXgl7l1S1GgnNFTSjDm5X2C','users_69cb86772a604.jpg','','','2026-03-30 10:05:23',0,'2026-03-30 10:05:23','2026-04-12 11:58:36',10),(61,47,'Mst. Tamanna Aktar Meghna','Mst. Tamanna Aktar Meghna','01958253348','tamanna.tphl@gmail.com',23,'Khagan, Birulia, savar, 1340','',8,'$2y$10$GAromZnC1DJDwjgu1qW4.eU0/aoDJbqvJPr3oyFS3HflvESXRJTwi',NULL,'','','2026-03-30 10:07:57',0,'2026-03-30 10:07:57','2026-04-12 11:53:50',8),(62,48,'Md. Rayhan Kabir Roni','Md. Rayhan Kabir Roni','01335-25832','rayhan.tphl@gmail.com',15,'Palashbari,Gaibandha','',8,'$2y$10$nN8hAqbsVXHTLsh.zHew2.nqBcRmvzezxII7SAQl3DPS8vx9/0NHy',NULL,'','','2026-04-28 10:40:13',0,'2026-03-30 10:09:50','2026-04-28 10:40:13',3),(63,49,'Sayed Al Shahab','Sayed Al Shahab','01335258322','shahab.tphl@gmail.com',15,'\" Village/Street: Rouha, Post Office:Niamatpur - 2310, Karimganj, Kishoreganj\"','',8,'$2y$10$bjXDvIEqOg9VeQ5bhNDq5exrakmbZyDeQ9w8WES/Ia06fay.8Mfgi',NULL,'','','2026-03-30 10:16:53',0,'2026-03-30 10:16:53','2026-04-12 12:15:37',13),(64,50,'Rafiqul Islam','Rafiqul Islam','01958253345','rafiqul.tphl@gmail.com',20,'Khalpar,Tarabo,Rupganj,Narayanganj, post code:1460','',8,'$2y$10$2N5KDT5gZ0UCL6S8SeRxWuZ3fxTOOWUgw3LABYD4NHzmf06UsJGNS','users_69d34f1238f61.jpeg','','','2026-03-30 10:20:00',0,'2026-03-30 10:20:00','2026-04-12 12:11:33',7),(65,51,'Md. Mahabubur Rahman Mehedee','Md. Mahabubur Rahman Mehedee','01335258307','mehedee.tphl@gmail.com',21,'N/A','',8,'$2y$10$8RKSqAv7Ir8wx2sEjdhPR.h.toEB4e5Xhoj1IGdstx2f89Hd/gKse',NULL,'','','2026-03-30 10:24:57',0,'2026-03-30 10:24:57','2026-04-12 12:13:29',12),(66,52,'Md. Sakib Al Hasan','Md. Sakib Al Hasan','01335258325','sakibhasan.tphl@gmail.com',17,'Changone, Ahulia, Dhaka 1341','',8,'$2y$10$A/mGm65CzDyqbYojepkTpOWidQpnLF4HkAhx0vkylEh38peYQuX26',NULL,'','','2026-03-30 10:25:00',0,'2026-03-30 10:25:00','2026-04-12 12:09:24',6),(67,53,'Md Asim Akram','Md Asim Akram','01335258308','akram.tphl@gmail.com',15,'N/A','',8,'$2y$10$FYOiBtICro0TkZQIb4VfhOwX5a0nUwvvFVxi2oZD3gp6ZDK75ngoW',NULL,'','','2026-04-13 05:25:31',0,'2026-03-30 10:31:00','2026-04-13 05:25:31',6),(68,54,'Rakib Hasan Rubai','Rakib Rubai','01335258309','rubai.tphl@gmail.com',13,'Nobabgonj Bazar, Lalbagh , Dhaka -1205','',5,'$2y$10$hRRDNYUbrDDK2dgBOaM/TOSCNK3VDn0TMTAfHfkMgI8Ar59HNZb1O',NULL,'','','2026-04-15 09:54:03',0,'2026-03-30 10:31:59','2026-04-15 09:54:03',7),(69,55,'Md. Rawnak Hassan Seyam','Md. Rawnak Hassan Seyam','01335-25832','rawnak.tphl@gmail.com',20,'N/A','',2,'$2y$10$GKoc1DcZdbOmsLGSBPsJU.6NaH/06m1BMsff0OFZGr05BZYXR5BgS',NULL,'','','2026-03-30 10:35:13',6,'2026-03-30 10:35:13','2026-05-13 11:10:27',0),(70,56,'Zannatul Ferdous','Zannatul Ferdous','01335258315','zannatul.tphl@gmail.com',20,'Ghoshbagh,Ashulia, Dhaka','',8,'$2y$10$N5VFRRAr6NPeO2sNHAv6hOhir6DidyOkV8l6C54kSifQZw/MVhYiG',NULL,'','','2026-03-30 10:35:17',0,'2026-03-30 10:35:17','2026-04-12 11:53:03',8),(71,57,'Mst. Mahzabin Reza','MST. MAHZABIN REZA','01335258311','mahzabin.tphl@gmail.com',23,'N/A','',8,'$2y$10$Y1Zl3QED4PDxFZhq9szMzOObIZ2wSz/pd0Dqy2e9zB8zJi4Yy4E4y',NULL,'','','2026-03-30 10:40:34',0,'2026-03-30 10:40:34','2026-04-12 12:15:01',13),(72,58,'Md. Ali Haider Abdullah','Md. Ali Haider Abdullah','0 1958-2533','tphl.alihaider@gmail.com',17,'N/A','',8,'$2y$10$/T5eDgeej3P.JoXuhChGceCnDHOceBwixNyIGehU4lHJ0xHtdqDFe',NULL,'','','2026-03-30 10:41:19',0,'2026-03-30 10:41:19','2026-04-12 11:43:16',5),(73,59,'Tanvir Hossain Jian','Tanvir Hossain Jian','01335258314','tanvir.tphl@gmail.com',20,'Uttor badda, Abdullah bag masjid','',8,'$2y$10$8YxvgfxnkLTwgnksEVIeRu3dLINjXElLIbY6LUvy4.t6K3HzQ3b2a',NULL,'','','2026-03-30 10:44:55',0,'2026-03-30 10:44:55','2026-04-12 11:58:20',10),(74,60,'Ahnaf Adil Roxy','Ahnaf Adil Roxy','01335-25832','roxy.tphl@gmail.com',13,'','4213421763',8,'$2y$10$EidwlET76JrkaxbXZWi1b.WHbW2IdKsfzevS5cbMDnLM3pJPk/arK',NULL,'','','2026-03-30 10:45:59',0,'2026-03-30 10:45:59','2026-03-30 16:36:23',NULL),(75,61,'Md.Tamim','Md.Tamim','01308212749','tamim.tphl@gmail.com',23,'Dattapara, Birulia,Savar, Dhaka 1216','',8,'$2y$10$vP/q95cSabGHgVL9h3sBw.MWwc8JGYQiRXLarqEx6zl8p6A43uwk2',NULL,'','','2026-03-30 10:49:04',0,'2026-03-30 10:49:04','2026-03-30 16:36:23',NULL),(76,63,'Akhoy kumer Nibir Roy','Akhoy kumer Nibir Roy','01335258301','akhoy.tphl@gmail.com',15,'N/A','',0,'$2y$10$/A2yZtrb7UELabmGdPX.IuVuX/LcgmoxPoe0CV56vCoxJGAfGOUie',NULL,'','','2026-03-30 10:54:37',6,'2026-03-30 10:54:37','2026-05-13 11:09:13',0),(77,64,'Md. Amanullah Aman','Md. Amanullah Aman','01335258306','aman.tphl@gmail.com',20,'South Bhandaria-8550, Bhandaria, Pirojpur','',8,'$2y$10$GvrxHKdWRY2m3tvvUsFMRuAgqeM6L993ISeHJG/42UBRYVYI6UnQ6','users_69eaf30d55fcd.jpeg','','','2026-03-30 10:56:23',77,'2026-03-30 10:56:23','2026-04-24 04:35:25',0),(78,65,'Abu Naym','Abu Naym','01335258312','naymtphl@gmail.com',20,'Ati-1312, Keraniganj, Dhaka','',8,'$2y$10$CojmU9mTBwgDjkx4CfkdYeaQ57vvBBDxV/seIXX4jy.25RgK19WMG','users_69cb90acdaad5.jpg','','','2026-04-19 05:10:00',0,'2026-03-30 10:59:42','2026-04-20 05:23:44',12),(79,66,'Md. Sakib Inam','Md. Sakib Inam','01335258310','sakibinam.tphl@gmail.com',16,'N/A','',8,'$2y$10$uhKw9sTOb03dEHxMvZb/KekSOvQ6RjfanioES3ZW5pOa4m.VkexNO',NULL,'','','2026-03-30 11:00:09',0,'2026-03-30 11:00:09','2026-04-18 04:34:42',12),(80,67,'Md Bakhtiar Hasan','Md Bakhtiar Hasan','01335258300','bakhtiar.tphl@gmail.com',13,'N/A','',0,'$2y$10$3KjxMU.PqmWBXo77Kd3nbO4vYx55T4pByMR7U.kHE91Sro2ch8sLe',NULL,'','','2026-03-30 11:10:48',0,'2026-03-30 11:10:48','2026-04-11 04:35:06',0),(81,68,'Md Lutfor Rahaman','Md Lutfor Rahaman','01335258334','lutfor.tphl@gmail.com',27,'Vill: Asapur, PO: Phancherkanda, Thana: Ghior, Dist: Manikganj, Dhaka','7350928797',2,'$2y$10$SiSPnIWXvfbAy0DznRqjNebZp6fjgF0LGkHEVG7NPoNy8.J2fdc9O',NULL,'','','2026-03-30 11:17:42',0,'2026-03-30 11:17:42','2026-03-30 16:36:23',NULL),(82,69,'Dipto Kumar Roy','Dipto Kumar Roy','01958253358','dipto.tphl@gmail.com',20,'Khagan,Ashulia,Saver Dhaka','2851653333',2,'$2y$10$pB9uAIYgkG6tt/yMZQzVUuiQzSe3shbNwKlu45kAtQqlTrNGZ/JPu',NULL,'','','2026-03-30 11:19:42',0,'2026-03-30 11:19:42','2026-03-30 16:36:23',NULL),(83,70,'B. M Shaharear Hasan','B. M Shaharear Hasan','01917331397','shaharear.tphl@gmail.com',27,'Korotoa road, latifpur kolony, Bogra','7318135568',6,'$2y$10$IR.UVy4pARa366NVJj3DGejR6j1MB0KlvUqEi5kvhJeZSLVd3RenW',NULL,'','','2026-03-30 11:22:17',0,'2026-03-30 11:22:17','2026-03-30 16:36:23',NULL),(84,71,'MD. Sakhawat Hossain Emon','MD. Sakhawat Hossain Emon','01335258335','emon.tphl@gmail.com',23,'Block-A, Lane-6, Mirpur-6, Dhaka 1216','1962405062',2,'$2y$10$zbxbowLRq8arKWPKWtXlmutMu0HgAD/L0jo0QOuiV5v1tzE/5MBoK',NULL,'','','2026-03-30 11:22:57',0,'2026-03-30 11:22:57','2026-03-30 16:36:23',NULL),(85,72,'MD. Zamiul Islam','MD. Zamiul Islam','01335258338','zamiul.tphl@gmail.com',17,'130/6/A Baganbari,  Madatek, Basabo, Dhaka -1214.','5086466165',2,'$2y$10$JNlsOeAu7vANay8HvhgzTu8qrFZTw42wEfb9hvza857xBIdxSE5kq',NULL,'','','2026-03-30 11:25:48',0,'2026-03-30 11:25:48','2026-03-30 16:36:23',NULL),(86,73,'MD. Ahadul Islam','MD. Ahadul Islam','01314010972','asif.tphl@gmail.com',23,'Amula Dahabharatta, Nikrail, Bhuapur.','3314775515',2,'$2y$10$YlJmkkdgPI02YYTHw5G/o.tJE.7k/v6D34A6bHyNdlPuQztkA1IFe',NULL,'','','2026-03-30 11:26:09',0,'2026-03-30 11:26:09','2026-03-30 16:36:23',NULL),(87,74,'Sadman Islam Sakib','Sadman Islam Sakib','01958253344','sakib.tphl@gmail.com',21,'H-12, Kusumbag Residential Area, North Bisil  Road, Mirpur-1,Dhaka-1216','',8,'$2y$10$EZYoIwrFc/RwFFaj299PeOTVK1Jjf4pVV8dFhN0apKOxd6.BoIP9C','users_69d4989074172.jpg','','','2026-04-22 10:19:56',0,'2026-03-30 11:33:39','2026-04-22 10:19:56',2),(88,75,'Mahaananda Kumar Saha','Mahaananda Kumar Saha','01335258327','mahaanandakumarsaha@gmail.com',22,'Faridpur, sadarpur,hatkrishnapur','5506251882',2,'$2y$10$IawCX1UOcrjxps1aO4QTWeip4b8tKdN3JGDyduTJtnqLNYVuIzYXu',NULL,'','','2026-03-30 11:34:33',0,'2026-03-30 11:34:33','2026-03-30 16:36:23',NULL),(90,79,'Moonmoon Akter Oishy','Moonmoon Akter Oishy','01958253355','oishytphl@gmail.com',24,'Road No -1,  B - 45 Bank Town,  Savar','1047316906',2,'$2y$10$Sdqb84cXh8GKU9Okw2rRSe7k3N6a0riQJVPBDqnRhqa9px28WsDY.',NULL,'','','2026-03-30 11:43:09',0,'2026-03-30 11:43:09','2026-03-30 16:36:23',NULL),(91,76,'Rubina Islam','Rubina Islam','01958253349','rubinatphl49@gmail.com',15,'','',2,'$2y$10$r8GdWRKSpeZjr24W1pjGn.uaye6s/.clnO7G8ESZI3NnV844NrnCS',NULL,'','','2026-03-30 11:44:43',0,'2026-03-30 11:44:43','2026-03-30 16:36:23',NULL),(92,80,'Afrin Jahan Anika','Afrin Jahan Anika','01958253335','anika.tphl@gmail.com',13,'39/b senpara porbota mirpur 10','1032936708',2,'$2y$10$nBTOuqyG5vmEhBfJADloguSRdoA383Hrd.mFIuseKxOXG3bkfZYZG',NULL,'','','2026-03-30 11:52:36',0,'2026-03-30 11:52:36','2026-03-30 16:36:23',NULL),(94,0,'Mehedi H. Jony','Mehedi H. Jony','01861685153','mehedihjony.tphl@gmail.com',28,'Dhaka','',10,'$2y$10$YO/Y1hPq8lo0NTFbWbSX5u1hyUYn.i0F1s3KcNN9Xx8Askz3/5q0O',NULL,'','','2026-04-27 06:07:13',6,'2026-03-30 16:43:54','2026-04-27 06:07:13',0),(95,81,'Riya','Riya','01778234546','riya@gmail.com',28,'Dhaka','34',5,'$2y$10$cUYgCjvi4yiNDYS8mTGWsOkEvOJR32hiN/5Dsku7ULURP.tcviqpK',NULL,'','','2026-04-04 11:27:15',4,'2026-03-31 06:40:46','2026-04-04 11:27:15',0),(98,82,'S.A Arnob','S.A Arnob','01958253347','arnob.tphl@gmail.com',20,'Dottopara, Asuliya, Dhaka','',8,'$2y$10$aaooqfFW63prXcheowgGMeuZAHV88qpV1JQMljfQiHbOv2qCKtFdy',NULL,'','','2026-03-31 08:18:16',0,'2026-03-31 08:18:16','2026-04-12 11:41:08',4),(100,83,'Md. Mamunur Rahman','Md. Mamunur Rahman','01958253342','mamunur.tphl@gmail.com',19,'','1947418776',7,'$2y$10$ADpw3aS2xygSq6zySs.GaOoDAhv9XTdf3jXLxpZeyQ8fJinfXiZwG',NULL,'','','2026-03-31 08:58:36',0,'2026-03-31 08:58:36','2026-03-31 08:58:36',2),(102,84,'Mehedi Hasan Rudro','Rudro','01872356456','rudro@gmail.com',21,'N/A','',11,'$2y$10$XZKNktLIkAjqt/eY93vvFuKVMkut4pqaro7pZDaJm1PCHN7EApKra',NULL,'','','2026-05-14 05:32:11',4,'2026-04-02 08:14:46','2026-05-14 05:32:11',0),(103,85,'Mehedi Hasan Shuvo','hasan shuvo','01901365048','shuvo.tphl@gmail.com',17,'Dhaka','',5,'$2y$10$IQykvHC0cycV2VPhGMjfz.h6JdRuJzPkX4fw20XGlbQlHrPo4hKbu',NULL,'','','2026-04-09 04:00:41',0,'2026-04-03 13:29:06','2026-04-09 04:00:41',5),(105,11,'Mr. Ibrahim Khalil','ibrahim khalil','01958253319','ibrahimkhalil.tphl@gmail.com',20,'5/9, Dakkhin Rajashon, Savar, Dhaka','',8,'$2y$10$qExZ9v2Jozj5g9ct4UC3TeFToO.2UTmVBXrWXXmDmmjelR0co0hTG',NULL,'','','2026-04-04 05:57:01',0,'2026-04-04 05:57:01','2026-04-12 11:54:39',9),(110,NULL,'Mainul Hassan Dulon','Mainul H. Dulon','01933657804','ceo@dpremiumhomes.com',29,'Dhaka','',3,'$2y$10$8Z5Mj0/6UMu4MDupWjOnGOv6CvqtAqS5E0SdhEiOBvEp.oUszI5/e',NULL,'','','2026-04-08 11:18:00',6,'2026-04-04 11:35:30','2026-04-08 11:18:00',0),(112,NULL,'Ejaz Ur Rahman','Ejaz Ur Rahman','01738822694','dceo@dpremiumhomes.com',31,'Dhaka','',3,'$2y$10$BKhqSTbXDhPI4toSjpUiH.QnGD.lvBC5o5fB8IhwrVpolh1E0RIh2',NULL,'','','2026-04-04 12:40:57',6,'2026-04-04 12:29:06','2026-04-04 12:50:30',0),(113,NULL,'Mahfuza Shikder Tanha','Mahfuza Shikder Tanha','01721316211','pd@dpremiumhomes.com',32,'Dhaka','',3,'$2y$10$uSiCIm/rYxSI2Q5jXfsOBuz8w4.dja8GlRNx5WYsUdkc7AzjHiBA6',NULL,'','','2026-04-04 12:41:12',6,'2026-04-04 12:30:16','2026-04-04 12:51:08',0),(114,NULL,'Md. Rayhan Bhuiyan','Md. Rayhan Bhuiyan','01689-58433','coo@dpremiumhomes.com',30,'Dhaka','',3,'$2y$10$099WG2xiU7I7762yH70l5e4KtEODir4przyxvpdHPB.GPPToQ7huC',NULL,'','','2026-04-04 12:56:53',110,'2026-04-04 12:56:53','2026-04-08 11:17:49',0),(115,62,'Md. Abul Hasan Hasib','Md. Abul Hasan Hasib','01335258320','hasib.tphl@gmail.com',21,'N/A','',8,'$2y$10$lzrZhqIiXpnom1CIBmwptuuVKJBUsTDJ3x85HjDOElQ.eR3EPLzry',NULL,'','','2026-04-07 09:26:45',0,'2026-04-07 09:26:45','2026-04-12 12:15:19',13),(116,12,'Nahian','rafi','01123456789','nahian.easytechx@gmail.com',14,'asdfadf','55555534434',8,'$2y$10$RHjmhMhmgwE/OuuD2c92suYCaEZlm5RN0UhhFbAz2hRBKdeXj6Fe2',NULL,'','','2026-04-08 10:14:38',6,'2026-04-08 10:14:38','2026-04-08 10:15:58',0),(117,86,'Test Employee','Test','01790128472','test3@gmail.com',32,'Mohammadpur, Dhaka-1207','',0,'$2y$10$sw5JwFNK.bYOVVwur2/1FOxpkSV/FOm7WWdLEfTzh//K3GkkykKQW',NULL,'','','2026-04-10 10:07:16',0,'2026-04-10 10:07:16','2026-04-10 10:07:16',0),(118,87,'Shazzadur Rahman Shoumic','Shazzad','01765562314','shazzadur.tphl@gmail.com',20,'','',8,'$2y$10$TX/Hto3FA3ypCs4fd8al4euM8Mh1vmGy/3mIbgelj8wuiwLDJw0/6',NULL,'','','2026-04-12 11:46:52',0,'2026-04-12 11:46:52','2026-04-12 11:46:52',5),(119,90,'Shohanur Rahaman','Shohanur Rahaman','01958253372','shohan.tphl@gmail.com',13,'Khagan Ashulia','',11,'$2y$10$AIzAW5dhzVr58q5NyyyBueMXK5aTZHZwHOyGVa3EEz842ZAWUsxZK',NULL,'','','2026-04-19 04:42:58',119,'2026-04-17 13:13:21','2026-04-19 04:42:58',0),(120,NULL,'Project Manager1','Project Manager1','01876123454','project.manager1@gmail.com',36,'Dhaka','',15,'$2y$10$GhwOi2FtFs9pBw7GkpZaCefIBQhTiY9GoQLUgUKfBDa9p.XtUvlXu',NULL,'','','2026-05-18 12:35:01',6,'2026-04-26 03:55:58','2026-05-18 12:35:01',0),(121,NULL,'Land Man1','Land Man1','01993878733','land.manager1@gmail.com',33,'Dhaka','',14,'$2y$10$0Zg/ELOPJh5n.sSZkO2i8eMKon1lIWKj5lHQq2cLgbKrqVaYZcUhO',NULL,'','','2026-05-23 05:03:50',6,'2026-04-26 03:56:52','2026-05-23 05:03:50',0),(122,NULL,'Mr. Architect1','Mr. Architect1','01875438578','architecture1@gmail.com',34,'Dhaka','',18,'$2y$10$uYzkPN7DDLAanWYNsI02.OvkqvUIS35JblMvG0NRUHLTaXBemryL2',NULL,'','','2026-05-23 05:09:18',6,'2026-04-26 03:58:02','2026-05-23 05:09:18',0),(123,NULL,'Mr. Site Engineer1','Mr. Site Engineer1','01987328476','site.engineer1@gmail.com',38,'Dhaka','',12,'$2y$10$C.kuqYaBXt7SNIuwlDSoi.NySk5tcj67PFfUBFUqWc1bYrnCqCqIi',NULL,'','','2026-05-18 12:32:12',6,'2026-04-26 03:58:54','2026-05-18 12:32:12',0),(124,NULL,'Mr. Draftsman1','Mr. Draftsman1','01763425454','draftsman1@gmail.com',35,'dhaka','',16,'$2y$10$GpWdksQaMYX5TguAlFBFYO/ygwnc8af9LA0SqWRf./0oVspQwc.De',NULL,'','','2026-05-23 05:23:16',6,'2026-04-26 03:59:33','2026-05-23 05:23:16',0),(125,NULL,'Mr Estimator1','Mr Estimator1','','estimator1@gmail.com',37,'dhaka','',19,'$2y$10$NgvBE.GRBJt0HNyQmSqua.PeaLLgA2oWcVuGhwv7Im31Jz6SgAjay',NULL,'','','2026-05-18 12:06:48',6,'2026-04-26 04:00:08','2026-05-18 12:06:48',0),(126,NULL,'Mr. QC1','Mr. QC1','01986378256','qc1@gmail.com',43,'Dhaka','',13,'$2y$10$paZNUceDQ1b3BWWwfP6jReGr3d9ZLqKdMwisIHzdYTR0toYXK3GXi',NULL,'','','2026-05-18 12:37:00',6,'2026-04-26 04:00:52','2026-05-18 12:37:00',0),(127,NULL,'Mr Purchase Head1','Mr Purchase Head1','01782354543','purchase1@gmail.com',42,'Dhaka','',17,'$2y$10$WWHjM9YQBDTjCW7Dvf6KC.5mbo/0tJPW.WOLTXy2Ahhfz2xnoAPEe',NULL,'','','2026-05-18 07:02:41',6,'2026-04-26 04:01:41','2026-05-18 07:02:41',0),(128,NULL,'Mr Site Operators1','Mr Site Operators1','01723876324','operations1@gmail.com',38,'Dhaka','',20,'$2y$10$NN/GFnq6O6qtzqFyavU4EO4eOwgFH5JJi8J409SIOJZfvrNPlsT5q',NULL,'','','2026-05-17 19:37:41',6,'2026-04-26 04:05:25','2026-05-17 19:37:41',0),(129,NULL,'Mr Structural Designer1','Mr Structure Designer1','01653247632','structural.designer1@gmail.com',15,'Dhaka','',21,'$2y$10$tzAM7hH8kzCv2PnyRdzMneFlpt2yMJBcbMCvxSp2Zj16X/GNO6i4G',NULL,'','','2026-05-18 11:47:43',6,'2026-04-26 05:41:57','2026-05-18 11:47:43',0),(130,NULL,'M.H Jony','M.H Jony','01861685153','admin@gmail.com',28,'Dhaka','',1,'$2y$10$ZsoxIYkWS/zUeQjawL6/4.9oL7L21uVMvqu/7bIAQq6r4OL29eByy',NULL,'','','2026-05-02 04:44:05',130,'2026-05-02 04:34:07','2026-05-02 04:44:05',0),(131,91,'Tamjid Chowdhury','Tamjid Chowdhury','01711111111','tamjid.tphl@gmail.com',43,'Dhaka','',8,'$2y$10$eIiFrakD3xjjCre.joh9QOYdHUd404LHwfN7/ve915KZ6qv33EDWu',NULL,'','','2026-05-13 11:48:35',0,'2026-05-13 10:58:31','2026-05-13 11:48:35',11),(132,94,'Md. Nazmul Islam Robin','Md. Nazmul Islam Robin','01711111111','robintphl@gmail.com',15,'Dhaka','',8,'$2y$10$UwAYoAFri6gXhS8H0CMQMuPmviXy6KFdypiqAAniO.cNSvzqT/3Se',NULL,'','','2026-05-13 11:16:41',0,'2026-05-13 11:07:27','2026-05-13 11:16:41',11),(133,95,'Nazmus Sakib','Nazmus','','Nazmus.tphl@gmail.com',15,'','',8,'$2y$10$PJ8XliE0vfcgQdQPXwMRf.Mx/3J.QEVWZY125PcaR5YHGHZcC7xdC',NULL,'','','2026-05-13 11:36:11',0,'2026-05-13 11:36:11','2026-05-13 11:36:11',9),(134,97,'Nehemiah Biswas Prottoy','Nehemiah Biswas Prottoy','','prottoy.tphl@gmail.com',15,'','',8,'$2y$10$c3NHOint06moTU8hFBAUJOD0gyRwcsFcAzXLu7gjbD8YNwrx./vry',NULL,'','','2026-05-13 11:41:00',0,'2026-05-13 11:41:00','2026-05-13 11:41:00',9),(135,98,'Mst. Sania Khatun','Mst. Sania Khatun','','sania.tphl@gmail.com',15,'','',8,'$2y$10$BsSiQVv1B17SuGJVfEH8S.NX2OHHXaZCrs7zg8hGAVlThrGd4lBZm',NULL,'','','2026-05-13 11:44:56',0,'2026-05-13 11:44:56','2026-05-13 11:44:56',9),(136,99,'Irfan Kabir Abir','Irfan Kabir Abir','','rfan85.tphl@gmail.com',15,'','',8,'$2y$10$8Jd7KDaHOW1p/qvpUlK9feSACKBvGpeh9tD.g.jpZBPJr4XEU4nBe',NULL,'','','2026-05-13 11:57:09',0,'2026-05-13 11:57:09','2026-05-13 11:57:09',3),(137,NULL,'Mr Purchase Executive','Mr Purchase Executive','01987387434','purchase.executive1@gmail.com',15,'Dhaka','',23,'$2y$10$mkIgzsJd1h0CJlBJNvXKh.dVbnJnhXWRA.o6dGx8qsMv0Tv132rJu',NULL,'','','2026-05-18 06:00:52',6,'2026-05-17 11:39:47','2026-05-18 06:00:52',0),(138,NULL,'Project Manager Head','project.manager1@gmail.com','01847363455','project.manager.head@gmail.com',36,'Dhaka','',22,'$2y$10$6L/QBuSQ1AEhS07jnJNeReoBI9l5ir74f1eNFi56LXSNWDle35rgK',NULL,'','','2026-05-18 06:10:18',6,'2026-05-17 16:54:08','2026-05-18 06:10:18',0),(139,NULL,'QC & Internal Audit','qc_audit','','qcaudit@gmail.com',NULL,'Dhaka','',24,'$2y$10$E.zADr8CuCrTUOy1RLAzU.wVaZSFKvBHOHd.BNXIu3mZOOG4ck7MG',NULL,'','','2026-05-24 09:31:58',1,'2026-05-24 09:31:58','2026-05-24 09:31:58',0);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -4708,4 +5549,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-05-24  6:12:03
+-- Dump completed on 2026-05-25 12:01:09
