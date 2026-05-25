@@ -2206,6 +2206,10 @@
                 <?php endif; ?>
 
                 <!-- ====== ASSET MANAGEMENT ====== -->
+                <?php if (hasPermission('Asset Management') || hasPermission('QC & Internal Audit') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3 ,20])): ?>
+                    <li class="slide has-sub <?= isActive(['asset-products', 'office-assets', 'asset-extra-purchases'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['asset-products', 'office-assets', 'asset-extra-purchases'], $current_route) ? 'menu-open active' : '' ?>">
                 <?php if (hasPermission('Asset Management') || hasPermission('QC & Internal Audit') || in_array($_SESSION['user']['role_id'] ?? 0, [1,20, 3])): ?>
                     <li class="slide has-sub <?= isActive(['asset-products', 'assets', 'asset-extra-purchases'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
@@ -2215,6 +2219,10 @@
                             <span class="sidebar__menu-label">Asset Management</span>
                         </a>
                         <ul class="sidebar-menu child2" style="display:block;">
+
+                            <li class="slide <?= isActive('office-assets', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('office-assets', $current_route) ?>"
+                                    href="<?= $base_url ?>/office-assets">All Assets</a>
                             <li class="slide <?= isActive('asset-products', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('asset-products', $current_route) ?>"
                                     href="<?= $base_url ?>/asset-products">Products Master</a>

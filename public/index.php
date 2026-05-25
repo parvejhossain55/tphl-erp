@@ -23,9 +23,10 @@ require_once __DIR__ . '/../vendor/autoload.php';
 // }
 
 // Removed duplicate session_start() — already called at line 2-4
-// Production: errors hidden from users (check server error_log instead)
-error_reporting(0);
-ini_set('display_errors', 0);
+// Enable debug (local dev)
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 
 $root = dirname(__DIR__);
 $GLOBALS['base_url'] = '/TPHL-ERP';
@@ -1181,6 +1182,21 @@ $routes['expense-adjustments/show']      = ['controller' => 'ExpenseAdjustmentCo
 $routes['expense-adjustments/approve']   = ['controller' => 'ExpenseAdjustmentController', 'method' => 'approve'];
 $routes['expense-adjustments/reject']    = ['controller' => 'ExpenseAdjustmentController', 'method' => 'reject'];
 $routes['expense-adjustments/add-payment'] = ['controller' => 'ExpenseAdjustmentController', 'method' => 'addPayment'];
+// ── Asset Management Module ───────────────────────────────────────────────
+
+$routes['office-assets']                                   = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'index'];
+$routes['office-assets/store']                             = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'store'];
+$routes['office-assets/show/(\d+)']                        = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'show'];
+$routes['office-assets/update-code/(\d+)']                 = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'updateAssetCode'];
+$routes['office-assets/update/(\d+)']                      = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'update'];
+$routes['office-assets/transfer/(\d+)']                    = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'transfer'];
+$routes['office-assets/condition/(\d+)']                   = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'updateCondition'];
+$routes['office-assets/dispose/(\d+)']                     = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'dispose'];
+$routes['asset-extra-purchases']                    = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'extraPurchases'];
+$routes['asset-extra-purchases/store']              = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'storeExtraPurchase'];
+$routes['asset-extra-purchases/approve/(\d+)']      = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'approveExtraPurchase'];
+$routes['asset-extra-purchases/purchased/(\d+)']    = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'markPurchased'];
+$routes['asset-extra-purchases/confirm/(\d+)']      = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'confirmPurchased'];
 
 // =============================================================================
 // END PHASE 2 ROUTES
@@ -1210,6 +1226,17 @@ $routes['con-ajax-budget-estimate']        = ['controller' => 'Phase2\Con_Workin
 // ── AJAX: Cascade project → targets ──────────────────────────────────────
 $routes['con-ajax-project-targets']        = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'ajaxGetProjectTargets'];
 
+// ==============================================================================
+// QC & INTERNAL AUDIT MODULE
+// ==============================================================================
+$routes['qc-audit-dashboard']        = ['controller' => 'QcAuditController', 'method' => 'dashboard'];
+$routes['qc-advanced-audit']         = ['controller' => 'QcAuditController', 'method' => 'advancedAudit'];
+$routes['qc-audit/materials']        = ['controller' => 'QcAuditController', 'method' => 'getAuditMaterials'];
+$routes['qc-audit/purchases']        = ['controller' => 'QcAuditController', 'method' => 'getAuditPurchases'];
+$routes['qc-audit/payments']         = ['controller' => 'QcAuditController', 'method' => 'getAuditPayments'];
+$routes['qc-requests']               = ['controller' => 'QcAuditController', 'method' => 'pendingRequests'];
+$routes['qc-audit/approve']          = ['controller' => 'QcAuditController', 'method' => 'approveRequest'];
+$routes['qc-audit/trail']            = ['controller' => 'QcAuditController', 'method' => 'getAuditTrail'];
 
 $public_routes = [
     '',
