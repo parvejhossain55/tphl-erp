@@ -3554,6 +3554,38 @@ INSERT INTO `personal_access_tokens` VALUES (1,'App\\Models\\OnboardClient',1,'o
 UNLOCK TABLES;
 
 --
+-- Table structure for table `phase_item_template_defaults`
+--
+
+DROP TABLE IF EXISTS `phase_item_template_defaults`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `phase_item_template_defaults` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `phase_name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `item_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `item_order` tinyint NOT NULL DEFAULT '1',
+  `weight_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `design_type_id` int unsigned DEFAULT NULL,
+  `work_type_id` bigint unsigned DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_pitd_phase_name` (`phase_name`),
+  KEY `fk_pitd_wtype` (`work_type_id`),
+  KEY `fk_pitd_dtype` (`design_type_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `phase_item_template_defaults`
+--
+
+LOCK TABLES `phase_item_template_defaults` WRITE;
+/*!40000 ALTER TABLE `phase_item_template_defaults` DISABLE KEYS */;
+/*!40000 ALTER TABLE `phase_item_template_defaults` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `phase_monthly_target_items`
 --
 
@@ -3959,6 +3991,43 @@ CREATE TABLE `project_legal_sheets` (
 LOCK TABLES `project_legal_sheets` WRITE;
 /*!40000 ALTER TABLE `project_legal_sheets` DISABLE KEYS */;
 /*!40000 ALTER TABLE `project_legal_sheets` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `project_phase_items`
+--
+
+DROP TABLE IF EXISTS `project_phase_items`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `project_phase_items` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `phase_id` int unsigned NOT NULL,
+  `item_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `item_order` tinyint NOT NULL DEFAULT '1',
+  `weight_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `planned_progress` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `actual_progress` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `design_type_id` int unsigned DEFAULT NULL,
+  `work_type_id` bigint unsigned DEFAULT NULL,
+  `status` enum('Not Started','In Progress','Completed','At Risk') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Not Started',
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_ppi_phase` (`phase_id`),
+  KEY `fk_ppi_wtype` (`work_type_id`),
+  KEY `fk_ppi_dtype` (`design_type_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `project_phase_items`
+--
+
+LOCK TABLES `project_phase_items` WRITE;
+/*!40000 ALTER TABLE `project_phase_items` DISABLE KEYS */;
+/*!40000 ALTER TABLE `project_phase_items` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -5480,4 +5549,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-05-25 11:38:27
+-- Dump completed on 2026-05-25 12:01:09
