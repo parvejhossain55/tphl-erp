@@ -1192,6 +1192,10 @@ $routes['office-assets/update/(\d+)']                      = ['controller' => 'P
 $routes['office-assets/transfer/(\d+)']                    = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'transfer'];
 $routes['office-assets/condition/(\d+)']                   = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'updateCondition'];
 $routes['office-assets/dispose/(\d+)']                     = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'dispose'];
+$routes['asset-products']                                  = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'products'];
+$routes['asset-products/store']                            = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'storeProduct'];
+$routes['asset-products/update']                           = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'updateProduct'];
+$routes['asset-products/delete']                           = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'deleteProduct'];
 $routes['asset-extra-purchases']                    = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'extraPurchases'];
 $routes['asset-extra-purchases/store']              = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'storeExtraPurchase'];
 $routes['asset-extra-purchases/approve/(\d+)']      = ['controller' => 'Phase2\\AssetManagementController', 'method' => 'approveExtraPurchase'];
