@@ -130,7 +130,12 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         <span class="fs-12 fw-semibold"><?= htmlspecialchars($r['item_name']) ?></span>
                                     </td>
                                     <td class="text-center"><?= $r['quantity'] ?></td>
-                                    <td class="text-end fw-semibold"><?= number_format($r['total_price'], 2) ?></td>
+                                    <td class="text-end fw-semibold">
+                                        <?= number_format($r['total_price'], 2) ?>
+                                        <?php if (!empty($r['paid_amount']) && $r['paid_amount'] > 0): ?>
+                                            <br><small class="text-success fs-10">Paid: <?= number_format($r['paid_amount'], 2) ?></small>
+                                        <?php endif; ?>
+                                    </td>
                                     <td class="fs-12"><?= htmlspecialchars($r['requested_by_name'] ?? '—') ?></td>
                                     <!-- Step 1: Purchase Head -->
                                     <td class="text-center">
@@ -204,6 +209,13 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         $canConfirmPurchase = !empty($canCreate) && $r['payment_status'] === 'paid' && $r['overall_status'] === 'paid';
                                         ?>
 
+                                        <!-- Always show View button -->
+                                        <button type="button" class="btn btn-sm btn-outline-secondary btn-icon" title="View"
+                                            data-info='<?= htmlspecialchars(json_encode($r), ENT_QUOTES, "UTF-8") ?>'
+                                            onclick="openDetailModal(this)">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+
                                         <?php if ($canApprove): ?>
                                             <button type="button" class="btn btn-sm btn-outline-success btn-icon" title="Approve"
                                                 onclick="openApprovalModal(<?= $r['id'] ?>, 'approved', '<?= $step ?>')">
@@ -222,12 +234,6 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             <button type="button" class="btn btn-sm btn-outline-success" title="Mark as Purchased"
                                                 onclick="openConfirmPurchaseModal(<?= $r['id'] ?>)">
                                                 <i class="fa-solid fa-box-check me-1"></i> Mark Purchased
-                                            </button>
-                                        <?php else: ?>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary btn-icon" title="View"
-                                                data-info='<?= htmlspecialchars(json_encode($r), ENT_QUOTES, "UTF-8") ?>'
-                                                onclick="openDetailModal(this)">
-                                                <i class="fa-solid fa-eye"></i>
                                             </button>
                                         <?php endif; ?>
                                     </td>
@@ -350,6 +356,10 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Paid Amount (BDT) <span class="text-danger">*</span></label>
+                        <input type="number" name="paid_amount" class="form-control" step="0.01" min="0" required placeholder="Enter amount paid">
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Payment Method</label>
                         <select name="payment_method" class="form-select" required>
@@ -581,6 +591,18 @@ function openDetailModal(btn) {
                 ${data.purchase_head_note ? '<div class="fs-11 mb-1"><strong class="text-primary">Purchase Head:</strong> ' + data.purchase_head_note + '</div>' : ''}
                 ${data.qc_audit_note ? '<div class="fs-11 mb-1"><strong class="text-info">QC & Audit:</strong> ' + data.qc_audit_note + '</div>' : ''}
                 ${data.mgmt_note ? '<div class="fs-11"><strong class="text-warning">Management:</strong> ' + data.mgmt_note + '</div>' : ''}
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- Documents -->
+        ${(data.attachment || data.payment_attachment || data.purchase_document) ? `
+        <div class="mt-3">
+            <div class="detail-label mb-1 px-1">SUBMITTED DOCUMENTS</div>
+            <div class="d-flex flex-wrap gap-2">
+                ${data.attachment ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.attachment + '" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-file-pdf me-1"></i> Request Doc</a>' : ''}
+                ${data.payment_attachment ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.payment_attachment + '" target="_blank" class="btn btn-sm btn-outline-success"><i class="fa-solid fa-receipt me-1"></i> Payment Receipt</a>' : ''}
+                ${data.purchase_document ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.purchase_document + '" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-file-invoice me-1"></i> Purchase Document</a>' : ''}
             </div>
         </div>
         ` : ''}

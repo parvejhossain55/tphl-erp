@@ -537,17 +537,17 @@ class AssetManagement
     /**
      * Process payment (Accounts step) — only marks as paid, does NOT register assets yet
      */
-    public function processPayment($id, $userId, $paymentMethod, $attachment = null)
+    public function processPayment($id, $userId, $paymentMethod, $paidAmount, $attachment = null)
     {
         $stmt = $this->db->prepare(
             "UPDATE project_extra_assets SET 
                 payment_status = 'paid', paid_by = ?, paid_at = NOW(), 
-                payment_method = ?, payment_attachment = ?,
+                payment_method = ?, paid_amount = ?, payment_attachment = ?,
                 overall_status = 'paid'
             WHERE id = ?"
         );
 
-        $stmt->bind_param('issi', $userId, $paymentMethod, $attachment, $id);
+        $stmt->bind_param('isdsi', $userId, $paymentMethod, $paidAmount, $attachment, $id);
         return $stmt->execute();
     }
 

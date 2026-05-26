@@ -59,7 +59,7 @@ class Con_PurchaseOrderController extends Controller
 
         $canApproveSE = false; // SE approval no longer required
         $canApprovePM = in_array($currentRoleId, [15, 22]) && !$pmApproved;
-        $isQCRole     = ($currentRoleId == 24 || strtolower($_SESSION['user']['role_name'] ?? '') === 'qc & internal audit');
+        $isQCRole     = (in_array($currentRoleId, [24, 25, 26]) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'qc & internal audit') !== false);
         $canApproveQC = $isQCRole && $pmApproved && !$qcApproved;
 
         $items        = $this->poModel->getItems($id);
@@ -144,7 +144,7 @@ class Con_PurchaseOrderController extends Controller
             exit;
         }
 
-        $isQC = ($roleId == 24 || strtolower($_SESSION['user']['role_name'] ?? '') === 'qc & internal audit');
+        $isQC = (in_array($roleId, [24, 25, 26]) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'qc & internal audit') !== false);
 
         // Role guard — Only PM (15, 22) or QC (24) can approve
         if (in_array($roleId, [15, 22])) {

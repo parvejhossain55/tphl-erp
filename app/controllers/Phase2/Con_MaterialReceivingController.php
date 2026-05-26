@@ -90,7 +90,7 @@ class Con_MaterialReceivingController extends Controller
         // File upload helper
         $uploadPhoto = function ($fileInputName) {
             if (isset($_FILES[$fileInputName]) && $_FILES[$fileInputName]['error'] === UPLOAD_ERR_OK) {
-                $uploadDir = __DIR__ . '/../../../../public/uploads/material_receivings/';
+                $uploadDir = __DIR__ . '/../../../public/uploads/material_receivings/';
                 if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
                 
                 $fileName = time() . '_' . basename($_FILES[$fileInputName]['name']);
@@ -229,7 +229,7 @@ class Con_MaterialReceivingController extends Controller
         // File upload helper
         $uploadPhoto = function ($fileInputName) {
             if (isset($_FILES[$fileInputName]) && $_FILES[$fileInputName]['error'] === UPLOAD_ERR_OK) {
-                $uploadDir = __DIR__ . '/../../../../public/uploads/material_receivings/';
+                $uploadDir = __DIR__ . '/../../../public/uploads/material_receivings/';
                 if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
                 
                 $fileName = time() . '_' . basename($_FILES[$fileInputName]['name']);

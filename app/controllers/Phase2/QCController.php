@@ -309,7 +309,7 @@ class QCController extends Controller
         if (empty($fileData['name'])) return null;
 
         
-        $baseDir = __DIR__ . '/../../../../public/' . $uploadPath;
+        $baseDir = __DIR__ . '/../../../public/' . $uploadPath;
         if (!is_dir($baseDir)) mkdir($baseDir, 0777, true);
 
         $ext = pathinfo($fileData['name'], PATHINFO_EXTENSION);

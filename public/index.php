@@ -1018,6 +1018,15 @@ $routes['con-material-receiving-import-template'] = ['controller' => 'Phase2\Con
 $routes['con-material-returns']             = ['controller' => 'Phase2\Con_MaterialReturnController', 'method' => 'index'];
 $routes['con-material-returns/update/(\d+)'] = ['controller' => 'Phase2\Con_MaterialReturnController', 'method' => 'updateStatus'];
 
+// ── Wastage Management ───────────────────────────────────────────────────
+$routes['con-wastage']                             = ['controller' => 'Phase2\Con_WastageController', 'method' => 'index'];
+$routes['con-wastage-create']                      = ['controller' => 'Phase2\Con_WastageController', 'method' => 'create'];
+$routes['con-wastage-store']                       = ['controller' => 'Phase2\Con_WastageController', 'method' => 'store'];
+$routes['con-wastage-show/(\d+)']                  = ['controller' => 'Phase2\Con_WastageController', 'method' => 'show'];
+$routes['con-wastage-approve-qc/(\d+)']            = ['controller' => 'Phase2\Con_WastageController', 'method' => 'approveQC'];
+$routes['con-wastage-approve-purchase/(\d+)']      = ['controller' => 'Phase2\Con_WastageController', 'method' => 'approvePurchase'];
+$routes['con-wastage-receive-payment/(\d+)']       = ['controller' => 'Phase2\Con_WastageController', 'method' => 'receivePayment'];
+
 // ── Vendor Payment Requests ────────────────────────────────────────────────
 $routes['con-vendor-payment-requests']          = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'index'];
 $routes['con-vendor-payment-create']            = ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'create'];
