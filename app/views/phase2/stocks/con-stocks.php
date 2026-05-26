@@ -173,9 +173,15 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                                         <span class="text-muted small"><?= htmlspecialchars($row['unit']) ?></span>
                                                     </div>
                                                     <?php if (!empty($row['last_issued_by_name'])): ?>
-                                                        <div class="text-muted" style="font-size:11px;">
-                                                            By: <?= htmlspecialchars($row['last_issued_by_name']) ?>
-                                                        </div>
+                                                        <?php if (($row['last_issued_ref_type'] ?? '') === 'wastage'): ?>
+                                                            <div class="text-danger fw-bold mt-1" style="font-size:11px;">
+                                                                <i class="fas fa-trash-alt me-1"></i> Wastage Collected
+                                                            </div>
+                                                        <?php else: ?>
+                                                            <div class="text-muted" style="font-size:11px;">
+                                                                By: <?= htmlspecialchars($row['last_issued_by_name']) ?>
+                                                            </div>
+                                                        <?php endif; ?>
                                                     <?php endif; ?>
                                                     <?php if (!empty($row['last_issued_at'])): ?>
                                                         <div class="text-muted" style="font-size:11px;">

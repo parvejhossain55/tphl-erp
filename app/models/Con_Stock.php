@@ -35,6 +35,7 @@ class Con_Stock extends Model
                        (s.current_quantity * COALESCE(NULLIF(s.unit_price, 0), poi_price.unit_price, 0)) AS stock_value,
                        last_out.quantity      AS last_issued_qty,
                        last_out.created_at    AS last_issued_at,
+                       last_out.ref_type      AS last_issued_ref_type,
                        isu.full_name          AS last_issued_by_name
                 FROM {$this->table} s
                 JOIN con_materials  m ON m.id = s.material_id
@@ -43,7 +44,7 @@ class Con_Stock extends Model
                 LEFT JOIN {$this->latestPriceSubquery()} ON poi_price.material_id = s.material_id
                 LEFT JOIN (
                     SELECT sm.material_id, sm.warehouse_id,
-                           sm.quantity, sm.created_at, sm.moved_by
+                           sm.quantity, sm.created_at, sm.moved_by, sm.ref_type
                     FROM con_stock_movements sm
                     INNER JOIN (
                         SELECT material_id, warehouse_id, MAX(id) AS max_id

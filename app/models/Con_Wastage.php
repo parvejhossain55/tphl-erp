@@ -108,13 +108,44 @@ class Con_Wastage extends Model
 
     public function approveQC($id, $userId, $note, $docPath)
     {
-        $stmt = $this->db->prepare(
-            "UPDATE {$this->table} 
-             SET status = 'Pending Purchase', qc_approved_by = ?, qc_approved_at = NOW(), qc_note = ?, qc_doc = ? 
-             WHERE id = ?"
-        );
-        $stmt->bind_param('issi', $userId, $note, $docPath, $id);
-        return $stmt->execute();
+        $this->db->begin_transaction();
+        try {
+            $wastage = $this->find($id);
+            if (!$wastage || $wastage['status'] !== 'Pending QC') {
+                throw new \Exception("Invalid wastage record or status.");
+            }
+
+            $stmt = $this->db->prepare(
+                "UPDATE {$this->table} 
+                 SET status = 'Pending Purchase', qc_approved_by = ?, qc_approved_at = NOW(), qc_note = ?, qc_doc = ? 
+                 WHERE id = ?"
+            );
+            $stmt->bind_param('issi', $userId, $note, $docPath, $id);
+            $stmt->execute();
+
+            // Deduct from Stock (QC confirmed wastage, material is unusable)
+            $items = $this->getItems($id);
+            require_once __DIR__ . '/Con_Stock.php';
+            $stockModel = new \Con_Stock($this->db);
+
+            foreach ($items as $item) {
+                $stockModel->logMovement([
+                    'material_id'  => $item['material_id'],
+                    'warehouse_id' => $wastage['warehouse_id'],
+                    'type'         => 'OUT',
+                    'quantity'     => $item['quantity'],
+                    'ref_type'     => 'wastage',
+                    'ref_id'       => $wastage['id'],
+                    'moved_by'     => $userId
+                ]);
+            }
+
+            $this->db->commit();
+            return true;
+        } catch (\Exception $e) {
+            $this->db->rollback();
+            return false;
+        }
     }
 
     public function approvePurchase($id, $userId, $note, $docPath)
@@ -146,22 +177,7 @@ class Con_Wastage extends Model
             $stmt->bind_param('issi', $userId, $paymentMethod, $docPath, $id);
             $stmt->execute();
 
-            // 2. Deduct from Stock (now that payment is received as per user request)
-            $items = $this->getItems($id);
-            require_once __DIR__ . '/Con_Stock.php';
-            $stockModel = new \Con_Stock($this->db);
-
-            foreach ($items as $item) {
-                $stockModel->logMovement([
-                    'material_id'  => $item['material_id'],
-                    'warehouse_id' => $wastage['warehouse_id'],
-                    'type'         => 'OUT',
-                    'quantity'     => $item['quantity'],
-                    'ref_type'     => 'wastage_sale',
-                    'ref_id'       => $wastage['id'],
-                    'moved_by'     => $userId
-                ]);
-            }
+            // (Stock deduction was moved to QC Approval)
 
             // 3. Add to management_cashin
             $roleName = $_SESSION['user']['role_name'] ?? 'Accounts';
