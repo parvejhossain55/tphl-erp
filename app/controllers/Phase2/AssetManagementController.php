@@ -287,12 +287,15 @@ class AssetManagementController extends Controller
         $usersResult = $this->db->query("SELECT id, full_name FROM users ORDER BY full_name");
         $users = $usersResult ? $usersResult->fetch_all(MYSQLI_ASSOC) : [];
 
+        $products = $this->model->getAllProducts(['status' => 'active']);
+
         $this->view('phase2/asset-management/assets', [
             'current_route' => 'office-assets',
             'page_title'    => 'Asset Register',
             'assets'        => $assets,
-                        'projects'      => $projects,
+            'projects'      => $projects,
             'users'         => $users,
+            'products'      => $products,
             'stats'         => $stats,
             'filters'       => $filters,
             'canEdit'       => $this->canEdit(),
@@ -322,6 +325,7 @@ class AssetManagementController extends Controller
         $data = [
             'asset_code'       => $assetCode,
             'product_id'       => $productId,
+            'item_name'        => trim($_POST['item_name'] ?? ''),
             'project_id'       => !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null,
             'department_id'    => !empty($_POST['department_id']) ? (int)$_POST['department_id'] : null,
             'assigned_to'      => !empty($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null,

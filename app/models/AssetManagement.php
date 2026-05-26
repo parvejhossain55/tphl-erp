@@ -10,6 +10,154 @@ class AssetManagement
     }
 
     // =========================================================================
+    // ASSET PRODUCTS — CRUD
+    // =========================================================================
+
+    public function getAllProducts($filters = [])
+    {
+        $sql = "SELECT p.*, u.full_name AS created_by_name
+                FROM office_asset_products p
+                LEFT JOIN users u ON u.id = p.created_by
+                WHERE 1=1";
+                
+        $params = [];
+        $types = "";
+
+        if (!empty($filters['search'])) {
+            $sql .= " AND (p.product_code LIKE ? OR p.name LIKE ?)";
+            $s = '%' . $filters['search'] . '%';
+            $params = array_merge($params, [$s, $s]);
+            $types .= 'ss';
+        }
+
+        if (!empty($filters['category'])) {
+            $sql .= " AND p.category = ?";
+            $params[] = $filters['category'];
+            $types .= 's';
+        }
+
+        if (!empty($filters['status'])) {
+            $sql .= " AND p.status = ?";
+            $params[] = $filters['status'];
+            $types .= 's';
+        }
+
+        $sql .= " ORDER BY p.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return [];
+        if ($params) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function getProductStockCounts()
+    {
+        $sql = "SELECT 
+                    product_id AS id, 
+                    COUNT(*) AS total_assets,
+                    SUM(CASE WHEN asset_status = 'in_store' THEN 1 ELSE 0 END) AS in_store,
+                    SUM(CASE WHEN asset_status = 'in_use' THEN 1 ELSE 0 END) AS in_use,
+                    SUM(CASE WHEN asset_status = 'maintenance' THEN 1 ELSE 0 END) AS in_maintenance,
+                    SUM(CASE WHEN asset_status = 'disposed' THEN 1 ELSE 0 END) AS disposed,
+                    SUM(CASE WHEN asset_status = 'transferred' THEN 1 ELSE 0 END) AS transferred
+                FROM office_assets 
+                WHERE product_id IS NOT NULL
+                GROUP BY product_id";
+        
+        $res = $this->db->query($sql);
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    public function productCodeExists($productCode, $excludeId = 0)
+    {
+        $sql = "SELECT id FROM office_asset_products WHERE product_code = ?";
+        if ($excludeId > 0) {
+            $sql .= " AND id != ?";
+        }
+        $stmt = $this->db->prepare($sql);
+        if ($excludeId > 0) {
+            $stmt->bind_param('si', $productCode, $excludeId);
+        } else {
+            $stmt->bind_param('s', $productCode);
+        }
+        $stmt->execute();
+        $res = $stmt->get_result();
+        return $res->num_rows > 0;
+    }
+
+    public function createProduct($data)
+    {
+        $stmt = $this->db->prepare(
+            "INSERT INTO office_asset_products 
+            (product_code, name, category, brand, model, unit, unit_price, description, image_path, status, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        );
+
+        $stmt->bind_param(
+            'ssssssdsssi',
+            $data['product_code'],
+            $data['name'],
+            $data['category'],
+            $data['brand'],
+            $data['model'],
+            $data['unit'],
+            $data['unit_price'],
+            $data['description'],
+            $data['image_path'],
+            $data['status'],
+            $data['created_by']
+        );
+
+        return $stmt->execute();
+    }
+
+    public function updateProduct($id, $data)
+    {
+        $sql = "UPDATE office_asset_products SET 
+                product_code = ?, name = ?, category = ?, brand = ?, model = ?, unit = ?, 
+                unit_price = ?, description = ?, status = ?";
+        $params = [
+            $data['product_code'], $data['name'], $data['category'], $data['brand'], 
+            $data['model'], $data['unit'], $data['unit_price'], $data['description'], 
+            $data['status']
+        ];
+        $types = "ssssssdss";
+
+        if (array_key_exists('image_path', $data) && $data['image_path'] !== null) {
+            $sql .= ", image_path = ?";
+            $params[] = $data['image_path'];
+            $types .= "s";
+        }
+        
+        $sql .= " WHERE id = ?";
+        $params[] = $id;
+        $types .= "i";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        return $stmt->execute();
+    }
+
+    public function deleteProduct($id)
+    {
+        $stmt = $this->db->prepare("SELECT id FROM office_assets WHERE product_id = ? LIMIT 1");
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        if ($stmt->get_result()->num_rows > 0) {
+            return ['success' => false, 'message' => 'Cannot delete product. It is linked to existing assets.'];
+        }
+
+        $stmt = $this->db->prepare("DELETE FROM office_asset_products WHERE id = ?");
+        $stmt->bind_param('i', $id);
+        $res = $stmt->execute();
+        
+        return ['success' => $res, 'message' => $res ? '' : 'Database error'];
+    }
+
+    // =========================================================================
     // OFFICE ASSETS — CRUD
     // =========================================================================
 
@@ -97,23 +245,23 @@ class AssetManagement
     {
         $stmt = $this->db->prepare(
             "INSERT INTO office_assets 
-            (asset_code, item_name, project_id, department_id, assigned_to, location, 
+            (asset_code, product_id, item_name, project_id, department_id, assigned_to, location, 
              purchase_date, purchase_price, warranty_expiry, serial_no, 
              condition_status, asset_status, remarks, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
 
         $stmt->bind_param(
-            'ssiiissdsssssi',
+            'sisiissdssssssi',
             $data['asset_code'],
+            $data['product_id'],
             $data['item_name'],
             $data['project_id'],
             $data['department_id'],
             $data['assigned_to'],
             $data['location'],
             $data['purchase_date'],
-            $data['purchase_price'], 
-            $data['assigned_to'],
+            $data['purchase_price'],
             $data['warranty_expiry'],
             $data['serial_no'],
             $data['condition_status'],
@@ -149,8 +297,7 @@ class AssetManagement
             $data['assigned_to'],
             $data['location'],
             $data['purchase_date'],
-            $data['purchase_price'], 
-            $data['assigned_to'],
+            $data['purchase_price'],
             $data['warranty_expiry'],
             $data['serial_no'],
             $data['condition_status'],

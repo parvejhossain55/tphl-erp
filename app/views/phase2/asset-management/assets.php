@@ -230,8 +230,17 @@ $statusBadges = [
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">Item Name <span class="text-danger">*</span></label>
-                            <input type="text" name="item_name" class="form-control" required placeholder="e.g. Dell Monitor">
+                            <label class="form-label">Product <span class="text-danger">*</span></label>
+                            <select name="product_id" class="form-select" required>
+                                <option value="">-- Select Product --</option>
+                                <?php foreach ($products ?? [] as $prod): ?>
+                                    <option value="<?= $prod['id'] ?>"><?= htmlspecialchars($prod['name'] . ' (' . $prod['product_code'] . ')') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Item Name (Optional)</label>
+                            <input type="text" name="item_name" class="form-control" placeholder="e.g. Dell Monitor 24''">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Serial Number</label>
@@ -317,6 +326,15 @@ $statusBadges = [
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-md-6">
+                            <label class="form-label">Product</label>
+                            <select name="product_id" id="edit_product_id" class="form-select">
+                                <option value="">-- Select Product --</option>
+                                <?php foreach ($products ?? [] as $prod): ?>
+                                    <option value="<?= $prod['id'] ?>"><?= htmlspecialchars($prod['name'] . ' (' . $prod['product_code'] . ')') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">Item Name <span class="text-danger">*</span></label>
                             <input type="text" name="item_name" id="edit_item_name" class="form-control" required>
                         </div>
@@ -390,6 +408,9 @@ function openEditModal(button) {
     var b64 = button.getAttribute('data-asset-b64');
     var asset = JSON.parse(atob(b64));
     document.getElementById('editAssetForm').action = '<?= $GLOBALS['base_url'] ?>/office-assets/update/' + asset.id;
+    if (document.getElementById('edit_product_id')) {
+        document.getElementById('edit_product_id').value = asset.product_id || '';
+    }
     document.getElementById('edit_item_name').value = asset.item_name || '';
     document.getElementById('edit_serial_no').value = asset.serial_no || '';
     document.getElementById('edit_project_id').value = asset.project_id || '';
