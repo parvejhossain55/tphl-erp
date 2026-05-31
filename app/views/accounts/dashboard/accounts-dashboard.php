@@ -108,7 +108,7 @@ function getStatusBadge($status)
 
     .chart-container {
         position: relative;
-        height: 350px;
+        min-height: 350px;
     }
 
     .period-badge {
@@ -416,42 +416,10 @@ function getStatusBadge($status)
         </a>
     </div>
 
-    <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
-        <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions" class="text-decoration-none">
-            <div class="card__wrapper h-100 dashboard-card ops-card" style="border-left: 3px solid #f59e0b;">
-                <div class="d-flex align-items-center gap-2 h-100">
-                    <div class="card__icon icon-warning">
-                        <span><i class="fa-light fa-wallet"></i></span>
-                    </div>
-                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                        <h6 class="card__sub-title mb-1 text-muted" style="font-size:0.75rem;">Fund Requisitions</h6>
-                        <h4 class="card__title mb-0"><?= $ops['pending_petty_cash'] ?? 0 ?></h4>
-                        <small class="text-warning" style="font-size:0.68rem;">TK.<?= number_format($ops['pending_petty_cash_amt'] ?? 0, 0) ?></small>
-                    </div>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
-        <a href="<?= $GLOBALS['base_url'] ?>/central-statement" class="text-decoration-none">
-            <div class="card__wrapper h-100 dashboard-card ops-card">
-                <div class="d-flex align-items-center gap-2 h-100">
-                    <div class="card__icon icon-info">
-                        <span><i class="fa-light fa-users"></i></span>
-                    </div>
-                    <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                        <h6 class="card__sub-title mb-1 text-muted" style="font-size:0.75rem;">Total Clients</h6>
-                        <h4 class="card__title mb-0"><?= $ops['total_clients'] ?? 0 ?></h4>
-                        <small class="text-info" style="font-size:0.68rem;">Active Bookings</small>
-                    </div>
-                </div>
-            </div>
-        </a>
-    </div>
-
     <!-- Charts Section -->
-    <div class="col-xxl-8 col-xl-12 col-lg-12 mb-3">
+    <div class="col-12 mb-3">
+        <div class="row">
+    <div class="col-xxl-8 col-xl-7 col-lg-12 mb-3">
         <div class="card__wrapper height-equal">
             <div class="card__title-wrap d-flex flex-wrap gap-10 align-items-center justify-content-between mb-50">
                 <h5 class="card__heading-title">Transaction Overview</h5>
@@ -482,7 +450,7 @@ function getStatusBadge($status)
                         aria-labelledby="pills-bar-year-tab">
                         <div class="chart-container">
                             <?php if (!empty($chartLabels)): ?>
-                                <canvas id="transactionChartYearly" class="card__title"></canvas>
+                                <div id="transactionChartYearly"></div>
                             <?php else: ?>
                                 <div class="no-data-placeholder">
                                     <i class="fa-light fa-chart-line"></i>
@@ -495,7 +463,7 @@ function getStatusBadge($status)
                         aria-labelledby="pills-bar-month-tab">
                         <div class="chart-container">
                             <?php if (!empty($chartLabels)): ?>
-                                <canvas id="transactionChartMonthly" class="card__title"></canvas>
+                                <div id="transactionChartMonthly"></div>
                             <?php else: ?>
                                 <div class="no-data-placeholder">
                                     <i class="fa-light fa-chart-line"></i>
@@ -507,7 +475,7 @@ function getStatusBadge($status)
                     <div class="tab-pane fade show active" id="pills-bar-week" role="tabpanel"
                         aria-labelledby="pills-bar-week-tab">
                         <div class="chart-container">
-                            <canvas id="transactionChartWeek" class="card__title"></canvas>
+                            <div id="transactionChartWeek"></div>
                         </div>
                     </div>
                 </div>
@@ -516,7 +484,7 @@ function getStatusBadge($status)
     </div>
 
     <!-- Payment Methods Breakdown -->
-    <div class="col-xxl-4 col-xl-6 col-lg-12 mb-3">
+    <div class="col-xxl-4 col-xl-5 col-lg-12 mb-3">
         <div class="card__wrapper height-equal">
             <div class="card__title-wrap d-flex align-items-center justify-content-between mb-20">
                 <h5 class="card__heading-title">Payment Methods</h5>
@@ -525,7 +493,7 @@ function getStatusBadge($status)
             <div class="payment-method-chart card__content">
                 <div class="chart-container">
                     <?php if (array_sum($paymentMethodData) > 0): ?>
-                        <canvas id="paymentMethodsChart"></canvas>
+                        <div id="paymentMethodsChart"></div>
                     <?php else: ?>
                         <div class="no-data-placeholder">
                             <i class="fa-light fa-credit-card"></i>
@@ -536,6 +504,8 @@ function getStatusBadge($status)
             </div>
         </div>
     </div>
+    </div><!-- end charts row -->
+    </div><!-- end charts col-12 -->
 
     <!-- Dynamic Statistics Section Header -->
     <div class="col-12 mb-3 mt-3">
@@ -949,7 +919,7 @@ function getStatusBadge($status)
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.0/dist/apexcharts.min.js"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -981,354 +951,325 @@ function getStatusBadge($status)
         const paymentMethodData = <?= json_encode($paymentMethodData) ?>;
 
         // Currency formatter
-        const formatCurrency = (value) => 'TK.' + value.toLocaleString();
+        const formatCurrency = (value) => 'TK.' + Number(value).toLocaleString('en-IN');
 
-        // Modern chart color palette
+        // Color palette
         const colors = {
+            cashin: '#10b981',
+            cashout: '#ef4444',
             primary: '#6366f1',
-            success: '#10b981',
-            danger: '#ef4444',
-            warning: '#f59e0b',
-            info: '#06b6d4',
-            purple: '#a855f7',
-            pink: '#ec4899',
-            doughnut: [
-                '#8b5cf6',
-                '#f02345ff',
-                '#10b981',
-                '#f59e0b',
-                '#ef4444',
-                '#ec4899'
-            ]
+            doughnut: ['#8b5cf6', '#f02345', '#10b981', '#f59e0b', '#ef4444', '#ec4899']
         };
 
+        const viewColor = '<?= $viewType === "cashin" ? "#10b981" : "#ef4444" ?>';
+
         /* ==========================
-            WEEKLY CHART (Animated Area Chart)
+            WEEKLY CHART — Area Chart (Cash In vs Cash Out)
         ========================== */
-        const ctxWeek = document.getElementById('transactionChartWeek');
-        if (ctxWeek) {
-            const transactionChartWeek = new Chart(ctxWeek.getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                    datasets: [{
-                            label: 'Cash In',
-                            data: <?= json_encode($weeklyCashInData) ?>,
-                            borderColor: colors.success,
-                            backgroundColor: colors.success + '15',
-                            fill: true,
-                            tension: 0.4,
-                            borderWidth: 3,
-                            pointRadius: 0,
-                            pointHoverRadius: 6,
-                            pointHoverBackgroundColor: colors.success,
-                            pointHoverBorderColor: '#fff',
-                            pointHoverBorderWidth: 2
-                        },
-                        {
-                            label: 'Cash Out',
-                            data: <?= json_encode($weeklyCashOutData) ?>,
-                            borderColor: colors.danger,
-                            backgroundColor: colors.danger + '15',
-                            fill: true,
-                            tension: 0.4,
-                            borderWidth: 3,
-                            pointRadius: 0,
-                            pointHoverRadius: 6,
-                            pointHoverBackgroundColor: colors.danger,
-                            pointHoverBorderColor: '#fff',
-                            pointHoverBorderWidth: 2
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
-                    animation: {
-                        duration: 2000,
-                        easing: 'easeOutQuart'
-                    },
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                usePointStyle: true,
-                                padding: 20,
-                                font: {
-                                    size: 13,
-                                    weight: '500'
-                                }
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            padding: 12,
-                            cornerRadius: 8,
-                            callbacks: {
-                                label: function(context) {
-                                    return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            border: {
-                                display: false
-                            },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)',
-                                drawTicks: false
-                            },
-                            ticks: {
-                                padding: 10,
-                                callback: function(value) {
-                                    return formatCurrency(value);
-                                }
-                            }
-                        },
-                        x: {
-                            border: {
-                                display: false
-                            },
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                padding: 10
-                            }
-                        }
+        const weekEl = document.querySelector('#transactionChartWeek');
+        if (weekEl) {
+            const weekChart = new ApexCharts(weekEl, {
+                chart: {
+                    type: 'area',
+                    height: 350,
+                    fontFamily: 'Inter, sans-serif',
+                    toolbar: { show: false },
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 1200
                     }
+                },
+                series: [
+                    {
+                        name: 'Cash In',
+                        data: <?= json_encode($weeklyCashInData) ?>
+                    },
+                    {
+                        name: 'Cash Out',
+                        data: <?= json_encode($weeklyCashOutData) ?>
+                    }
+                ],
+                colors: [colors.cashin, colors.cashout],
+                dataLabels: { enabled: false },
+                stroke: {
+                    curve: 'smooth',
+                    width: 3
+                },
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.35,
+                        opacityTo: 0.05,
+                        stops: [0, 95, 100]
+                    }
+                },
+                xaxis: {
+                    categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    axisBorder: { show: false },
+                    axisTicks: { show: false },
+                    labels: {
+                        style: { colors: '#6b7280', fontSize: '12px' }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        formatter: (val) => formatCurrency(val),
+                        style: { colors: '#6b7280', fontSize: '12px' }
+                    }
+                },
+                grid: {
+                    borderColor: '#f1f1f4',
+                    strokeDashArray: 4,
+                    xaxis: { lines: { show: false } }
+                },
+                tooltip: {
+                    theme: 'dark',
+                    y: {
+                        formatter: (val) => formatCurrency(val)
+                    }
+                },
+                legend: {
+                    position: 'bottom',
+                    horizontalAlign: 'center',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    markers: { radius: 12 },
+                    itemMargin: { horizontal: 12 }
                 }
             });
+            weekChart.render();
         }
 
         /* ==========================
-            MONTHLY CHART (Animated Bar Chart)
+            MONTHLY CHART — Bar Chart
         ========================== */
-        const ctxMonth = document.getElementById('transactionChartMonthly');
-        if (ctxMonth) {
-            const monthlyLabels = dynamicChartLabels.length ? dynamicChartLabels : ['Jan', 'Feb', 'Mar', 'Apr'];
-            const monthlyData = dynamicChartData.length ? dynamicChartData : [120000, 155000, 142000, 168000];
-            const monthlyColor = '<?= $viewType === "cashin" ? "#6366f1" : "#ef4444" ?>';
+        const monthEl = document.querySelector('#transactionChartMonthly');
+        let monthChart = null;
+        if (monthEl) {
+            const mLabels = dynamicChartLabels.length ? dynamicChartLabels : ['Jan', 'Feb', 'Mar', 'Apr'];
+            const mData = dynamicChartData.length ? dynamicChartData : [0, 0, 0, 0];
 
-            const transactionChartMonthly = new Chart(ctxMonth.getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: monthlyLabels,
-                    datasets: [{
-                        label: '<?= ucfirst($viewType) ?>',
-                        data: monthlyData,
-                        backgroundColor: monthlyColor,
+            monthChart = new ApexCharts(monthEl, {
+                chart: {
+                    type: 'bar',
+                    height: 350,
+                    fontFamily: 'Inter, sans-serif',
+                    toolbar: { show: false },
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 1000,
+                        animateGradually: { enabled: true, delay: 150 }
+                    }
+                },
+                series: [{
+                    name: '<?= ucfirst($viewType) ?>',
+                    data: mData
+                }],
+                colors: [viewColor],
+                plotOptions: {
+                    bar: {
                         borderRadius: 8,
-                        borderSkipped: false,
-                        barThickness: 35,
-                        maxBarThickness: 40
-                    }]
+                        columnWidth: '55%',
+                        dataLabels: { position: 'top' }
+                    }
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animations: {
-                        y: {
-                            duration: 1500,
-                            from: 0,
-                            easing: 'easeOutBounce'
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            padding: 12,
-                            cornerRadius: 8,
-                            callbacks: {
-                                label: function(context) {
-                                    return formatCurrency(context.parsed.y);
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            border: {
-                                display: false
-                            },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)',
-                                drawTicks: false
-                            },
-                            ticks: {
-                                padding: 10,
-                                callback: function(value) {
-                                    return formatCurrency(value);
-                                }
-                            }
-                        },
-                        x: {
-                            border: {
-                                display: false
-                            },
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                padding: 10
-                            }
-                        }
+                dataLabels: { enabled: false },
+                xaxis: {
+                    categories: mLabels,
+                    axisBorder: { show: false },
+                    axisTicks: { show: false },
+                    labels: {
+                        style: { colors: '#6b7280', fontSize: '12px' }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        formatter: (val) => formatCurrency(val),
+                        style: { colors: '#6b7280', fontSize: '12px' }
+                    }
+                },
+                grid: {
+                    borderColor: '#f1f1f4',
+                    strokeDashArray: 4,
+                    xaxis: { lines: { show: false } }
+                },
+                tooltip: {
+                    theme: 'dark',
+                    y: {
+                        formatter: (val) => formatCurrency(val)
                     }
                 }
             });
+            monthChart.render();
         }
 
         /* ==========================
-            YEARLY CHART (Animated Line Chart)
+            YEARLY CHART — Area Line Chart
         ========================== */
-        const ctxYear = document.getElementById('transactionChartYearly');
-        if (ctxYear) {
-            const yearlyLabels = dynamicYearlyLabels.length ? dynamicYearlyLabels : ['2023', '2024', '2025'];
-            const yearlyData = dynamicYearlyChartData.length ? dynamicYearlyChartData : [1250000, 1420000, 1380000];
-            const yearlyColor = '<?= $viewType === "cashin" ? "#6366f1" : "#ef4444" ?>';
+        const yearEl = document.querySelector('#transactionChartYearly');
+        let yearChart = null;
+        if (yearEl) {
+            const yLabels = dynamicYearlyLabels.length ? dynamicYearlyLabels.map(String) : ['2023', '2024', '2025'];
+            const yData = dynamicYearlyChartData.length ? dynamicYearlyChartData : [0, 0, 0];
 
-            const transactionChartYearly = new Chart(ctxYear.getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: yearlyLabels,
-                    datasets: [{
-                        label: '<?= ucfirst($viewType) ?>',
-                        data: yearlyData,
-                        borderColor: yearlyColor,
-                        backgroundColor: yearlyColor + '15',
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 3,
-                        pointRadius: 6,
-                        pointBackgroundColor: yearlyColor,
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 3,
-                        pointHoverRadius: 8,
-                        pointHoverBackgroundColor: yearlyColor,
-                        pointHoverBorderColor: '#fff',
-                        pointHoverBorderWidth: 3
-                    }]
+            yearChart = new ApexCharts(yearEl, {
+                chart: {
+                    type: 'area',
+                    height: 350,
+                    fontFamily: 'Inter, sans-serif',
+                    toolbar: { show: false },
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 1200
+                    }
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                        duration: 2000,
-                        easing: 'easeOutQuart'
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            padding: 12,
-                            cornerRadius: 8,
-                            callbacks: {
-                                label: function(context) {
-                                    return formatCurrency(context.parsed.y);
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            border: {
-                                display: false
-                            },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)',
-                                drawTicks: false
-                            },
-                            ticks: {
-                                padding: 10,
-                                callback: function(value) {
-                                    return formatCurrency(value);
-                                }
-                            }
-                        },
-                        x: {
-                            border: {
-                                display: false
-                            },
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                padding: 10
-                            }
-                        }
+                series: [{
+                    name: '<?= ucfirst($viewType) ?>',
+                    data: yData
+                }],
+                colors: [viewColor],
+                dataLabels: { enabled: false },
+                stroke: {
+                    curve: 'smooth',
+                    width: 3
+                },
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.4,
+                        opacityTo: 0.05,
+                        stops: [0, 90, 100]
+                    }
+                },
+                markers: {
+                    size: 6,
+                    strokeWidth: 3,
+                    strokeColors: '#fff',
+                    hover: { size: 8 }
+                },
+                xaxis: {
+                    categories: yLabels,
+                    axisBorder: { show: false },
+                    axisTicks: { show: false },
+                    labels: {
+                        style: { colors: '#6b7280', fontSize: '12px' }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        formatter: (val) => formatCurrency(val),
+                        style: { colors: '#6b7280', fontSize: '12px' }
+                    }
+                },
+                grid: {
+                    borderColor: '#f1f1f4',
+                    strokeDashArray: 4,
+                    xaxis: { lines: { show: false } }
+                },
+                tooltip: {
+                    theme: 'dark',
+                    y: {
+                        formatter: (val) => formatCurrency(val)
                     }
                 }
             });
+            yearChart.render();
         }
 
         /* ==========================
-            PAYMENT METHODS CHART (Animated Pie Chart)
+            PAYMENT METHODS — Donut Chart
         ========================== */
-        const ctxPayment = document.getElementById('paymentMethodsChart');
-        if (ctxPayment) {
-            const paymentMethodsChart = new Chart(ctxPayment.getContext('2d'), {
-                type: 'pie',
-                data: {
-                    labels: paymentMethodLabels,
-                    datasets: [{
-                        data: paymentMethodData,
-                        backgroundColor: colors.doughnut,
-                        hoverBorderWidth: 5,
-                        hoverOffset: 15
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+        const payEl = document.querySelector('#paymentMethodsChart');
+        if (payEl) {
+            const payChart = new ApexCharts(payEl, {
+                chart: {
+                    type: 'donut',
+                    height: 380,
+                    fontFamily: 'Inter, sans-serif',
                     animations: {
-                        animateRotate: true,
-                        animateScale: true,
-                        duration: 2000,
-                        easing: 'easeOutQuart'
-                    },
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 1500,
+                        animateGradually: { enabled: true, delay: 200 }
+                    }
+                },
+                series: paymentMethodData,
+                labels: paymentMethodLabels,
+                colors: colors.doughnut,
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '60%',
                             labels: {
-                                usePointStyle: true,
-                                padding: 15,
-                                font: {
-                                    size: 12
+                                show: true,
+                                name: {
+                                    show: true,
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    color: '#374151'
                                 },
-                                color: '#6b7280'
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            padding: 12,
-                            cornerRadius: 8,
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed || 0;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                    return label + ': ' + formatCurrency(value) + ' (' + percentage + '%)';
+                                value: {
+                                    show: true,
+                                    fontSize: '20px',
+                                    fontWeight: 700,
+                                    color: '#111827',
+                                    formatter: (val) => formatCurrency(Number(val))
+                                },
+                                total: {
+                                    show: true,
+                                    label: 'Total',
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    color: '#6b7280',
+                                    formatter: (w) => {
+                                        const total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                                        return formatCurrency(total);
+                                    }
                                 }
                             }
                         }
                     }
+                },
+                dataLabels: { enabled: false },
+                stroke: { width: 2, colors: ['#fff'] },
+                legend: {
+                    position: 'bottom',
+                    horizontalAlign: 'center',
+                    fontSize: '12px',
+                    markers: { radius: 12 },
+                    itemMargin: { horizontal: 8, vertical: 4 }
+                },
+                tooltip: {
+                    theme: 'dark',
+                    y: {
+                        formatter: function(val, opts) {
+                            const total = opts.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                            const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                            return formatCurrency(val) + ' (' + pct + '%)';
+                        }
+                    }
                 }
             });
+            payChart.render();
         }
+
+        /* ==========================
+            TAB SWITCH — Re-render charts in hidden tabs
+        ========================== */
+        document.querySelectorAll('#pills-tab button[data-bs-toggle="pill"]').forEach(tab => {
+            tab.addEventListener('shown.bs.tab', function(e) {
+                const target = e.target.getAttribute('data-bs-target');
+                if (target === '#pills-bar-month' && monthChart) {
+                    setTimeout(() => monthChart.render(), 100);
+                } else if (target === '#pills-bar-year' && yearChart) {
+                    setTimeout(() => yearChart.render(), 100);
+                }
+            });
+        });
     });
 </script>

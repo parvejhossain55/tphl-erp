@@ -140,16 +140,21 @@ class Dashboard extends Model
             'total_emi_amount' => 0,
             'total_service_fees' => 0,
             'total_development_charge' => 0,
+            'total_shop_service_charge' => 0,
             'management_cashin' => 0,
+            'operational_fund' => 0,
+            'expense_adjustment_cashin' => 0,
+            'expense_adjustment_cashout' => 0,
             'projects_summary' => []
         ];
 
-        // Get land share
+        // Get land share (uses land_share_amount column — same as CentralStatement)
         $sqlLandShare = "
         SELECT COALESCE(SUM(lp.land_share_amount), 0) as total
         FROM lead_payments lp
         INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-        WHERE lp.payment_status = 'paid'
+        WHERE lp.payment_status IN ('paid','partially_paid')
+        AND lp.verification_status = 'verified'
         AND lp.payment_type = 'land_share'
         AND lp.payment_date BETWEEN ? AND ?
     ";
@@ -171,12 +176,13 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        // Get registration
+        // Get registration (aligned with CentralStatement filters)
         $sqlRegistration = "
         SELECT COALESCE(SUM(lp.amount), 0) as total
         FROM lead_payments lp
         INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-        WHERE lp.payment_status = 'paid'
+        WHERE lp.payment_status IN ('paid','partially_paid')
+        AND lp.verification_status = 'verified'
         AND lp.payment_type = 'registration'
         AND lp.payment_date BETWEEN ? AND ?
     ";
@@ -198,12 +204,13 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        // Get development charge
+        // Get development charge (aligned with CentralStatement filters)
         $sqlDevelopment = "
         SELECT COALESCE(SUM(lp.amount), 0) as total
         FROM lead_payments lp
         INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-        WHERE lp.payment_status = 'paid'
+        WHERE lp.payment_status IN ('paid','partially_paid')
+        AND lp.verification_status = 'verified'
         AND lp.payment_type = 'development_charge'
         AND lp.payment_date BETWEEN ? AND ?
     ";
@@ -251,12 +258,13 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        // Get booking money
+        // Get booking money (aligned with CentralStatement filters)
         $sqlBookingMoney = "
         SELECT COALESCE(SUM(lp.amount), 0) as total
         FROM lead_payments lp
         INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-        WHERE lp.payment_status = 'paid'
+        WHERE lp.payment_status IN ('paid','partially_paid')
+        AND lp.verification_status = 'verified'
         AND lp.payment_type = 'booking_money'
         AND lp.payment_date BETWEEN ? AND ?
     ";
@@ -278,13 +286,15 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        // Get EMI amount
+        // Get EMI amount (from lead_payments — same source as CentralStatement)
         $sqlEmi = "
-        SELECT COALESCE(SUM(es.emi_amount), 0) as total
-        FROM emi_schedules es
-        LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
-        WHERE es.due_date BETWEEN ? AND ?
-        AND es.status = 'paid'
+        SELECT COALESCE(SUM(lp.amount), 0) as total
+        FROM lead_payments lp
+        INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+        WHERE lp.payment_status IN ('paid','partially_paid')
+        AND lp.verification_status = 'verified'
+        AND lp.payment_type = 'emi'
+        AND lp.payment_date BETWEEN ? AND ?
     ";
 
         if ($projectId) {
@@ -304,7 +314,7 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        // Get service fees
+        // Get service fees (from emi_schedules — used for revenue calculation only)
         $sqlServiceFees = "
         SELECT COALESCE(SUM(es.service_fee), 0) as total
         FROM emi_schedules es
@@ -330,6 +340,34 @@ class Dashboard extends Model
         }
         $stmt->close();
 
+        // Get shop service charge (missing from Dashboard — exists in CentralStatement)
+        $sqlShopService = "
+        SELECT COALESCE(SUM(lp.amount), 0) as total
+        FROM lead_payments lp
+        INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+        WHERE lp.payment_status IN ('paid','partially_paid')
+        AND lp.verification_status = 'verified'
+        AND lp.payment_type = 'shop_service_charge'
+        AND lp.payment_date BETWEEN ? AND ?
+    ";
+
+        if ($projectId) {
+            $sqlShopService .= " AND lb.project_id = ?";
+        }
+
+        $stmt = $this->db->prepare($sqlShopService);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $row = $result->fetch_assoc()) {
+            $stats['total_shop_service_charge'] = floatval($row['total']);
+        }
+        $stmt->close();
+
         // Get management cashin
         $sqlManagementCashIn = "
         SELECT COALESCE(SUM(amount), 0) as total
@@ -347,9 +385,82 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        // Calculate Total Cash In (no discount subtraction - discount is not actual cash out)
+        // Get operational fund disbursements (cashout)
+        $sqlOperationalFund = "
+        SELECT COALESCE(SUM(amount_paid), 0) as total
+        FROM con_financial_transactions
+        WHERE ref_type = 'operational_fund'
+        AND transaction_date BETWEEN ? AND ?
+    ";
+        if ($projectId) {
+            $sqlOperationalFund .= " AND project_id = ?";
+        }
+        $stmt = $this->db->prepare($sqlOperationalFund);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $row = $result->fetch_assoc()) {
+            $stats['operational_fund'] = floatval($row['total']);
+        }
+        $stmt->close();
+
+        // Get expense adjustment cashin (refunds received)
+        $sqlAdjCashin = "
+        SELECT COALESCE(SUM(at.amount), 0) as total
+        FROM adjustment_transactions at
+        JOIN expense_adjustments ea ON at.adjustment_id = ea.id
+        WHERE at.transaction_type = 'cashin'
+        AND ea.status IN ('approved', 'partially_paid', 'fully_paid')
+        AND at.payment_date BETWEEN ? AND ?
+    ";
+        if ($projectId) {
+            $sqlAdjCashin .= " AND ea.project_id = ?";
+        }
+        $stmt = $this->db->prepare($sqlAdjCashin);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $row = $result->fetch_assoc()) {
+            $stats['expense_adjustment_cashin'] = floatval($row['total']);
+        }
+        $stmt->close();
+
+        // Get expense adjustment cashout (additional payments)
+        $sqlAdjCashout = "
+        SELECT COALESCE(SUM(at.amount), 0) as total
+        FROM adjustment_transactions at
+        JOIN expense_adjustments ea ON at.adjustment_id = ea.id
+        WHERE at.transaction_type = 'cashout'
+        AND ea.status IN ('approved', 'partially_paid', 'fully_paid')
+        AND at.payment_date BETWEEN ? AND ?
+    ";
+        if ($projectId) {
+            $sqlAdjCashout .= " AND ea.project_id = ?";
+        }
+        $stmt = $this->db->prepare($sqlAdjCashout);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $row = $result->fetch_assoc()) {
+            $stats['expense_adjustment_cashout'] = floatval($row['total']);
+        }
+        $stmt->close();
+
+        // Calculate Total Cash In (matches CentralStatement formula exactly)
         $stats['total_cashin'] = $stats['total_landshare'] + $stats['total_registration'] +
-            $stats['total_booking_money'] + $stats['total_emi_amount'] + $stats['total_development_charge'] + $stats['management_cashin'];
+            $stats['total_booking_money'] + $stats['total_emi_amount'] + $stats['total_development_charge'] + $stats['total_shop_service_charge'] + $stats['management_cashin'] + $stats['expense_adjustment_cashin'];
 
         // Calculate Total Revenue (includes registration — mirrors Central Statement formula)
         $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'] + $stats['total_development_charge'] + $stats['total_registration'];
@@ -388,6 +499,20 @@ class Dashboard extends Model
             SELECT COALESCE(approved_amount, net_payable) as total_amount, COALESCE(updated_at, created_at) as date, project_id
             FROM vendor_payment_requests
             WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
+            
+            UNION ALL
+            
+            SELECT amount_paid as total_amount, transaction_date as date, project_id
+            FROM con_financial_transactions
+            WHERE ref_type = 'operational_fund'
+            
+            UNION ALL
+            
+            SELECT at.amount as total_amount, at.payment_date as date, ea.project_id
+            FROM adjustment_transactions at
+            JOIN expense_adjustments ea ON at.adjustment_id = ea.id
+            WHERE at.transaction_type = 'cashout'
+            AND ea.status IN ('approved', 'partially_paid', 'fully_paid')
         ) combined
         WHERE date BETWEEN ? AND ?
     ";
@@ -513,7 +638,8 @@ class Dashboard extends Model
             'total_registration' => 0,
             'total_discount' => 0,
             'total_emi_amount' => 0,
-            'by_project' => []
+            'by_project' => [],
+            'expense_adjustment_cashin' => 0,
         ];
 
         // Get all payment types from lead_payments with project filter
@@ -674,6 +800,27 @@ class Dashboard extends Model
         }
         $stmt->close();
 
+        // Expense Adjustment Cash In (refunds received)
+        $sqlAdjIn = "
+            SELECT 
+                COALESCE(SUM(at.amount), 0) as total,
+                COUNT(*) as count
+            FROM adjustment_transactions at
+            JOIN expense_adjustments ea ON at.adjustment_id = ea.id
+            WHERE at.transaction_type = 'cashin'
+            AND ea.status IN ('approved', 'partially_paid', 'fully_paid')
+            AND at.payment_date BETWEEN ? AND ?
+        ";
+        $stmt = $this->db->prepare($sqlAdjIn);
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $row = $result->fetch_assoc()) {
+            $stats['expense_adjustment_cashin'] = floatval($row['total']);
+            $stats['total_transactions'] += intval($row['count']);
+        }
+        $stmt->close();
+
         // Service fees with project filter
         $sqlServiceFees = "
             SELECT COALESCE(SUM(es.service_fee), 0) as total_fees
@@ -733,7 +880,7 @@ class Dashboard extends Model
         $stmt->close();
 
         // total_amount = all lead payments + management cash in (no discount subtraction)
-        $stats['total_amount'] = $stats['lead_payments'] + $stats['management_cashin'];
+        $stats['total_amount'] = $stats['lead_payments'] + $stats['management_cashin'] + $stats['expense_adjustment_cashin'];
 
         // Calculate total revenue (development charges + registration included as revenue — mirrors Central Statement)
         $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'] + ($stats['development_charges'] ?? 0) + $stats['total_registration'];
@@ -805,7 +952,9 @@ class Dashboard extends Model
             'this_month' => 0,
             'pending_amount' => 0,
             'paid_amount' => 0,
-            'by_project' => []
+            'by_project' => [],
+            'operational_fund' => 0,
+            'expense_adjustment_cashout' => 0,
         ];
 
         // Management Cashout
@@ -928,7 +1077,61 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        $stats['paid_amount'] = $stats['management_cashout'] + $stats['cashout_payments'] + $stats['salary_payments'] + ($stats['contractor_bills'] ?? 0) + ($stats['vendor_payments'] ?? 0);
+        // Operational Fund Disbursements
+        $sqlOpFund = "
+            SELECT 
+                COALESCE(SUM(amount_paid), 0) as total,
+                COUNT(*) as count
+            FROM con_financial_transactions
+            WHERE ref_type = 'operational_fund'
+            AND transaction_date BETWEEN ? AND ?
+        ";
+        if ($projectId) {
+            $sqlOpFund .= " AND project_id = ?";
+        }
+        $stmt = $this->db->prepare($sqlOpFund);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $row = $result->fetch_assoc()) {
+            $stats['operational_fund'] = floatval($row['total']);
+            $stats['total_transactions'] += intval($row['count']);
+        }
+        $stmt->close();
+
+        // Expense Adjustment Cashout (additional payments)
+        $sqlAdjOut = "
+            SELECT 
+                COALESCE(SUM(at.amount), 0) as total,
+                COUNT(*) as count
+            FROM adjustment_transactions at
+            JOIN expense_adjustments ea ON at.adjustment_id = ea.id
+            WHERE at.transaction_type = 'cashout'
+            AND ea.status IN ('approved', 'partially_paid', 'fully_paid')
+            AND at.payment_date BETWEEN ? AND ?
+        ";
+        if ($projectId) {
+            $sqlAdjOut .= " AND ea.project_id = ?";
+        }
+        $stmt = $this->db->prepare($sqlAdjOut);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $row = $result->fetch_assoc()) {
+            $stats['expense_adjustment_cashout'] = floatval($row['total']);
+            $stats['total_transactions'] += intval($row['count']);
+        }
+        $stmt->close();
+
+        $stats['paid_amount'] = $stats['management_cashout'] + $stats['cashout_payments'] + $stats['salary_payments'] + ($stats['contractor_bills'] ?? 0) + ($stats['vendor_payments'] ?? 0) + $stats['operational_fund'] + $stats['expense_adjustment_cashout'];
         $stats['total_amount'] = $stats['paid_amount'] + $stats['pending_amount'];
 
         // This Month with project filter
@@ -967,6 +1170,20 @@ class Dashboard extends Model
                 SELECT COALESCE(approved_amount, net_payable) as total_amount, COALESCE(updated_at, created_at) as date, project_id
                 FROM vendor_payment_requests
                 WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
+                
+                UNION ALL
+                
+                SELECT amount_paid as total_amount, transaction_date as date, project_id
+                FROM con_financial_transactions
+                WHERE ref_type = 'operational_fund'
+                
+                UNION ALL
+                
+                SELECT at.amount as total_amount, at.payment_date as date, ea.project_id
+                FROM adjustment_transactions at
+                JOIN expense_adjustments ea ON at.adjustment_id = ea.id
+                WHERE at.transaction_type = 'cashout'
+                AND ea.status IN ('approved', 'partially_paid', 'fully_paid')
             ) combined
             WHERE date BETWEEN ? AND ?
         ";

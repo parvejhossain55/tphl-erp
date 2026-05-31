@@ -233,6 +233,28 @@ class DashboardController extends Controller
             $stats['pending_petty_cash_amt'] = (float)$row['amt'];
         }
 
+        // 9. Pending Operational Fund Requests (approved but not fully paid)
+        $r = $this->db->query("
+            SELECT COUNT(*) AS c, COALESCE(SUM(COALESCE(approved_amount, amount)), 0) AS amt
+            FROM operational_fund_requests
+            WHERE status IN ('approved', 'partially_paid')
+        ");
+        if ($r && $row = $r->fetch_assoc()) {
+            $stats['pending_operational_funds'] = (int)$row['c'];
+            $stats['pending_operational_fund_amt'] = (float)$row['amt'];
+        }
+
+        // 10. Pending Expense Adjustments (approved but not fully paid)
+        $r = $this->db->query("
+            SELECT COUNT(*) AS c, COALESCE(SUM(approved_amount), 0) AS amt
+            FROM expense_adjustments
+            WHERE status IN ('approved', 'partially_paid')
+        ");
+        if ($r && $row = $r->fetch_assoc()) {
+            $stats['pending_adjustments'] = (int)$row['c'];
+            $stats['pending_adjustment_amt'] = (float)$row['amt'];
+        }
+
         return $stats;
     }
 }
