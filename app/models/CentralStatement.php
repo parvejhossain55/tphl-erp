@@ -28,6 +28,28 @@ class CentralStatement extends Model
     }
 
     /**
+     * Get total expense adjustment cashin (refunds received)
+     */
+    private function getTotalExpenseAdjustmentCashin($startDate, $endDate)
+    {
+        $query = "
+        SELECT COALESCE(SUM(at.amount), 0) as total
+        FROM adjustment_transactions at
+        JOIN expense_adjustments ea ON at.adjustment_id = ea.id
+        WHERE at.transaction_type = 'cashin'
+        AND ea.status IN ('approved', 'partially_paid', 'fully_paid')
+        AND at.payment_date BETWEEN ? AND ?
+    ";
+
+        $stmt = $this->db->prepare($query);
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        return (float)($row['total'] ?? 0);
+    }
+
+    /**
      * Get management cashin breakdown
      */
     private function getManagementCashinBreakdown($startDate, $endDate)
@@ -94,9 +116,12 @@ class CentralStatement extends Model
         $developmentChargePayments = $this->getTotalPaymentByType('development_charge', $startDate, $endDate, $projectId); // ADDED
         $shopServiceChargePayments = $this->getTotalPaymentByType('shop_service_charge', $startDate, $endDate, $projectId);
 
-        // Calculate cashin according to formula (INCLUDES management_cashin)
+        // Get expense adjustment cashin total
+        $totalExpenseAdjCashin = $this->getTotalExpenseAdjustmentCashin($startDate, $endDate);
+
+        // Calculate cashin according to formula (INCLUDES management_cashin and expense adjustment cashin)
         $totalCashin = $landsharePayments + $registrationPayments +
-            $totalBookingMoney + $emiPayments + $totalManagementCashin + $developmentChargePayments + $shopServiceChargePayments; // ADDED management_cashin and development_charge and shop_service_charge
+            $totalBookingMoney + $emiPayments + $totalManagementCashin + $developmentChargePayments + $shopServiceChargePayments + $totalExpenseAdjCashin;
 
         // Calculate revenue — includes land share, booking money, service fee, development charges, AND registration
         $totalRevenue = $totalLandShare + $totalBookingMoney + $totalServiceFee + $developmentChargePayments + $registrationPayments; // registration is now revenue
@@ -118,8 +143,9 @@ class CentralStatement extends Model
                 'total_service_fee' => $totalServiceFee,
                 'total_management_cashin' => $totalManagementCashin, // ADDED
                 'total_development_charge' => $developmentChargePayments, // ADDED
+                'total_expense_adjustment_cashin' => $totalExpenseAdjCashin, // NEW
                 'total_cashin' => $totalCashin,
-                'total_revenue' => $totalRevenue,
+                'total_revenue' => $totalRevenue, // Revenue stays the same
                 'revenue_percentage' => $totalCashin > 0 ? ($totalRevenue / $totalCashin) * 100 : 0
             ],
             'payment_breakdown' => $paymentBreakdown,
@@ -555,6 +581,7 @@ class CentralStatement extends Model
         $shopServiceChargeData = $this->getDailyPaymentByType('shop_service_charge', $startDate, $endDate, $projectId); // ADDED
         $managementCashinData = $this->getDailyManagementCashins($startDate, $endDate); // Already exists
         $developmentChargeData = $this->getDailyPaymentByType('development_charge', $startDate, $endDate, $projectId);
+        $expenseAdjCashinData = $this->getDailyExpenseAdjustmentsCashin($startDate, $endDate); // NEW
         $vendorPaymentData = $this->getDailyVendorPayments($startDate, $endDate, $projectId);
         $contractorBillData = $this->getDailyContractorBills($startDate, $endDate, $projectId);
         $discountData = $this->getDailyDiscounts($startDate, $endDate, $projectId);
@@ -574,6 +601,7 @@ class CentralStatement extends Model
             'management_cashin' => 0,
             'development_charge' => 0,
             'shop_service_charge' => 0, // ADDED
+            'expense_adjustment_cashin' => 0, // NEW
             'vendor_payment' => 0,
             'contractor_bill' => 0,
             'discount' => 0,
@@ -593,6 +621,7 @@ class CentralStatement extends Model
             $serviceFee = ($serviceFeeData[$date] ?? 0) + $shopServiceCharge; // COMBINED
             $managementCashin = $managementCashinData[$date] ?? 0;
             $developmentCharge = $developmentChargeData[$date] ?? 0;
+            $expenseAdjCashin = $expenseAdjCashinData[$date] ?? 0; // NEW
             $vendorPayment = $vendorPaymentData[$date] ?? 0;
             $contractorBill = $contractorBillData[$date] ?? 0;
             $discount = $discountData[$date] ?? 0;
@@ -600,8 +629,8 @@ class CentralStatement extends Model
             // Calculate cashin based on selected category
             $cashin = 0;
             if ($category === 'all' || $category === 'total_cashin') {
-                // Total cashin includes all revenue sources INCLUDING management_cashin minus discount
-                $cashin = $landsharePayments + $registrationPayments + $bookingMoney + $emiPayments + $managementCashin + $developmentCharge + $shopServiceCharge; // ADDED shop_service_charge // ADDED management_cashin and development_charge
+                // Total cashin includes all revenue sources INCLUDING management_cashin and expense adjustment cashin
+                $cashin = $landsharePayments + $registrationPayments + $bookingMoney + $emiPayments + $managementCashin + $developmentCharge + $shopServiceCharge + $expenseAdjCashin; // ADDED expense_adjustment_cashin
             } elseif ($category === 'emi') {
                 $cashin = $emiPayments;
             } elseif ($category === 'development_charge') {
@@ -642,6 +671,7 @@ class CentralStatement extends Model
             $totals['service_fee'] += $serviceFee;
             $totals['management_cashin'] += $managementCashin; // Accumulate
             $totals['development_charge'] += $developmentCharge;
+            $totals['expense_adjustment_cashin'] += $expenseAdjCashin; // NEW
             $totals['vendor_payment'] += $vendorPayment;
             $totals['contractor_bill'] += $contractorBill;
             $totals['discount'] += $discount;
@@ -658,6 +688,7 @@ class CentralStatement extends Model
                 'service_fee' => $serviceFee,
                 'management_cashin' => $managementCashin, // Show in breakdown
                 'development_charge' => $developmentCharge,
+                'expense_adjustment_cashin' => $expenseAdjCashin, // NEW
                 'discount' => $discount,
                 'total_cashin' => $cashin,
                 'cash_out' => $cashOut,
@@ -671,9 +702,9 @@ class CentralStatement extends Model
         $totalRevenue = 0;
 
         if ($category === 'all' || $category === 'total_cashin') {
-            // Include management_cashin in total cashin
+            // Include management_cashin and expense adjustment cashin in total cashin
             $totalCashin = $totals['landshare_payments'] + $totals['registration_payments'] +
-                $totals['booking_money'] + $totals['emi_payments'] + $totals['management_cashin'] + $totals['development_charge'] + $totals['shop_service_charge']; // ADDED shop_service_charge
+                $totals['booking_money'] + $totals['emi_payments'] + $totals['management_cashin'] + $totals['development_charge'] + $totals['shop_service_charge'] + $totals['expense_adjustment_cashin']; // ADDED expense_adjustment_cashin
 
             // Include registration payments in revenue
             $totalRevenue = $totals['landshare_payments'] + $totals['booking_money'] + $totals['service_fee'] + $totals['development_charge'] + $totals['registration_payments']; // service_fee already includes shop_service_charge
@@ -720,9 +751,10 @@ class CentralStatement extends Model
                 'total_service_fee' => $totals['service_fee'],
                 'total_management_cashin' => $totals['management_cashin'], // Added to summary
                 'total_development_charge' => $totals['development_charge'],
+                'total_expense_adjustment_cashin' => $totals['expense_adjustment_cashin'], // NEW
                 'total_discount' => $totals['discount'],
                 'total_cashin' => $totalCashin,
-                'total_revenue' => $totalRevenue, // Now excludes discount
+                'total_revenue' => $totalRevenue, // Revenue stays the same - excludes adjustments
                 'total_cash_out' => $totals['cash_out'],
                 'net_balance' => $totalCashin - $totals['cash_out'],
                 'final_balance' => $category === 'all' ? $runningBalance : $totalCashin
@@ -916,6 +948,65 @@ private function getDailyBookingMoney($startDate, $endDate, $projectId = null)
         }
         return $data;
     }
+
+    /**
+     * Get daily expense adjustment cashin (refunds received)
+     */
+    private function getDailyExpenseAdjustmentsCashin($startDate, $endDate)
+    {
+        $query = "
+            SELECT 
+                DATE(at.payment_date) as transaction_date,
+                SUM(at.amount) as total_amount
+            FROM adjustment_transactions at
+            JOIN expense_adjustments ea ON at.adjustment_id = ea.id
+            WHERE at.transaction_type = 'cashin'
+            AND ea.status IN ('approved', 'partially_paid', 'fully_paid')
+            AND DATE(at.payment_date) BETWEEN ? AND ?
+            GROUP BY DATE(at.payment_date)
+        ";
+
+        $stmt = $this->db->prepare($query);
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+            $data[$row['transaction_date']] = (float)$row['total_amount'];
+        }
+        return $data;
+    }
+
+    /**
+     * Get daily expense adjustment cashout (additional payments)
+     */
+    private function getDailyExpenseAdjustmentsCashout($startDate, $endDate)
+    {
+        $query = "
+            SELECT 
+                DATE(at.payment_date) as transaction_date,
+                SUM(at.amount) as total_amount
+            FROM adjustment_transactions at
+            JOIN expense_adjustments ea ON at.adjustment_id = ea.id
+            WHERE at.transaction_type = 'cashout'
+            AND ea.status IN ('approved', 'partially_paid', 'fully_paid')
+            AND DATE(at.payment_date) BETWEEN ? AND ?
+            GROUP BY DATE(at.payment_date)
+        ";
+
+        $stmt = $this->db->prepare($query);
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+            $data[$row['transaction_date']] = (float)$row['total_amount'];
+        }
+        return $data;
+    }
+
 public function getCashoutPaymentDetails($startDate, $endDate, $projectId = null)
 {
     $query = "
@@ -1067,7 +1158,7 @@ public function getCashoutPaymentDetails($startDate, $endDate, $projectId = null
             }
         }
 
-        // Get vendor payments and contractor bills from con_financial_transactions - only for 'all' category
+        // Get vendor payments, contractor bills, and operational fund from con_financial_transactions - only for 'all' category
         $conFinancialData = [];
         if ($category === 'all') {
             $conFinQuery = "
@@ -1076,7 +1167,7 @@ public function getCashoutPaymentDetails($startDate, $endDate, $projectId = null
                 SUM(amount_paid) as total_amount
             FROM con_financial_transactions
             WHERE DATE(transaction_date) BETWEEN ? AND ?
-            AND ref_type IN ('vendor_payment', 'contractor_bill')
+            AND ref_type IN ('vendor_payment', 'contractor_bill', 'operational_fund')
         ";
 
             if ($projectId) {
@@ -1098,12 +1189,46 @@ public function getCashoutPaymentDetails($startDate, $endDate, $projectId = null
             }
         }
 
+        // Get expense adjustment cashout transactions - only for 'all' category
+        $adjCashoutData = [];
+        if ($category === 'all') {
+            $adjCashoutQuery = "
+            SELECT 
+                DATE(at.payment_date) as transaction_date,
+                SUM(at.amount) as total_amount
+            FROM adjustment_transactions at
+            JOIN expense_adjustments ea ON at.adjustment_id = ea.id
+            WHERE at.transaction_type = 'cashout'
+            AND ea.status IN ('approved', 'partially_paid', 'fully_paid')
+            AND DATE(at.payment_date) BETWEEN ? AND ?
+        ";
+
+            if ($projectId) {
+                $adjCashoutQuery .= " AND ea.project_id = ?";
+            }
+
+            $adjCashoutQuery .= " GROUP BY DATE(at.payment_date)";
+
+            $stmt = $this->db->prepare($adjCashoutQuery);
+            if ($projectId) {
+                $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+            } else {
+                $stmt->bind_param("ss", $startDate, $endDate);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $adjCashoutData[$row['transaction_date']] = (float)$row['total_amount'];
+            }
+        }
+
         // Combine all sources based on category
         $allDates = array_unique(array_merge(
             array_keys($managementData),
             array_keys($cashoutRequestData),
             array_keys($payslipsData),
-            array_keys($conFinancialData)
+            array_keys($conFinancialData),
+            array_keys($adjCashoutData)
         ));
 
         $combinedData = [];
@@ -1112,7 +1237,8 @@ public function getCashoutPaymentDetails($startDate, $endDate, $projectId = null
                 ($managementData[$date] ?? 0) +
                 ($cashoutRequestData[$date] ?? 0) +
                 ($payslipsData[$date] ?? 0) +
-                ($conFinancialData[$date] ?? 0);
+                ($conFinancialData[$date] ?? 0) +
+                ($adjCashoutData[$date] ?? 0);
         }
 
         return $combinedData;
@@ -2684,6 +2810,30 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             " . ($startDate && $endDate ? " AND DATE(transaction_date) BETWEEN ? AND ?" : "") . "
             " . ($projectId ? " AND project_id = ?" : "") . "
             " : "SELECT 0 as total_amount") . "
+            
+            UNION ALL
+            
+            -- Fund Requisitions (petty cash + general) - only for 'all' category
+            " . ($category === 'all' ? "
+            SELECT amount as total_amount
+            FROM fund_requisitions
+            WHERE status = 'paid'
+            " . ($startDate && $endDate ? " AND DATE(paid_at) BETWEEN ? AND ?" : "") . "
+            " . ($projectId ? " AND project_id = ?" : "") . "
+            " : "SELECT 0 as total_amount") . "
+            
+            UNION ALL
+            
+            -- Land Fund Requisitions - only for 'all' category
+            " . ($category === 'all' ? "
+            SELECT lfr.requested_amount as total_amount
+            FROM land_fund_requisitions lfr
+            LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
+            WHERE lfr.mgmt_status = 'Approved'
+            AND lfr.accounts_status = 'Paid'
+            " . ($startDate && $endDate ? " AND DATE(lfr.accounts_paid_at) BETWEEN ? AND ?" : "") . "
+            " . ($projectId ? " AND la.project_id = ?" : "") . "
+            " : "SELECT 0 as total_amount") . "
         ) combined
     ";
 
@@ -2726,6 +2876,30 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
         }
 
         // con_financial_transactions params (for 'all' category)
+        if ($category === 'all') {
+            if ($startDate && $endDate) {
+                $bindParams = array_merge($bindParams, [$startDate, $endDate]);
+                $bindTypes .= "ss";
+            }
+            if ($projectId) {
+                $bindParams = array_merge($bindParams, [$projectId]);
+                $bindTypes .= "i";
+            }
+        }
+
+        // fund_requisitions params (for 'all' category)
+        if ($category === 'all') {
+            if ($startDate && $endDate) {
+                $bindParams = array_merge($bindParams, [$startDate, $endDate]);
+                $bindTypes .= "ss";
+            }
+            if ($projectId) {
+                $bindParams = array_merge($bindParams, [$projectId]);
+                $bindTypes .= "i";
+            }
+        }
+
+        // land_fund_requisitions params (for 'all' category)
         if ($category === 'all') {
             if ($startDate && $endDate) {
                 $bindParams = array_merge($bindParams, [$startDate, $endDate]);

@@ -79,7 +79,7 @@ class AssetManagementController extends Controller
     {
         if (empty($fileData['name']) || $fileData['error'] !== 0) return null;
 
-        $baseDir = __DIR__ . '/../../../../public/' . $uploadPath;
+        $baseDir = __DIR__ . '/../../../public/' . $uploadPath;
         if (!is_dir($baseDir)) mkdir($baseDir, 0777, true);
 
         $ext = pathinfo($fileData['name'], PATHINFO_EXTENSION);
@@ -738,12 +738,13 @@ class AssetManagementController extends Controller
         }
 
         $paymentMethod = $_POST['payment_method'] ?? 'bank';
+        $paidAmount = (float)($_POST['paid_amount'] ?? 0);
         $attachment = null;
         if (isset($_FILES['payment_attachment']) && $_FILES['payment_attachment']['error'] === 0) {
             $attachment = $this->uploadFile($_FILES['payment_attachment'], 'uploads/asset-payments/');
         }
 
-        if ($this->model->processPayment($id, $this->userId, $paymentMethod, $attachment)) {
+        if ($this->model->processPayment($id, $this->userId, $paymentMethod, $paidAmount, $attachment)) {
             setSuccess("Payment processed successfully. Waiting for Operations to confirm purchase.");
         } else {
             setError('Failed to process payment.');

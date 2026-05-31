@@ -899,6 +899,13 @@
                             <span class="sidebar__menu-label">Projects Cashout</span>
                         </a>
                     </li>
+                    <li class="slide <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
+                        <a href="<?= $GLOBALS['base_url'] ?>/con-wastage"
+                            class="sidebar__menu-item <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fal fa-recycle"></i></div>
+                            <span class="sidebar__menu-label">Wastage Management</span>
+                        </a>
+                    </li>
 
 
                     <!-- ===================== -->
@@ -961,9 +968,9 @@
                     <!-- Construction Finance -->
                     <!-- ===================== -->
                     <li
-                        class="slide has-sub <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-pending-payments'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-pending-payments', 'con-land-requisitions'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-pending-payments'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-pending-payments', 'con-land-requisitions'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-helmet-safety"></i></div>
                             <span class="sidebar__menu-label">Construction Finance</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -991,6 +998,12 @@
                                 <a href="<?= $base_url ?>/con-pending-payments"
                                     class="sidebar__menu-item <?= isActive('con-pending-payments', $current_route) ?>">
                                     <i class="bi bi-clock me-1"></i> Pending Payments
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-land-requisitions', $current_route) ?>">
+                                <a href="<?= $base_url ?>/con-land-requisitions"
+                                    class="sidebar__menu-item <?= isActive('con-land-requisitions', $current_route) ?>">
+                                    <i class="bi bi-cash-coin me-1"></i> Land Requisitions
                                 </a>
                             </li>
                         </ul>
@@ -1438,9 +1451,9 @@
                 <!-- ====== QC MODULE ====== -->
                 <?php if (hasPermission('QC Dashboard')): ?>
                     <li
-                        class="slide has-sub <?= isActive(['qc-dashboard', 'qc-inspection-create', 'qc-material-test-create', 'qc-checklists', 'qc-test-types'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['qc-dashboard', 'qc-inspection-create', 'qc-material-test-create', 'qc-checklists', 'qc-test-types', 'con-wastage', 'con-wastage-create'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['qc-dashboard', 'qc-inspection-create', 'qc-material-test-create', 'qc-checklists', 'qc-test-types'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['qc-dashboard', 'qc-inspection-create', 'qc-material-test-create', 'qc-checklists', 'qc-test-types', 'con-wastage', 'con-wastage-create'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="bi bi-shield-check"></i></div>
                             <span class="sidebar__menu-label">QC Module</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -1473,7 +1486,12 @@
                                     <i class="fal fa-clipboard-list me-1"></i> Checklists
                                 </a>
                             </li>
-
+                            <li class="slide <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
+                                <a href="<?= $GLOBALS['base_url'] ?>/con-wastage"
+                                    class="sidebar__menu-item <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
+                                    <i class="fal fa-recycle me-1"></i> Wastage Management
+                                </a>
+                            </li>
                         </ul>
                     </li>
                 <?php endif; ?>
@@ -1499,7 +1517,7 @@
                                         href="<?= $base_url ?>/con-land-visibility-studies">Land Visibility Study</a>
                                 </li>
                             <?php endif; ?>
-                            <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 14): ?>
+                            <?php if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 6, 14])): ?>
                                 <li class="slide <?= isActive(['con-land-acquisitions', 'con-land-acquisitions/create', 'con-land-acquisitions/edit'], $current_route) ? 'active' : '' ?>">
                                     <a class="sidebar__menu-item <?= isActive(['con-land-acquisitions', 'con-land-acquisitions/create', 'con-land-acquisitions/edit'], $current_route) ? 'active' : '' ?>"
                                         href="<?= $base_url ?>/con-land-acquisitions">Land Acquisitions</a>
@@ -1824,9 +1842,9 @@
                 <!-- Module 7:Operation And  Receiving & QC -->
                 <?php if (hasPermission('Material Issue')): ?>
                     <li
-                        class="slide has-sub <?= isActive(['con-material-receivings', 'con-stocks', 'con-material-returns'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['con-material-receivings', 'con-stocks', 'con-material-returns', 'con-wastage', 'con-wastage-create'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-material-receivings', 'con-stocks', 'con-material-returns'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['con-material-receivings', 'con-stocks', 'con-material-returns', 'con-wastage', 'con-wastage-create'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-box-open"></i></div>
                             <span class="sidebar__menu-label">Receiving & QC</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -1869,6 +1887,10 @@
                                 <a href="<?= $base_url ?>/con-material-issue-create"
                                     class="sidebar__menu-item <?= isActive('con-material-issue-create', $current_route) ?>">New
                                     Issue</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-wastage"
+                                    class="sidebar__menu-item <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">Wastage Management</a>
                             </li>
                         </ul>
                     </li>
@@ -1974,9 +1996,9 @@
                     <!-- ====== Finance & Accounts (Batch 3 NEW) ====== -->
 
                     <li
-                        class="slide has-sub <?= isActive(['con-transactions', 'con-pending-payments', 'create-cashout-request'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['con-transactions', 'con-pending-payments', 'create-cashout-request', 'con-wastage', 'con-wastage-create'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-transactions', 'con-pending-payments', 'create-cashout-request'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['con-transactions', 'con-pending-payments', 'create-cashout-request', 'con-wastage', 'con-wastage-create'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-wallet"></i></div>
                             <span class="sidebar__menu-label">Bill & Payments</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -2001,6 +2023,13 @@
                                 <a href="<?= $base_url ?>/create-cashout-request"
                                     class="sidebar__menu-item <?= isActive('create-cashout-request', $current_route) ?>">Create
                                     Cashout Request </a>
+                            </li>
+
+                            <li class="slide <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
+                                <a href="<?= $GLOBALS['base_url'] ?>/con-wastage"
+                                    class="sidebar__menu-item <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
+                                    <i class="fal fa-recycle me-1"></i> Wastage Management
+                                </a>
                             </li>
                         </ul>
                     </li>
