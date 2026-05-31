@@ -968,9 +968,9 @@
                     <!-- Construction Finance -->
                     <!-- ===================== -->
                     <li
-                        class="slide has-sub <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-pending-payments'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-pending-payments', 'con-land-requisitions'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-pending-payments'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-pending-payments', 'con-land-requisitions'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-helmet-safety"></i></div>
                             <span class="sidebar__menu-label">Construction Finance</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -998,6 +998,12 @@
                                 <a href="<?= $base_url ?>/con-pending-payments"
                                     class="sidebar__menu-item <?= isActive('con-pending-payments', $current_route) ?>">
                                     <i class="bi bi-clock me-1"></i> Pending Payments
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-land-requisitions', $current_route) ?>">
+                                <a href="<?= $base_url ?>/con-land-requisitions"
+                                    class="sidebar__menu-item <?= isActive('con-land-requisitions', $current_route) ?>">
+                                    <i class="bi bi-cash-coin me-1"></i> Land Requisitions
                                 </a>
                             </li>
                         </ul>
@@ -1511,7 +1517,7 @@
                                         href="<?= $base_url ?>/con-land-visibility-studies">Land Visibility Study</a>
                                 </li>
                             <?php endif; ?>
-                            <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 14): ?>
+                            <?php if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 6, 14])): ?>
                                 <li class="slide <?= isActive(['con-land-acquisitions', 'con-land-acquisitions/create', 'con-land-acquisitions/edit'], $current_route) ? 'active' : '' ?>">
                                     <a class="sidebar__menu-item <?= isActive(['con-land-acquisitions', 'con-land-acquisitions/create', 'con-land-acquisitions/edit'], $current_route) ? 'active' : '' ?>"
                                         href="<?= $base_url ?>/con-land-acquisitions">Land Acquisitions</a>

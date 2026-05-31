@@ -2810,6 +2810,30 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             " . ($startDate && $endDate ? " AND DATE(transaction_date) BETWEEN ? AND ?" : "") . "
             " . ($projectId ? " AND project_id = ?" : "") . "
             " : "SELECT 0 as total_amount") . "
+            
+            UNION ALL
+            
+            -- Fund Requisitions (petty cash + general) - only for 'all' category
+            " . ($category === 'all' ? "
+            SELECT amount as total_amount
+            FROM fund_requisitions
+            WHERE status = 'paid'
+            " . ($startDate && $endDate ? " AND DATE(paid_at) BETWEEN ? AND ?" : "") . "
+            " . ($projectId ? " AND project_id = ?" : "") . "
+            " : "SELECT 0 as total_amount") . "
+            
+            UNION ALL
+            
+            -- Land Fund Requisitions - only for 'all' category
+            " . ($category === 'all' ? "
+            SELECT lfr.requested_amount as total_amount
+            FROM land_fund_requisitions lfr
+            LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
+            WHERE lfr.mgmt_status = 'Approved'
+            AND lfr.accounts_status = 'Paid'
+            " . ($startDate && $endDate ? " AND DATE(lfr.accounts_paid_at) BETWEEN ? AND ?" : "") . "
+            " . ($projectId ? " AND la.project_id = ?" : "") . "
+            " : "SELECT 0 as total_amount") . "
         ) combined
     ";
 
@@ -2852,6 +2876,30 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
         }
 
         // con_financial_transactions params (for 'all' category)
+        if ($category === 'all') {
+            if ($startDate && $endDate) {
+                $bindParams = array_merge($bindParams, [$startDate, $endDate]);
+                $bindTypes .= "ss";
+            }
+            if ($projectId) {
+                $bindParams = array_merge($bindParams, [$projectId]);
+                $bindTypes .= "i";
+            }
+        }
+
+        // fund_requisitions params (for 'all' category)
+        if ($category === 'all') {
+            if ($startDate && $endDate) {
+                $bindParams = array_merge($bindParams, [$startDate, $endDate]);
+                $bindTypes .= "ss";
+            }
+            if ($projectId) {
+                $bindParams = array_merge($bindParams, [$projectId]);
+                $bindTypes .= "i";
+            }
+        }
+
+        // land_fund_requisitions params (for 'all' category)
         if ($category === 'all') {
             if ($startDate && $endDate) {
                 $bindParams = array_merge($bindParams, [$startDate, $endDate]);

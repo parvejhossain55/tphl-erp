@@ -513,6 +513,20 @@ class Dashboard extends Model
             JOIN expense_adjustments ea ON at.adjustment_id = ea.id
             WHERE at.transaction_type = 'cashout'
             AND ea.status IN ('approved', 'partially_paid', 'fully_paid')
+            
+            UNION ALL
+            
+            SELECT amount as total_amount, paid_at as date, project_id
+            FROM fund_requisitions
+            WHERE status = 'paid'
+            
+            UNION ALL
+            
+            SELECT lfr.requested_amount as total_amount, lfr.accounts_paid_at as date, la.project_id
+            FROM land_fund_requisitions lfr
+            LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
+            WHERE lfr.mgmt_status = 'Approved'
+            AND lfr.accounts_status = 'Paid'
         ) combined
         WHERE date BETWEEN ? AND ?
     ";
@@ -955,6 +969,8 @@ class Dashboard extends Model
             'by_project' => [],
             'operational_fund' => 0,
             'expense_adjustment_cashout' => 0,
+            'fund_requisitions' => 0,
+            'land_fund_requisitions' => 0,
         ];
 
         // Management Cashout
@@ -1131,7 +1147,61 @@ class Dashboard extends Model
         }
         $stmt->close();
 
-        $stats['paid_amount'] = $stats['management_cashout'] + $stats['cashout_payments'] + $stats['salary_payments'] + ($stats['contractor_bills'] ?? 0) + ($stats['vendor_payments'] ?? 0) + $stats['operational_fund'] + $stats['expense_adjustment_cashout'];
+        // Fund Requisitions (petty cash + general)
+        $sqlFundReq = "
+            SELECT 
+                COALESCE(SUM(amount), 0) as total,
+                COUNT(*) as count
+            FROM fund_requisitions
+            WHERE status = 'paid'
+            AND paid_at BETWEEN ? AND ?
+        ";
+        if ($projectId) {
+            $sqlFundReq .= " AND project_id = ?";
+        }
+        $stmt = $this->db->prepare($sqlFundReq);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $row = $result->fetch_assoc()) {
+            $stats['fund_requisitions'] = floatval($row['total']);
+            $stats['total_transactions'] += intval($row['count']);
+        }
+        $stmt->close();
+
+        // Land Fund Requisitions
+        $sqlLandFundReq = "
+            SELECT 
+                COALESCE(SUM(lfr.requested_amount), 0) as total,
+                COUNT(*) as count
+            FROM land_fund_requisitions lfr
+            LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
+            WHERE lfr.mgmt_status = 'Approved'
+            AND lfr.accounts_status = 'Paid'
+            AND lfr.accounts_paid_at BETWEEN ? AND ?
+        ";
+        if ($projectId) {
+            $sqlLandFundReq .= " AND la.project_id = ?";
+        }
+        $stmt = $this->db->prepare($sqlLandFundReq);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $row = $result->fetch_assoc()) {
+            $stats['land_fund_requisitions'] = floatval($row['total']);
+            $stats['total_transactions'] += intval($row['count']);
+        }
+        $stmt->close();
+
+        $stats['paid_amount'] = $stats['management_cashout'] + $stats['cashout_payments'] + $stats['salary_payments'] + ($stats['contractor_bills'] ?? 0) + ($stats['vendor_payments'] ?? 0) + $stats['operational_fund'] + $stats['expense_adjustment_cashout'] + $stats['fund_requisitions'] + $stats['land_fund_requisitions'];
         $stats['total_amount'] = $stats['paid_amount'] + $stats['pending_amount'];
 
         // This Month with project filter
@@ -1184,6 +1254,20 @@ class Dashboard extends Model
                 JOIN expense_adjustments ea ON at.adjustment_id = ea.id
                 WHERE at.transaction_type = 'cashout'
                 AND ea.status IN ('approved', 'partially_paid', 'fully_paid')
+                
+                UNION ALL
+                
+                SELECT amount as total_amount, paid_at as date, project_id
+                FROM fund_requisitions
+                WHERE status = 'paid'
+                
+                UNION ALL
+                
+                SELECT lfr.requested_amount as total_amount, lfr.accounts_paid_at as date, la.project_id
+                FROM land_fund_requisitions lfr
+                LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
+                WHERE lfr.mgmt_status = 'Approved'
+                AND lfr.accounts_status = 'Paid'
             ) combined
             WHERE date BETWEEN ? AND ?
         ";
