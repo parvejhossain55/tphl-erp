@@ -255,3 +255,75 @@ CREATE TABLE IF NOT EXISTS land_monthly_reports (
     created_by       INT NOT NULL,
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+
+
+--- 1-june-2026 -- run in vps to add missing columns
+
+ALTER TABLE projects ADD COLUMN workflow_version VARCHAR(50) DEFAULT 'legacy' AFTER project_status;
+
+SET FOREIGN_KEY_CHECKS = 0;
+-- ১. daily_work_item_logs টেবিলে নতুন কলাম যোগ করা
+ALTER TABLE `daily_work_item_logs`
+  ADD COLUMN IF NOT EXISTS `work_type_id`      bigint(20) UNSIGNED DEFAULT NULL            AFTER `target_item_id`,
+  ADD COLUMN IF NOT EXISTS `item_status`        varchar(30) NOT NULL DEFAULT 'In Progress'  AFTER `remarks`,
+  ADD COLUMN IF NOT EXISTS `responsible_team`   varchar(100) DEFAULT NULL                   AFTER `item_status`;
+-- ২. phase_monthly_target_items টেবিলে missing কলাম যোগ করা
+ALTER TABLE `phase_monthly_target_items`
+  ADD COLUMN IF NOT EXISTS `actual_qty`           decimal(12,2) NOT NULL DEFAULT 0.00
+    COMMENT 'Actual quantity achieved'             AFTER `monthly_target_qty`,
+  ADD COLUMN IF NOT EXISTS `actual_progress_pct`  decimal(5,2)  NOT NULL DEFAULT 0.00
+    COMMENT 'Actual % achieved this month'         AFTER `planned_progress_pct`;
+-- ৩. project_drawings টেবিলে phase_id কলাম যোগ করা
+ALTER TABLE `project_drawings`
+  ADD COLUMN IF NOT EXISTS `phase_id` int(10) UNSIGNED DEFAULT NULL
+    COMMENT 'Optional: which construction phase this drawing belongs to'
+    AFTER `project_id`;
+-- ৪. projects টেবিলে workflow_version কলাম যোগ করা
+ALTER TABLE `projects`
+  ADD COLUMN IF NOT EXISTS `workflow_version`
+    enum('legacy','phase_based') NOT NULL DEFAULT 'legacy'
+    COMMENT 'legacy=old target_fixed system | phase_based=new 7-module lifecycle'
+    AFTER `name`;
+-- ৫. work_types টেবিলে default_phase_name কলাম যোগ করা
+ALTER TABLE `work_types`
+  ADD COLUMN IF NOT EXISTS `default_phase_name` varchar(150) DEFAULT NULL
+    COMMENT 'Suggested construction phase for this work type'
+    AFTER `design_type_id`;
+-- ৬. নতুন টেবিল `project_phase_items` তৈরি করা
+CREATE TABLE IF NOT EXISTS `project_phase_items` (
+  `id`               int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `phase_id`         int(10) UNSIGNED NOT NULL,
+  `item_name`        varchar(255) NOT NULL,
+  `item_order`       tinyint(4) NOT NULL DEFAULT 1,
+  `weight_pct`       decimal(5,2) NOT NULL DEFAULT 0.00,
+  `planned_progress` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `actual_progress`  decimal(5,2) NOT NULL DEFAULT 0.00,
+  `design_type_id`   int(10) UNSIGNED DEFAULT NULL,
+  `work_type_id`     bigint(20) UNSIGNED DEFAULT NULL,
+  `status`           enum('Not Started','In Progress','Completed','At Risk') NOT NULL DEFAULT 'Not Started',
+  `notes`            text DEFAULT NULL,
+  `created_at`       timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at`       timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `fk_ppi_phase`   (`phase_id`),
+  KEY `fk_ppi_wtype`   (`work_type_id`),
+  KEY `fk_ppi_dtype`   (`design_type_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- ৭. নতুন টেবিল `phase_item_template_defaults` তৈরি করা
+CREATE TABLE IF NOT EXISTS `phase_item_template_defaults` (
+  `id`              int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `phase_name`      varchar(150) NOT NULL,
+  `item_name`       varchar(255) NOT NULL,
+  `item_order`      tinyint(4) NOT NULL DEFAULT 1,
+  `weight_pct`      decimal(5,2) NOT NULL DEFAULT 0.00,
+  `design_type_id`  int(10) UNSIGNED DEFAULT NULL,
+  `work_type_id`    bigint(20) UNSIGNED DEFAULT NULL,
+  `created_at`      timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_pitd_phase_name`   (`phase_name`),
+  KEY `fk_pitd_wtype`         (`work_type_id`),
+  KEY `fk_pitd_dtype`         (`design_type_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SET FOREIGN_KEY_CHECKS = 1;

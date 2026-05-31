@@ -1251,10 +1251,12 @@
                 <?php 
                 $showAllPhases = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22]);
                 if (!empty($_SESSION['active_project_id']) && $showAllPhases): 
+                    $projectSubRoutes = ['con-project-timeline', 'con-phase-plan', 'con-monthly-targets', 'con-monthly-target', 'con-weekly-progress', 'con-monthly-review', 'con-risk-dashboard', 'con-recovery-plan'];
+                    $isProjectActive = isActive($projectSubRoutes, $current_route);
                 ?>
-                    <li class="slide has-sub active">
+                    <li class="slide has-sub <?= $isProjectActive ? 'active' : '' ?>">
                         <a href="javascript:void(0);" 
-                           class="sidebar__menu-item active">
+                           class="sidebar__menu-item <?= $isProjectActive ? 'active' : '' ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             <div class="side-menu__icon"><i class="fa-solid fa-folder-open"></i></div>
                             <span class="sidebar__menu-label" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 150px;" title="<?= htmlspecialchars($_SESSION['active_project_name'] ?? 'Active Project') ?>">
@@ -1274,8 +1276,8 @@
                                     Phase Plan
                                 </a>
                             </li>
-                            <li class="slide <?= isActive('con-monthly-target', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('con-monthly-target', $current_route) ?>" 
+                            <li class="slide <?= isActive(['con-monthly-targets', 'con-monthly-target'], $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive(['con-monthly-targets', 'con-monthly-target'], $current_route) ?>" 
                                    href="<?= $base_url ?>/con-monthly-targets/<?= $_SESSION['active_project_id'] ?? 0 ?>">
                                     Monthly Targets
                                 </a>

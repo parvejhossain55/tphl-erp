@@ -100,7 +100,7 @@ class Con_PhaseWeeklyProgressController extends Controller {
         }
 
         $this->view('phase2/weekly_progress/entry', [
-            'current_route'     => 'con-monthly-targets',
+            'current_route'     => 'con-weekly-progress',
             'page_title'        => 'Daily / Weekly Progress Entry',
             'target'            => $target,
             'weeklyProgress'    => $weeklyProgress,
