@@ -77,7 +77,7 @@ $priorityColors = [
 .mf-status-row { display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end }
 .mf-ctrl { display:flex;flex-direction:column;gap:4px }
 .mf-ctrl label { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted) }
-.mf-sel,.mf-inp { padding:7px 10px;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:12.5px;background:transparent;color:inherit;min-width:160px }
+.mf-sel,.mf-inp { padding:7px 10px;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:12.5px;background:transparent;color:inherit;width:100%;box-sizing:border-box }
 .mf-sel:focus,.mf-inp:focus { outline:none;border-color:var(--pri) }
 .btn-save { padding:7px 18px;border-radius:8px;font-size:12.5px;font-weight:700;background:var(--pri);color:#fff;border:none;cursor:pointer }
 
@@ -220,12 +220,29 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
 <div class="mf-add-card">
     <h6><i class="fal fa-plus-circle me-2"></i>Add Work Item</h6>
     <form id="addItemForm">
-        <div style="display:grid;grid-template-columns:2.5fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr auto;gap:9px;align-items:end">
-            <div class="mf-ctrl">
-                <label>Work Item Name *</label>
-                <input type="text" id="wi_name" class="mf-inp" placeholder="e.g. Column Casting – Floor 3" required>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:flex-end">
+            <div class="mf-ctrl" style="flex:3;min-width:180px">
+                <label>Work Item (Sub-item) *</label>
+                <select id="wi_name" class="mf-sel" required onchange="onSubItemSelect()">
+                    <option value="">-- Select Sub-item --</option>
+                    <?php foreach ($phaseSubItems as $sub): ?>
+                    <option value="<?= htmlspecialchars($sub['item_name']) ?>"
+                            data-weight="<?= htmlspecialchars($sub['weight_pct']) ?>"
+                            data-worktype="<?= htmlspecialchars($sub['work_type_id'] ?? '') ?>">
+                        <?= htmlspecialchars($sub['item_name']) ?> (<?= number_format((float)$sub['weight_pct'], 2) ?>%)
+                    </option>
+                    <?php endforeach; ?>
+                </select>
             </div>
-            <div class="mf-ctrl">
+            <div class="mf-ctrl" style="flex:0 0 88px;min-width:80px">
+                <label>Sub Weight</label>
+                <input type="text" id="wi_sub_weight" class="mf-inp" readonly value="0.00%">
+            </div>
+            <div class="mf-ctrl" style="flex:0 0 107px;min-width:90px">
+                <label>Target Planned %</label>
+                <input type="number" id="wi_planned_progress_pct" class="mf-inp" min="0" max="100" step="0.1" value="0">
+            </div>
+            <div class="mf-ctrl" style="flex:2;min-width:140px">
                 <label>Work Type <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
                 <select id="wi_work_type" class="mf-sel">
                     <option value="">-- None --</option>
@@ -234,23 +251,23 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="mf-ctrl">
+            <div class="mf-ctrl" style="flex:0 0 80px;min-width:70px">
                 <label>Unit</label>
                 <input type="text" id="wi_unit" class="mf-inp" placeholder="RFT / NO">
             </div>
-            <div class="mf-ctrl">
+            <div class="mf-ctrl" style="flex:0 0 95px;min-width:80px">
                 <label>Target Qty</label>
                 <input type="number" id="wi_qty" class="mf-inp" step="0.01" min="0" value="0">
             </div>
-            <div class="mf-ctrl">
+            <div class="mf-ctrl" style="flex:0 0 135px;min-width:120px">
                 <label>Start Date</label>
                 <input type="date" id="wi_start_date" class="mf-inp">
             </div>
-            <div class="mf-ctrl">
+            <div class="mf-ctrl" style="flex:0 0 135px;min-width:120px">
                 <label>End Date</label>
                 <input type="date" id="wi_end_date" class="mf-inp">
             </div>
-            <div class="mf-ctrl">
+            <div class="mf-ctrl" style="flex:0 0 95px;min-width:85px">
                 <label>Priority</label>
                 <select id="wi_priority" class="mf-sel">
                     <option value="Medium">Medium</option>
@@ -258,14 +275,15 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                     <option value="Low">Low</option>
                 </select>
             </div>
-            <div>
-                <button type="button" class="btn-save" onclick="addItem()" title="Add Item">
-                    <i class="fal fa-plus"></i>
+            <div style="align-self:flex-end;padding-bottom:1px">
+                <button type="button" class="btn-save" onclick="addItem()" title="Add Work Item">
+                    <i class="fal fa-plus me-1"></i> Add
                 </button>
             </div>
         </div>
     </form>
 </div>
+
 
 <!-- Items List -->
 <div class="mf-section-title">
@@ -296,8 +314,10 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
             <th>Wk 2</th>
             <th>Wk 3</th>
             <th>Wk 4</th>
-            <th>Planned %</th>
-            <th>Actual %</th>
+            <th style="text-align:center">Sub Weight %</th>
+            <th style="text-align:center">Planned Progress %</th>
+            <th style="text-align:center">Actual Progress %</th>
+            <th style="text-align:center">Actual Weight %</th>
             <th>Priority</th>
             <th>Status</th>
             <th></th>
@@ -308,12 +328,13 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
     <?php
         $actualPct = (float)($item['actual_progress_pct'] ?? 0);
         $prioColor = $priorityColors[$item['priority'] ?? 'Medium'] ?? '#64748b';
+        $subWeight = (float)($item['sub_item_weight'] ?? 0);
     ?>
     <tr>
         <td style="color:var(--text-muted);font-weight:600"><?= $i+1 ?></td>
         <td>
-            <input type="text" name="items[<?= $i ?>][work_item_name]"
-                   value="<?= htmlspecialchars($item['work_item_name']) ?>" style="min-width:180px">
+            <span style="font-weight:600;font-size:12.5px;"><?= htmlspecialchars($item['work_item_name']) ?></span>
+            <input type="hidden" name="items[<?= $i ?>][work_item_name]" value="<?= htmlspecialchars($item['work_item_name']) ?>">
             <input type="hidden" name="items[<?= $i ?>][id]" value="<?= $item['id'] ?>">
         </td>
         <td>
@@ -334,15 +355,23 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
         <td><input type="number" name="items[<?= $i ?>][week_2_qty]" value="<?= (float)($item['week_2_qty'] ?? 0) ?>" step="0.01" style="width:70px"></td>
         <td><input type="number" name="items[<?= $i ?>][week_3_qty]" value="<?= (float)($item['week_3_qty'] ?? 0) ?>" step="0.01" style="width:70px"></td>
         <td><input type="number" name="items[<?= $i ?>][week_4_qty]" value="<?= (float)($item['week_4_qty'] ?? 0) ?>" step="0.01" style="width:70px"></td>
-        <td>
+        <td style="text-align:center;font-weight:600">
+            <?= number_format($subWeight, 2) ?>%
+            <input type="hidden" id="sub_w_<?= $i ?>" value="<?= $subWeight ?>">
+        </td>
+        <td style="text-align:center">
             <input type="number" name="items[<?= $i ?>][planned_progress_pct]"
+                   id="plan_pct_<?= $i ?>"
                    value="<?= (float)($item['planned_progress_pct'] ?? 0) ?>"
                    step="0.1" min="0" max="100" style="width:65px">
         </td>
-        <td>
+        <td style="text-align:center">
             <span class="pct-badge <?= $actualPct>=100?'green':($actualPct>0?'amber':'') ?>">
                 <?= number_format($actualPct, 1) ?>%
             </span>
+        </td>
+        <td style="text-align:center;font-weight:700;color:var(--green)">
+            <?= number_format(($subWeight * $actualPct) / 100, 2) ?>%
         </td>
         <td>
             <select name="items[<?= $i ?>][priority]" style="width:80px">
@@ -384,9 +413,27 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
 </div></div>
 
 <script>
+// ── Handle Sub-item selection changed ──────────────────────────────────
+function onSubItemSelect() {
+    var select = document.getElementById('wi_name');
+    var opt = select.options[select.selectedIndex];
+    var weight = opt ? opt.getAttribute('data-weight') : '';
+    var worktype = opt ? opt.getAttribute('data-worktype') : '';
+    
+    document.getElementById('wi_sub_weight').value = weight ? parseFloat(weight).toFixed(2) + '%' : '0.00%';
+    
+    var wtSelect = document.getElementById('wi_work_type');
+    if (wtSelect) {
+        wtSelect.value = worktype || '';
+    }
+}
+
+
+
+// ── Add Item ───────────────────────────────────────────────────────────
 function addItem() {
     var name = document.getElementById('wi_name').value.trim();
-    if (!name) { alert('Work item name is required.'); return; }
+    if (!name) { alert('Work item selection is required.'); return; }
 
     var data = new FormData();
     data.append('target_id', '<?= $targetId ?>');
@@ -398,7 +445,7 @@ function addItem() {
     data.append('end_date', document.getElementById('wi_end_date').value);
     data.append('priority', document.getElementById('wi_priority').value);
     data.append('status', 'Draft');
-    data.append('planned_progress_pct', '0');
+    data.append('planned_progress_pct', document.getElementById('wi_planned_progress_pct').value);
 
     fetch('<?= $base ?>/con-monthly-item-add', {
         method: 'POST',

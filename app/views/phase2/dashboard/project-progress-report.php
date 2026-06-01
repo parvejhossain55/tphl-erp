@@ -21,13 +21,13 @@ $totalWeight = array_sum(array_column($phases, 'weight_percentage'));
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 :root {
-    --pri:#4f46e5; --green:#10b981; --amber:#f59e0b; --red:#ef4444;
+    --pri:#5e4cdc; --green:#10b981; --amber:#f59e0b; --red:#ef4444;
     --cyan:#0ea5e9; --purple:#8b5cf6; --slate:#64748b; --navy:#1e3a5f;
 }
 
 /* ── Hero Banner ── */
 .prog-hero {
-    background: linear-gradient(135deg, #1e3a5f 0%, #3b6ca8 50%, #4f46e5 100%);
+    background: #5e4cdc;
     border-radius: 20px; padding: 28px 32px; color: #fff;
     position: relative; overflow: hidden; margin-bottom: 22px;
 }
@@ -63,7 +63,7 @@ $totalWeight = array_sum(array_column($phases, 'weight_percentage'));
 /* ── Timeline Bar ── */
 .timeline-bar { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 20px; margin-bottom: 18px }
 .tl-track { position: relative; height: 10px; background: #e2e8f0; border-radius: 5px; margin: 10px 0 }
-.tl-fill  { height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--pri), var(--green)); transition: width .4s }
+.tl-fill  { height: 100%; border-radius: 5px; background: var(--pri); transition: width .4s }
 .tl-thumb { position: absolute; top: 50%; transform: translate(-50%,-50%);
             width: 20px; height: 20px; border-radius: 50%; background: var(--green);
             border: 3px solid #fff; box-shadow: 0 2px 8px rgba(16,185,129,.5) }
@@ -409,22 +409,22 @@ if ($startDate && $endDate) {
 <?php endforeach; ?>
 
 <!-- ░░ Project Total Summary ░░ -->
-<div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid #86efac;border-radius:16px;padding:20px 24px;margin-top:8px">
+<div style="background:#5e4cdc;color:#fff;border-radius:16px;padding:20px 24px;margin-top:8px">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div>
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#166534;margin-bottom:4px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.8);margin-bottom:4px">
                 <i class="bi bi-calculator me-1"></i>Total Project Progress Formula
             </div>
-            <div style="font-size:12.5px;color:#14532d;font-weight:600">
+            <div style="font-size:12.5px;color:#fff;font-weight:600">
                 = Σ (Phase Actual% × Phase Weight%) for all <?= count($phases) ?> phases
             </div>
-            <div style="font-size:11px;color:#166534;margin-top:4px">
+            <div style="font-size:11px;color:rgba(255,255,255,.8);margin-top:4px">
                 When all sub-items of each phase reach 100% → Phase complete → Project reaches 100%
             </div>
         </div>
         <div style="text-align:center">
-            <div style="font-size:42px;font-weight:900;color:#166534;line-height:1"><?= number_format($totalProjectProgress,2) ?>%</div>
-            <div style="font-size:11px;color:#16a34a;font-weight:700">Overall Project Progress</div>
+            <div style="font-size:42px;font-weight:900;color:#fff;line-height:1"><?= number_format($totalProjectProgress,2) ?>%</div>
+            <div style="font-size:11px;color:#fff;font-weight:700">Overall Project Progress</div>
         </div>
     </div>
     <!-- Stacked bar: each phase contribution -->

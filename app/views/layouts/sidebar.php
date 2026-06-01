@@ -6,8 +6,8 @@
 <div class="app-sidebar" id="sidebar">
     <div class="main-sidebar-header">
         <a href="?home" class="header-logo">
-            <img class="main-logo" src="<?= $GLOBALS['base_url'] ?>/assets/images/logo/tphl_logo.png" alt="logo">
-            <img class="dark-logo" src="<?= $GLOBALS['base_url'] ?>/assets/images/logo/logo_white.png" alt="logo">
+                  <img class="main-logo" src="<?= getImage('settings', getSetting('white_logo')) ?>" alt="logo">
+            <img class="dark-logo" src="<?= getImage('settings', getSetting('dark_logo')) ?>" alt="logo">
         </a>
     </div>
 

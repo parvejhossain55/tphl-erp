@@ -99,6 +99,24 @@ class Con_PhaseWeeklyProgressController extends Controller {
             $workTypes = $wtRes ? $wtRes->fetch_all(MYSQLI_ASSOC) : [];
         }
 
+        // ── Fetch Material Issues linked to this monthly target ───────────────
+        $materialIssues = [];
+        try {
+            $miStmt = $this->db->prepare("
+                SELECT mi.id, mi.quantity, mi.issue_date, mi.purpose,
+                       m.name AS material_name, m.unit,
+                       c.name AS contractor_name
+                FROM con_material_issues mi
+                LEFT JOIN con_materials m ON m.id = mi.material_id
+                LEFT JOIN contractors  c ON c.id = mi.issued_to
+                WHERE mi.target_id = ?
+                ORDER BY mi.issue_date DESC, mi.id DESC
+            ");
+            $miStmt->bind_param('i', $targetId);
+            $miStmt->execute();
+            $materialIssues = $miStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        } catch (\Throwable $e) {}
+
         $this->view('phase2/weekly_progress/entry', [
             'current_route'     => 'con-weekly-progress',
             'page_title'        => 'Daily / Weekly Progress Entry',
@@ -111,7 +129,8 @@ class Con_PhaseWeeklyProgressController extends Controller {
             'weeklyLogsSummary' => $weeklyLogsSummary,
             'project'           => $project,
             'weekNo'            => $weekNo,
-            'workTypes'         => $workTypes
+            'workTypes'         => $workTypes,
+            'materialIssues'    => $materialIssues,
         ]);
     }
 
@@ -168,7 +187,106 @@ class Con_PhaseWeeklyProgressController extends Controller {
             ];
         }
 
-        if ($this->model->saveDailyLog($weeklyProgressId, $logData, $itemQtys, $userId)) {
+        // Handle dynamically selected new work item and work types from the bottom selector
+        $newWorkItemId = (int)($_POST['new_work_item_id'] ?? 0);
+        if ($newWorkItemId > 0) {
+            $newWorkTypes = $_POST['new_work_types'] ?? [];
+            // Convert checked work type IDs to integers
+            $newWorkTypes = array_map('intval', $newWorkTypes);
+            
+            // 1. Remove any items from $itemQtys for this newWorkItemId where work_type_id is NOT in $newWorkTypes
+            $filteredItemQtys = [];
+            foreach ($itemQtys as $iq) {
+                if ($iq['target_item_id'] === $newWorkItemId) {
+                    if ($iq['work_type_id'] !== null && in_array($iq['work_type_id'], $newWorkTypes, true)) {
+                        $filteredItemQtys[] = $iq;
+                    }
+                } else {
+                    $filteredItemQtys[] = $iq;
+                }
+            }
+            $itemQtys = $filteredItemQtys;
+            
+            // 2. Fetch the item details (like unit and responsible team)
+            $itemQuery = $this->db->prepare("SELECT unit, responsible_team FROM phase_monthly_target_items WHERE id = ?");
+            $itemQuery->bind_param('i', $newWorkItemId);
+            $itemQuery->execute();
+            $itemInfo = $itemQuery->get_result()->fetch_assoc();
+            $unit = $itemInfo['unit'] ?? 'RFT / NO';
+            $team = $itemInfo['responsible_team'] ?? '';
+
+            // 3. Add any items from $newWorkTypes that are not already in $itemQtys
+            if (!empty($newWorkTypes)) {
+                foreach ($newWorkTypes as $wtId) {
+                    $exists = false;
+                    foreach ($itemQtys as $iq) {
+                        if ($iq['target_item_id'] === $newWorkItemId && $iq['work_type_id'] === $wtId) {
+                            $exists = true;
+                            break;
+                        }
+                    }
+                    if (!$exists) {
+                        $itemQtys[] = [
+                            'target_item_id'   => $newWorkItemId,
+                            'work_type_id'     => $wtId,
+                            'qty_done_today'   => 0.00,
+                            'unit'             => $unit,
+                            'remarks'          => '',
+                            'item_status'      => 'In Progress',
+                            'responsible_team' => $team
+                        ];
+                    }
+                }
+            } else {
+                // If no work types checked, add one with null work_type_id if it doesn't exist
+                $exists = false;
+                foreach ($itemQtys as $iq) {
+                    if ($iq['target_item_id'] === $newWorkItemId && $iq['work_type_id'] === null) {
+                        $exists = true;
+                        break;
+                    }
+                }
+                if (!$exists) {
+                    $itemQtys[] = [
+                        'target_item_id'   => $newWorkItemId,
+                        'work_type_id'     => null,
+                        'qty_done_today'   => 0.00,
+                        'unit'             => $unit,
+                        'remarks'          => '',
+                        'item_status'      => 'In Progress',
+                        'responsible_team' => $team
+                    ];
+                }
+            }
+        }
+
+        // Handle photo uploads
+        $uploadedPhotos = []; // [target_item_id => photo_path]
+        if (!empty($_FILES['photos']['name'])) {
+            foreach ($_FILES['photos']['name'] as $idx => $name) {
+                if (!empty($name) && $_FILES['photos']['error'][$idx] === UPLOAD_ERR_OK) {
+                    $tmpName = $_FILES['photos']['tmp_name'][$idx];
+                    $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+                    $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                    if (in_array($ext, $allowed)) {
+                        $uploadDir = dirname(__DIR__, 3) . '/public/uploads/photos/';
+                        if (!is_dir($uploadDir)) {
+                            mkdir($uploadDir, 0777, true);
+                        }
+                        $fileName = 'photo_' . uniqid() . '.' . $ext;
+                        $targetPath = $uploadDir . $fileName;
+                        if (move_uploaded_file($tmpName, $targetPath)) {
+                            $targetItemId = (int)($rawItems[$idx]['target_item_id'] ?? 0);
+                            if ($targetItemId > 0) {
+                                $uploadedPhotos[$targetItemId] = 'uploads/photos/' . $fileName;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($this->model->saveDailyLog($weeklyProgressId, $logData, $itemQtys, $userId, $uploadedPhotos)) {
             setSuccess("Daily progress saved successfully.");
         } else {
             setError("Failed to save progress.");
@@ -229,6 +347,28 @@ class Con_PhaseWeeklyProgressController extends Controller {
         }
 
         header("Location: " . $GLOBALS['base_url'] . "/con-weekly-progress/" . $targetId . "?week=" . $weekNo);
+        exit;
+    }
+
+    // =========================================================================
+    // DELETE DAILY PROGRESS LOG ITEM (ROUTE)
+    // =========================================================================
+    public function deleteDailyLogItem($logRowId) {
+        $logRowId = (int)$logRowId;
+        if (!$logRowId) {
+            setError("Invalid log row ID.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
+        $meta = $this->model->deleteDailyLogItem($logRowId);
+        if (!empty($meta)) {
+            setSuccess("Work item removed from schedule.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-weekly-progress/" . $meta['target_id'] . "?week=" . $meta['week_number'] . "&log_date=" . $meta['log_date']);
+        } else {
+            setError("Failed to delete log entry or entry not found.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+        }
         exit;
     }
 }

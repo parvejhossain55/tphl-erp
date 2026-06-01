@@ -782,7 +782,7 @@
                 categories: attendanceData[currentPeriod].labels,
                 labels: {
                     style: {
-                        colors: '#1a6e40', // 👈 employee name color
+                        colors: '#5e4cdc', // 👈 employee name color
                         fontSize: '12px',
                         fontWeight: 600
                     }
@@ -801,13 +801,13 @@
                 },
                 labels: {
                     style: {
-                        colors: '#23bb95', // 👈 left side numbers color
+                        colors: '#8e7eff', // 👈 left side numbers color
                         fontSize: '12px'
                     }
                 }
             },
 
-            colors: ['#1a6e40', '#23bb95', '#5cc6a7', '#9fe0c8'],
+            colors: ['#5e4cdc', '#8e7eff', '#a796e0', '#c9c2ff'],
             dataLabels: {
                 enabled: true
             },

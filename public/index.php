@@ -839,6 +839,8 @@ $routes['con-phase-items/(\d+)']            = ['controller' => 'Phase2\Con_Phase
 $routes['con-phase-items-update/(\d+)']     = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'update'];
 $routes['con-phase-items-delete/(\d+)']     = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'delete'];
 $routes['con-phase-items-progress']         = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'ajaxUpdateProgress'];
+$routes['con-phase-item-add']                 = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'addItem'];
+$routes['con-phase-item-edit']                = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'editItem'];
 
 // Phase-wise Construction - Module 4: Monthly Target Planner
 $routes['con-monthly-targets/(\d+)']        = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'index'];
@@ -855,6 +857,23 @@ $routes['con-monthly-worktypes']            = ['controller' => 'Phase2\Con_Month
 $routes['con-weekly-progress/(\d+)']        = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'show'];
 $routes['con-weekly-progress-save']         = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'saveDailyLog'];
 $routes['con-weekly-progress-submit']       = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'submitWeeklyUpdate'];
+$routes['con-weekly-progress-delete/(\d+)']  = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'deleteDailyLogItem'];
+
+// Phase-wise Construction - Module 6: Monthly Review
+$routes['con-monthly-review/(\d+)']                                              = ['controller' => 'Phase2\Con_MonthlyReviewController', 'method' => 'index'];
+$routes['con-monthly-review/(\d+)/phase/(\d+)/month/([\d-]+)']                  = ['controller' => 'Phase2\Con_MonthlyReviewController', 'method' => 'show'];
+
+// Phase-wise Construction - Module 7: Risk Dashboard
+$routes['con-risk-dashboard/(\d+)']          = ['controller' => 'Phase2\Con_RiskDashboardController', 'method' => 'index'];
+$routes['con-risk-dashboard-store']          = ['controller' => 'Phase2\Con_RiskDashboardController', 'method' => 'storeRisk'];
+$routes['con-risk-dashboard-update-status']  = ['controller' => 'Phase2\Con_RiskDashboardController', 'method' => 'updateRiskStatus'];
+$routes['con-risk-dashboard-delete/(\d+)']   = ['controller' => 'Phase2\Con_RiskDashboardController', 'method' => 'deleteRisk'];
+
+// Phase-wise Construction - Module 8: Recovery Plan
+$routes['con-recovery-plan/(\d+)']           = ['controller' => 'Phase2\Con_RecoveryPlanController', 'method' => 'index'];
+$routes['con-recovery-plan-create']          = ['controller' => 'Phase2\Con_RecoveryPlanController', 'method' => 'createPlan'];
+$routes['con-recovery-plan-action-store']    = ['controller' => 'Phase2\Con_RecoveryPlanController', 'method' => 'storeActionItem'];
+$routes['con-recovery-plan-action-update']   = ['controller' => 'Phase2\Con_RecoveryPlanController', 'method' => 'updateActionStatus'];
 
 $routes['con-ajax-workplan/(\d+)'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWorkPlan'];
 $routes['con-ajax-targets/(\d+)']  = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxTargets'];

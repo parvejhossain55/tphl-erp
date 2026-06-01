@@ -35,9 +35,9 @@ $statusColor = [
   <div class="col-12">
     <style>
       :root {
-        --cd-primary: #198754;
-        --cd-dark: #0f5132;
-        --cd-light: #20a86a;
+        --cd-primary: #5e4cdc;
+        --cd-dark: #4b3db1;
+        --cd-light: #8b7ef6;
         --cd-blue: #3b82f6;
         --cd-green: #10b981;
         --cd-amber: #f59e0b;
@@ -374,7 +374,7 @@ $statusColor = [
     </style>
 
     <!-- ═══════════════════════════════ GREEN HERO BANNER ═══════════════════════════════ -->
-    <div style="background:linear-gradient(135deg,#0f5132 0%,#198754 55%,#20a86a 100%);
+    <div style="background:#5e4cdc;
             border-radius:18px;padding:26px 30px;margin-bottom:22px;
             position:relative;overflow:hidden">
       <div style="position:absolute;width:260px;height:260px;border-radius:50%;
@@ -580,7 +580,7 @@ $statusColor = [
                   <td style="text-align:right">
                     <a href="<?= $base ?>/con-estimate-show/<?= $pb['id'] ?>" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
                 padding:5px 14px;border-radius:8px;text-decoration:none;
-                background:linear-gradient(135deg,#059669,#10b981);color:#fff" onclick="event.stopPropagation()">
+                background:#5e4cdc;color:#fff" onclick="event.stopPropagation()">
                       <i class="fal fa-check-circle"></i> Review & Approve
                     </a>
                   </td>
