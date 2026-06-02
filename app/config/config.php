@@ -25,9 +25,9 @@ if ($current_server == 1) {
 if ($current_server == 2) {
     return [
         "db_host" => "localhost",
-        "db_user" => "dvalleyb_tphl_db",
-        "db_pass" => "UI+,&%e]1u,UKxMS",
-        "db_name" => "dvalleyb_tphl_db",
+        "db_user" => "root",
+        "db_pass" => "",
+        "db_name" => "easy_nirmanX",
     ];
 
 }
