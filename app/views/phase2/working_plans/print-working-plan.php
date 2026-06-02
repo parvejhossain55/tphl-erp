@@ -611,7 +611,7 @@ $printDate = date('d M Y, h:i A');
         <!-- ── Print Action Bar (hidden on print) ──────────── -->
         <div class="print-bar">
             <div>
-                <div class="company-info">TPHL-ERP · Construction Management</div>
+                <div class="company-info">easy-nirmanX · Construction Management</div>
                 <div class="doc-title">Working Plan — <?= htmlspecialchars($plan['project_name'] ?? '') ?></div>
             </div>
             <div class="d-flex gap-2" style="display:flex;gap:10px;">
@@ -629,7 +629,7 @@ $printDate = date('d M Y, h:i A');
 
             <!-- Header -->
             <div class="doc-header">
-                <div class="company-info">TPHL-ERP · Construction Phase 2</div>
+                <div class="company-info">easy-nirmanX · Construction Phase 2</div>
                 <h1>Project Working Plan</h1>
                 <div class="sub"><?= htmlspecialchars($plan['project_name'] ?? '') ?> · <?= $monthName ?>
                     <?= $plan['year'] ?></div>
@@ -971,7 +971,7 @@ $printDate = date('d M Y, h:i A');
             <!-- Document Footer -->
             <div class="doc-footer">
                 <div>
-                    <div style="font-weight:600;color:#475569;margin-bottom:2px;">TPHL-ERP · Construction Management
+                    <div style="font-weight:600;color:#475569;margin-bottom:2px;">easy-nirmanX · Construction Management
                         System</div>
                     <div>Generated: <?= $printDate ?> · Plan ID: #WP-<?= str_pad($plan['id'], 5, '0', STR_PAD_LEFT) ?>
                     </div>

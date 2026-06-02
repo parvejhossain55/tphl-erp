@@ -70,19 +70,37 @@ class Con_MaterialIssueController extends Controller
         $materials  = $this->materialModel->getAll();
         $stocks     = $this->stockModel->getCurrentStock();
 
-        // Fetch Working Plans and Targets
-        $workingPlanModel = new \Con_WorkingPlan($this->db);
-        $workPlans = $workingPlanModel->getAll();
-        
-        $targets = [];
+        // ── Fetch Phases grouped by project ──────────────────────────────────
+        // Structure: $phasesByProject[project_id][] = phase row
+        $phasesByProject = [];
         try {
-            $tRes = $this->db->query("
-                SELECT tf.*, p.name AS project_name 
-                FROM target_fixed tf 
-                LEFT JOIN projects p ON p.id = tf.project_id 
-                ORDER BY tf.id DESC
+            $phRes = $this->db->query("
+                SELECT id AS phase_id, project_id, phase_name, phase_order
+                FROM project_phases
+                ORDER BY project_id ASC, phase_order ASC, phase_name ASC
             ");
-            if ($tRes) $targets = $tRes->fetch_all(MYSQLI_ASSOC);
+            if ($phRes) {
+                while ($row = $phRes->fetch_assoc()) {
+                    $phasesByProject[(int)$row['project_id']][] = $row;
+                }
+            }
+        } catch (\Exception $e) {}
+
+        // ── Fetch Monthly Targets grouped by phase ────────────────────────────
+        // Structure: $monthlyTargetsByPhase[phase_id][] = target row
+        $monthlyTargetsByPhase = [];
+        try {
+            $mtRes = $this->db->query("
+                SELECT id AS monthly_target_id, phase_id, project_id,
+                       target_month, target_month_number, target_year, planning_status
+                FROM phase_monthly_targets
+                ORDER BY phase_id ASC, target_month ASC
+            ");
+            if ($mtRes) {
+                while ($row = $mtRes->fetch_assoc()) {
+                    $monthlyTargetsByPhase[(int)$row['phase_id']][] = $row;
+                }
+            }
         } catch (\Exception $e) {}
 
         // Fetch received materials per project
@@ -119,17 +137,32 @@ class Con_MaterialIssueController extends Controller
             if ($cRes) $contractors = $cRes->fetch_all(MYSQLI_ASSOC);
         } catch (\Exception $e) {}
 
+        // ── Pre-fill params from weekly progress ──────────────────────────────
+        $fromWeekly  = !empty($_GET['from_weekly']);
+        $preProjectId = (int)($_GET['project_id'] ?? 0);
+        $prePhaseId   = (int)($_GET['phase_id']   ?? 0);
+        $preTargetId  = (int)($_GET['target_id']  ?? 0); // phase_monthly_targets.id
+        $preLogDate   = trim($_GET['log_date']     ?? '');
+        $backUrl      = trim($_GET['back_url']     ?? '');
+
         $this->view('phase2/material-issues/create-issue', [
-            'current_route' => 'con-material-issue-create',
-            'page_title'    => 'New Material Issue',
-            'projects'      => $projects,
-            'warehouses'    => $warehouses,
-            'materials'     => $materials,
-            'stocks'        => $stocks,
-            'workPlans'     => $workPlans,
-            'targets'       => $targets,
-            'contractors'   => $contractors,
-            'receivedMaterials' => $receivedMaterials,
+            'current_route'         => 'con-material-issue-create',
+            'page_title'            => 'New Material Issue',
+            'projects'              => $projects,
+            'warehouses'            => $warehouses,
+            'materials'             => $materials,
+            'stocks'                => $stocks,
+            'phasesByProject'       => $phasesByProject,
+            'monthlyTargetsByPhase' => $monthlyTargetsByPhase,
+            'contractors'           => $contractors,
+            'receivedMaterials'     => $receivedMaterials,
+            // weekly progress context (empty strings / 0 when not coming from weekly)
+            'fromWeekly'            => $fromWeekly,
+            'preProjectId'          => $preProjectId,
+            'prePhaseId'            => $prePhaseId,
+            'preTargetId'           => $preTargetId,
+            'preLogDate'            => $preLogDate,
+            'backUrl'               => $backUrl,
         ]);
     }
 
@@ -158,9 +191,12 @@ class Con_MaterialIssueController extends Controller
             'purpose'      => trim($_POST['purpose'] ?? ''),
             'issued_by'    => $userId,
             'issue_date'   => $_POST['issue_date'] ?? date('Y-m-d'),
-            'target_id'    => !empty($_POST['target_id']) ? (int)$_POST['target_id'] : null,
-            'work_plan_id' => !empty($_POST['work_plan_id']) ? (int)$_POST['work_plan_id'] : null,
+            // target_id now stores phase_monthly_targets.id (repurposed, nullable)
+            'target_id'    => !empty($_POST['phase_monthly_target_id']) ? (int)$_POST['phase_monthly_target_id'] : null,
+            'work_plan_id' => null,
         ];
+
+        $backUrl = trim($_POST['back_url'] ?? '');
 
         if (empty($data['material_id']) || $data['quantity'] <= 0) {
             setError('Material and quantity are required.');
@@ -188,7 +224,12 @@ class Con_MaterialIssueController extends Controller
             }
 
             setSuccess("Material Issue ISS-{$id} created. Stock deducted.");
-            header("Location: {$GLOBALS['base_url']}/con-material-issue/{$id}");
+            // If came from weekly progress, redirect back there; otherwise show issue
+            if (!empty($backUrl)) {
+                header("Location: " . $backUrl);
+            } else {
+                header("Location: {$GLOBALS['base_url']}/con-material-issue/{$id}");
+            }
         } else {
             setError('Failed to create issue. Check stock availability.');
             header("Location: {$GLOBALS['base_url']}/con-material-issue-create");

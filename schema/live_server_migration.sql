@@ -1,5 +1,5 @@
 -- ============================================================
---  TPHL-ERP: Local → Live Server Migration Script
+--  easy-nirmanX: Local → Live Server Migration Script
 --  Generated: 2026-04-29
 --  Run this on LIVE server phpMyAdmin / MySQL CLI
 -- ============================================================

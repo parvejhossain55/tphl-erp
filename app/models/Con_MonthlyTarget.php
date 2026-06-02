@@ -132,8 +132,11 @@ class Con_MonthlyTarget {
         $stmt = $this->db->prepare("
             SELECT pmti.*,
                    wt.work_type_name,
-                   dt.name AS design_type_name
+                   dt.name AS design_type_name,
+                   ppi.weight_pct AS sub_item_weight
             FROM phase_monthly_target_items pmti
+            INNER JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
+            LEFT JOIN project_phase_items ppi ON ppi.phase_id = pmt.phase_id AND ppi.item_name = pmti.work_item_name COLLATE utf8mb4_general_ci
             LEFT JOIN work_types  wt ON wt.id = pmti.work_type_id
             LEFT JOIN design_types dt ON dt.id = wt.design_type_id
             WHERE pmti.target_id = ?

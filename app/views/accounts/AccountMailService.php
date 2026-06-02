@@ -197,7 +197,7 @@ HTML;
             $greeting = "Hello,";
             $message = "A new cashout request has been submitted and is pending your review.";
             $buttonText = "View Request";
-            $buttonUrl = "https://thepremiumhomesltd.com/TPHL-ERP/admin-cashout-requests";
+            $buttonUrl = "https://thepremiumhomesltd.com/easy-nirmanX/admin-cashout-requests";
             
             $detailsHtml = "
                 <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Request Details:</h4>
@@ -278,7 +278,7 @@ HTML;
             $greeting = "Hello,";
             $message = "The cashout request has been processed and updated to {$statusText}.";
             $buttonText = "View Request";
-            $buttonUrl = "https://thepremiumhomesltd.com/TPHL-ERP/admin-login";
+            $buttonUrl = "https://thepremiumhomesltd.com/easy-nirmanX/admin-login";
 
             $detailsHtml = "
                 <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Approval Details:</h4>
@@ -357,7 +357,7 @@ HTML;
             $greeting    = "Hello,";
             $message     = "A new vendor payment request has been submitted and is pending your review.";
             $buttonText  = "View Requests";
-            $buttonUrl   = "https://thepremiumhomesltd.com/TPHL-ERP/con-vendor-payment-requests";
+            $buttonUrl   = "https://thepremiumhomesltd.com/easy-nirmanX/con-vendor-payment-requests";
 
             $detailsHtml = "
                 <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Request Details:</h4>
@@ -432,7 +432,7 @@ HTML;
             $greeting    = "Hello,";
             $message     = "A vendor payment request has been processed and updated to {$statusText}.";
             $buttonText  = "View Requests";
-            $buttonUrl   = "https://thepremiumhomesltd.com/TPHL-ERP/con-vendor-payment-requests";
+            $buttonUrl   = "https://thepremiumhomesltd.com/easy-nirmanX/con-vendor-payment-requests";
 
             $detailsHtml = "
                 <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Approval Details:</h4>
@@ -509,7 +509,7 @@ HTML;
             $greeting    = "Hello,";
             $message     = "A new contractor bill has been submitted and is pending your review.";
             $buttonText  = "View Bills";
-            $buttonUrl   = "https://thepremiumhomesltd.com/TPHL-ERP/con-contractor-bills";
+            $buttonUrl   = "https://thepremiumhomesltd.com/easy-nirmanX/con-contractor-bills";
 
             $detailsHtml = "
                 <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Bill Details:</h4>
@@ -601,7 +601,7 @@ HTML;
             $greeting    = "Hello,";
             $message     = "A contractor bill has been processed and updated to {$statusText}.";
             $buttonText  = "View Bills";
-            $buttonUrl   = "https://thepremiumhomesltd.com/TPHL-ERP/con-contractor-bills";
+            $buttonUrl   = "https://thepremiumhomesltd.com/easy-nirmanX/con-contractor-bills";
 
             $detailsHtml = "
                 <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Approval Details:</h4>
@@ -675,7 +675,7 @@ HTML;
             $greeting    = "Hello,";
             $message     = "A contractor bill has been rejected by Management/PM.";
             $buttonText  = "View Bill";
-            $buttonUrl   = "https://thepremiumhomesltd.com/TPHL-ERP/con-contractor-bills";
+            $buttonUrl   = "https://thepremiumhomesltd.com/easy-nirmanX/con-contractor-bills";
 
             $detailsHtml = "
                 <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Rejection Details:</h4>
@@ -760,7 +760,7 @@ HTML;
             $greeting    = "Hello,";
             $message     = "A client refund request has been submitted and is pending your approval.";
             $buttonText  = "View Refunds";
-            $buttonUrl   = "https://thepremiumhomesltd.com/TPHL-ERP/client-refunds";
+            $buttonUrl   = "https://thepremiumhomesltd.com/easy-nirmanX/client-refunds";
 
             $detailsHtml = "
                 <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Refund Details:</h4>
@@ -821,7 +821,7 @@ HTML;
             $greeting    = "Hello,";
             $message     = "A client refund has been approved. The booking has been cancelled and the flat released. A cashout request has been auto-created for disbursement.";
             $buttonText  = "View Refunds";
-            $buttonUrl   = "https://thepremiumhomesltd.com/TPHL-ERP/client-refunds";
+            $buttonUrl   = "https://thepremiumhomesltd.com/easy-nirmanX/client-refunds";
 
             $detailsHtml = "
                 <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Approval Details:</h4>

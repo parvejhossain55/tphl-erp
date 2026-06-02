@@ -22,16 +22,19 @@ class Con_MaterialIssue extends Model
         $sql = "SELECT mi.*, p.name AS project_name, w.name AS warehouse_name,
                        m.name AS material_name, m.unit, COALESCE(cat.name, 'Uncategorized') AS category_name,
                        u.full_name AS issued_by_name,
-                       wp.work_description AS work_plan_name,
-                       tf.target_title AS target_name
+                       c.name AS issued_to_name,
+                       pmt.target_month AS monthly_target_month,
+                       pmt.planning_status AS monthly_target_status,
+                       pp.phase_name
                 FROM {$this->table} mi
                 LEFT JOIN projects p ON p.id = mi.project_id
                 LEFT JOIN con_warehouses w ON w.id = mi.warehouse_id
                 LEFT JOIN con_materials m ON m.id = mi.material_id
                 LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                 LEFT JOIN users u ON u.id = mi.issued_by
-                LEFT JOIN project_working_plans wp ON wp.id = mi.work_plan_id
-                LEFT JOIN target_fixed tf ON tf.id = mi.target_id
+                LEFT JOIN contractors c ON c.id = mi.issued_to
+                LEFT JOIN phase_monthly_targets pmt ON pmt.id = mi.target_id
+                LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
                 ORDER BY mi.id DESC";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
@@ -43,16 +46,19 @@ class Con_MaterialIssue extends Model
             "SELECT mi.*, p.name AS project_name, w.name AS warehouse_name,
                     m.name AS material_name, m.unit, COALESCE(cat.name, 'Uncategorized') AS category_name,
                     u.full_name AS issued_by_name,
-                    wp.work_description AS work_plan_name,
-                    tf.target_title AS target_name
+                    c.name AS issued_to_name,
+                    pmt.target_month AS monthly_target_month,
+                    pmt.planning_status AS monthly_target_status,
+                    pp.phase_name
              FROM {$this->table} mi
              LEFT JOIN projects p ON p.id = mi.project_id
              LEFT JOIN con_warehouses w ON w.id = mi.warehouse_id
              LEFT JOIN con_materials m ON m.id = mi.material_id
              LEFT JOIN con_material_categories cat ON cat.id = m.category_id
              LEFT JOIN users u ON u.id = mi.issued_by
-             LEFT JOIN project_working_plans wp ON wp.id = mi.work_plan_id
-             LEFT JOIN target_fixed tf ON tf.id = mi.target_id
+             LEFT JOIN contractors c ON c.id = mi.issued_to
+             LEFT JOIN phase_monthly_targets pmt ON pmt.id = mi.target_id
+             LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
              WHERE mi.id = ?"
         );
         $stmt->bind_param('i', $id);

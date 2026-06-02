@@ -99,7 +99,7 @@ class TaskController extends Controller
                 sendMail(
                     $user['email'],
                     'New Task Assigned: ' . $data['title'],
-                    'https://thepremiumhomesltd.com/TPHL-ERP/admin-login',
+                    'https://thepremiumhomesltd.com/easy-nirmanX/admin-login',
                     $assignedBy
                 );
                 // echo "<p style='color:green'>Email sent successfully to " . htmlspecialchars($user['email']) . "</p>";

@@ -1,5 +1,5 @@
 <?php
-$dir = new RecursiveDirectoryIterator('C:\xampp\htdocs\TPHL-ERP\app\controllers\Phase2');
+$dir = new RecursiveDirectoryIterator('C:\xampp\htdocs\easy-nirmanX\app\controllers\Phase2');
 $ite = new RecursiveIteratorIterator($dir);
 $files = new RegexIterator($ite, '/^.+\.php$/i', RecursiveRegexIterator::GET_MATCH);
 

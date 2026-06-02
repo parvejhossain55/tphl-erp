@@ -2,7 +2,7 @@
 -- PHASE-WISE CONSTRUCTION MANAGEMENT — MIGRATION SQL
 -- Version   : 1.0.0
 -- Date      : 2026-05-24
--- Author    : TPHL-ERP Dev Team
+-- Author    : easy-nirmanX Dev Team
 -- Run on    : Live Server (tphl_db)
 -- Safe      : YES — No existing table is dropped or altered destructively
 -- =============================================================================

@@ -356,7 +356,7 @@ CREATE TABLE `cache` (
 
 LOCK TABLES `cache` WRITE;
 /*!40000 ALTER TABLE `cache` DISABLE KEYS */;
-INSERT INTO `cache` VALUES ('laravel-cache-5c785c036466adea360111aa28563bfd556b5fba','i:1;',1771691443),('laravel-cache-5c785c036466adea360111aa28563bfd556b5fba:timer','i:1771691443;',1771691443),('laravel-cache-77de68daecd823babbb58edb1c8e14d7106e83bb','i:1;',1771695229),('laravel-cache-77de68daecd823babbb58edb1c8e14d7106e83bb:timer','i:1771695228;',1771695229),('tphl-erp-cache-5c785c036466adea360111aa28563bfd556b5fba','i:1;',1771733365),('tphl-erp-cache-5c785c036466adea360111aa28563bfd556b5fba:timer','i:1771733365;',1771733365),('tphl-erp-cache-77de68daecd823babbb58edb1c8e14d7106e83bb','i:1;',1771731675),('tphl-erp-cache-77de68daecd823babbb58edb1c8e14d7106e83bb:timer','i:1771731675;',1771731675);
+INSERT INTO `cache` VALUES ('laravel-cache-5c785c036466adea360111aa28563bfd556b5fba','i:1;',1771691443),('laravel-cache-5c785c036466adea360111aa28563bfd556b5fba:timer','i:1771691443;',1771691443),('laravel-cache-77de68daecd823babbb58edb1c8e14d7106e83bb','i:1;',1771695229),('laravel-cache-77de68daecd823babbb58edb1c8e14d7106e83bb:timer','i:1771695228;',1771695229),('easy-nirmanX-cache-5c785c036466adea360111aa28563bfd556b5fba','i:1;',1771733365),('easy-nirmanX-cache-5c785c036466adea360111aa28563bfd556b5fba:timer','i:1771733365;',1771733365),('easy-nirmanX-cache-77de68daecd823babbb58edb1c8e14d7106e83bb','i:1;',1771731675),('easy-nirmanX-cache-77de68daecd823babbb58edb1c8e14d7106e83bb:timer','i:1771731675;',1771731675);
 /*!40000 ALTER TABLE `cache` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2383,7 +2383,7 @@ CREATE TABLE `land_visibility_study` (
 
 LOCK TABLES `land_visibility_study` WRITE;
 /*!40000 ALTER TABLE `land_visibility_study` DISABLE KEYS */;
-INSERT INTO `land_visibility_study` VALUES (1,13,'Verified','https://www.shutterstock.com/image-photo/aerial-drone-view-development-land-simister-2738802653?trackingId=5d2842a3-d158-4abc-a778-c714cfa13f84&listId=searchResults','https://www.shutterstock.com/image-photo/aerial-drone-view-development-land-simister-2738802653?trackingId=5d2842a3-d158-4abc-a778-c714cfa13f84&listId=searchResults','',NULL,'Pending',NULL,121,'2026-05-05 13:01:25',NULL),(2,9,'Verified','https://thepremiumhomesltd.com/TPHL-ERP/my-all-assigned-leads','https://thepremiumhomesltd.com/TPHL-ERP/my-all-assigned-leads','',NULL,'Pending',NULL,121,'2026-05-18 07:22:52',NULL);
+INSERT INTO `land_visibility_study` VALUES (1,13,'Verified','https://www.shutterstock.com/image-photo/aerial-drone-view-development-land-simister-2738802653?trackingId=5d2842a3-d158-4abc-a778-c714cfa13f84&listId=searchResults','https://www.shutterstock.com/image-photo/aerial-drone-view-development-land-simister-2738802653?trackingId=5d2842a3-d158-4abc-a778-c714cfa13f84&listId=searchResults','',NULL,'Pending',NULL,121,'2026-05-05 13:01:25',NULL),(2,9,'Verified','https://thepremiumhomesltd.com/easy-nirmanX/my-all-assigned-leads','https://thepremiumhomesltd.com/easy-nirmanX/my-all-assigned-leads','',NULL,'Pending',NULL,121,'2026-05-18 07:22:52',NULL);
 /*!40000 ALTER TABLE `land_visibility_study` ENABLE KEYS */;
 UNLOCK TABLES;
 

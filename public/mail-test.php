@@ -2,7 +2,7 @@
 /**
  * TPHL ERP — Workflow Mail Diagnostic Tool
  * ─────────────────────────────────────────
- * URL: http://localhost:8080/TPHL-ERP/public/mail-test.php
+ * URL: http://localhost:8080/easy-nirmanX/public/mail-test.php
  * PURPOSE: Test if ProjectWorkflowMailService can send emails correctly.
  * DELETE THIS FILE after testing is confirmed.
  */
@@ -22,7 +22,7 @@ ini_set('display_errors', 1);
 
 // Set GLOBALS base_url with full host (needed for email link building)
 $GLOBALS['base_url'] = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http')
-                       . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost:8080') . '/TPHL-ERP';
+                       . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost:8080') . '/easy-nirmanX';
 
 // ── DB connection ──────────────────────────────────────────────────
 $dbHost = 'localhost';
@@ -138,7 +138,7 @@ if ($sendProjectId > 0) {
 
         // Actually fire it
         try {
-            $GLOBALS['base_url'] = '/TPHL-ERP';
+            $GLOBALS['base_url'] = '/easy-nirmanX';
             $wfMail->sendProjectAssignmentEmails($sendProjectId, $project['name']);
             echo "<p class='ok' style='font-size:15px;margin-top:12px'>✅ sendProjectAssignmentEmails() fired successfully!<br>
               Check the inboxes of: <strong>" . implode(', ', array_column($toSend, 'email')) . "</strong></p>";
@@ -246,7 +246,7 @@ if ($sendProjectId > 0) {
   <h2>Step 2 — Send Test Email</h2>
   <?php if (!$testToEmail): ?>
     <p class="warn">⚠️ No email address provided. Add <code>?email=your@email.com</code> to the URL to test sending.</p>
-    <p>Example: <code>http://localhost:8080/TPHL-ERP/public/mail-test.php?project_id=<?= $testProjectId ?>&email=your@gmail.com</code></p>
+    <p>Example: <code>http://localhost:8080/easy-nirmanX/public/mail-test.php?project_id=<?= $testProjectId ?>&email=your@gmail.com</code></p>
   <?php else: ?>
     <p>Sending test workflow email to: <strong><?= htmlspecialchars($testToEmail) ?></strong></p>
     <?php

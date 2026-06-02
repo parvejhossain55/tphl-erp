@@ -80,19 +80,28 @@ class Con_PhaseItem {
         $stmt = $this->db->prepare("
             INSERT INTO project_phase_items
                 (phase_id, item_name, item_order, weight_pct,
-                 planned_progress, actual_progress, design_type_id, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                 planned_progress, actual_progress, work_type_id, design_type_id, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $nextOrder = $this->nextOrder((int)$data['phase_id']);
-        $stmt->bind_param('isiddis',
+        $wtId = !empty($data['work_type_id']) ? (int)$data['work_type_id'] : null;
+        $dtId = !empty($data['design_type_id']) ? (int)$data['design_type_id'] : null;
+        
+        $weight_pct = (float)($data['weight_pct'] ?? 0.00);
+        $planned_progress = (float)($data['planned_progress'] ?? 0.00);
+        $actual_progress = (float)($data['actual_progress'] ?? 0.00);
+        $status = trim($data['status'] ?? 'Not Started');
+
+        $stmt->bind_param('isidddiis',
             $data['phase_id'],
             $data['item_name'],
             $nextOrder,
-            $data['weight_pct']       ?? 0.00,
-            $data['planned_progress'] ?? 0.00,
-            $data['actual_progress']  ?? 0.00,
-            $data['design_type_id']   ?? null,
-            $data['status']           ?? 'Not Started'
+            $weight_pct,
+            $planned_progress,
+            $actual_progress,
+            $wtId,
+            $dtId,
+            $status
         );
         return $stmt->execute();
     }

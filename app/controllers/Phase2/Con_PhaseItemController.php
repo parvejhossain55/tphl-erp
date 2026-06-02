@@ -155,6 +155,103 @@ class Con_PhaseItemController extends Controller {
     }
 
     // =========================================================================
+    // ADD ITEM — AJAX/POST to create a new custom sub-item
+    // =========================================================================
+    public function addItem() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405); exit;
+        }
+
+        $phaseId  = (int)($_POST['phase_id'] ?? 0);
+        $itemName = trim($_POST['item_name'] ?? '');
+
+        if (!$phaseId || $itemName === '') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Required fields missing.']);
+            exit;
+        }
+
+        $wtId = !empty($_POST['work_type_id']) ? (int)$_POST['work_type_id'] : null;
+        $dtId = null;
+
+        // If work_type_id is selected, query its design_type_id
+        if ($wtId) {
+            $stmt = $this->db->prepare("SELECT design_type_id FROM work_types WHERE id = ?");
+            $stmt->bind_param('i', $wtId);
+            $stmt->execute();
+            $res = $stmt->get_result()->fetch_assoc();
+            if ($res) {
+                $dtId = $res['design_type_id'];
+            }
+        }
+
+        $data = [
+            'phase_id'         => $phaseId,
+            'item_name'        => $itemName,
+            'weight_pct'       => (float)($_POST['weight_pct'] ?? 0.00),
+            'planned_progress' => (float)($_POST['planned_progress'] ?? 0.00),
+            'actual_progress'  => (float)($_POST['actual_progress'] ?? 0.00),
+            'work_type_id'     => $wtId,
+            'design_type_id'   => $dtId,
+            'status'           => trim($_POST['status'] ?? 'Not Started'),
+        ];
+
+        if ($this->itemModel->create($data)) {
+            // Sync progress back to the parent phase
+            $this->itemModel->syncPhaseProgress($phaseId);
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true]);
+        } else {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to insert sub-item.']);
+        }
+        exit;
+    }
+
+    // =========================================================================
+    // EDIT ITEM — AJAX/POST to update a sub-item's name and weight
+    // =========================================================================
+    public function editItem() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405); exit;
+        }
+
+        $id        = (int)($_POST['id'] ?? 0);
+        $itemName  = trim($_POST['item_name'] ?? '');
+        $weightPct = (float)($_POST['weight_pct'] ?? 0);
+
+        if (!$id || $itemName === '') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Required fields missing.']);
+            exit;
+        }
+
+        $item = $this->itemModel->find($id);
+        if (!$item) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Sub-item not found.']);
+            exit;
+        }
+
+        $stmt = $this->db->prepare("
+            UPDATE project_phase_items
+            SET item_name = ?, weight_pct = ?, updated_at = NOW()
+            WHERE id = ?
+        ");
+        $stmt->bind_param('sdi', $itemName, $weightPct, $id);
+
+        if ($stmt->execute()) {
+            $this->itemModel->syncPhaseProgress($item['phase_id']);
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true]);
+        } else {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Failed to update sub-item.']);
+        }
+        exit;
+    }
+
+    // =========================================================================
     // DELETE — delete a single item (GET)
     // =========================================================================
     public function delete($id) {

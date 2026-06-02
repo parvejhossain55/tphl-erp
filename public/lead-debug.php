@@ -1,7 +1,7 @@
 <?php
 /**
  * LEAD AJAX DEBUG v2 - DELETE AFTER USE
- * Access: https://thepremiumhomesltd.com/TPHL-ERP/lead-debug.php
+ * Access: https://thepremiumhomesltd.com/easy-nirmanX/lead-debug.php
  */
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -142,7 +142,7 @@ function testAjax() {
 
 <?php
 // ── TEST 2: Check the REAL leads-ajax-data endpoint ──────────────────
-$baseUrl = 'https://' . $_SERVER['HTTP_HOST'] . '/TPHL-ERP';
+$baseUrl = 'https://' . $_SERVER['HTTP_HOST'] . '/easy-nirmanX';
 $realAjaxUrl = $baseUrl . '/leads-ajax-data';
 ?>
 

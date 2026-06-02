@@ -539,7 +539,7 @@ $grandTotal = $budget['total_estimated_cost'] ?? 0;
         <!-- Action Bar -->
         <div class="print-bar">
             <div>
-                <div class="doc-label">TPHL-ERP · Construction Management</div>
+                <div class="doc-label">easy-nirmanX · Construction Management</div>
                 <div class="doc-title">Initial Estimate Budget — <?= htmlspecialchars($budget['project_name'] ?? '') ?>
                 </div>
             </div>
@@ -554,7 +554,7 @@ $grandTotal = $budget['total_estimated_cost'] ?? 0;
 
             <!-- Header -->
             <div class="doc-header">
-                <div class="company">TPHL-ERP · Initial Estimate Budget</div>
+                <div class="company">easy-nirmanX · Initial Estimate Budget</div>
                 <h1><?= htmlspecialchars($budget['project_name'] ?? 'N/A') ?></h1>
                 <div class="sub">
                     <?= (!empty($budget['start_date']) && $budget['start_date'] !== '0000-00-00') ? date('d M Y', strtotime($budget['start_date'])) : '—' ?>
@@ -840,7 +840,7 @@ $grandTotal = $budget['total_estimated_cost'] ?? 0;
             <!-- Footer -->
             <div class="doc-footer">
                 <div>
-                    <div style="font-weight:700;color:#374151;margin-bottom:3px;">TPHL-ERP · Construction Management
+                    <div style="font-weight:700;color:#374151;margin-bottom:3px;">easy-nirmanX · Construction Management
                         System</div>
                     <div>Generated: <?= $printDate ?> · Budget ID:
                         #EST-<?= str_pad($budget['id'], 5, '0', STR_PAD_LEFT) ?></div>

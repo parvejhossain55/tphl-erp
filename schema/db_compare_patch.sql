@@ -1,4 +1,4 @@
--- TPHL-ERP Database Patch Script
+-- easy-nirmanX Database Patch Script
 -- Generated to update local database (tphl_db2.sql) to match live server database (tphl_db.sql)
 -- Generated on: 2026-05-24 07:35:53
 

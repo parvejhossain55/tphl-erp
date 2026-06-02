@@ -1,5 +1,5 @@
 -- =================================================================================
--- TPHL-ERP: Client Refund Module SQL Reference
+-- easy-nirmanX: Client Refund Module SQL Reference
 -- This file documents the SQL schema and queries created/updated for the refund workflow.
 -- =================================================================================
 

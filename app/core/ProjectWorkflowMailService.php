@@ -34,12 +34,12 @@ class ProjectWorkflowMailService
 
     /**
      * Build full absolute URL for use in emails.
-     * $GLOBALS['base_url'] is just '/TPHL-ERP' (no host).
+     * $GLOBALS['base_url'] is just '/easy-nirmanX' (no host).
      * We prefix it with scheme + host from $_SERVER.
      */
     private function getBaseUrl(): string
     {
-        $base = rtrim($GLOBALS['base_url'] ?? '/TPHL-ERP', '/');
+        $base = rtrim($GLOBALS['base_url'] ?? '/easy-nirmanX', '/');
 
         // Already a full URL (production might set it)
         if (str_starts_with($base, 'http')) {

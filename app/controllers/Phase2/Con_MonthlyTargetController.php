@@ -82,7 +82,7 @@ class Con_MonthlyTargetController extends Controller {
 
         // Get the phase sub-items (Layer 2)
         $subItemsStmt = $this->db->prepare("
-            SELECT ppi.id, ppi.item_name, ppi.work_type_id, wt.work_type_name
+            SELECT ppi.id, ppi.item_name, ppi.weight_pct, ppi.work_type_id, wt.work_type_name
             FROM project_phase_items ppi
             LEFT JOIN work_types wt ON wt.id = ppi.work_type_id
             WHERE ppi.phase_id = ?

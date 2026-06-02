@@ -1,5 +1,5 @@
 🏗️ Work Order Module — Full Implementation Plan
-TPHL-ERP Phase 2 Construction | Batch-wise Plan
+easy-nirmanX Phase 2 Construction | Batch-wise Plan
 
 ✅ Database (Already Done)
 con_work_orders table — তৈরি হয়েছে ✅

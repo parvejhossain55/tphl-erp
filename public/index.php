@@ -29,7 +29,7 @@ ini_set('display_errors', 1);
 
 
 $root = dirname(__DIR__);
-$GLOBALS['base_url'] = '/TPHL-ERP';
+$GLOBALS['base_url'] = '/easy-nirmanX';
 
 spl_autoload_register(function ($class) use ($root) {
     $class = str_replace('\\', '/', $class);
@@ -723,7 +723,7 @@ $routes = [
 $request_uri = $_SERVER['REQUEST_URI'];
 $route = trim(strtok($request_uri, '?'), '/');
 
-$base_folder = 'TPHL-ERP';
+$base_folder = 'easy-nirmanX';
 if (strpos($route, $base_folder) === 0) {
     $route = substr($route, strlen($base_folder));
 }
@@ -839,6 +839,8 @@ $routes['con-phase-items/(\d+)']            = ['controller' => 'Phase2\Con_Phase
 $routes['con-phase-items-update/(\d+)']     = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'update'];
 $routes['con-phase-items-delete/(\d+)']     = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'delete'];
 $routes['con-phase-items-progress']         = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'ajaxUpdateProgress'];
+$routes['con-phase-item-add']                 = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'addItem'];
+$routes['con-phase-item-edit']                = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'editItem'];
 
 // Phase-wise Construction - Module 4: Monthly Target Planner
 $routes['con-monthly-targets/(\d+)']        = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'index'];
@@ -855,6 +857,17 @@ $routes['con-monthly-worktypes']            = ['controller' => 'Phase2\Con_Month
 $routes['con-weekly-progress/(\d+)']        = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'show'];
 $routes['con-weekly-progress-save']         = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'saveDailyLog'];
 $routes['con-weekly-progress-submit']       = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'submitWeeklyUpdate'];
+$routes['con-weekly-progress-delete/(\d+)']  = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'deleteDailyLogItem'];
+
+// Phase-wise Construction - Module 6: Monthly Review
+$routes['con-monthly-review/(\d+)']        = ['controller' => 'Phase2\Con_MonthlyReviewController', 'method' => 'index'];
+
+// Phase-wise Construction - Module 7: Risk Dashboard
+$routes['con-risk-dashboard/(\d+)']        = ['controller' => 'Phase2\Con_RiskDashboardController', 'method' => 'index'];
+
+// Phase-wise Construction - Module 8: Recovery Plan
+$routes['con-recovery-plan/(\d+)']         = ['controller' => 'Phase2\Con_RecoveryPlanController', 'method' => 'index'];
+$routes['con-recovery-plan-save']           = ['controller' => 'Phase2\Con_RecoveryPlanController', 'method' => 'saveNotes'];
 
 $routes['con-ajax-workplan/(\d+)'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWorkPlan'];
 $routes['con-ajax-targets/(\d+)']  = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxTargets'];

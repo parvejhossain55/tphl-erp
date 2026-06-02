@@ -152,7 +152,7 @@ $isOverdue = $wo['end_date'] && strtotime($wo['end_date']) < time() && !in_array
     <!-- Action Bar -->
     <div class="print-bar">
         <div>
-            <div class="doc-label">TPHL-ERP · Construction Management</div>
+            <div class="doc-label">easy-nirmanX · Construction Management</div>
             <div class="doc-title"><?= htmlspecialchars($wo['wo_number'] ?? 'Work Order') ?> — <?= htmlspecialchars($wo['project_name'] ?? '') ?></div>
         </div>
         <div style="display:flex;gap:10px;">
@@ -166,7 +166,7 @@ $isOverdue = $wo['end_date'] && strtotime($wo['end_date']) < time() && !in_array
 
         <!-- Header -->
         <div class="doc-header">
-            <div class="company">TPHL-ERP · Work Order</div>
+            <div class="company">easy-nirmanX · Work Order</div>
             <h1><?= htmlspecialchars($wo['wo_number'] ?? 'Work Order') ?></h1>
             <div class="wo-title"><?= htmlspecialchars($wo['title'] ?? '') ?></div>
             <div class="sub"><?= htmlspecialchars($wo['project_name'] ?? '') ?></div>
@@ -441,7 +441,7 @@ $isOverdue = $wo['end_date'] && strtotime($wo['end_date']) < time() && !in_array
         <!-- Footer -->
         <div class="doc-footer">
             <div>
-                <div style="font-weight:700;color:#374151;margin-bottom:3px;">TPHL-ERP · Construction Management System</div>
+                <div style="font-weight:700;color:#374151;margin-bottom:3px;">easy-nirmanX · Construction Management System</div>
                 <div>Generated: <?= $printDate ?> · WO: <?= htmlspecialchars($wo['wo_number'] ?? '') ?></div>
             </div>
             <div style="display:flex;gap:40px;">
