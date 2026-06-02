@@ -321,7 +321,7 @@ $(document).on('select2:open', function () {
                             shadeIntensity: 0.4,
                             gradientToColors: [
                                 '#9f00fb',
-                                '#8c7ae6',
+                                '#13684aff',
                                 '#da950cff',
                                 '#FF4560',
                                 '#775DD0'
@@ -334,7 +334,7 @@ $(document).on('select2:open', function () {
 
                     colors: [
                         'rgb(252, 72, 171)',
-                        '#8e7eff',
+                        '#12976bff',
                         '#fecc6a',
                         '#ff8698',
                         '#a796e0'
@@ -436,7 +436,7 @@ $(document).on('select2:open', function () {
                 const activeBtn = document.querySelector('.nav-link.active');
                 const defaultPeriod = activeBtn ? activeBtn.dataset.period : 'week';
 
-                const colors = ['#5e4cdc', '#8e7eff'];
+                const colors = ['#1a6e40ff', '#23bb95ff'];
 
                 function getAlternatingColors(length) {
                     return Array.from({
@@ -485,7 +485,7 @@ $(document).on('select2:open', function () {
                     yaxis: {
                         labels: {
                             style: {
-                                colors: '#5e4cdc',
+                                colors: '#1a6e40',
                                 fontSize: '12px',
                                 fontWeight: 700
                             }

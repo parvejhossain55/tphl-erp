@@ -107,7 +107,7 @@ class QCController extends Controller
         $totalMaterialTests = $rTestCount ? (int)$rTestCount->fetch_assoc()['c'] : 0;
 
         // ── KPI 6: Pending Weekly Reports awaiting QC ────────────────────
-        $rWkCount = $this->db->query("SELECT COUNT(*) AS c FROM weekly_progress_report WHERE (approved_by_qc = 0 OR approved_by_qc IS NULL)");
+        $rWkCount = $this->db->query("SELECT COUNT(*) AS c FROM phase_weekly_progress WHERE entry_status = 'Submitted' AND (qc_status = 'Pending' OR qc_status IS NULL)");
         $pendingWeeklyCount = $rWkCount ? (int)$rWkCount->fetch_assoc()['c'] : 0;
 
         // ── Project Progress (only assigned projects) ─────────────────────
@@ -144,14 +144,17 @@ class QCController extends Controller
 
         // ── Pending Weekly Reports (full rows for table) ──────────────────
         $rPendingWeeklyQC = $this->db->query("
-            SELECT r.id, r.report_date, r.week_no,
+            SELECT pwp.id, 
+                   COALESCE(pwp.submitted_at, pwp.week_end_date) AS report_date, 
+                   pwp.week_number AS week_no,
                    p.name AS project_name,
-                   u.full_name AS created_by_name
-            FROM weekly_progress_report r
-            LEFT JOIN projects p ON p.id = r.project_id
-            LEFT JOIN users u ON u.id = r.created_by
-            WHERE (r.approved_by_qc = 0 OR r.approved_by_qc IS NULL)
-            ORDER BY r.id DESC LIMIT 10");
+                   u.full_name AS created_by_name,
+                   pwp.target_id
+            FROM phase_weekly_progress pwp
+            LEFT JOIN projects p ON p.id = pwp.project_id
+            LEFT JOIN users u ON u.id = pwp.submitted_by
+            WHERE pwp.entry_status = 'Submitted' AND (pwp.qc_status = 'Pending' OR pwp.qc_status IS NULL)
+            ORDER BY pwp.submitted_at DESC, pwp.id DESC LIMIT 10");
         $pendingWeeklyReportsQC = $rPendingWeeklyQC ? $rPendingWeeklyQC->fetch_all(MYSQLI_ASSOC) : [];
 
         // ── Architecture Engineering ──────────────────────────────────────────

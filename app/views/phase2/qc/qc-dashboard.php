@@ -421,7 +421,7 @@ if (!empty($pendingWeeklyReportsQC)):
           <td style="font-size:11px;color:var(--text-muted)">Week <?= (int)$rep['week_no'] ?></td>
           <td style="font-size:12px"><?= htmlspecialchars($rep['created_by_name'] ?? '&mdash;') ?></td>
           <td style="text-align:right">
-            <a href="<?=$base?>/con-weekly-report/<?= $rep['id'] ?>" class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:linear-gradient(135deg,#0f5132,#198754);color:#fff;border-radius:6px;text-decoration:none">
+            <a href="<?=$base?>/con-weekly-progress/<?= $rep['target_id'] ?>?week=<?= $rep['week_no'] ?>" class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:linear-gradient(135deg,#0f5132,#198754);color:#fff;border-radius:6px;text-decoration:none">
               <i class="fal fa-check-circle me-1"></i> Review &amp; Approve
             </a>
           </td>

@@ -86,8 +86,8 @@ class Con_MonthlyTarget {
         $stmt = $this->db->prepare("
             INSERT INTO phase_monthly_targets
                 (project_id, phase_id, target_month, target_month_number, target_year,
-                 planning_status, responsible_team, created_by)
-            VALUES (?,?,?,?,?,?,?,?)
+                 planning_status, responsible_team, contractor_id, created_by)
+            VALUES (?,?,?,?,?,?,?,?,?)
         ");
         $dt   = new DateTime($d['target_month']);
         $mnum = (int)$dt->format('n');
@@ -95,13 +95,15 @@ class Con_MonthlyTarget {
 
         $planningStatus = $d['planning_status'] ?? 'Draft';
         $responsibleTeam = $d['responsible_team'] ?? null;
+        $contractorId = !empty($d['contractor_id']) ? (int)$d['contractor_id'] : null;
         $createdBy = $d['created_by'] ?? null;
 
-        $stmt->bind_param('iisiissi',
+        $stmt->bind_param('iisiissii',
             $d['project_id'], $d['phase_id'], $d['target_month'],
             $mnum, $yr,
             $planningStatus,
             $responsibleTeam,
+            $contractorId,
             $createdBy
         );
         $stmt->execute();
@@ -111,10 +113,11 @@ class Con_MonthlyTarget {
     public function update(int $id, array $d): bool {
         $stmt = $this->db->prepare("
             UPDATE phase_monthly_targets
-            SET planning_status=?, responsible_team=?, updated_at=NOW()
+            SET planning_status=?, responsible_team=?, contractor_id=?, updated_at=NOW()
             WHERE id=?
         ");
-        $stmt->bind_param('ssi', $d['planning_status'], $d['responsible_team'], $id);
+        $contractorId = !empty($d['contractor_id']) ? (int)$d['contractor_id'] : null;
+        $stmt->bind_param('ssii', $d['planning_status'], $d['responsible_team'], $contractorId, $id);
         return $stmt->execute();
     }
 
@@ -133,12 +136,14 @@ class Con_MonthlyTarget {
             SELECT pmti.*,
                    wt.work_type_name,
                    dt.name AS design_type_name,
-                   ppi.weight_pct AS sub_item_weight
+                   ppi.weight_pct AS sub_item_weight,
+                   c.name AS contractor_name
             FROM phase_monthly_target_items pmti
             INNER JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
             LEFT JOIN project_phase_items ppi ON ppi.phase_id = pmt.phase_id AND ppi.item_name = pmti.work_item_name COLLATE utf8mb4_general_ci
             LEFT JOIN work_types  wt ON wt.id = pmti.work_type_id
             LEFT JOIN design_types dt ON dt.id = wt.design_type_id
+            LEFT JOIN contractors c ON c.id = pmti.contractor_id
             WHERE pmti.target_id = ?
             ORDER BY pmti.sort_order ASC, pmti.id ASC
         ");
@@ -160,11 +165,11 @@ class Con_MonthlyTarget {
                 (target_id, work_type_id, work_item_name, unit,
                  monthly_target_qty, actual_qty,
                  planned_progress_pct, actual_progress_pct,
-                 start_date, end_date, responsible_team,
+                 start_date, end_date, responsible_team, contractor_id,
                  priority, status,
                  week_1_qty, week_2_qty, week_3_qty, week_4_qty,
-                 sort_order)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                 recovery_notes, sort_order)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $nextSort = $this->nextSort((int)$d['target_id']);
 
@@ -178,14 +183,16 @@ class Con_MonthlyTarget {
         $startDate          = $d['start_date']           ?? null;
         $endDate            = $d['end_date']             ?? null;
         $responsibleTeam    = $d['responsible_team']     ?? null;
+        $contractorId       = !empty($d['contractor_id']) ? (int)$d['contractor_id'] : null;
         $priority           = $d['priority']             ?? 'Medium';
         $status             = $d['status']               ?? 'Draft';
         $week1Qty           = $d['week_1_qty']           ?? 0;
         $week2Qty           = $d['week_2_qty']           ?? 0;
         $week3Qty           = $d['week_3_qty']           ?? 0;
         $week4Qty           = $d['week_4_qty']           ?? 0;
+        $recoveryNotes      = $d['recovery_notes']       ?? null;
 
-        $stmt->bind_param('iissddddsssssddddi',
+        $stmt->bind_param('iissddddsssisdddddsi',
             $d['target_id'],
             $workTypeId,
             $workItemName,
@@ -197,12 +204,14 @@ class Con_MonthlyTarget {
             $startDate,
             $endDate,
             $responsibleTeam,
+            $contractorId,
             $priority,
             $status,
             $week1Qty,
             $week2Qty,
             $week3Qty,
             $week4Qty,
+            $recoveryNotes,
             $nextSort
         );
         $stmt->execute();
@@ -228,8 +237,10 @@ class Con_MonthlyTarget {
                     week_3_qty          = ?,
                     week_4_qty          = ?,
                     responsible_team    = ?,
+                    contractor_id       = ?,
                     priority            = ?,
-                    status              = ?
+                    status              = ?,
+                    recovery_notes      = ?
                 WHERE id = ?
             ");
             foreach ($items as $i) {
@@ -246,8 +257,10 @@ class Con_MonthlyTarget {
                 $w3           = (float)($i['week_3_qty'] ?? 0);
                 $w4           = (float)($i['week_4_qty'] ?? 0);
                 $respTeam     = $i['responsible_team'] ?? null;
+                $contractorId = (!empty($i['contractor_id']) && $i['contractor_id'] != '') ? (int)$i['contractor_id'] : null;
                 $prio         = $i['priority'] ?? 'Medium';
                 $stat         = $i['status'] ?? 'Draft';
+                $recNotes     = !empty($i['recovery_notes']) ? trim($i['recovery_notes']) : null;
 
                 // Fetch existing actual values (read-only, do not overwrite from form)
                 $existStmt = $this->db->prepare("SELECT actual_qty, actual_progress_pct FROM phase_monthly_target_items WHERE id=?");
@@ -257,7 +270,7 @@ class Con_MonthlyTarget {
                 $actQty    = (float)($existRow['actual_qty'] ?? 0);
                 $actualPct = (float)($existRow['actual_progress_pct'] ?? 0);
 
-                $stmt->bind_param('issddddssddddsssi',
+                $stmt->bind_param('issddddssddddsiissi',
                     $wid,
                     $name,
                     $unit,
@@ -272,8 +285,10 @@ class Con_MonthlyTarget {
                     $w3,
                     $w4,
                     $respTeam,
+                    $contractorId,
                     $prio,
                     $stat,
+                    $recNotes,
                     $id
                 );
                 $stmt->execute();
@@ -333,6 +348,32 @@ class Con_MonthlyTarget {
                 ORDER BY dt.name ASC, wt.work_type_name ASC
             ");
         }
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function getShortfallItemsForProject(int $projectId): array {
+        $stmt = $this->db->prepare("
+            SELECT pmti.*, 
+                   pmt.phase_id,
+                   pmt.target_month,
+                   pp.phase_name,
+                   (pmti.monthly_target_qty - pmti.actual_qty) AS shortfall_qty,
+                   rp.id AS recovery_plan_id,
+                   rp.status AS recovery_plan_status
+            FROM phase_monthly_target_items pmti
+            INNER JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
+            INNER JOIN project_phases pp ON pp.id = pmt.phase_id
+            LEFT JOIN recovery_plans rp 
+                ON rp.project_id = pmt.project_id 
+               AND rp.phase_id = pmt.phase_id 
+               AND rp.plan_month = pmt.target_month
+            WHERE pmt.project_id = ? 
+              AND pmti.monthly_target_qty > 0
+              AND pmti.actual_qty < pmti.monthly_target_qty
+            ORDER BY pmt.target_month ASC, pmti.id ASC
+        ");
+        $stmt->bind_param('i', $projectId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }

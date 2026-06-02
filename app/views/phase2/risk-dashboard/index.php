@@ -2,7 +2,6 @@
 $base_url     = $GLOBALS['base_url'];
 $projectId    = $project['id'];
 ?>
-<?php $this->layout('layouts/main', ['current_route' => $current_route, 'page_title' => $page_title]); ?>
 
 <style>
 /* ── Risk Dashboard Styles ───────────────────────────── */
@@ -132,9 +131,6 @@ $projectId    = $project['id'];
                 <button class="btn btn-danger fw-bold" data-bs-toggle="modal" data-bs-target="#addRiskModal">
                     <i class="bi bi-plus-circle me-1"></i> Log Risk
                 </button>
-                <a href="<?= $base_url ?>/con-recovery-plan/<?= $projectId ?>" class="btn-recovery btn">
-                    <i class="bi bi-clipboard-check me-1"></i> Recovery Plan
-                </a>
             </div>
         </div>
     </div>

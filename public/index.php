@@ -858,6 +858,8 @@ $routes['con-weekly-progress/(\d+)']        = ['controller' => 'Phase2\Con_Phase
 $routes['con-weekly-progress-save']         = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'saveDailyLog'];
 $routes['con-weekly-progress-submit']       = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'submitWeeklyUpdate'];
 $routes['con-weekly-progress-delete/(\d+)']  = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'deleteDailyLogItem'];
+$routes['con-weekly-progress-qc-approve']   = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'qcApprove'];
+$routes['con-weekly-progress-pm-approve']   = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'pmApprove'];
 
 // Phase-wise Construction - Module 6: Monthly Review
 $routes['con-monthly-review/(\d+)']                                              = ['controller' => 'Phase2\Con_MonthlyReviewController', 'method' => 'index'];

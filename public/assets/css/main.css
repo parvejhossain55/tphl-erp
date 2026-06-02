@@ -83,7 +83,7 @@ designations
   --clr-text-secondary: #525252;
   --clr-text-rating: #EC8D1D;
   /* --clr-theme-primary: #135737; */
-  --clr-theme-primary: #5e4cdc;
+  --clr-theme-primary: #19915a;
   --clr-theme-secondary: #1ABC9C;
   --clr-theme-tertiary: #ABA3FD;
   --clr-action-danger: #FF3A29;
@@ -109,8 +109,8 @@ designations
   --clr-chart-1: #7A7A7A;
   --clr-chart-2: #262a2a;
   --clr-footer-1: #878787;
-  --clr-gradient-1: #5e4cdc;
-  --clr-gradient-2: #5e4cdc;
+  --clr-gradient-1: linear-gradient(90deg, #6C5FFC 0%, #003cff 100%);
+  --clr-gradient-2: linear-gradient(90deg, #FF6339 0%, #FF2259 100%);
   /**
   @font weight declaration
   */
@@ -15613,8 +15613,8 @@ strong ~ p {
 }
 
 .alert-info {
-  background-color: #5e4cdc;
-  border-color: #5e4cdc;
+  background-color: #19915a;
+  border-color: #0dcaf0;
   color: #FFFFFF;
 }
 .alert-info p {
@@ -16144,7 +16144,7 @@ strong ~ p {
 
 
     .perm-table thead th {
-        background: #5e4cdc;
+        background: linear-gradient(to right, #247539, #4ce3c9);
         color: #fff;
         font-weight: 600;
         text-transform: uppercase;

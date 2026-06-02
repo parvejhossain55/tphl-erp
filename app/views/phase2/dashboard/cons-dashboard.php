@@ -1322,7 +1322,7 @@ $statusColor = [
                       <td style="font-weight:700;font-size:13px"><?= htmlspecialchars($rep['project_name'] ?? '&mdash;') ?></td>
                       <td style="font-size:12px">Week <?= (int) $rep['week_no'] ?></td>
                       <td style="font-size:12px"><?= htmlspecialchars($rep['created_by_name'] ?? '&mdash;') ?></td>
-                      <td style="text-align:right"><a href="<?= $base ?>/con-weekly-report/<?= $rep['id'] ?>"
+                      <td style="text-align:right"><a href="<?= $base ?>/con-weekly-progress/<?= $rep['target_id'] ?>?week=<?= $rep['week_no'] ?>"
                           style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 14px;border-radius:8px;text-decoration:none;background:linear-gradient(135deg,#0f5132,#198754);color:#fff"><i
                             class="fal fa-check-circle"></i> Review &amp; Approve</a></td>
                     </tr>

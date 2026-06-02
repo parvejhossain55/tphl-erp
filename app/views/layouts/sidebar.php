@@ -1251,7 +1251,7 @@
                 <?php 
                 $showAllPhases = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22]);
                 if (!empty($_SESSION['active_project_id']) && $showAllPhases): 
-                    $projectSubRoutes = ['con-project-timeline', 'con-phase-plan', 'con-monthly-targets', 'con-monthly-target', 'con-weekly-progress', 'con-monthly-review', 'con-risk-dashboard', 'con-recovery-plan'];
+                    $projectSubRoutes = ['con-project', 'con-project-timeline', 'con-phase-plan', 'con-monthly-targets', 'con-monthly-target', 'con-monthly-review', 'con-risk-dashboard'];
                     $isProjectActive = isActive($projectSubRoutes, $current_route);
                 ?>
                     <li class="slide has-sub <?= $isProjectActive ? 'active' : '' ?>">
@@ -1264,6 +1264,12 @@
                             </span>
                         </a>
                         <ul class="sidebar-menu child1" style="display:block;">
+                            <li class="slide <?= isActive('con-project', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-project', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-project/<?= $_SESSION['active_project_id'] ?>">
+                                    Project Overview
+                                </a>
+                            </li>
                             <li class="slide <?= isActive('con-project-timeline', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('con-project-timeline', $current_route) ?>" 
                                    href="<?= $base_url ?>/con-project-timeline/<?= $_SESSION['active_project_id'] ?>">
@@ -1282,12 +1288,6 @@
                                     Monthly Targets
                                 </a>
                             </li>
-                            <li class="slide <?= isActive('con-weekly-progress', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('con-weekly-progress', $current_route) ?>" 
-                                   href="<?= $base_url ?>/con-weekly-progress/<?= $_SESSION['active_project_id'] ?>">
-                                    Progress Entry
-                                </a>
-                            </li>
                             <li class="slide <?= isActive('con-monthly-review', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('con-monthly-review', $current_route) ?>" 
                                    href="<?= $base_url ?>/con-monthly-review/<?= $_SESSION['active_project_id'] ?>">
@@ -1298,12 +1298,6 @@
                                 <a class="sidebar__menu-item <?= isActive('con-risk-dashboard', $current_route) ?>" 
                                    href="<?= $base_url ?>/con-risk-dashboard/<?= $_SESSION['active_project_id'] ?>">
                                     Risk Dashboard
-                                </a>
-                            </li>
-                            <li class="slide <?= isActive('con-recovery-plan', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('con-recovery-plan', $current_route) ?>" 
-                                   href="<?= $base_url ?>/con-recovery-plan/<?= $_SESSION['active_project_id'] ?>">
-                                    Recovery Plan
                                 </a>
                             </li>
                         </ul>
@@ -2227,7 +2221,7 @@
                 <!-- FOR Task Manage  -->
                 <!-- ====== BATCH IMPORTS ====== -->
                 <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): // Only Admins can import ?>
-                    <li class="slide">
+                    <li class="slide d-none">
                         <a href="<?= $GLOBALS['base_url'] ?>/con-batch2-import"
                             class="sidebar__menu-item <?= isActive('con-batch2-import', $current_route) ?>">
                             <div class="side-menu__icon"><i class="bi bi-file-earmark-spreadsheet"></i></div>

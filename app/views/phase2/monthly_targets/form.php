@@ -190,6 +190,17 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                        value="<?= htmlspecialchars($responsibleTeam) ?>" placeholder="e.g. Civil Team">
             </div>
             <div class="mf-ctrl">
+                <label>Default Contractor</label>
+                <select name="contractor_id" class="mf-sel">
+                    <option value="">-- Select Contractor --</option>
+                    <?php foreach ($contractors as $c): ?>
+                    <option value="<?= $c['id'] ?>" <?= ($target['contractor_id'] ?? 0) == $c['id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($c['name']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="mf-ctrl">
                 <label>Phase Status</label>
                 <select name="phase_status" class="mf-sel">
                     <?php foreach (['Not Started','In Progress','Completed','At Risk','Delayed'] as $ps): ?>
@@ -251,6 +262,17 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                     <?php endforeach; ?>
                 </select>
             </div>
+            <div class="mf-ctrl" style="flex:2;min-width:140px">
+                <label>Contractor</label>
+                <select id="wi_contractor_id" class="mf-sel">
+                    <option value="">-- None --</option>
+                    <?php foreach ($contractors as $c): ?>
+                    <option value="<?= $c['id'] ?>" <?= ($target['contractor_id'] ?? 0) == $c['id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($c['name']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
             <div class="mf-ctrl" style="flex:0 0 80px;min-width:70px">
                 <label>Unit</label>
                 <input type="text" id="wi_unit" class="mf-inp" placeholder="RFT / NO">
@@ -306,6 +328,7 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
             <th>#</th>
             <th>Work Item</th>
             <th>Work Type <small style="font-weight:400;opacity:.7">(optional)</small></th>
+            <th>Contractor</th>
             <th>Unit</th>
             <th>Monthly Qty</th>
             <th>Start Date</th>
@@ -320,6 +343,7 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
             <th style="text-align:center">Actual Weight %</th>
             <th>Priority</th>
             <th>Status</th>
+            <th>Recovery Notes</th>
             <th></th>
         </tr>
     </thead>
@@ -343,6 +367,16 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                 <?php foreach ($workTypes as $wt): ?>
                 <option value="<?= $wt['id'] ?>" <?= ($item['work_type_id']==$wt['id'])?'selected':'' ?>>
                     <?= htmlspecialchars($wt['work_type_name']) ?>
+                </option>
+                <?php endforeach; ?>
+            </select>
+        </td>
+        <td>
+            <select name="items[<?= $i ?>][contractor_id]" style="min-width:120px">
+                <option value="">-- None --</option>
+                <?php foreach ($contractors as $c): ?>
+                <option value="<?= $c['id'] ?>" <?= (($item['contractor_id'] ?? 0) == $c['id']) ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($c['name']) ?>
                 </option>
                 <?php endforeach; ?>
             </select>
@@ -386,6 +420,9 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                 <option value="<?= $st ?>" <?= ($item['status']===$st)?'selected':'' ?>><?= $st ?></option>
                 <?php endforeach; ?>
             </select>
+        </td>
+        <td>
+            <input type="text" name="items[<?= $i ?>][recovery_notes]" value="<?= htmlspecialchars($item['recovery_notes'] ?? '') ?>" placeholder="e.g. Incl. 500 shortfall" style="min-width:140px">
         </td>
         <td>
             <a href="<?= $base ?>/con-monthly-item-delete/<?= $item['id'] ?>"
@@ -444,6 +481,7 @@ function addItem() {
     data.append('start_date', document.getElementById('wi_start_date').value);
     data.append('end_date', document.getElementById('wi_end_date').value);
     data.append('priority', document.getElementById('wi_priority').value);
+    data.append('contractor_id', document.getElementById('wi_contractor_id').value);
     data.append('status', 'Draft');
     data.append('planned_progress_pct', document.getElementById('wi_planned_progress_pct').value);
 

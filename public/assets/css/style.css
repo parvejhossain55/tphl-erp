@@ -1,6 +1,6 @@
 :root {
-  --primary-green: #5e4cdc;
-  --light-green: #e9e5ff;
+  --primary-green: #16a34a;
+  --light-green: #c0e7cc;
   --text-dark: #1f2937;
   --text-light: #6b7280;
   --bg-gray: #f9fafb;
@@ -230,7 +230,7 @@
 }
 
 .form-header h2 {
-  color: #5e4cdc;
+  color: #247539;
   font-weight: 700;
   margin-bottom: 10px;
 }
@@ -241,7 +241,7 @@
 }
 
 .section-title {
-  background: #5e4cdc;
+  background: #247539;
   color: white;
   padding: 12px 20px;
   border-radius: 10px;
@@ -279,7 +279,7 @@
     } */
 
 .net-salary-box {
-  background: #5e4cdc;
+  background: linear-gradient(to right, #247539, #4ce3c9);
   color: white;
   padding: 25px;
   border-radius: 15px;
@@ -301,7 +301,7 @@
 }
 
 .btn-create {
-  background: #5e4cdc;
+  background: linear-gradient(to right, #247539, #4ce3c9);
   border: none;
   padding: 15px 50px;
   font-size: 18px;
@@ -364,8 +364,8 @@
 .page-link.btn-outline-border {
   display: inline-block;
   padding: 6px 14px;
-  border: 1px solid #5e4cdc; /* always show border */
-  color: #5e4cdc; /* text color */
+  border: 1px solid #19915a; /* always show border */
+  color: #19915a; /* text color */
   text-decoration: none;
   border-radius: 6px;
   transition: all 0.3s;
@@ -375,13 +375,13 @@
 
 /* Hover fills background */
 .page-link.btn-outline-border:hover {
-  background-color: #5e4cdc; /* fill on hover */
+  background-color: #19915a; /* fill on hover */
   color: #fff; /* text color on hover */
 }
 
 /* Active page: filled always */
 .page-item.active .page-link.btn-outline-border {
-  background-color: #5e4cdc;
+  background-color: #19915a;
   color: #fff;
   cursor: default;
   pointer-events: none;
@@ -595,7 +595,7 @@ h6{
     position: sticky;
     left: 0;
     z-index: 99;
-    background-color: #3e309c;
+    background-color: #085526;
     color: white;
     min-width: 130px; /* First column width */
   }
@@ -606,7 +606,7 @@ h6{
     position: sticky;
     left: 100px; /* 1st column er width */
     z-index: 99;
-    background-color: #322680;
+    background-color: #07472a;
     color: white;
     min-width: 74px; /* Second column width */
   }
@@ -958,8 +958,8 @@ animation: pulse 1.5s ease-in-out infinite alternate;
 }
 
 .btn-primary:hover {
-  background-color: #4b3db1;
-  border-color: #4b3db1;
+  background-color: #16a34a;
+  border-color: #16a34a;
 }
 
 /* status badge start  */
@@ -1114,7 +1114,7 @@ animation: pulse 1.5s ease-in-out infinite alternate;
 }
 
 .btn-action:hover {
-  background-color: #4b3db1;
+  background-color: #16a34a;
   color: white;
 }
 
@@ -1209,7 +1209,7 @@ animation: pulse 1.5s ease-in-out infinite alternate;
   color: white;
   border-radius: 50%;
   border: none;
-  box-shadow: 0 4px 12px rgba(94, 76, 220, 0.4);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
   font-size: 1rem;
   display: flex;
   align-items: center;
@@ -1218,8 +1218,8 @@ animation: pulse 1.5s ease-in-out infinite alternate;
 }
 
 .fab-button:hover {
-  background-color: #4b3db1;
-  box-shadow: 0 6px 16px rgba(94, 76, 220, 0.5);
+  background-color: #16a34a;
+  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.5);
 }
 
 .filter-button {
@@ -1362,61 +1362,3 @@ input:checked + .slider:before {
         display: none !important;
     }
 }
-
-/* ──────────────────────────────────────────────────────────────────────────
-   GLOBAL DASHBOARD COLOR OVERRIDES (GREEN TO PRIMARY SOLID #5e4cdc)
-   ────────────────────────────────────────────────────────────────────────── */
-
-/* Override all hero banners on phase2 dashboards to solid #5e4cdc */
-.dr-hero,
-.op-hero,
-.ptl-hero,
-.qc-hero,
-.sd-hero,
-.draft-hero,
-.est-hero,
-.land-hero,
-.arch-hero,
-.prog-hero,
-.con-hero,
-.qc-hero-banner {
-  background: #5e4cdc !important;
-}
-
-/* Force override of dashboard-specific theme variable palettes */
-:root {
-  --dr-primary: #5e4cdc !important;
-  --dr-dark: #4b3db1 !important;
-  --op-primary: #5e4cdc !important;
-  --op-dark: #4b3db1 !important;
-  --ptl-primary: #5e4cdc !important;
-  --ptl-dark: #4b3db1 !important;
-  --sd-primary: #5e4cdc !important;
-  --sd-dark: #4b3db1 !important;
-  --est-primary: #5e4cdc !important;
-  --est-dark: #4b3db1 !important;
-  --land-primary: #5e4cdc !important;
-  --land-dark: #4b3db1 !important;
-  --arch-primary: #5e4cdc !important;
-  --arch-dark: #4b3db1 !important;
-  --qc-primary: #5e4cdc !important;
-  --qc-dark: #4b3db1 !important;
-}
-
-/* Target and override inline styled buttons/spans that use green gradients */
-a[style*="linear-gradient"],
-span[style*="linear-gradient"],
-div[style*="linear-gradient"] {
-  /* Only override if the inline style contains green colors */
-  background: #5e4cdc !important;
-}
-
-/* Retain yellow/orange/red warnings but change green ones to primary */
-a[style*="#059669"], a[style*="#10b981"], a[style*="#0f5132"], a[style*="#198754"],
-span[style*="#059669"], span[style*="#10b981"], span[style*="#0f5132"], span[style*="#198754"],
-div[style*="#059669"], div[style*="#10b981"], div[style*="#0f5132"], div[style*="#198754"] {
-  background: #5e4cdc !important;
-  background-color: #5e4cdc !important;
-  border-color: #5e4cdc !important;
-}
-

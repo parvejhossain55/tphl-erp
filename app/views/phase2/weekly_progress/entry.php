@@ -380,6 +380,191 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 <div class="row ">
 <div class="col-lg-8">
 
+<?php if ($entryStatus !== 'Draft'): ?>
+<!-- ░░ Quality Control & Manager Review Panel ░░ -->
+<div class="wp-card mb-4" style="border-radius:16px; border: 1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05); background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+    <div class="wp-card-header" style="background: rgba(248, 250, 252, 0.5); border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
+        <div class="wp-card-title" style="font-size: 13px; font-weight: 800; color: #1e293b; text-transform: uppercase;">
+            <i class="bi bi-shield-check text-primary fs-5"></i>
+            Quality Control &amp; Management Review
+        </div>
+        <div>
+            <span style="font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; 
+                background: <?= $entryStatus === 'Approved' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(79, 70, 229, 0.12)' ?>; 
+                color: <?= $entryStatus === 'Approved' ? '#10b981' : '#4f46e5' ?>;">
+                <i class="bi <?= $entryStatus === 'Approved' ? 'bi-check-circle-fill' : 'bi-clock-history' ?> me-1"></i>
+                Report Status: <?= $entryStatus ?>
+            </span>
+        </div>
+    </div>
+    
+    <div style="padding: 24px;">
+        <div class="row g-4">
+            
+            <!-- Quality Control (QC) Section -->
+            <div class="col-md-6" style="border-right: 1px dashed #e2e8f0;">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span style="width: 28px; height: 28px; border-radius: 50%; background: rgba(79, 70, 229, 0.1); color: var(--pri); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">1</span>
+                    <h6 class="mb-0 fw-bold" style="color: #334155; font-size: 14px;">Quality Control Review</h6>
+                </div>
+                
+                <?php if (empty($weeklyProgress['qc_approved_id'])): ?>
+                    <!-- QC Review Form (Visible only to role 13 [QC] or role 1 [Admin]) -->
+                    <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 13])): ?>
+                        <div class="pe-2">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">QC Inspection Decision</label>
+                                <select name="qc_status" form="qcForm" class="form-select form-select-sm" required style="border-radius: 8px; font-weight: 600;">
+                                    <option value="Approved">Approved (Meets QA/QC standards)</option>
+                                    <option value="Partially Approved">Partially Approved (Minor observations)</option>
+                                    <option value="Rejected">Rejected (Requires correction)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">Verification Photo / Proof</label>
+                                <input type="file" name="qc_image" form="qcForm" class="form-control form-control-sm" accept="image/*" style="border-radius: 8px;">
+                                <div class="form-text" style="font-size: 10px;">Upload site photo as quality assessment proof.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">QC Remarks / Comments</label>
+                                <textarea name="qc_comment" form="qcForm" rows="3" class="form-control form-control-sm" placeholder="Provide quality check observations, notes on workmanship, materials, etc..." style="border-radius: 8px;"></textarea>
+                            </div>
+                            
+                            <button type="submit" form="qcForm" class="btn btn-sm btn-primary w-100 fw-bold py-2" style="border-radius: 8px; background: var(--pri); border: none; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);">
+                                <i class="bi bi-shield-fill-check me-1"></i> Submit QC Review
+                            </button>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-center py-4 rounded-3" style="background: rgba(241, 245, 249, 0.5); border-radius: 12px; border: 1px solid #e2e8f0;">
+                            <i class="bi bi-hourglass-split text-muted fs-4"></i>
+                            <p class="text-muted small mt-2 mb-0">Awaiting review from Quality Control team.</p>
+                        </div>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <!-- QC Review Details Display -->
+                    <?php
+                        $qcStatus = $weeklyProgress['qc_status'] ?? 'Approved';
+                        $qcStatusColors = [
+                            'Approved' => ['bg' => 'rgba(16, 185, 129, 0.1)', 'text' => '#10b981', 'icon' => 'bi-check-circle-fill'],
+                            'Partially Approved' => ['bg' => 'rgba(245, 158, 11, 0.1)', 'text' => '#f59e0b', 'icon' => 'bi-exclamation-triangle-fill'],
+                            'Rejected' => ['bg' => 'rgba(239, 68, 68, 0.1)', 'text' => '#ef4444', 'icon' => 'bi-x-circle-fill']
+                        ];
+                        $qsm = $qcStatusColors[$qcStatus] ?? $qcStatusColors['Approved'];
+                    ?>
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.01);">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">QC Specialist</div>
+                                <div style="font-size: 14px; font-weight: 700; color: #1e293b;"><?= htmlspecialchars($qcName) ?></div>
+                            </div>
+                            <span style="font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: <?= $qsm['bg'] ?>; color: <?= $qsm['text'] ?>;">
+                                <i class="bi <?= $qsm['icon'] ?> me-1"></i><?= $qcStatus ?>
+                            </span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Comments</div>
+                            <div style="font-size: 12.5px; color: #334155; line-height: 1.5; background: #f8fafc; padding: 10px; border-radius: 8px; border-left: 3px solid <?= $qsm['text'] ?>;">
+                                <?= nl2br(htmlspecialchars($weeklyProgress['qc_comment'] ?? 'No comments provided.')) ?>
+                            </div>
+                        </div>
+                        
+                        <?php if (!empty($weeklyProgress['qc_image'])): ?>
+                            <div>
+                                <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px;">Inspection Proof</div>
+                                <a href="<?= $base ?>/<?= htmlspecialchars($weeklyProgress['qc_image']) ?>" target="_blank" style="display: block; position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
+                                    <img src="<?= $base ?>/<?= htmlspecialchars($weeklyProgress['qc_image']) ?>" style="width: 100%; max-height: 150px; object-fit: cover;" alt="QC Verification Image">
+                                    <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); color: #fff; font-size: 10px; text-align: center; padding: 4px; font-weight: 600;">
+                                        <i class="bi bi-zoom-in me-1"></i> View Full Image
+                                    </div>
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+            
+            <!-- Project Manager (PM) Section -->
+            <div class="col-md-6">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span style="width: 28px; height: 28px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); color: var(--green); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">2</span>
+                    <h6 class="mb-0 fw-bold" style="color: #334155; font-size: 14px;">Management Decision</h6>
+                </div>
+                
+                <?php if (empty($weeklyProgress['qc_approved_id'])): ?>
+                    <div class="text-center py-4 bg-light rounded-3" style="background: rgba(241, 245, 249, 0.5); border-radius: 12px; border: 1px solid #e2e8f0; height: calc(100% - 40px); display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <i class="bi bi-lock text-muted fs-4"></i>
+                        <p class="text-muted small mt-2 mb-0 px-3">PM Approval will unlock after Quality Control verification has been submitted.</p>
+                    </div>
+                <?php else: ?>
+                    <?php if (empty($weeklyProgress['pm_approved_id'])): ?>
+                        <!-- PM Review Form (Visible only to role 15 [PM], 22 [PM Head], or 1 [Admin]) -->
+                        <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 15, 22])): ?>
+                            <div class="ps-2">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">PM Approval Decision</label>
+                                    <select name="pm_status" form="pmForm" class="form-select form-select-sm" required style="border-radius: 8px; font-weight: 600;">
+                                        <option value="Approved">Approved (Lock &amp; publish report)</option>
+                                        <option value="Partially Approved">Partially Approved (Minor observations)</option>
+                                        <option value="Rejected">Rejected (Revert to Draft for correction)</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">Manager Remarks / Instructions</label>
+                                    <textarea name="pm_comment" form="pmForm" rows="4" class="form-control form-control-sm" placeholder="Provide instructions, target feedback, adjustments needed, or reasons for rejection..." style="border-radius: 8px;"></textarea>
+                                </div>
+                                
+                                <button type="submit" form="pmForm" class="btn btn-sm btn-success w-100 fw-bold py-2" style="border-radius: 8px; background: var(--green); border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
+                                    <i class="bi bi-check2-all me-1"></i> Submit Management Approval
+                                </button>
+                            </div>
+                        <?php else: ?>
+                            <div class="text-center py-4 bg-light rounded-3" style="background: rgba(241, 245, 249, 0.5); border-radius: 12px; border: 1px solid #e2e8f0;">
+                                <i class="bi bi-hourglass-split text-muted fs-4"></i>
+                                <p class="text-muted small mt-2 mb-0">Awaiting Project Manager approval.</p>
+                            </div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <!-- PM Review Details Display -->
+                        <?php
+                            $pmStatus = $weeklyProgress['pm_status'] ?? 'Approved';
+                            $pmStatusColors = [
+                                'Approved' => ['bg' => 'rgba(16, 185, 129, 0.1)', 'text' => '#10b981', 'icon' => 'bi-check-circle-fill'],
+                                'Partially Approved' => ['bg' => 'rgba(245, 158, 11, 0.1)', 'text' => '#f59e0b', 'icon' => 'bi-exclamation-triangle-fill'],
+                                'Rejected' => ['bg' => 'rgba(239, 68, 68, 0.1)', 'text' => '#ef4444', 'icon' => 'bi-x-circle-fill']
+                            ];
+                            $psm = $pmStatusColors[$pmStatus] ?? $pmStatusColors['Approved'];
+                        ?>
+                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.01);">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Project Manager</div>
+                                    <div style="font-size: 14px; font-weight: 700; color: #1e293b;"><?= htmlspecialchars($pmName) ?></div>
+                                </div>
+                                <span style="font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: <?= $psm['bg'] ?>; color: <?= $psm['text'] ?>;">
+                                    <i class="bi <?= $psm['icon'] ?> me-1"></i><?= $pmStatus ?>
+                                </span>
+                            </div>
+                            
+                            <div>
+                                <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Comments</div>
+                                <div style="font-size: 12.5px; color: #334155; line-height: 1.5; background: #f8fafc; padding: 10px; border-radius: 8px; border-left: 3px solid <?= $psm['text'] ?>;">
+                                    <?= nl2br(htmlspecialchars($weeklyProgress['pm_comment'] ?? 'No comments provided.')) ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
+            
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- ░░ Progress Entry Table ░░ -->
 <div class="wp-card">
     <div class="wp-card-header" style="background:#f8fafc">
@@ -414,6 +599,13 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 <th class="text-center" style="width:80px">Planned Qty</th>
                 <th class="text-center" style="width:80px">Achieved Qty</th>
                 <th class="text-center" style="width:80px">% Complete</th>
+                <th class="text-center" style="width:40px" title="Day 1">D1</th>
+                <th class="text-center" style="width:40px" title="Day 2">D2</th>
+                <th class="text-center" style="width:40px" title="Day 3">D3</th>
+                <th class="text-center" style="width:40px" title="Day 4">D4</th>
+                <th class="text-center" style="width:40px" title="Day 5">D5</th>
+                <th class="text-center" style="width:40px" title="Day 6">D6</th>
+                <th class="text-center" style="width:40px" title="Day 7">D7</th>
                 <th class="text-center" style="width:100px" title="Enter qty done today">Today's Progress</th>
                 <th style="min-width:110px">Responsible Team</th>
                 <th class="text-center" style="width:100px">Status</th>
@@ -424,7 +616,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         </thead>
         <tbody id="progressTableBody">
         <?php if (empty($weeklyItems)): ?>
-            <tr><td colspan="12" class="text-center py-5" style="color:#94a3b8">
+            <tr><td colspan="19" class="text-center py-5" style="color:#94a3b8">
                 <i class="bi bi-inbox" style="font-size:30px;display:block;margin-bottom:8px"></i>
                 No work items planned for this week. Add items in the Monthly Target page.
             </td></tr>
@@ -475,6 +667,11 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 <?php if ($monthlyQty > 0): ?>
                 <div style="font-size:10px;color:#94a3b8">Monthly: <?= number_format($monthlyQty,0,'.',',') ?> <?= $unit ?></div>
                 <?php endif; ?>
+                <?php if (!empty($wi['contractor_name'])): ?>
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-top:2px">
+                    <i class="bi bi-briefcase me-1"></i><?= htmlspecialchars($wi['contractor_name']) ?>
+                </div>
+                <?php endif; ?>
                 <input type="hidden" name="items[<?= $formIndex ?>][target_item_id]" value="<?= $itemId ?>">
                 <input type="hidden" name="items[<?= $formIndex ?>][work_type_id]" value="">
             </td>
@@ -485,6 +682,13 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 <div style="font-weight:800;font-size:13px;color:<?= $pct>=100?'var(--green)':($pct>0?'var(--pri)':'#94a3b8') ?>"><?= number_format($pct,1) ?>%</div>
                 <div class="pct-bar"><div class="pct-fill" style="width:<?= $pct ?>%;background:<?= $barColor ?>"></div></div>
             </td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['1st_day_qty'] ?? 0) > 0 ? number_format($wi['1st_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['2nd_day_qty'] ?? 0) > 0 ? number_format($wi['2nd_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['3rd_day_qty'] ?? 0) > 0 ? number_format($wi['3rd_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['4th_day_qty'] ?? 0) > 0 ? number_format($wi['4th_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['5th_day_qty'] ?? 0) > 0 ? number_format($wi['5th_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['6_th_day_qty'] ?? 0) > 0 ? number_format($wi['6_th_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['7th_day_qty'] ?? 0) > 0 ? number_format($wi['7th_day_qty'],1) : '—' ?></td>
             <td class="text-center">
                 <input type="number" name="items[<?= $formIndex ?>][qty_done_today]"
                        value="<?= number_format($todayQty,2,'.','') ?>"
@@ -561,6 +765,11 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 <?php if ($monthlyQty > 0): ?>
                 <div style="font-size:10px;color:#94a3b8">Monthly: <?= number_format($monthlyQty,0,'.',',') ?> <?= $unit ?></div>
                 <?php endif; ?>
+                <?php if (!empty($wi['contractor_name'])): ?>
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-top:2px">
+                    <i class="bi bi-briefcase me-1"></i><?= htmlspecialchars($wi['contractor_name']) ?>
+                </div>
+                <?php endif; ?>
                 <?php if (!empty($dq['work_type_name'])): ?>
                 <div style="font-size:11px;color:var(--pri);font-weight:600;margin-top:2px"><?= htmlspecialchars($dq['work_type_name']) ?></div>
                 <?php endif; ?>
@@ -574,6 +783,13 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 <div style="font-weight:800;font-size:13px;color:<?= $pct>=100?'var(--green)':($pct>0?'var(--pri)':'#94a3b8') ?>"><?= number_format($pct,1) ?>%</div>
                 <div class="pct-bar"><div class="pct-fill" style="width:<?= $pct ?>%;background:<?= $barColor ?>"></div></div>
             </td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['1st_day_qty'] ?? 0) > 0 ? number_format($wi['1st_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['2nd_day_qty'] ?? 0) > 0 ? number_format($wi['2nd_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['3rd_day_qty'] ?? 0) > 0 ? number_format($wi['3rd_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['4th_day_qty'] ?? 0) > 0 ? number_format($wi['4th_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['5th_day_qty'] ?? 0) > 0 ? number_format($wi['5th_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['6_th_day_qty'] ?? 0) > 0 ? number_format($wi['6_th_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['7th_day_qty'] ?? 0) > 0 ? number_format($wi['7th_day_qty'],1) : '—' ?></td>
             <td class="text-center">
                 <input type="number" name="items[<?= $formIndex ?>][qty_done_today]"
                        value="<?= number_format($todayQty,2,'.','') ?>"
@@ -1283,6 +1499,18 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         </div>
     </div>
 </div>
+<!-- Hidden forms for QC and PM Review submissions (avoiding form nesting) -->
+<form id="qcForm" method="POST" action="<?= $base ?>/con-weekly-progress-qc-approve" enctype="multipart/form-data" style="display:none">
+    <input type="hidden" name="weekly_progress_id" value="<?= (int)($weeklyProgress['id']??0) ?>">
+    <input type="hidden" name="target_id" value="<?= $target_id ?>">
+    <input type="hidden" name="week_number" value="<?= $weekNo ?>">
+</form>
+
+<form id="pmForm" method="POST" action="<?= $base ?>/con-weekly-progress-pm-approve" style="display:none">
+    <input type="hidden" name="weekly_progress_id" value="<?= (int)($weeklyProgress['id']??0) ?>">
+    <input type="hidden" name="target_id" value="<?= $target_id ?>">
+    <input type="hidden" name="week_number" value="<?= $weekNo ?>">
+</form>
 
 <?php
 $activeWtByItem = [];

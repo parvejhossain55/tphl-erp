@@ -2,7 +2,6 @@
 $base_url  = $GLOBALS['base_url'];
 $projectId = $project['id'];
 ?>
-<?php $this->layout('layouts/main', ['current_route' => $current_route, 'page_title' => $page_title]); ?>
 
 <style>
 /* ── Recovery Plan Styles ─────────────────────────────────── */

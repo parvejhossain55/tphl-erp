@@ -42,6 +42,14 @@ class Con_MonthlyTargetController extends Controller {
         $targets = $this->model->getByProject($project_id);
         $phases  = $this->phaseModel->getByProject($project_id);
 
+        // Fetch shortfalls/recovery items for this project
+        $shortfallItems = $this->model->getShortfallItemsForProject($project_id);
+        $shortfallsByTarget = [];
+        foreach ($shortfallItems as $item) {
+            $tid = (int)$item['target_id'];
+            $shortfallsByTarget[$tid][] = $item;
+        }
+
         // Group targets by month for display
         $byMonth = [];
         foreach ($targets as $t) {
@@ -54,11 +62,12 @@ class Con_MonthlyTargetController extends Controller {
         ksort($byMonth);
 
         $this->view('phase2/monthly_targets/index', [
-            'current_route' => 'con-monthly-targets',
-            'project'       => $project,
-            'byMonth'       => $byMonth,
-            'phases'        => $phases,
-            'project_id'    => $project_id,
+            'current_route'      => 'con-monthly-targets',
+            'project'            => $project,
+            'byMonth'            => $byMonth,
+            'phases'             => $phases,
+            'project_id'         => $project_id,
+            'shortfallsByTarget' => $shortfallsByTarget,
         ]);
     }
 
@@ -80,6 +89,10 @@ class Con_MonthlyTargetController extends Controller {
         $dtRes    = $this->db->query("SELECT id, name FROM design_types WHERE status='active' ORDER BY name");
         $designTypes = $dtRes ? $dtRes->fetch_all(MYSQLI_ASSOC) : [];
 
+        // Get contractors
+        $contrRes = $this->db->query("SELECT id, name FROM contractors WHERE status='active' ORDER BY name");
+        $contractors = $contrRes ? $contrRes->fetch_all(MYSQLI_ASSOC) : [];
+
         // Get the phase sub-items (Layer 2)
         $subItemsStmt = $this->db->prepare("
             SELECT ppi.id, ppi.item_name, ppi.weight_pct, ppi.work_type_id, wt.work_type_name
@@ -100,6 +113,7 @@ class Con_MonthlyTargetController extends Controller {
             'workTypes'     => $workTypes,
             'designTypes'   => $designTypes,
             'phaseSubItems' => $phaseSubItems,
+            'contractors'   => $contractors,
         ]);
     }
 
@@ -133,6 +147,7 @@ class Con_MonthlyTargetController extends Controller {
             'target_month'    => $targetMonth,
             'planning_status' => 'Draft',
             'responsible_team'=> trim($_POST['responsible_team'] ?? ''),
+            'contractor_id'   => !empty($_POST['contractor_id']) ? (int)$_POST['contractor_id'] : null,
             'created_by'      => $_SESSION['user']['id'] ?? null,
         ]);
 
@@ -156,6 +171,7 @@ class Con_MonthlyTargetController extends Controller {
         $this->model->update($target_id, [
             'planning_status'  => $_POST['planning_status']  ?? $target['planning_status'],
             'responsible_team' => $_POST['responsible_team'] ?? $target['responsible_team'],
+            'contractor_id'    => !empty($_POST['contractor_id']) ? (int)$_POST['contractor_id'] : null,
         ]);
 
         // Update project_phases status and timeline dates if present
@@ -228,6 +244,7 @@ class Con_MonthlyTargetController extends Controller {
             'start_date'          => $startDate,
             'end_date'            => $endDate,
             'responsible_team'    => trim($_POST['responsible_team']   ?? ''),
+            'contractor_id'       => !empty($_POST['contractor_id']) ? (int)$_POST['contractor_id'] : null,
             'priority'            => $_POST['priority'] ?? 'Medium',
             'status'              => 'Draft',
             'week_1_qty'          => (float)($_POST['week_1_qty'] ?? 0),

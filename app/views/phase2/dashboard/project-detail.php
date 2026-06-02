@@ -301,7 +301,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
   <button class="pd-tab" data-tab="design"><i class="fal fa-drafting-compass me-1"></i>Design</button>
   <button class="pd-tab" data-tab="budget"><i class="fal fa-money-bill-wave me-1"></i>Initial Budget</button>
   <button class="pd-tab" data-tab="workplan"><i class="fal fa-calendar-alt me-1"></i>Work Plan</button>
-  <button class="pd-tab" data-tab="targets"><i class="fal fa-bullseye me-1"></i>Targets</button>
+
   <button class="pd-tab" data-tab="weekly"><i class="fal fa-chart-bar me-1"></i>Weekly Report</button>
   <button class="pd-tab" data-tab="workorders"><i class="fal fa-file-signature me-1"></i>Work Orders</button>
 </div>
@@ -594,12 +594,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
   </div>
 </div>
 
-<!-- ═══════════════════════ TAB 6: TARGETS (AJAX) ═══════════════════════ -->
-<div class="pd-tab-pane" id="tab-targets">
-  <div id="tg-content">
-    <div class="ajax-loader"><span class="spinner"></span>Loading targets...</div>
-  </div>
-</div>
+
 
 <!-- ═══════════════════════ TAB 8: WORK ORDERS (AJAX) ════════════════ -->
 <div class="pd-tab-pane" id="tab-workorders">
@@ -621,7 +616,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
 (function(){
   const base   = "<?= $base ?>";
   const projId = "<?= (int)($project['id'] ?? 0) ?>";
-  let wpLoaded = false, tgLoaded = false, wrLoaded = false, woLoaded = false;
+  let wpLoaded = false, wrLoaded = false, woLoaded = false;
 
   // ── Tab switching ────────────────────────────────────────────────────
   document.querySelectorAll('.pd-tab').forEach(function(btn){
@@ -634,87 +629,72 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
 
       // Lazy load AJAX tabs
       if(btn.dataset.tab === 'workplan' && !wpLoaded) { wpLoaded=true; loadWorkPlan(); }
-      if(btn.dataset.tab === 'targets'  && !tgLoaded) { tgLoaded=true; loadTargets(); }
       if(btn.dataset.tab === 'weekly'   && !wrLoaded) { wrLoaded=true; loadWeekly(); }
       if(btn.dataset.tab === 'workorders' && !woLoaded) { woLoaded=true; loadWorkOrders(); }
     });
   });
 
-  // ── Tab 5: Work Plan ─────────────────────────────────────────────────
+  // ── Tab 5: Work Plan (Monthly Targets & Items) ───────────────────────
   function loadWorkPlan(){
     fetch(base + '/con-ajax-workplan/' + projId + '?t=' + new Date().getTime())
       .then(function(r){ return r.json(); })
       .then(function(res){
         var el = document.getElementById('wp-content');
         if(!res.success || !res.data.length){
-          el.innerHTML = '<div class="empty-pd"><div class="empty-pd-ico"><i class="fal fa-calendar-alt"></i></div>No work plan entries found</div>';
+          el.innerHTML = '<div class="empty-pd"><div class="empty-pd-ico"><i class="fal fa-calendar-alt"></i></div>No monthly target work plan entries found</div>';
           return;
         }
         var html = '';
-        res.data.forEach(function(month){
-          var totalMonthWeight = 0;
-          month.plans.forEach(function(p){ totalMonthWeight += parseFloat(p.weight_percentage||0); });
-          
+        res.data.forEach(function(group){
           html += '<div class="pd-panel mb-3">';
-          html += '<div class="pd-panel-title d-flex justify-content-between align-items-center"><div class="d-flex align-items-center"><i class="fal fa-calendar-alt me-2"></i>' + month.label + '</div>';
-          html += '<div style="font-size:11px;background:rgba(59,130,246,.1);color:#3b82f6;padding:4px 10px;border-radius:6px;">Plans: ' + month.plans.length + ' | Monthly Weight: ' + totalMonthWeight.toFixed(2) + '%</div></div>';
-          html += '<table class="wp-table"><thead><tr><th>Design Type</th><th>Work Description</th><th>Qty</th><th style="text-align:right">Plan Weight</th><th style="text-align:right">Est. Cost</th></tr></thead><tbody>';
-          month.plans.forEach(function(p){
+          html += '<div class="pd-panel-title d-flex justify-content-between align-items-center" style="border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">';
+          html += '<div class="d-flex align-items-center gap-2"><i class="fal fa-calendar-alt" style="color:#2563eb;"></i>';
+          html += '<strong>' + group.label + '</strong> – <span style="color:#475569;">' + escHtml(group.phase_name) + '</span></div>';
+          html += '<div class="d-flex gap-2">';
+          if(group.responsible_team && group.responsible_team !== '—') {
+            html += '<span style="font-size:11px;background:#f1f5f9;color:#475569;padding:4px 10px;border-radius:6px;font-weight:600;"><i class="fal fa-users"></i> ' + escHtml(group.responsible_team) + '</span>';
+          }
+          var statusColor = group.planning_status === 'Approved' ? '#10b981' : '#f59e0b';
+          var statusBg = group.planning_status === 'Approved' ? 'rgba(16,185,129,.1)' : 'rgba(245,158,11,.1)';
+          html += '<span style="font-size:11px;background:'+statusBg+';color:'+statusColor+';padding:4px 10px;border-radius:6px;font-weight:700;">' + escHtml(group.planning_status) + '</span>';
+          html += '</div></div>';
+          
+          html += '<div class="table-responsive"><table class="wp-table"><thead><tr>';
+          html += '<th>Work Item Name</th>';
+          html += '<th>Type</th>';
+          html += '<th style="text-align:right">Monthly Target</th>';
+          html += '<th style="text-align:center">W1 Qty</th>';
+          html += '<th style="text-align:center">W2 Qty</th>';
+          html += '<th style="text-align:center">W3 Qty</th>';
+          html += '<th style="text-align:center">W4 Qty</th>';
+          html += '<th style="text-align:right">Actual Qty</th>';
+          html += '<th style="text-align:right">Progress</th>';
+          html += '</tr></thead><tbody>';
+          
+          group.items.forEach(function(item){
+            var targetQty = parseFloat(item.monthly_target_qty || 0);
+            var actualQty = parseFloat(item.actual_qty || 0);
+            var actualPct = parseFloat(item.actual_progress_pct || 0).toFixed(1) + '%';
+            var plannedPct = parseFloat(item.planned_progress_pct || 0).toFixed(1) + '%';
+            
             html += '<tr>';
-            html += '<td><span style="font-size:11px;background:rgba(99,102,241,.1);color:#6366f1;padding:2px 8px;border-radius:5px;font-weight:600">' + (p.design_type_name||'—') + '</span></td>';
-            html += '<td>' + escHtml(p.work_description||'—') + '</td>';
-            html += '<td>' + (p.planned_quantity||'—') + '</td>';
-            html += '<td style="text-align:right;font-weight:700;color:#f59e0b">' + parseFloat(p.weight_percentage||0).toFixed(2) + '%</td>';
-            html += '<td style="text-align:right;font-weight:700;color:#3b82f6">' + fmtMoney(p.estimated_cost) + '</td>';
+            html += '<td><strong>' + escHtml(item.work_item_name) + '</strong></td>';
+            html += '<td><span style="font-size:10.5px;background:rgba(99,102,241,.1);color:#6366f1;padding:2px 8px;border-radius:5px;font-weight:600">' + escHtml(item.work_type_name || item.design_type_name || '—') + '</span></td>';
+            html += '<td style="text-align:right;font-weight:700;">' + targetQty.toFixed(1) + ' ' + escHtml(item.unit) + '</td>';
+            html += '<td style="text-align:center;color:#64748b;">' + parseFloat(item.week_1_qty || 0).toFixed(1) + '</td>';
+            html += '<td style="text-align:center;color:#64748b;">' + parseFloat(item.week_2_qty || 0).toFixed(1) + '</td>';
+            html += '<td style="text-align:center;color:#64748b;">' + parseFloat(item.week_3_qty || 0).toFixed(1) + '</td>';
+            html += '<td style="text-align:center;color:#64748b;">' + parseFloat(item.week_4_qty || 0).toFixed(1) + '</td>';
+            html += '<td style="text-align:right;font-weight:700;color:#10b981;">' + actualQty.toFixed(1) + ' ' + escHtml(item.unit) + '</td>';
+            html += '<td style="text-align:right;"><div style="font-weight:700;color:#2563eb;">' + actualPct + '</div><div style="font-size:10px;color:var(--text-muted);">Planned: ' + plannedPct + '</div></td>';
             html += '</tr>';
           });
-          html += '</tbody></table></div>';
+          
+          html += '</tbody></table></div></div>';
         });
         el.innerHTML = html;
       })
-      .catch(function(e){ console.error(e); document.getElementById('wp-content').innerHTML = '<div class="empty-pd">Failed to load work plan</div>'; });
-  }
-
-  // ── Tab 6: Targets ────────────────────────────────────────────────────
-  function loadTargets(){
-    fetch(base + '/con-ajax-targets/' + projId + '?t=' + new Date().getTime())
-      .then(function(r){ return r.json(); })
-      .then(function(res){
-        var el = document.getElementById('tg-content');
-        if(!res.success || !res.data.length){
-          el.innerHTML = '<div class="empty-pd"><div class="empty-pd-ico"><i class="fal fa-bullseye"></i></div>No targets found</div>';
-          return;
-        }
-        var html = '<div class="pd-panel"><table class="wp-table"><thead><tr>';
-        html += '<th>Title</th><th>Period</th><th>Week</th><th style="text-align:right">Target%</th><th style="text-align:right">Gain% (Out of Target)</th><th>Approvals</th>';
-        html += '</tr></thead><tbody>';
-        res.data.forEach(function(t){
-          var apvLabels = ['SE','QC','PC','PD','MGR'];
-          var apvCols   = ['approved_by_site_eng','approved_by_qc','approved_by_pc','approved_by_pd','approved_by_manager'];
-          var apvHtml = apvLabels.map(function(lbl,i){
-            var ok = t[apvCols[i]] == 1;
-            return '<span class="apv-dot ' + (ok?'apv-yes':'apv-no') + '" title="'+lbl+'">' + (ok?'✓':'·') + '</span>';
-          }).join('');
-
-          var gPct = parseFloat(t.gain_percentage||0);
-          var tPct = parseFloat(t.target_percentage||0);
-          var gClr = gPct >= tPct ? '#10b981' : (gPct > 0 ? '#f59e0b' : '#ef4444');
-
-          html += '<tr>';
-          html += '<td><strong>' + escHtml(t.target_title||'—') + '</strong>';
-          if(t.design_type_name) html += '<br><small style="color:var(--text-muted)">' + escHtml(t.design_type_name) + '</small>';
-          html += '</td>';
-          html += '<td>' + monthName(t.month) + ' ' + t.year + '</td>';
-          html += '<td>Week ' + t.week_number + '</td>';
-          html += '<td style="text-align:right;font-weight:700;color:#6366f1">' + tPct.toFixed(1) + '%</td>';
-          html += '<td style="text-align:right;font-weight:700;color:'+gClr+'">' + gPct.toFixed(1) + '% (of ' + tPct.toFixed(1) + '%)</td>';
-          html += '<td>' + apvHtml + '</td>';
-          html += '</tr>';
-        });
-        html += '</tbody></table></div>';
-        el.innerHTML = html;
-      })
-      .catch(function(e){ console.error(e); document.getElementById('tg-content').innerHTML = '<div class="empty-pd">Failed to load targets</div>'; });
+      .catch(function(e){ console.error(e); document.getElementById('wp-content').innerHTML = '<div class="empty-pd">Failed to load monthly targets & work plans</div>'; });
   }
 
   // ── Tab 7: Weekly Report ──────────────────────────────────────────────
@@ -811,79 +791,158 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
 
   function renderReport(week){
     if(!week.targets || !week.targets.length)
-      return '<div class="empty-pd"><div class="empty-pd-ico"><i class="fal fa-bullseye"></i></div>No targets for this week</div>';
-    var html = '<div class="pd-panel"><table class="wp-table"><thead><tr>';
-    html += '<th>Target Title</th><th>Type</th><th style="text-align:right">Target %</th><th style="text-align:right">Gain %</th><th>Approvals</th>';
+      return '<div class="empty-pd"><div class="empty-pd-ico"><i class="fal fa-clipboard-list"></i></div>No weekly targets defined for this week</div>';
+    
+    var html = '<div class="pd-panel">';
+    html += '<div style="overflow-x:auto">';
+    html += '<table class="wp-table"><thead><tr>';
+    html += '<th>Work Item</th>';
+    html += '<th>Work Type</th>';
+    html += '<th style="text-align:right">Planned</th>';
+    html += '<th style="text-align:right" title="Day 1">D1</th>';
+    html += '<th style="text-align:right" title="Day 2">D2</th>';
+    html += '<th style="text-align:right" title="Day 3">D3</th>';
+    html += '<th style="text-align:right" title="Day 4">D4</th>';
+    html += '<th style="text-align:right" title="Day 5">D5</th>';
+    html += '<th style="text-align:right" title="Day 6">D6</th>';
+    html += '<th style="text-align:right" title="Day 7">D7</th>';
+    html += '<th style="text-align:right">Achieved</th>';
+    html += '<th style="text-align:right">Progress %</th>';
+    html += '<th>Status</th>';
+    html += '<th>Photo Proof</th>';
     html += '</tr></thead><tbody>';
+    
     week.targets.forEach(function(t){
-      var apvCols = ['approved_by_site_eng','approved_by_qc','approved_by_pc','approved_by_pd','approved_by_manager'];
-      var apvLbls = ['SE','QC','PC','PD','MGR'];
-      var apvHtml = apvLbls.map(function(lbl,i){
-        var ok = t[apvCols[i]] == 1;
-        return '<span class="apv-dot '+(ok?'apv-yes':'apv-no')+'" title="'+lbl+'">'+(ok?'✓':'·')+'</span>';
-      }).join('');
-      var gPct = parseFloat(t.gain_percentage||0);
-      var gClr = gPct>=75?'#10b981':(gPct>=40?'#f59e0b':'#ef4444');
+      var plannedQty = parseFloat(t.planned_qty || 0);
+      var achievedQty = parseFloat(t.achieved_qty || 0);
+      var pct = parseFloat(t.percent_complete || 0);
+      var pctClr = pct >= 75 ? '#10b981' : (pct >= 40 ? '#f59e0b' : '#ef4444');
+      var statusColor = t.status === 'Completed' ? '#10b981' : (t.status === 'In Progress' ? '#3b82f6' : '#64748b');
+      var statusBg = t.status === 'Completed' ? 'rgba(16,185,129,.1)' : (t.status === 'In Progress' ? 'rgba(59,130,246,.1)' : 'rgba(100,116,139,.1)');
+      
+      var d1 = parseFloat(t['1st_day_qty'] || 0);
+      var d2 = parseFloat(t['2nd_day_qty'] || 0);
+      var d3 = parseFloat(t['3rd_day_qty'] || 0);
+      var d4 = parseFloat(t['4th_day_qty'] || 0);
+      var d5 = parseFloat(t['5th_day_qty'] || 0);
+      var d6 = parseFloat(t['6_th_day_qty'] || 0);
+      var d7 = parseFloat(t['7th_day_qty'] || 0);
+      
+      // Skip showing in the weekly report if it has no planned qty and no actual achieved progress this week
+      if (plannedQty <= 0 && achievedQty <= 0 && d1 <= 0 && d2 <= 0 && d3 <= 0 && d4 <= 0 && d5 <= 0 && d6 <= 0 && d7 <= 0) {
+        return;
+      }
+      
+      var photoHtml = '—';
+      if(t.photo_path) {
+        photoHtml = '<a href="' + base + '/' + t.photo_path + '" target="_blank" style="color:#2563eb; font-weight:600; text-decoration:none;"><i class="fal fa-image me-1"></i>View Photo</a>';
+      }
+
       html += '<tr>';
-      html += '<td><strong>'+escHtml(t.target_title||'—')+'</strong></td>';
-      html += '<td><span style="font-size:11px;background:rgba(99,102,241,.1);color:#6366f1;padding:2px 8px;border-radius:5px;font-weight:600">'+escHtml(t.design_type_name||'—')+'</span></td>';
-      html += '<td style="text-align:right;font-weight:700;color:#6366f1">'+parseFloat(t.target_percentage||0).toFixed(1)+'%</td>';
-      html += '<td style="text-align:right;font-weight:700;color:'+gClr+'">'+gPct.toFixed(1)+'%</td>';
-      html += '<td>'+apvHtml+'</td>';
+      html += '<td><strong>' + escHtml(t.work_item_name) + '</strong></td>';
+      html += '<td><span style="font-size:10px; background:rgba(99,102,241,.08); color:#6366f1; padding:2px 6px; border-radius:4px; font-weight:600;">' + escHtml(t.work_type_name || '—') + '</span></td>';
+      html += '<td style="text-align:right; font-weight:600;">' + plannedQty.toFixed(1) + ' ' + escHtml(t.unit || '') + '</td>';
+      
+      html += '<td style="text-align:right; color:#64748b;">' + (d1 > 0 ? d1.toFixed(1) : '—') + '</td>';
+      html += '<td style="text-align:right; color:#64748b;">' + (d2 > 0 ? d2.toFixed(1) : '—') + '</td>';
+      html += '<td style="text-align:right; color:#64748b;">' + (d3 > 0 ? d3.toFixed(1) : '—') + '</td>';
+      html += '<td style="text-align:right; color:#64748b;">' + (d4 > 0 ? d4.toFixed(1) : '—') + '</td>';
+      html += '<td style="text-align:right; color:#64748b;">' + (d5 > 0 ? d5.toFixed(1) : '—') + '</td>';
+      html += '<td style="text-align:right; color:#64748b;">' + (d6 > 0 ? d6.toFixed(1) : '—') + '</td>';
+      html += '<td style="text-align:right; color:#64748b;">' + (d7 > 0 ? d7.toFixed(1) : '—') + '</td>';
+      
+      html += '<td style="text-align:right; font-weight:700; color:#10b981;">' + achievedQty.toFixed(1) + ' ' + escHtml(t.unit || '') + '</td>';
+      html += '<td style="text-align:right; font-weight:700; color:' + pctClr + '">' + pct.toFixed(1) + '%</td>';
+      html += '<td><span class="doc-status-pill" style="background:'+statusBg+'; color:'+statusColor+'; font-size:10px; font-weight:700;">' + escHtml(t.status) + '</span></td>';
+      html += '<td>' + photoHtml + '</td>';
       html += '</tr>';
     });
-    html += '</tbody></table></div>';
+    
+    html += '</tbody></table></div></div>';
     return html;
   }
 
   function renderWeekProgress(week){
     if(!week.dprs || !week.dprs.length)
       return '<div class="empty-pd"><div class="empty-pd-ico"><i class="fal fa-chart-line"></i></div>No daily progress reports for this week</div>';
-    var html = '<div class="pd-panel"><table class="wp-table"><thead><tr>';
-    html += '<th>Date & By</th><th>Work Plan & Target</th><th>Contractor & Work Order</th><th>Contractor Bill</th><th>Work Details</th><th>Approvals</th><th style="text-align:right">Progress %</th>';
-    html += '</tr></thead><tbody>';
+    
+    var html = '';
     week.dprs.forEach(function(d){
-      var wpName   = d.work_plan_title ? escHtml(d.work_plan_title) : '—';
-      var tName    = d.target_title ? escHtml(d.target_title) : '—';
-      var woName   = d.work_order_title ? escHtml(d.work_order_title) : '<span style="color:#94a3b8">No Work Order</span>';
-      var contName = d.contractor_name ? escHtml(d.contractor_name) : '<span style="color:#94a3b8">No Contractor</span>';
-      var contPhone= d.contractor_phone ? escHtml(d.contractor_phone) : '';
-      var contTrade= d.contractor_trade ? escHtml(d.contractor_trade) : '';
-      var moYr = d.target_month && d.target_year ? monthName(d.target_month) + ' ' + d.target_year + ' (W' + (d.week_number||d.week_no||'') + ')' : '';
+      html += '<div class="pd-panel mb-3" style="border-left: 4px solid #10b981;">';
+      
+      // Header row
+      html += '<div class="d-flex justify-content-between align-items-start mb-2 flex-wrap" style="gap:10px; border-bottom:1px solid rgba(0,0,0,.05); padding-bottom:8px;">';
+      html += '<div>';
+      html += '<h5 style="margin:0; font-weight:700; color:#1e293b;"><i class="fal fa-calendar-day me-2" style="color:#10b981;"></i>' + formatDate(d.log_date) + '</h5>';
+      html += '<span style="font-size:11px; color:var(--text-muted);">Logged by: <strong>' + escHtml(d.creator_name || '—') + '</strong></span>';
+      html += '</div>';
+      
+      // Badges (Safety, QC, Weather)
+      html += '<div class="d-flex gap-2 align-items-center">';
+      if(d.weather) {
+        var tempStr = d.temperature_celsius ? ' (' + d.temperature_celsius + '°C)' : '';
+        html += '<span class="doc-status-pill" style="background:rgba(59,130,246,.08); color:#3b82f6; font-size:10px;"><i class="fal fa-cloud-sun me-1"></i>' + escHtml(d.weather) + tempStr + '</span>';
+      }
+      if(d.safety_ok == 1) {
+        html += '<span class="doc-status-pill" style="background:rgba(16,185,129,.1); color:#10b981; font-size:10px;"><i class="fal fa-shield-check me-1"></i>Safety OK</span>';
+      } else {
+        html += '<span class="doc-status-pill" style="background:rgba(239,68,68,.1); color:#ef4444; font-size:10px;"><i class="fal fa-exclamation-triangle me-1"></i>Safety Issue</span>';
+      }
+      if(d.qc_checked == 1) {
+        html += '<span class="doc-status-pill" style="background:rgba(139,92,246,.1); color:#8b5cf6; font-size:10px;"><i class="fal fa-badge-check me-1"></i>QC Passed</span>';
+      }
+      html += '</div>';
+      html += '</div>'; // end header row
 
-      // Bill info
-      var billHtml = '<span style="color:#94a3b8;font-size:11px">No Bill</span>';
-      if(d.bill_amount) {
-        var bStatus = d.bill_status || 'pending';
-        var bClr = bStatus === 'fully_paid' ? '#10b981' : (bStatus === 'partial' ? '#f59e0b' : '#ef4444');
-        var bLabel = bStatus === 'fully_paid' ? '✓ Fully Paid' : (bStatus === 'partial' ? '⚡ Partial' : bStatus.toUpperCase());
-        billHtml  = '<div style="font-weight:700;color:#3b82f6">' + fmtMoney(d.bill_amount) + '</div>';
-        billHtml += '<div style="font-size:10px;font-weight:700;color:'+bClr+'">' + bLabel + '</div>';
-        if(parseFloat(d.bill_due_amount) > 0)
-          billHtml += '<div style="font-size:10px;color:#ef4444">Due: ' + fmtMoney(d.bill_due_amount) + '</div>';
+      // Resources info block
+      html += '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:10px; margin-bottom:12px; background:rgba(0,0,0,.02); padding:10px; border-radius:8px;">';
+      html += '<div><span style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Labour Count</span><div style="font-size:14px; font-weight:700; color:#475569;">' + (d.labour_count || 0) + '</div></div>';
+      html += '<div><span style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Cement Used</span><div style="font-size:14px; font-weight:700; color:#b45309;">' + (d.cement_bags || 0) + ' bags</div></div>';
+      if(d.concrete_cft > 0) {
+        html += '<div><span style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Concrete Poured (CFT)</span><div style="font-size:14px; font-weight:700; color:#2563eb;">' + parseFloat(d.concrete_cft).toFixed(1) + ' CFT</div></div>';
+      }
+      if(d.concrete_mt > 0) {
+        html += '<div><span style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Concrete Poured (MT)</span><div style="font-size:14px; font-weight:700; color:#4f46e5;">' + parseFloat(d.concrete_mt).toFixed(2) + ' MT</div></div>';
+      }
+      if(d.equipment_active > 0) {
+        html += '<div><span style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Equipments</span><div style="font-size:14px; font-weight:700; color:#0d9488;">' + d.equipment_active + ' Active</div></div>';
+      }
+      html += '</div>';
+
+      // Items table
+      if(d.items && d.items.length > 0) {
+        html += '<div style="font-weight:700; font-size:11px; text-transform:uppercase; color:#64748b; margin-bottom:6px;"><i class="fal fa-list-check me-1"></i>Work Items Logged:</div>';
+        html += '<table class="wp-table"><thead><tr>';
+        html += '<th>Work Item</th><th>Type</th><th style="text-align:right">Qty Achieved</th><th>Responsible Team</th><th>Status</th><th>Remarks</th>';
+        html += '</tr></thead><tbody>';
+        d.items.forEach(function(item){
+          var statusColor = item.item_status === 'Completed' ? '#10b981' : (item.item_status === 'In Progress' ? '#3b82f6' : '#64748b');
+          var statusBg = item.item_status === 'Completed' ? 'rgba(16,185,129,.1)' : (item.item_status === 'In Progress' ? 'rgba(59,130,246,.1)' : 'rgba(100,116,139,.1)');
+          
+          html += '<tr>';
+          html += '<td><strong>' + escHtml(item.work_item_name) + '</strong></td>';
+          html += '<td><span style="font-size:10px; background:rgba(99,102,241,.08); color:#6366f1; padding:2px 6px; border-radius:4px; font-weight:600;">' + escHtml(item.work_type_name || '—') + '</span></td>';
+          html += '<td style="text-align:right; font-weight:700;">' + parseFloat(item.qty_done_today).toFixed(1) + ' ' + escHtml(item.unit || '') + '</td>';
+          html += '<td>' + escHtml(item.responsible_team || '—') + '</td>';
+          html += '<td><span class="doc-status-pill" style="background:'+statusBg+'; color:'+statusColor+'; font-size:10px; font-weight:700;">' + escHtml(item.item_status) + '</span></td>';
+          html += '<td style="color:var(--text-muted); font-size:11.5px;">' + escHtml(item.remarks || '—') + '</td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+      } else {
+        html += '<div style="font-size:12px; color:var(--text-muted); font-style:italic;"><i class="fal fa-info-circle me-1"></i>No specific work items logged for this day.</div>';
       }
 
-      var apvPM = d.pm_name ? '<span class="apv-yes" style="padding:2px 6px;border-radius:4px;font-size:10px;">PM: '+escHtml(d.pm_name)+'</span>' : '<span class="apv-no" style="padding:2px 6px;border-radius:4px;font-size:10px;">PM: Pending</span>';
-      var apvQC = d.qc_name ? '<span class="apv-yes" style="padding:2px 6px;border-radius:4px;font-size:10px;">QC: '+escHtml(d.qc_name)+'</span>' : '<span class="apv-no" style="padding:2px 6px;border-radius:4px;font-size:10px;">QC: Pending</span>';
-      var creator = d.creator_name ? escHtml(d.creator_name) : (d.engineer_name ? escHtml(d.engineer_name) : '—');
+      // General Remarks
+      if(d.site_remarks) {
+        html += '<div style="margin-top:10px; padding:8px 12px; background:rgba(245,158,11,.04); border-left:3px solid #f59e0b; border-radius:4px; font-size:12px; color:#78350f;">';
+        html += '<strong>Remarks:</strong> ' + escHtml(d.site_remarks);
+        html += '</div>';
+      }
 
-      // Contractor cell
-      var contCell = '<strong style="color:#f59e0b">' + contName + '</strong>';
-      if(contPhone) contCell += '<br><span style="font-size:10px;color:var(--text-muted)"><i class="fal fa-phone-alt me-1"></i>' + contPhone + '</span>';
-      if(contTrade) contCell += '<br><span style="font-size:10px;color:#6366f1">' + contTrade + '</span>';
-      contCell += '<br><span style="font-size:10px;color:var(--text-muted)">WO: ' + woName + '</span>';
-
-      html += '<tr>';
-      html += '<td><strong>' + formatDate(d.report_date) + '</strong><br><span style="font-size:10px;color:var(--text-muted)">By: ' + creator + '</span></td>';
-      html += '<td><strong style="color:#3b82f6">' + wpName + '</strong><br><span style="font-size:11px;color:var(--text-muted)">T: ' + tName + ' ('+moYr+')</span></td>';
-      html += '<td>' + contCell + '</td>';
-      html += '<td>' + billHtml + '</td>';
-      html += '<td>' + escHtml(d.work_done||'—') + '<br><span style="font-size:10px;color:var(--text-muted)">Manpower: ' + (d.manpower_count||0) + '</span></td>';
-      html += '<td><div style="display:flex;flex-direction:column;gap:4px">' + apvQC + apvPM + '</div></td>';
-      html += '<td style="text-align:right;font-weight:700;color:#10b981">' + parseFloat(d.progress_percentage||0).toFixed(1) + '%</td>';
-      html += '</tr>';
+      html += '</div>'; // end panel
     });
-    html += '</tbody></table></div>';
+
     return html;
   }
 

@@ -176,8 +176,10 @@ class Con_RiskDashboardController extends Controller {
         $stmt = $this->db->prepare("
             SELECT
                 pmti.id                  AS target_item_id,
-                pmti.item_name,
+                pmti.work_item_name      AS item_name,
                 pmti.work_type_id,
+                pmti.start_date,
+                pmti.end_date,
                 wt.work_type_name,
                 pmti.unit,
                 pmti.monthly_target_qty,
@@ -214,8 +216,25 @@ class Con_RiskDashboardController extends Controller {
             $plannedQty = (float)($row['week_' . $wk . '_qty'] ?? 0);
             $achievedQty = (float)$row['achieved_qty'];
 
-            // Only flag as missed if planned qty was > 0 and achieved < planned
-            if ($plannedQty > 0 && $achievedQty < $plannedQty) {
+            // Calculate sub-item deadline
+            $itemEndDate = $row['end_date'] ?? null;
+            if (empty($itemEndDate) || $itemEndDate === '0000-00-00') {
+                $targetMonth = $row['target_month'] ?? '';
+                if (strlen($targetMonth) === 7) {
+                    $deadlineDate = date('Y-m-t', strtotime($targetMonth . '-01'));
+                } else {
+                    $deadlineDate = date('Y-m-t', strtotime($targetMonth));
+                }
+            } else {
+                $deadlineDate = $itemEndDate;
+            }
+
+            $today = date('Y-m-d');
+            // Only flag as missed risk if:
+            // 1. Planned qty was > 0
+            // 2. Achieved < planned
+            // 3. The overall sub-item deadline has passed (deadlineDate < today)
+            if ($plannedQty > 0 && $achievedQty < $plannedQty && $deadlineDate < $today) {
                 $missed[] = [
                     'target_item_id' => $row['target_item_id'],
                     'item_name'      => $row['item_name'],
@@ -241,6 +260,26 @@ class Con_RiskDashboardController extends Controller {
     // PRIVATE — auto-generate risk records for missed targets (idempotent)
     // =========================================================================
     private function autoGenerateRisks($projectId, array $missedTargets) {
+        // Clean up any auto-generated risks that are no longer flagged as missed (e.g., deadline is in the future)
+        $stmt = $this->db->prepare("SELECT id, target_item_id, missed_week FROM project_risks WHERE project_id = ? AND is_auto = 1");
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $existingAuto = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $validKeys = [];
+        foreach ($missedTargets as $m) {
+            $validKeys[] = $m['target_item_id'] . '-' . $m['week_number'];
+        }
+
+        foreach ($existingAuto as $r) {
+            $key = $r['target_item_id'] . '-' . $r['missed_week'];
+            if (!in_array($key, $validKeys)) {
+                $del = $this->db->prepare("DELETE FROM project_risks WHERE id = ?");
+                $del->bind_param('i', $r['id']);
+                $del->execute();
+            }
+        }
+
         if (empty($missedTargets)) return;
 
         foreach ($missedTargets as $m) {

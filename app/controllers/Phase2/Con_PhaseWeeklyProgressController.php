@@ -117,6 +117,26 @@ class Con_PhaseWeeklyProgressController extends Controller {
             $materialIssues = $miStmt->get_result()->fetch_all(MYSQLI_ASSOC);
         } catch (\Throwable $e) {}
 
+        $qcName = '';
+        if (!empty($weeklyProgress['qc_approved_id'])) {
+            $uStmt = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
+            $uId = (int)$weeklyProgress['qc_approved_id'];
+            $uStmt->bind_param('i', $uId);
+            $uStmt->execute();
+            $qcUser = $uStmt->get_result()->fetch_assoc();
+            $qcName = $qcUser['full_name'] ?? '';
+        }
+
+        $pmName = '';
+        if (!empty($weeklyProgress['pm_approved_id'])) {
+            $uStmt = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
+            $uId = (int)$weeklyProgress['pm_approved_id'];
+            $uStmt->bind_param('i', $uId);
+            $uStmt->execute();
+            $pmUser = $uStmt->get_result()->fetch_assoc();
+            $pmName = $pmUser['full_name'] ?? '';
+        }
+
         $this->view('phase2/weekly_progress/entry', [
             'current_route'     => 'con-weekly-progress',
             'page_title'        => 'Daily / Weekly Progress Entry',
@@ -131,6 +151,8 @@ class Con_PhaseWeeklyProgressController extends Controller {
             'weekNo'            => $weekNo,
             'workTypes'         => $workTypes,
             'materialIssues'    => $materialIssues,
+            'qcName'            => $qcName,
+            'pmName'            => $pmName,
         ]);
     }
 
@@ -369,6 +391,135 @@ class Con_PhaseWeeklyProgressController extends Controller {
             setError("Failed to delete log entry or entry not found.");
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
         }
+        exit;
+    }
+
+    // =========================================================================
+    // QC APPROVAL (POST)
+    // =========================================================================
+    public function qcApprove() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard"); exit;
+        }
+
+        $id       = (int)($_POST['weekly_progress_id'] ?? 0);
+        $targetId = (int)($_POST['target_id'] ?? 0);
+        $weekNo   = (int)($_POST['week_number'] ?? 1);
+
+        if (!$id || !$targetId) {
+            setError("Invalid weekly progress session.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard"); exit;
+        }
+
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // Access check: QC (role 13) or Admin (role 1)
+        if (!in_array($roleId, [1, 13])) {
+            setError("You do not have permission to perform QC reviews.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-weekly-progress/" . $targetId . "?week=" . $weekNo);
+            exit;
+        }
+
+        $qcStatus  = trim($_POST['qc_status'] ?? 'Approved');
+        $qcComment = trim($_POST['qc_comment'] ?? '');
+
+        // Handle QC photo upload
+        $qcImage = null;
+        if (!empty($_FILES['qc_image']['name']) && $_FILES['qc_image']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = dirname(__DIR__, 3) . '/public/uploads/qc-reports/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+            $ext = strtolower(pathinfo($_FILES['qc_image']['name'], PATHINFO_EXTENSION));
+            $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            if (in_array($ext, $allowed)) {
+                $filename = 'qc_wpr_' . uniqid() . '_' . time() . '.' . $ext;
+                if (move_uploaded_file($_FILES['qc_image']['tmp_name'], $uploadDir . $filename)) {
+                    $qcImage = 'uploads/qc-reports/' . $filename;
+                }
+            }
+        }
+
+        // Update phase_weekly_progress
+        $stmt = $this->db->prepare("
+            UPDATE phase_weekly_progress SET
+                qc_approved_id = ?,
+                qc_status      = ?,
+                qc_image       = COALESCE(?, qc_image),
+                qc_comment     = ?,
+                updated_at     = NOW()
+            WHERE id = ?
+        ");
+        $stmt->bind_param('isssi', $userId, $qcStatus, $qcImage, $qcComment, $id);
+
+        if ($stmt->execute()) {
+            setSuccess("QC review recorded successfully.");
+        } else {
+            setError("Failed to record QC review.");
+        }
+
+        header("Location: " . $GLOBALS['base_url'] . "/con-weekly-progress/" . $targetId . "?week=" . $weekNo);
+        exit;
+    }
+
+    // =========================================================================
+    // PM APPROVAL (POST)
+    // =========================================================================
+    public function pmApprove() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard"); exit;
+        }
+
+        $id       = (int)($_POST['weekly_progress_id'] ?? 0);
+        $targetId = (int)($_POST['target_id'] ?? 0);
+        $weekNo   = (int)($_POST['week_number'] ?? 1);
+
+        if (!$id || !$targetId) {
+            setError("Invalid weekly progress session.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard"); exit;
+        }
+
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // Access check: PM (role 15), PM Head (role 22), or Admin (role 1)
+        if (!in_array($roleId, [1, 15, 22])) {
+            setError("You do not have permission to perform PM approvals.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-weekly-progress/" . $targetId . "?week=" . $weekNo);
+            exit;
+        }
+
+        $pmStatus  = trim($_POST['pm_status'] ?? 'Approved');
+        $pmComment = trim($_POST['pm_comment'] ?? '');
+
+        // Determine final entry status:
+        // If PM approves or partially approves -> 'Approved'
+        // If PM rejects -> 'Draft' (so Site Engineer can modify and resubmit)
+        $entryStatus = 'Approved';
+        if ($pmStatus === 'Rejected') {
+            $entryStatus = 'Draft';
+        }
+
+        // Update phase_weekly_progress
+        $stmt = $this->db->prepare("
+            UPDATE phase_weekly_progress SET
+                pm_approved_id = ?,
+                pm_status      = ?,
+                pm_comment     = ?,
+                entry_status   = ?,
+                updated_at     = NOW()
+            WHERE id = ?
+        ");
+        $stmt->bind_param('isssi', $userId, $pmStatus, $pmComment, $entryStatus, $id);
+
+        if ($stmt->execute()) {
+            setSuccess("PM approval recorded successfully. Report status updated to $entryStatus.");
+        } else {
+            setError("Failed to record PM approval.");
+        }
+
+        header("Location: " . $GLOBALS['base_url'] . "/con-weekly-progress/" . $targetId . "?week=" . $weekNo);
         exit;
     }
 }
