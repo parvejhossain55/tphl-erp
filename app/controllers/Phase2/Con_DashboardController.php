@@ -198,11 +198,15 @@ class Con_DashboardController extends Controller
                    pwp.week_number AS week_no,
                    p.name AS project_name,
                    u.full_name AS created_by_name,
-                   pwp.target_id
+                   pwp.target_id,
+                   pmt.target_month,
+                   pp.phase_name
             FROM phase_weekly_progress pwp
             LEFT JOIN projects p ON p.id = pwp.project_id
             LEFT JOIN users u ON u.id = pwp.submitted_by
-            WHERE pwp.entry_status = 'Submitted' AND pwp.qc_approved_id IS NOT NULL AND pwp.pm_approved_id IS NULL
+            LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
+            LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
+            WHERE pwp.entry_status = 'Submitted' AND pwp.pm_approved_id IS NULL
             ORDER BY pwp.submitted_at DESC, pwp.id DESC LIMIT 10");
         $pendingWeeklyReportsPM = $rPendingWeeklyPM ? $rPendingWeeklyPM->fetch_all(MYSQLI_ASSOC) : [];
 

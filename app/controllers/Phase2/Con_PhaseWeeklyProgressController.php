@@ -118,9 +118,9 @@ class Con_PhaseWeeklyProgressController extends Controller {
         } catch (\Throwable $e) {}
 
         $qcName = '';
-        if (!empty($weeklyProgress['qc_approved_id'])) {
+        if (!empty($dailyLog['qc_approved_id'])) {
             $uStmt = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
-            $uId = (int)$weeklyProgress['qc_approved_id'];
+            $uId = (int)$dailyLog['qc_approved_id'];
             $uStmt->bind_param('i', $uId);
             $uStmt->execute();
             $qcUser = $uStmt->get_result()->fetch_assoc();
@@ -128,9 +128,9 @@ class Con_PhaseWeeklyProgressController extends Controller {
         }
 
         $pmName = '';
-        if (!empty($weeklyProgress['pm_approved_id'])) {
+        if (!empty($dailyLog['pm_approved_id'])) {
             $uStmt = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
-            $uId = (int)$weeklyProgress['pm_approved_id'];
+            $uId = (int)$dailyLog['pm_approved_id'];
             $uStmt->bind_param('i', $uId);
             $uStmt->execute();
             $pmUser = $uStmt->get_result()->fetch_assoc();
@@ -395,7 +395,7 @@ class Con_PhaseWeeklyProgressController extends Controller {
     }
 
     // =========================================================================
-    // QC APPROVAL (POST)
+    // QC APPROVAL (POST) - DATE-WISE
     // =========================================================================
     public function qcApprove() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -405,9 +405,10 @@ class Con_PhaseWeeklyProgressController extends Controller {
         $id       = (int)($_POST['weekly_progress_id'] ?? 0);
         $targetId = (int)($_POST['target_id'] ?? 0);
         $weekNo   = (int)($_POST['week_number'] ?? 1);
+        $logDate  = trim($_POST['log_date'] ?? '');
 
-        if (!$id || !$targetId) {
-            setError("Invalid weekly progress session.");
+        if (!$id || !$targetId || !$logDate) {
+            setError("Required parameters missing.");
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard"); exit;
         }
 
@@ -417,7 +418,7 @@ class Con_PhaseWeeklyProgressController extends Controller {
         // Access check: QC (role 13) or Admin (role 1)
         if (!in_array($roleId, [1, 13])) {
             setError("You do not have permission to perform QC reviews.");
-            header("Location: " . $GLOBALS['base_url'] . "/con-weekly-progress/" . $targetId . "?week=" . $weekNo);
+            header("Location: " . $GLOBALS['base_url'] . "/con-weekly-progress/" . $targetId . "?week=" . $weekNo . "&log_date=" . $logDate);
             exit;
         }
 
@@ -441,30 +442,78 @@ class Con_PhaseWeeklyProgressController extends Controller {
             }
         }
 
-        // Update phase_weekly_progress
-        $stmt = $this->db->prepare("
-            UPDATE phase_weekly_progress SET
-                qc_approved_id = ?,
-                qc_status      = ?,
-                qc_image       = COALESCE(?, qc_image),
-                qc_comment     = ?,
-                updated_at     = NOW()
-            WHERE id = ?
-        ");
-        $stmt->bind_param('isssi', $userId, $qcStatus, $qcImage, $qcComment, $id);
+        // Update daily_progress_logs
+        if ($qcImage) {
+            $stmt = $this->db->prepare("
+                UPDATE daily_progress_logs SET
+                    qc_approved_id = ?,
+                    qc_status      = ?,
+                    qc_image       = ?,
+                    qc_comment     = ?
+                WHERE weekly_progress_id = ? AND log_date = ?
+            ");
+            $stmt->bind_param('isssis', $userId, $qcStatus, $qcImage, $qcComment, $id, $logDate);
+        } else {
+            $stmt = $this->db->prepare("
+                UPDATE daily_progress_logs SET
+                    qc_approved_id = ?,
+                    qc_status      = ?,
+                    qc_comment     = ?
+                WHERE weekly_progress_id = ? AND log_date = ?
+            ");
+            $stmt->bind_param('issis', $userId, $qcStatus, $qcComment, $id, $logDate);
+        }
 
         if ($stmt->execute()) {
-            setSuccess("QC review recorded successfully.");
+            $this->syncWeeklyQCStatus($id);
+            setSuccess("QC review for date " . date('d M Y', strtotime($logDate)) . " recorded successfully.");
         } else {
             setError("Failed to record QC review.");
         }
 
-        header("Location: " . $GLOBALS['base_url'] . "/con-weekly-progress/" . $targetId . "?week=" . $weekNo);
+        header("Location: " . $GLOBALS['base_url'] . "/con-weekly-progress/" . $targetId . "?week=" . $weekNo . "&log_date=" . $logDate);
         exit;
     }
 
+    private function syncWeeklyQCStatus($weeklyProgressId) {
+        // Find all daily logs for this week
+        $res = $this->db->query("SELECT id, qc_status FROM daily_progress_logs WHERE weekly_progress_id = $weeklyProgressId");
+        if (!$res) return;
+        $logs = $res->fetch_all(MYSQLI_ASSOC);
+        
+        if (empty($logs)) return;
+        
+        $allApproved = true;
+        $anyRejected = false;
+        
+        foreach ($logs as $log) {
+            if ($log['qc_status'] === 'Rejected') {
+                $anyRejected = true;
+            }
+            if ($log['qc_status'] !== 'Approved' && $log['qc_status'] !== 'Partially Approved') {
+                $allApproved = false;
+            }
+        }
+        
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        
+        if ($anyRejected) {
+            $stmt = $this->db->prepare("UPDATE phase_weekly_progress SET qc_status = 'Rejected', qc_approved_id = ? WHERE id = ?");
+            $stmt->bind_param('ii', $userId, $weeklyProgressId);
+            $stmt->execute();
+        } elseif ($allApproved) {
+            $stmt = $this->db->prepare("UPDATE phase_weekly_progress SET qc_status = 'Approved', qc_approved_id = ? WHERE id = ?");
+            $stmt->bind_param('ii', $userId, $weeklyProgressId);
+            $stmt->execute();
+        } else {
+            $stmt = $this->db->prepare("UPDATE phase_weekly_progress SET qc_status = 'Pending', qc_approved_id = NULL WHERE id = ?");
+            $stmt->bind_param('i', $weeklyProgressId);
+            $stmt->execute();
+        }
+    }
+
     // =========================================================================
-    // PM APPROVAL (POST)
+    // PM APPROVAL (POST) - DATE-WISE
     // =========================================================================
     public function pmApprove() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -474,9 +523,10 @@ class Con_PhaseWeeklyProgressController extends Controller {
         $id       = (int)($_POST['weekly_progress_id'] ?? 0);
         $targetId = (int)($_POST['target_id'] ?? 0);
         $weekNo   = (int)($_POST['week_number'] ?? 1);
+        $logDate  = trim($_POST['log_date'] ?? '');
 
-        if (!$id || !$targetId) {
-            setError("Invalid weekly progress session.");
+        if (!$id || !$targetId || !$logDate) {
+            setError("Required parameters missing.");
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard"); exit;
         }
 
@@ -486,40 +536,91 @@ class Con_PhaseWeeklyProgressController extends Controller {
         // Access check: PM (role 15), PM Head (role 22), or Admin (role 1)
         if (!in_array($roleId, [1, 15, 22])) {
             setError("You do not have permission to perform PM approvals.");
-            header("Location: " . $GLOBALS['base_url'] . "/con-weekly-progress/" . $targetId . "?week=" . $weekNo);
+            header("Location: " . $GLOBALS['base_url'] . "/con-weekly-progress/" . $targetId . "?week=" . $weekNo . "&log_date=" . $logDate);
             exit;
         }
 
         $pmStatus  = trim($_POST['pm_status'] ?? 'Approved');
         $pmComment = trim($_POST['pm_comment'] ?? '');
 
-        // Determine final entry status:
-        // If PM approves or partially approves -> 'Approved'
-        // If PM rejects -> 'Draft' (so Site Engineer can modify and resubmit)
-        $entryStatus = 'Approved';
-        if ($pmStatus === 'Rejected') {
-            $entryStatus = 'Draft';
-        }
-
-        // Update phase_weekly_progress
+        // Update daily_progress_logs
         $stmt = $this->db->prepare("
-            UPDATE phase_weekly_progress SET
+            UPDATE daily_progress_logs SET
                 pm_approved_id = ?,
                 pm_status      = ?,
-                pm_comment     = ?,
-                entry_status   = ?,
-                updated_at     = NOW()
-            WHERE id = ?
+                pm_comment     = ?
+            WHERE weekly_progress_id = ? AND log_date = ?
         ");
-        $stmt->bind_param('isssi', $userId, $pmStatus, $pmComment, $entryStatus, $id);
+        $stmt->bind_param('issis', $userId, $pmStatus, $pmComment, $id, $logDate);
 
         if ($stmt->execute()) {
-            setSuccess("PM approval recorded successfully. Report status updated to $entryStatus.");
+            $this->syncWeeklyPMStatus($id);
+            setSuccess("PM review for date " . date('d M Y', strtotime($logDate)) . " recorded successfully.");
         } else {
-            setError("Failed to record PM approval.");
+            setError("Failed to record PM review.");
         }
 
-        header("Location: " . $GLOBALS['base_url'] . "/con-weekly-progress/" . $targetId . "?week=" . $weekNo);
+        header("Location: " . $GLOBALS['base_url'] . "/con-weekly-progress/" . $targetId . "?week=" . $weekNo . "&log_date=" . $logDate);
         exit;
+    }
+
+    private function syncWeeklyPMStatus($weeklyProgressId) {
+        // Find all daily logs for this week
+        $res = $this->db->query("SELECT id, pm_status FROM daily_progress_logs WHERE weekly_progress_id = $weeklyProgressId");
+        if (!$res) return;
+        $logs = $res->fetch_all(MYSQLI_ASSOC);
+        
+        if (empty($logs)) return;
+        
+        $allApproved = true;
+        $anyRejected = false;
+        
+        foreach ($logs as $log) {
+            if ($log['pm_status'] === 'Rejected') {
+                $anyRejected = true;
+            }
+            if ($log['pm_status'] !== 'Approved' && $log['pm_status'] !== 'Partially Approved') {
+                $allApproved = false;
+            }
+        }
+        
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        
+        if ($anyRejected) {
+            // Revert entire weekly report to Draft status so the Site Engineer can modify
+            $stmt = $this->db->prepare("
+                UPDATE phase_weekly_progress SET 
+                    pm_status = 'Rejected', 
+                    pm_approved_id = ?, 
+                    entry_status = 'Draft',
+                    qc_status = 'Pending',
+                    qc_approved_id = NULL
+                WHERE id = ?
+            ");
+            $stmt->bind_param('ii', $userId, $weeklyProgressId);
+            $stmt->execute();
+        } elseif ($allApproved) {
+            // Approve the entire weekly progress report
+            $stmt = $this->db->prepare("
+                UPDATE phase_weekly_progress SET 
+                    pm_status = 'Approved', 
+                    pm_approved_id = ?, 
+                    entry_status = 'Approved' 
+                WHERE id = ?
+            ");
+            $stmt->bind_param('ii', $userId, $weeklyProgressId);
+            $stmt->execute();
+        } else {
+            // Weekly PM status remains Pending
+            $stmt = $this->db->prepare("
+                UPDATE phase_weekly_progress SET 
+                    pm_status = 'Pending', 
+                    pm_approved_id = NULL,
+                    entry_status = 'Submitted' 
+                WHERE id = ?
+            ");
+            $stmt->bind_param('i', $weeklyProgressId);
+            $stmt->execute();
+        }
     }
 }

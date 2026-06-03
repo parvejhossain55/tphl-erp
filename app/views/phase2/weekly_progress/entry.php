@@ -408,7 +408,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                     <h6 class="mb-0 fw-bold" style="color: #334155; font-size: 14px;">Quality Control Review</h6>
                 </div>
                 
-                <?php if (empty($weeklyProgress['qc_approved_id'])): ?>
+                <?php if (empty($dailyLog['qc_approved_id'])): ?>
                     <!-- QC Review Form (Visible only to role 13 [QC] or role 1 [Admin]) -->
                     <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 13])): ?>
                         <div class="pe-2">
@@ -423,7 +423,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                             
                             <div class="mb-3">
                                 <label class="form-label small fw-bold text-muted">Verification Photo / Proof</label>
-                                <input type="file" name="qc_image" form="qcForm" class="form-control form-control-sm" accept="image/*" style="border-radius: 8px;">
+                                <input type="file" name="qc_image" form="qcForm" class="form-control form-control-sm" accept="image/*" style="border-radius: 8px; color: #334155; background-color: #d9cfcf; border: 1px solid #cbd5e1;">
                                 <div class="form-text" style="font-size: 10px;">Upload site photo as quality assessment proof.</div>
                             </div>
                             
@@ -445,7 +445,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 <?php else: ?>
                     <!-- QC Review Details Display -->
                     <?php
-                        $qcStatus = $weeklyProgress['qc_status'] ?? 'Approved';
+                        $qcStatus = $dailyLog['qc_status'] ?? 'Approved';
                         $qcStatusColors = [
                             'Approved' => ['bg' => 'rgba(16, 185, 129, 0.1)', 'text' => '#10b981', 'icon' => 'bi-check-circle-fill'],
                             'Partially Approved' => ['bg' => 'rgba(245, 158, 11, 0.1)', 'text' => '#f59e0b', 'icon' => 'bi-exclamation-triangle-fill'],
@@ -467,15 +467,15 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                         <div class="mb-3">
                             <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Comments</div>
                             <div style="font-size: 12.5px; color: #334155; line-height: 1.5; background: #f8fafc; padding: 10px; border-radius: 8px; border-left: 3px solid <?= $qsm['text'] ?>;">
-                                <?= nl2br(htmlspecialchars($weeklyProgress['qc_comment'] ?? 'No comments provided.')) ?>
+                                <?= nl2br(htmlspecialchars($dailyLog['qc_comment'] ?? 'No comments provided.')) ?>
                             </div>
                         </div>
                         
-                        <?php if (!empty($weeklyProgress['qc_image'])): ?>
+                        <?php if (!empty($dailyLog['qc_image'])): ?>
                             <div>
                                 <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px;">Inspection Proof</div>
-                                <a href="<?= $base ?>/<?= htmlspecialchars($weeklyProgress['qc_image']) ?>" target="_blank" style="display: block; position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
-                                    <img src="<?= $base ?>/<?= htmlspecialchars($weeklyProgress['qc_image']) ?>" style="width: 100%; max-height: 150px; object-fit: cover;" alt="QC Verification Image">
+                                <a href="<?= $base ?>/<?= htmlspecialchars($dailyLog['qc_image']) ?>" target="_blank" style="display: block; position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
+                                    <img src="<?= $base ?>/<?= htmlspecialchars($dailyLog['qc_image']) ?>" style="width: 100%; max-height: 150px; object-fit: cover;" alt="QC Verification Image">
                                     <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); color: #fff; font-size: 10px; text-align: center; padding: 4px; font-weight: 600;">
                                         <i class="bi bi-zoom-in me-1"></i> View Full Image
                                     </div>
@@ -493,13 +493,13 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                     <h6 class="mb-0 fw-bold" style="color: #334155; font-size: 14px;">Management Decision</h6>
                 </div>
                 
-                <?php if (empty($weeklyProgress['qc_approved_id'])): ?>
+                <?php if (empty($dailyLog['qc_approved_id'])): ?>
                     <div class="text-center py-4 bg-light rounded-3" style="background: rgba(241, 245, 249, 0.5); border-radius: 12px; border: 1px solid #e2e8f0; height: calc(100% - 40px); display: flex; flex-direction: column; align-items: center; justify-content: center;">
                         <i class="bi bi-lock text-muted fs-4"></i>
                         <p class="text-muted small mt-2 mb-0 px-3">PM Approval will unlock after Quality Control verification has been submitted.</p>
                     </div>
                 <?php else: ?>
-                    <?php if (empty($weeklyProgress['pm_approved_id'])): ?>
+                    <?php if (empty($dailyLog['pm_approved_id'])): ?>
                         <!-- PM Review Form (Visible only to role 15 [PM], 22 [PM Head], or 1 [Admin]) -->
                         <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 15, 22])): ?>
                             <div class="ps-2">
@@ -530,7 +530,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                     <?php else: ?>
                         <!-- PM Review Details Display -->
                         <?php
-                            $pmStatus = $weeklyProgress['pm_status'] ?? 'Approved';
+                            $pmStatus = $dailyLog['pm_status'] ?? 'Approved';
                             $pmStatusColors = [
                                 'Approved' => ['bg' => 'rgba(16, 185, 129, 0.1)', 'text' => '#10b981', 'icon' => 'bi-check-circle-fill'],
                                 'Partially Approved' => ['bg' => 'rgba(245, 158, 11, 0.1)', 'text' => '#f59e0b', 'icon' => 'bi-exclamation-triangle-fill'],
@@ -552,7 +552,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                             <div>
                                 <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Comments</div>
                                 <div style="font-size: 12.5px; color: #334155; line-height: 1.5; background: #f8fafc; padding: 10px; border-radius: 8px; border-left: 3px solid <?= $psm['text'] ?>;">
-                                    <?= nl2br(htmlspecialchars($weeklyProgress['pm_comment'] ?? 'No comments provided.')) ?>
+                                    <?= nl2br(htmlspecialchars($dailyLog['pm_comment'] ?? 'No comments provided.')) ?>
                                 </div>
                             </div>
                         </div>
@@ -1504,12 +1504,14 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
     <input type="hidden" name="weekly_progress_id" value="<?= (int)($weeklyProgress['id']??0) ?>">
     <input type="hidden" name="target_id" value="<?= $target_id ?>">
     <input type="hidden" name="week_number" value="<?= $weekNo ?>">
+    <input type="hidden" name="log_date" value="<?= htmlspecialchars($selectedDate) ?>">
 </form>
 
 <form id="pmForm" method="POST" action="<?= $base ?>/con-weekly-progress-pm-approve" style="display:none">
     <input type="hidden" name="weekly_progress_id" value="<?= (int)($weeklyProgress['id']??0) ?>">
     <input type="hidden" name="target_id" value="<?= $target_id ?>">
     <input type="hidden" name="week_number" value="<?= $weekNo ?>">
+    <input type="hidden" name="log_date" value="<?= htmlspecialchars($selectedDate) ?>">
 </form>
 
 <?php
