@@ -117,6 +117,107 @@ $months     = ['','January','February','March','April','May','June',
                             </span>
                         </div>
 
+                        <?php
+                        $targetPhaseItems = $targetPhaseItems ?? [];
+                        $existingBoqCount = $existingBoqCount ?? 0;
+                        ?>
+                        <?php if (!empty($targetPhaseItems)): ?>
+                        <!-- ── Phase Items Full Panel ── -->
+                        <div class="mb-3" style="border:1.5px solid rgba(99,102,241,.2);border-radius:10px;overflow:hidden;">
+                            <div style="background:linear-gradient(90deg,rgba(99,102,241,.08),transparent);padding:10px 16px;border-bottom:1px solid rgba(99,102,241,.1);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                                <div style="font-size:12.5px;font-weight:700;color:#6366f1;">
+                                    <i class="bi bi-list-check me-2"></i>
+                                    এই Target এর Work Items (<?= count($targetPhaseItems) ?>টি)
+                                    <span style="font-size:11px;font-weight:500;color:var(--text-muted);margin-left:6px;">— এই items গুলোর জন্য BOQ তৈরি করা হচ্ছে</span>
+                                </div>
+                                <?php if ($existingBoqCount > 0): ?>
+                                <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;background:rgba(245,158,11,.12);color:#d97706;border:1px solid rgba(245,158,11,.25);">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                    আগে <?= $existingBoqCount ?>টি BOQ তৈরি হয়েছে — এটা নতুন batch
+                                </span>
+                                <?php endif; ?>
+                            </div>
+
+                            <?php
+                            $th = 'padding:6px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b;border-bottom:2px solid rgba(0,0,0,.07);white-space:nowrap;background:rgba(0,0,0,.02);';
+                            $td = 'padding:7px 10px;border-bottom:1px solid rgba(0,0,0,.05);font-size:12px;vertical-align:middle;';
+                            $priColors = ['High'=>'#ef4444','Medium'=>'#f59e0b','Low'=>'#10b981'];
+                            $stColors  = ['Draft'=>'#94a3b8','Ready'=>'#6366f1','Approved'=>'#10b981','At Risk'=>'#f59e0b','Critical'=>'#ef4444'];
+                            ?>
+
+                            <div style="overflow-x:auto;">
+                            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                                <thead>
+                                <tr>
+                                    <th style="<?= $th ?>">#</th>
+                                    <th style="<?= $th ?>">Work Item</th>
+                                    <th style="<?= $th ?>">Work Type</th>
+                                    <th style="<?= $th ?>">Unit</th>
+                                    <th style="<?= $th ?>;text-align:center">Target Qty</th>
+                                    <th style="<?= $th ?>;text-align:center">Actual Qty</th>
+                                    <th style="<?= $th ?>;text-align:center">Planned %</th>
+                                    <th style="<?= $th ?>;text-align:center">Actual %</th>
+                                    <th style="<?= $th ?>">Start Date</th>
+                                    <th style="<?= $th ?>">End Date</th>
+                                    <th style="<?= $th ?>;text-align:center">Wk 1</th>
+                                    <th style="<?= $th ?>;text-align:center">Wk 2</th>
+                                    <th style="<?= $th ?>;text-align:center">Wk 3</th>
+                                    <th style="<?= $th ?>;text-align:center">Wk 4</th>
+                                    <th style="<?= $th ?>">Team</th>
+                                    <th style="<?= $th ?>">Contractor</th>
+                                    <th style="<?= $th ?>;text-align:center">Priority</th>
+                                    <th style="<?= $th ?>;text-align:center">Status</th>
+                                    <th style="<?= $th ?>">Recovery Notes</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <?php foreach ($targetPhaseItems as $idx => $pi):
+                                    $actPct  = (float)($pi['actual_progress_pct'] ?? 0);
+                                    $planPct = (float)($pi['planned_progress_pct'] ?? 0);
+                                    $priColor = $priColors[$pi['priority'] ?? 'Medium'] ?? '#64748b';
+                                    $stColor  = $stColors[$pi['status'] ?? 'Draft'] ?? '#94a3b8';
+                                    $rowBg = $idx % 2 === 0 ? '' : 'background:rgba(0,0,0,.015)';
+                                ?>
+                                <tr style="<?= $rowBg ?>">
+                                    <td style="<?= $td ?>;color:#94a3b8;font-weight:700;"><?= $idx+1 ?></td>
+                                    <td style="<?= $td ?>;font-weight:700;"><?= htmlspecialchars($pi['work_item_name']) ?></td>
+                                    <td style="<?= $td ?>;color:#64748b;"><?= htmlspecialchars($pi['work_type_name'] ?? '—') ?></td>
+                                    <td style="<?= $td ?>;font-weight:600;color:#6366f1;"><?= htmlspecialchars($pi['unit'] ?? '—') ?></td>
+                                    <td style="<?= $td ?>;text-align:center;font-weight:700;"><?= number_format((float)($pi['monthly_target_qty'] ?? 0), 2) ?></td>
+                                    <td style="<?= $td ?>;text-align:center;font-weight:700;color:#10b981;"><?= number_format((float)($pi['actual_qty'] ?? 0), 2) ?></td>
+                                    <td style="<?= $td ?>;text-align:center;">
+                                        <span style="display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(99,102,241,.1);color:#6366f1;"><?= number_format($planPct, 1) ?>%</span>
+                                    </td>
+                                    <td style="<?= $td ?>;text-align:center;">
+                                        <span style="display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:<?= $actPct>=100?'rgba(16,185,129,.1)':($actPct>0?'rgba(245,158,11,.1)':'rgba(0,0,0,.05)') ?>;color:<?= $actPct>=100?'#10b981':($actPct>0?'#f59e0b':'#94a3b8') ?>;">
+                                            <?= number_format($actPct, 1) ?>%
+                                        </span>
+                                    </td>
+                                    <td style="<?= $td ?>;font-size:11px;white-space:nowrap;"><?= $pi['start_date'] ?? '—' ?></td>
+                                    <td style="<?= $td ?>;font-size:11px;white-space:nowrap;"><?= $pi['end_date'] ?? '—' ?></td>
+                                    <td style="<?= $td ?>;text-align:center;"><?= number_format((float)($pi['week_1_qty'] ?? 0), 2) ?></td>
+                                    <td style="<?= $td ?>;text-align:center;"><?= number_format((float)($pi['week_2_qty'] ?? 0), 2) ?></td>
+                                    <td style="<?= $td ?>;text-align:center;"><?= number_format((float)($pi['week_3_qty'] ?? 0), 2) ?></td>
+                                    <td style="<?= $td ?>;text-align:center;"><?= number_format((float)($pi['week_4_qty'] ?? 0), 2) ?></td>
+                                    <td style="<?= $td ?>;font-size:11px;"><?= htmlspecialchars($pi['responsible_team'] ?? '—') ?></td>
+                                    <td style="<?= $td ?>;font-size:11px;"><?= htmlspecialchars($pi['contractor_name'] ?? '—') ?></td>
+                                    <td style="<?= $td ?>;text-align:center;">
+                                        <span style="font-size:11px;font-weight:700;color:<?= $priColor ?>;"><?= htmlspecialchars($pi['priority'] ?? '—') ?></span>
+                                    </td>
+                                    <td style="<?= $td ?>;text-align:center;">
+                                        <span style="font-size:11px;font-weight:700;color:<?= $stColor ?>;"><?= htmlspecialchars($pi['status'] ?? '—') ?></span>
+                                    </td>
+                                    <td style="<?= $td ?>;font-size:11px;color:#64748b;max-width:160px;">
+                                        <?= $pi['recovery_notes'] ? htmlspecialchars($pi['recovery_notes']) : '<span style="opacity:.4">—</span>' ?>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
                         <hr class="my-3">
 
                         <!-- ── BOQ Items Table ── -->

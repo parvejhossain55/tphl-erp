@@ -52,34 +52,68 @@ class Con_BOQController extends Controller
         $targetData = null;
 
         if ($target_id) {
-            $targetModel = new \Con_TargetFixed($this->db);
-            $targetData  = $targetModel->find($target_id);
+            require_once __DIR__ . '/../../models/Con_MonthlyTarget.php';
+            $targetModel = new \Con_MonthlyTarget($this->db);
+            $rawTarget  = $targetModel->find($target_id);
+            if ($rawTarget) {
+                $targetData = [
+                    'id'                => $rawTarget['id'],
+                    'project_id'        => $rawTarget['project_id'],
+                    'target_title'      => $rawTarget['phase_name'] . ' - ' . date('F Y', strtotime($rawTarget['target_month'])),
+                    'year'              => $rawTarget['target_year'],
+                    'month'             => $rawTarget['target_month_number'],
+                    'week_number'       => null,
+                    'target_percentage' => $rawTarget['total_target_weight_pct'],
+                    'gain_percentage'   => $rawTarget['actual_progress'] ?? 0.0,
+                    'plan_weight_percentage' => $rawTarget['phase_weight'],
+                    'design_type_name'  => 'General / Phase-based',
+                    'project_name'      => $rawTarget['project_name'],
+                    'plan_description'  => $rawTarget['phase_name'],
+                    'created_by_name'   => 'System',
+                    'created_at'        => $rawTarget['created_at'],
+                    'description'       => 'Phase-based monthly target',
+                    'approved_by_manager' => ($rawTarget['approved_by_pm'] ?? null) ? true : false,
+                ];
+            }
 
-            // ── If BOQ already exists for this target → redirect to it ──────
+            // ── If BOQ already exists for this target, allow creating another ──
+            // (previous BOQs may be fully received; new BOQ = new batch/restocking)
+            // We just pre-fill existing BOQ count for the view
             $stmt = $this->db->prepare(
-                "SELECT id FROM boq_master WHERE target_id = ? ORDER BY id DESC LIMIT 1"
+                "SELECT COUNT(*) AS cnt FROM boq_master WHERE target_id = ?"
             );
             $stmt->bind_param('i', $target_id);
             $stmt->execute();
-            $existingBoq = $stmt->get_result()->fetch_assoc();
+            $existingBoqCount = (int)($stmt->get_result()->fetch_assoc()['cnt'] ?? 0);
 
-            if ($existingBoq) {
-                setSuccess('A BOQ already exists for this target. Redirecting to it.');
-                header("Location: {$GLOBALS['base_url']}/con-boq-show/{$existingBoq['id']}");
-                exit;
-            }
+            // ── Fetch phase items for this target (to show in BOQ form) ──────
+            $piStmt = $this->db->prepare("
+                SELECT pmti.*,
+                       wt.work_type_name,
+                       c.name AS contractor_name
+                FROM phase_monthly_target_items pmti
+                LEFT JOIN work_types wt  ON wt.id  = pmti.work_type_id
+                LEFT JOIN contractors c  ON c.id   = pmti.contractor_id
+                WHERE pmti.target_id = ?
+                ORDER BY pmti.sort_order ASC, pmti.id ASC
+            ");
+            $piStmt->bind_param('i', $target_id);
+            $piStmt->execute();
+            $targetPhaseItems = $piStmt->get_result()->fetch_all(MYSQLI_ASSOC);
         }
 
         $projects  = $this->projectModel->getAll();
         $materials = $this->materialModel->getAll();
 
         $this->view('phase2/boq/create-boq', [
-            'current_route' => 'con-boq-create',
-            'page_title'    => 'New Bill of Quantities',
-            'projects'      => $projects,
-            'materials'     => $materials,
-            'targetData'    => $targetData,
-            'target_id'     => $target_id,
+            'current_route'     => 'con-boq-create',
+            'page_title'        => 'New Bill of Quantities',
+            'projects'          => $projects,
+            'materials'         => $materials,
+            'targetData'        => $targetData,
+            'target_id'         => $target_id,
+            'targetPhaseItems'  => $targetPhaseItems ?? [],
+            'existingBoqCount'  => $existingBoqCount ?? 0,
         ]);
     }
 
@@ -559,9 +593,9 @@ class Con_BOQController extends Controller
     }
 
     // =========================================================================
-    // AJAX — Targets by Project (for BOQ create form)
+    // AJAX — Monthly Targets by Project (for BOQ create form)
     // GET: ?project_id=N
-    // Returns JSON: { targets: [{id, target_title, year, month, week_number, design_type_id, design_type_name}] }
+    // Returns JSON: { targets: [{id, target_title, year, month, week_number, design_type_id, design_type_name, boq_id}] }
     // =========================================================================
 
     public function ajaxGetTargetsByProject()
@@ -574,17 +608,21 @@ class Con_BOQController extends Controller
             exit;
         }
 
+        // Migrated: now queries phase_monthly_targets via project_phases
         $stmt = $this->db->prepare("
-            SELECT tf.id, tf.target_title, tf.year, tf.month, tf.week_number,
-                   tf.target_percentage,
-                   wp.design_type_id,
-                   dt.name AS design_type_name,
-                   (SELECT id FROM boq_master WHERE target_id = tf.id LIMIT 1) AS boq_id
-            FROM target_fixed tf
-            LEFT JOIN project_working_plans wp ON wp.id = tf.work_plan_id
-            LEFT JOIN design_types          dt ON dt.id = wp.design_type_id
-            WHERE tf.project_id = ?
-            ORDER BY tf.year DESC, tf.month DESC, tf.week_number ASC");
+            SELECT pmt.id,
+                   COALESCE(pmt.title, CONCAT(pp.phase_name,' - Month ',pmt.month_number)) AS target_title,
+                   YEAR(pmt.created_at)  AS year,
+                   pmt.month_number      AS month,
+                   NULL                  AS week_number,
+                   pmt.target_percentage,
+                   NULL                  AS design_type_id,
+                   NULL                  AS design_type_name,
+                   (SELECT id FROM boq_master WHERE target_id = pmt.id LIMIT 1) AS boq_id
+            FROM phase_monthly_targets pmt
+            INNER JOIN project_phases pp ON pp.id = pmt.phase_id
+            WHERE pp.project_id = ?
+            ORDER BY pp.phase_order ASC, pmt.month_number ASC");
         $stmt->bind_param('i', $projectId);
         $stmt->execute();
         $targets = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);

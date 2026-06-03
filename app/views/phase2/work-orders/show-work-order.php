@@ -170,7 +170,12 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                                 ?>
                                 <tr>
                                     <td class="text-center fw-semibold text-primary"><?= htmlspecialchars($item['sl_no']) ?></td>
-                                    <td style="white-space:pre-wrap;max-width:280px"><?= nl2br(htmlspecialchars($item['description'])) ?></td>
+                                    <td>
+                                        <?php if (!empty($item['phase_item_name'])): ?>
+                                            <div class="mb-1"><span class="badge bg-secondary-transparent text-secondary border border-secondary">Phase Item: <?= htmlspecialchars($item['phase_item_name']) ?></span></div>
+                                        <?php endif; ?>
+                                        <div style="white-space:pre-wrap;max-width:280px"><?= nl2br(htmlspecialchars($item['description'])) ?></div>
+                                    </td>
                                     <td class="text-muted"><?= htmlspecialchars($item['location'] ?? '') ?></td>
                                     <td class="text-center"><?= strtoupper(htmlspecialchars($item['unit'])) ?></td>
                                     <td class="text-end"><?= number_format((float)$item['quantity'], 2) ?></td>

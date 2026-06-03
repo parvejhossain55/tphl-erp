@@ -232,12 +232,12 @@ class Con_Stock extends Model
         $detailSql = "SELECT mi.project_id, mi.material_id,
                              mi.quantity, mi.issue_date,
                              u.full_name AS issued_by_name,
-                             tf.target_title,
-                             wp.work_description AS work_plan_title
+                             CONCAT(pp.phase_name, ' - ', DATE_FORMAT(pmt.target_month, '%M %Y')) AS target_title,
+                             NULL AS work_plan_title
                       FROM con_material_issues mi
                       LEFT JOIN users u ON u.id = mi.issued_by
-                      LEFT JOIN target_fixed tf ON tf.id = mi.target_id
-                      LEFT JOIN project_working_plans wp ON wp.id = mi.work_plan_id
+                      LEFT JOIN phase_monthly_targets pmt ON pmt.id = mi.target_id
+                      LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
                       ORDER BY mi.project_id, mi.material_id, mi.issue_date DESC";
         $dResult = $this->db->query($detailSql);
         $issueDetailMap = [];

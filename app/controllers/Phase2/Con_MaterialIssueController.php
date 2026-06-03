@@ -365,36 +365,39 @@ class Con_MaterialIssueController extends Controller
             // ── BEGIN TRANSACTION per row ─────────────────────────────────────
             $this->db->begin_transaction();
             try {
-                // Find latest working_plan for this project
-                $wpRes      = $this->db->query(
-                    "SELECT id FROM project_working_plans
+                // Find the first phase for this project (replaces project_working_plans lookup)
+                $phaseRes  = $this->db->query(
+                    "SELECT id FROM project_phases
                      WHERE project_id = {$projectId}
-                     ORDER BY id DESC LIMIT 1"
+                     ORDER BY phase_order ASC LIMIT 1"
                 );
-                $workPlanId = ($wpRes && $wp = $wpRes->fetch_assoc()) ? (int)$wp['id'] : null;
+                $phaseId = ($phaseRes && $ph = $phaseRes->fetch_assoc()) ? (int)$ph['id'] : null;
 
-                // Find or create target_fixed
+                // Find or create phase_monthly_targets entry (replaces target_fixed)
                 $safeTitle = $this->db->real_escape_string($targetTitle);
-                $tRes = $this->db->query(
-                    "SELECT id FROM target_fixed
-                     WHERE project_id = {$projectId} AND target_title = '{$safeTitle}'
-                     LIMIT 1"
-                );
-                if ($tRes && $tRes->num_rows > 0) {
-                    $targetId = (int)$tRes->fetch_assoc()['id'];
-                } else {
-                    $tStmt = $this->db->prepare(
-                        "INSERT INTO target_fixed
-                            (project_id, work_plan_id, target_title, user_id, year, month, week_number, target_percentage)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, 0)"
+                $targetId  = null;
+
+                if ($phaseId) {
+                    $tRes = $this->db->query(
+                        "SELECT id FROM phase_monthly_targets
+                         WHERE phase_id = {$phaseId} AND month_number = {$month}
+                         LIMIT 1"
                     );
-                    $tStmt->bind_param('iisiiii',
-                        $projectId, $workPlanId, $targetTitle,
-                        $userId, $year, $month, $weekNum
-                    );
-                    $tStmt->execute();
-                    $targetId = $this->db->insert_id;
+                    if ($tRes && $tRes->num_rows > 0) {
+                        $targetId = (int)$tRes->fetch_assoc()['id'];
+                    } else {
+                        $tStmt = $this->db->prepare(
+                            "INSERT INTO phase_monthly_targets
+                                (phase_id, month_number, title, target_percentage, created_by)
+                             VALUES (?, ?, ?, 0, ?)"
+                        );
+                        $tStmt->bind_param('isis', $phaseId, $month, $targetTitle, $userId);
+                        $tStmt->execute();
+                        $targetId = $this->db->insert_id;
+                    }
                 }
+
+                $workPlanId = null; // legacy column — set to null (migrated)
 
                 // Insert con_material_issues
                 $iStmt = $this->db->prepare(

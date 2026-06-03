@@ -111,6 +111,7 @@ class QCController extends Controller
         $pendingWeeklyCount = $rWkCount ? (int)$rWkCount->fetch_assoc()['c'] : 0;
 
         // ── Project Progress (only assigned projects) ─────────────────────
+        // Migrated: uses phase_monthly_targets.actual_progress weighted by project_phases.weight_percentage
         $rProj = $this->db->query("
             SELECT p.id, p.name, p.project_status,
                    COALESCE(l.name,'') AS location_name,
@@ -118,8 +119,10 @@ class QCController extends Controller
             FROM projects p
             LEFT JOIN locations l ON l.id = p.location_id
             LEFT JOIN (
-                SELECT project_id, AVG(gain_percentage) AS progress_pct
-                FROM target_fixed GROUP BY project_id
+                SELECT pp.project_id,
+                       SUM((COALESCE(pp.actual_progress,0) / 100) * COALESCE(pp.weight_percentage,0)) AS progress_pct
+                FROM project_phases pp
+                GROUP BY pp.project_id
             ) prog ON prog.project_id = p.id
             WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . "
             ORDER BY p.id DESC LIMIT 6");

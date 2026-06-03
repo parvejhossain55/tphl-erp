@@ -388,9 +388,9 @@ class Con_TargetFixedController extends Controller
     }
 
     // =========================================================================
-    // AJAX — Targets by Project
+    // AJAX — Monthly Targets by Project (for Contractor Bill create)
     // GET: ?project_id=N
-    // Returns JSON: { targets: [{id, target_title, year, week_number, gain_percentage}] }
+    // Returns JSON: { targets: [{id, target_title, year, month, week_number, gain_percentage}] }
     // =========================================================================
     public function ajaxGetProjectTargets()
     {
@@ -402,11 +402,18 @@ class Con_TargetFixedController extends Controller
             exit;
         }
 
+        // Migrated: queries phase_monthly_targets via project_phases
         $stmt = $this->db->prepare(
-            "SELECT id, target_title, year, month, week_number, gain_percentage
-             FROM target_fixed
-             WHERE project_id = ?
-             ORDER BY year DESC, month DESC, week_number ASC"
+            "SELECT pmt.id,
+                    CONCAT(pp.phase_name,' - Month ',pmt.target_month_number) AS target_title,
+                    pmt.target_year      AS year,
+                    pmt.target_month_number AS month,
+                    NULL                 AS week_number,
+                    COALESCE((SELECT SUM(pmti.actual_progress_pct) FROM phase_monthly_target_items pmti WHERE pmti.target_id = pmt.id), 0) AS gain_percentage
+             FROM phase_monthly_targets pmt
+             INNER JOIN project_phases pp ON pp.id = pmt.phase_id
+             WHERE pp.project_id = ?
+             ORDER BY pp.phase_order ASC, pmt.target_month_number ASC"
         );
         $stmt->bind_param('i', $projectId);
         $stmt->execute();

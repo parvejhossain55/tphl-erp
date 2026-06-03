@@ -135,11 +135,11 @@ class Con_WorkOrder extends Model
                        ab.full_name    AS approved_by_name,
                        qc.full_name    AS qc_approved_by_name,
                        cm.full_name    AS completed_by_name,
-                       tf.target_title AS target_title,
-                       tf.target_percentage AS target_percentage,
-                       tf.year         AS target_year,
-                       tf.month        AS target_month,
-                       tf.week_number  AS target_week
+                       CONCAT(pp.phase_name, ' - ', DATE_FORMAT(tf.target_month, '%M %Y')) AS target_title,
+                       tf.total_target_weight_pct AS target_percentage,
+                       tf.target_year         AS target_year,
+                       tf.target_month_number AS target_month,
+                       NULL            AS target_week
                 FROM {$this->table} wo
                 LEFT JOIN projects p                ON p.id  = wo.project_id
                 LEFT JOIN contractors c             ON c.id  = wo.contractor_id
@@ -150,7 +150,8 @@ class Con_WorkOrder extends Model
                 LEFT JOIN users ab                  ON ab.id = wo.approved_by
                 LEFT JOIN users qc                  ON qc.id = wo.qc_approved_by
                 LEFT JOIN users cm                  ON cm.id = wo.completed_by
-                LEFT JOIN target_fixed tf           ON tf.id = wo.target_id
+                LEFT JOIN phase_monthly_targets tf  ON tf.id = wo.target_id
+                LEFT JOIN project_phases pp         ON pp.id = tf.phase_id
                 WHERE wo.id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -377,15 +378,17 @@ class Con_WorkOrder extends Model
     // =========================================================================
     public function getLinkedWeeklyReports($woId)
     {
-        $sql = "SELECT wr.*,
+        // Now uses phase_weekly_progress (new system) linked via target_id
+        $sql = "SELECT pwp.*,
                        u.full_name  AS engineer_name,
-                       tf.target_title,
-                       tf.target_percentage
-                FROM weekly_progress_report wr
-                LEFT JOIN users        u  ON u.id  = wr.site_engineer_id
-                LEFT JOIN target_fixed tf ON tf.id = wr.target_id
-                WHERE wr.work_order_id = ?
-                ORDER BY wr.report_date DESC";
+                       pp.phase_name AS target_title,
+                       pmt.total_target_weight_pct AS target_percentage
+                FROM phase_weekly_progress pwp
+                LEFT JOIN users               u   ON u.id   = pwp.submitted_by
+                LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
+                LEFT JOIN project_phases        pp  ON pp.id  = pmt.phase_id
+                WHERE pwp.target_id = (SELECT target_id FROM con_work_orders WHERE id = ?)
+                ORDER BY pwp.week_start_date DESC";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $woId);
         $stmt->execute();
@@ -396,30 +399,36 @@ class Con_WorkOrder extends Model
     // CASCADE HELPERS for dropdowns
     // =========================================================================
 
-    /** Working Plans for a project */
+    /** Project Phases for a project (replaces getWorkPlansByProject) */
     public function getWorkPlansByProject($projectId)
     {
         $stmt = $this->db->prepare(
-            "SELECT id, work_description, year, month
-             FROM project_working_plans
+            "SELECT id, phase_name AS work_description, phase_order AS sort_order
+             FROM project_phases
              WHERE project_id = ?
-             ORDER BY year DESC, month DESC"
+             ORDER BY phase_order ASC"
         );
         $stmt->bind_param('i', $projectId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    /** Targets (weekly) for a Working Plan */
-    public function getTargetsByWorkPlan($workPlanId)
+    /** Monthly Targets for a Phase (replaces getTargetsByWorkPlan) */
+    public function getTargetsByWorkPlan($phaseId)
     {
         $stmt = $this->db->prepare(
-            "SELECT id, target_title, year, month, week_number, target_percentage
-             FROM target_fixed
-             WHERE work_plan_id = ?
-             ORDER BY year DESC, month DESC, week_number ASC"
+            "SELECT pmt.id,
+                    CONCAT(pp.phase_name, ' - ', DATE_FORMAT(pmt.target_month, '%M %Y')) AS target_title,
+                    pmt.target_year AS year,
+                    pmt.target_month_number AS month,
+                    NULL AS week_number,
+                    pmt.total_target_weight_pct AS target_percentage
+             FROM phase_monthly_targets pmt
+             LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
+             WHERE pmt.phase_id = ?
+             ORDER BY pmt.target_month_number ASC"
         );
-        $stmt->bind_param('i', $workPlanId);
+        $stmt->bind_param('i', $phaseId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
@@ -445,9 +454,11 @@ class Con_WorkOrder extends Model
     public function getItemsByWorkOrder($woId)
     {
         $stmt = $this->db->prepare(
-            "SELECT * FROM {$this->itemsTable}
-             WHERE work_order_id = ?
-             ORDER BY sort_order ASC, id ASC"
+            "SELECT i.*, pi.item_name AS phase_item_name 
+             FROM {$this->itemsTable} i
+             LEFT JOIN con_phase_items pi ON i.phase_item_id = pi.id
+             WHERE i.work_order_id = ?
+             ORDER BY i.sort_order ASC, i.id ASC"
         );
         $stmt->bind_param('i', $woId);
         $stmt->execute();
@@ -460,8 +471,8 @@ class Con_WorkOrder extends Model
         if (empty($items)) return true;
 
         $sql  = "INSERT INTO {$this->itemsTable}
-                     (work_order_id, sl_no, description, location, unit, quantity, rate, sort_order)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                     (work_order_id, phase_item_id, sl_no, description, location, unit, quantity, rate, sort_order)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             error_log('WO addItems prepare failed: ' . $this->db->error);
@@ -469,9 +480,11 @@ class Con_WorkOrder extends Model
         }
         foreach ($items as $i => $item) {
             $sortOrder = $item['sort_order'] ?? $i;
+            $phaseItemId = !empty($item['phase_item_id']) ? (int)$item['phase_item_id'] : null;
             $stmt->bind_param(
-                'issssddi',
+                'iissssddi',
                 $woId,
+                $phaseItemId,
                 $item['sl_no'],
                 $item['description'],
                 $item['location'],
@@ -491,6 +504,7 @@ class Con_WorkOrder extends Model
         $del = $this->db->prepare("DELETE FROM {$this->itemsTable} WHERE work_order_id = ?");
         $del->bind_param('i', $woId);
         $del->execute();
+
         return $this->addItems($woId, $items);
     }
 

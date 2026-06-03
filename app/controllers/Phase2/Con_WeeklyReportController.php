@@ -260,22 +260,9 @@ class Con_WeeklyReportController extends Controller
         }
 
         if ($this->model->approveStep($id, $step, $userId)) {
-            // Update target_fixed if QC approved
-            if ($step === 'qc') {
-                $report = $this->model->find($id);
-                if ($report && !empty($report['target_id'])) {
-                    $targetId = (int)$report['target_id'];
-                    $sumQ = $this->db->query("SELECT SUM(qc_gain_percentage) AS total_gain FROM weekly_progress_report WHERE target_id = {$targetId} AND approved_by_qc IS NOT NULL");
-                    $totalGain = $sumQ ? (float)$sumQ->fetch_assoc()['total_gain'] : 0;
-                    
-                    $updTarget = $this->db->prepare("UPDATE target_fixed SET gain_percentage = ? WHERE id = ?");
-                    if ($updTarget) {
-                        $updTarget->bind_param('di', $totalGain, $targetId);
-                        $updTarget->execute();
-                    }
-                }
-            }
-            
+            // NOTE: target_fixed.gain_percentage update removed (legacy system).
+            // Phase progress is now tracked via daily_progress_logs → phase_weekly_progress → phase_monthly_targets.
+
             // Trigger email to Management if PM approves
             if ($step === 'pm') {
                 require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';

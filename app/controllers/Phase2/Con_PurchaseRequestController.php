@@ -390,19 +390,21 @@ class Con_PurchaseRequestController extends Controller
             exit;
         }
 
-        // Get all approved BOQs for this project (with target info)
+        // Get all approved BOQs for this project (with monthly target info)
+        // Migrated: phase_monthly_targets replaces target_fixed
         $stmtBoq = $this->db->prepare("
             SELECT bm.id, bm.version, bm.target_id, bm.design_type_id,
-                   tf.target_title,
-                   tf.year  AS target_year,
-                   tf.month AS target_month,
-                   tf.week_number AS target_week,
+                   COALESCE(pmt.title, CONCAT(pp.phase_name,' - Month ',pmt.month_number)) AS target_title,
+                   YEAR(pmt.created_at)  AS target_year,
+                   pmt.month_number      AS target_month,
+                   NULL                  AS target_week,
                    dt.name AS design_type_name,
                    COUNT(bi.id) AS item_count
             FROM boq_master bm
-            LEFT JOIN target_fixed  tf ON tf.id = bm.target_id
-            LEFT JOIN design_types  dt ON dt.id = bm.design_type_id
-            LEFT JOIN boq_items     bi ON bi.boq_id = bm.id
+            LEFT JOIN phase_monthly_targets pmt ON pmt.id  = bm.target_id
+            LEFT JOIN project_phases        pp  ON pp.id   = pmt.phase_id
+            LEFT JOIN design_types          dt  ON dt.id   = bm.design_type_id
+            LEFT JOIN boq_items             bi  ON bi.boq_id = bm.id
             WHERE bm.project_id = ?
               AND bm.status = 'Approved'
             GROUP BY bm.id

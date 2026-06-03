@@ -87,6 +87,13 @@ $page_title = $page_title ?? 'New Work Order';
                                 <small class="text-muted" id="design_hint">
                                     Project select করুন → তারপর Design Type দেখাবে
                                 </small>
+                                <div id="phase_info_container" class="mt-2 px-2 py-1 rounded" style="background:#eff6ff; display:none; font-size:0.82rem; border:1px solid #bfdbfe">
+                                    <i class="bi bi-diagram-3 me-1 text-primary"></i>
+                                    <span class="fw-semibold text-muted">Phase:</span>
+                                    <span id="wo_phase_name" class="badge bg-primary ms-1 me-2"></span>
+                                    <span class="text-muted">Weight:</span>
+                                    <span id="wo_phase_weight" class="badge bg-info text-dark ms-1"></span>
+                                </div>
                             </div>
 
                             <!-- Work Order Title -->
@@ -172,22 +179,23 @@ $page_title = $page_title ?? 'New Work Order';
                             <table class="table table-bordered align-middle mb-0" id="workItemsTable" style="font-size:.84rem">
                                 <thead style="background:#1e3a8a;color:#fff">
                                     <tr>
-                                        <th style="width:48px" class="text-center">নং</th>
-                                        <th style="width:22%">কাজের ধরন (Work Type)</th>
+                                        <th style="width:42px" class="text-center">নং</th>
+                                        <th style="width:18%">Phase Item</th>
+                                        <th style="width:18%">কাজের ধরন (Work Type)</th>
                                         <th>বিবরণ (Description)</th>
-                                        <th style="width:14%">অবস্থান (Location)</th>
-                                        <th style="width:7%">Unit</th>
-                                        <th style="width:7%">Qty</th>
-                                        <th style="width:8%">Rate (৳)</th>
-                                        <th style="width:10%" class="text-end">Subtotal (৳)</th>
-                                        <th style="width:38px" class="text-center">Del</th>
+                                        <th style="width:10%">অবস্থান (Location)</th>
+                                        <th style="width:6%">Unit</th>
+                                        <th style="width:6%">Qty</th>
+                                        <th style="width:7%">Rate (৳)</th>
+                                        <th style="width:9%" class="text-end">Subtotal (৳)</th>
+                                        <th style="width:34px" class="text-center">Del</th>
                                     </tr>
                                 </thead>
                                 <tbody id="workItemsBody">
                                 </tbody>
                                 <tfoot>
                                     <tr style="background:#f0f9ff">
-                                        <td colspan="7" class="text-end fw-bold text-primary">Grand Total:</td>
+                                        <td colspan="8" class="text-end fw-bold text-primary">Grand Total:</td>
                                         <td class="text-end fw-bold text-primary fs-15" id="grandTotalDisplay">৳ 0.00</td>
                                         <td></td>
                                     </tr>
@@ -306,6 +314,8 @@ $page_title = $page_title ?? 'New Work Order';
 // ============================================================================
 let rowIdx        = 0;
 let existingWOData = null;
+let currentPhaseItems = [];
+let currentWorkTypes  = [];
 const BASE_URL    = '<?= $base_url ?>';
 
 // Unit options list
@@ -368,31 +378,33 @@ function onDesignChange(designId) {
             ? fetch(`${BASE_URL}/con-ajax-wo-check?project_id=${projectId}&design_id=${designId}`).then(r => r.json())
             : Promise.resolve({ found: false })
     ]).then(([wtData, woData]) => {
-        // ── Load work type rows ──────────────────────────────────
-        const workTypes = wtData.work_types || [];
-        if (workTypes.length > 0) {
+        // ── Phase Info ──────────────────────────────────────────
+        const pInfo = wtData.phase_info || null;
+        const pContainer = document.getElementById('phase_info_container');
+        currentPhaseItems = wtData.phase_items || [];
+        currentWorkTypes  = wtData.work_types  || [];
+        
+        if (pInfo && pInfo.phase_name) {
+            document.getElementById('wo_phase_name').textContent = pInfo.phase_name;
+            document.getElementById('wo_phase_weight').textContent = parseFloat(pInfo.weight_percentage).toFixed(2) + '%';
+            pContainer.style.display = 'block';
+        } else {
+            pContainer.style.display = 'none';
+        }
+
+        // ── Load rows (one per work type, or one empty row) ──────────────────────
+        if (currentWorkTypes.length > 0) {
             showRateTable();
-            workTypes.forEach((wt, i) => {
-                addWorkItemRow({
-                    sl:          i + 1,
-                    work_type_id: wt.id,
-                    work_type_name: wt.work_type_name,
-                    desc:        wt.description || wt.work_type_name,
-                    loc:         '',
-                    unit:        'sqft',
-                    rate:        0,
-                    qty:         '',
-                });
+            currentWorkTypes.forEach((wt, i) => {
+                addWorkItemRow({ sl: i + 1, work_type_id: wt.id, work_type_name: wt.work_type_name, desc: wt.description || '', loc: '', unit: 'sqft', rate: 0, qty: '', phase_item_id: '' });
             });
             document.getElementById('rate-table-hint').innerHTML =
-                `<i class="bi bi-check-circle text-success me-1"></i>
-                 <strong>${workTypes.length}টি</strong> work type লোড হয়েছে — Qty ও Rate fill করুন`;
+                `<i class="bi bi-check-circle text-success me-1"></i><strong>${currentWorkTypes.length}টি</strong> work type লোড হয়েছে — Phase Item ও Qty/Rate fill করুন`;
         } else {
-            // No DB templates — show empty table for manual input
             showRateTable();
+            addWorkItemRow({ sl: 1 });
             document.getElementById('rate-table-hint').innerHTML =
-                `<i class="bi bi-info-circle text-warning me-1"></i>
-                 এই design type এ কোনো work type নেই — manually row যোগ করুন`;
+                `<i class="bi bi-info-circle text-warning me-1"></i> কোনো work type নেই — manually fill করুন`;
         }
 
         // ── Check existing WO ────────────────────────────────────
@@ -476,8 +488,30 @@ function addWorkItemRow(data = {}) {
     const unit         = data.unit          || 'sqft';
     const rate         = parseFloat(data.rate  || 0);
     const qty          = (data.qty !== '' && data.qty !== undefined) ? parseFloat(data.qty) : '';
+    const phaseItemId  = data.phase_item_id || '';
 
     const unitOpts = UNITS.map(u => `<option value="${u}" ${u===unit?'selected':''}>${u}</option>`).join('');
+
+    // ── Phase Item dropdown ──────────────────────────────────────────
+    let phaseItemOpts = '<option value="">-- Phase Item Select করুন --</option>';
+    if (typeof currentPhaseItems !== 'undefined' && currentPhaseItems.length > 0) {
+        currentPhaseItems.forEach(pi => {
+            const isSel = (parseInt(pi.id) === parseInt(phaseItemId)) ? 'selected' : '';
+            phaseItemOpts += `<option value="${pi.id}" ${isSel}>${htmlEscAttr(pi.item_name)}</option>`;
+        });
+    }
+
+    // ── Work Type dropdown ───────────────────────────────────────────
+    let workTypeOpts = '<option value="">-- Work Type Select করুন --</option>';
+    if (typeof currentWorkTypes !== 'undefined' && currentWorkTypes.length > 0) {
+        currentWorkTypes.forEach(wt => {
+            const isSel = (parseInt(wt.id) === parseInt(workTypeId)) ? 'selected' : '';
+            workTypeOpts += `<option value="${wt.id}" ${isSel}>${htmlEscAttr(wt.work_type_name)}</option>`;
+        });
+    } else if (workTypeId && workTypeName) {
+        // Fallback: pre-selected item passed directly
+        workTypeOpts += `<option value="${htmlEscAttr(String(workTypeId))}" selected>${htmlEscAttr(workTypeName)}</option>`;
+    }
 
     const tr = document.createElement('tr');
     tr.dataset.idx = idx;
@@ -486,48 +520,52 @@ function addWorkItemRow(data = {}) {
             <input type="text" name="wi_items[${idx}][sl_no]"
                    class="form-control form-control-sm text-center"
                    value="${htmlEscAttr(String(sl))}" placeholder="${idx+1}"
-                   style="min-width:42px">
+                   style="min-width:38px">
+        </td>
+        <td class="p-1">
+            <select name="wi_items[${idx}][phase_item_id]"
+                    class="form-select form-select-sm"
+                    style="font-size:0.78rem; min-width:110px">
+                ${phaseItemOpts}
+            </select>
         </td>
         <td class="p-1">
             <input type="hidden" name="wi_items[${idx}][work_type_id]" value="${htmlEscAttr(String(workTypeId))}">
-            <input type="text" class="form-control form-control-sm text-muted"
-                   value="${htmlEscAttr(workTypeName)}"
-                   placeholder="Work Type..."
-                   style="min-width:100px;font-size:.78rem"
-                   oninput="this.previousElementSibling.value=''"
-                   title="Work Type">
+            <select name="wi_items[${idx}][work_type_select]"
+                    class="form-select form-select-sm wo-wt-sel"
+                    style="font-size:0.78rem; min-width:110px"
+                    onchange="syncWorkType(this, ${idx})">
+                ${workTypeOpts}
+            </select>
         </td>
         <td class="p-1">
             <textarea name="wi_items[${idx}][description]"
                       class="form-control form-control-sm" rows="2"
-                      placeholder="বিস্তারিত কাজের বিবরণ লিখুন..."
-                      style="min-width:160px;resize:vertical">${htmlEscContent(desc)}</textarea>
+                      placeholder="বিস্তারিত বিবরণ..."
+                      style="min-width:130px;resize:vertical">${htmlEscContent(desc)}</textarea>
         </td>
         <td class="p-1">
             <input type="text" name="wi_items[${idx}][location]"
                    class="form-control form-control-sm"
                    value="${htmlEscAttr(loc)}"
-                   placeholder="Floor / Location..."
-                   style="min-width:90px">
+                   placeholder="Floor..." style="min-width:80px">
         </td>
         <td class="p-1">
-            <select name="wi_items[${idx}][unit]" class="form-select form-select-sm">
-                ${unitOpts}
-            </select>
+            <select name="wi_items[${idx}][unit]" class="form-select form-select-sm">${unitOpts}</select>
         </td>
         <td class="p-1">
             <input type="number" name="wi_items[${idx}][quantity]"
                    class="form-control form-control-sm wi-qty"
                    value="${qty}" min="0" step="0.001" placeholder="0"
-                   oninput="recalcRow(this)" style="min-width:68px">
+                   oninput="recalcRow(this)" style="min-width:60px">
         </td>
         <td class="p-1">
             <input type="number" name="wi_items[${idx}][rate]"
                    class="form-control form-control-sm wi-rate"
                    value="${rate}" min="0" step="0.01" placeholder="0"
-                   oninput="recalcRow(this)" style="min-width:72px">
+                   oninput="recalcRow(this)" style="min-width:65px">
         </td>
-        <td class="text-end fw-semibold wi-subtotal p-2" style="color:#1d4ed8;min-width:90px">৳ 0.00</td>
+        <td class="text-end fw-semibold wi-subtotal p-2" style="color:#1d4ed8;min-width:80px">৳ 0.00</td>
         <td class="text-center p-1">
             <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1"
                     onclick="this.closest('tr').remove(); recalcGrandTotal();" title="Delete">
@@ -540,6 +578,14 @@ function addWorkItemRow(data = {}) {
     showRateTable();
     recalcRow(tr.querySelector('.wi-qty'));
 }
+
+// Sync hidden work_type_id when dropdown changes
+function syncWorkType(sel, idx) {
+    const selectedOpt = sel.options[sel.selectedIndex];
+    const hiddenInput = sel.closest('td').querySelector(`input[name="wi_items[${idx}][work_type_id]"]`);
+    if (hiddenInput) hiddenInput.value = selectedOpt.value;
+}
+
 
 // ============================================================================
 // RECALCULATE

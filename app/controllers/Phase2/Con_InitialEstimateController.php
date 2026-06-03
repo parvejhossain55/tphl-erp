@@ -150,6 +150,7 @@ class Con_InitialEstimateController extends Controller
         // item_volume[], item_material_id[], item_unit[], item_unit_cost[], item_remarks[]
         $dtIds       = $_POST['item_design_type_id'] ?? [];
         $wtIds       = $_POST['item_work_type_id']   ?? [];
+        $phaseItemIds= $_POST['item_phase_item_id']  ?? [];
         $slNos       = $_POST['item_sl_no']          ?? [];
         $locations   = $_POST['item_location']        ?? [];
         $nosArr      = $_POST['item_nos']             ?? [];
@@ -176,6 +177,7 @@ class Con_InitialEstimateController extends Controller
             $items[] = [
                 'design_type_id'  => (int)   $dtId,
                 'work_type_id'    => (int)  ($wtIds[$i]     ?? 0),
+                'phase_item_id'   => (int)  ($phaseItemIds[$i] ?? 0) ?: null,
                 'sl_no'           => (int)  ($slNos[$i]     ?? 0),
                 'location_desc'   =>         $locations[$i] ?? '',
                 'nos'             => (float)($nosArr[$i]    ?? null),
@@ -197,6 +199,7 @@ class Con_InitialEstimateController extends Controller
         // ── Labor Rows ───────────────────────────────────────────────────────
         $labDtIds        = $_POST['labor_design_type_id'] ?? [];
         $labWtIds        = $_POST['labor_work_type_id']   ?? [];
+        $labPhaseItemIds = $_POST['labor_phase_item_id']   ?? [];
         $labTypeNames    = $_POST['labor_type_name']       ?? [];
         $labRates        = $_POST['labor_rate_per_sqft']   ?? [];
         $labAreas        = $_POST['labor_area_sqft']       ?? [];
@@ -208,6 +211,7 @@ class Con_InitialEstimateController extends Controller
             $labors[] = [
                 'design_type_id'  => (int)  ($labDtIds[$i]       ?? 0),
                 'work_type_id'    => (int)  ($labWtIds[$i]       ?? 0),
+                'phase_item_id'   => (int)  ($labPhaseItemIds[$i]  ?? 0) ?: null,
                 'labor_type_name' =>          $name,
                 'rate_per_sqft'   => (float)($labRates[$i]       ?? 0),
                 'area_sqft'       => (float)($labAreas[$i]       ?? 0),
@@ -343,10 +347,13 @@ class Con_InitialEstimateController extends Controller
         // Project drawings for the budget's project
         $pid   = (int)$budget['project_id'];
         $stmt  = $this->db->prepare(
-            "SELECT pd.id, pd.design_type_id, pd.design_link, pd.version, pd.status,
-                    dt.name AS design_type
+            "SELECT pd.id, pd.design_type_id, pd.phase_id, pd.design_link, pd.version, pd.status,
+                    dt.name AS design_type,
+                    pp.phase_name,
+                    pp.weight_percentage AS phase_weight
              FROM project_drawings pd
              LEFT JOIN design_types dt ON dt.id = pd.design_type_id
+             LEFT JOIN project_phases pp ON pp.id = pd.phase_id
              WHERE pd.project_id = ?
              ORDER BY pd.design_type_id ASC, pd.id DESC"
         );
@@ -363,14 +370,26 @@ class Con_InitialEstimateController extends Controller
         }
         $projectDrawings = array_values($drawingsMap);
 
-        // Group existing items by design_type_id then work_type_id
+        // Load project phase items
+        $phaseItemModel = new \Con_PhaseItem($this->db);
+        $projectPhaseItems = $phaseItemModel->getByProject($pid);
+
+        // Load timeline
+        $stmtTl = $this->db->prepare("SELECT project_start_date, construction_start_date, construction_end_date, expected_handover_date FROM project_timelines WHERE project_id = ? LIMIT 1");
+        $stmtTl->bind_param('i', $pid);
+        $stmtTl->execute();
+        $projectTimeline = $stmtTl->get_result()->fetch_assoc() ?: null;
+
+        // Group existing items by design_type_id then composite phaseItemId_wtId key
         $itemsByDt = [];
         foreach ($items as $item) {
             $dtId = $item['design_type_id'] ?? 0;
+            $phaseItemId = $item['phase_item_id'] ?? 0;
             $wtId = $item['work_type_id']   ?? 0;
+            $compositeKey = $phaseItemId . '_' . $wtId;
             if (!isset($itemsByDt[$dtId])) $itemsByDt[$dtId] = [];
-            if (!isset($itemsByDt[$dtId][$wtId])) $itemsByDt[$dtId][$wtId] = [];
-            $itemsByDt[$dtId][$wtId][] = $item;
+            if (!isset($itemsByDt[$dtId][$compositeKey])) $itemsByDt[$dtId][$compositeKey] = [];
+            $itemsByDt[$dtId][$compositeKey][] = $item;
         }
 
         // Group existing labors by design_type_id
@@ -391,6 +410,8 @@ class Con_InitialEstimateController extends Controller
             'materials'       => $materials,
             'workTypesGrouped'=> $workTypesGrouped,
             'projectDrawings' => $projectDrawings,
+            'projectPhaseItems' => $projectPhaseItems,
+            'projectTimeline' => $projectTimeline,
             'itemsByDt'       => $itemsByDt,
             'laborsByDt'      => $laborsByDt,
         ]);
@@ -448,19 +469,20 @@ class Con_InitialEstimateController extends Controller
         // ── Replace items (delete all → re-insert QS rows) ───────────────
         $this->model->deleteItemsByBudget($id);
 
-        $dtIds     = $_POST['item_design_type_id'] ?? [];
-        $wtIds     = $_POST['item_work_type_id']   ?? [];
-        $slNos     = $_POST['item_sl_no']          ?? [];
-        $locations = $_POST['item_location_desc']  ?? [];
-        $nosArr    = $_POST['item_nos']            ?? [];
-        $lengths   = $_POST['item_length_ft']      ?? [];
-        $widths    = $_POST['item_width_ft']       ?? [];
-        $heights   = $_POST['item_height_ft']      ?? [];
-        $matIds    = $_POST['item_material_id']    ?? [];
-        $matUnits  = $_POST['item_material_unit']  ?? [];
-        $estQtys   = $_POST['item_estimated_qty']  ?? [];
-        $unitCosts = $_POST['item_unit_cost']      ?? [];
-        $remarks   = $_POST['item_remarks']        ?? [];
+        $dtIds        = $_POST['item_design_type_id'] ?? [];
+        $wtIds        = $_POST['item_work_type_id']   ?? [];
+        $phaseItemIds = $_POST['item_phase_item_id']  ?? [];
+        $slNos        = $_POST['item_sl_no']          ?? [];
+        $locations    = $_POST['item_location_desc']  ?? [];
+        $nosArr       = $_POST['item_nos']            ?? [];
+        $lengths      = $_POST['item_length_ft']      ?? [];
+        $widths       = $_POST['item_width_ft']       ?? [];
+        $heights      = $_POST['item_height_ft']      ?? [];
+        $matIds       = $_POST['item_material_id']    ?? [];
+        $matUnits     = $_POST['item_material_unit']  ?? [];
+        $estQtys      = $_POST['item_estimated_qty']  ?? [];
+        $unitCosts    = $_POST['item_unit_cost']      ?? [];
+        $remarks      = $_POST['item_remarks']        ?? [];
 
         $items = [];
         foreach ($matIds as $i => $mid) {
@@ -473,6 +495,7 @@ class Con_InitialEstimateController extends Controller
             $items[] = [
                 'design_type_id'  => (int)($dtIds[$i]  ?? 0),
                 'work_type_id'    => (int)($wtIds[$i]  ?? 0),
+                'phase_item_id'   => (int)($phaseItemIds[$i] ?? 0) ?: null,
                 'sl_no'           => (int)($slNos[$i]  ?? 0) ?: null,
                 'location_desc'   => $locations[$i] ?? null,
                 'nos'             => $nos ?: null,
@@ -492,12 +515,13 @@ class Con_InitialEstimateController extends Controller
         // ── Replace labors (delete all → re-insert) ──────────────────────
         $this->model->deleteLaborsByBudget($id);
 
-        $labDtIds  = $_POST['labor_design_type_id'] ?? [];
-        $labWtIds  = $_POST['labor_work_type_id']   ?? [];
-        $labNames  = $_POST['labor_type_name']       ?? [];
-        $labRates  = $_POST['labor_rate_per_sqft']   ?? [];
-        $labAreas  = $_POST['labor_area_sqft']       ?? [];
-        $labDescs  = $_POST['labor_description']     ?? [];
+        $labDtIds       = $_POST['labor_design_type_id'] ?? [];
+        $labWtIds       = $_POST['labor_work_type_id']   ?? [];
+        $labPhaseItemIds = $_POST['labor_phase_item_id'] ?? [];
+        $labNames       = $_POST['labor_type_name']      ?? [];
+        $labRates       = $_POST['labor_rate_per_sqft']  ?? [];
+        $labAreas       = $_POST['labor_area_sqft']      ?? [];
+        $labDescs       = $_POST['labor_description']    ?? [];
 
         $labors = [];
         foreach ($labNames as $i => $name) {
@@ -505,6 +529,7 @@ class Con_InitialEstimateController extends Controller
             $labors[] = [
                 'design_type_id'  => (int)($labDtIds[$i] ?? 0),
                 'work_type_id'    => (int)($labWtIds[$i] ?? 0),
+                'phase_item_id'   => (int)($labPhaseItemIds[$i] ?? 0) ?: null,
                 'labor_type_name' =>       $name,
                 'rate_per_sqft'   => (float)($labRates[$i] ?? 0),
                 'area_sqft'       => (float)($labAreas[$i] ?? 0),
@@ -743,7 +768,7 @@ class Con_InitialEstimateController extends Controller
         $projectId = (int)($_GET['project_id'] ?? 0);
 
         if (!$projectId) {
-            echo json_encode(['archs' => [], 'drawings' => []]);
+            echo json_encode(['archs' => [], 'drawings' => [], 'phase_items' => []]);
             exit;
         }
 
@@ -767,15 +792,19 @@ class Con_InitialEstimateController extends Controller
         $stmt2 = $this->db->prepare(
             "SELECT pd.id,
                     pd.design_type_id,
+                    pd.phase_id,
                     pd.design_link,
                     pd.version,
                     pd.status,
                     dt.name AS design_type,
                     u.full_name AS uploaded_by,
-                    pd.created_at
+                    pd.created_at,
+                    pp.phase_name,
+                    pp.weight_percentage AS phase_weight
              FROM project_drawings pd
              LEFT JOIN design_types dt ON dt.id = pd.design_type_id
              LEFT JOIN users        u  ON u.id  = pd.created_by
+             LEFT JOIN project_phases pp ON pp.id = pd.phase_id
              WHERE pd.project_id = ?
              ORDER BY pd.design_type_id ASC, pd.id DESC"
         );
@@ -783,7 +812,17 @@ class Con_InitialEstimateController extends Controller
         $stmt2->execute();
         $drawings = $stmt2->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        echo json_encode(['archs' => $archs, 'drawings' => $drawings]);
+        // Load project phase items
+        $phaseItemModel = new \Con_PhaseItem($this->db);
+        $phaseItems = $phaseItemModel->getByProject($projectId);
+
+        // Load timeline
+        $stmtTl = $this->db->prepare("SELECT project_start_date, construction_start_date, construction_end_date, expected_handover_date FROM project_timelines WHERE project_id = ? LIMIT 1");
+        $stmtTl->bind_param('i', $projectId);
+        $stmtTl->execute();
+        $timeline = $stmtTl->get_result()->fetch_assoc() ?: null;
+
+        echo json_encode(['archs' => $archs, 'drawings' => $drawings, 'phase_items' => $phaseItems, 'timeline' => $timeline]);
         exit;
     }
 

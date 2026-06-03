@@ -206,15 +206,18 @@ class Con_PurchaseOrder extends Model
         // Step 2: get BOQ master info
         $stmtBoq = $this->db->prepare("
             SELECT bm.*, p.name AS project_name,
-                   tf.target_title, tf.year AS target_year,
-                   tf.month AS target_month, tf.week_number AS target_week,
+                   CONCAT(pp.phase_name, ' - ', DATE_FORMAT(pmt.target_month, '%M %Y')) AS target_title,
+                   pmt.target_year AS target_year,
+                   pmt.target_month_number AS target_month,
+                   NULL AS target_week,
                    dt.name AS design_type_name,
                    u.full_name AS created_by_name
             FROM boq_master bm
-            LEFT JOIN projects     p  ON p.id  = bm.project_id
-            LEFT JOIN target_fixed tf ON tf.id = bm.target_id
-            LEFT JOIN design_types dt ON dt.id = bm.design_type_id
-            LEFT JOIN users        u  ON u.id  = bm.created_by
+            LEFT JOIN projects             p   ON p.id   = bm.project_id
+            LEFT JOIN phase_monthly_targets pmt ON pmt.id  = bm.target_id
+            LEFT JOIN project_phases       pp  ON pp.id   = pmt.phase_id
+            LEFT JOIN design_types         dt  ON dt.id   = bm.design_type_id
+            LEFT JOIN users               u   ON u.id   = bm.created_by
             WHERE bm.id = ?
             LIMIT 1");
         $stmtBoq->bind_param('i', $boqId);

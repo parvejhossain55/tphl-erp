@@ -17,6 +17,7 @@ $summary    = $summary   ?? [];
 $workTypes  = $workTypes  ?? [];
 $designTypes= $designTypes?? [];
 $phaseSubItems = $phaseSubItems ?? [];
+$is_readonly   = $is_readonly   ?? false;
 
 $targetId   = (int)($target['id']         ?? 0);
 $projectId  = (int)($target['project_id'] ?? 0);
@@ -128,10 +129,17 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
            class="mf-weekly-btn">
             <i class="fal fa-chart-line"></i>Weekly Progress
         </a>
+        <?php if ($is_readonly): ?>
+        <a href="<?= $base ?>/con-project-plan-targets"
+           class="btn btn-sm btn-outline-secondary" style="font-size:12px">
+            <i class="fal fa-arrow-left me-1"></i>Back to Targets
+        </a>
+        <?php else: ?>
         <a href="<?= $base ?>/con-monthly-targets/<?= $projectId ?>"
            class="btn btn-sm btn-outline-secondary" style="font-size:12px">
             <i class="fal fa-arrow-left me-1"></i>Back
         </a>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -171,7 +179,8 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
     <?php endif; ?>
 </div>
 
-<!-- Status Update -->
+<!-- Status Update — hidden for site engineers -->
+<?php if (!$is_readonly): ?>
 <div class="mf-status-card">
     <h6><i class="fal fa-cog me-2"></i>Update Planning Status & Phase Details</h6>
     <form method="POST" action="<?= $base ?>/con-monthly-target-status/<?= $targetId ?>">
@@ -226,8 +235,10 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
         </div>
     </form>
 </div>
+<?php endif; ?>
 
-<!-- Add New Item -->
+<!-- Add New Item — hidden for site engineers -->
+<?php if (!$is_readonly): ?>
 <div class="mf-add-card">
     <h6><i class="fal fa-plus-circle me-2"></i>Add Work Item</h6>
     <form id="addItemForm">
@@ -305,9 +316,83 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
         </div>
     </form>
 </div>
+<?php endif; ?>
 
+<?php if ($is_readonly): ?>
+<!-- READ-ONLY items table for site engineers -->
+<div class="mf-section-title">
+    <i class="fal fa-list-check" style="color:var(--pri)"></i>
+    Work Items
+    <span style="font-size:11px;font-weight:500;color:var(--text-muted)">(<?= $totalItems ?> items)</span>
+    <span class="mf-badge" style="background:rgba(16,185,129,.1);color:var(--green);font-size:10px;margin-left:8px">
+        <i class="fal fa-eye me-1"></i>View Only
+    </span>
+</div>
+<?php if (empty($items)): ?>
+<div style="text-align:center;padding:40px;color:var(--text-muted)">
+    <i class="fal fa-clipboard-list" style="font-size:34px;opacity:.25;display:block;margin-bottom:10px"></i>
+    No work items yet.
+</div>
+<?php else: ?>
+<div class="mf-table-wrap">
+<table class="mf-table">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Work Item</th>
+            <th>Unit</th>
+            <th>Target Qty</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Wk 1</th>
+            <th>Wk 2</th>
+            <th>Wk 3</th>
+            <th>Wk 4</th>
+            <th style="text-align:center">Planned %</th>
+            <th style="text-align:center">Actual %</th>
+            <th>Priority</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+    <?php foreach ($items as $i => $item):
+        $actualPct = (float)($item['actual_progress_pct'] ?? 0);
+        $prioColor = $priorityColors[$item['priority'] ?? 'Medium'] ?? '#64748b';
+    ?>
+    <tr>
+        <td style="color:var(--text-muted);font-weight:600"><?= $i+1 ?></td>
+        <td><span style="font-weight:600;font-size:12.5px"><?= htmlspecialchars($item['work_item_name']) ?></span></td>
+        <td><?= htmlspecialchars($item['unit'] ?? '') ?></td>
+        <td style="font-weight:600"><?= number_format((float)($item['monthly_target_qty'] ?? 0), 2) ?></td>
+        <td><?= htmlspecialchars($item['start_date'] ?? '') ?></td>
+        <td><?= htmlspecialchars($item['end_date'] ?? '') ?></td>
+        <td><?= number_format((float)($item['week_1_qty'] ?? 0), 2) ?></td>
+        <td><?= number_format((float)($item['week_2_qty'] ?? 0), 2) ?></td>
+        <td><?= number_format((float)($item['week_3_qty'] ?? 0), 2) ?></td>
+        <td><?= number_format((float)($item['week_4_qty'] ?? 0), 2) ?></td>
+        <td style="text-align:center">
+            <span class="pct-badge"><?= number_format((float)($item['planned_progress_pct'] ?? 0), 1) ?>%</span>
+        </td>
+        <td style="text-align:center">
+            <span class="pct-badge <?= $actualPct>=100?'green':($actualPct>0?'amber':'') ?>">
+                <?= number_format($actualPct, 1) ?>%
+            </span>
+        </td>
+        <td>
+            <span style="font-size:11px;font-weight:700;color:<?= $prioColor ?>"><?= htmlspecialchars($item['priority'] ?? '') ?></span>
+        </td>
+        <td>
+            <span style="font-size:11px;color:var(--text-muted)"><?= htmlspecialchars($item['status'] ?? '') ?></span>
+        </td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+</table>
+</div>
+<?php endif; ?>
 
-<!-- Items List -->
+<?php else: ?>
+<!-- EDITABLE items table for PM/Admin -->
 <div class="mf-section-title">
     <i class="fal fa-list-check" style="color:var(--pri)"></i>
     Work Items
@@ -446,6 +531,8 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
 </div>
 </form>
 <?php endif; ?>
+
+<?php endif; // end is_readonly check for items section ?>
 
 </div></div>
 

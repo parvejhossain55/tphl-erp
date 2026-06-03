@@ -852,6 +852,7 @@ $routes['con-monthly-item-add']             = ['controller' => 'Phase2\Con_Month
 $routes['con-monthly-item-delete/(\d+)']    = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'deleteItem'];
 $routes['con-monthly-target-delete/(\d+)']  = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'deleteTarget'];
 $routes['con-monthly-worktypes']            = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'ajaxWorkTypes'];
+$routes['con-project-plan-targets']         = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'siteEngineerTargets'];
 
 // Phase-wise Construction - Module 5: Daily / Weekly Progress Entry
 $routes['con-weekly-progress/(\d+)']        = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'show'];

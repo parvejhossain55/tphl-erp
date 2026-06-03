@@ -1243,7 +1243,7 @@
                         <a href="<?= $base_url ?>/con-projects"
                             class="sidebar__menu-item <?= isActive('con-projects', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-building-circle-check"></i></div>
-                            <span class="sidebar__menu-label">Phase Projects</span>
+                            <span class="sidebar__menu-label"> Projects & Phase Plan</span>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -1309,6 +1309,13 @@
                             class="sidebar__menu-item <?= isActive('con-site-engineer-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">site engineer Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="slide <?= isActive('con-project-plan-targets', $current_route) ?>">
+                        <a href="<?= $base_url ?>/con-project-plan-targets"
+                            class="sidebar__menu-item <?= isActive('con-project-plan-targets', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-bullseye-arrow"></i></div>
+                            <span class="sidebar__menu-label">Project Plan Targets</span>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -1641,58 +1648,8 @@
                         </ul>
                     </li>
                 <?php endif; ?>
-                <!-- Module 2.1: Working Plans -->
-                <?php if (hasPermission('Working Plan')): ?>
-                    <li
-                        class="slide has-sub <?= isActive(['con-working-plans', 'con-working-plan-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-working-plans', 'con-working-plan-create'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-calendar-check"></i></div>
-                            <span class="sidebar__menu-label">Working Plans</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-working-plans"
-                                    class="sidebar__menu-item <?= isActive('con-working-plans', $current_route) ?>">Plan
-                                    List</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-working-plan-create"
-                                    class="sidebar__menu-item <?= isActive('con-working-plan-create', $current_route) ?>">New
-                                    Plan Entry</a>
-                            </li>
-                        </ul>
-                    </li>
-                <?php endif; ?>
-
-                <?php if (hasPermission('Project Target Set')): ?>
-                    <!-- ====== Site Operations (Batch 1 NEW) ====== -->
-                    <li
-                        class="slide has-sub <?= isActive(['con-targets', 'con-target-create', 'con-weekly-reports', 'con-weekly-report-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-targets', 'con-target-create', 'con-weekly-reports', 'con-weekly-report-create'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
-                            <span class="sidebar__menu-label">Site Operations</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-targets"
-                                    class="sidebar__menu-item <?= isActive('con-targets', $current_route) ?>">
-                                    <i class="bi bi-bullseye me-1"></i> Target Fixed
-                                </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-target-create"
-                                    class="sidebar__menu-item <?= isActive('con-target-create', $current_route) ?>">
-                                    + New Target
-                                </a>
-                            </li>
-
-                        </ul>
-                    </li>
-                <?php endif; ?>
+                <!-- Module 2.1: Working Plans — REMOVED (legacy system) -->
+                <!-- Module 2.2: Target Fixed / Site Operations — REMOVED (legacy system) -->
 
                 <!-- Module 2.2: Budget Extension Requests -->
                 <?php if (hasPermission('Budget Extend')): ?>
@@ -1960,32 +1917,7 @@
                         </ul>
                     </li>
                 <?php endif; ?>
-                <?php if (hasPermission('Project Report')): ?>
-
-                    <li
-                        class="slide has-sub <?= isActive(['con-weekly-reports', 'con-weekly-report-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-weekly-reports', 'con-weekly-report-create'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-wallet"></i></div>
-                            <span class="sidebar__menu-label">Reports</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-weekly-reports"
-                                    class="sidebar__menu-item <?= isActive('con-weekly-reports', $current_route) ?>">
-                                    <i class="bi bi-journal-text me-1"></i> Weekly Reports (WPR)
-                                </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-weekly-report-create"
-                                    class="sidebar__menu-item <?= isActive('con-weekly-report-create', $current_route) ?>">
-                                    + New WPR
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                <?php endif; ?>
+                <!-- Legacy WPR (Weekly Progress Reports) — REMOVED (replaced by phase_weekly_progress) -->
                 <!-- ====== END Operators & Bills ====== -->
 
                 <?php if (hasPermission('Bill & Payments')): ?>
