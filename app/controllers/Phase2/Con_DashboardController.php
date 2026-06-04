@@ -108,22 +108,9 @@ class Con_DashboardController extends Controller
             LIMIT 10");
         $pendingBoqs = $rPendingBoqs ? $rPendingBoqs->fetch_all(MYSQLI_ASSOC) : [];
 
-        // Pending Targets awaiting PM approval (approved_by_manager = 0)
-        $rPendingTargetsPM = $this->db->query("
-            SELECT tf.id, tf.target_title, tf.target_percentage, tf.gain_percentage,
-                   tf.year, tf.month, tf.week_number, tf.created_at,
-                   p.name  AS project_name,
-                   u.full_name AS creator_name,
-                   COALESCE(des.name,'') AS creator_designation
-            FROM target_fixed tf
-            LEFT JOIN projects     p   ON p.id  = tf.project_id
-            LEFT JOIN users        u   ON u.id  = tf.user_id
-            LEFT JOIN employees    emp ON emp.user_id = u.id
-            LEFT JOIN designations des ON des.id = emp.designation_id
-            WHERE tf.approved_by_manager = 0
-            ORDER BY tf.created_at DESC
-            LIMIT 10");
-        $pendingTargetsPM = $rPendingTargetsPM ? $rPendingTargetsPM->fetch_all(MYSQLI_ASSOC) : [];
+        // Pending Targets (legacy target_fixed system) — removed.
+        // PM approval for daily/weekly progress is handled via phase_weekly_progress above.
+        $pendingTargetsPM = [];
 
         // ── Pending POs awaiting PM approval ──────────────────────────────
         $rPendingPOsPM = $this->db->query("
@@ -193,14 +180,21 @@ class Con_DashboardController extends Controller
 
         // ── Pending Weekly Reports awaiting PM ────────────────────────────
         $rPendingWeeklyPM = $this->db->query("
-            SELECT r.id, r.report_date, r.week_no,
+            SELECT pwp.id, 
+                   COALESCE(pwp.submitted_at, pwp.week_end_date) AS report_date, 
+                   pwp.week_number AS week_no,
                    p.name AS project_name,
-                   u.full_name AS created_by_name
-            FROM weekly_progress_report r
-            LEFT JOIN projects p ON p.id = r.project_id
-            LEFT JOIN users u ON u.id = r.created_by
-            WHERE r.approved_by_pm = 0
-            ORDER BY r.id DESC LIMIT 10");
+                   u.full_name AS created_by_name,
+                   pwp.target_id,
+                   pmt.target_month,
+                   pp.phase_name
+            FROM phase_weekly_progress pwp
+            LEFT JOIN projects p ON p.id = pwp.project_id
+            LEFT JOIN users u ON u.id = pwp.submitted_by
+            LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
+            LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
+            WHERE pwp.entry_status = 'Submitted' AND pwp.pm_approved_id IS NULL
+            ORDER BY pwp.submitted_at DESC, pwp.id DESC LIMIT 10");
         $pendingWeeklyReportsPM = $rPendingWeeklyPM ? $rPendingWeeklyPM->fetch_all(MYSQLI_ASSOC) : [];
 
         // ── Pending Security Issues ──────────────────────────────
@@ -220,52 +214,18 @@ class Con_DashboardController extends Controller
             ORDER BY l.id DESC LIMIT 5");
         $pendingLogs = $rPendingLogs ? $rPendingLogs->fetch_all(MYSQLI_ASSOC) : [];
 
-        // ── Week-based Target Notifications (PM role=15, SE role=12) ──────
-        // Show targets where current month+week matches the target's month+week
+        // Week-based target notifications — migrated to phase_weekly_progress pending items.
+        // Legacy target_fixed week-target notifications removed.
+        $weekTargetNotifications = [];
+        $labDueNotifications = [];
+
+        // Keep date vars for view compatibility
         $curYear  = (int)date('Y');
         $curMonth = (int)date('n');
         $curWeek  = (int)ceil(date('j') / 7);
         $curWeek  = min($curWeek, 4);
 
-        $rWeekTargets = $this->db->prepare("
-            SELECT tf.id, tf.target_title, tf.target_percentage, tf.gain_percentage,
-                   tf.year, tf.month, tf.week_number,
-                   tf.is_lab_test, tf.lab_test_date, tf.target_details,
-                   tf.approved_by_qc, tf.approved_by_manager,
-                   p.name AS project_name,
-                   u.full_name AS creator_name
-            FROM target_fixed tf
-            LEFT JOIN projects p ON p.id = tf.project_id
-            LEFT JOIN users    u ON u.id = tf.user_id
-            WHERE tf.year  = ?
-              AND tf.month = ?
-              AND (tf.week_number = ? OR tf.week_number IS NULL)
-            ORDER BY tf.id DESC
-            LIMIT 20");
-        $rWeekTargets->bind_param('iii', $curYear, $curMonth, $curWeek);
-        $rWeekTargets->execute();
-        $weekTargetNotifications = $rWeekTargets->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        // Lab test date notifications — lab test due within current week
-        $daysInMonth = (int)date('t');
-        $weekStartDay = ($curWeek - 1) * 7 + 1;
-        $weekEndDay   = min($curWeek * 7, $daysInMonth);
-        $weekStart    = date('Y-m-') . str_pad($weekStartDay, 2, '0', STR_PAD_LEFT);
-        $weekEnd      = date('Y-m-') . str_pad($weekEndDay,   2, '0', STR_PAD_LEFT);
-
-        $rLabDue = $this->db->prepare("
-            SELECT tf.id, tf.target_title, tf.lab_test_date,
-                   tf.year, tf.month, tf.week_number,
-                   p.name AS project_name
-            FROM target_fixed tf
-            LEFT JOIN projects p ON p.id = tf.project_id
-            WHERE tf.is_lab_test = 1
-              AND tf.lab_test_date BETWEEN ? AND ?
-            ORDER BY tf.lab_test_date ASC
-            LIMIT 15");
-        $rLabDue->bind_param('ss', $weekStart, $weekEnd);
-        $rLabDue->execute();
-        $labDueNotifications = $rLabDue->get_result()->fetch_all(MYSQLI_ASSOC);
 
         // ── Recent Material Issues (Stock OUT) ────────────────────────────
         $rRecentIssues = $this->db->query("
@@ -533,11 +493,11 @@ class Con_DashboardController extends Controller
             FROM projects p
             LEFT JOIN locations l ON l.id = p.location_id
             LEFT JOIN (
-                SELECT wp.project_id, SUM((COALESCE(tf.gain_percentage,0)/100)*(COALESCE(tf.target_percentage,0)/100)*(COALESCE(wp.weight_percentage,0)/100)*COALESCE(ib.weight_percentage,100)) AS progress_pct
-                FROM project_working_plans wp
-                LEFT JOIN target_fixed tf ON tf.work_plan_id = wp.id
-                LEFT JOIN initial_estimate_budgets ib ON ib.id = wp.initial_budget_id
-                GROUP BY wp.project_id
+                -- Migrated: phase-based weighted progress
+                SELECT pp.project_id,
+                       SUM((COALESCE(pp.actual_progress,0) / 100) * COALESCE(pp.weight_percentage,0)) AS progress_pct
+                FROM project_phases pp
+                GROUP BY pp.project_id
             ) prog ON prog.project_id = p.id
             LEFT JOIN (
                 SELECT project_id, SUM(total_estimated_cost) AS total_budget
@@ -661,11 +621,11 @@ class Con_DashboardController extends Controller
             FROM projects p
             LEFT JOIN locations l ON l.id = p.location_id
             LEFT JOIN (
-                SELECT wp.project_id, SUM((COALESCE(tf.gain_percentage,0)/100)*(COALESCE(tf.target_percentage,0)/100)*(COALESCE(wp.weight_percentage,0)/100)*COALESCE(ib.weight_percentage,100)) AS progress_pct
-                FROM project_working_plans wp
-                LEFT JOIN target_fixed tf ON tf.work_plan_id = wp.id
-                LEFT JOIN initial_estimate_budgets ib ON ib.id = wp.initial_budget_id
-                GROUP BY wp.project_id
+                -- Migrated: phase-based weighted progress
+                SELECT pp.project_id,
+                       SUM((COALESCE(pp.actual_progress,0) / 100) * COALESCE(pp.weight_percentage,0)) AS progress_pct
+                FROM project_phases pp
+                GROUP BY pp.project_id
             ) prog ON prog.project_id = p.id
             LEFT JOIN (
                 SELECT project_id,
@@ -741,13 +701,11 @@ class Con_DashboardController extends Controller
             $budget = $stmt2b->get_result()->fetch_assoc();
         }
 
-        // Progress % = Hierarchical Progress from target_fixed
+        // Progress % — Migrated to phase-based weighted progress
         $stmt3 = $this->db->prepare("
-            SELECT SUM((COALESCE(tf.gain_percentage,0)/100)*(COALESCE(tf.target_percentage,0)/100)*(COALESCE(wp.weight_percentage,0)/100)*COALESCE(ib.weight_percentage,100)) AS prog
-            FROM project_working_plans wp
-            LEFT JOIN target_fixed tf ON tf.work_plan_id = wp.id
-            LEFT JOIN initial_estimate_budgets ib ON ib.id = wp.initial_budget_id
-            WHERE wp.project_id = ?
+            SELECT SUM((COALESCE(pp.actual_progress,0) / 100) * COALESCE(pp.weight_percentage,0)) AS prog
+            FROM project_phases pp
+            WHERE pp.project_id = ?
         ");
         $stmt3->bind_param('i', $id);
         $stmt3->execute();
@@ -814,33 +772,44 @@ class Con_DashboardController extends Controller
         $id = (int)$id;
 
         $stmt = $this->db->prepare("
-            SELECT w.*, wt.work_type_name AS work_type_name,
-                   dt.name AS design_type_name,
-                   ieb.total_estimated_cost AS budget_total
-            FROM   project_working_plans w
-            LEFT JOIN work_types               wt  ON wt.id  = w.work_type_id
-            LEFT JOIN design_types             dt  ON dt.id  = wt.design_type_id
-            LEFT JOIN initial_estimate_budgets ieb ON ieb.id = w.initial_budget_id
-            WHERE  w.project_id = ?
-            ORDER  BY w.year ASC, w.month ASC, wt.work_type_name ASC");
+            SELECT
+                pmti.*,
+                pmt.target_month,
+                pmt.target_month_number,
+                pmt.target_year,
+                pmt.planning_status,
+                pmt.responsible_team AS group_responsible_team,
+                pp.phase_name,
+                wt.work_type_name,
+                dt.name AS design_type_name
+            FROM phase_monthly_target_items pmti
+            INNER JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
+            INNER JOIN project_phases pp ON pp.id = pmt.phase_id
+            LEFT JOIN work_types wt ON wt.id = pmti.work_type_id
+            LEFT JOIN design_types dt ON dt.id = wt.design_type_id
+            WHERE pmt.project_id = ?
+            ORDER BY pmt.target_year ASC, pmt.target_month_number ASC, pp.phase_order ASC, pmti.sort_order ASC, pmti.id ASC
+        ");
         $stmt->bind_param('i', $id);
         $stmt->execute();
-        $plans = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $items = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
         $grouped = [];
         $monthNames = ['', 'January','February','March','April','May','June',
                            'July','August','September','October','November','December'];
-        foreach ($plans as $p) {
-            $key = $p['year'] . '-' . str_pad($p['month'], 2, '0', STR_PAD_LEFT);
-            if (!isset($grouped[$key])) {
-                $grouped[$key] = [
-                    'label' => $monthNames[(int)$p['month']] . ' ' . $p['year'],
-                    'year'  => $p['year'],
-                    'month' => $p['month'],
-                    'plans' => []
+
+        foreach ($items as $item) {
+            $targetId = $item['target_id'];
+            if (!isset($grouped[$targetId])) {
+                $grouped[$targetId] = [
+                    'label' => $monthNames[(int)$item['target_month_number']] . ' ' . $item['target_year'],
+                    'phase_name' => $item['phase_name'],
+                    'planning_status' => $item['planning_status'],
+                    'responsible_team' => $item['group_responsible_team'] ?: ($item['responsible_team'] ?: '—'),
+                    'items' => []
                 ];
             }
-            $grouped[$key]['plans'][] = $p;
+            $grouped[$targetId]['items'][] = $item;
         }
 
         echo json_encode(['success' => true, 'data' => array_values($grouped)]);
@@ -848,30 +817,13 @@ class Con_DashboardController extends Controller
     }
 
     // =========================================================================
-    // AJAX — Tab 6: Project Targets
+    // AJAX — Tab 6: Project Targets (Deprecated, unified into Work Plan)
     // =========================================================================
 
     public function ajaxTargets($id)
     {
         header('Content-Type: application/json');
-        $id = (int)$id;
-
-        $stmt = $this->db->prepare("
-            SELECT tf.*, wp.work_description AS plan_description,
-                   wt.work_type_name AS work_type_name,
-                   dt.name AS design_type_name, u.full_name AS created_by_name
-            FROM   target_fixed tf
-            LEFT JOIN project_working_plans wp ON wp.id = tf.work_plan_id
-            LEFT JOIN work_types            wt ON wt.id = wp.work_type_id
-            LEFT JOIN design_types          dt ON dt.id = wt.design_type_id
-            LEFT JOIN users                 u  ON u.id  = tf.user_id
-            WHERE  tf.project_id = ?
-            ORDER  BY tf.year DESC, tf.month DESC, tf.week_number ASC");
-        $stmt->bind_param('i', $id);
-        $stmt->execute();
-        $targets = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-        echo json_encode(['success' => true, 'data' => $targets]);
+        echo json_encode(['success' => true, 'data' => []]);
         exit;
     }
 
@@ -887,41 +839,20 @@ class Con_DashboardController extends Controller
         $monthNames = ['','January','February','March','April','May','June',
                           'July','August','September','October','November','December'];
 
-        // Get all target entries for this project
-        $stmt = $this->db->prepare("
-            SELECT tf.*, wp.work_description AS plan_description,
-                   wt.work_type_name AS work_type_name,
-                   dt.name AS design_type_name, u.full_name AS created_by_name
-            FROM   target_fixed tf
-            LEFT JOIN project_working_plans wp ON wp.id = tf.work_plan_id
-            LEFT JOIN work_types            wt ON wt.id = wp.work_type_id
-            LEFT JOIN design_types          dt ON dt.id = wt.design_type_id
-            LEFT JOIN users                 u  ON u.id  = tf.user_id
-            WHERE  tf.project_id = ?
-            ORDER  BY tf.year ASC, tf.month ASC, tf.week_number ASC");
-        $stmt->bind_param('i', $id);
-        $stmt->execute();
-        $allTargets = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-        // Build active months list
         $activeMonths = [];
-        foreach ($allTargets as $t) {
-            $mk = $t['year'] . '-' . str_pad($t['month'], 2, '0', STR_PAD_LEFT);
+
+        // 1. Get months from phase_monthly_targets
+        $stmtTargets = $this->db->prepare("SELECT DISTINCT target_month FROM phase_monthly_targets WHERE project_id = ?");
+        $stmtTargets->bind_param('i', $id);
+        $stmtTargets->execute();
+        $targetRows = $stmtTargets->get_result()->fetch_all(MYSQLI_ASSOC);
+        foreach ($targetRows as $row) {
+            if (!$row['target_month']) continue;
+            $mk = substr($row['target_month'], 0, 7); // "YYYY-MM"
             $activeMonths[$mk] = true;
         }
 
-        // Get months from DPRs
-        $stmtDpr = $this->db->prepare("SELECT DISTINCT YEAR(report_date) as yr, MONTH(report_date) as mo FROM weekly_progress_report WHERE project_id = ?");
-        $stmtDpr->bind_param('i', $id);
-        $stmtDpr->execute();
-        $dprRows = $stmtDpr->get_result()->fetch_all(MYSQLI_ASSOC);
-        foreach ($dprRows as $row) {
-            if (!$row['yr'] || !$row['mo']) continue;
-            $mk = $row['yr'] . '-' . str_pad($row['mo'], 2, '0', STR_PAD_LEFT);
-            $activeMonths[$mk] = true;
-        }
-
-        // Get months from financials
+        // 2. Get months from financials
         $stmtFin = $this->db->prepare("SELECT DISTINCT YEAR(transaction_date) as yr, MONTH(transaction_date) as mo FROM con_financial_transactions WHERE project_id = ?");
         $stmtFin->bind_param('i', $id);
         $stmtFin->execute();
@@ -939,7 +870,6 @@ class Con_DashboardController extends Controller
             [$yr, $mo] = explode('-', $mk);
             $yr = (int)$yr;
             $mo = (int)$mo;
-            $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $mo, $yr);
 
             $monthEntry = [
                 'month_key'   => $mk,
@@ -949,63 +879,91 @@ class Con_DashboardController extends Controller
                 'weeks'       => [],
             ];
 
-            // A month can have up to 5 weeks
-            for ($wNum = 1; $wNum <= 5; $wNum++) {
-                $dayStart = ($wNum - 1) * 7 + 1;
-                if ($dayStart > $daysInMonth) break; // if week 5 start day exceeds month days
-                
-                $dayEnd = $wNum * 7;
-                if ($wNum === 5 || $dayEnd > $daysInMonth) {
-                    $dayEnd = $daysInMonth;
+            // Loop weeks 1 to 4
+            for ($wNum = 1; $wNum <= 4; $wNum++) {
+                [$dateFrom, $dateTo] = $this->getWeekStartEndDates($yr, $mo, $wNum);
+
+                // Fetch targets (weekly progress items) for this week
+                $stmtWeekTargets = $this->db->prepare("
+                    SELECT 
+                        pwpi.*,
+                        pmti.work_item_name,
+                        pmti.unit,
+                        pmti.priority,
+                        pp.phase_name,
+                        wt.work_type_name,
+                        dt.name AS design_type_name
+                    FROM phase_weekly_progress_items pwpi
+                    INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+                    INNER JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
+                    INNER JOIN project_phases pp ON pp.id = pmt.phase_id
+                    INNER JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
+                    LEFT JOIN work_types wt ON wt.id = pmti.work_type_id
+                    LEFT JOIN design_types dt ON dt.id = wt.design_type_id
+                    WHERE pwp.project_id = ? 
+                      AND pmt.target_year = ? 
+                      AND pmt.target_month_number = ? 
+                      AND pwp.week_number = ?
+                    ORDER BY pmti.sort_order ASC, pwpi.id ASC
+                ");
+                $stmtWeekTargets->bind_param('iiii', $id, $yr, $mo, $wNum);
+                $stmtWeekTargets->execute();
+                $targets = $stmtWeekTargets->get_result()->fetch_all(MYSQLI_ASSOC);
+
+                // Fetch daily progress logs for this week
+                $stmtDprs = $this->db->prepare("
+                    SELECT 
+                        dpl.*,
+                        u.full_name AS creator_name
+                    FROM daily_progress_logs dpl
+                    INNER JOIN phase_weekly_progress pwp ON pwp.id = dpl.weekly_progress_id
+                    INNER JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
+                    LEFT JOIN users u ON u.id = dpl.created_by
+                    WHERE pwp.project_id = ? 
+                      AND pmt.target_year = ? 
+                      AND pmt.target_month_number = ? 
+                      AND pwp.week_number = ?
+                    ORDER BY dpl.log_date ASC
+                ");
+                $stmtDprs->bind_param('iiii', $id, $yr, $mo, $wNum);
+                $stmtDprs->execute();
+                $dprs = $stmtDprs->get_result()->fetch_all(MYSQLI_ASSOC);
+
+                // For each daily progress log, fetch nested work items
+                if (!empty($dprs)) {
+                    $logIds = array_column($dprs, 'id');
+                    $logIdsPlaceholders = implode(',', array_fill(0, count($logIds), '?'));
+                    
+                    $stmtDprItems = $this->db->prepare("
+                        SELECT 
+                            dwil.*,
+                            pmti.work_item_name,
+                            wt.work_type_name
+                        FROM daily_work_item_logs dwil
+                        INNER JOIN phase_monthly_target_items pmti ON pmti.id = dwil.target_item_id
+                        LEFT JOIN work_types wt ON wt.id = dwil.work_type_id
+                        WHERE dwil.daily_log_id IN ($logIdsPlaceholders)
+                        ORDER BY dwil.id ASC
+                    ");
+                    
+                    $types = str_repeat('i', count($logIds));
+                    $stmtDprItems->bind_param($types, ...$logIds);
+                    $stmtDprItems->execute();
+                    $allItems = $stmtDprItems->get_result()->fetch_all(MYSQLI_ASSOC);
+                    
+                    $itemsByLogId = [];
+                    foreach ($allItems as $item) {
+                        $itemsByLogId[$item['daily_log_id']][] = $item;
+                    }
+                    
+                    foreach ($dprs as &$dpr) {
+                        $dpr['items'] = $itemsByLogId[$dpr['id']] ?? [];
+                    }
+                    unset($dpr);
                 }
-                
-                $dateFrom = sprintf('%04d-%02d-%02d', $yr, $mo, $dayStart);
-                $dateTo   = sprintf('%04d-%02d-%02d', $yr, $mo, $dayEnd);
 
-                // Filter targets for this week
-                $targets = array_filter($allTargets, function($t) use ($yr, $mo, $wNum) {
-                    return $t['year'] == $yr && $t['month'] == $mo && $t['week_number'] == $wNum;
-                });
-
-                // DPR entries for this week
-                // COALESCE: dpr.work_order_id is often NULL, fallback to target_fixed.work_order_id
-                $s2 = $this->db->prepare("
-                    SELECT dpr.*,
-                           se.full_name AS engineer_name,
-                           t.target_title,
-                           pm.full_name AS pm_name,
-                           qc.full_name AS qc_name,
-                           cb.full_name AS creator_name,
-                           wp.work_description AS work_plan_title,
-                           t.year AS target_year, t.month AS target_month, t.week_number,
-                           COALESCE(dpr.work_order_id, t.work_order_id) AS effective_work_order_id,
-                           wo.title AS work_order_title,
-                           con.name AS contractor_name,
-                           con.phone AS contractor_phone,
-                           con.trade AS contractor_trade,
-                           cbr.bill_amount, cbr.status AS bill_status,
-                           cbr.due_amount AS bill_due_amount,
-                           cbr.bill_type, cbr.work_description AS bill_description,
-                           cbr.approved_amount AS bill_approved_amount
-                    FROM   weekly_progress_report dpr
-                    LEFT JOIN users se ON se.id = dpr.site_engineer_id
-                    LEFT JOIN users pm ON pm.id = dpr.approved_by_pm
-                    LEFT JOIN users qc ON qc.id = dpr.approved_by_qc
-                    LEFT JOIN users cb ON cb.id = dpr.created_by
-                    LEFT JOIN target_fixed t ON t.id = dpr.target_id
-                    LEFT JOIN project_working_plans wp ON wp.id = dpr.work_plan_id
-                    LEFT JOIN con_work_orders wo ON wo.id = COALESCE(dpr.work_order_id, t.work_order_id)
-                    LEFT JOIN contractors con ON con.id = wo.contractor_id
-                    LEFT JOIN contractor_bill_requests cbr ON cbr.target_id = dpr.target_id
-                    WHERE  dpr.project_id = ? AND YEAR(dpr.report_date) = ? AND MONTH(dpr.report_date) = ? AND dpr.week_no = ?
-                    ORDER  BY dpr.report_date ASC");
-                $s2->bind_param('iiii', $id, $yr, $mo, $wNum);
-                $s2->execute();
-                $dprs = $s2->get_result()->fetch_all(MYSQLI_ASSOC);
-
-                // Financial transactions for this week
-                // We match by date range OR by contractor bill target linked to this week's DPRs
-                $s3 = $this->db->prepare("
+                // Fetch financial transactions for this week
+                $stmtTrans = $this->db->prepare("
                     SELECT cft.*,
                            cft.amount_paid AS amount,
                            cft.reference_number AS ref_no,
@@ -1023,23 +981,19 @@ class Con_DashboardController extends Controller
                            ON cft.ref_type = 'contractor_bill' AND cbr.id = cft.ref_id
                     WHERE  cft.project_id = ?
                       AND (
-                            DATE(cft.transaction_date) BETWEEN ? AND ?
+                            (DATE(cft.transaction_date) BETWEEN ? AND ?)
                             OR cbr.target_id IN (
-                                SELECT dpr2.target_id
-                                FROM weekly_progress_report dpr2
-                                WHERE dpr2.project_id = ?
-                                  AND YEAR(dpr2.report_date) = ?
-                                  AND MONTH(dpr2.report_date) = ?
-                                  AND dpr2.week_no = ?
-                                  AND dpr2.target_id IS NOT NULL
+                                SELECT pmt.id 
+                                FROM phase_monthly_targets pmt
+                                WHERE pmt.project_id = ? AND pmt.target_year = ? AND pmt.target_month_number = ?
                             )
                           )
-                    ORDER  BY cft.transaction_date ASC");
-                $s3->bind_param('issiiii', $id, $dateFrom, $dateTo, $id, $yr, $mo, $wNum);
-                $s3->execute();
-                $transactions = $s3->get_result()->fetch_all(MYSQLI_ASSOC);
+                    ORDER  BY cft.transaction_date ASC
+                ");
+                $stmtTrans->bind_param('isssii', $id, $dateFrom, $dateTo, $id, $yr, $mo);
+                $stmtTrans->execute();
+                $transactions = $stmtTrans->get_result()->fetch_all(MYSQLI_ASSOC);
 
-                // If week has no data whatsoever, optionally skip it (but usually good to show empty week if month is active)
                 if (empty($targets) && empty($dprs) && empty($transactions)) {
                     continue; 
                 }
@@ -1062,6 +1016,31 @@ class Con_DashboardController extends Controller
 
         echo json_encode(['success' => true, 'data' => $result]);
         exit;
+    }
+
+    private function getWeekStartEndDates($yr, $mo, $weekNo)
+    {
+        $monthStart = new \DateTime(sprintf('%04d-%02d-01', $yr, $mo));
+        $baseDate   = clone $monthStart;
+        $monthEnd   = new \DateTime($monthStart->format('Y-m-t'));
+
+        if ($weekNo === 1) {
+            $weekStart = $baseDate->format('Y-m-d');
+            $weekEnd   = (clone $baseDate)->modify('+6 days')->format('Y-m-d');
+        } elseif ($weekNo === 2) {
+            $weekStart = (clone $baseDate)->modify('+7 days')->format('Y-m-d');
+            $weekEnd   = (clone $baseDate)->modify('+13 days')->format('Y-m-d');
+        } elseif ($weekNo === 3) {
+            $weekStart = (clone $baseDate)->modify('+14 days')->format('Y-m-d');
+            $weekEnd   = (clone $baseDate)->modify('+20 days')->format('Y-m-d');
+        } else {
+            $weekStart = (clone $baseDate)->modify('+21 days')->format('Y-m-d');
+            $weekEnd   = $monthEnd->format('Y-m-d');
+            if ($weekEnd < $weekStart) {
+                $weekEnd = (clone $baseDate)->modify('+27 days')->format('Y-m-d');
+            }
+        }
+        return [$weekStart, $weekEnd];
     }
 
     // =========================================================================
@@ -1114,8 +1093,8 @@ class Con_DashboardController extends Controller
         $r3 = $this->db->query("SELECT COUNT(*) AS c FROM con_material_issues WHERE issued_by = {$userId}");
         $totalIssued = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
 
-        // KPI: Weekly Reports Submitted By Me
-        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM weekly_progress_report WHERE site_engineer_id = {$userId}");
+        // KPI: Weekly Reports Submitted By Me (phase_weekly_progress)
+        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM phase_weekly_progress pwp JOIN projects p ON p.id = pwp.project_id WHERE p.site_engineer_id = {$userId}");
         $totalReports = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
 
         // My Assigned Projects List
@@ -1125,11 +1104,11 @@ class Con_DashboardController extends Controller
             FROM projects p
             LEFT JOIN locations l ON l.id=p.location_id
             LEFT JOIN (
-                SELECT wp.project_id, SUM((COALESCE(tf.gain_percentage,0)/100)*(COALESCE(tf.target_percentage,0)/100)*(COALESCE(wp.weight_percentage,0)/100)*COALESCE(ib.weight_percentage,100)) AS progress_pct
-                FROM project_working_plans wp
-                LEFT JOIN target_fixed tf ON tf.work_plan_id = wp.id
-                LEFT JOIN initial_estimate_budgets ib ON ib.id = wp.initial_budget_id
-                GROUP BY wp.project_id
+                -- Migrated: phase-based weighted progress
+                SELECT pp.project_id,
+                       SUM((COALESCE(pp.actual_progress,0) / 100) * COALESCE(pp.weight_percentage,0)) AS progress_pct
+                FROM project_phases pp
+                GROUP BY pp.project_id
             ) prog ON prog.project_id=p.id
             WHERE p.deleted_at IS NULL AND p.site_engineer_id = {$userId}
             ORDER BY p.id DESC
@@ -1160,13 +1139,19 @@ class Con_DashboardController extends Controller
         ");
         $recentIssues = $rMI ? $rMI->fetch_all(MYSQLI_ASSOC) : [];
 
-        // Recent Weekly Reports
+        // Recent Weekly Reports (phase_weekly_progress)
         $rWPR = $this->db->query("
-            SELECT wpr.*, p.name AS project_name
-            FROM weekly_progress_report wpr
-            LEFT JOIN projects p ON p.id = wpr.project_id
-            WHERE wpr.site_engineer_id = {$userId}
-            ORDER BY wpr.id DESC LIMIT 5
+            SELECT pwp.id, pwp.week_number, pwp.week_start_date AS report_date,
+                   pwp.entry_status AS status, pwp.overall_progress_pct,
+                   p.name AS project_name,
+                   pmt.target_month,
+                   pp.phase_name
+            FROM phase_weekly_progress pwp
+            JOIN projects p ON p.id = pwp.project_id
+            LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
+            LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
+            WHERE p.site_engineer_id = {$userId}
+            ORDER BY pwp.id DESC LIMIT 5
         ");
         $recentReports = $rWPR ? $rWPR->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -1230,7 +1215,8 @@ class Con_DashboardController extends Controller
         $r1 = $this->db->query("SELECT COUNT(*) AS c FROM projects p WHERE p.deleted_at IS NULL AND $filter");
         $myProjectsCount = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
 
-        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM project_working_plans wp JOIN projects p ON p.id = wp.project_id WHERE p.deleted_at IS NULL AND $filter AND (wp.approved_status = 'Pending' OR wp.approved_status IS NULL)");
+        // Migrated: pending phase items (formerly pendingWorkingPlans from project_working_plans)
+        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM phase_monthly_targets pmt INNER JOIN project_phases pp ON pp.id = pmt.phase_id INNER JOIN projects p ON p.id = pp.project_id WHERE p.deleted_at IS NULL AND $filter AND (pmt.status = 'Pending' OR pmt.status IS NULL)");
         $pendingWorkingPlans = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
 
         $r3 = $this->db->query("SELECT COUNT(*) AS c FROM con_material_issues mi JOIN projects p ON p.id = mi.project_id WHERE p.deleted_at IS NULL AND $filter");
@@ -1242,7 +1228,8 @@ class Con_DashboardController extends Controller
         $rProjs = $this->db->query("SELECT p.id, p.name, p.project_status, COALESCE(l.name,'') AS location_name FROM projects p LEFT JOIN locations l ON l.id = p.location_id WHERE p.deleted_at IS NULL AND $filter ORDER BY p.id DESC");
         $myProjects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
 
-        $rWP = $this->db->query("SELECT wp.*, p.name AS project_name FROM project_working_plans wp JOIN projects p ON p.id = wp.project_id WHERE p.deleted_at IS NULL AND $filter ORDER BY wp.id DESC LIMIT 5");
+        // Migrated: recent phase monthly targets (formerly project_working_plans)
+        $rWP = $this->db->query("SELECT pmt.id, COALESCE(pmt.title, CONCAT(pp.phase_name,' - Month ',pmt.month_number)) AS work_description, p.name AS project_name FROM phase_monthly_targets pmt INNER JOIN project_phases pp ON pp.id = pmt.phase_id INNER JOIN projects p ON p.id = pp.project_id WHERE p.deleted_at IS NULL AND $filter ORDER BY pmt.id DESC LIMIT 5");
         $recentWorkingPlans = $rWP ? $rWP->fetch_all(MYSQLI_ASSOC) : [];
 
         $rMI = $this->db->query("SELECT mi.*, p.name AS project_name, m.name AS material_name FROM con_material_issues mi JOIN projects p ON p.id = mi.project_id LEFT JOIN con_materials m ON m.id = mi.material_id WHERE p.deleted_at IS NULL AND $filter ORDER BY mi.id DESC LIMIT 5");
@@ -1298,12 +1285,12 @@ class Con_DashboardController extends Controller
         $r2 = $this->db->query("SELECT COUNT(*) AS c FROM purchase_orders");
         $totalPOs = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
 
-        // KPI: Pending Working Plans (not yet approved)
-        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM project_working_plans WHERE approved_status IN ('Pending','Draft') OR approved_status IS NULL");
+        // KPI: Pending Phase Monthly Targets (not yet started/approved) — replaces old pending working plans KPI
+        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM phase_monthly_targets WHERE status IN ('Pending','Draft') OR status IS NULL");
         $pendingPlans = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
 
-        // KPI: Total DPR (Project Reports)
-        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM weekly_progress_report");
+        // KPI: Total DPR — now from phase_weekly_progress
+        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM phase_weekly_progress");
         $totalDPRs = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
 
         // KPI: Low Stock alerts
@@ -1323,11 +1310,11 @@ class Con_DashboardController extends Controller
             FROM projects p
             LEFT JOIN locations l ON l.id=p.location_id
             LEFT JOIN (
-                SELECT wp.project_id, SUM((COALESCE(tf.gain_percentage,0)/100)*(COALESCE(tf.target_percentage,0)/100)*(COALESCE(wp.weight_percentage,0)/100)*COALESCE(ib.weight_percentage,100)) AS progress_pct
-                FROM project_working_plans wp
-                LEFT JOIN target_fixed tf ON tf.work_plan_id = wp.id
-                LEFT JOIN initial_estimate_budgets ib ON ib.id = wp.initial_budget_id
-                GROUP BY wp.project_id
+                -- Migrated: phase-based weighted progress
+                SELECT pp.project_id,
+                       SUM((COALESCE(pp.actual_progress,0) / 100) * COALESCE(pp.weight_percentage,0)) AS progress_pct
+                FROM project_phases pp
+                GROUP BY pp.project_id
             ) prog ON prog.project_id=p.id
             LEFT JOIN (SELECT project_id, SUM(total_estimated_cost) AS total_budget FROM initial_estimate_budgets WHERE status='approved' GROUP BY project_id) bud ON bud.project_id=p.id
             WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . " ORDER BY p.id DESC LIMIT 6");
@@ -1342,29 +1329,40 @@ class Con_DashboardController extends Controller
             ORDER BY mi.id DESC LIMIT 5");
         $recentIssues = $rIssues ? $rIssues->fetch_all(MYSQLI_ASSOC) : [];
 
-        // Recent DPRs
+        // Recent Weekly Progress (phase_weekly_progress)
         $rDPR = $this->db->query("
-            SELECT dpr.*, p.name AS project_name
-            FROM weekly_progress_report dpr
-            LEFT JOIN projects p ON p.id=dpr.project_id
-            ORDER BY dpr.id DESC LIMIT 5");
+            SELECT pwp.id, pwp.week_number, pwp.week_start_date AS report_date,
+                   pwp.entry_status AS status, pwp.overall_progress_pct,
+                   pwp.qc_status, pwp.pm_status,
+                   p.name AS project_name,
+                   pp.phase_name
+            FROM phase_weekly_progress pwp
+            LEFT JOIN projects p ON p.id = pwp.project_id
+            LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
+            LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
+            ORDER BY pwp.id DESC LIMIT 5");
         $recentDPRs = $rDPR ? $rDPR->fetch_all(MYSQLI_ASSOC) : [];
 
-        // Pending Targets awaiting QC approval
+        // Pending Weekly Progress items awaiting QC (replaces legacy target_fixed pending QC)
         $rPendingTargets = $this->db->query("
-            SELECT tf.id, tf.target_title, tf.target_percentage, tf.gain_percentage,
-                   tf.year, tf.month, tf.week_number, tf.created_at,
-                   p.name  AS project_name,
-                   u.full_name AS creator_name,
-                   COALESCE(des.name,'') AS creator_designation
-            FROM target_fixed tf
-            LEFT JOIN projects     p   ON p.id  = tf.project_id
-            LEFT JOIN users        u   ON u.id  = tf.user_id
-            LEFT JOIN employees    emp ON emp.user_id = u.id
-            LEFT JOIN designations des ON des.id = emp.designation_id
-            WHERE tf.approved_by_qc = 0
-            ORDER BY tf.created_at DESC
-            LIMIT 10");
+             SELECT pwp.id, pp.phase_name AS target_title,
+                    pmt.total_target_weight_pct AS target_percentage,
+                    pwp.overall_progress_pct AS gain_percentage,
+                    pmt.target_year AS year,
+                    pmt.target_month_number AS month,
+                    pwp.week_number AS week_number,
+                    pwp.created_at,
+                    p.name  AS project_name,
+                    u.full_name AS creator_name,
+                    '' AS creator_designation
+             FROM phase_weekly_progress pwp
+             LEFT JOIN projects               p   ON p.id   = pwp.project_id
+             LEFT JOIN users                  u   ON u.id   = pwp.submitted_by
+             LEFT JOIN phase_monthly_targets  pmt ON pmt.id = pwp.target_id
+             LEFT JOIN project_phases         pp  ON pp.id  = pmt.phase_id
+             WHERE pwp.qc_status IS NULL OR pwp.qc_status = 'Pending'
+             ORDER BY pwp.created_at DESC
+             LIMIT 10");
         $pendingTargets = $rPendingTargets ? $rPendingTargets->fetch_all(MYSQLI_ASSOC) : [];
 
         // Pending GRNs awaiting QC
@@ -1381,16 +1379,20 @@ class Con_DashboardController extends Controller
             ORDER BY mr.id DESC LIMIT 10");
         $pendingGRNsQC = $rPendingGRNsQC ? $rPendingGRNsQC->fetch_all(MYSQLI_ASSOC) : [];
 
-        // Pending Weekly Reports awaiting QC
+        // Pending Weekly Progress awaiting QC (phase_weekly_progress)
         $rPendingWeeklyQC = $this->db->query("
-            SELECT r.id, r.report_date, r.week_no,
+            SELECT pwp.id, pwp.week_start_date AS report_date, pwp.week_number AS week_no,
+                   pwp.qc_status, pwp.entry_status,
                    p.name AS project_name,
-                   u.full_name AS created_by_name
-            FROM weekly_progress_report r
-            LEFT JOIN projects p ON p.id = r.project_id
-            LEFT JOIN users u ON u.id = r.created_by
-            WHERE r.approved_by_qc = 0
-            ORDER BY r.id DESC LIMIT 10");
+                   u.full_name AS created_by_name,
+                   pp.phase_name
+            FROM phase_weekly_progress pwp
+            LEFT JOIN projects p ON p.id = pwp.project_id
+            LEFT JOIN users u ON u.id = pwp.submitted_by
+            LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
+            LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
+            WHERE pwp.qc_status = 'Pending' OR pwp.qc_status IS NULL
+            ORDER BY pwp.id DESC LIMIT 10");
         $pendingWeeklyReportsQC = $rPendingWeeklyQC ? $rPendingWeeklyQC->fetch_all(MYSQLI_ASSOC) : [];
 
 
@@ -2327,4 +2329,4 @@ class Con_DashboardController extends Controller
             'totalProjectProgress' => $totalProjectProgress,
         ]);
     }
-}
+}

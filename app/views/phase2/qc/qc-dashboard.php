@@ -336,7 +336,9 @@ $pendingWeeklyCount   = $pendingWeeklyCount   ?? 0;
     </a>
 </div>
 
-<?php if (!empty($pendingGRNsQC)): ?>
+<?php 
+$pendingGRNsQC = $pendingGRNsQC ?? [];
+?>
 <div class="rd-panel" style="border-color:rgba(139,92,246,.3);background:rgba(139,92,246,.03);margin-top:4px">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div class="rd-panel-title" style="margin-bottom:0">
@@ -351,6 +353,7 @@ $pendingWeeklyCount   = $pendingWeeklyCount   ?? 0;
     <a href="<?= $base ?>/con-material-receivings" style="font-size:11px;color:var(--qc-blue);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
   </div>
   <div style="overflow-x:auto">
+    <?php if (!empty($pendingGRNsQC)): ?>
     <table class="rd-table">
       <thead>
         <tr>
@@ -379,13 +382,14 @@ $pendingWeeklyCount   = $pendingWeeklyCount   ?? 0;
         <?php endforeach; ?>
       </tbody>
     </table>
+    <?php else: ?>
+    <div class="empty-msg"><i class="fal fa-clipboard-check fa-2x" style="opacity:.3;display:block;margin-bottom:8px"></i>No pending material receiving reviews (GRN) awaiting QC.</div>
+    <?php endif; ?>
   </div>
 </div>
-<?php endif; ?>
 
 <?php
 $pendingWeeklyReportsQC = $pendingWeeklyReportsQC ?? [];
-if (!empty($pendingWeeklyReportsQC)):
 ?>
 <div class="rd-panel" style="border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.03);margin-top:4px">
   <div class="d-flex justify-content-between align-items-center mb-3">
@@ -401,27 +405,34 @@ if (!empty($pendingWeeklyReportsQC)):
     <a href="<?= $base ?>/con-weekly-reports" style="font-size:11px;color:var(--qc-blue);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
   </div>
   <div style="overflow-x:auto">
+    <?php if (!empty($pendingWeeklyReportsQC)): ?>
     <table class="rd-table">
       <thead>
         <tr>
           <th>#</th>
-          <th>Report Date</th>
-          <th>Project</th>
-          <th>Week No</th>
+          <th>Progress Approval</th>
+          <th>Project / Phase</th>
+          <th>Week</th>
           <th>Submitted By</th>
           <th style="text-align:right">Action</th>
         </tr>
       </thead>
       <tbody>
-        <?php foreach ($pendingWeeklyReportsQC as $pi => $rep): ?>
+        <?php foreach ($pendingWeeklyReportsQC as $pi => $rep): 
+          $monthText = !empty($rep['target_month']) ? date('F Y', strtotime($rep['target_month'])) : 'N/A';
+          $phaseText = !empty($rep['phase_name']) ? htmlspecialchars($rep['phase_name']) : 'N/A';
+        ?>
         <tr>
           <td style="font-size:11px;color:var(--text-muted)"><?= $pi+1 ?></td>
-          <td style="font-weight:800;color:#0f5132"><?= !empty($rep['report_date']) ? date('d M Y', strtotime($rep['report_date'])) : '&mdash;' ?></td>
-          <td style="font-weight:700"><?= htmlspecialchars($rep['project_name'] ?? 'N/A') ?></td>
-          <td style="font-size:11px;color:var(--text-muted)">Week <?= (int)$rep['week_no'] ?></td>
+          <td style="font-weight:800;color:#0f5132"><i class="fal fa-file-invoice me-1"></i><?= $monthText ?> Progress Approval</td>
+          <td>
+            <div style="font-weight:700"><?= htmlspecialchars($rep['project_name'] ?? 'N/A') ?></div>
+            <div style="font-size:11px;color:var(--text-muted)"><?= $phaseText ?></div>
+          </td>
+          <td style="font-size:11px;color:var(--text-muted);font-weight:700">Week <?= (int)$rep['week_no'] ?></td>
           <td style="font-size:12px"><?= htmlspecialchars($rep['created_by_name'] ?? '&mdash;') ?></td>
           <td style="text-align:right">
-            <a href="<?=$base?>/con-weekly-report/<?= $rep['id'] ?>" class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:linear-gradient(135deg,#0f5132,#198754);color:#fff;border-radius:6px;text-decoration:none">
+            <a href="<?=$base?>/con-weekly-progress/<?= $rep['target_id'] ?>?week=<?= $rep['week_no'] ?>" class="btn btn-sm" style="font-size:11px;padding:4px 12px;background:linear-gradient(135deg,#0f5132,#198754);color:#fff;border-radius:6px;text-decoration:none">
               <i class="fal fa-check-circle me-1"></i> Review &amp; Approve
             </a>
           </td>
@@ -429,9 +440,11 @@ if (!empty($pendingWeeklyReportsQC)):
         <?php endforeach; ?>
       </tbody>
     </table>
+    <?php else: ?>
+    <div class="empty-msg"><i class="fal fa-calendar-week fa-2x" style="opacity:.3;display:block;margin-bottom:8px"></i>No pending weekly progress reports awaiting QC approval.</div>
+    <?php endif; ?>
   </div>
 </div>
-<?php endif; ?>
 
 
 

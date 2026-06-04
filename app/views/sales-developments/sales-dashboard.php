@@ -567,7 +567,7 @@
                     text: 'Number of Bookings'
                 }
             },
-            colors: ['#4e73df', '#1cc88a'],
+            colors: ['#5e4cdc', '#8e7eff'],
             legend: {
                 position: 'top'
             },

@@ -17,6 +17,7 @@ $summary    = $summary   ?? [];
 $workTypes  = $workTypes  ?? [];
 $designTypes= $designTypes?? [];
 $phaseSubItems = $phaseSubItems ?? [];
+$is_readonly   = $is_readonly   ?? false;
 
 $targetId   = (int)($target['id']         ?? 0);
 $projectId  = (int)($target['project_id'] ?? 0);
@@ -77,7 +78,7 @@ $priorityColors = [
 .mf-status-row { display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end }
 .mf-ctrl { display:flex;flex-direction:column;gap:4px }
 .mf-ctrl label { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted) }
-.mf-sel,.mf-inp { padding:7px 10px;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:12.5px;background:transparent;color:inherit;min-width:160px }
+.mf-sel,.mf-inp { padding:7px 10px;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:12.5px;background:transparent;color:inherit;width:100%;box-sizing:border-box }
 .mf-sel:focus,.mf-inp:focus { outline:none;border-color:var(--pri) }
 .btn-save { padding:7px 18px;border-radius:8px;font-size:12.5px;font-weight:700;background:var(--pri);color:#fff;border:none;cursor:pointer }
 
@@ -128,10 +129,17 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
            class="mf-weekly-btn">
             <i class="fal fa-chart-line"></i>Weekly Progress
         </a>
+        <?php if ($is_readonly): ?>
+        <a href="<?= $base ?>/con-project-plan-targets"
+           class="btn btn-sm btn-outline-secondary" style="font-size:12px">
+            <i class="fal fa-arrow-left me-1"></i>Back to Targets
+        </a>
+        <?php else: ?>
         <a href="<?= $base ?>/con-monthly-targets/<?= $projectId ?>"
            class="btn btn-sm btn-outline-secondary" style="font-size:12px">
             <i class="fal fa-arrow-left me-1"></i>Back
         </a>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -171,7 +179,8 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
     <?php endif; ?>
 </div>
 
-<!-- Status Update -->
+<!-- Status Update — hidden for site engineers -->
+<?php if (!$is_readonly): ?>
 <div class="mf-status-card">
     <h6><i class="fal fa-cog me-2"></i>Update Planning Status & Phase Details</h6>
     <form method="POST" action="<?= $base ?>/con-monthly-target-status/<?= $targetId ?>">
@@ -188,6 +197,17 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                 <label>Responsible Team</label>
                 <input type="text" name="responsible_team" class="mf-inp"
                        value="<?= htmlspecialchars($responsibleTeam) ?>" placeholder="e.g. Civil Team">
+            </div>
+            <div class="mf-ctrl">
+                <label>Default Contractor</label>
+                <select name="contractor_id" class="mf-sel">
+                    <option value="">-- Select Contractor --</option>
+                    <?php foreach ($contractors as $c): ?>
+                    <option value="<?= $c['id'] ?>" <?= ($target['contractor_id'] ?? 0) == $c['id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($c['name']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
             </div>
             <div class="mf-ctrl">
                 <label>Phase Status</label>
@@ -215,17 +235,36 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
         </div>
     </form>
 </div>
+<?php endif; ?>
 
-<!-- Add New Item -->
+<!-- Add New Item — hidden for site engineers -->
+<?php if (!$is_readonly): ?>
 <div class="mf-add-card">
     <h6><i class="fal fa-plus-circle me-2"></i>Add Work Item</h6>
     <form id="addItemForm">
-        <div style="display:grid;grid-template-columns:2.5fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr auto;gap:9px;align-items:end">
-            <div class="mf-ctrl">
-                <label>Work Item Name *</label>
-                <input type="text" id="wi_name" class="mf-inp" placeholder="e.g. Column Casting – Floor 3" required>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:flex-end">
+            <div class="mf-ctrl" style="flex:3;min-width:180px">
+                <label>Work Item (Sub-item) *</label>
+                <select id="wi_name" class="mf-sel" required onchange="onSubItemSelect()">
+                    <option value="">-- Select Sub-item --</option>
+                    <?php foreach ($phaseSubItems as $sub): ?>
+                    <option value="<?= htmlspecialchars($sub['item_name']) ?>"
+                            data-weight="<?= htmlspecialchars($sub['weight_pct']) ?>"
+                            data-worktype="<?= htmlspecialchars($sub['work_type_id'] ?? '') ?>">
+                        <?= htmlspecialchars($sub['item_name']) ?> (<?= number_format((float)$sub['weight_pct'], 2) ?>%)
+                    </option>
+                    <?php endforeach; ?>
+                </select>
             </div>
-            <div class="mf-ctrl">
+            <div class="mf-ctrl" style="flex:0 0 88px;min-width:80px">
+                <label>Sub Weight</label>
+                <input type="text" id="wi_sub_weight" class="mf-inp" readonly value="0.00%">
+            </div>
+            <div class="mf-ctrl" style="flex:0 0 107px;min-width:90px">
+                <label>Target Planned %</label>
+                <input type="number" id="wi_planned_progress_pct" class="mf-inp" min="0" max="100" step="0.1" value="0">
+            </div>
+            <div class="mf-ctrl" style="flex:2;min-width:140px">
                 <label>Work Type <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
                 <select id="wi_work_type" class="mf-sel">
                     <option value="">-- None --</option>
@@ -234,23 +273,34 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="mf-ctrl">
+            <div class="mf-ctrl" style="flex:2;min-width:140px">
+                <label>Contractor</label>
+                <select id="wi_contractor_id" class="mf-sel">
+                    <option value="">-- None --</option>
+                    <?php foreach ($contractors as $c): ?>
+                    <option value="<?= $c['id'] ?>" <?= ($target['contractor_id'] ?? 0) == $c['id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($c['name']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="mf-ctrl" style="flex:0 0 80px;min-width:70px">
                 <label>Unit</label>
                 <input type="text" id="wi_unit" class="mf-inp" placeholder="RFT / NO">
             </div>
-            <div class="mf-ctrl">
+            <div class="mf-ctrl" style="flex:0 0 95px;min-width:80px">
                 <label>Target Qty</label>
                 <input type="number" id="wi_qty" class="mf-inp" step="0.01" min="0" value="0">
             </div>
-            <div class="mf-ctrl">
+            <div class="mf-ctrl" style="flex:0 0 135px;min-width:120px">
                 <label>Start Date</label>
                 <input type="date" id="wi_start_date" class="mf-inp">
             </div>
-            <div class="mf-ctrl">
+            <div class="mf-ctrl" style="flex:0 0 135px;min-width:120px">
                 <label>End Date</label>
                 <input type="date" id="wi_end_date" class="mf-inp">
             </div>
-            <div class="mf-ctrl">
+            <div class="mf-ctrl" style="flex:0 0 95px;min-width:85px">
                 <label>Priority</label>
                 <select id="wi_priority" class="mf-sel">
                     <option value="Medium">Medium</option>
@@ -258,16 +308,91 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                     <option value="Low">Low</option>
                 </select>
             </div>
-            <div>
-                <button type="button" class="btn-save" onclick="addItem()" title="Add Item">
-                    <i class="fal fa-plus"></i>
+            <div style="align-self:flex-end;padding-bottom:1px">
+                <button type="button" class="btn-save" onclick="addItem()" title="Add Work Item">
+                    <i class="fal fa-plus me-1"></i> Add
                 </button>
             </div>
         </div>
     </form>
 </div>
+<?php endif; ?>
 
-<!-- Items List -->
+<?php if ($is_readonly): ?>
+<!-- READ-ONLY items table for site engineers -->
+<div class="mf-section-title">
+    <i class="fal fa-list-check" style="color:var(--pri)"></i>
+    Work Items
+    <span style="font-size:11px;font-weight:500;color:var(--text-muted)">(<?= $totalItems ?> items)</span>
+    <span class="mf-badge" style="background:rgba(16,185,129,.1);color:var(--green);font-size:10px;margin-left:8px">
+        <i class="fal fa-eye me-1"></i>View Only
+    </span>
+</div>
+<?php if (empty($items)): ?>
+<div style="text-align:center;padding:40px;color:var(--text-muted)">
+    <i class="fal fa-clipboard-list" style="font-size:34px;opacity:.25;display:block;margin-bottom:10px"></i>
+    No work items yet.
+</div>
+<?php else: ?>
+<div class="mf-table-wrap">
+<table class="mf-table">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Work Item</th>
+            <th>Unit</th>
+            <th>Target Qty</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Wk 1</th>
+            <th>Wk 2</th>
+            <th>Wk 3</th>
+            <th>Wk 4</th>
+            <th style="text-align:center">Planned %</th>
+            <th style="text-align:center">Actual %</th>
+            <th>Priority</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+    <?php foreach ($items as $i => $item):
+        $actualPct = (float)($item['actual_progress_pct'] ?? 0);
+        $prioColor = $priorityColors[$item['priority'] ?? 'Medium'] ?? '#64748b';
+    ?>
+    <tr>
+        <td style="color:var(--text-muted);font-weight:600"><?= $i+1 ?></td>
+        <td><span style="font-weight:600;font-size:12.5px"><?= htmlspecialchars($item['work_item_name']) ?></span></td>
+        <td><?= htmlspecialchars($item['unit'] ?? '') ?></td>
+        <td style="font-weight:600"><?= number_format((float)($item['monthly_target_qty'] ?? 0), 2) ?></td>
+        <td><?= htmlspecialchars($item['start_date'] ?? '') ?></td>
+        <td><?= htmlspecialchars($item['end_date'] ?? '') ?></td>
+        <td><?= number_format((float)($item['week_1_qty'] ?? 0), 2) ?></td>
+        <td><?= number_format((float)($item['week_2_qty'] ?? 0), 2) ?></td>
+        <td><?= number_format((float)($item['week_3_qty'] ?? 0), 2) ?></td>
+        <td><?= number_format((float)($item['week_4_qty'] ?? 0), 2) ?></td>
+        <td style="text-align:center">
+            <span class="pct-badge"><?= number_format((float)($item['planned_progress_pct'] ?? 0), 1) ?>%</span>
+        </td>
+        <td style="text-align:center">
+            <span class="pct-badge <?= $actualPct>=100?'green':($actualPct>0?'amber':'') ?>">
+                <?= number_format($actualPct, 1) ?>%
+            </span>
+        </td>
+        <td>
+            <span style="font-size:11px;font-weight:700;color:<?= $prioColor ?>"><?= htmlspecialchars($item['priority'] ?? '') ?></span>
+        </td>
+        <td>
+            <span style="font-size:11px;color:var(--text-muted)"><?= htmlspecialchars($item['status'] ?? '') ?></span>
+        </td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+</table>
+</div>
+<?php endif; ?>
+
+<?php else: ?>
+<!-- EDITABLE items table for PM/Admin -->
 <div class="mf-section-title">
     <i class="fal fa-list-check" style="color:var(--pri)"></i>
     Work Items
@@ -288,6 +413,7 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
             <th>#</th>
             <th>Work Item</th>
             <th>Work Type <small style="font-weight:400;opacity:.7">(optional)</small></th>
+            <th>Contractor</th>
             <th>Unit</th>
             <th>Monthly Qty</th>
             <th>Start Date</th>
@@ -296,10 +422,13 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
             <th>Wk 2</th>
             <th>Wk 3</th>
             <th>Wk 4</th>
-            <th>Planned %</th>
-            <th>Actual %</th>
+            <th style="text-align:center">Sub Weight %</th>
+            <th style="text-align:center">Planned Progress %</th>
+            <th style="text-align:center">Actual Progress %</th>
+            <th style="text-align:center">Actual Weight %</th>
             <th>Priority</th>
             <th>Status</th>
+            <th>Recovery Notes</th>
             <th></th>
         </tr>
     </thead>
@@ -308,12 +437,13 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
     <?php
         $actualPct = (float)($item['actual_progress_pct'] ?? 0);
         $prioColor = $priorityColors[$item['priority'] ?? 'Medium'] ?? '#64748b';
+        $subWeight = (float)($item['sub_item_weight'] ?? 0);
     ?>
     <tr>
         <td style="color:var(--text-muted);font-weight:600"><?= $i+1 ?></td>
         <td>
-            <input type="text" name="items[<?= $i ?>][work_item_name]"
-                   value="<?= htmlspecialchars($item['work_item_name']) ?>" style="min-width:180px">
+            <span style="font-weight:600;font-size:12.5px;"><?= htmlspecialchars($item['work_item_name']) ?></span>
+            <input type="hidden" name="items[<?= $i ?>][work_item_name]" value="<?= htmlspecialchars($item['work_item_name']) ?>">
             <input type="hidden" name="items[<?= $i ?>][id]" value="<?= $item['id'] ?>">
         </td>
         <td>
@@ -326,6 +456,16 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                 <?php endforeach; ?>
             </select>
         </td>
+        <td>
+            <select name="items[<?= $i ?>][contractor_id]" style="min-width:120px">
+                <option value="">-- None --</option>
+                <?php foreach ($contractors as $c): ?>
+                <option value="<?= $c['id'] ?>" <?= (($item['contractor_id'] ?? 0) == $c['id']) ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($c['name']) ?>
+                </option>
+                <?php endforeach; ?>
+            </select>
+        </td>
         <td><input type="text" name="items[<?= $i ?>][unit]" value="<?= htmlspecialchars($item['unit'] ?? '') ?>" style="width:60px"></td>
         <td><input type="number" name="items[<?= $i ?>][monthly_target_qty]" value="<?= (float)($item['monthly_target_qty'] ?? 0) ?>" step="0.01" style="width:80px"></td>
         <td><input type="date" name="items[<?= $i ?>][start_date]" value="<?= htmlspecialchars($item['start_date'] ?? '') ?>" style="width:120px"></td>
@@ -334,15 +474,23 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
         <td><input type="number" name="items[<?= $i ?>][week_2_qty]" value="<?= (float)($item['week_2_qty'] ?? 0) ?>" step="0.01" style="width:70px"></td>
         <td><input type="number" name="items[<?= $i ?>][week_3_qty]" value="<?= (float)($item['week_3_qty'] ?? 0) ?>" step="0.01" style="width:70px"></td>
         <td><input type="number" name="items[<?= $i ?>][week_4_qty]" value="<?= (float)($item['week_4_qty'] ?? 0) ?>" step="0.01" style="width:70px"></td>
-        <td>
+        <td style="text-align:center;font-weight:600">
+            <?= number_format($subWeight, 2) ?>%
+            <input type="hidden" id="sub_w_<?= $i ?>" value="<?= $subWeight ?>">
+        </td>
+        <td style="text-align:center">
             <input type="number" name="items[<?= $i ?>][planned_progress_pct]"
+                   id="plan_pct_<?= $i ?>"
                    value="<?= (float)($item['planned_progress_pct'] ?? 0) ?>"
                    step="0.1" min="0" max="100" style="width:65px">
         </td>
-        <td>
+        <td style="text-align:center">
             <span class="pct-badge <?= $actualPct>=100?'green':($actualPct>0?'amber':'') ?>">
                 <?= number_format($actualPct, 1) ?>%
             </span>
+        </td>
+        <td style="text-align:center;font-weight:700;color:var(--green)">
+            <?= number_format(($subWeight * $actualPct) / 100, 2) ?>%
         </td>
         <td>
             <select name="items[<?= $i ?>][priority]" style="width:80px">
@@ -357,6 +505,9 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                 <option value="<?= $st ?>" <?= ($item['status']===$st)?'selected':'' ?>><?= $st ?></option>
                 <?php endforeach; ?>
             </select>
+        </td>
+        <td>
+            <input type="text" name="items[<?= $i ?>][recovery_notes]" value="<?= htmlspecialchars($item['recovery_notes'] ?? '') ?>" placeholder="e.g. Incl. 500 shortfall" style="min-width:140px">
         </td>
         <td>
             <a href="<?= $base ?>/con-monthly-item-delete/<?= $item['id'] ?>"
@@ -381,12 +532,32 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
 </form>
 <?php endif; ?>
 
+<?php endif; // end is_readonly check for items section ?>
+
 </div></div>
 
 <script>
+// ── Handle Sub-item selection changed ──────────────────────────────────
+function onSubItemSelect() {
+    var select = document.getElementById('wi_name');
+    var opt = select.options[select.selectedIndex];
+    var weight = opt ? opt.getAttribute('data-weight') : '';
+    var worktype = opt ? opt.getAttribute('data-worktype') : '';
+    
+    document.getElementById('wi_sub_weight').value = weight ? parseFloat(weight).toFixed(2) + '%' : '0.00%';
+    
+    var wtSelect = document.getElementById('wi_work_type');
+    if (wtSelect) {
+        wtSelect.value = worktype || '';
+    }
+}
+
+
+
+// ── Add Item ───────────────────────────────────────────────────────────
 function addItem() {
     var name = document.getElementById('wi_name').value.trim();
-    if (!name) { alert('Work item name is required.'); return; }
+    if (!name) { alert('Work item selection is required.'); return; }
 
     var data = new FormData();
     data.append('target_id', '<?= $targetId ?>');
@@ -397,8 +568,9 @@ function addItem() {
     data.append('start_date', document.getElementById('wi_start_date').value);
     data.append('end_date', document.getElementById('wi_end_date').value);
     data.append('priority', document.getElementById('wi_priority').value);
+    data.append('contractor_id', document.getElementById('wi_contractor_id').value);
     data.append('status', 'Draft');
-    data.append('planned_progress_pct', '0');
+    data.append('planned_progress_pct', document.getElementById('wi_planned_progress_pct').value);
 
     fetch('<?= $base ?>/con-monthly-item-add', {
         method: 'POST',

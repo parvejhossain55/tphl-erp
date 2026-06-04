@@ -37,20 +37,33 @@
                                 <td><?= htmlspecialchars($issue['warehouse_name']) ?></td>
                             </tr>
                             <tr>
-                                <th >Target</th>
+                                <th>Phase</th>
                                 <td>
-                                    <?php if (!empty($issue['target_name'])): ?>
-                                        <span class="badge bg-secondary"><?= htmlspecialchars($issue['target_name']) ?></span>
+                                    <?php if (!empty($issue['phase_name'])): ?>
+                                        <span class="badge bg-primary">
+                                            <i class="bi bi-layers-half me-1"></i>
+                                            <?= htmlspecialchars($issue['phase_name']) ?>
+                                        </span>
                                     <?php else: ?>
                                         <span class="text-muted">Not specified</span>
                                     <?php endif; ?>
                                 </td>
                             </tr>
                             <tr>
-                                <th >Working Plan</th>
+                                <th>Monthly Target</th>
                                 <td>
-                                    <?php if (!empty($issue['work_plan_name'])): ?>
-                                        <?= htmlspecialchars($issue['work_plan_name']) ?>
+                                    <?php if (!empty($issue['monthly_target_month'])): ?>
+                                        <?php
+                                            $statusColors = [
+                                                'Approved'  => 'success',
+                                                'In Review' => 'warning',
+                                                'Draft'     => 'secondary',
+                                            ];
+                                            $sc = $statusColors[$issue['monthly_target_status'] ?? ''] ?? 'secondary';
+                                            $monthLabel = date('F Y', strtotime($issue['monthly_target_month']));
+                                        ?>
+                                        <span class="fw-semibold"><?= $monthLabel ?></span>
+                                        <span class="badge bg-<?= $sc ?> ms-2"><?= htmlspecialchars($issue['monthly_target_status'] ?? '') ?></span>
                                     <?php else: ?>
                                         <span class="text-muted">Not specified</span>
                                     <?php endif; ?>
@@ -65,8 +78,8 @@
                                 <td><?= htmlspecialchars($issue['issued_by_name']) ?></td>
                             </tr>
                             <tr>
-                                <th >Issued To</th>
-                                <td><?= htmlspecialchars($issue['issued_to'] ?: '—') ?></td>
+                                <th>Issued To</th>
+                                <td><?= htmlspecialchars($issue['issued_to_name'] ?: '—') ?></td>
                             </tr>
                             <tr>
                                 <th >Purpose</th>

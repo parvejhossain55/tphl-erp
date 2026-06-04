@@ -1,5 +1,24 @@
-<div class="pagetitle d-flex justify-content-between align-items-center">
-    <div class="mb-4">
+<?php
+// Defaults for variables passed from controller
+$phasesByProject       = $phasesByProject       ?? [];
+$monthlyTargetsByPhase = $monthlyTargetsByPhase ?? [];
+$receivedMaterials     = $receivedMaterials     ?? [];
+$warehouses            = $warehouses            ?? [];
+$materials             = $materials             ?? [];
+$stocks                = $stocks                ?? [];
+$contractors           = $contractors           ?? [];
+$projects              = $projects              ?? [];
+
+$fromWeekly   = $fromWeekly   ?? false;
+$preProjectId = (int)($preProjectId ?? 0);
+$prePhaseId   = (int)($prePhaseId   ?? 0);
+$preTargetId  = (int)($preTargetId  ?? 0); // phase_monthly_targets.id
+$preLogDate   = $preLogDate   ?? '';
+$backUrl      = $backUrl      ?? '';
+?>
+
+<div class="pagetitle d-flex justify-content-between align-items-center mb-4">
+    <div>
         <h4><?= htmlspecialchars($page_title) ?></h4>
         <nav>
             <ol class="breadcrumb mb-0">
@@ -9,25 +28,43 @@
             </ol>
         </nav>
     </div>
-    <a href="<?= $base_url ?>/con-material-issues" class="btn btn-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i> Back to List
-    </a>
+    <div class="d-flex gap-2">
+        <?php if ($fromWeekly && !empty($backUrl)): ?>
+        <a href="<?= htmlspecialchars($backUrl) ?>" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-arrow-left-circle me-1"></i>Back to Weekly Progress
+        </a>
+        <?php endif; ?>
+        <a href="<?= $base_url ?>/con-material-issues" class="btn btn-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to List
+        </a>
+    </div>
 </div>
+
+<?php if ($fromWeekly && !empty($preLogDate)): ?>
+<div class="alert alert-info d-flex align-items-center gap-2 mb-3" style="border-radius:12px">
+    <i class="bi bi-calendar-check-fill fs-5"></i>
+    <div>Logging material used on <strong><?= date('d M Y', strtotime($preLogDate)) ?></strong>. After saving, you'll be returned to your weekly progress entry.</div>
+</div>
+<?php endif; ?>
 
 <section class="section">
     <!-- STEP 1: Select Project Cards -->
-    <div id="projectCardsSection">
+    <div id="projectCardsSection" <?= $preProjectId ? 'style="display:none"' : '' ?>>
         <h5 class="mb-3 text-muted fw-bold"><i class="bi bi-building me-2"></i>Select a Project to Issue Material</h5>
         <div class="row g-3">
             <?php if (!empty($projects)): ?>
                 <?php foreach ($projects as $p): ?>
                     <div class="col-md-4 col-sm-6">
-                        <div class="card card__wrapper h-100 border-0 shadow-sm" style="cursor: pointer; transition: transform 0.2s;" onclick="selectProject(<?= $p['id'] ?>, '<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>')" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div class="card card__wrapper h-100 border-0 shadow-sm"
+                             style="cursor:pointer;transition:transform 0.2s;"
+                             onclick="selectProject(<?= $p['id'] ?>, '<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>')"
+                             onmouseover="this.style.transform='translateY(-5px)'"
+                             onmouseout="this.style.transform='translateY(0)'">
                             <div class="card-body p-4 text-center">
                                 <div class="project-icon mb-3">
-                                    <i class="fas fa-city fa-3x" style=""></i>
+                                    <i class="fas fa-city fa-3x"></i>
                                 </div>
-                                <h6 class="fw-bold mb-1" style=""><?= htmlspecialchars($p['name']) ?></h6>
+                                <h6 class="fw-bold mb-1"><?= htmlspecialchars($p['name']) ?></h6>
                                 <span class="badge bg-success bg-opacity-10 text-light rounded-pill p-2 mt-2">
                                     <i class="fas fa-check-circle me-1"></i>Material Received
                                 </span>
@@ -46,19 +83,21 @@
     </div>
 
     <!-- STEP 2: Issue Material Form -->
-    <div id="issueFormSection" style="display: none;">
-        
+    <div id="issueFormSection" <?= $preProjectId ? '' : 'style="display:none;"' ?>>
+
         <div class="d-flex align-items-center mb-4">
-            <button class="btn btn-outline-secondary btn-sm me-3" onclick="backToProjects()">
+            <button class="btn btn-outline-secondary btn-sm me-3" onclick="backToProjects()" type="button">
                 <i class="fas fa-arrow-left me-1"></i> Back to Projects
             </button>
-            <h5 class="mb-0 fw-bold" style="color:var(--cd-blue)">Issuing Material For: <span id="selectedProjectName" class=""></span></h5>
+            <h5 class="mb-0 fw-bold" style="color:var(--cd-blue)">
+                Issuing Material For: <span id="selectedProjectName"></span>
+            </h5>
         </div>
 
         <div class="row">
             <!-- Left Side: Information Panels -->
             <div class="col-lg-4">
-                <div class="card border-0 shadow-sm mb-4" style="border-top: 4px solid var(--cd-blue) !important;">
+                <div class="card border-0 shadow-sm mb-4" style="border-top:4px solid var(--cd-blue) !important;">
                     <div class="card-header bg-transparent border-bottom-0 pt-4 pb-0">
                         <h6 class="fw-bold"><i class="fas fa-boxes-stacked me-2 text-primary"></i>Received Materials (GRN)</h6>
                     </div>
@@ -80,12 +119,15 @@
                     </div>
                 </div>
 
-                <div class="card border-0 shadow-sm mb-4" style="border-top: 4px solid #d97706 !important;">
-                    <div class="card-header bg-transparent border-bottom-0 pt-4 pb-0">
-                        <h6 class="fw-bold"><i class="fas fa-bullseye me-2 text-warning"></i>Fixed Targets</h6>
+                <!-- Selected Target Summary -->
+                <div class="card border-0 shadow-sm mb-4" style="border-top:4px solid #0ea5e9 !important;" id="selectedTargetCard">
+                    <div class="card-header bg-transparent border-bottom-0 pt-3 pb-0">
+                        <h6 class="fw-bold"><i class="bi bi-bullseye me-2 text-info"></i>Selected Monthly Target</h6>
                     </div>
-                    <div class="card-body p-0" id="projectTargetsDiv">
-                        <!-- Populated by JS -->
+                    <div class="card-body py-2" id="selectedTargetBody">
+                        <div class="text-muted text-center py-2" style="font-size:12px">
+                            <i class="bi bi-arrow-up-right-circle me-1"></i>Select Phase & Month above
+                        </div>
                     </div>
                 </div>
             </div>
@@ -100,13 +142,37 @@
                     </div>
                     <div class="card__body p-4">
                         <form action="<?= $base_url ?>/con-material-issue-store" method="POST" id="issueForm">
-                            <input type="hidden" name="project_id" id="hiddenProjectId">
+                            <input type="hidden" name="project_id"            id="hiddenProjectId"   value="<?= $preProjectId ?: '' ?>">
+                            <input type="hidden" name="phase_monthly_target_id" id="hiddenTargetId"  value="<?= $preTargetId  ?: '' ?>">
+                            <input type="hidden" name="back_url"              value="<?= htmlspecialchars($backUrl) ?>">
 
                             <div class="alert alert-warning small mb-4">
                                 <i class="bi bi-exclamation-triangle me-1"></i>
                                 <strong>Stock OUT:</strong> Issuing material will deduct from warehouse stock immediately.
                             </div>
 
+                            <!-- ── Row 1: Phase → Month ── -->
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">
+                                        Phase <span class="text-danger">*</span>
+                                    </label>
+                                    <select id="phaseSelect" class="form-select" onchange="onPhaseChange(this.value)">
+                                        <option value="">-- Select Phase --</option>
+                                        <!-- Populated by JS when project selected -->
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">
+                                        Month (Target) <span class="text-danger">*</span>
+                                    </label>
+                                    <select id="monthSelect" class="form-select" onchange="onMonthChange(this.value)" disabled>
+                                        <option value="">-- Select Month --</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- ── Row 2: Warehouse + Issue Date ── -->
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold">Warehouse <span class="text-danger">*</span></label>
@@ -118,37 +184,13 @@
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-bold">Issue Date</label>
+                                    <label class="form-label fw-bold">Issue Date <span class="text-danger">*</span></label>
                                     <input type="date" name="issue_date" class="form-control"
-                                           value="<?= date('Y-m-d') ?>" required>
+                                           value="<?= $preLogDate ?: date('Y-m-d') ?>" required>
                                 </div>
                             </div>
 
-                            <div class="row mb-3">
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">Target <span class="text-muted">(Optional)</span></label>
-                                    <select name="target_id" id="issueTarget" class="form-select">
-                                        <option value="">-- Select Target --</option>
-                                        <!-- Populated by JS -->
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">Working Plan <span class="text-muted">(Optional)</span></label>
-                                    <select name="work_plan_id" id="issueWorkPlan" class="form-select">
-                                        <option value="">-- Select Plan --</option>
-                                        <?php foreach ($workPlans as $wp): ?>
-                                            <option value="<?= $wp['id'] ?>" data-design="<?= htmlspecialchars($wp['design_type_name'] ?? '') ?>">
-                                                <?= htmlspecialchars(date('M Y', strtotime($wp['year'].'-'.$wp['month'].'-01')) . ' - ' . $wp['work_description']) ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-bold">Design Type</label>
-                                    <input type="text" id="autoDesignType" class="form-control bg-light" readonly placeholder="Auto-selected based on plan...">
-                                </div>
-                            </div>
-
+                            <!-- ── Row 3: Material + Available Stock + Qty ── -->
                             <div class="row mb-3">
                                 <div class="col-md-5">
                                     <label class="form-label fw-bold">Material <span class="text-danger">*</span></label>
@@ -177,6 +219,7 @@
                                 </div>
                             </div>
 
+                            <!-- ── Row 4: Issued To + Purpose ── -->
                             <div class="row mb-3">
                                 <div class="col-md-5">
                                     <label class="form-label fw-bold">Issued To (Contractor) <span class="text-danger">*</span></label>
@@ -194,13 +237,14 @@
                                 <div class="col-md-7">
                                     <label class="form-label fw-bold">Purpose</label>
                                     <input type="text" name="purpose" class="form-control"
-                                           placeholder="e.g., Floor 3 construction, Electrical work...">
+                                           placeholder="e.g., Floor 3 construction, Column casting...">
                                 </div>
                             </div>
 
                             <div class="mt-4 text-end">
-                                <button type="submit" class="btn btn-primary px-4 fw-bold"
-                                        onclick="return confirm('Issue this material? Stock will be deducted immediately.');">
+                                <button type="submit" class="btn btn-primary px-5 fw-bold"
+                                        id="submitBtn"
+                                        onclick="return validateAndConfirm()">
                                     <i class="bi bi-check2-circle me-1"></i> Issue Material
                                 </button>
                             </div>
@@ -212,16 +256,14 @@
     </div>
 </section>
 
-<!-- PHP to JS conversion for easy dynamic UI -->
+<!-- PHP → JS data bridges -->
 <script>
-const receivedMaterials = <?= json_encode($receivedMaterials ?? []) ?>;
-const projectTargets = <?= json_encode(array_reduce($targets ?? [], function($carry, $t) {
-    $carry[$t['project_id']][] = $t;
-    return $carry;
-}, [])) ?>;
+const receivedMaterials     = <?= json_encode($receivedMaterials) ?>;
+const phasesByProject       = <?= json_encode($phasesByProject) ?>;
+const monthlyTargetsByPhase = <?= json_encode($monthlyTargetsByPhase) ?>;
 
-// Stock data lookup: key = "warehouseId_materialId" → available qty
-var stockData = <?= json_encode(
+// Stock: "warehouseId_materialId" → qty
+const stockData = <?= json_encode(
     array_reduce($stocks, function($carry, $s) {
         $key = $s['warehouse_id'] . '_' . $s['material_id'];
         $carry[$key] = (float)$s['current_quantity'];
@@ -229,17 +271,25 @@ var stockData = <?= json_encode(
     }, [])
 ) ?>;
 
+// Pre-fill values from weekly progress (0 means not set)
+const preProjectId = <?= (int)$preProjectId ?>;
+const prePhaseId   = <?= (int)$prePhaseId ?>;
+const preTargetId  = <?= (int)$preTargetId ?>;
+
+// ── Project selection ──────────────────────────────────────────────────────
+
 function selectProject(projectId, projectName) {
     document.getElementById('projectCardsSection').style.display = 'none';
     document.getElementById('issueFormSection').style.display = 'block';
     document.getElementById('hiddenProjectId').value = projectId;
     document.getElementById('selectedProjectName').textContent = projectName;
-    
-    // Populate Received Materials Table
+
+    // Populate received materials table
     const matTbody = document.getElementById('receivedMaterialsTbody');
     matTbody.innerHTML = '';
-    if (receivedMaterials[projectId] && receivedMaterials[projectId].length > 0) {
-        receivedMaterials[projectId].forEach(mat => {
+    const mats = receivedMaterials[projectId] || [];
+    if (mats.length > 0) {
+        mats.forEach(mat => {
             matTbody.innerHTML += `
                 <tr>
                     <td>
@@ -254,33 +304,26 @@ function selectProject(projectId, projectName) {
         matTbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">No material received yet.</td></tr>`;
     }
 
-    // Populate Targets List
-    const targetDiv = document.getElementById('projectTargetsDiv');
-    targetDiv.innerHTML = '';
-    
-    const targetSelect = document.getElementById('issueTarget');
-    targetSelect.innerHTML = '<option value="">-- Select Target --</option>';
+    // Populate Phase dropdown
+    const phaseSel = document.getElementById('phaseSelect');
+    phaseSel.innerHTML = '<option value="">-- Select Phase --</option>';
+    const phases = phasesByProject[projectId] || [];
+    phases.forEach(ph => {
+        const opt = document.createElement('option');
+        opt.value = ph.phase_id;
+        opt.textContent = ph.phase_name;
+        phaseSel.appendChild(opt);
+    });
 
-    if (projectTargets[projectId] && projectTargets[projectId].length > 0) {
-        let ul = '<ul class="list-group list-group-flush">';
-        projectTargets[projectId].forEach(t => {
-            ul += `<li class="list-group-item d-flex justify-content-between align-items-center">
-                       <div><i class="fas fa-bullseye me-2 text-warning"></i>${t.target_title || 'Target #'+t.id}</div>
-                       <span class="badge bg-primary rounded-pill">${t.target_percentage}%</span>
-                   </li>`;
-            targetSelect.innerHTML += `<option value="${t.id}">${t.target_title || 'Target #'+t.id}</option>`;
-        });
-        ul += '</ul>';
-        targetDiv.innerHTML = ul;
-    } else {
-        targetDiv.innerHTML = `<div class="text-muted text-center py-2">No targets fixed for this project yet.</div>`;
+    // Reset month and target
+    resetMonthSelect();
+    resetTargetSummary();
+
+    // If pre-filled from weekly progress
+    if (prePhaseId) {
+        phaseSel.value = prePhaseId;
+        onPhaseChange(prePhaseId, preTargetId);
     }
-
-    // Reset Form
-    document.getElementById('issueForm').reset();
-    document.getElementById('availableStock').innerHTML = '—';
-    document.getElementById('issueUnit').textContent = '—';
-    document.getElementById('hiddenProjectId').value = projectId;
 }
 
 function backToProjects() {
@@ -288,23 +331,119 @@ function backToProjects() {
     document.getElementById('projectCardsSection').style.display = 'block';
 }
 
+// ── Phase selection ────────────────────────────────────────────────────────
+
+function onPhaseChange(phaseId, autoSelectTargetId) {
+    phaseId = parseInt(phaseId) || 0;
+    const monthSel = document.getElementById('monthSelect');
+    monthSel.innerHTML = '<option value="">-- Select Month --</option>';
+    resetTargetSummary();
+    document.getElementById('hiddenTargetId').value = '';
+
+    if (!phaseId) {
+        monthSel.disabled = true;
+        return;
+    }
+
+    const targets = monthlyTargetsByPhase[phaseId] || [];
+    if (targets.length === 0) {
+        monthSel.innerHTML = '<option value="">No monthly targets for this phase</option>';
+        monthSel.disabled = true;
+        return;
+    }
+
+    targets.forEach(t => {
+        const d = new Date(t.target_month + 'T00:00:00');
+        const label = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+        const opt = document.createElement('option');
+        opt.value = t.monthly_target_id;
+        opt.setAttribute('data-phase-id', t.phase_id);
+        opt.setAttribute('data-month', t.target_month);
+        opt.setAttribute('data-status', t.planning_status);
+        opt.textContent = label + ' [' + t.planning_status + ']';
+        monthSel.appendChild(opt);
+    });
+
+    monthSel.disabled = false;
+
+    // Auto-select if pre-filled
+    if (autoSelectTargetId) {
+        monthSel.value = autoSelectTargetId;
+        onMonthChange(autoSelectTargetId);
+    }
+}
+
+// ── Month/Target selection ─────────────────────────────────────────────────
+
+function onMonthChange(targetId) {
+    targetId = parseInt(targetId) || 0;
+    document.getElementById('hiddenTargetId').value = targetId || '';
+
+    if (!targetId) {
+        resetTargetSummary();
+        return;
+    }
+
+    // Find the selected option details
+    const sel = document.getElementById('monthSelect');
+    const opt = sel.options[sel.selectedIndex];
+    const month = opt.getAttribute('data-month') || '';
+    const status = opt.getAttribute('data-status') || '';
+
+    const d = new Date(month + 'T00:00:00');
+    const monthLabel = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+    const statusColors = {
+        'Approved': '#10b981', 'In Review': '#f59e0b', 'Draft': '#64748b'
+    };
+    const color = statusColors[status] || '#64748b';
+
+    document.getElementById('selectedTargetBody').innerHTML = `
+        <div class="d-flex flex-column gap-2">
+            <div>
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;font-weight:700">Monthly Target</div>
+                <div style="font-size:15px;font-weight:800;color:#1e293b">${monthLabel}</div>
+            </div>
+            <div>
+                <span style="background:${color}20;color:${color};font-size:11px;font-weight:700;
+                             padding:3px 10px;border-radius:999px">${status}</span>
+            </div>
+            <div style="font-size:11px;color:#64748b">Target ID: PMT-${targetId}</div>
+        </div>`;
+}
+
+function resetMonthSelect() {
+    const monthSel = document.getElementById('monthSelect');
+    monthSel.innerHTML = '<option value="">-- Select Month --</option>';
+    monthSel.disabled = true;
+}
+
+function resetTargetSummary() {
+    document.getElementById('selectedTargetBody').innerHTML = `
+        <div class="text-muted text-center py-2" style="font-size:12px">
+            <i class="bi bi-arrow-up-right-circle me-1"></i>Select Phase & Month above
+        </div>`;
+}
+
+// ── Stock availability display ─────────────────────────────────────────────
+
 document.addEventListener('DOMContentLoaded', function () {
-    var warehouseSel = document.getElementById('issueWarehouse');
-    var materialSel  = document.getElementById('issueMaterial');
-    var availDiv     = document.getElementById('availableStock');
-    var unitSpan     = document.getElementById('issueUnit');
-    var qtyInput     = document.getElementById('issueQty');
+    const warehouseSel = document.getElementById('issueWarehouse');
+    const materialSel  = document.getElementById('issueMaterial');
+    const availDiv     = document.getElementById('availableStock');
+    const unitSpan     = document.getElementById('issueUnit');
+    const qtyInput     = document.getElementById('issueQty');
 
     function updateAvailable() {
-        var wid = warehouseSel.value;
-        var mid = materialSel.value;
-        var opt = materialSel.options[materialSel.selectedIndex];
-        var unit = opt && opt.getAttribute('data-unit') ? opt.getAttribute('data-unit') : '—';
+        const wid  = warehouseSel.value;
+        const mid  = materialSel.value;
+        const opt  = materialSel.options[materialSel.selectedIndex];
+        const unit = opt && opt.getAttribute('data-unit') ? opt.getAttribute('data-unit') : '—';
         unitSpan.textContent = unit;
 
         if (wid && mid) {
-            var key = wid + '_' + mid;
-            var avail = stockData[key] || 0;
+            const key   = wid + '_' + mid;
+            const avail = stockData[key] || 0;
             availDiv.innerHTML = '<span class="' + (avail > 0 ? 'text-success' : 'text-danger') + '">' +
                 avail.toFixed(3) + '</span> <small class="text-muted">' + unit + '</small>';
             qtyInput.max = avail;
@@ -314,21 +453,38 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     warehouseSel.addEventListener('change', updateAvailable);
-    materialSel.addEventListener('change', updateAvailable);
+    materialSel.addEventListener('change',  updateAvailable);
 
-    // Auto-select Design Type based on Working Plan
-    var workPlanSel = document.getElementById('issueWorkPlan');
-    var designTypeDisplay = document.getElementById('autoDesignType');
+    // ── Auto-trigger pre-fill on page load if coming from weekly progress ──
+    if (preProjectId > 0) {
+        // Find the project name from the project card list
+        const projectNameEl = document.getElementById('selectedProjectName');
+        // Look for project name in the cards section (even if hidden)
+        const cards = document.querySelectorAll('#projectCardsSection .card__wrapper, #projectCardsSection .card');
+        let foundName = 'Project #' + preProjectId;
+        cards.forEach(c => {
+            const h6 = c.querySelector('h6');
+            if (h6) foundName = h6.textContent.trim();
+        });
+        // Try PHP-embedded fallback
+        <?php if ($preProjectId): ?>
+        foundName = <?= json_encode(array_reduce($projects, function($c, $p) use ($preProjectId) {
+            return (int)$p['id'] === $preProjectId ? $p['name'] : $c;
+        }, 'Project #' . $preProjectId)) ?>;
+        <?php endif; ?>
 
-    workPlanSel.addEventListener('change', function() {
-        var opt = workPlanSel.options[workPlanSel.selectedIndex];
-        if (opt && opt.value) {
-            var design = opt.getAttribute('data-design') || 'Not specified';
-            designTypeDisplay.value = design;
-        } else {
-            designTypeDisplay.value = '';
-        }
-    });
-
+        selectProject(preProjectId, foundName);
+    }
 });
+
+// ── Form validation ────────────────────────────────────────────────────────
+
+function validateAndConfirm() {
+    const targetId = document.getElementById('hiddenTargetId').value;
+    if (!targetId) {
+        alert('Please select a Phase and Monthly Target before issuing.');
+        return false;
+    }
+    return confirm('Issue this material? Stock will be deducted immediately.');
+}
 </script>

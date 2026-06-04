@@ -380,6 +380,191 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 <div class="row ">
 <div class="col-lg-8">
 
+<?php if ($entryStatus !== 'Draft'): ?>
+<!-- ░░ Quality Control & Manager Review Panel ░░ -->
+<div class="wp-card mb-4" style="border-radius:16px; border: 1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05); background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+    <div class="wp-card-header" style="background: rgba(248, 250, 252, 0.5); border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
+        <div class="wp-card-title" style="font-size: 13px; font-weight: 800; color: #1e293b; text-transform: uppercase;">
+            <i class="bi bi-shield-check text-primary fs-5"></i>
+            Quality Control &amp; Management Review
+        </div>
+        <div>
+            <span style="font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; 
+                background: <?= $entryStatus === 'Approved' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(79, 70, 229, 0.12)' ?>; 
+                color: <?= $entryStatus === 'Approved' ? '#10b981' : '#4f46e5' ?>;">
+                <i class="bi <?= $entryStatus === 'Approved' ? 'bi-check-circle-fill' : 'bi-clock-history' ?> me-1"></i>
+                Report Status: <?= $entryStatus ?>
+            </span>
+        </div>
+    </div>
+    
+    <div style="padding: 24px;">
+        <div class="row g-4">
+            
+            <!-- Quality Control (QC) Section -->
+            <div class="col-md-6" style="border-right: 1px dashed #e2e8f0;">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span style="width: 28px; height: 28px; border-radius: 50%; background: rgba(79, 70, 229, 0.1); color: var(--pri); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">1</span>
+                    <h6 class="mb-0 fw-bold" style="color: #334155; font-size: 14px;">Quality Control Review</h6>
+                </div>
+                
+                <?php if (empty($dailyLog['qc_approved_id'])): ?>
+                    <!-- QC Review Form (Visible only to role 13 [QC] or role 1 [Admin]) -->
+                    <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 13])): ?>
+                        <div class="pe-2">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">QC Inspection Decision</label>
+                                <select name="qc_status" form="qcForm" class="form-select form-select-sm" required style="border-radius: 8px; font-weight: 600;">
+                                    <option value="Approved">Approved (Meets QA/QC standards)</option>
+                                    <option value="Partially Approved">Partially Approved (Minor observations)</option>
+                                    <option value="Rejected">Rejected (Requires correction)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">Verification Photo / Proof</label>
+                                <input type="file" name="qc_image" form="qcForm" class="form-control form-control-sm" accept="image/*" style="border-radius: 8px; color: #334155; background-color: #d9cfcf; border: 1px solid #cbd5e1;">
+                                <div class="form-text" style="font-size: 10px;">Upload site photo as quality assessment proof.</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">QC Remarks / Comments</label>
+                                <textarea name="qc_comment" form="qcForm" rows="3" class="form-control form-control-sm" placeholder="Provide quality check observations, notes on workmanship, materials, etc..." style="border-radius: 8px;"></textarea>
+                            </div>
+                            
+                            <button type="submit" form="qcForm" class="btn btn-sm btn-primary w-100 fw-bold py-2" style="border-radius: 8px; background: var(--pri); border: none; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);">
+                                <i class="bi bi-shield-fill-check me-1"></i> Submit QC Review
+                            </button>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-center py-4 rounded-3" style="background: rgba(241, 245, 249, 0.5); border-radius: 12px; border: 1px solid #e2e8f0;">
+                            <i class="bi bi-hourglass-split text-muted fs-4"></i>
+                            <p class="text-muted small mt-2 mb-0">Awaiting review from Quality Control team.</p>
+                        </div>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <!-- QC Review Details Display -->
+                    <?php
+                        $qcStatus = $dailyLog['qc_status'] ?? 'Approved';
+                        $qcStatusColors = [
+                            'Approved' => ['bg' => 'rgba(16, 185, 129, 0.1)', 'text' => '#10b981', 'icon' => 'bi-check-circle-fill'],
+                            'Partially Approved' => ['bg' => 'rgba(245, 158, 11, 0.1)', 'text' => '#f59e0b', 'icon' => 'bi-exclamation-triangle-fill'],
+                            'Rejected' => ['bg' => 'rgba(239, 68, 68, 0.1)', 'text' => '#ef4444', 'icon' => 'bi-x-circle-fill']
+                        ];
+                        $qsm = $qcStatusColors[$qcStatus] ?? $qcStatusColors['Approved'];
+                    ?>
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.01);">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">QC Specialist</div>
+                                <div style="font-size: 14px; font-weight: 700; color: #1e293b;"><?= htmlspecialchars($qcName) ?></div>
+                            </div>
+                            <span style="font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: <?= $qsm['bg'] ?>; color: <?= $qsm['text'] ?>;">
+                                <i class="bi <?= $qsm['icon'] ?> me-1"></i><?= $qcStatus ?>
+                            </span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Comments</div>
+                            <div style="font-size: 12.5px; color: #334155; line-height: 1.5; background: #f8fafc; padding: 10px; border-radius: 8px; border-left: 3px solid <?= $qsm['text'] ?>;">
+                                <?= nl2br(htmlspecialchars($dailyLog['qc_comment'] ?? 'No comments provided.')) ?>
+                            </div>
+                        </div>
+                        
+                        <?php if (!empty($dailyLog['qc_image'])): ?>
+                            <div>
+                                <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px;">Inspection Proof</div>
+                                <a href="<?= $base ?>/<?= htmlspecialchars($dailyLog['qc_image']) ?>" target="_blank" style="display: block; position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
+                                    <img src="<?= $base ?>/<?= htmlspecialchars($dailyLog['qc_image']) ?>" style="width: 100%; max-height: 150px; object-fit: cover;" alt="QC Verification Image">
+                                    <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); color: #fff; font-size: 10px; text-align: center; padding: 4px; font-weight: 600;">
+                                        <i class="bi bi-zoom-in me-1"></i> View Full Image
+                                    </div>
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+            
+            <!-- Project Manager (PM) Section -->
+            <div class="col-md-6">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span style="width: 28px; height: 28px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); color: var(--green); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">2</span>
+                    <h6 class="mb-0 fw-bold" style="color: #334155; font-size: 14px;">Management Decision</h6>
+                </div>
+                
+                <?php if (empty($dailyLog['qc_approved_id'])): ?>
+                    <div class="text-center py-4 bg-light rounded-3" style="background: rgba(241, 245, 249, 0.5); border-radius: 12px; border: 1px solid #e2e8f0; height: calc(100% - 40px); display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <i class="bi bi-lock text-muted fs-4"></i>
+                        <p class="text-muted small mt-2 mb-0 px-3">PM Approval will unlock after Quality Control verification has been submitted.</p>
+                    </div>
+                <?php else: ?>
+                    <?php if (empty($dailyLog['pm_approved_id'])): ?>
+                        <!-- PM Review Form (Visible only to role 15 [PM], 22 [PM Head], or 1 [Admin]) -->
+                        <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 15, 22])): ?>
+                            <div class="ps-2">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">PM Approval Decision</label>
+                                    <select name="pm_status" form="pmForm" class="form-select form-select-sm" required style="border-radius: 8px; font-weight: 600;">
+                                        <option value="Approved">Approved (Lock &amp; publish report)</option>
+                                        <option value="Partially Approved">Partially Approved (Minor observations)</option>
+                                        <option value="Rejected">Rejected (Revert to Draft for correction)</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">Manager Remarks / Instructions</label>
+                                    <textarea name="pm_comment" form="pmForm" rows="4" class="form-control form-control-sm" placeholder="Provide instructions, target feedback, adjustments needed, or reasons for rejection..." style="border-radius: 8px;"></textarea>
+                                </div>
+                                
+                                <button type="submit" form="pmForm" class="btn btn-sm btn-success w-100 fw-bold py-2" style="border-radius: 8px; background: var(--green); border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
+                                    <i class="bi bi-check2-all me-1"></i> Submit Management Approval
+                                </button>
+                            </div>
+                        <?php else: ?>
+                            <div class="text-center py-4 bg-light rounded-3" style="background: rgba(241, 245, 249, 0.5); border-radius: 12px; border: 1px solid #e2e8f0;">
+                                <i class="bi bi-hourglass-split text-muted fs-4"></i>
+                                <p class="text-muted small mt-2 mb-0">Awaiting Project Manager approval.</p>
+                            </div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <!-- PM Review Details Display -->
+                        <?php
+                            $pmStatus = $dailyLog['pm_status'] ?? 'Approved';
+                            $pmStatusColors = [
+                                'Approved' => ['bg' => 'rgba(16, 185, 129, 0.1)', 'text' => '#10b981', 'icon' => 'bi-check-circle-fill'],
+                                'Partially Approved' => ['bg' => 'rgba(245, 158, 11, 0.1)', 'text' => '#f59e0b', 'icon' => 'bi-exclamation-triangle-fill'],
+                                'Rejected' => ['bg' => 'rgba(239, 68, 68, 0.1)', 'text' => '#ef4444', 'icon' => 'bi-x-circle-fill']
+                            ];
+                            $psm = $pmStatusColors[$pmStatus] ?? $pmStatusColors['Approved'];
+                        ?>
+                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.01);">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Project Manager</div>
+                                    <div style="font-size: 14px; font-weight: 700; color: #1e293b;"><?= htmlspecialchars($pmName) ?></div>
+                                </div>
+                                <span style="font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: <?= $psm['bg'] ?>; color: <?= $psm['text'] ?>;">
+                                    <i class="bi <?= $psm['icon'] ?> me-1"></i><?= $pmStatus ?>
+                                </span>
+                            </div>
+                            
+                            <div>
+                                <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Comments</div>
+                                <div style="font-size: 12.5px; color: #334155; line-height: 1.5; background: #f8fafc; padding: 10px; border-radius: 8px; border-left: 3px solid <?= $psm['text'] ?>;">
+                                    <?= nl2br(htmlspecialchars($dailyLog['pm_comment'] ?? 'No comments provided.')) ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
+            
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- ░░ Progress Entry Table ░░ -->
 <div class="wp-card">
     <div class="wp-card-header" style="background:#f8fafc">
@@ -414,6 +599,13 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 <th class="text-center" style="width:80px">Planned Qty</th>
                 <th class="text-center" style="width:80px">Achieved Qty</th>
                 <th class="text-center" style="width:80px">% Complete</th>
+                <th class="text-center" style="width:40px" title="Day 1">D1</th>
+                <th class="text-center" style="width:40px" title="Day 2">D2</th>
+                <th class="text-center" style="width:40px" title="Day 3">D3</th>
+                <th class="text-center" style="width:40px" title="Day 4">D4</th>
+                <th class="text-center" style="width:40px" title="Day 5">D5</th>
+                <th class="text-center" style="width:40px" title="Day 6">D6</th>
+                <th class="text-center" style="width:40px" title="Day 7">D7</th>
                 <th class="text-center" style="width:100px" title="Enter qty done today">Today's Progress</th>
                 <th style="min-width:110px">Responsible Team</th>
                 <th class="text-center" style="width:100px">Status</th>
@@ -424,12 +616,14 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         </thead>
         <tbody id="progressTableBody">
         <?php if (empty($weeklyItems)): ?>
-            <tr><td colspan="12" class="text-center py-5" style="color:#94a3b8">
+            <tr><td colspan="19" class="text-center py-5" style="color:#94a3b8">
                 <i class="bi bi-inbox" style="font-size:30px;display:block;margin-bottom:8px"></i>
                 No work items planned for this week. Add items in the Monthly Target page.
             </td></tr>
         <?php else: ?>
-        <?php foreach ($weeklyItems as $ri => $wi):
+        <?php 
+        $formIndex = 0;
+        foreach ($weeklyItems as $wi):
             $itemId     = (int)$wi['target_item_id'];
             $itemName   = htmlspecialchars($wi['work_item_name']);
             $unit       = htmlspecialchars($wi['unit'] ?? '');
@@ -438,41 +632,48 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
             $pct        = $planned > 0 ? min(100, ($achieved / $planned) * 100) : 0;
             $monthlyQty = (float)($wi['monthly_target_qty'] ?? 0);
 
-            // Today's qty for this item
-            $todayQty   = 0;
-            $todayRem   = '';
-            $todayWt    = '';
-            $todayStatus= $wi['status'] ?? 'In Progress';
-            $todayTeam  = $wi['responsible_team'] ?? '';
-            if (isset($dqByItem[$itemId])) {
-                foreach ($dqByItem[$itemId] as $dq) {
-                    $todayQty += (float)$dq['qty_done_today'];
-                    if (empty($todayRem)) $todayRem = $dq['remarks'] ?? '';
-                    if (empty($todayWt))  $todayWt  = $dq['work_type_id'] ?? '';
-                    $todayStatus = $dq['item_status'] ?? $todayStatus;
-                    $todayTeam   = $dq['responsible_team'] ?? $todayTeam;
-                }
+            // Fetch daily logs/quantities for this item on the selected date
+            $itemLogs = $dqByItem[$itemId] ?? [];
+
+            // Color for weekly progress pct bar
+            if ($pct >= 100) { 
+                $barColor = 'var(--green)'; 
+            } elseif ($pct > 0) { 
+                $barColor = 'var(--pri)'; 
+            } else { 
+                $barColor = '#cbd5e1'; 
             }
 
-            // Color
-            if ($pct >= 100) { $barColor='var(--green)'; $stClass='s-completed'; $stLabel='Completed'; $flagClass='issue-none'; $flagIcon='bi-flag'; }
-            elseif ($pct > 0) { $barColor='var(--pri)'; $stClass='s-in-progress'; $stLabel='In Progress'; $flagClass='issue-none'; $flagIcon='bi-flag'; }
-            else { $barColor='#cbd5e1'; $stClass='s-not-started'; $stLabel='Not Started'; $flagClass='issue-none'; $flagIcon='bi-flag'; }
+            if (empty($itemLogs)):
+                if ($planned <= 0) {
+                    continue; // Skip rendering if not planned for this week and has no daily log today
+                }
+                // Render a default empty row for this planned weekly item
+                $todayQty    = 0;
+                $todayRem    = '';
+                $todayWt     = '';
+                $todayStatus = $wi['status'] ?? 'Not Started';
+                $todayTeam   = $wi['responsible_team'] ?? '';
 
-            if ($todayStatus === 'Delayed') { $stClass='s-delayed'; $stLabel='Delayed'; $flagClass='issue-delay'; $flagIcon='bi-exclamation-circle-fill'; }
-            if ($todayStatus === 'Pending QA') { $stClass='s-pending-qa'; $stLabel='Pending QA'; $flagClass='issue-pending'; $flagIcon='bi-question-circle-fill'; }
-            if ($todayStatus === 'Completed') { $stClass='s-completed'; $stLabel='Completed'; }
-            if ($todayStatus === 'In Progress') { $stClass='s-in-progress'; $stLabel='In Progress'; }
+                $stClass = 's-not-started';
+                $stLabel = 'Not Started';
+                $flagClass = 'issue-none';
+                $flagIcon = 'bi-flag';
         ?>
         <tr data-item-id="<?= $itemId ?>">
-            <td style="color:#94a3b8;font-weight:700"><?= $ri+1 ?></td>
+            <td style="color:#94a3b8;font-weight:700"><?= $formIndex + 1 ?></td>
             <td>
                 <div style="font-weight:600"><?= $itemName ?></div>
                 <?php if ($monthlyQty > 0): ?>
                 <div style="font-size:10px;color:#94a3b8">Monthly: <?= number_format($monthlyQty,0,'.',',') ?> <?= $unit ?></div>
                 <?php endif; ?>
-                <input type="hidden" name="items[<?= $ri ?>][target_item_id]" value="<?= $itemId ?>">
-                <input type="hidden" name="items[<?= $ri ?>][work_type_id]" value="<?= $todayWt ?>">
+                <?php if (!empty($wi['contractor_name'])): ?>
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-top:2px">
+                    <i class="bi bi-briefcase me-1"></i><?= htmlspecialchars($wi['contractor_name']) ?>
+                </div>
+                <?php endif; ?>
+                <input type="hidden" name="items[<?= $formIndex ?>][target_item_id]" value="<?= $itemId ?>">
+                <input type="hidden" name="items[<?= $formIndex ?>][work_type_id]" value="">
             </td>
             <td><span style="font-size:10.5px;font-weight:600;background:#f1f5f9;padding:2px 7px;border-radius:5px"><?= $unit ?></span></td>
             <td class="text-center" style="font-weight:700"><?= number_format($planned,0,'.',',') ?></td>
@@ -481,23 +682,30 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 <div style="font-weight:800;font-size:13px;color:<?= $pct>=100?'var(--green)':($pct>0?'var(--pri)':'#94a3b8') ?>"><?= number_format($pct,1) ?>%</div>
                 <div class="pct-bar"><div class="pct-fill" style="width:<?= $pct ?>%;background:<?= $barColor ?>"></div></div>
             </td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['1st_day_qty'] ?? 0) > 0 ? number_format($wi['1st_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['2nd_day_qty'] ?? 0) > 0 ? number_format($wi['2nd_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['3rd_day_qty'] ?? 0) > 0 ? number_format($wi['3rd_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['4th_day_qty'] ?? 0) > 0 ? number_format($wi['4th_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['5th_day_qty'] ?? 0) > 0 ? number_format($wi['5th_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['6_th_day_qty'] ?? 0) > 0 ? number_format($wi['6_th_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['7th_day_qty'] ?? 0) > 0 ? number_format($wi['7th_day_qty'],1) : '—' ?></td>
             <td class="text-center">
-                <input type="number" name="items[<?= $ri ?>][qty_done_today]"
+                <input type="number" name="items[<?= $formIndex ?>][qty_done_today]"
                        value="<?= number_format($todayQty,2,'.','') ?>"
                        step="0.01" min="0"
                        class="qty-input" <?= $disAttr ?>
                        placeholder="0.00"
                        title="Enter qty done today">
-                <input type="hidden" name="items[<?= $ri ?>][unit]" value="<?= $unit ?>">
+                <input type="hidden" name="items[<?= $formIndex ?>][unit]" value="<?= $unit ?>">
             </td>
             <td>
-                <input type="text" name="items[<?= $ri ?>][responsible_team]"
+                <input type="text" name="items[<?= $formIndex ?>][responsible_team]"
                        value="<?= htmlspecialchars($todayTeam) ?>"
                        class="team-inp" <?= $disAttr ?>
                        placeholder="Team name">
             </td>
             <td class="text-center">
-                <select name="items[<?= $ri ?>][item_status]" class="st-sel" <?= $disAttr ?>>
+                <select name="items[<?= $formIndex ?>][item_status]" class="st-sel" <?= $disAttr ?>>
                     <?php foreach (['Not Started','In Progress','Completed','Delayed','Pending QA'] as $st): ?>
                     <option value="<?= $st ?>" <?= $todayStatus===$st?'selected':'' ?>><?= $st ?></option>
                     <?php endforeach; ?>
@@ -509,19 +717,141 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 </div>
             </td>
             <td class="text-center">
-                <label class="photo-btn <?= !empty($dq['photo_path']??'') ? 'has-photo' : '' ?>" title="Upload site photo">
-                    <i class="bi bi-camera-fill"></i>
-                    <input type="file" name="photos[<?= $ri ?>]" accept="image/*" style="display:none" <?= $disAttr ?>>
-                </label>
+                <div class="d-flex align-items-center justify-content-center gap-1">
+                    <label class="photo-btn <?= !empty($wi['photo_path']) ? 'has-photo' : '' ?>" title="Upload site photo">
+                        <i class="bi bi-camera-fill"></i>
+                        <input type="file" name="photos[<?= $formIndex ?>]" accept="image/*" style="display:none" <?= $disAttr ?>>
+                    </label>
+                    <?php if (!empty($wi['photo_path'])): ?>
+                    <a href="<?= $base ?>/<?= htmlspecialchars($wi['photo_path']) ?>" target="_blank" class="text-success" style="font-size:14px" title="View uploaded photo">
+                        <i class="bi bi-image"></i>
+                    </a>
+                    <?php endif; ?>
+                </div>
             </td>
             <td>
-                <input type="text" name="items[<?= $ri ?>][remarks]"
+                <input type="text" name="items[<?= $formIndex ?>][remarks]"
                        value="<?= htmlspecialchars($todayRem) ?>"
                        class="remarks-input" <?= $disAttr ?>
                        placeholder="Remarks...">
             </td>
         </tr>
-        <?php endforeach; ?>
+        <?php 
+            $formIndex++;
+            else:
+                // Render a row for each daily progress log entry
+                foreach ($itemLogs as $dq):
+                    $todayQty    = (float)$dq['qty_done_today'];
+                    $todayRem    = $dq['remarks'] ?? '';
+                    $todayWt     = $dq['work_type_id'] ?? '';
+                    $todayStatus = $dq['item_status'] ?? 'In Progress';
+                    $todayTeam   = $dq['responsible_team'] ?? $wi['responsible_team'] ?? '';
+
+                    // Status style deriving
+                    if ($todayStatus === 'Delayed') { 
+                        $stClass='s-delayed'; $stLabel='Delayed'; $flagClass='issue-delay'; $flagIcon='bi-exclamation-circle-fill'; 
+                    } elseif ($todayStatus === 'Pending QA') { 
+                        $stClass='s-pending-qa'; $stLabel='Pending QA'; $flagClass='issue-pending'; $flagIcon='bi-question-circle-fill'; 
+                    } elseif ($todayStatus === 'Completed') { 
+                        $stClass='s-completed'; $stLabel='Completed'; $flagClass='issue-none'; $flagIcon='bi-flag';
+                    } else { 
+                        $stClass='s-in-progress'; $stLabel='In Progress'; $flagClass='issue-none'; $flagIcon='bi-flag';
+                    }
+        ?>
+        <tr data-item-id="<?= $itemId ?>">
+            <td style="color:#94a3b8;font-weight:700"><?= $formIndex + 1 ?></td>
+            <td>
+                <div style="font-weight:600"><?= $itemName ?></div>
+                <?php if ($monthlyQty > 0): ?>
+                <div style="font-size:10px;color:#94a3b8">Monthly: <?= number_format($monthlyQty,0,'.',',') ?> <?= $unit ?></div>
+                <?php endif; ?>
+                <?php if (!empty($wi['contractor_name'])): ?>
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-top:2px">
+                    <i class="bi bi-briefcase me-1"></i><?= htmlspecialchars($wi['contractor_name']) ?>
+                </div>
+                <?php endif; ?>
+                <?php if (!empty($dq['work_type_name'])): ?>
+                <div style="font-size:11px;color:var(--pri);font-weight:600;margin-top:2px"><?= htmlspecialchars($dq['work_type_name']) ?></div>
+                <?php endif; ?>
+                <input type="hidden" name="items[<?= $formIndex ?>][target_item_id]" value="<?= $itemId ?>">
+                <input type="hidden" name="items[<?= $formIndex ?>][work_type_id]" value="<?= $todayWt ?>">
+            </td>
+            <td><span style="font-size:10.5px;font-weight:600;background:#f1f5f9;padding:2px 7px;border-radius:5px"><?= $unit ?></span></td>
+            <td class="text-center" style="font-weight:700"><?= number_format($planned,0,'.',',') ?></td>
+            <td class="text-center" style="font-weight:700;color:var(--pri)"><?= number_format($achieved,0,'.',',') ?></td>
+            <td class="text-center">
+                <div style="font-weight:800;font-size:13px;color:<?= $pct>=100?'var(--green)':($pct>0?'var(--pri)':'#94a3b8') ?>"><?= number_format($pct,1) ?>%</div>
+                <div class="pct-bar"><div class="pct-fill" style="width:<?= $pct ?>%;background:<?= $barColor ?>"></div></div>
+            </td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['1st_day_qty'] ?? 0) > 0 ? number_format($wi['1st_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['2nd_day_qty'] ?? 0) > 0 ? number_format($wi['2nd_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['3rd_day_qty'] ?? 0) > 0 ? number_format($wi['3rd_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['4th_day_qty'] ?? 0) > 0 ? number_format($wi['4th_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['5th_day_qty'] ?? 0) > 0 ? number_format($wi['5th_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['6_th_day_qty'] ?? 0) > 0 ? number_format($wi['6_th_day_qty'],1) : '—' ?></td>
+            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['7th_day_qty'] ?? 0) > 0 ? number_format($wi['7th_day_qty'],1) : '—' ?></td>
+            <td class="text-center">
+                <input type="number" name="items[<?= $formIndex ?>][qty_done_today]"
+                       value="<?= number_format($todayQty,2,'.','') ?>"
+                       step="0.01" min="0"
+                       class="qty-input" <?= $disAttr ?>
+                       placeholder="0.00"
+                       title="Enter qty done today">
+                <input type="hidden" name="items[<?= $formIndex ?>][unit]" value="<?= $unit ?>">
+            </td>
+            <td>
+                <input type="text" name="items[<?= $formIndex ?>][responsible_team]"
+                       value="<?= htmlspecialchars($todayTeam) ?>"
+                       class="team-inp" <?= $disAttr ?>
+                       placeholder="Team name">
+            </td>
+            <td class="text-center">
+                <select name="items[<?= $formIndex ?>][item_status]" class="st-sel" <?= $disAttr ?>>
+                    <?php foreach (['Not Started','In Progress','Completed','Delayed','Pending QA'] as $st): ?>
+                    <option value="<?= $st ?>" <?= $todayStatus===$st?'selected':'' ?>><?= $st ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </td>
+            <td class="text-center">
+                <div class="issue-flag <?= $flagClass ?> d-inline-flex" title="Issue flag">
+                    <i class="bi <?= $flagIcon ?>"></i>
+                </div>
+            </td>
+            <td class="text-center">
+                <div class="d-flex align-items-center justify-content-center gap-1">
+                    <label class="photo-btn <?= !empty($wi['photo_path']) ? 'has-photo' : '' ?>" title="Upload site photo">
+                        <i class="bi bi-camera-fill"></i>
+                        <input type="file" name="photos[<?= $formIndex ?>]" accept="image/*" style="display:none" <?= $disAttr ?>>
+                    </label>
+                    <?php if (!empty($wi['photo_path'])): ?>
+                    <a href="<?= $base ?>/<?= htmlspecialchars($wi['photo_path']) ?>" target="_blank" class="text-success" style="font-size:14px" title="View uploaded photo">
+                        <i class="bi bi-image"></i>
+                    </a>
+                    <?php endif; ?>
+                </div>
+            </td>
+            <td>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="text" name="items[<?= $formIndex ?>][remarks]"
+                           value="<?= htmlspecialchars($todayRem) ?>"
+                           class="remarks-input" <?= $disAttr ?>
+                           placeholder="Remarks...">
+                    <?php if (!$isLocked && isset($dq['log_row_id'])): ?>
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0 border-0"
+                            onclick="confirmDelete(<?= (int)$dq['log_row_id'] ?>, '<?= htmlspecialchars(addslashes($itemName . (!empty($dq['work_type_name']) ? ' - ' . $dq['work_type_name'] : '')), ENT_QUOTES, 'UTF-8') ?>')"
+                            title="Remove from schedule">
+                        <i class="bi bi-trash-fill fs-5"></i>
+                    </button>
+                    <?php endif; ?>
+                </div>
+            </td>
+        </tr>
+        <?php 
+                $formIndex++;
+                endforeach;
+            endif;
+        endforeach;
+        ?>
         <?php endif; ?>
         </tbody>
 
@@ -552,7 +882,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
             <div class="row g-2 align-items-end">
                 <div class="col-md-5">
                     <label style="font-size:10px;font-weight:700;color:#94a3b8;display:block;margin-bottom:4px">1. Select Work Item</label>
-                    <select id="addItemSelect" class="form-select form-select-sm fs-12">
+                    <select id="addItemSelect" name="new_work_item_id" class="form-select form-select-sm fs-12">
                         <option value="">-- Choose Work Item --</option>
                         <?php foreach ($weeklyItems as $wi): ?>
                         <option value="<?= $wi['target_item_id'] ?>"
@@ -571,7 +901,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                     <div class="d-flex flex-wrap gap-2">
                     <?php foreach (array_slice($workTypes,0,6) as $wt): ?>
                         <div class="form-check mb-0">
-                            <input class="form-check-input wt-check" type="checkbox"
+                            <input class="form-check-input wt-check" type="checkbox" name="new_work_types[]"
                                    value="<?= $wt['id'] ?>" id="wt_<?= $wt['id'] ?>"
                                    data-name="<?= htmlspecialchars($wt['work_type_name']) ?>">
                             <label class="form-check-label" style="font-size:11.5px" for="wt_<?= $wt['id'] ?>">
@@ -582,7 +912,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                     </div>
                 </div>
                 <div class="col-md-2">
-                    <button type="button" class="btn btn-primary btn-sm w-100 fw-bold" onclick="addProgressRow()">
+                    <button type="submit" name="save_action" value="save" class="btn btn-primary btn-sm w-100 fw-bold">
                         <i class="bi bi-plus-lg me-1"></i>Add
                     </button>
                 </div>
@@ -656,191 +986,8 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
     </div>
 </div>
 
-</div><!-- col-8 -->
-<div class="col-lg-4">
 
-<!-- ░░ Phase Progress Rollup ░░ -->
-<div class="phase-rollup">
-    <h6><i class="bi bi-layers-half me-1"></i><?= htmlspecialchars($target['phase_name']??'Phase') ?> Progress</h6>
-    <div class="d-flex justify-content-between align-items-end">
-        <div>
-            <div class="phase-val"><?= number_format($phaseActualPct, 1) ?>%</div>
-            <div style="font-size:10.5px;opacity:.75;margin-top:2px">of this phase (<?= $phaseWeight ?>% of project)</div>
-        </div>
-        <div style="text-align:right">
-            <div style="font-size:12px;opacity:.75">Project Contribution</div>
-            <div style="font-size:22px;font-weight:800"><?= number_format($projectContrib,2) ?>%</div>
-        </div>
-    </div>
-    <div class="phase-prog-bar"><div class="phase-prog-fill" style="width:<?= $phaseActualPct ?>%"></div></div>
-    <div style="font-size:10px;opacity:.6;margin-top:6px">Sub-items completing → Phase complete → <?= $phaseWeight ?>% of project total</div>
-</div>
-
-<!-- ░░ Daily Entry Summary Donut ░░ -->
-<div class="wp-card mb-3">
-    <div class="wp-card-header"><div class="wp-card-title"><i class="bi bi-pie-chart-fill"></i> Daily Entry Summary</div></div>
-    <div style="padding:16px;text-align:center">
-        <?php
-        $c = $completedItems; $ip = $inProgressItems;
-        $d = count($issueItems); $ns = $totalItems - $c - $ip - $d;
-        $ns = max(0, $ns);
-        $cPct  = $totalItems > 0 ? ($c  / $totalItems * 100) : 0;
-        $ipPct = $totalItems > 0 ? ($ip / $totalItems * 100) : 0;
-        $dPct  = $totalItems > 0 ? ($d  / $totalItems * 100) : 0;
-        ?>
-        <!-- SVG Donut -->
-        <svg viewBox="0 0 120 120" width="140" height="140" style="transform:rotate(-90deg)">
-            <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="18"/>
-            <?php
-            $offset = 0; $circ = 314.16;
-            $segs = [
-                ['pct'=>$cPct,  'color'=>'#10b981'],
-                ['pct'=>$ipPct, 'color'=>'#4f46e5'],
-                ['pct'=>$dPct,  'color'=>'#ef4444'],
-                ['pct'=>max(0,100-$cPct-$ipPct-$dPct), 'color'=>'#94a3b8'],
-            ];
-            foreach ($segs as $seg):
-                $dash = $seg['pct'] / 100 * $circ;
-                $gap  = $circ - $dash;
-            ?>
-            <circle cx="60" cy="60" r="50" fill="none"
-                    stroke="<?= $seg['color'] ?>" stroke-width="18"
-                    stroke-dasharray="<?= $dash ?> <?= $gap ?>"
-                    stroke-dashoffset="-<?= $offset ?>"/>
-            <?php $offset += $dash; endforeach; ?>
-        </svg>
-        <div style="font-size:11px;font-weight:600;color:#64748b;margin-top:-10px"><?= $totalItems ?> Work Items Total</div>
-        <div class="d-flex flex-wrap justify-content-center gap-3 mt-3">
-            <div style="font-size:11.5px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#10b981;display:inline-block"></span>Completed <?= $c ?></div>
-            <div style="font-size:11.5px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#4f46e5;display:inline-block"></span>In Progress <?= $ip ?></div>
-            <div style="font-size:11.5px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#ef4444;display:inline-block"></span>Delayed <?= $d ?></div>
-            <div style="font-size:11.5px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#94a3b8;display:inline-block"></span>Not Started <?= $ns ?></div>
-        </div>
-    </div>
-</div>
-
-<!-- ░░ Site Inputs ░░ -->
-<div class="wp-card mb-3">
-    <div class="wp-card-header"><div class="wp-card-title"><i class="bi bi-tools"></i> Site Inputs &amp; Resources</div></div>
-    <div style="padding:14px 16px">
-        <div class="site-input-grid mb-3">
-            <div class="site-inp-group">
-                <div class="site-inp-label"><i class="bi bi-people-fill me-1 text-primary"></i>Labour Count</div>
-                <input type="number" name="labour_count" value="<?= (int)($dailyLog['labour_count']??0) ?>" class="site-field" <?= $disAttr ?> placeholder="0">
-            </div>
-            <div class="site-inp-group">
-                <div class="site-inp-label"><i class="bi bi-cpu-fill me-1 text-warning"></i>Equipment Active</div>
-                <input type="number" name="equipment_active" value="<?= (int)($dailyLog['equipment_active']??0) ?>" class="site-field" <?= $disAttr ?> placeholder="0">
-            </div>
-            <div class="site-inp-group">
-                <div class="site-inp-label"><i class="bi bi-box-seam me-1 text-success"></i>Cement (Bags)</div>
-                <input type="number" name="cement_bags" value="<?= (int)($dailyLog['cement_bags']??0) ?>" class="site-field" <?= $disAttr ?> placeholder="0">
-            </div>
-            <div class="site-inp-group">
-                <div class="site-inp-label"><i class="bi bi-droplet-fill me-1 text-info"></i>Concrete (CFT)</div>
-                <input type="number" name="concrete_cft" step="0.01" value="<?= number_format((float)($dailyLog['concrete_cft']??0),2,'.','') ?>" class="site-field" <?= $disAttr ?> placeholder="0.00">
-            </div>
-            <div class="site-inp-group">
-                <div class="site-inp-label"><i class="bi bi-exclamation-triangle-fill me-1 text-danger"></i>Safety Incidents</div>
-                <input type="number" name="safety_incidents" value="0" class="site-field" <?= $disAttr ?> placeholder="0">
-            </div>
-            <div class="site-inp-group">
-                <div class="site-inp-label"><i class="bi bi-thermometer-half me-1 text-orange"></i>Temperature (°C)</div>
-                <input type="number" name="temperature_celsius" step="0.1" value="<?= htmlspecialchars($dailyLog['temperature_celsius']??'') ?>" class="site-field" <?= $disAttr ?> placeholder="e.g. 32">
-            </div>
-        </div>
-        <!-- Weather -->
-        <div class="mb-3">
-            <div class="site-inp-label mb-1"><i class="bi bi-cloud-sun me-1"></i>Weather Condition</div>
-            <select name="weather" class="site-field" <?= $disAttr ?>>
-                <?php foreach (['Clear'=>'☀️ Clear','Rainy'=>'🌧️ Rainy','Cloudy'=>'☁️ Cloudy','Stormy'=>'⛈️ Stormy','Windy'=>'💨 Windy'] as $v=>$l): ?>
-                <option value="<?= $v ?>" <?= (($dailyLog['weather']??'Clear')===$v)?'selected':'' ?>><?= $l ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <!-- Remarks -->
-        <div class="mb-3">
-            <div class="site-inp-label mb-1"><i class="bi bi-chat-text me-1"></i>Site Engineer Remarks</div>
-            <textarea name="site_remarks" rows="3" class="site-field" <?= $disAttr ?>
-                      placeholder="Summarize progress, issues, delays..."><?= htmlspecialchars($dailyLog['site_remarks']??'') ?></textarea>
-        </div>
-        <!-- Checkboxes -->
-        <div class="d-flex flex-column gap-2">
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="safety_ok" id="safety_ok" value="1" <?= ($dailyLog['safety_ok']??0)?'checked':'' ?> <?= $disAttr ?>>
-                <label class="form-check-label" style="font-size:11.5px;font-weight:600" for="safety_ok">
-                    <i class="bi bi-shield-check text-success me-1"></i>Safety OK — Site is safe
-                </label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="qc_checked" id="qc_checked" value="1" <?= ($dailyLog['qc_checked']??0)?'checked':'' ?> <?= $disAttr ?>>
-                <label class="form-check-label" style="font-size:11.5px;font-weight:600" for="qc_checked">
-                    <i class="bi bi-clipboard-check text-primary me-1"></i>QA Checked — Inspected today
-                </label>
-            </div>
-        </div>
-
-        <?php if (!$isLocked): ?>
-        <!-- ── Save Button (right panel) ── -->
-        <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid #f1f5f9">
-            <button type="submit" name="save_action" value="save"
-                    style="flex:1;background:var(--pri);color:#fff;font-weight:700;font-size:13px;
-                           padding:10px 0;border-radius:10px;border:none;cursor:pointer;
-                           display:flex;align-items:center;justify-content:center;gap:6px;
-                           box-shadow:0 4px 12px rgba(79,70,229,.3);transition:all .15s"
-                    onmouseover="this.style.background='#4338ca'" onmouseout="this.style.background='var(--pri)'">
-                <i class="bi bi-check-circle-fill"></i> Save Progress
-            </button>
-            <button type="submit" name="save_action" value="draft"
-                    style="background:#f8fafc;border:1px solid #cbd5e1;color:#475569;font-weight:700;
-                           font-size:12px;padding:10px 14px;border-radius:10px;cursor:pointer;
-                           display:flex;align-items:center;gap:5px;white-space:nowrap"
-                    onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
-                <i class="bi bi-save"></i> Draft
-            </button>
-        </div>
-        <?php endif; ?>
-    </div>
-</div>
-
-
-<!-- ░░ Issue & Delay Tracker ░░ -->
-<div class="wp-card mb-3">
-    <div class="wp-card-header">
-        <div class="wp-card-title"><i class="bi bi-exclamation-triangle-fill text-danger"></i> Issue &amp; Delay Tracker</div>
-        <span style="font-size:11px;background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:999px;font-weight:700"><?= count($issueItems) ?> Issues</span>
-    </div>
-    <div style="padding:10px 16px">
-        <?php if (empty($issueItems) && empty($weeklyItems)): ?>
-        <div style="text-align:center;color:#94a3b8;font-size:12px;padding:16px 0">
-            <i class="bi bi-check-circle-fill text-success" style="font-size:22px;display:block;margin-bottom:6px"></i>No issues flagged
-        </div>
-        <?php else: ?>
-        <!-- Auto-flag from items with < threshold % -->
-        <?php foreach ($weeklyItems as $wi):
-            $pct = (float)$wi['percent_complete'];
-            if ($pct < 30 && $pct >= 0 && (float)$wi['planned_qty'] > 0):
-                $issType = $pct == 0 ? 'Not Started' : 'Low Progress';
-                $color   = $pct == 0 ? '#ef4444' : '#f59e0b';
-        ?>
-        <div class="issue-item">
-            <div class="issue-dot" style="background:<?= $color ?>"></div>
-            <div>
-                <div style="font-weight:600;font-size:12px"><?= htmlspecialchars($wi['work_item_name']) ?></div>
-                <div style="font-size:10.5px;color:#94a3b8"><?= $issType ?> — <?= number_format($pct,0) ?>% complete</div>
-            </div>
-        </div>
-        <?php endif; endforeach; ?>
-        <?php if (empty($issueItems) && !empty($weeklyItems)): ?>
-        <div style="text-align:center;color:#94a3b8;font-size:11.5px;padding:12px 0">
-            <i class="bi bi-check2-circle text-success me-1"></i>All items on track
-        </div>
-        <?php endif; ?>
-        <?php endif; ?>
-    </div>
-</div>
-
-<!-- ░░ Sub-Item Weight Breakdown ░░ -->
+<!-- ░░ Sub-Item Progress vs Monthly Target (full width) ░░ -->
 <div class="wp-card">
     <div class="wp-card-header">
         <div class="wp-card-title"><i class="bi bi-table text-primary"></i> Sub-Item Progress vs Monthly Target</div>
@@ -1002,10 +1149,314 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
     </div>
 </div>
 
+</div><!-- col-8 -->
+<div class="col-lg-4">
+
+<!-- ░░ Phase Progress Rollup ░░ -->
+<div class="phase-rollup">
+    <h6><i class="bi bi-layers-half me-1"></i><?= htmlspecialchars($target['phase_name']??'Phase') ?> Progress</h6>
+    <div class="d-flex justify-content-between align-items-end">
+        <div>
+            <div class="phase-val"><?= number_format($phaseActualPct, 1) ?>%</div>
+            <div style="font-size:10.5px;opacity:.75;margin-top:2px">of this phase (<?= $phaseWeight ?>% of project)</div>
+        </div>
+        <div style="text-align:right">
+            <div style="font-size:12px;opacity:.75">Project Contribution</div>
+            <div style="font-size:22px;font-weight:800"><?= number_format($projectContrib,2) ?>%</div>
+        </div>
+    </div>
+    <div class="phase-prog-bar"><div class="phase-prog-fill" style="width:<?= $phaseActualPct ?>%"></div></div>
+    <div style="font-size:10px;opacity:.6;margin-top:6px">Sub-items completing → Phase complete → <?= $phaseWeight ?>% of project total</div>
+</div>
+
+<!-- ░░ Daily Entry Summary Donut ░░ -->
+<div class="wp-card mb-3">
+    <div class="wp-card-header"><div class="wp-card-title"><i class="bi bi-pie-chart-fill"></i> Daily Entry Summary</div></div>
+    <div style="padding:16px;text-align:center">
+        <?php
+        $c = $completedItems; $ip = $inProgressItems;
+        $d = count($issueItems); $ns = $totalItems - $c - $ip - $d;
+        $ns = max(0, $ns);
+        $cPct  = $totalItems > 0 ? ($c  / $totalItems * 100) : 0;
+        $ipPct = $totalItems > 0 ? ($ip / $totalItems * 100) : 0;
+        $dPct  = $totalItems > 0 ? ($d  / $totalItems * 100) : 0;
+        ?>
+        <!-- SVG Donut -->
+        <svg viewBox="0 0 120 120" width="140" height="140" style="transform:rotate(-90deg)">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="18"/>
+            <?php
+            $offset = 0; $circ = 314.16;
+            $segs = [
+                ['pct'=>$cPct,  'color'=>'#10b981'],
+                ['pct'=>$ipPct, 'color'=>'#4f46e5'],
+                ['pct'=>$dPct,  'color'=>'#ef4444'],
+                ['pct'=>max(0,100-$cPct-$ipPct-$dPct), 'color'=>'#94a3b8'],
+            ];
+            foreach ($segs as $seg):
+                $dash = $seg['pct'] / 100 * $circ;
+                $gap  = $circ - $dash;
+            ?>
+            <circle cx="60" cy="60" r="50" fill="none"
+                    stroke="<?= $seg['color'] ?>" stroke-width="18"
+                    stroke-dasharray="<?= $dash ?> <?= $gap ?>"
+                    stroke-dashoffset="-<?= $offset ?>"/>
+            <?php $offset += $dash; endforeach; ?>
+        </svg>
+        <div style="font-size:11px;font-weight:600;color:#64748b;margin-top:-10px"><?= $totalItems ?> Work Items Total</div>
+        <div class="d-flex flex-wrap justify-content-center gap-3 mt-3">
+            <div style="font-size:11.5px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#10b981;display:inline-block"></span>Completed <?= $c ?></div>
+            <div style="font-size:11.5px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#4f46e5;display:inline-block"></span>In Progress <?= $ip ?></div>
+            <div style="font-size:11.5px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#ef4444;display:inline-block"></span>Delayed <?= $d ?></div>
+            <div style="font-size:11.5px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#94a3b8;display:inline-block"></span>Not Started <?= $ns ?></div>
+        </div>
+    </div>
+</div>
+
+<!-- ░░ Site Inputs ░░ -->
+<div class="wp-card mb-3">
+    <div class="wp-card-header"><div class="wp-card-title"><i class="bi bi-tools"></i> Site Inputs &amp; Resources</div></div>
+    <div style="padding:14px 16px">
+        <div class="site-input-grid mb-3">
+            <div class="site-inp-group">
+                <div class="site-inp-label"><i class="bi bi-people-fill me-1 text-primary"></i>Labour Count</div>
+                <input type="number" name="labour_count" value="<?= (int)($dailyLog['labour_count']??0) ?>" class="site-field" <?= $disAttr ?> placeholder="0">
+            </div>
+            <div class="site-inp-group">
+                <div class="site-inp-label"><i class="bi bi-cpu-fill me-1 text-warning"></i>Equipment Active</div>
+                <input type="number" name="equipment_active" value="<?= (int)($dailyLog['equipment_active']??0) ?>" class="site-field" <?= $disAttr ?> placeholder="0">
+            </div>
+            <div class="site-inp-group">
+                <div class="site-inp-label"><i class="bi bi-box-seam me-1 text-success"></i>Cement (Bags)</div>
+                <input type="number" name="cement_bags" value="<?= (int)($dailyLog['cement_bags']??0) ?>" class="site-field" <?= $disAttr ?> placeholder="0">
+            </div>
+            <div class="site-inp-group">
+                <div class="site-inp-label"><i class="bi bi-droplet-fill me-1 text-info"></i>Concrete (CFT)</div>
+                <input type="number" name="concrete_cft" step="0.01" value="<?= number_format((float)($dailyLog['concrete_cft']??0),2,'.','') ?>" class="site-field" <?= $disAttr ?> placeholder="0.00">
+            </div>
+            <div class="site-inp-group">
+                <div class="site-inp-label"><i class="bi bi-exclamation-triangle-fill me-1 text-danger"></i>Safety Incidents</div>
+                <input type="number" name="safety_incidents" value="0" class="site-field" <?= $disAttr ?> placeholder="0">
+            </div>
+            <div class="site-inp-group">
+                <div class="site-inp-label"><i class="bi bi-thermometer-half me-1 text-orange"></i>Temperature (°C)</div>
+                <input type="number" name="temperature_celsius" step="0.1" value="<?= htmlspecialchars($dailyLog['temperature_celsius']??'') ?>" class="site-field" <?= $disAttr ?> placeholder="e.g. 32">
+            </div>
+        </div>
+        <!-- Weather -->
+        <div class="mb-3">
+            <div class="site-inp-label mb-1"><i class="bi bi-cloud-sun me-1"></i>Weather Condition</div>
+            <select name="weather" class="site-field" <?= $disAttr ?>>
+                <?php foreach (['Clear'=>'☀️ Clear','Rainy'=>'🌧️ Rainy','Cloudy'=>'☁️ Cloudy','Stormy'=>'⛈️ Stormy','Windy'=>'💨 Windy'] as $v=>$l): ?>
+                <option value="<?= $v ?>" <?= (($dailyLog['weather']??'Clear')===$v)?'selected':'' ?>><?= $l ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <!-- Remarks -->
+        <div class="mb-3">
+            <div class="site-inp-label mb-1"><i class="bi bi-chat-text me-1"></i>Site Engineer Remarks</div>
+            <textarea name="site_remarks" rows="3" class="site-field" <?= $disAttr ?>
+                      placeholder="Summarize progress, issues, delays..."><?= htmlspecialchars($dailyLog['site_remarks']??'') ?></textarea>
+        </div>
+        <!-- Checkboxes -->
+        <div class="d-flex flex-column gap-2">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="safety_ok" id="safety_ok" value="1" <?= ($dailyLog['safety_ok']??0)?'checked':'' ?> <?= $disAttr ?>>
+                <label class="form-check-label" style="font-size:11.5px;font-weight:600" for="safety_ok">
+                    <i class="bi bi-shield-check text-success me-1"></i>Safety OK — Site is safe
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="qc_checked" id="qc_checked" value="1" <?= ($dailyLog['qc_checked']??0)?'checked':'' ?> <?= $disAttr ?>>
+                <label class="form-check-label" style="font-size:11.5px;font-weight:600" for="qc_checked">
+                    <i class="bi bi-clipboard-check text-primary me-1"></i>QA Checked — Inspected today
+                </label>
+            </div>
+        </div>
+
+        <!-- ── Material Use Button ── -->
+        <?php
+            $matIssueUrl = $base . '/con-material-issue-create'
+                         . '?from_weekly=1'
+                         . '&project_id=' . $project_id
+                         . '&phase_id='   . $phase_id
+                         . '&target_id='  . $target_id
+                         . '&log_date='   . urlencode($selectedDate)
+                         . '&back_url='   . urlencode(
+                               $base . '/con-weekly-progress/' . $target_id
+                             . '?week=' . $weekNo
+                             . '&log_date=' . $selectedDate
+                           );
+        ?>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f1f5f9">
+            <a href="<?= $matIssueUrl ?>"
+               style="display:flex;align-items:center;justify-content:center;gap:8px;
+                      width:100%;padding:9px 0;border-radius:10px;border:none;cursor:pointer;
+                      background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;
+                      font-weight:700;font-size:13px;text-decoration:none;
+                      box-shadow:0 4px 12px rgba(14,165,233,.3);transition:all .15s"
+               onmouseover="this.style.background='linear-gradient(135deg,#0284c7,#0369a1)'"
+               onmouseout="this.style.background='linear-gradient(135deg,#0ea5e9,#0284c7)'">
+                <i class="bi bi-box-arrow-right"></i>
+                Material Use
+            </a>
+        </div>
+
+        <?php if (!$isLocked): ?>
+        <!-- ── Save Button (right panel) ── -->
+        <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid #f1f5f9">
+            <button type="submit" name="save_action" value="save"
+                    style="flex:1;background:var(--pri);color:#fff;font-weight:700;font-size:13px;
+                           padding:10px 0;border-radius:10px;border:none;cursor:pointer;
+                           display:flex;align-items:center;justify-content:center;gap:6px;
+                           box-shadow:0 4px 12px rgba(79,70,229,.3);transition:all .15s"
+                    onmouseover="this.style.background='#4338ca'" onmouseout="this.style.background='var(--pri)'">
+                <i class="bi bi-check-circle-fill"></i> Save Progress
+            </button>
+            <button type="submit" name="save_action" value="draft"
+                    style="background:#f8fafc;border:1px solid #cbd5e1;color:#475569;font-weight:700;
+                           font-size:12px;padding:10px 14px;border-radius:10px;cursor:pointer;
+                           display:flex;align-items:center;gap:5px;white-space:nowrap"
+                    onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+                <i class="bi bi-save"></i> Draft
+            </button>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
 
 </div><!-- col-4 -->
 </div><!-- row -->
 </form>
+
+<!-- ░░ Issue & Delay Tracker + Material Issues (side by side) ░░ -->
+<?php $materialIssues = $materialIssues ?? []; ?>
+<div style="display:flex;gap:12px;margin-bottom:20px;align-items:stretch;flex-wrap:wrap">
+
+    <!-- Issue & Delay Tracker -->
+    <div style="flex:1;min-width:280px">
+        <div class="wp-card" style="margin-bottom:0;height:100%">
+            <div class="wp-card-header">
+                <div class="wp-card-title">
+                    <i class="bi bi-exclamation-triangle-fill text-danger"></i> Issue &amp; Delay Tracker
+                </div>
+                <span style="font-size:11px;background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:999px;font-weight:700">
+                    <?= count($issueItems) ?> Issues
+                </span>
+            </div>
+            <div style="padding:10px 16px">
+                <?php if (empty($issueItems) && empty($weeklyItems)): ?>
+                <div style="text-align:center;color:#94a3b8;font-size:12px;padding:16px 0">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size:22px;display:block;margin-bottom:6px"></i>No issues flagged
+                </div>
+                <?php else: ?>
+                <?php foreach ($weeklyItems as $wi):
+                    $pct = (float)$wi['percent_complete'];
+                    if ($pct < 30 && $pct >= 0 && (float)$wi['planned_qty'] > 0):
+                        $issType = $pct == 0 ? 'Not Started' : 'Low Progress';
+                        $color   = $pct == 0 ? '#ef4444' : '#f59e0b';
+                ?>
+                <div class="issue-item">
+                    <div class="issue-dot" style="background:<?= $color ?>"></div>
+                    <div>
+                        <div style="font-weight:600;font-size:12px"><?= htmlspecialchars($wi['work_item_name']) ?></div>
+                        <div style="font-size:10.5px;color:#94a3b8"><?= $issType ?> — <?= number_format($pct,0) ?>% complete</div>
+                    </div>
+                </div>
+                <?php endif; endforeach; ?>
+                <?php if (empty($issueItems) && !empty($weeklyItems)): ?>
+                <div style="text-align:center;color:#94a3b8;font-size:11.5px;padding:12px 0">
+                    <i class="bi bi-check2-circle text-success me-1"></i>All items on track
+                </div>
+                <?php endif; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Material Issues -->
+    <div style="flex:1;min-width:280px">
+        <div class="wp-card" style="margin-bottom:0;height:100%">
+            <div class="wp-card-header">
+                <div class="wp-card-title">
+                    <i class="bi bi-box-arrow-right text-info"></i> Material Issues
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                    <span style="font-size:11px;background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:999px;font-weight:700">
+                        <?= count($materialIssues) ?> Issue<?= count($materialIssues) !== 1 ? 's' : '' ?>
+                    </span>
+                    <?php
+                        $matIssueUrl = $base . '/con-material-issue-create'
+                                     . '?from_weekly=1'
+                                     . '&project_id=' . $project_id
+                                     . '&phase_id='   . $phase_id
+                                     . '&target_id='  . $target_id
+                                     . '&log_date='   . urlencode($selectedDate)
+                                     . '&back_url='   . urlencode(
+                                           $base . '/con-weekly-progress/' . $target_id
+                                         . '?week=' . $weekNo . '&log_date=' . $selectedDate
+                                       );
+                    ?>
+                    <a href="<?= $matIssueUrl ?>"
+                       style="font-size:11px;background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;
+                              padding:3px 10px;border-radius:999px;font-weight:700;text-decoration:none;
+                              display:inline-flex;align-items:center;gap:4px">
+                        <i class="bi bi-plus-lg"></i> Add
+                    </a>
+                </div>
+            </div>
+            <div style="padding:10px 14px">
+                <?php if (empty($materialIssues)): ?>
+                    <div style="text-align:center;color:#94a3b8;font-size:12px;padding:16px 0">
+                        <i class="bi bi-box-seam" style="font-size:22px;display:block;margin-bottom:6px;opacity:.4"></i>
+                        No material issued for this target yet
+                    </div>
+                <?php else: ?>
+                    <div style="display:flex;flex-direction:column;gap:7px">
+                    <?php foreach ($materialIssues as $mi): ?>
+                        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;
+                                    padding:8px 11px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:12px;font-weight:700;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                                    <?= htmlspecialchars($mi['material_name'] ?? '—') ?>
+                                </div>
+                                <div style="font-size:10px;color:#64748b;margin-top:2px;display:flex;gap:6px;flex-wrap:wrap">
+                                    <?php if (!empty($mi['contractor_name'])): ?>
+                                        <span><i class="bi bi-person-fill me-1"></i><?= htmlspecialchars($mi['contractor_name']) ?></span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($mi['purpose'])): ?>
+                                        <span><i class="bi bi-chat-text me-1"></i><?= htmlspecialchars($mi['purpose']) ?></span>
+                                    <?php endif; ?>
+                                    <span><i class="bi bi-calendar2 me-1"></i><?= date('d M Y', strtotime($mi['issue_date'])) ?></span>
+                                </div>
+                            </div>
+                            <div style="text-align:right;flex-shrink:0">
+                                <div style="font-size:13px;font-weight:800;color:#dc2626">
+                                    <?= number_format((float)$mi['quantity'], 2) ?>
+                                    <span style="font-size:10px;font-weight:600;color:#94a3b8"><?= htmlspecialchars($mi['unit'] ?? '') ?></span>
+                                </div>
+                                <a href="<?= $base ?>/con-material-issue/<?= $mi['id'] ?>"
+                                   style="font-size:10px;color:#0ea5e9;text-decoration:none;font-weight:600">
+                                    ISS-<?= $mi['id'] ?> ↗
+                                </a>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+</div><!-- side-by-side row -->
+
+
+
+
+
+
+<!-- ░░ Material Issues for this Target ░░ -->
+<?php $materialIssues = $materialIssues ?? []; ?>
+
 
 </div><!-- px-2 -->
 
@@ -1048,70 +1499,56 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         </div>
     </div>
 </div>
+<!-- Hidden forms for QC and PM Review submissions (avoiding form nesting) -->
+<form id="qcForm" method="POST" action="<?= $base ?>/con-weekly-progress-qc-approve" enctype="multipart/form-data" style="display:none">
+    <input type="hidden" name="weekly_progress_id" value="<?= (int)($weeklyProgress['id']??0) ?>">
+    <input type="hidden" name="target_id" value="<?= $target_id ?>">
+    <input type="hidden" name="week_number" value="<?= $weekNo ?>">
+    <input type="hidden" name="log_date" value="<?= htmlspecialchars($selectedDate) ?>">
+</form>
 
+<form id="pmForm" method="POST" action="<?= $base ?>/con-weekly-progress-pm-approve" style="display:none">
+    <input type="hidden" name="weekly_progress_id" value="<?= (int)($weeklyProgress['id']??0) ?>">
+    <input type="hidden" name="target_id" value="<?= $target_id ?>">
+    <input type="hidden" name="week_number" value="<?= $weekNo ?>">
+    <input type="hidden" name="log_date" value="<?= htmlspecialchars($selectedDate) ?>">
+</form>
+
+<?php
+$activeWtByItem = [];
+foreach ($dailyQuantities as $dq) {
+    $iid = (int)$dq['target_item_id'];
+    $wtId = $dq['work_type_id'] ? (int)$dq['work_type_id'] : 0;
+    if ($wtId > 0) {
+        $activeWtByItem[$iid][] = $wtId;
+    }
+}
+?>
 <script>
-let nextIdx = <?= count($weeklyItems) ?>;
+const activeWtByItem = <?= json_encode($activeWtByItem) ?>;
 
-function addProgressRow() {
+function onAddItemSelectChange() {
     const sel = document.getElementById('addItemSelect');
-    const opt = sel.options[sel.selectedIndex];
-    if (!sel.value) { alert('Please select a work item.'); return; }
-
-    const name = opt.dataset.name;
-    const unit = opt.dataset.unit;
-    const target = opt.dataset.target;
-    const achieved = opt.dataset.achieved;
-    const pct = parseFloat(opt.dataset.pct)||0;
-    const itemId = sel.value;
-    const checks = document.querySelectorAll('.wt-check:checked');
-    const wtName = checks.length > 0 ? Array.from(checks).map(c=>c.dataset.name).join(', ') : 'General';
-
-    const pctColor = pct>=100?'var(--green)':pct>0?'var(--pri)':'#94a3b8';
-    const tbody = document.getElementById('progressTableBody');
-    const emptyRow = tbody.querySelector('td[colspan]');
-    if (emptyRow) emptyRow.parentElement.remove();
-
-    const tr = document.createElement('tr');
-    tr.dataset.itemId = itemId;
-    tr.innerHTML = `
-    <td style="color:#94a3b8;font-weight:700">${tbody.querySelectorAll('tr').length+1}</td>
-    <td>
-        <div style="font-weight:600">${escHtml(name)}</div>
-        <div style="font-size:10px;color:#94a3b8">${wtName}</div>
-        <input type="hidden" name="items[${nextIdx}][target_item_id]" value="${itemId}">
-        <input type="hidden" name="items[${nextIdx}][work_type_id]" value="${checks.length>0?checks[0].value:''}">
-    </td>
-    <td><span style="font-size:10.5px;font-weight:600;background:#f1f5f9;padding:2px 7px;border-radius:5px">${escHtml(unit)}</span></td>
-    <td class="text-center" style="font-weight:700">${target}</td>
-    <td class="text-center" style="font-weight:700;color:var(--pri)">${achieved}</td>
-    <td class="text-center">
-        <div style="font-weight:800;font-size:13px;color:${pctColor}">${pct.toFixed(1)}%</div>
-        <div class="pct-bar"><div class="pct-fill" style="width:${pct}%;background:${pctColor}"></div></div>
-    </td>
-    <td class="text-center">
-        <input type="number" name="items[${nextIdx}][qty_done_today]" value="0.00" step="0.01" min="0" class="qty-input" placeholder="0.00">
-        <input type="hidden" name="items[${nextIdx}][unit]" value="${escHtml(unit)}">
-    </td>
-    <td><input type="text" name="items[${nextIdx}][responsible_team]" class="team-inp" placeholder="Team name"></td>
-    <td class="text-center">
-        <select name="items[${nextIdx}][item_status]" class="st-sel">
-            <option>In Progress</option><option>Not Started</option><option>Completed</option><option>Delayed</option><option>Pending QA</option>
-        </select>
-    </td>
-    <td class="text-center"><div class="issue-flag issue-none d-inline-flex"><i class="bi bi-flag"></i></div></td>
-    <td class="text-center">
-        <label class="photo-btn"><i class="bi bi-camera-fill"></i>
-            <input type="file" name="photos[${nextIdx}]" accept="image/*" style="display:none">
-        </label>
-    </td>
-    <td><input type="text" name="items[${nextIdx}][remarks]" class="remarks-input" placeholder="Remarks..."></td>`;
-    tbody.appendChild(tr);
-    nextIdx++;
-    sel.value = '';
-    document.querySelectorAll('.wt-check').forEach(c=>c.checked=false);
+    const itemId = parseInt(sel.value) || 0;
+    const activeWts = activeWtByItem[itemId] || [];
+    
+    document.querySelectorAll('.wt-check').forEach(cb => {
+        const wtId = parseInt(cb.value) || 0;
+        cb.checked = activeWts.includes(wtId);
+    });
 }
 
-function escHtml(str) {
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// Bind the change event to the work item selector dropdown
+document.addEventListener('DOMContentLoaded', function() {
+    const sel = document.getElementById('addItemSelect');
+    if (sel) {
+        sel.addEventListener('change', onAddItemSelectChange);
+    }
+});
+
+function confirmDelete(logRowId, itemName) {
+    if (confirm("Are you sure you want to remove '" + itemName + "' from today's schedule?")) {
+        window.location.href = "<?= $base ?>/con-weekly-progress-delete/" + logRowId;
+    }
 }
 </script>

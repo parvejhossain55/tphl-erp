@@ -269,7 +269,7 @@ class LeadController extends Controller
             $row[] = $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '';
 
             $row[] = '<strong>' . htmlspecialchars($lead['full_name'] ?? '') . '</strong>';
-            $row[] = '<span class="bd-badge bg-success">' . htmlspecialchars($lead['uploaded_from'] ?? '') . '</span>';
+            $row[] = '<span class="bd-badge bg-success" style="white-space: nowrap;">' . htmlspecialchars($lead['uploaded_from'] ?? '') . '</span>';
 
             $phone = $lead['phone_number'] ?? $lead['phone'];
             $clean_phone = preg_replace('/[^0-9]/', '', $phone ?? '');

@@ -19,6 +19,8 @@ $materialsJson = json_encode(array_map(fn($m) => [
 $designTypesJson = json_encode($designTypes, JSON_UNESCAPED_UNICODE);
 $projectDrawingsJson = json_encode($projectDrawings, JSON_UNESCAPED_UNICODE);
 
+$projectPhaseItemsJson = json_encode($projectPhaseItems ?? [], JSON_UNESCAPED_UNICODE);
+
 // Pre-build existing blocks for PHP→JS
 // itemsByDt: {dtId: {wtId: [rows]}}
 // laborsByDt: {dtId: [rows]}
@@ -347,14 +349,20 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                     <div class="col-md-5">
                         <label class="form-label fw-semibold text-muted">Architecture Record <span
                                 class="text-danger">*</span></label>
-                        <select name="architecture_id" id="archSelect" class="form-select" required>
-                            <option value="">-- Select Architecture --</option>
-                            <?php foreach ($archs as $a): ?>
-                                <option value="<?= $a['id'] ?>" <?= $a['id'] == $budget['architecture_id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars('Arch #' . $a['id']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <div class="d-flex gap-2">
+                            <select name="architecture_id" id="archSelect" class="form-select" required>
+                                <option value="">-- Select Architecture --</option>
+                                <?php foreach ($archs as $a): ?>
+                                    <option value="<?= $a['id'] ?>" <?= $a['id'] == $budget['architecture_id'] ? 'selected' : '' ?>
+                                            data-link="<?= htmlspecialchars($a['full_architecture_design_link'] ?? '') ?>">
+                                        <?= htmlspecialchars('Arch #' . $a['id']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <a href="#" target="_blank" id="archViewLink" class="btn btn-outline-secondary" style="display:none" title="View Architecture Design">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                        </div>
                         <div id="archLoader" class="text-muted small mt-1" style="display:none">
                             <i class="bi bi-hourglass-split me-1"></i> Loading...
                         </div>
@@ -399,6 +407,22 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                         <label class="form-label fw-semibold text-muted">Work Details</label>
                         <input type="text" name="work_details" class="form-control"
                             value="<?= htmlspecialchars($budget['work_details'] ?? '') ?>">
+                    </div>
+                    <!-- Timeline Display -->
+                    <div class="col-12 mt-3" id="projectTimelineAlert" style="<?= isset($budget['project_id']) ? '' : 'display:none;' ?>">
+                        <div class="alert py-2 mb-0 <?= !empty($projectTimeline) ? 'border-info alert-info' : 'border-warning alert-warning' ?>" id="projectTimelineBox" style="font-size:0.9rem;">
+                            <i class="bi <?= !empty($projectTimeline) ? 'bi-calendar-range text-info' : 'bi-exclamation-triangle text-warning' ?> me-2" id="projectTimelineIcon"></i>
+                            <span id="projectTimelineText">
+                                <?php if (!empty($projectTimeline)): ?>
+                                    <strong>Timeline:</strong> 
+                                    Start: <span class="badge bg-secondary"><?= $projectTimeline['project_start_date'] ?: 'N/A' ?></span> | 
+                                    Construction: <span class="badge bg-secondary"><?= $projectTimeline['construction_start_date'] ?: 'N/A' ?></span> to <span class="badge bg-secondary"><?= $projectTimeline['construction_end_date'] ?: 'N/A' ?></span> | 
+                                    Handover: <span class="badge bg-success"><?= $projectTimeline['expected_handover_date'] ?: 'N/A' ?></span>
+                                <?php else: ?>
+                                    <strong>Warning:</strong> No timeline set for this project. <a href="<?= $base_url ?>/project-timelines" target="_blank">Set Timeline</a>
+                                <?php endif; ?>
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -480,6 +504,7 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
         const EXISTING_BLOCKS = <?= $existingBlocksJson ?>;   // {dtId: {wtId: [items]}}
         const EXISTING_LABORS = <?= $existingLaborsJson ?>;   // {dtId: [labors]}
         const BUDGET_PROJECT = <?= (int) ($budget['project_id'] ?? 0) ?>;
+        const PROJECT_PHASE_ITEMS = <?= $projectPhaseItemsJson ?>;
 
         const dtNameMap = {};
         DESIGN_TYPES.forEach(dt => { dtNameMap[dt.id] = dt.name; });
@@ -488,6 +513,7 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
 
         let dtBlockCount = 0;
         let projectDrawings = <?= $projectDrawingsJson ?>;
+        let projectPhaseItems = PROJECT_PHASE_ITEMS;
         let dtColors = ['dt-color-1', 'dt-color-2', 'dt-color-3', 'dt-color-4',
             'dt-color-5', 'dt-color-6', 'dt-color-7', 'dt-color-8'];
 
@@ -639,9 +665,43 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                 if (dtidHidden) dtidHidden.value = '';
             }
 
+            // ── Render Phase Info ──────────────────────────────────────────────
+            const drawing = projectDrawings.find(d => String(d.design_type_id) === String(dtId));
+            const phaseRow = document.getElementById('dt-phase-row-' + blockIdx);
+            const phaseNameSpan = document.getElementById('dt-phase-name-' + blockIdx);
+            const phaseWeightSpan = document.getElementById('dt-phase-weight-' + blockIdx);
+
+            if (drawing && drawing.phase_id) {
+                if (phaseRow) phaseRow.style.display = '';
+                if (phaseNameSpan) phaseNameSpan.textContent = drawing.phase_name || 'N/A';
+                if (phaseWeightSpan) phaseWeightSpan.textContent = (drawing.phase_weight || '0') + '%';
+            } else {
+                if (phaseRow) phaseRow.style.display = 'none';
+            }
+
+            // ── Refresh phase item select in all work type blocks under this dt block ────────
             const body = document.getElementById('wt-blocks-' + blockIdx);
-            if (!body) return;
-            body.querySelectorAll('.wt-select').forEach(s => { refreshWtOptions(s, blockIdx); });
+            if (body) {
+                body.querySelectorAll('.phase-item-select').forEach(s => {
+                    const blockKey = s.id.replace('phase-item-select-', '');
+                    const curVal = s.value;
+                    refreshPhaseItemOptions(s, blockIdx, curVal);
+                });
+            }
+
+            // ── Refresh labor phase item dropdowns ───────────────────────────────
+            const laborBody = document.getElementById('labor-body-' + blockIdx);
+            if (laborBody) {
+                laborBody.querySelectorAll('.labor-phase-item-select').forEach(s => {
+                    const curVal = s.value;
+                    refreshLaborPhaseItemOptions(s, blockIdx, curVal);
+                });
+            }
+
+            // ── Refresh work type dropdowns inside this dt block ───────────────
+            if (body) {
+                body.querySelectorAll('.wt-select').forEach(s => { refreshWtOptions(s, blockIdx); });
+            }
         }
 
         function syncDtViewBtn(blockIdx) {
@@ -655,7 +715,7 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
 
         // ── Work Type block ────────────────────────────────────────────────────
         let wtCounts = {};
-        function addWtBlock(dtIdx, existingWtId) {
+        function addWtBlock(dtIdx, existingPhaseItemId, existingWtId) {
             if (!wtCounts[dtIdx]) wtCounts[dtIdx] = 0;
             wtCounts[dtIdx]++;
             const wtIdx = dtIdx + '_' + wtCounts[dtIdx];
@@ -673,9 +733,15 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
     <div class="wt-block" id="wt-block-${wtIdx}">
         <div class="wt-block-header">
             <div class="d-flex align-items-center gap-2">
-                <i class="bi bi-tools text-primary"></i>
+                <i class="bi bi-layers text-primary"></i>
+                <select id="phase-item-select-${wtIdx}" class="form-select form-select-sm phase-item-select"
+                        style="max-width:240px" onchange="onPhaseItemChange('${wtIdx}', ${dtIdx})">
+                    <option value="">-- Select Phase Item --</option>
+                </select>
+                
+                <i class="bi bi-tools text-secondary"></i>
                 <select class="form-select form-select-sm wt-select" id="wt-select-${wtIdx}"
-                        style="max-width:250px" onchange="onWtChange('${wtIdx}',${dtIdx})">
+                        style="max-width:240px" onchange="onWtChange('${wtIdx}',${dtIdx})">
                     ${wtOpts}
                 </select>
             </div>
@@ -711,6 +777,10 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
     </div>`;
 
             document.getElementById('wt-blocks-' + dtIdx).insertAdjacentHTML('beforeend', html);
+            
+            const phaseSel = document.getElementById('phase-item-select-' + wtIdx);
+            refreshPhaseItemOptions(phaseSel, dtIdx, existingPhaseItemId || '');
+
             return wtIdx;
         }
 
@@ -761,6 +831,7 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
             tr.innerHTML = `
         <td><input type="hidden" name="item_design_type_id[]" value="${dtId}">
             <input type="hidden" name="item_work_type_id[]"   value="${wtId}">
+            <input type="hidden" name="item_phase_item_id[]"   value="${ex.phase_item_id || ''}">
             <input type="number" name="item_sl_no[]" class="form-control-sm form-control" style="width:45px"
                    value="${ex.sl_no || rowIdx}" min="1"></td>
         <td><input type="text" name="item_location_desc[]" class="form-control-sm form-control"
@@ -801,14 +872,89 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                 onMaterialChange(matSel);
             }
             calcSubtotal(tr.querySelector('.qs-rate'));
-            updateDtHiddens(tr, dtId, wtId);
+            updateDtHiddens(tr, dtId, wtId, ex.phase_item_id || '');
         }
 
-        function updateDtHiddens(tr, dtId, wtId) {
+        function updateDtHiddens(tr, dtId, wtId, phaseItemId) {
             const dti = tr.querySelector('input[name="item_design_type_id[]"]');
             const wti = tr.querySelector('input[name="item_work_type_id[]"]');
+            const pii = tr.querySelector('input[name="item_phase_item_id[]"]');
             if (dti) dti.value = dtId;
             if (wti) wti.value = wtId;
+            if (pii) pii.value = phaseItemId || '';
+        }
+
+        // ── Phase Item Helpers ────────────────────────────────────────────────
+        function refreshPhaseItemOptions(sel, dtBlockIdx, selectedPhaseItemId = '') {
+            const dtSel = document.getElementById('dt-select-' + dtBlockIdx);
+            const dtId = dtSel ? dtSel.value : '';
+            const drawing = projectDrawings.find(d => String(d.design_type_id) === String(dtId));
+            const phaseId = drawing ? drawing.phase_id : '';
+
+            sel.innerHTML = '<option value="">-- Select Phase Item --</option>';
+
+            if (phaseId) {
+                const filtered = projectPhaseItems.filter(item => String(item.phase_id) === String(phaseId));
+                filtered.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.id;
+                    opt.textContent = item.item_name;
+                    if (String(item.id) === String(selectedPhaseItemId)) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+            }
+        }
+
+        function refreshLaborPhaseItemOptions(sel, dtBlockIdx, selectedPhaseItemId = '') {
+            const dtSel = document.getElementById('dt-select-' + dtBlockIdx);
+            const dtId = dtSel ? dtSel.value : '';
+            const drawing = projectDrawings.find(d => String(d.design_type_id) === String(dtId));
+            const phaseId = drawing ? drawing.phase_id : '';
+
+            sel.innerHTML = '<option value="">-- Phase Item --</option>';
+
+            if (phaseId) {
+                const filtered = projectPhaseItems.filter(item => String(item.phase_id) === String(phaseId));
+                filtered.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.id;
+                    opt.textContent = item.item_name;
+                    if (String(item.id) === String(selectedPhaseItemId)) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+            }
+        }
+
+        function onPhaseItemChange(blockKey, dtBlockIdx) {
+            const phaseItemSel = document.getElementById('phase-item-select-' + blockKey);
+            const phaseItemId = phaseItemSel ? phaseItemSel.value : '';
+            const wtSel = document.getElementById('wt-select-' + blockKey);
+
+            if (phaseItemId && wtSel) {
+                const phaseItem = projectPhaseItems.find(item => String(item.id) === String(phaseItemId));
+                if (phaseItem && phaseItem.work_type_id) {
+                    wtSel.value = phaseItem.work_type_id;
+                }
+            }
+            recalcGrand();
+        }
+
+        function onLaborPhaseItemChange(sel) {
+            const phaseItemId = sel.value;
+            const tr = sel.closest('tr.labor-row');
+            if (!tr) return;
+            const hiddenWt = tr.querySelector('input[name="labor_work_type_id[]"]');
+            
+            if (phaseItemId && hiddenWt) {
+                const phaseItem = projectPhaseItems.find(item => String(item.id) === String(phaseItemId));
+                if (phaseItem && phaseItem.work_type_id) {
+                    hiddenWt.value = phaseItem.work_type_id;
+                } else {
+                    hiddenWt.value = '';
+                }
+            } else if (hiddenWt) {
+                hiddenWt.value = '';
+            }
         }
 
         function calcVol(el) {
@@ -859,12 +1005,29 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
             const dtSel = document.getElementById('dt-select-' + dtIdx);
             const dtId = dtSel ? dtSel.value : '';
 
+            const drawing = projectDrawings.find(d => String(d.design_type_id) === String(dtId));
+            const phaseId = drawing ? drawing.phase_id : '';
+            
+            let phaseItemOpts = '<option value="">-- Phase Item --</option>';
+            if (phaseId) {
+                const filtered = projectPhaseItems.filter(item => String(item.phase_id) === String(phaseId));
+                phaseItemOpts += filtered.map(item => {
+                    const sel = String(item.id) === String(ex.phase_item_id || '') ? 'selected' : '';
+                    return `<option value="${item.id}" ${sel}>${item.item_name}</option>`;
+                }).join('');
+            }
+
             const tr = document.createElement('tr');
+            tr.className = 'labor-row';
             tr.innerHTML = `
         <td><input type="hidden" name="labor_design_type_id[]" value="${dtId}">
-            <input type="hidden" name="labor_work_type_id[]"   value="">
-            <input type="text" name="labor_type_name[]" class="form-control form-control-sm"
-                   value="${ex.labor_type_name || ''}" placeholder="Mason, Painter..."></td>
+            <input type="hidden" name="labor_work_type_id[]"   value="${ex.work_type_id || ''}">
+            <input type="text" name="labor_type_name[]" class="form-control form-control-sm mb-1"
+                   value="${ex.labor_type_name || ''}" placeholder="Mason, Painter...">
+            <select name="labor_phase_item_id[]" class="form-select form-select-sm labor-phase-item-select" onchange="onLaborPhaseItemChange(this)">
+                ${phaseItemOpts}
+            </select>
+        </td>
         <td><input type="text" name="labor_description[]" class="form-control form-control-sm"
                    value="${ex.description || ''}" placeholder="Description..."></td>
         <td><input type="number" step="0.01" name="labor_rate_per_sqft[]"
@@ -946,7 +1109,10 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                 block.querySelectorAll('[id^="wt-block-"]').forEach(wtBlock => {
                     const wtSel = wtBlock.querySelector('.wt-select');
                     const wtId = wtSel ? wtSel.value : '';
+                    const phaseItemSel = wtBlock.querySelector('.phase-item-select');
+                    const phaseItemId = phaseItemSel ? phaseItemSel.value : '';
                     wtBlock.querySelectorAll('input[name="item_work_type_id[]"]').forEach(h => { h.value = wtId; });
+                    wtBlock.querySelectorAll('input[name="item_phase_item_id[]"]').forEach(h => { h.value = phaseItemId; });
                 });
             });
         }
@@ -964,14 +1130,17 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                         onDtChange(blockIdx);
 
                         const wtGroups = EXISTING_BLOCKS[dtId];
-                        const wtIds = Object.keys(wtGroups);
+                        const compositeKeys = Object.keys(wtGroups);
 
-                        if (wtIds.length === 0) {
+                        if (compositeKeys.length === 0) {
                             addWtBlock(blockIdx);
                         } else {
-                            wtIds.forEach(wtId => {
-                                const wtBlockIdx = addWtBlock(blockIdx, wtId);
-                                const rows = wtGroups[wtId];
+                            compositeKeys.forEach(compKey => {
+                                const parts = compKey.split('_');
+                                const phaseItemId = parts[0] || '0';
+                                const wtId = parts[1] || '0';
+                                const wtBlockIdx = addWtBlock(blockIdx, phaseItemId, wtId);
+                                const rows = wtGroups[compKey];
                                 rows.forEach(row => { addQsRow(wtBlockIdx, blockIdx, row); });
                             });
                         }
@@ -996,10 +1165,15 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
             const pid = this.value;
             const archSel = document.getElementById('archSelect');
             const loader = document.getElementById('archLoader');
-
+            // Reset
             archSel.innerHTML = '<option value="">-- Loading... --</option>';
             archSel.disabled = true;
             projectDrawings = [];
+            const archViewLink = document.getElementById('archViewLink');
+            if (archViewLink) {
+                archViewLink.href = '#';
+                archViewLink.style.display = 'none';
+            }
 
             if (!pid) {
                 archSel.innerHTML = '<option value="">-- Select Project First --</option>';
@@ -1021,17 +1195,51 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                         const opt = document.createElement('option');
                         opt.value = a.id;
                         opt.textContent = a.label;
+                        opt.setAttribute('data-link', a.design_link || '');
                         if (String(a.id) === '<?= $budget['architecture_id'] ?>') opt.selected = true;
                         archSel.appendChild(opt);
                     });
                 }
                 archSel.disabled = false;
+                archSel.dispatchEvent(new Event('change'));
 
                 const seen = {};
                 (drawData.drawings || []).forEach(d => {
                     if (!seen[d.design_type_id]) seen[d.design_type_id] = d;
                 });
                 projectDrawings = Object.values(seen);
+                projectPhaseItems = drawData.phase_items || [];
+
+                // ── Timeline Data ──────────────────────────────────────────────
+                const tl = drawData.timeline;
+                const tlAlert = document.getElementById('projectTimelineAlert');
+                const tlBox   = document.getElementById('projectTimelineBox');
+                const tlIcon  = document.getElementById('projectTimelineIcon');
+                const tlText  = document.getElementById('projectTimelineText');
+                
+                if (tlAlert) tlAlert.style.display = 'block';
+                if (tl) {
+                    if (tlBox) tlBox.className = 'alert py-2 mb-0 border-info alert-info';
+                    if (tlIcon) tlIcon.className = 'bi bi-calendar-range me-2 text-info';
+                    if (tlText) tlText.innerHTML = `<strong>Timeline:</strong> 
+                        Start: <span class="badge bg-secondary">${tl.project_start_date || 'N/A'}</span> | 
+                        Construction: <span class="badge bg-secondary">${tl.construction_start_date || 'N/A'}</span> to <span class="badge bg-secondary">${tl.construction_end_date || 'N/A'}</span> | 
+                        Handover: <span class="badge bg-success">${tl.expected_handover_date || 'N/A'}</span>`;
+                    
+                    // Auto-fill dates if empty
+                    const startDateInput = document.querySelector('input[name="start_date"]');
+                    const endDateInput   = document.querySelector('input[name="end_date"]');
+                    if (startDateInput && !startDateInput.value && tl.construction_start_date) {
+                        startDateInput.value = tl.construction_start_date;
+                    }
+                    if (endDateInput && !endDateInput.value && tl.construction_end_date) {
+                        endDateInput.value = tl.construction_end_date;
+                    }
+                } else {
+                    if (tlBox) tlBox.className = 'alert py-2 mb-0 border-warning alert-warning';
+                    if (tlIcon) tlIcon.className = 'bi bi-exclamation-triangle me-2 text-warning';
+                    if (tlText) tlText.innerHTML = `<strong>Warning:</strong> No timeline set for this project. <a href="${BASE_URL}/project-timelines" target="_blank">Set Timeline</a>`;
+                }
             }).catch(() => {
                 loader.style.display = 'none';
                 archSel.innerHTML = '<option value="">-- Error --</option>';
@@ -1050,6 +1258,21 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
             document.getElementById('submitAction').value = 'submit';
             document.getElementById('estimateForm').submit();
         });
+        document.getElementById('archSelect').addEventListener('change', function () {
+            const selOpt = this.options[this.selectedIndex];
+            const link = selOpt ? (selOpt.getAttribute('data-link') || '') : '';
+            const viewBtn = document.getElementById('archViewLink');
+            if (viewBtn) {
+                if (link && link !== 'null' && link.trim()) {
+                    viewBtn.href = link;
+                    viewBtn.style.display = '';
+                } else {
+                    viewBtn.href = '#';
+                    viewBtn.style.display = 'none';
+                }
+            }
+        });
+
         document.getElementById('addDesignTypeBtn').addEventListener('click', function () {
             const idx = addDtBlock();
             addWtBlock(idx);
@@ -1073,9 +1296,14 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
         window.calcLaborRow = calcLaborRow;
         window.removeLaborRow = removeLaborRow;
         window.recalcGrand = recalcGrand;
+        window.refreshPhaseItemOptions = refreshPhaseItemOptions;
+        window.refreshLaborPhaseItemOptions = refreshLaborPhaseItemOptions;
+        window.onPhaseItemChange = onPhaseItemChange;
+        window.onLaborPhaseItemChange = onLaborPhaseItemChange;
 
         // Init on load
         initExistingBlocks();
+        document.getElementById('archSelect').dispatchEvent(new Event('change'));
 
     })();
 </script>

@@ -47,14 +47,14 @@ jobs:
             mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/drop_table.sql
 
             # Import fresh database
-            # echo "Importing fresh database..."
-            # mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/tphl_db.sql
+            echo "Importing fresh database..."
+            mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/tphl_db.sql
 
             # Project upload in Main From Staging
             echo "Copying files to production..."
-            # rm -rf /var/www/html/TPHL-ERP/*
-            # cp -r /var/www/staging/TPHL-ERP/* /var/www/html/TPHL-ERP/
-            # cp -r /var/www/staging/TPHL-ERP/.htaccess /var/www/html/TPHL-ERP/
+            rm -rf /var/www/html/TPHL-ERP/*
+            cp -r /var/www/staging/TPHL-ERP/* /var/www/html/TPHL-ERP/
+            cp -r /var/www/staging/TPHL-ERP/.htaccess /var/www/html/TPHL-ERP/
 
             echo "Deployment completed successfully"
 

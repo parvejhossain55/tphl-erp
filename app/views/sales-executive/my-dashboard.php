@@ -340,7 +340,7 @@
             ]
         };
 
-        const colors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#189441', '#808594', '#20c997', '#fd7e14'];
+        const colors = ['#4e73df', '#8e7eff', '#36b9cc', '#f6c23e', '#e74a3b', '#7b61ff', '#808594', '#a796e0', '#fd7e14'];
 
         const chartOptions = {
             chart: {
@@ -370,7 +370,7 @@
                 labels: {
                     rotate: -45,
                     style: {
-                        colors: '#1a6e40', // GREEN
+                        colors: '#5e4cdc',
                         fontSize: '11px',
                         fontWeight: 700
                     }
@@ -382,12 +382,12 @@
                 title: {
                     text: 'Count / %',
                     style: {
-                        color: '#1a6e40'
+                        color: '#5e4cdc'
                     }
                 },
                 labels: {
                     style: {
-                        colors: '#1a6e40', // GREEN
+                        colors: '#5e4cdc',
                         fontSize: '11px',
                         fontWeight: 700
                     }

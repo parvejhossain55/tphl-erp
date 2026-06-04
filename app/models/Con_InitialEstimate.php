@@ -132,6 +132,7 @@ class Con_InitialEstimate extends Model
                        i.estimated_qty,
                        i.unit_cost_approx,
                        i.remarks,
+                       i.phase_item_id,
                        COALESCE(i.material_unit, m.unit, '')   AS material_unit,
                        COALESCE(m.name, CONCAT('Material #', i.material_id)) AS material_name,
                        COALESCE(cat.name, 'Uncategorized') AS category_name,
@@ -302,8 +303,8 @@ class Con_InitialEstimate extends Model
         $sql  = "INSERT INTO {$this->itemsTable}
                      (budget_id, design_type_id, work_type_id, sl_no, location_desc,
                       nos, length_ft, width_ft, height_ft, volume_qty,
-                      material_id, material_unit, estimated_qty, unit_cost_approx, remarks)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                      material_id, material_unit, estimated_qty, unit_cost_approx, remarks, phase_item_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             error_log('addItems prepare failed: ' . $this->db->error);
@@ -312,8 +313,9 @@ class Con_InitialEstimate extends Model
 
         foreach ($items as $item) {
             $volQty = $item['volume_qty'] ?? $item['estimated_qty'] ?? 0;
+            $phaseItemId = !empty($item['phase_item_id']) ? (int)$item['phase_item_id'] : null;
             $stmt->bind_param(
-                'iiiisdddddisdds',
+                'iiiisdddddisddsi',
                 $budgetId,
                 $item['design_type_id'],
                 $item['work_type_id'],
@@ -328,7 +330,8 @@ class Con_InitialEstimate extends Model
                 $item['material_unit'],
                 $item['estimated_qty'],
                 $item['unit_cost_approx'],
-                $item['remarks']
+                $item['remarks'],
+                $phaseItemId
             );
             $stmt->execute();
         }
@@ -341,15 +344,15 @@ class Con_InitialEstimate extends Model
         if (empty($labors)) return true;
 
         $sql  = "INSERT INTO {$this->laborsTable}
-                     (budget_id, work_type_id, design_type_id, labor_type_name, rate_per_sqft, area_sqft, description)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)";
+                     (budget_id, work_type_id, design_type_id, labor_type_name, rate_per_sqft, area_sqft, description, phase_item_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             error_log('addLabors prepare failed: ' . $this->db->error);
             // Fallback: insert without work_type_id if column doesn't exist yet
             $sql2  = "INSERT INTO {$this->laborsTable}
-                         (budget_id, design_type_id, labor_type_name, rate_per_sqft, area_sqft, description)
-                     VALUES (?, ?, ?, ?, ?, ?)";
+                         (budget_id, design_type_id, labor_type_name, rate_per_sqft, area_sqft, description, phase_item_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)";
             $stmt = $this->db->prepare($sql2);
             if (!$stmt) {
                 error_log('addLabors fallback prepare failed: ' . $this->db->error);
@@ -357,14 +360,16 @@ class Con_InitialEstimate extends Model
             }
             foreach ($labors as $l) {
                 $dtId = $l['design_type_id'] ?? ($l['work_type_id'] ?? 1);
+                $phaseItemId = !empty($l['phase_item_id']) ? (int)$l['phase_item_id'] : null;
                 $stmt->bind_param(
-                    'iisdds',
+                    'iisddsi',
                     $budgetId,
                     $dtId,
                     $l['labor_type_name'],
                     $l['rate_per_sqft'],
                     $l['area_sqft'],
-                    $l['description']
+                    $l['description'],
+                    $phaseItemId
                 );
                 $stmt->execute();
             }
@@ -372,15 +377,17 @@ class Con_InitialEstimate extends Model
         }
 
         foreach ($labors as $l) {
+            $phaseItemId = !empty($l['phase_item_id']) ? (int)$l['phase_item_id'] : null;
             $stmt->bind_param(
-                'iiisdds',
+                'iiisddsi',
                 $budgetId,
                 $l['work_type_id'],
                 $l['design_type_id'],
                 $l['labor_type_name'],
                 $l['rate_per_sqft'],
                 $l['area_sqft'],
-                $l['description']
+                $l['description'],
+                $phaseItemId
             );
             $stmt->execute();
         }

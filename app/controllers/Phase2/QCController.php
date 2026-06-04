@@ -107,10 +107,11 @@ class QCController extends Controller
         $totalMaterialTests = $rTestCount ? (int)$rTestCount->fetch_assoc()['c'] : 0;
 
         // ── KPI 6: Pending Weekly Reports awaiting QC ────────────────────
-        $rWkCount = $this->db->query("SELECT COUNT(*) AS c FROM weekly_progress_report WHERE (approved_by_qc = 0 OR approved_by_qc IS NULL)");
+        $rWkCount = $this->db->query("SELECT COUNT(*) AS c FROM phase_weekly_progress WHERE entry_status = 'Submitted' AND (qc_status = 'Pending' OR qc_status IS NULL)");
         $pendingWeeklyCount = $rWkCount ? (int)$rWkCount->fetch_assoc()['c'] : 0;
 
         // ── Project Progress (only assigned projects) ─────────────────────
+        // Migrated: uses phase_monthly_targets.actual_progress weighted by project_phases.weight_percentage
         $rProj = $this->db->query("
             SELECT p.id, p.name, p.project_status,
                    COALESCE(l.name,'') AS location_name,
@@ -118,8 +119,10 @@ class QCController extends Controller
             FROM projects p
             LEFT JOIN locations l ON l.id = p.location_id
             LEFT JOIN (
-                SELECT project_id, AVG(gain_percentage) AS progress_pct
-                FROM target_fixed GROUP BY project_id
+                SELECT pp.project_id,
+                       SUM((COALESCE(pp.actual_progress,0) / 100) * COALESCE(pp.weight_percentage,0)) AS progress_pct
+                FROM project_phases pp
+                GROUP BY pp.project_id
             ) prog ON prog.project_id = p.id
             WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . "
             ORDER BY p.id DESC LIMIT 6");
@@ -144,14 +147,21 @@ class QCController extends Controller
 
         // ── Pending Weekly Reports (full rows for table) ──────────────────
         $rPendingWeeklyQC = $this->db->query("
-            SELECT r.id, r.report_date, r.week_no,
+            SELECT pwp.id, 
+                   COALESCE(pwp.submitted_at, pwp.week_end_date) AS report_date, 
+                   pwp.week_number AS week_no,
                    p.name AS project_name,
-                   u.full_name AS created_by_name
-            FROM weekly_progress_report r
-            LEFT JOIN projects p ON p.id = r.project_id
-            LEFT JOIN users u ON u.id = r.created_by
-            WHERE (r.approved_by_qc = 0 OR r.approved_by_qc IS NULL)
-            ORDER BY r.id DESC LIMIT 10");
+                   u.full_name AS created_by_name,
+                   pwp.target_id,
+                   pmt.target_month,
+                   pp.phase_name
+            FROM phase_weekly_progress pwp
+            LEFT JOIN projects p ON p.id = pwp.project_id
+            LEFT JOIN users u ON u.id = pwp.submitted_by
+            LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
+            LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
+            WHERE pwp.entry_status = 'Submitted' AND (pwp.qc_status = 'Pending' OR pwp.qc_status IS NULL)
+            ORDER BY pwp.submitted_at DESC, pwp.id DESC LIMIT 10");
         $pendingWeeklyReportsQC = $rPendingWeeklyQC ? $rPendingWeeklyQC->fetch_all(MYSQLI_ASSOC) : [];
 
         // ── Architecture Engineering ──────────────────────────────────────────

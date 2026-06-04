@@ -6,8 +6,8 @@
 <div class="app-sidebar" id="sidebar">
     <div class="main-sidebar-header">
         <a href="?home" class="header-logo">
-            <img class="main-logo" src="<?= $GLOBALS['base_url'] ?>/assets/images/logo/tphl_logo.png" alt="logo">
-            <img class="dark-logo" src="<?= $GLOBALS['base_url'] ?>/assets/images/logo/logo_white.png" alt="logo">
+                  <img class="main-logo" src="<?= getImage('settings', getSetting('white_logo')) ?>" alt="logo">
+            <img class="dark-logo" src="<?= getImage('settings', getSetting('dark_logo')) ?>" alt="logo">
         </a>
     </div>
 
@@ -1243,7 +1243,7 @@
                         <a href="<?= $base_url ?>/con-projects"
                             class="sidebar__menu-item <?= isActive('con-projects', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-building-circle-check"></i></div>
-                            <span class="sidebar__menu-label">Phase Projects</span>
+                            <span class="sidebar__menu-label"> Projects & Phase Plan</span>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -1251,7 +1251,7 @@
                 <?php 
                 $showAllPhases = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22]);
                 if (!empty($_SESSION['active_project_id']) && $showAllPhases): 
-                    $projectSubRoutes = ['con-project-timeline', 'con-phase-plan', 'con-monthly-targets', 'con-monthly-target', 'con-weekly-progress', 'con-monthly-review', 'con-risk-dashboard', 'con-recovery-plan'];
+                    $projectSubRoutes = ['con-project', 'con-project-timeline', 'con-phase-plan', 'con-monthly-targets', 'con-monthly-target', 'con-monthly-review', 'con-risk-dashboard'];
                     $isProjectActive = isActive($projectSubRoutes, $current_route);
                 ?>
                     <li class="slide has-sub <?= $isProjectActive ? 'active' : '' ?>">
@@ -1264,6 +1264,12 @@
                             </span>
                         </a>
                         <ul class="sidebar-menu child1" style="display:block;">
+                            <li class="slide <?= isActive('con-project', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-project', $current_route) ?>" 
+                                   href="<?= $base_url ?>/con-project/<?= $_SESSION['active_project_id'] ?>">
+                                    Project Overview
+                                </a>
+                            </li>
                             <li class="slide <?= isActive('con-project-timeline', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('con-project-timeline', $current_route) ?>" 
                                    href="<?= $base_url ?>/con-project-timeline/<?= $_SESSION['active_project_id'] ?>">
@@ -1282,12 +1288,6 @@
                                     Monthly Targets
                                 </a>
                             </li>
-                            <li class="slide <?= isActive('con-weekly-progress', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('con-weekly-progress', $current_route) ?>" 
-                                   href="<?= $base_url ?>/con-weekly-progress/<?= $_SESSION['active_project_id'] ?>">
-                                    Progress Entry
-                                </a>
-                            </li>
                             <li class="slide <?= isActive('con-monthly-review', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('con-monthly-review', $current_route) ?>" 
                                    href="<?= $base_url ?>/con-monthly-review/<?= $_SESSION['active_project_id'] ?>">
@@ -1300,12 +1300,6 @@
                                     Risk Dashboard
                                 </a>
                             </li>
-                            <li class="slide <?= isActive('con-recovery-plan', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('con-recovery-plan', $current_route) ?>" 
-                                   href="<?= $base_url ?>/con-recovery-plan/<?= $_SESSION['active_project_id'] ?>">
-                                    Recovery Plan
-                                </a>
-                            </li>
                         </ul>
                     </li>
                 <?php endif; ?>
@@ -1315,6 +1309,20 @@
                             class="sidebar__menu-item <?= isActive('con-site-engineer-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">site engineer Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="slide <?= isActive('con-project-plan-targets', $current_route) ?>">
+                        <a href="<?= $base_url ?>/con-project-plan-targets"
+                            class="sidebar__menu-item <?= isActive('con-project-plan-targets', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-bullseye-arrow"></i></div>
+                            <span class="sidebar__menu-label">Project Plan Targets</span>
+                        </a>
+                    </li>
+                    <li class="slide <?= isActive(['con-weekly-reports','con-weekly-report'], $current_route) ?>">
+                        <a href="<?= $base_url ?>/con-weekly-reports"
+                            class="sidebar__menu-item <?= isActive(['con-weekly-reports','con-weekly-report'], $current_route) ?>">
+                            <div class="side-menu__icon"><i class="bi bi-calendar-week"></i></div>
+                            <span class="sidebar__menu-label">Weekly Reports</span>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -1647,58 +1655,8 @@
                         </ul>
                     </li>
                 <?php endif; ?>
-                <!-- Module 2.1: Working Plans -->
-                <?php if (hasPermission('Working Plan')): ?>
-                    <li
-                        class="slide has-sub <?= isActive(['con-working-plans', 'con-working-plan-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-working-plans', 'con-working-plan-create'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-calendar-check"></i></div>
-                            <span class="sidebar__menu-label">Working Plans</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-working-plans"
-                                    class="sidebar__menu-item <?= isActive('con-working-plans', $current_route) ?>">Plan
-                                    List</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-working-plan-create"
-                                    class="sidebar__menu-item <?= isActive('con-working-plan-create', $current_route) ?>">New
-                                    Plan Entry</a>
-                            </li>
-                        </ul>
-                    </li>
-                <?php endif; ?>
-
-                <?php if (hasPermission('Project Target Set')): ?>
-                    <!-- ====== Site Operations (Batch 1 NEW) ====== -->
-                    <li
-                        class="slide has-sub <?= isActive(['con-targets', 'con-target-create', 'con-weekly-reports', 'con-weekly-report-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-targets', 'con-target-create', 'con-weekly-reports', 'con-weekly-report-create'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
-                            <span class="sidebar__menu-label">Site Operations</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-targets"
-                                    class="sidebar__menu-item <?= isActive('con-targets', $current_route) ?>">
-                                    <i class="bi bi-bullseye me-1"></i> Target Fixed
-                                </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-target-create"
-                                    class="sidebar__menu-item <?= isActive('con-target-create', $current_route) ?>">
-                                    + New Target
-                                </a>
-                            </li>
-
-                        </ul>
-                    </li>
-                <?php endif; ?>
+                <!-- Module 2.1: Working Plans — REMOVED (legacy system) -->
+                <!-- Module 2.2: Target Fixed / Site Operations — REMOVED (legacy system) -->
 
                 <!-- Module 2.2: Budget Extension Requests -->
                 <?php if (hasPermission('Budget Extend')): ?>
@@ -1966,31 +1924,15 @@
                         </ul>
                     </li>
                 <?php endif; ?>
-                <?php if (hasPermission('Project Report')): ?>
-
-                    <li
-                        class="slide has-sub <?= isActive(['con-weekly-reports', 'con-weekly-report-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-weekly-reports', 'con-weekly-report-create'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-wallet"></i></div>
-                            <span class="sidebar__menu-label">Reports</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-weekly-reports"
-                                    class="sidebar__menu-item <?= isActive('con-weekly-reports', $current_route) ?>">
-                                    <i class="bi bi-journal-text me-1"></i> Weekly Reports (WPR)
-                                </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-weekly-report-create"
-                                    class="sidebar__menu-item <?= isActive('con-weekly-report-create', $current_route) ?>">
-                                    + New WPR
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
+                <!-- ══ Weekly Progress Reports (Phase-Based) ════════════════════ -->
+                <?php if (hasPermission('Construction Management') || hasPermission('site engineer dashboard') || hasPermission('QC Dashboard') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])): ?>
+                <li class="slide <?= isActive(['con-weekly-reports','con-weekly-report'], $current_route) ?>">
+                    <a href="<?= $base_url ?>/con-weekly-reports"
+                        class="sidebar__menu-item <?= isActive(['con-weekly-reports','con-weekly-report'], $current_route) ?>">
+                        <div class="side-menu__icon"><i class="bi bi-calendar-week"></i></div>
+                        <span class="sidebar__menu-label">Weekly Reports</span>
+                    </a>
+                </li>
                 <?php endif; ?>
                 <!-- ====== END Operators & Bills ====== -->
 
@@ -2227,7 +2169,7 @@
                 <!-- FOR Task Manage  -->
                 <!-- ====== BATCH IMPORTS ====== -->
                 <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): // Only Admins can import ?>
-                    <li class="slide">
+                    <li class="slide d-none">
                         <a href="<?= $GLOBALS['base_url'] ?>/con-batch2-import"
                             class="sidebar__menu-item <?= isActive('con-batch2-import', $current_route) ?>">
                             <div class="side-menu__icon"><i class="bi bi-file-earmark-spreadsheet"></i></div>

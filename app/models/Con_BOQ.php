@@ -4,7 +4,7 @@
  * Tables: boq_master, boq_items
  *
  * Schema:
- * boq_master: id, project_id, target_id, design_type_id,
+ * boq_master: id, project_id, target_id (→ phase_monthly_targets.id), design_type_id,
  *             version, status(Draft/Submitted/Approved/Rejected),
  *             approved_by, approved_at, created_by, created_at, updated_at
  * boq_items:  id, boq_id, material_id, quantity, unit_cost, total_cost(GENERATED)
@@ -31,15 +31,16 @@ class Con_BOQ extends Model
         $sql = "SELECT b.*, p.name AS project_name, u.full_name AS created_by_name,
                        a.full_name AS approved_by_name,
                        a_r.name    AS approved_by_role,
-                       tf.target_title,
+                       CONCAT(pp.phase_name, ' - ', DATE_FORMAT(pmt.target_month, '%M %Y')) AS target_title,
                        dt.name AS design_type_name
                 FROM {$this->masterTable} b
-                LEFT JOIN projects      p   ON p.id   = b.project_id
-                LEFT JOIN users         u   ON u.id   = b.created_by
-                LEFT JOIN users         a   ON a.id   = b.approved_by
-                LEFT JOIN roles         a_r ON a_r.id = a.role_id
-                LEFT JOIN target_fixed  tf  ON tf.id  = b.target_id
-                LEFT JOIN design_types  dt  ON dt.id  = b.design_type_id
+                LEFT JOIN projects             p   ON p.id   = b.project_id
+                LEFT JOIN users               u   ON u.id   = b.created_by
+                LEFT JOIN users               a   ON a.id   = b.approved_by
+                LEFT JOIN roles               a_r ON a_r.id = a.role_id
+                LEFT JOIN phase_monthly_targets pmt ON pmt.id  = b.target_id
+                LEFT JOIN project_phases       pp  ON pp.id   = pmt.phase_id
+                LEFT JOIN design_types         dt  ON dt.id   = b.design_type_id
                 ORDER BY b.id DESC";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
@@ -52,17 +53,20 @@ class Con_BOQ extends Model
             "SELECT b.*, p.name AS project_name, u.full_name AS created_by_name,
                     a.full_name AS approved_by_name,
                     a_r.name    AS approved_by_role,
-                    tf.target_title, tf.target_percentage,
-                    tf.year AS target_year, tf.month AS target_month,
-                    tf.week_number AS target_week,
+                    CONCAT(pp.phase_name, ' - ', DATE_FORMAT(pmt.target_month, '%M %Y')) AS target_title,
+                    pmt.total_target_weight_pct AS target_percentage,
+                    pmt.target_year       AS target_year,
+                    pmt.target_month_number AS target_month,
+                    NULL                  AS target_week,
                     dt.name AS design_type_name
              FROM {$this->masterTable} b
-             LEFT JOIN projects      p   ON p.id   = b.project_id
-             LEFT JOIN users         u   ON u.id   = b.created_by
-             LEFT JOIN users         a   ON a.id   = b.approved_by
-             LEFT JOIN roles         a_r ON a_r.id = a.role_id
-             LEFT JOIN target_fixed  tf  ON tf.id  = b.target_id
-             LEFT JOIN design_types  dt  ON dt.id  = b.design_type_id
+             LEFT JOIN projects             p   ON p.id   = b.project_id
+             LEFT JOIN users               u   ON u.id   = b.created_by
+             LEFT JOIN users               a   ON a.id   = b.approved_by
+             LEFT JOIN roles               a_r ON a_r.id = a.role_id
+             LEFT JOIN phase_monthly_targets pmt ON pmt.id  = b.target_id
+             LEFT JOIN project_phases        pp  ON pp.id   = pmt.phase_id
+             LEFT JOIN design_types          dt  ON dt.id   = b.design_type_id
              WHERE b.id = ?"
         );
         $stmt->bind_param('i', $id);
@@ -243,7 +247,7 @@ public function getRemainingBOQ($projectId, $boqId = null) {
             SELECT b.*, p.name AS project_name, u.full_name AS created_by_name,
                    a.full_name AS approved_by_name,
                    a_r.name    AS approved_by_role,
-                   tf.target_title,
+                   CONCAT(pp.phase_name, ' - ', DATE_FORMAT(pmt.target_month, '%M %Y')) AS target_title,
                    dt.name AS design_type_name,
                    COUNT(bi.id)          AS item_count,
                    COALESCE(SUM(bi.quantity * bi.unit_cost), 0) AS total_boq_value,
@@ -271,12 +275,13 @@ public function getRemainingBOQ($projectId, $boqId = null) {
                          AND mr.overall_status IN ('QC Approved','Accepted','Fully Received','Partially Received')
                    ), 0) AS total_received
             FROM {$this->masterTable} b
-            LEFT JOIN projects      p   ON p.id   = b.project_id
-            LEFT JOIN users         u   ON u.id   = b.created_by
-            LEFT JOIN users         a   ON a.id   = b.approved_by
-            LEFT JOIN roles         a_r ON a_r.id = a.role_id
-            LEFT JOIN target_fixed  tf  ON tf.id  = b.target_id
-            LEFT JOIN design_types  dt  ON dt.id  = b.design_type_id
+            LEFT JOIN projects             p   ON p.id   = b.project_id
+            LEFT JOIN users               u   ON u.id   = b.created_by
+            LEFT JOIN users               a   ON a.id   = b.approved_by
+            LEFT JOIN roles               a_r ON a_r.id = a.role_id
+            LEFT JOIN phase_monthly_targets pmt ON pmt.id  = b.target_id
+            LEFT JOIN project_phases        pp  ON pp.id   = pmt.phase_id
+            LEFT JOIN design_types          dt  ON dt.id   = b.design_type_id
             LEFT JOIN boq_items     bi ON bi.boq_id = b.id
             GROUP BY b.id
             ORDER BY b.id DESC";
