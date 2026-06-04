@@ -156,6 +156,15 @@ DROP TABLE IF EXISTS office_assets;
 DROP TABLE IF EXISTS con_wastage;
 DROP TABLE IF EXISTS con_wastage_items;
 
+-- ====== Legacy / Redundant Tables (must drop before fresh import) ======
+DROP TABLE IF EXISTS monthly_phase_snapshots;
+DROP TABLE IF EXISTS monthly_progress_reviews;
+DROP TABLE IF EXISTS project_delay_snapshots;
+DROP TABLE IF EXISTS con_material_issue_items;
+DROP TABLE IF EXISTS weekly_progress_report;
+DROP TABLE IF EXISTS target_fixed;
+DROP TABLE IF EXISTS project_working_plan_items;
+DROP TABLE IF EXISTS project_working_plans;
 
 
 
