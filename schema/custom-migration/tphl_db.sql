@@ -15,6 +15,9 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
+-- Explicit FK disable (plain statement, not conditional) to ensure FK order issues don't fail import
+SET FOREIGN_KEY_CHECKS=0;
+
 --
 -- Table structure for table `adjustment_transactions`
 --
@@ -5548,5 +5551,8 @@ UNLOCK TABLES;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Restore FK checks (plain statement)
+SET FOREIGN_KEY_CHECKS=1;
 
 -- Dump completed on 2026-05-25 12:01:09
