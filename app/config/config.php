@@ -16,6 +16,8 @@ if ($current_server == 1) {
         "db_pass" => "",
         "db_name" => "tphl_db",
     ];
+
+    
 }
 
 
@@ -43,3 +45,6 @@ if ($current_server == 3) {
         "db_name" => "final_erp_db",
     ];
 }
+
+
+
