@@ -117,8 +117,8 @@ $base_url = $GLOBALS['base_url'];
                                     <?php foreach ($myProjects as $p): ?>
                                         <tr>
                                             <td>
-                                                <span class="fw-semibold"><?= htmlspecialchars($p['name']) ?></span><br>
-                                                <span class="badge bg-primary-transparent"><?= ucfirst($p['project_status']) ?></span>
+                                                <span class="fw-semibold"><?= htmlspecialchars($p['name'] ?? 'N/A') ?></span><br>
+                                                <span class="badge bg-primary-transparent"><?= $p['project_status'] ?? 'N/A' ?></span>
                                             </td>
                                             <td><?= htmlspecialchars($p['location_name']) ?></td>
                                             <td>
@@ -166,7 +166,9 @@ $base_url = $GLOBALS['base_url'];
                                     <?php foreach ($recentReceives as $mr): ?>
                                         <tr>
                                             <td>
-                                                <span class="fw-semibold"><?= htmlspecialchars($mr['project_name']) ?></span>
+                                                <span class="fw-semibold"><?= htmlspecialchars($mr['
+                                                
+                                                project_name']) ?></span>
                                             </td>
                                             <td><?= date('d M Y', strtotime($mr['receiving_date'])) ?></td>
                                             <td>

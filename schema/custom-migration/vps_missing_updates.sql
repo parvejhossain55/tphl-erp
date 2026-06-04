@@ -404,3 +404,38 @@ ALTER TABLE `phase_weekly_progress`
     ADD COLUMN IF NOT EXISTS `pm_comment` TEXT NULL DEFAULT NULL AFTER `pm_status`;
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+---- 4 june 2026 rafi vai table wastage and wastage items
+CREATE TABLE con_wastage (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    project_id INT UNSIGNED NOT NULL,
+    warehouse_id INT UNSIGNED NOT NULL,
+    recorded_by INT UNSIGNED NOT NULL,
+    total_selling_amount DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    status ENUM('Pending QC', 'Approved', 'Rejected') NOT NULL DEFAULT 'Pending QC',
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    INDEX idx_project_id (project_id),
+    INDEX idx_warehouse_id (warehouse_id),
+    INDEX idx_recorded_by (recorded_by)
+);
+CREATE TABLE con_wastage_items (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    wastage_id INT UNSIGNED NOT NULL,
+    material_id INT UNSIGNED NOT NULL,
+    quantity DECIMAL(15,3) NOT NULL DEFAULT 0,
+    condition_note TEXT NULL,
+    document VARCHAR(255) NULL,
+    selling_amount DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    INDEX idx_wastage_id (wastage_id),
+    INDEX idx_material_id (material_id),
+
+    CONSTRAINT fk_wastage_items_wastage
+        FOREIGN KEY (wastage_id)
+        REFERENCES con_wastage(id)
+        ON DELETE CASCADE
+);

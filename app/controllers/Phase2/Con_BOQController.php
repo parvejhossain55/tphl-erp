@@ -39,7 +39,6 @@ class Con_BOQController extends Controller
     // =========================================================================
     // BOQ — CREATE
     // =========================================================================
-
     public function create()
     {
         if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
@@ -48,58 +47,75 @@ class Con_BOQController extends Controller
             exit;
         }
 
-        $target_id  = isset($_GET['target_id']) ? (int)$_GET['target_id'] : 0;
-        $targetData = null;
+        $target_id        = isset($_GET['target_id']) ? (int)$_GET['target_id'] : 0;
+        $phaseTarget      = null;
+        $targetPhaseItems = [];
+        $weeklyProgress   = [];
+        $existingBoqCount = 0;
 
         if ($target_id) {
-            require_once __DIR__ . '/../../models/Con_MonthlyTarget.php';
-            $targetModel = new \Con_MonthlyTarget($this->db);
-            $rawTarget  = $targetModel->find($target_id);
-            if ($rawTarget) {
-                $targetData = [
-                    'id'                => $rawTarget['id'],
-                    'project_id'        => $rawTarget['project_id'],
-                    'target_title'      => $rawTarget['phase_name'] . ' - ' . date('F Y', strtotime($rawTarget['target_month'])),
-                    'year'              => $rawTarget['target_year'],
-                    'month'             => $rawTarget['target_month_number'],
-                    'week_number'       => null,
-                    'target_percentage' => $rawTarget['total_target_weight_pct'],
-                    'gain_percentage'   => $rawTarget['actual_progress'] ?? 0.0,
-                    'plan_weight_percentage' => $rawTarget['phase_weight'],
-                    'design_type_name'  => 'General / Phase-based',
-                    'project_name'      => $rawTarget['project_name'],
-                    'plan_description'  => $rawTarget['phase_name'],
-                    'created_by_name'   => 'System',
-                    'created_at'        => $rawTarget['created_at'],
-                    'description'       => 'Phase-based monthly target',
-                    'approved_by_manager' => ($rawTarget['approved_by_pm'] ?? null) ? true : false,
-                ];
-            }
-
-            // ── If BOQ already exists for this target, allow creating another ──
-            // (previous BOQs may be fully received; new BOQ = new batch/restocking)
-            // We just pre-fill existing BOQ count for the view
-            $stmt = $this->db->prepare(
-                "SELECT COUNT(*) AS cnt FROM boq_master WHERE target_id = ?"
-            );
+            // ── A. Fetch phase target header (phase_monthly_targets) ──────────
+            $stmt = $this->db->prepare("
+                SELECT pmt.*,
+                       pp.phase_name,
+                       pp.weight_percentage  AS phase_weight,
+                       pp.planned_start_date,
+                       pp.planned_end_date,
+                       pp.status             AS phase_status,
+                       p.name                AS project_name,
+                       p.block_no            AS project_block,
+                       p.plot_no             AS project_plot,
+                       u.full_name           AS created_by_name
+                FROM phase_monthly_targets pmt
+                INNER JOIN project_phases pp ON pp.id = pmt.phase_id
+                INNER JOIN projects p        ON p.id  = pmt.project_id
+                LEFT  JOIN users u           ON u.id  = pmt.created_by
+                WHERE pmt.id = ?
+            ");
             $stmt->bind_param('i', $target_id);
             $stmt->execute();
-            $existingBoqCount = (int)($stmt->get_result()->fetch_assoc()['cnt'] ?? 0);
+            $phaseTarget = $stmt->get_result()->fetch_assoc();
 
-            // ── Fetch phase items for this target (to show in BOQ form) ──────
-            $piStmt = $this->db->prepare("
-                SELECT pmti.*,
-                       wt.work_type_name,
-                       c.name AS contractor_name
-                FROM phase_monthly_target_items pmti
-                LEFT JOIN work_types wt  ON wt.id  = pmti.work_type_id
-                LEFT JOIN contractors c  ON c.id   = pmti.contractor_id
-                WHERE pmti.target_id = ?
-                ORDER BY pmti.sort_order ASC, pmti.id ASC
-            ");
-            $piStmt->bind_param('i', $target_id);
-            $piStmt->execute();
-            $targetPhaseItems = $piStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            if ($phaseTarget) {
+                // ── Count existing BOQs for this target ───────────────────────
+                $cntStmt = $this->db->prepare(
+                    "SELECT COUNT(*) AS cnt FROM boq_master WHERE target_id = ?"
+                );
+                $cntStmt->bind_param('i', $target_id);
+                $cntStmt->execute();
+                $existingBoqCount = (int)($cntStmt->get_result()->fetch_assoc()['cnt'] ?? 0);
+
+                // ── B. Fetch phase monthly target items ───────────────────────
+                $piStmt = $this->db->prepare("
+                    SELECT pmti.*,
+                           wt.work_type_name,
+                           c.name AS contractor_name
+                    FROM phase_monthly_target_items pmti
+                    LEFT JOIN work_types  wt ON wt.id = pmti.work_type_id
+                    LEFT JOIN contractors c  ON c.id  = pmti.contractor_id
+                    WHERE pmti.target_id = ?
+                    ORDER BY pmti.sort_order ASC, pmti.id ASC
+                ");
+                $piStmt->bind_param('i', $target_id);
+                $piStmt->execute();
+                $targetPhaseItems = $piStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+                // ── C. Fetch weekly progress sessions (weeks 1–4) ─────────────
+                $wkStmt = $this->db->prepare("
+                    SELECT pwp.*
+                    FROM phase_weekly_progress pwp
+                    WHERE pwp.target_id = ?
+                    ORDER BY pwp.week_number ASC
+                ");
+                $wkStmt->bind_param('i', $target_id);
+                $wkStmt->execute();
+                $weekSessions = $wkStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+                // Index by week_number for easy access in view (key = 1,2,3,4)
+                foreach ($weekSessions as $ws) {
+                    $weeklyProgress[(int)$ws['week_number']] = $ws;
+                }
+            }
         }
 
         $projects  = $this->projectModel->getAll();
@@ -110,10 +126,11 @@ class Con_BOQController extends Controller
             'page_title'        => 'New Bill of Quantities',
             'projects'          => $projects,
             'materials'         => $materials,
-            'targetData'        => $targetData,
+            'phaseTarget'       => $phaseTarget,
             'target_id'         => $target_id,
-            'targetPhaseItems'  => $targetPhaseItems ?? [],
-            'existingBoqCount'  => $existingBoqCount ?? 0,
+            'targetPhaseItems'  => $targetPhaseItems,
+            'weeklyProgress'    => $weeklyProgress,
+            'existingBoqCount'  => $existingBoqCount,
         ]);
     }
 

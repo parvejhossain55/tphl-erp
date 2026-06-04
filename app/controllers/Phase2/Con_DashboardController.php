@@ -1093,8 +1093,8 @@ class Con_DashboardController extends Controller
         $r3 = $this->db->query("SELECT COUNT(*) AS c FROM con_material_issues WHERE issued_by = {$userId}");
         $totalIssued = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
 
-        // KPI: Weekly Reports Submitted By Me
-        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM weekly_progress_report WHERE site_engineer_id = {$userId}");
+        // KPI: Weekly Reports Submitted By Me (phase_weekly_progress)
+        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM phase_weekly_progress pwp JOIN projects p ON p.id = pwp.project_id WHERE p.site_engineer_id = {$userId}");
         $totalReports = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
 
         // My Assigned Projects List
@@ -1139,13 +1139,19 @@ class Con_DashboardController extends Controller
         ");
         $recentIssues = $rMI ? $rMI->fetch_all(MYSQLI_ASSOC) : [];
 
-        // Recent Weekly Reports
+        // Recent Weekly Reports (phase_weekly_progress)
         $rWPR = $this->db->query("
-            SELECT wpr.*, p.name AS project_name
-            FROM weekly_progress_report wpr
-            LEFT JOIN projects p ON p.id = wpr.project_id
-            WHERE wpr.site_engineer_id = {$userId}
-            ORDER BY wpr.id DESC LIMIT 5
+            SELECT pwp.id, pwp.week_number, pwp.week_start_date AS report_date,
+                   pwp.entry_status AS status, pwp.overall_progress_pct,
+                   p.name AS project_name,
+                   pmt.target_month,
+                   pp.phase_name
+            FROM phase_weekly_progress pwp
+            JOIN projects p ON p.id = pwp.project_id
+            LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
+            LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
+            WHERE p.site_engineer_id = {$userId}
+            ORDER BY pwp.id DESC LIMIT 5
         ");
         $recentReports = $rWPR ? $rWPR->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -1323,12 +1329,18 @@ class Con_DashboardController extends Controller
             ORDER BY mi.id DESC LIMIT 5");
         $recentIssues = $rIssues ? $rIssues->fetch_all(MYSQLI_ASSOC) : [];
 
-        // Recent DPRs
+        // Recent Weekly Progress (phase_weekly_progress)
         $rDPR = $this->db->query("
-            SELECT dpr.*, p.name AS project_name
-            FROM weekly_progress_report dpr
-            LEFT JOIN projects p ON p.id=dpr.project_id
-            ORDER BY dpr.id DESC LIMIT 5");
+            SELECT pwp.id, pwp.week_number, pwp.week_start_date AS report_date,
+                   pwp.entry_status AS status, pwp.overall_progress_pct,
+                   pwp.qc_status, pwp.pm_status,
+                   p.name AS project_name,
+                   pp.phase_name
+            FROM phase_weekly_progress pwp
+            LEFT JOIN projects p ON p.id = pwp.project_id
+            LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
+            LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
+            ORDER BY pwp.id DESC LIMIT 5");
         $recentDPRs = $rDPR ? $rDPR->fetch_all(MYSQLI_ASSOC) : [];
 
         // Pending Weekly Progress items awaiting QC (replaces legacy target_fixed pending QC)
@@ -1367,16 +1379,20 @@ class Con_DashboardController extends Controller
             ORDER BY mr.id DESC LIMIT 10");
         $pendingGRNsQC = $rPendingGRNsQC ? $rPendingGRNsQC->fetch_all(MYSQLI_ASSOC) : [];
 
-        // Pending Weekly Reports awaiting QC
+        // Pending Weekly Progress awaiting QC (phase_weekly_progress)
         $rPendingWeeklyQC = $this->db->query("
-            SELECT r.id, r.report_date, r.week_no,
+            SELECT pwp.id, pwp.week_start_date AS report_date, pwp.week_number AS week_no,
+                   pwp.qc_status, pwp.entry_status,
                    p.name AS project_name,
-                   u.full_name AS created_by_name
-            FROM weekly_progress_report r
-            LEFT JOIN projects p ON p.id = r.project_id
-            LEFT JOIN users u ON u.id = r.created_by
-            WHERE r.approved_by_qc = 0
-            ORDER BY r.id DESC LIMIT 10");
+                   u.full_name AS created_by_name,
+                   pp.phase_name
+            FROM phase_weekly_progress pwp
+            LEFT JOIN projects p ON p.id = pwp.project_id
+            LEFT JOIN users u ON u.id = pwp.submitted_by
+            LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
+            LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
+            WHERE pwp.qc_status = 'Pending' OR pwp.qc_status IS NULL
+            ORDER BY pwp.id DESC LIMIT 10");
         $pendingWeeklyReportsQC = $rPendingWeeklyQC ? $rPendingWeeklyQC->fetch_all(MYSQLI_ASSOC) : [];
 
 

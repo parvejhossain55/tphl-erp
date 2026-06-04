@@ -2,282 +2,327 @@
 namespace Phase2;
 
 use Controller;
-use Con_WeeklyReport;
 
 class Con_WeeklyReportController extends Controller
 {
     protected $db;
-    protected $model;
 
     public function __construct($db)
     {
-        $this->db    = $db;
-        $this->model = new Con_WeeklyReport($this->db);
+        $this->db = $db;
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if (!isset($_SESSION['user'])) {
+            header("Location: " . $GLOBALS['base_url'] . "/login"); exit;
+        }
     }
 
     // =========================================================================
-    // LIST
+    // INDEX — Project List
     // =========================================================================
     public function index()
     {
-        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id']      ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        $reports = $this->model->getAll();
+        // Role-based project filter
+        if (in_array($roleId, [1, 3, 22])) {
+            $filter = "p.deleted_at IS NULL";
+        } else {
+            $filter = "p.deleted_at IS NULL AND (
+                p.pm_id = $userId OR p.site_engineer_id = $userId OR
+                p.qc_id = $userId OR p.operator_id = $userId OR
+                p.landman_id = $userId OR p.struct_engineer_id = $userId OR
+                p.draftsman_id = $userId OR p.architect_id = $userId OR
+                p.estimator_id = $userId OR p.created_by = $userId
+            )";
+        }
+
+        $result = $this->db->query("
+            SELECT p.id, p.name, p.block_no, p.plot_no, p.project_status,
+                   COUNT(DISTINCT pmt.id)  AS total_targets,
+                   COUNT(DISTINCT pwp.id)  AS total_weekly_sessions,
+                   MAX(pwp.updated_at)     AS last_activity
+            FROM projects p
+            LEFT JOIN phase_monthly_targets pmt ON pmt.project_id = p.id
+            LEFT JOIN phase_weekly_progress pwp ON pwp.project_id = p.id
+            WHERE $filter
+            GROUP BY p.id
+            ORDER BY p.name ASC
+        ");
+        $projects = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
         $this->view('phase2/weekly-reports/report-lists', [
             'current_route' => 'con-weekly-reports',
             'page_title'    => 'Weekly Progress Reports',
-            'reports'       => $reports,
-        ]);
-    }
-
-    // =========================================================================
-    // CREATE FORM
-    // =========================================================================
-    public function create()
-    {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
-            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
-            exit;
-        }
-
-        if (session_status() === PHP_SESSION_NONE) session_start();
-
-        $userId = (int)($_SESSION['user']['id'] ?? 0);
-        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-
-        $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 22])) {
-            $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
-        }
-
-        $projects = $this->db->query(
-            "SELECT id, name FROM projects WHERE deleted_at IS NULL AND $filter ORDER BY name ASC"
-        )->fetch_all(MYSQLI_ASSOC);
-
-        $this->view('phase2/weekly-reports/create-report', [
-            'current_route' => 'con-weekly-reports',
-            'page_title'    => 'New Weekly Progress Report',
             'projects'      => $projects,
         ]);
     }
 
     // =========================================================================
-    // AJAX: Work Plans by Project
+    // SHOW — Project Report (with target + week selection)
     // =========================================================================
-    public function ajaxWorkPlans()
+    public function show($projectId)
     {
-        if (session_status() === PHP_SESSION_NONE) session_start();
-        header('Content-Type: application/json');
+        $projectId = (int)$projectId;
+        $target_id = isset($_GET['target_id']) ? (int)$_GET['target_id'] : 0;
+        $activeWeek = isset($_GET['week'])      ? (int)$_GET['week']      : 1;
+        if ($activeWeek < 1 || $activeWeek > 4) $activeWeek = 1;
 
-        $projectId = (int)($_GET['project_id'] ?? 0);
-        if (!$projectId) {
-            echo json_encode([]);
-            exit;
-        }
-        $plans = $this->model->getWorkPlansByProject($projectId);
-        echo json_encode($plans);
-        exit;
-    }
-
-    // =========================================================================
-    // AJAX: Targets by Work Plan
-    // =========================================================================
-    public function ajaxTargets()
-    {
-        if (session_status() === PHP_SESSION_NONE) session_start();
-        header('Content-Type: application/json');
-
-        $workPlanId = (int)($_GET['work_plan_id'] ?? 0);
-        if (!$workPlanId) {
-            echo json_encode([]);
-            exit;
-        }
-        $targets = $this->model->getTargetsByWorkPlan($workPlanId);
-        echo json_encode($targets);
-        exit;
-    }
-
-    // =========================================================================
-    // STORE (POST)
-    // =========================================================================
-    public function store()
-    {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
-            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
-            exit;
+        // ── Project info ──────────────────────────────────────────────────────
+        $pStmt = $this->db->prepare("SELECT id, name, block_no, plot_no FROM projects WHERE id = ?");
+        $pStmt->bind_param('i', $projectId);
+        $pStmt->execute();
+        $project = $pStmt->get_result()->fetch_assoc();
+        if (!$project) {
+            setError("Project not found.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-weekly-reports"); exit;
         }
 
-        if (session_status() === PHP_SESSION_NONE) session_start();
-
-        // Handle image upload
-        $imagePath = null;
-        if (!empty($_FILES['progress_image']['tmp_name'])) {
-            $uploadDir = dirname(__DIR__, 3) . '/public/uploads/weekly-reports/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-            $ext  = pathinfo($_FILES['progress_image']['name'], PATHINFO_EXTENSION);
-            $name = 'wpr_' . time() . '.' . $ext;
-            if (move_uploaded_file($_FILES['progress_image']['tmp_name'], $uploadDir . $name)) {
-                $imagePath = 'uploads/weekly-reports/' . $name;
-            }
+        // ── Monthly Targets for this project ──────────────────────────────────
+        $targets = [];
+        $tStmt = $this->db->prepare("
+            SELECT pmt.id, pmt.target_month, pmt.planning_status,
+                   pp.phase_name, pp.weight_percentage AS phase_weight
+            FROM phase_monthly_targets pmt
+            INNER JOIN project_phases pp ON pp.id = pmt.phase_id
+            WHERE pmt.project_id = ?
+            ORDER BY pmt.target_month DESC
+        ");
+        if ($tStmt) {
+            $tStmt->bind_param('i', $projectId);
+            $tStmt->execute();
+            $targets = $tStmt->get_result()->fetch_all(MYSQLI_ASSOC);
         }
 
-        $data = [
-            'project_id'          => (int)($_POST['project_id']   ?? 0),
-            'site_engineer_id'    => (int)($_POST['site_engineer_id'] ?? ($_SESSION['user']['id'] ?? 0)),
-            'work_plan_id'        => (int)($_POST['work_plan_id']  ?? 0),
-            'week_no'             => (int)($_POST['week_no']       ?? 0),
-            'target_id'           => !empty($_POST['target_id']) ? (int)$_POST['target_id'] : null,
-            'work_done'           => trim($_POST['work_done']      ?? ''),
-            'progress_percentage' => (float)($_POST['progress_percentage'] ?? 0),
-            'report_date'         => $_POST['report_date']         ?? date('Y-m-d'),
-            'progress_image'      => $imagePath,
-            'weather_condition'   => trim($_POST['weather_condition'] ?? ''),
-            'manpower_count'      => !empty($_POST['manpower_count']) ? (int)$_POST['manpower_count'] : null,
-            'created_by'          => $_SESSION['user']['id']       ?? null,
-        ];
+        // ── If a target is selected: load full weekly data ─────────────────────
+        $phaseTarget  = null;
+        $targetItems  = [];
+        $weekData     = [];   // indexed by week_number (1-4)
+        $weekPlanQty  = [1 => 0.0, 2 => 0.0, 3 => 0.0, 4 => 0.0];
 
-        if (!$data['project_id'] || !$data['work_plan_id'] || !$data['week_no'] || empty($data['work_done'])) {
-            setError('Project, Working Plan, Week No and Work Done are required.');
-            header("Location: {$GLOBALS['base_url']}/con-weekly-report-create");
-            exit;
-        }
-
-        $id = $this->model->create($data);
-
-        if ($id) {
-            // Trigger email to QC and PM
-            require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
-            $mailService = new \ProjectWorkflowMailService($this->db);
-            $pInfo = $this->db->prepare("SELECT name FROM projects WHERE id = ?");
-            $pInfo->bind_param('i', $data['project_id']);
-            $pInfo->execute();
-            $pRow = $pInfo->get_result()->fetch_assoc();
-            if ($pRow) {
-                $mailService->notifyQCAndPMForNewWeeklyReport((int)$data['project_id'], $pRow['name'], $id, (int)$data['week_no']);
+        if ($target_id) {
+            // A. Target header
+            $thStmt = $this->db->prepare("
+                SELECT pmt.*,
+                       pp.phase_name, pp.weight_percentage AS phase_weight,
+                       pp.planned_start_date, pp.planned_end_date,
+                       p.name AS project_name,
+                       u.full_name AS created_by_name
+                FROM phase_monthly_targets pmt
+                INNER JOIN project_phases pp ON pp.id = pmt.phase_id
+                INNER JOIN projects p        ON p.id  = pmt.project_id
+                LEFT  JOIN users u           ON u.id  = pmt.created_by
+                WHERE pmt.id = ? AND pmt.project_id = ?
+            ");
+            if ($thStmt) {
+                $thStmt->bind_param('ii', $target_id, $projectId);
+                $thStmt->execute();
+                $phaseTarget = $thStmt->get_result()->fetch_assoc();
             }
 
-            setSuccess('Weekly progress report saved successfully!');
-            header("Location: {$GLOBALS['base_url']}/con-weekly-report/{$id}");
-        } else {
-            setError('Failed to save report. Please try again.');
-            header("Location: {$GLOBALS['base_url']}/con-weekly-report-create");
+            if ($phaseTarget) {
+                // B. Target items
+                $tiStmt = $this->db->prepare("
+                    SELECT pmti.*, wt.work_type_name
+                    FROM phase_monthly_target_items pmti
+                    LEFT JOIN work_types wt ON wt.id = pmti.work_type_id
+                    WHERE pmti.target_id = ?
+                    ORDER BY pmti.sort_order ASC, pmti.id ASC
+                ");
+                if ($tiStmt) {
+                    $tiStmt->bind_param('i', $target_id);
+                    $tiStmt->execute();
+                    $targetItems = $tiStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                }
+
+                // Pre-calc planned qty per week from target items
+                foreach ($targetItems as $ti) {
+                    $weekPlanQty[1] += (float)($ti['week_1_qty'] ?? 0);
+                    $weekPlanQty[2] += (float)($ti['week_2_qty'] ?? 0);
+                    $weekPlanQty[3] += (float)($ti['week_3_qty'] ?? 0);
+                    $weekPlanQty[4] += (float)($ti['week_4_qty'] ?? 0);
+                }
+
+                // C. All weekly sessions for this target
+                $wStmt = $this->db->prepare("
+                    SELECT pwp.*,
+                           u_sub.full_name AS submitted_by_name,
+                           u_qc.full_name  AS qc_approver_name,
+                           u_pm.full_name  AS pm_approver_name
+                    FROM phase_weekly_progress pwp
+                    LEFT JOIN users u_sub ON u_sub.id = pwp.submitted_by
+                    LEFT JOIN users u_qc  ON u_qc.id  = pwp.qc_approved_id
+                    LEFT JOIN users u_pm  ON u_pm.id  = pwp.pm_approved_id
+                    WHERE pwp.target_id = ?
+                    ORDER BY pwp.week_number ASC
+                ");
+                $sessions = [];
+                if ($wStmt) {
+                    $wStmt->bind_param('i', $target_id);
+                    $wStmt->execute();
+                    $sessions = $wStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                }
+
+                // D. For each session: items + daily logs
+                foreach ($sessions as $session) {
+                    $wNo       = (int)$session['week_number'];
+                    $sessionId = (int)$session['id'];
+
+                    // Weekly items — fetch week_1..4_qty for fallback planned qty
+                    $wiStmt = $this->db->prepare("
+                        SELECT pwpi.*,
+                               pmti.work_item_name, pmti.unit, pmti.monthly_target_qty,
+                               pmti.week_1_qty, pmti.week_2_qty, pmti.week_3_qty, pmti.week_4_qty,
+                               wt.work_type_name,
+                               c.name AS contractor_name
+                        FROM phase_weekly_progress_items pwpi
+                        INNER JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
+                        LEFT  JOIN work_types  wt ON wt.id = pmti.work_type_id
+                        LEFT  JOIN contractors c  ON c.id  = pwpi.contractor_id
+                        WHERE pwpi.weekly_progress_id = ?
+                        ORDER BY pmti.sort_order ASC, pwpi.id ASC
+                    ");
+                    $weekItems = [];
+                    if ($wiStmt) {
+                        $wiStmt->bind_param('i', $sessionId);
+                        $wiStmt->execute();
+                        $weekItems = $wiStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                        // Attach the correct week's planned qty as 'planned_qty_from_target'
+                        foreach ($weekItems as &$wi) {
+                            $wi['planned_qty_from_target'] = (float)($wi["week_{$wNo}_qty"] ?? 0);
+                        }
+                        unset($wi);
+                    }
+
+                    // Daily progress logs
+                    $dlStmt = $this->db->prepare("
+                        SELECT dpl.*,
+                               u_qc.full_name AS qc_name,
+                               u_pm.full_name AS pm_name,
+                               u_se.full_name AS reporter_name
+                        FROM daily_progress_logs dpl
+                        LEFT JOIN users u_qc ON u_qc.id = dpl.qc_approved_id
+                        LEFT JOIN users u_pm ON u_pm.id = dpl.pm_approved_id
+                        LEFT JOIN users u_se ON u_se.id = dpl.created_by
+                        WHERE dpl.weekly_progress_id = ?
+                        ORDER BY dpl.log_date ASC
+                    ");
+                    $dailyLogs = [];
+                    if ($dlStmt) {
+                        $dlStmt->bind_param('i', $sessionId);
+                        $dlStmt->execute();
+                        $dailyLogs = $dlStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    }
+
+                    // Daily work items per log_date
+                    $dailyItemsMap = [];
+                    foreach ($dailyLogs as $dl) {
+                        $logId = (int)$dl['id'];
+                        $dwStmt = $this->db->prepare("
+                            SELECT dwil.*,
+                                   pmti.work_item_name, pmti.unit,
+                                   wt.work_type_name
+                            FROM daily_work_item_logs dwil
+                            INNER JOIN phase_monthly_target_items pmti ON pmti.id = dwil.target_item_id
+                            LEFT  JOIN work_types wt ON wt.id = dwil.work_type_id
+                            WHERE dwil.daily_log_id = ?
+                            ORDER BY dwil.id ASC
+                        ");
+                        if ($dwStmt) {
+                            $dwStmt->bind_param('i', $logId);
+                            $dwStmt->execute();
+                            $dailyItemsMap[$dl['log_date']] = $dwStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                        } else {
+                            $dailyItemsMap[$dl['log_date']] = [];
+                        }
+                    }
+
+                    // Site photos from weekly items
+                    $photos = array_filter(
+                        array_column($weekItems, 'photo_path'),
+                        fn($p) => !empty($p)
+                    );
+
+                    $weekData[$wNo] = [
+                        'session'       => $session,
+                        'items'         => $weekItems,
+                        'dailyLogs'     => $dailyLogs,
+                        'dailyItemsMap' => $dailyItemsMap,
+                        'photos'        => array_values($photos),
+                    ];
+                }
+            }
         }
-        exit;
-    }
-
-    // =========================================================================
-    // SHOW DETAIL
-    // =========================================================================
-    public function show($id)
-    {
-        if (session_status() === PHP_SESSION_NONE) session_start();
-
-        $report = $this->model->find($id);
-        if (!$report) {
-            setError('Report not found.');
-            header("Location: {$GLOBALS['base_url']}/con-weekly-reports");
-            exit;
-        }
-
-        $currentUserId = (int)($_SESSION['user']['id']   ?? 0);
-        $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $createdBy     = (int)($report['created_by'] ?? 0);
-
-        // Role guard for approval
-        $roleStepMap = [13 => 'qc', 15 => 'pm', 3 => 'pm', 22 => 'pm']; // 13=QC, 15/3/22=PM
-        $approverRole    = $roleStepMap[$currentRoleId] ?? null;
-        $canApprove      = ($approverRole !== null);
-
-        // Already approved this step? Check DB directly (independent of canApprove)
-        $stepCol         = ($approverRole === 'qc') ? 'approved_by_qc' : 'approved_by_pm';
-        $alreadyApproved = !empty($report[$stepCol]);
 
         $this->view('phase2/weekly-reports/show-report', [
-            'current_route'   => 'con-weekly-reports',
-            'page_title'      => 'Weekly Report Detail',
-            'report'          => $report,
-            'canApprove'      => $canApprove,
-            'alreadyApproved' => $alreadyApproved,
-            'approverRole'    => $approverRole,
-            'currentRoleId'   => $currentRoleId,
+            'current_route' => 'con-weekly-reports',
+            'page_title'    => 'Weekly Progress Report — ' . ($project['name'] ?? ''),
+            'project'       => $project,
+            'targets'       => $targets,
+            'target_id'     => $target_id,
+            'phaseTarget'   => $phaseTarget,
+            'targetItems'   => $targetItems,
+            'weekData'      => $weekData,
+            'weekPlanQty'   => $weekPlanQty,
+            'activeWeek'    => $activeWeek,
         ]);
     }
 
     // =========================================================================
-    // APPROVE A STEP (QC / PM)
+    // AJAX — Monthly Targets by Project (replaces old ajaxWorkPlans)
     // =========================================================================
-    public function approve($id)
+    public function ajaxWorkPlans()
     {
-        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+        $projectId = (int)($_GET['project_id'] ?? 0);
+        if (!$projectId) { echo json_encode([]); exit; }
 
-        $userId = (int)($_SESSION['user']['id']   ?? 0);
-        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-
-        // Role guard
-        $roleStepMap = [13 => 'qc', 15 => 'pm', 3 => 'pm', 22 => 'pm'];
-        if (!isset($roleStepMap[$roleId])) {
-            setError('You do not have permission to approve reports.');
-            header("Location: {$GLOBALS['base_url']}/con-weekly-report/{$id}");
-            exit;
-        }
-
-        // QC can approve any report (no self-approve restriction for QC)
-        // PM/Director cannot self-approve
-        $step = $roleStepMap[$roleId];
-        if ($step === 'pm') {
-            $report = $this->model->find($id);
-            if ($report && (int)($report['created_by'] ?? 0) === $userId) {
-                setError('You cannot approve a report that you created.');
-                header("Location: {$GLOBALS['base_url']}/con-weekly-report/{$id}");
-                exit;
-            }
-        }
-
-        if ($step === 'qc') {
-            $photoPath    = null;
-            $fieldDetails = trim($_POST['qc_field_details'] ?? '');
-            $labResult    = trim($_POST['qc_lab_result']    ?? '');
-            $gainPct      = (float)($_POST['qc_gain_pct']   ?? 0);
-
-            if (!empty($_FILES['qc_photo']['name']) && $_FILES['qc_photo']['error'] === UPLOAD_ERR_OK) {
-                $uploadDir = dirname(__DIR__, 3) . '/public/uploads/qc-reports/';
-                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-                $filename = time() . '_' . basename($_FILES['qc_photo']['name']);
-                if (move_uploaded_file($_FILES['qc_photo']['tmp_name'], $uploadDir . $filename)) {
-                    $photoPath = 'uploads/qc-reports/' . $filename;
-                }
-            }
-
-            // Update weekly_progress_report with QC details
-            $upd = $this->db->prepare("UPDATE weekly_progress_report SET qc_gain_percentage = ?, qc_photo = ?, qc_field_test_details = ?, qc_lab_test_result = ? WHERE id = ?");
-            if ($upd) {
-                $upd->bind_param('dsssi', $gainPct, $photoPath, $fieldDetails, $labResult, $id);
-                $upd->execute();
-            }
-        }
-
-        if ($this->model->approveStep($id, $step, $userId)) {
-            // NOTE: target_fixed.gain_percentage update removed (legacy system).
-            // Phase progress is now tracked via daily_progress_logs → phase_weekly_progress → phase_monthly_targets.
-
-            // Trigger email to Management if PM approves
-            if ($step === 'pm') {
-                require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
-                $mailService = new \ProjectWorkflowMailService($this->db);
-                $report = $this->model->find($id);
-                if ($report && !empty($report['project_id'])) {
-                    $mailService->notifyManagementForWeeklyReportApproval((int)$report['project_id'], $report['project_name'] ?? 'Project', $id, (int)$report['week_no']);
-                }
-            }
-
-            setSuccess('Approval recorded successfully!');
-        } else {
-            setError('Approval failed.');
-        }
-        header("Location: {$GLOBALS['base_url']}/con-weekly-report/{$id}");
+        $stmt = $this->db->prepare("
+            SELECT pmt.id, pmt.target_month, pmt.planning_status,
+                   pp.phase_name
+            FROM phase_monthly_targets pmt
+            INNER JOIN project_phases pp ON pp.id = pmt.phase_id
+            WHERE pmt.project_id = ?
+            ORDER BY pmt.target_month DESC
+        ");
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        echo json_encode($rows);
         exit;
+    }
+
+    // =========================================================================
+    // AJAX — Weekly sessions by Target (replaces old ajaxTargets)
+    // =========================================================================
+    public function ajaxTargets()
+    {
+        header('Content-Type: application/json');
+        $targetId = (int)($_GET['target_id'] ?? 0);
+        if (!$targetId) { echo json_encode([]); exit; }
+
+        $stmt = $this->db->prepare("
+            SELECT id, week_number, entry_status, overall_progress_pct,
+                   week_start_date, week_end_date
+            FROM phase_weekly_progress
+            WHERE target_id = ?
+            ORDER BY week_number ASC
+        ");
+        $stmt->bind_param('i', $targetId);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        echo json_encode($rows);
+        exit;
+    }
+
+    // Deprecated: create/store/approve redirect to new system
+    public function create() {
+        header("Location: " . $GLOBALS['base_url'] . "/con-weekly-reports"); exit;
+    }
+    public function store() {
+        header("Location: " . $GLOBALS['base_url'] . "/con-weekly-reports"); exit;
+    }
+    public function approve($id) {
+        header("Location: " . $GLOBALS['base_url'] . "/con-weekly-reports"); exit;
     }
 }

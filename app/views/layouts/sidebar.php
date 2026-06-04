@@ -1318,6 +1318,13 @@
                             <span class="sidebar__menu-label">Project Plan Targets</span>
                         </a>
                     </li>
+                    <li class="slide <?= isActive(['con-weekly-reports','con-weekly-report'], $current_route) ?>">
+                        <a href="<?= $base_url ?>/con-weekly-reports"
+                            class="sidebar__menu-item <?= isActive(['con-weekly-reports','con-weekly-report'], $current_route) ?>">
+                            <div class="side-menu__icon"><i class="bi bi-calendar-week"></i></div>
+                            <span class="sidebar__menu-label">Weekly Reports</span>
+                        </a>
+                    </li>
                 <?php endif; ?>
 
 
@@ -1917,7 +1924,16 @@
                         </ul>
                     </li>
                 <?php endif; ?>
-                <!-- Legacy WPR (Weekly Progress Reports) — REMOVED (replaced by phase_weekly_progress) -->
+                <!-- ══ Weekly Progress Reports (Phase-Based) ════════════════════ -->
+                <?php if (hasPermission('Construction Management') || hasPermission('site engineer dashboard') || hasPermission('QC Dashboard') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])): ?>
+                <li class="slide <?= isActive(['con-weekly-reports','con-weekly-report'], $current_route) ?>">
+                    <a href="<?= $base_url ?>/con-weekly-reports"
+                        class="sidebar__menu-item <?= isActive(['con-weekly-reports','con-weekly-report'], $current_route) ?>">
+                        <div class="side-menu__icon"><i class="bi bi-calendar-week"></i></div>
+                        <span class="sidebar__menu-label">Weekly Reports</span>
+                    </a>
+                </li>
+                <?php endif; ?>
                 <!-- ====== END Operators & Bills ====== -->
 
                 <?php if (hasPermission('Bill & Payments')): ?>

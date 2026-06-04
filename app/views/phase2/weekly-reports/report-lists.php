@@ -1,237 +1,151 @@
 <?php
-$addPage = true;
-$base = $GLOBALS['base_url'];
-$reports = $reports ?? [];
+$base_url     = $GLOBALS['base_url'];
+$page_title   = $page_title ?? 'Weekly Progress Reports';
+$projects     = $projects   ?? [];
+$userId       = (int)($_SESSION['user']['id']      ?? 0);
+$roleId       = (int)($_SESSION['user']['role_id'] ?? 0);
 ?>
-<style>
-  :root {
-    --wr-green: #198754;
-    --wr-dark: #0f5132;
-    --wr-light: #20a86a;
-  }
 
-  .wr-hero {
-    background: linear-gradient(135deg, #0f5132 0%, #198754 55%, #20a86a 100%);
-    border-radius: 18px;
-    padding: 24px 30px;
-    margin-bottom: 20px;
-    color: #fff;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .wr-hero::before {
-    content: '';
-    position: absolute;
-    width: 220px;
-    height: 220px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, .05);
-    top: -70px;
-    right: -50px;
-  }
-
-  .wr-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255, 255, 255, .13);
-    border: 1px solid rgba(255, 255, 255, .22);
-    padding: 3px 14px;
-    border-radius: 20px;
-    font-size: 10.5px;
-    font-weight: 700;
-    letter-spacing: 1.3px;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-
-  .wr-panel {
-    border-radius: 14px;
-    border: 1px solid rgba(0, 0, 0, .08);
-    background: var(--card-bg, #fff);
-    overflow: hidden;
-  }
-
-  .wr-panel-head {
-    padding: 16px 20px;
-    border-bottom: 1px solid rgba(0, 0, 0, .07);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .wr-panel-title {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 1.4px;
-    text-transform: uppercase;
-  }
-
-  .wr-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  .wr-table th {
-    font-size: 10px;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    font-weight: 600;
-    padding: 10px 14px;
-    border-bottom: 2px solid rgba(0, 0, 0, .07);
-    text-align: left;
-    background: rgba(0, 0, 0, .02);
-  }
-
-  .wr-table td {
-    padding: 12px 14px;
-    border-bottom: 1px solid rgba(0, 0, 0, .05);
-    font-size: 12.5px;
-    vertical-align: middle;
-  }
-
-  .wr-table tr:last-child td {
-    border-bottom: none;
-  }
-
-  .wr-pill {
-    font-size: 10px;
-    font-weight: 700;
-    padding: 3px 10px;
-    border-radius: 20px;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .wr-btn-green {
-    background: linear-gradient(135deg, #0f5132, #198754);
-    color: #fff;
-    border: none;
-    border-radius: 9px;
-    padding: 8px 18px;
-    font-size: 12px;
-    font-weight: 700;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    transition: opacity .15s;
-  }
-
-  .wr-btn-green:hover {
-    opacity: .88;
-    color: #fff;
-    text-decoration: none;
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 40px;
-    color: var(--text-muted);
-  }
-
-  .empty-state i {
-    font-size: 40px;
-    opacity: .2;
-    display: block;
-    margin-bottom: 10px;
-  }
-</style>
-
-<!-- Hero -->
-<div class="wr-hero">
-  <div style="position:relative;z-index:2">
-    <div class="wr-badge"><i class="fal fa-calendar-week"></i> Weekly Reports</div>
-    <h4 style="font-size:22px;font-weight:900;margin:0 0 4px " class="text-light">Weekly Progress Reports</h4>
-    <p style="font-size:12px;color:rgba(255,255,255,.7);margin:0">Project → Working Plan → Target → Week No</p>
-    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
-      <a href="<?= $base ?>/con-weekly-report-create" class="wr-btn-green">
-        <i class="fal fa-plus"></i> New Weekly Report
-      </a>
+<!-- ══ PAGE TITLE ══ -->
+<div class="pagetitle d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 style="font-size:1.25rem;font-weight:800;color:#1e293b;margin:0;">
+            <i class="bi bi-calendar-week me-2" style="color:#6366f1;"></i>
+            সাপ্তাহিক Progress Report
+        </h1>
+        <nav><ol class="breadcrumb" style="font-size:11.5px;margin:2px 0 0;">
+            <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
+            <li class="breadcrumb-item active">Weekly Reports</li>
+        </ol></nav>
     </div>
-  </div>
 </div>
 
-<!-- Breadcrumb -->
-<nav aria-label="breadcrumb" style="margin-bottom:16px">
-  <ol class="breadcrumb">
-    <li class="breadcrumb-item"><a href="<?= $base ?>/con-dashboard">Dashboard</a></li>
-    <li class="breadcrumb-item active">Weekly Reports</li>
-  </ol>
-</nav>
-
-<!-- Table Panel -->
-<div class="wr-panel">
-  <div class="wr-panel-head">
-    <span class="wr-panel-title" style="color:var(--wr-green)">
-      <i class="fal fa-list me-2"></i>All Weekly Reports
-    </span>
-    <span style="font-size:11px;color:var(--text-muted)"><?= count($reports) ?> records</span>
-  </div>
-
-  <?php if (empty($reports)): ?>
-    <div class="empty-state">
-      <i class="fal fa-calendar-week"></i>
-      No weekly reports found.<br>
-      <a href="<?= $base ?>/con-weekly-report-create" class="wr-btn-green mt-3 d-inline-flex">
-        <i class="fal fa-plus"></i> Create First Report
-      </a>
+<!-- ══ HERO BAND ══ -->
+<div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:14px;padding:20px 24px;
+            margin-bottom:24px;color:#fff;display:flex;align-items:center;gap:16px;">
+    <div style="width:52px;height:52px;background:rgba(255,255,255,.15);border-radius:12px;
+                display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <i class="bi bi-bar-chart-steps" style="font-size:26px;"></i>
     </div>
-  <?php else: ?>
-    <div style="overflow-x:auto">
-      <table class="wr-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Project</th>
-            <th>Working Plan</th>
-            <th>Target</th>
-            <th>Week No</th>
-            <th>Year / Month</th>
-            <th>Progress %</th>
-            <th>Engineer</th>
-            <th>Date</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($reports as $i => $r):
-            $pct = (float)($r['progress_percentage'] ?? 0);
-            $pctColor = $pct >= 80 ? '#198754' : ($pct >= 50 ? '#f59e0b' : '#ef4444');
-          ?>
-            <tr>
-              <td style="font-size:11px;color:var(--text-muted)"><?= $i + 1 ?></td>
-              <td style="font-weight:700"><?= htmlspecialchars($r['project_name'] ?? '—') ?></td>
-              <td style="font-size:11.5px"><?= htmlspecialchars(mb_strimwidth($r['work_plan_title'] ?? '—', 0, 35, '…')) ?></td>
-              <td style="font-size:11.5px"><?= htmlspecialchars($r['target_title'] ?? '—') ?></td>
-              <td><span class="wr-pill" style="background:rgba(25,135,84,.1);color:#198754">
-                  Week <?= (int)($r['week_no'] ?? 0) ?>
-                </span></td>
-              <td style="font-size:11.5px"><?= $r['target_year'] ?? '—' ?> / <?= $r['target_month'] ?? '—' ?></td>
-              <td>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <div style="flex:1;height:7px;border-radius:4px;background:rgba(0,0,0,.07);overflow:hidden;min-width:60px">
-                    <div style="width:<?= $pct ?>%;height:100%;border-radius:4px;background:<?= $pctColor ?>"></div>
-                  </div>
-                  <span style="font-size:11.5px;font-weight:700;color:<?= $pctColor ?>"><?= number_format($pct, 1) ?>%</span>
+    <div>
+        <div style="font-size:18px;font-weight:800;letter-spacing:-.3px;">Phase Weekly Progress Reports</div>
+        <div style="font-size:12.5px;opacity:.85;margin-top:3px;">
+            Project বেছে নিন — মাস ও week অনুযায়ী daily log, QC ও PM approval সহ সম্পূর্ণ report দেখুন
+        </div>
+    </div>
+    <div style="margin-left:auto;font-size:12px;opacity:.75;">
+        <?= count($projects) ?> টি project
+    </div>
+</div>
+
+<?php if (empty($projects)): ?>
+<div style="text-align:center;padding:60px 20px;background:#f8fafc;border-radius:12px;border:1px dashed #cbd5e1;">
+    <i class="bi bi-folder2-open" style="font-size:40px;color:#cbd5e1;display:block;margin-bottom:12px;"></i>
+    <div style="font-size:14px;color:#94a3b8;">কোনো project পাওয়া যায়নি</div>
+</div>
+<?php else: ?>
+<!-- ══ SEARCH BAR ══ -->
+<div class="mb-3">
+    <input type="text" id="projectSearch" class="form-control"
+           placeholder="🔍 Project নামে খুঁজুন..."
+           style="border-radius:10px;font-size:13px;border:1.5px solid #e2e8f0;padding:10px 14px;">
+</div>
+
+<!-- ══ PROJECT GRID ══ -->
+<div id="projectGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;">
+    <?php foreach ($projects as $proj):
+        $hasTargets = (int)($proj['total_targets'] ?? 0) > 0;
+        $hasWeekly  = (int)($proj['total_weekly_sessions'] ?? 0) > 0;
+        $lastAct    = !empty($proj['last_activity'])
+            ? date('d M Y', strtotime($proj['last_activity']))
+            : null;
+        $statusColor = match($proj['project_status'] ?? '') {
+            'Active'     => '#10b981',
+            'On Hold'    => '#f59e0b',
+            'Completed'  => '#6366f1',
+            default      => '#94a3b8',
+        };
+    ?>
+    <a href="<?= $base_url ?>/con-weekly-report/<?= $proj['id'] ?>"
+       class="project-card"
+       data-name="<?= strtolower(htmlspecialchars($proj['name'])) ?>"
+       style="display:block;text-decoration:none;background:#fff;border-radius:12px;
+              border:1.5px solid rgba(99,102,241,.12);padding:16px 18px;
+              transition:all .2s;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+        <!-- Header row -->
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+            <div style="font-size:14px;font-weight:700;color:#1e293b;line-height:1.3;flex:1;margin-right:8px;">
+                <?= htmlspecialchars($proj['name']) ?>
+            </div>
+            <span style="font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:999px;
+                         background:<?= $statusColor ?>18;color:<?= $statusColor ?>;
+                         border:1px solid <?= $statusColor ?>30;white-space:nowrap;flex-shrink:0;">
+                <?= htmlspecialchars($proj['project_status'] ?? 'Active') ?>
+            </span>
+        </div>
+
+        <!-- Block/Plot -->
+        <?php if (!empty($proj['block_no']) || !empty($proj['plot_no'])): ?>
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:10px;">
+            <i class="bi bi-geo-alt me-1"></i>
+            <?= htmlspecialchars(($proj['block_no'] ?? '') . ' / ' . ($proj['plot_no'] ?? '')) ?>
+        </div>
+        <?php endif; ?>
+
+        <!-- Stats row -->
+        <div style="display:flex;gap:10px;">
+            <div style="flex:1;background:rgba(99,102,241,.05);border-radius:8px;padding:8px 10px;text-align:center;">
+                <div style="font-size:18px;font-weight:900;color:#6366f1;">
+                    <?= $proj['total_targets'] ?? 0 ?>
                 </div>
-              </td>
-              <td style="font-size:11.5px"><?= htmlspecialchars($r['engineer_name'] ?? '—') ?></td>
-              <td style="font-size:11px;color:var(--text-muted)"><?= $r['report_date'] ?? $r['created_at'] ?? '—' ?></td>
-              <td>
-                <a href="<?= $base ?>/con-weekly-report/<?= $r['id'] ?>"
-                  style="color:#198754;font-size:11px;font-weight:700;text-decoration:none">
-                  View <i class="fal fa-arrow-right ms-1"></i>
-                </a>
-              </td>
-            </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
-    </div>
-  <?php endif; ?>
-</div>
+                <div style="font-size:9.5px;color:#94a3b8;margin-top:1px;">Targets</div>
+            </div>
+            <div style="flex:1;background:rgba(16,185,129,.05);border-radius:8px;padding:8px 10px;text-align:center;">
+                <div style="font-size:18px;font-weight:900;color:#10b981;">
+                    <?= $proj['total_weekly_sessions'] ?? 0 ?>
+                </div>
+                <div style="font-size:9.5px;color:#94a3b8;margin-top:1px;">Week Sessions</div>
+            </div>
+        </div>
 
-<div style="height:30px"></div>
+        <!-- Last activity -->
+        <?php if ($lastAct): ?>
+        <div style="font-size:10.5px;color:#94a3b8;margin-top:10px;border-top:1px solid #f1f5f9;padding-top:8px;">
+            <i class="bi bi-clock me-1"></i>Last activity: <?= $lastAct ?>
+        </div>
+        <?php endif; ?>
+
+        <!-- Arrow -->
+        <div style="text-align:right;margin-top:6px;">
+            <span style="font-size:11px;color:#6366f1;font-weight:600;">
+                Report দেখুন <i class="bi bi-arrow-right-short"></i>
+            </span>
+        </div>
+    </a>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
+<!-- ══ SEARCH JS ══ -->
+<script>
+document.getElementById('projectSearch')?.addEventListener('input', function() {
+    const q = this.value.toLowerCase().trim();
+    document.querySelectorAll('.project-card').forEach(card => {
+        const name = card.dataset.name || '';
+        card.closest('a').style.display = name.includes(q) ? '' : 'none';
+    });
+});
+// Hover effect
+document.querySelectorAll('.project-card').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+        el.style.transform = 'translateY(-2px)';
+        el.style.boxShadow = '0 6px 20px rgba(99,102,241,.15)';
+        el.style.borderColor = 'rgba(99,102,241,.3)';
+    });
+    el.addEventListener('mouseleave', () => {
+        el.style.transform = '';
+        el.style.boxShadow = '0 1px 4px rgba(0,0,0,.04)';
+        el.style.borderColor = 'rgba(99,102,241,.12)';
+    });
+});
+</script>
