@@ -39,18 +39,20 @@ jobs:
 
             echo "Verifying SQL file integrity..."
             echo "tphl_db.sql lines: $(wc -l < $DATABASE_DIR/tphl_db.sql)"
-            echo "tphl_db.sql md5:   $(md5sum $DATABASE_DIR/tphl_db.sql)"
             echo "drop_table.sql lines: $(wc -l < $DATABASE_DIR/drop_table.sql)"
+
+            # Drop all tables first
+            echo "Dropping all tables..."
+            mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/drop_table.sql
+
+            # Import fresh database
+            echo "Importing fresh database..."
+            mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/tphl_db.sql
 
             echo "Setting correct permissions"
             sudo chown -R www-data:www-data $PROJECT_DIR
             sudo find $PROJECT_DIR -type d -exec chmod 755 {} \;
             sudo find $PROJECT_DIR -type f -exec chmod 644 {} \;
-
-
-            # Import fresh database
-            echo "Importing fresh database..."
-            mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/tphl_db.sql
 
             # Project upload in Main From Staging
             echo "Copying files to production..."
@@ -60,19 +62,14 @@ jobs:
 
             echo "Deployment completed successfully"
 
-            echo ">>> Dropping all tables"
-            mysql -u common_ecom_user -p${{ secrets.DB_PASS }} common_ecom_db -e "SET FOREIGN_KEY_CHECKS=0; \
-            SET @tables = NULL; \
-            SELECT GROUP_CONCAT(CONCAT('\', table_name, '\')) INTO @tables \
-            FROM information_schema.tables \
-            WHERE table_schema = 'common_ecom_db'; \
-            SET @tables = CONCAT('DROP TABLE IF EXISTS ', @tables); \
-            PREPARE stmt FROM @tables; \
-            EXECUTE stmt; \
-            DEALLOCATE PREPARE stmt; \
-            SET FOREIGN_KEY_CHECKS=1;"
-
-
-
-
-            
+            # echo ">>> Dropping all tables (old common_ecom_db - NOT USED)"
+            # mysql -u common_ecom_user -p${{ secrets.DB_PASS }} common_ecom_db -e "SET FOREIGN_KEY_CHECKS=0; \
+            # SET @tables = NULL; \
+            # SELECT GROUP_CONCAT(CONCAT('\', table_name, '\')) INTO @tables \
+            # FROM information_schema.tables \
+            # WHERE table_schema = 'common_ecom_db'; \
+            # SET @tables = CONCAT('DROP TABLE IF EXISTS ', @tables); \
+            # PREPARE stmt FROM @tables; \
+            # EXECUTE stmt; \
+            # DEALLOCATE PREPARE stmt; \
+            # SET FOREIGN_KEY_CHECKS=1;"

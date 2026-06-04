@@ -567,6 +567,19 @@ public function getUsersByTeamAndRole($teamId)
          WHERE u.email = ?"
         );
 
+        if (!$stmt) {
+            error_log("getByEmail prepare failed: " . $this->db->error);
+            // Fallback: query without departments join
+            $stmt = $this->db->prepare(
+                "SELECT u.*, LOWER(r.name) AS role_name, des.name AS designation_name, des.id as designation_id
+                 FROM users u 
+                 LEFT JOIN roles r ON u.role_id = r.id
+                 LEFT JOIN designations des ON u.designation_id = des.id
+                 WHERE u.email = ?"
+            );
+            if (!$stmt) return null;
+        }
+
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $result = $stmt->get_result();
