@@ -42,7 +42,7 @@ jobs:
             sudo find $PROJECT_DIR -type d -exec chmod 755 {} \;
             sudo find $PROJECT_DIR -type f -exec chmod 644 {} \;
 
-            # Drop all tables (FOREIGN_KEY_CHECKS=0 is already inside drop_table.sql)
+            # Drop all tables
             echo "Dropping all tables..."
             mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/drop_table.sql
 

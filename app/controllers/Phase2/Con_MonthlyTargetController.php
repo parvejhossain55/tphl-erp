@@ -20,7 +20,11 @@ class Con_MonthlyTargetController extends Controller {
         if (!isset($_SESSION['user'])) {
             header("Location: " . $GLOBALS['base_url'] . "/login"); exit;
         }
-        if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
+        $roleId = $_SESSION['user']['role_id'] ?? 0;
+        // Allow: admin(1), director(3), PM head(15), PM(22), site engineer, estimator
+        $allowedRoles = [1, 3, 15, 22];
+        $hasSiteEngPerm = function_exists('hasPermission') && hasPermission('site engineer dashboard');
+        if (!in_array($roleId, $allowedRoles) && !$hasSiteEngPerm) {
             setError("Access denied."); header("Location: " . $GLOBALS['base_url'] . "/con-dashboard"); exit;
         }
     }
@@ -42,6 +46,14 @@ class Con_MonthlyTargetController extends Controller {
         $targets = $this->model->getByProject($project_id);
         $phases  = $this->phaseModel->getByProject($project_id);
 
+        // Fetch shortfalls/recovery items for this project
+        $shortfallItems = $this->model->getShortfallItemsForProject($project_id);
+        $shortfallsByTarget = [];
+        foreach ($shortfallItems as $item) {
+            $tid = (int)$item['target_id'];
+            $shortfallsByTarget[$tid][] = $item;
+        }
+
         // Group targets by month for display
         $byMonth = [];
         foreach ($targets as $t) {
@@ -54,11 +66,12 @@ class Con_MonthlyTargetController extends Controller {
         ksort($byMonth);
 
         $this->view('phase2/monthly_targets/index', [
-            'current_route' => 'con-monthly-targets',
-            'project'       => $project,
-            'byMonth'       => $byMonth,
-            'phases'        => $phases,
-            'project_id'    => $project_id,
+            'current_route'      => 'con-monthly-targets',
+            'project'            => $project,
+            'byMonth'            => $byMonth,
+            'phases'             => $phases,
+            'project_id'         => $project_id,
+            'shortfallsByTarget' => $shortfallsByTarget,
         ]);
     }
 
@@ -80,9 +93,13 @@ class Con_MonthlyTargetController extends Controller {
         $dtRes    = $this->db->query("SELECT id, name FROM design_types WHERE status='active' ORDER BY name");
         $designTypes = $dtRes ? $dtRes->fetch_all(MYSQLI_ASSOC) : [];
 
+        // Get contractors
+        $contrRes = $this->db->query("SELECT id, name FROM contractors WHERE status='active' ORDER BY name");
+        $contractors = $contrRes ? $contrRes->fetch_all(MYSQLI_ASSOC) : [];
+
         // Get the phase sub-items (Layer 2)
         $subItemsStmt = $this->db->prepare("
-            SELECT ppi.id, ppi.item_name, ppi.work_type_id, wt.work_type_name
+            SELECT ppi.id, ppi.item_name, ppi.weight_pct, ppi.work_type_id, wt.work_type_name
             FROM project_phase_items ppi
             LEFT JOIN work_types wt ON wt.id = ppi.work_type_id
             WHERE ppi.phase_id = ?
@@ -92,6 +109,10 @@ class Con_MonthlyTargetController extends Controller {
         $subItemsStmt->execute();
         $phaseSubItems = $subItemsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
+        // Site engineer → read-only view (no edit/add/delete)
+        $viewerRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isSiteEngineer = !in_array($viewerRole, [1, 3, 15, 22]);
+
         $this->view('phase2/monthly_targets/form', [
             'current_route' => 'con-monthly-targets',
             'target'        => $target,
@@ -100,6 +121,8 @@ class Con_MonthlyTargetController extends Controller {
             'workTypes'     => $workTypes,
             'designTypes'   => $designTypes,
             'phaseSubItems' => $phaseSubItems,
+            'contractors'   => $contractors,
+            'is_readonly'   => $isSiteEngineer,
         ]);
     }
 
@@ -133,6 +156,7 @@ class Con_MonthlyTargetController extends Controller {
             'target_month'    => $targetMonth,
             'planning_status' => 'Draft',
             'responsible_team'=> trim($_POST['responsible_team'] ?? ''),
+            'contractor_id'   => !empty($_POST['contractor_id']) ? (int)$_POST['contractor_id'] : null,
             'created_by'      => $_SESSION['user']['id'] ?? null,
         ]);
 
@@ -156,6 +180,7 @@ class Con_MonthlyTargetController extends Controller {
         $this->model->update($target_id, [
             'planning_status'  => $_POST['planning_status']  ?? $target['planning_status'],
             'responsible_team' => $_POST['responsible_team'] ?? $target['responsible_team'],
+            'contractor_id'    => !empty($_POST['contractor_id']) ? (int)$_POST['contractor_id'] : null,
         ]);
 
         // Update project_phases status and timeline dates if present
@@ -228,6 +253,7 @@ class Con_MonthlyTargetController extends Controller {
             'start_date'          => $startDate,
             'end_date'            => $endDate,
             'responsible_team'    => trim($_POST['responsible_team']   ?? ''),
+            'contractor_id'       => !empty($_POST['contractor_id']) ? (int)$_POST['contractor_id'] : null,
             'priority'            => $_POST['priority'] ?? 'Medium',
             'status'              => 'Draft',
             'week_1_qty'          => (float)($_POST['week_1_qty'] ?? 0),
@@ -284,6 +310,113 @@ class Con_MonthlyTargetController extends Controller {
         header('Content-Type: application/json');
         echo json_encode(['success' => true, 'work_types' => $types]);
         exit;
+    }
+
+    // =========================================================================
+    // SITE ENGINEER — View assigned project targets (for BOQ creation)
+    // GET /con-project-plan-targets
+    // =========================================================================
+    public function siteEngineerTargets() {
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // If admin/PM/director → show ALL projects
+        if (in_array($roleId, [1, 3, 22])) {
+            $res = $this->db->query("SELECT id AS project_id, name AS project_name FROM projects ORDER BY name ASC");
+            $assignedProjects = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+        } else {
+            // Site engineer: find projects where they are assigned as site_engineer_id
+            $stmt = $this->db->prepare(
+                "SELECT id AS project_id, name AS project_name
+                 FROM projects
+                 WHERE site_engineer_id = ?
+                 ORDER BY name ASC"
+            );
+            if ($stmt) {
+                $stmt->bind_param('i', $userId);
+                $stmt->execute();
+                $assignedProjects = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            } else {
+                $assignedProjects = [];
+            }
+
+            // Fallback: if nothing found by site_engineer_id, show all (they can filter)
+            if (empty($assignedProjects)) {
+                $res = $this->db->query("SELECT id AS project_id, name AS project_name FROM projects ORDER BY name ASC");
+                $assignedProjects = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+            }
+        }
+
+        // Fetch targets for each project
+        $projectIds = array_column($assignedProjects, 'project_id');
+        $allTargets = [];
+
+        if (!empty($projectIds)) {
+            $inClause = implode(',', array_map('intval', $projectIds));
+
+            // Disable ONLY_FULL_GROUP_BY for this query to avoid strict mode issues
+            $this->db->query("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
+
+            $sql = "
+                SELECT mt.id,
+                       mt.project_id,
+                       mt.phase_id,
+                       mt.target_month,
+                       mt.target_month_number,
+                       mt.target_year,
+                       mt.total_target_weight_pct,
+                       mt.planning_status,
+                       mt.responsible_team,
+                       mt.contractor_id,
+                       mt.created_at,
+                       p.name  AS project_name,
+                       pp.phase_name,
+                       pp.weight_percentage AS phase_weight,
+                       COUNT(mti.id)                   AS item_count,
+                       COALESCE(AVG(mti.actual_progress_pct), 0) AS avg_actual_pct,
+                       (SELECT COUNT(*) FROM boq_master bm  WHERE bm.target_id  = mt.id) AS has_boq,
+                       (SELECT bm2.id   FROM boq_master bm2 WHERE bm2.target_id = mt.id ORDER BY bm2.id DESC LIMIT 1) AS boq_id
+                FROM phase_monthly_targets mt
+                LEFT JOIN projects p              ON p.id  = mt.project_id
+                LEFT JOIN project_phases pp       ON pp.id = mt.phase_id
+                LEFT JOIN phase_monthly_target_items mti ON mti.target_id = mt.id
+                WHERE mt.project_id IN ({$inClause})
+                GROUP BY mt.id, mt.project_id, mt.phase_id, mt.target_month,
+                         mt.target_month_number, mt.target_year, mt.total_target_weight_pct,
+                         mt.planning_status, mt.responsible_team, mt.contractor_id, mt.created_at,
+                         p.name, pp.phase_name, pp.weight_percentage
+                ORDER BY mt.project_id, mt.target_month DESC, mt.id DESC
+            ";
+
+            $tRes = $this->db->query($sql);
+            if ($tRes) {
+                $allTargets = $tRes->fetch_all(MYSQLI_ASSOC);
+            } else {
+                $dbError = $this->db->error; // pass to view for debug
+            }
+        }
+
+        // Group by project
+        $byProject = [];
+        foreach ($allTargets as $t) {
+            $pid = $t['project_id'];
+            if (!isset($byProject[$pid])) {
+                $byProject[$pid] = [
+                    'project_name' => $t['project_name'],
+                    'project_id'   => $pid,
+                    'targets'      => [],
+                ];
+            }
+            $byProject[$pid]['targets'][] = $t;
+        }
+
+        $this->view('phase2/monthly_targets/site-engineer-targets', [
+            'current_route'   => 'con-project-plan-targets',
+            'page_title'      => 'Project Plan Targets',
+            'byProject'       => $byProject,
+            'assignedProjects'=> $assignedProjects,
+            'dbError'         => $dbError ?? null,
+        ]);
     }
 
     private function jsonError(string $msg): never {

@@ -174,6 +174,7 @@ class Con_WorkOrderController extends Controller
                     $rate = (float)($it['rate']        ?? 0);
                     $items[] = [
                         'sl_no'       => trim($it['sl_no']      ?? ($i + 1)),
+                        'phase_item_id' => !empty($it['phase_item_id']) ? (int)$it['phase_item_id'] : null,
                         'description' => $desc,
                         'location'    => trim($it['location']   ?? ''),
                         'unit'        => trim($it['unit']       ?? 'sqft'),
@@ -344,6 +345,7 @@ class Con_WorkOrderController extends Controller
                     if ($desc === '') continue;
                     $items[] = [
                         'sl_no'       => trim($it['sl_no']      ?? ($i + 1)),
+                        'phase_item_id' => !empty($it['phase_item_id']) ? (int)$it['phase_item_id'] : null,
                         'description' => $desc,
                         'location'    => trim($it['location']   ?? ''),
                         'unit'        => trim($it['unit']       ?? 'sqft'),
@@ -621,15 +623,40 @@ class Con_WorkOrderController extends Controller
             exit;
         }
 
-        // Get design_type_id from project_drawings
+        // Get design_type_id and phase info from project_drawings
         $dr = $this->db->query(
-            "SELECT design_type_id FROM project_drawings WHERE id = {$designId} LIMIT 1"
+            "SELECT pd.design_type_id, pd.phase_id, pp.phase_name, pp.weight_percentage 
+             FROM project_drawings pd 
+             LEFT JOIN project_phases pp ON pp.id = pd.phase_id
+             WHERE pd.id = {$designId} LIMIT 1"
         );
         if (!$dr || !$dr->num_rows) {
             echo json_encode(['work_types' => []]);
             exit;
         }
-        $designTypeId = (int)$dr->fetch_assoc()['design_type_id'];
+        
+        $row = $dr->fetch_assoc();
+        $designTypeId = (int)$row['design_type_id'];
+        $phaseId = (int)$row['phase_id'];
+        
+        $phaseInfo = [
+            'phase_name' => $row['phase_name'] ?? 'N/A',
+            'weight_percentage' => $row['weight_percentage'] ?? '0.00'
+        ];
+
+        // Get all phase items for this phase from project_phase_items
+        $phaseItems = [];
+        if ($phaseId > 0) {
+            $piRes = $this->db->query(
+                "SELECT id, item_name, weight_pct, item_order 
+                 FROM project_phase_items 
+                 WHERE phase_id = {$phaseId} 
+                 ORDER BY item_order ASC, id ASC"
+            );
+            if ($piRes) {
+                $phaseItems = $piRes->fetch_all(MYSQLI_ASSOC);
+            }
+        }
 
         // Get all work_types for this design_type
         $r = $this->db->query(
@@ -639,7 +666,13 @@ class Con_WorkOrderController extends Controller
              ORDER BY id ASC"
         );
         $workTypes = $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
-        echo json_encode(['work_types' => $workTypes, 'design_type_id' => $designTypeId]);
+        
+        echo json_encode([
+            'work_types' => $workTypes, 
+            'design_type_id' => $designTypeId,
+            'phase_info' => $phaseInfo,
+            'phase_items' => $phaseItems
+        ]);
         exit;
     }
 

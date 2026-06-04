@@ -39,7 +39,7 @@
             <h6 class="fw-bold mb-3 border-bottom pb-2 text-primary">Wastage Items</h6>
             
             <div id="items-container">
-                <div class="item-row p-3 mb-3" style="background:#f8f9fa; border-radius:10px; border:1px solid #e9ecef;">
+                <div class="item-row p-3 mb-3" style=" border-radius:10px; border:1px solid #e9ecef;">
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label class="form-label fw-bold">Material <span class="text-danger">*</span></label>

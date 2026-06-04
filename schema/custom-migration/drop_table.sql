@@ -67,7 +67,7 @@ DROP TABLE IF EXISTS whatsapp_campaigns;
 DROP TABLE IF EXISTS whatsapp_messages;
 DROP TABLE IF EXISTS work_types;
 
--- ====== Phase 2: Construction Module Tables ======
+-- ====== Construction Module Tables ======
 DROP TABLE IF EXISTS architect_engineering;
 DROP TABLE IF EXISTS boq_items;
 DROP TABLE IF EXISTS boq_master;
@@ -78,7 +78,6 @@ DROP TABLE IF EXISTS con_approval_logs;
 DROP TABLE IF EXISTS con_financial_transactions;
 DROP TABLE IF EXISTS con_material_categories;
 DROP TABLE IF EXISTS con_material_issues;
-DROP TABLE IF EXISTS con_material_issue_items;
 DROP TABLE IF EXISTS con_materials;
 DROP TABLE IF EXISTS con_security_daily_logs;
 DROP TABLE IF EXISTS con_security_equipments;
@@ -113,8 +112,6 @@ DROP TABLE IF EXISTS operational_fund_requests;
 DROP TABLE IF EXISTS project_drawings;
 DROP TABLE IF EXISTS project_legal_sheets;
 DROP TABLE IF EXISTS project_structural_designs;
-DROP TABLE IF EXISTS project_working_plans;
-DROP TABLE IF EXISTS project_working_plan_items;
 DROP TABLE IF EXISTS purchase_orders;
 DROP TABLE IF EXISTS purchase_order_items;
 DROP TABLE IF EXISTS purchase_requests;
@@ -128,25 +125,20 @@ DROP TABLE IF EXISTS quotations;
 DROP TABLE IF EXISTS quotation_comparisons;
 DROP TABLE IF EXISTS quotation_items;
 DROP TABLE IF EXISTS soil_tests;
-DROP TABLE IF EXISTS target_fixed;
 DROP TABLE IF EXISTS vendors;
 DROP TABLE IF EXISTS vendor_payment_requests;
 DROP TABLE IF EXISTS vendor_penalties;
 DROP TABLE IF EXISTS vendor_ratings;
-DROP TABLE IF EXISTS weekly_progress_report;
 
--- ====== Phase 2: Progress & Timeline Module (21 missing tables) ======
+-- ====== Progress & Timeline Module ======
 DROP TABLE IF EXISTS daily_progress_logs;
 DROP TABLE IF EXISTS daily_work_item_logs;
-DROP TABLE IF EXISTS monthly_phase_snapshots;
-DROP TABLE IF EXISTS monthly_progress_reviews;
 DROP TABLE IF EXISTS phase_item_template_defaults;
 DROP TABLE IF EXISTS phase_monthly_target_items;
 DROP TABLE IF EXISTS phase_monthly_targets;
 DROP TABLE IF EXISTS phase_template_defaults;
 DROP TABLE IF EXISTS phase_weekly_progress;
 DROP TABLE IF EXISTS phase_weekly_progress_items;
-DROP TABLE IF EXISTS project_delay_snapshots;
 DROP TABLE IF EXISTS project_extra_assets;
 DROP TABLE IF EXISTS project_phase_items;
 DROP TABLE IF EXISTS project_phases;
@@ -159,5 +151,9 @@ DROP TABLE IF EXISTS recovery_plans;
 DROP TABLE IF EXISTS asset_movement_logs;
 DROP TABLE IF EXISTS office_asset_products;
 DROP TABLE IF EXISTS office_assets;
+
+-- ====== Wastage Module ======
+DROP TABLE IF EXISTS con_wastage;
+DROP TABLE IF EXISTS con_wastage_items;
 
 SET FOREIGN_KEY_CHECKS = 1;

@@ -35,7 +35,7 @@
                         ?>
 
                         <div class="col-lg-6 col-md-6 col-sm-12">
-                            <div class="card__wrapper <?= $cardClass ?>">
+                            <div class="card__wrapper task-card <?= $cardClass ?>">
                                 <!-- Task Header -->
                                 <div class="task-header">
                                     <div class="task-title-section">
@@ -182,8 +182,8 @@
                 background: #ffffff;
                 border-radius: 16px;
                 padding: 24px;
-                box-shadow: 0 4px 12px rgba(25, 135, 84, 0.08);
-                border: 1px solid #e8f5e9;
+                box-shadow: 0 4px 12px rgba(94, 76, 220, 0.08);
+                border: 1px solid #e8e6ff;
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 height: 100%;
                 display: flex;
@@ -191,9 +191,9 @@
             }
 
             .task-card:hover {
-                box-shadow: 0 8px 24px rgba(25, 135, 84, 0.15);
+                box-shadow: 0 8px 24px rgba(94, 76, 220, 0.15);
                 transform: translateY(-4px);
-                border-color: #198754;
+                border-color: #5e4cdc;
             }
 
             /* Card Status Variants */
@@ -202,12 +202,12 @@
             }
 
             .card-progress {
-                border-left: 4px solid #198754;
+                border-left: 4px solid #5e4cdc;
             }
 
             .card-completed {
                 border-left: 4px solid #0d6efd;
-                background: linear-gradient(135deg, #f8f9fa 0%, #e8f5e9 100%);
+                background: linear-gradient(135deg, #f8f9fa 0%, #e8e6ff 100%);
             }
 
             /* Task Header */
@@ -217,7 +217,7 @@
                 align-items: center;
                 margin-bottom: 20px;
                 padding-bottom: 16px;
-                border-bottom: 2px solid #e8f5e9;
+                border-bottom: 2px solid #e8e6ff;
             }
 
             .task-title-section {
@@ -230,14 +230,14 @@
             .task-icon-wrapper {
                 width: 44px;
                 height: 44px;
-                /* background: linear-gradient(135deg, #198754 0%, #146c43 100%); */
+                /* background: linear-gradient(135deg, #5e4cdc 0%, #4b3db1 100%); */
                 border-radius: 12px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 /* color: white; */
                 font-size: 20px;
-                box-shadow: 0 4px 12px rgba(25, 135, 84, 0.25);
+                box-shadow: 0 4px 12px rgba(94, 76, 220, 0.25);
             }
 
             .task-title {
@@ -272,9 +272,9 @@
             }
 
             .badge-progress {
-                background: #d1f2e6;
-                color: #0a5730;
-                border: 1px solid #198754;
+                background: #e8e6ff;
+                color: #493aa6;
+                border: 1px solid #5e4cdc;
             }
 
             .badge-completed {
@@ -290,7 +290,7 @@
                 border-radius: 8px;
                 border: none;
                 background: #f8f9fa;
-                color: #198754;
+                color: #5e4cdc;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -299,7 +299,7 @@
             }
 
             .btn-collapse:hover {
-                background: #198754;
+                background: #5e4cdc;
                 color: white;
             }
 
@@ -317,24 +317,24 @@
             }
 
             .assigned-info-card {
-                /* background: linear-gradient(135deg, #e8f5e9 0%, #f8f9fa 100%); */
+                /* background: linear-gradient(135deg, #e8e6ff 0%, #f8f9fa 100%); */
                 border-radius: 12px;
                 padding: 16px;
                 display: flex;
                 align-items: center;
                 gap: 14px;
-                border: 1px solid #d1f2e6;
+                border: 1px solid #e8e6ff;
             }
 
             .info-icon {
                 width: 48px;
                 height: 48px;
-                /* background: #198754; */
+                /* background: #5e4cdc; */
                 border-radius: 10px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                color: #198754;
+                color: #5e4cdc;
                 font-size: 22px;
                 flex-shrink: 0;
             }
@@ -361,7 +361,7 @@
 
             .info-designation {
                 font-size: 13px;
-                color: #198754;
+                color: #5e4cdc;
                 margin: 0;
                 font-weight: 600;
             }
@@ -386,7 +386,7 @@
                 font-size: 14px;
                 line-height: 1.6;
                 /* color: #495057; */
-                border-left: 3px solid #198754;
+                border-left: 3px solid #5e4cdc;
             }
 
             /* Date Info Section */
@@ -399,7 +399,7 @@
 
             .date-card {
                 /* background: #ffffff; */
-                border: 1.5px solid #e8f5e9;
+                border: 1.5px solid #e8e6ff;
                 border-radius: 10px;
                 padding: 14px;
                 display: flex;
@@ -409,8 +409,8 @@
             }
 
             .date-card:hover {
-                border-color: #198754;
-                box-shadow: 0 4px 8px rgba(25, 135, 84, 0.1);
+                border-color: #5e4cdc;
+                box-shadow: 0 4px 8px rgba(94, 76, 220, 0.1);
             }
 
             .date-icon {
@@ -425,8 +425,8 @@
             }
 
             .start-icon {
-                background: #d1f2e6;
-                color: #198754;
+                background: #e8e6ff;
+                color: #5e4cdc;
             }
 
             .deadline-icon {
@@ -468,7 +468,7 @@
             .progress-label {
                 font-size: 14px;
                 font-weight: 700;
-                color: #198754;
+                color: #5e4cdc;
                 display: flex;
                 align-items: center;
             }
@@ -476,12 +476,12 @@
             .progress-percentage {
                 font-size: 16px;
                 font-weight: 700;
-                color: #198754;
+                color: #5e4cdc;
             }
 
             .progress-bar-container {
                 height: 12px;
-                background: #e8f5e9;
+                background: #e8e6ff;
                 border-radius: 20px;
                 overflow: hidden;
                 position: relative;
@@ -500,7 +500,7 @@
             }
 
             .progress-in-progress {
-                background: linear-gradient(90deg, #198754 0%, #20c997 100%);
+                background: linear-gradient(90deg, #5e4cdc 0%, #8e7eff 100%);
             }
 
             .progress-completed {
@@ -544,14 +544,14 @@
             }
 
             .btn-accept {
-                background: #0d9f5d;
+                background: #5e4cdc;
                 color: white;
             }
 
             .btn-accept:hover {
                 background: orange;
                 transform: translateY(-2px);
-                box-shadow: 0 6px 16px rgba(25, 135, 84, 0.3);
+                box-shadow: 0 6px 16px rgba(94, 76, 220, 0.3);
             }
 
             .progress-update-group {
@@ -576,7 +576,7 @@
             .form-input {
                 width: 100%;
                 padding: 14px 14px 14px 40px;
-                border: 2px solid #e8f5e9;
+                border: 2px solid #e8e6ff;
                 border-radius: 10px;
                 font-size: 15px;
                 font-weight: 600;
@@ -586,12 +586,12 @@
 
             .form-input:focus {
                 outline: none;
-                border-color: #198754;
-                box-shadow: 0 0 0 4px rgba(25, 135, 84, 0.1);
+                border-color: #5e4cdc;
+                box-shadow: 0 0 0 4px rgba(94, 76, 220, 0.1);
             }
 
             .btn-update {
-                background: linear-gradient(135deg, #198754 0%, #146c43 100%);
+                background: linear-gradient(135deg, #5e4cdc 0%, #4b3db1 100%);
                 color: white;
                 padding: 14px 24px;
                 border: none;
@@ -607,9 +607,9 @@
             }
 
             .btn-update:hover {
-                background: linear-gradient(135deg, #146c43 0%, #0f5132 100%);
+                background: linear-gradient(135deg, #4b3db1 0%, #352880 100%);
                 transform: translateY(-2px);
-                box-shadow: 0 6px 16px rgba(25, 135, 84, 0.3);
+                box-shadow: 0 6px 16px rgba(94, 76, 220, 0.3);
             }
 
             /* Empty State */
@@ -626,22 +626,22 @@
                 background: #ffffff;
                 border-radius: 20px;
                 padding: 50px 30px;
-                box-shadow: 0 8px 24px rgba(25, 135, 84, 0.1);
-                border: 2px solid #e8f5e9;
+                box-shadow: 0 8px 24px rgba(94, 76, 220, 0.1);
+                border: 2px solid #e8e6ff;
             }
 
             .empty-icon {
                 width: 100px;
                 height: 100px;
                 margin: 0 auto 24px;
-                background: linear-gradient(135deg, #198754 0%, #146c43 100%);
+                background: linear-gradient(135deg, #5e4cdc 0%, #4b3db1 100%);
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 color: white;
                 font-size: 48px;
-                box-shadow: 0 8px 24px rgba(25, 135, 84, 0.25);
+                box-shadow: 0 8px 24px rgba(94, 76, 220, 0.25);
             }
 
             .empty-title {

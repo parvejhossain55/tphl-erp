@@ -243,9 +243,14 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
             </div>
             <div class="col-md-5">
                 <label class="form-label fw-semibold text-muted">Architecture Record <span class="text-danger">*</span></label>
-                <select name="architecture_id" id="archSelect" class="form-select" required>
-                    <option value="">-- Select Project First --</option>
-                </select>
+                <div class="d-flex gap-2">
+                    <select name="architecture_id" id="archSelect" class="form-select" required>
+                        <option value="">-- Select Project First --</option>
+                    </select>
+                    <a href="#" target="_blank" id="archViewLink" class="btn btn-outline-secondary" style="display:none" title="View Architecture Design">
+                        <i class="bi bi-eye"></i> View
+                    </a>
+                </div>
                 <div id="archLoader" class="text-muted small mt-1" style="display:none">
                     <i class="bi bi-hourglass-split me-1"></i> Loading...
                 </div>
@@ -274,6 +279,9 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
                 <label class="form-label fw-semibold text-muted">Other Cost Detail</label>
                 <input type="text" name="other_cost_detail" class="form-control" placeholder="Note...">
             </div>
+            
+            <!-- Project Timeline Section -->
+            <div class="col-md-12 mt-3" id="projectTimelineSection" style="display:none;"></div>
         </div>
     </div>
 </div>
@@ -377,6 +385,7 @@ MATERIALS.forEach(m => { matMap[m.id] = m; });
 // ── State ──────────────────────────────────────────────────────────────
 let dtBlockCount    = 0;   // total dt blocks added
 let projectDrawings = [];  // [{id, design_type_id, design_type, design_link, version, status}]
+let projectPhaseItems = []; // all phase items for the project
 let dtColors        = ['dt-color-1','dt-color-2','dt-color-3','dt-color-4',
                         'dt-color-5','dt-color-6','dt-color-7','dt-color-8'];
 
@@ -449,15 +458,30 @@ function buildDtBlock(blockIdx) {
                        id="dt-custom-link-${blockIdx}"
                        name="dt_custom_link[]"
                        class="form-control form-control-sm"
-                       style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;max-width:480px"
+                       style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#000;max-width:480px"
                        placeholder="https://drive.google.com/... (link paste করুন)"
                        oninput="syncDtViewBtn(${blockIdx})">
                 <a href="#" target="_blank" id="dt-custom-view-${blockIdx}"
                    class="btn btn-sm"
-                   style="background:rgba(74,222,128,.2);border:1px solid rgba(74,222,128,.4);color:#fff;display:none;white-space:nowrap">
+                   style="background:#198754;border:1px solid #198754;color:#fff;display:none;white-space:nowrap">
                     <i class="bi bi-box-arrow-up-right me-1"></i>Open
                 </a>
                 <input type="hidden" name="dt_design_type_id_link[]" id="dt-dtid-link-${blockIdx}" value="">
+            </div>
+        </div>
+
+        <!-- Phase Info Row (shown after design type selected) -->
+        <div id="dt-phase-row-${blockIdx}"
+             style="display:none;background:#f8fafc;padding:.6rem 1rem;border-bottom:1px solid #e2e8f0;font-size:.85rem;color:#1e293b">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div>
+                    <span class="text-muted fw-semibold"><i class="bi bi-calendar-event me-1"></i>Phase:</span>
+                    <span id="dt-phase-name-${blockIdx}" class="badge bg-primary px-2 py-1 ms-1" style="font-size: .8rem;">-</span>
+                </div>
+                <div>
+                    <span class="text-muted fw-semibold"><i class="bi bi-percent me-1"></i>Phase Weight:</span>
+                    <span id="dt-phase-weight-${blockIdx}" class="badge bg-info  px-2 py-1 ms-1" style="font-size: .8rem;">-</span>
+                </div>
             </div>
         </div>
 
@@ -488,7 +512,7 @@ function buildDtBlock(blockIdx) {
                     <table class="labor-table" id="labor-table-${blockIdx}">
                         <thead>
                             <tr>
-                                <th style="width:30%">Labor Type</th>
+                                <th style="width:30%">Labor Type / Phase Item</th>
                                 <th style="width:15%">Description</th>
                                 <th style="width:15%">Rate/sqft (৳)</th>
                                 <th style="width:15%">Area (sqft)</th>
@@ -603,10 +627,43 @@ function onDtChange(blockIdx) {
         if (dtidHidden) dtidHidden.value = '';
     }
 
-    // ── Refresh work type dropdowns inside this dt block ───────────────
+    // ── Render Phase Info ──────────────────────────────────────────────
+    const drawing = projectDrawings.find(d => String(d.design_type_id) === String(dtId));
+    const phaseRow = document.getElementById('dt-phase-row-' + blockIdx);
+    const phaseNameSpan = document.getElementById('dt-phase-name-' + blockIdx);
+    const phaseWeightSpan = document.getElementById('dt-phase-weight-' + blockIdx);
+
+    if (drawing && drawing.phase_id) {
+        if (phaseRow) phaseRow.style.display = '';
+        if (phaseNameSpan) phaseNameSpan.textContent = drawing.phase_name || 'N/A';
+        if (phaseWeightSpan) phaseWeightSpan.textContent = (drawing.phase_weight || '0') + '%';
+    } else {
+        if (phaseRow) phaseRow.style.display = 'none';
+    }
+
+    // ── Refresh phase item select in all work type blocks under this dt block ────────
     const body = document.getElementById('wt-blocks-' + blockIdx);
-    if (!body) return;
-    body.querySelectorAll('.wt-select').forEach(s => { refreshWtOptions(s, blockIdx); });
+    if (body) {
+        body.querySelectorAll('.phase-item-select').forEach(s => {
+            const blockKey = s.id.replace('phase-item-select-', '');
+            const curVal = s.value;
+            refreshPhaseItemOptions(s, blockIdx, curVal);
+        });
+    }
+
+    // ── Refresh labor phase item dropdowns ───────────────────────────────
+    const laborBody = document.getElementById('labor-body-' + blockIdx);
+    if (laborBody) {
+        laborBody.querySelectorAll('.labor-phase-item-select').forEach(s => {
+            const curVal = s.value;
+            refreshLaborPhaseItemOptions(s, blockIdx, curVal);
+        });
+    }
+
+    // ── Refresh work type dropdowns inside this dt block ───────────────
+    if (body) {
+        body.querySelectorAll('.wt-select').forEach(s => { refreshWtOptions(s, blockIdx); });
+    }
 }
 
 // ── Sync the "Open" button next to custom link input ──────────────────
@@ -666,9 +723,15 @@ function addWtBlock(dtBlockIdx) {
     <div class="wt-block" id="wt-block-${blockKey}">
         <div class="wt-block-header">
             <div class="d-flex align-items-center gap-2">
-                <i class="bi bi-tools text-primary"></i>
+                <i class="bi bi-layers text-primary"></i>
+                <select id="phase-item-select-${blockKey}" class="form-select form-select-sm phase-item-select"
+                        style="max-width:240px" onchange="onPhaseItemChange('${blockKey}', ${dtBlockIdx})">
+                    <option value="">-- Select Phase Item --</option>
+                </select>
+                
+                <i class="bi bi-tools text-secondary"></i>
                 <select id="wt-select-${blockKey}" class="form-select form-select-sm wt-select"
-                        style="max-width:280px" onchange="recalcGrand()">
+                        style="max-width:240px" onchange="recalcGrand()">
                     <option value="">-- Select Work Type --</option>
                 </select>
             </div>
@@ -718,6 +781,10 @@ function addWtBlock(dtBlockIdx) {
     const div = document.createElement('div');
     div.innerHTML = html;
     container.appendChild(div.firstElementChild);
+
+    // Populate phase item dropdown
+    const phaseSel = document.getElementById('phase-item-select-' + blockKey);
+    refreshPhaseItemOptions(phaseSel, dtBlockIdx);
 
     // Populate work type dropdown
     const sel = document.getElementById('wt-select-' + blockKey);
@@ -810,9 +877,10 @@ function addQsRow(blockKey, dtBlockIdx) {
                 <i class="bi bi-x"></i>
             </button>
         </td>
-        <!-- Hidden fields for design_type_id, work_type_id, sl_no -->
+        <!-- Hidden fields for design_type_id, work_type_id, sl_no, phase_item_id -->
         <input type="hidden" name="item_design_type_id[]" class="qs-dtid" value="${dtId}">
         <input type="hidden" name="item_work_type_id[]"   class="qs-wtid" value="${wtId}">
+        <input type="hidden" name="item_phase_item_id[]"   class="qs-phase-item-id" value="">
         <input type="hidden" name="item_sl_no[]"          class="qs-slno" value="${sl}">
         <input type="hidden" name="item_remarks[]"        class="qs-rem"  value="">`;
 
@@ -929,15 +997,98 @@ function reNumberRows(blockKey) {
     rowCounts[blockKey] = tbody.querySelectorAll('.qs-row').length;
 }
 
+// ── Phase Item Helpers ────────────────────────────────────────────────
+function refreshPhaseItemOptions(sel, dtBlockIdx, selectedPhaseItemId = '') {
+    const dtSel = document.getElementById('dt-select-' + dtBlockIdx);
+    const dtId = dtSel ? dtSel.value : '';
+    const drawing = projectDrawings.find(d => String(d.design_type_id) === String(dtId));
+    const phaseId = drawing ? drawing.phase_id : '';
+
+    sel.innerHTML = '<option value="">-- Select Phase Item --</option>';
+
+    if (phaseId) {
+        const filtered = projectPhaseItems.filter(item => String(item.phase_id) === String(phaseId));
+        filtered.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            opt.textContent = item.item_name;
+            if (String(item.id) === String(selectedPhaseItemId)) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    }
+}
+
+function refreshLaborPhaseItemOptions(sel, dtBlockIdx, selectedPhaseItemId = '') {
+    const dtSel = document.getElementById('dt-select-' + dtBlockIdx);
+    const dtId = dtSel ? dtSel.value : '';
+    const drawing = projectDrawings.find(d => String(d.design_type_id) === String(dtId));
+    const phaseId = drawing ? drawing.phase_id : '';
+
+    sel.innerHTML = '<option value="">-- Phase Item --</option>';
+
+    if (phaseId) {
+        const filtered = projectPhaseItems.filter(item => String(item.phase_id) === String(phaseId));
+        filtered.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            opt.textContent = item.item_name;
+            if (String(item.id) === String(selectedPhaseItemId)) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    }
+}
+
+function onPhaseItemChange(blockKey, dtBlockIdx) {
+    const phaseItemSel = document.getElementById('phase-item-select-' + blockKey);
+    const phaseItemId = phaseItemSel ? phaseItemSel.value : '';
+    const wtSel = document.getElementById('wt-select-' + blockKey);
+
+    if (phaseItemId && wtSel) {
+        const phaseItem = projectPhaseItems.find(item => String(item.id) === String(phaseItemId));
+        if (phaseItem && phaseItem.work_type_id) {
+            wtSel.value = phaseItem.work_type_id;
+        }
+    }
+    recalcGrand();
+}
+
+function onLaborPhaseItemChange(sel) {
+    const phaseItemId = sel.value;
+    const tr = sel.closest('tr.labor-row');
+    if (!tr) return;
+    const hiddenWt = tr.querySelector('input[name="labor_work_type_id[]"]');
+    
+    if (phaseItemId && hiddenWt) {
+        const phaseItem = projectPhaseItems.find(item => String(item.id) === String(phaseItemId));
+        if (phaseItem && phaseItem.work_type_id) {
+            hiddenWt.value = phaseItem.work_type_id;
+        } else {
+            hiddenWt.value = '';
+        }
+    } else if (hiddenWt) {
+        hiddenWt.value = '';
+    }
+}
+
 // ── Add Labor Row ─────────────────────────────────────────────────────
-function addLaborRow(dtBlockIdx) {
+function addLaborRow(dtBlockIdx, existingLabor) {
+    const ex = existingLabor || {};
     const tbody = document.getElementById('labor-body-' + dtBlockIdx);
+    if (!tbody) return;
     const dtSel = document.getElementById('dt-select-' + dtBlockIdx);
     const dtId  = dtSel ? dtSel.value : '';
 
-    // Work type options for labor (filtered by selected design type)
-    const wts   = dtId ? (WT_GROUPED[dtId] || []) : Object.values(WT_GROUPED).flat();
-    const wtOpts= wts.map(wt => `<option value="${wt.id}">${wt.work_type_name}</option>`).join('');
+    const drawing = projectDrawings.find(d => String(d.design_type_id) === String(dtId));
+    const phaseId = drawing ? drawing.phase_id : '';
+    
+    let phaseItemOpts = '<option value="">-- Phase Item --</option>';
+    if (phaseId) {
+        const filtered = projectPhaseItems.filter(item => String(item.phase_id) === String(phaseId));
+        phaseItemOpts += filtered.map(item => {
+            const sel = String(item.id) === String(ex.phase_item_id || '') ? 'selected' : '';
+            return `<option value="${item.id}" ${sel}>${item.item_name}</option>`;
+        }).join('');
+    }
 
     const tr = document.createElement('tr');
     tr.className = 'labor-row';
@@ -945,17 +1096,22 @@ function addLaborRow(dtBlockIdx) {
     tr.innerHTML = `
         <td>
             <input type="text" name="labor_type_name[]"
-                   class="form-control form-control-sm" placeholder="e.g., Civil Work, Painting">
+                   class="form-control form-control-sm mb-1" placeholder="e.g., Civil Work, Painting"
+                   value="${ex.labor_type_name || ''}">
+            <select name="labor_phase_item_id[]" class="form-select form-select-sm labor-phase-item-select" onchange="onLaborPhaseItemChange(this)">
+                ${phaseItemOpts}
+            </select>
             <input type="hidden" name="labor_design_type_id[]" value="${dtId}">
-            <input type="hidden" name="labor_work_type_id[]" value="">
+            <input type="hidden" name="labor_work_type_id[]" value="${ex.work_type_id || ''}">
         </td>
-        <td><input type="text" name="labor_description[]" class="form-control form-control-sm" placeholder="Note..."></td>
+        <td><input type="text" name="labor_description[]" class="form-control form-control-sm"
+                   value="${ex.description || ''}" placeholder="Note..."></td>
         <td><input type="number" step="0.01" name="labor_rate_per_sqft[]"
                    class="form-control form-control-sm lab-rate" placeholder="0.00" min="0"
-                   oninput="calcLaborRow(this)"></td>
+                   value="${ex.rate_per_sqft || ''}" oninput="calcLaborRow(this)"></td>
         <td><input type="number" step="0.01" name="labor_area_sqft[]"
                    class="form-control form-control-sm lab-area" placeholder="0.00" min="0"
-                   oninput="calcLaborRow(this)"></td>
+                   value="${ex.area_sqft || ''}" oninput="calcLaborRow(this)"></td>
         <td class="fw-bold lab-subtotal">0.00</td>
         <td class="text-center">
             <button type="button" class="btn btn-sm btn-outline-danger p-0 px-1"
@@ -964,6 +1120,9 @@ function addLaborRow(dtBlockIdx) {
             </button>
         </td>`;
     tbody.appendChild(tr);
+    if (ex.rate_per_sqft || ex.area_sqft) {
+        calcLaborRow(tr.querySelector('.lab-rate'));
+    }
 }
 
 function calcLaborRow(input) {
@@ -1060,10 +1219,16 @@ function syncHiddenFields() {
         const bk    = tr.dataset.blockKey;
         const dtSel = document.getElementById('dt-select-' + dtIdx);
         const wtSel = document.getElementById('wt-select-' + bk);
+        const phaseItemSel = document.getElementById('phase-item-select-' + bk);
+        
         if (dtSel) tr.querySelector('.qs-dtid').value = dtSel.value;
         if (wtSel) tr.querySelector('.qs-wtid').value = wtSel.value;
+        if (phaseItemSel) {
+            const hiddenPhaseItem = tr.querySelector('.qs-phase-item-id');
+            if (hiddenPhaseItem) hiddenPhaseItem.value = phaseItemSel.value;
+        }
     });
-    // Sync labor design type IDs
+    // Sync labor design type and work type IDs
     document.querySelectorAll('.labor-row').forEach(tr => {
         const dtIdx = tr.dataset.dtBlockIdx;
         const dtSel = document.getElementById('dt-select-' + dtIdx);
@@ -1082,6 +1247,17 @@ document.getElementById('estimateProjectId').addEventListener('change', function
     archSel.innerHTML  = '<option value="">-- Loading... --</option>';
     archSel.disabled   = true;
     projectDrawings    = [];
+    const archViewLink = document.getElementById('archViewLink');
+    if (archViewLink) {
+        archViewLink.href = '#';
+        archViewLink.style.display = 'none';
+    }
+
+    const timelineSec = document.getElementById('projectTimelineSection');
+    if (timelineSec) {
+        timelineSec.innerHTML = '';
+        timelineSec.style.display = 'none';
+    }
 
     // Clear all existing dt blocks and notify
     document.getElementById('dtBlocksContainer').innerHTML =
@@ -1116,11 +1292,13 @@ document.getElementById('estimateProjectId').addEventListener('change', function
                 const opt = document.createElement('option');
                 opt.value = a.id;
                 opt.textContent = a.label;
+                opt.setAttribute('data-link', a.design_link || '');
                 archSel.appendChild(opt);
             });
             if (archs.length === 1) archSel.selectedIndex = 1;
         }
         archSel.disabled = false;
+        archSel.dispatchEvent(new Event('change'));
 
         // ── Project drawings (design types) ───────────────────────────
         const drawings = drawData.drawings || [];
@@ -1131,6 +1309,33 @@ document.getElementById('estimateProjectId').addEventListener('change', function
             if (!seen[d.design_type_id]) seen[d.design_type_id] = d;
         });
         projectDrawings = Object.values(seen);
+        projectPhaseItems = drawData.phase_items || [];
+
+        // ── Project Timeline ──────────────────────────────────────────
+        const timeline = drawData.timeline || null;
+        if (timelineSec) {
+            if (timeline) {
+                timelineSec.innerHTML = `
+                    <div class="p-3 rounded border" style="background:#f8fafc; border-color:#e2e8f0;">
+                        <div class="d-flex align-items-center gap-2 mb-2 text-primary fw-bold" style="font-size:0.9rem">
+                            <i class="bi bi-clock-history"></i> Project Timeline Dates
+                        </div>
+                        <div class="row text-muted small g-2">
+                            <div class="col-md-3"><strong>Project Kickoff:</strong> <span class=" fw-semibold ms-1">${timeline.project_start_date || 'N/A'}</span></div>
+                            <div class="col-md-3"><strong>Construction Start:</strong> <span class=" fw-semibold ms-1">${timeline.construction_start_date || 'N/A'}</span></div>
+                            <div class="col-md-3"><strong>Construction End:</strong> <span class=" fw-semibold ms-1">${timeline.construction_end_date || 'N/A'}</span></div>
+                            <div class="col-md-3"><strong>Expected Handover:</strong> <span class=" fw-semibold ms-1">${timeline.expected_handover_date || 'N/A'}</span></div>
+                        </div>
+                    </div>`;
+            } else {
+                timelineSec.innerHTML = `
+                    <div class="alert alert-warning py-2 mb-0 d-flex align-items-center gap-2" style="font-size:0.85rem">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <span>This project has no timeline set yet.</span>
+                    </div>`;
+            }
+            timelineSec.style.display = '';
+        }
 
         // Show info banner
         const container = document.getElementById('dtBlocksContainer');
@@ -1171,6 +1376,21 @@ document.getElementById('estimateProjectId').addEventListener('change', function
     });
 });
 
+document.getElementById('archSelect').addEventListener('change', function () {
+    const selOpt = this.options[this.selectedIndex];
+    const link = selOpt ? (selOpt.getAttribute('data-link') || '') : '';
+    const viewBtn = document.getElementById('archViewLink');
+    if (viewBtn) {
+        if (link && link !== 'null' && link.trim()) {
+            viewBtn.href = link;
+            viewBtn.style.display = '';
+        } else {
+            viewBtn.href = '#';
+            viewBtn.style.display = 'none';
+        }
+    }
+});
+
 // ── Other costs → recalc ─────────────────────────────────────────────
 document.getElementById('otherCosts').addEventListener('input', recalcGrand);
 
@@ -1206,6 +1426,10 @@ window.addLaborRow        = addLaborRow;
 window.calcLaborRow       = calcLaborRow;
 window.removeLaborRow     = removeLaborRow;
 window.recalcGrand        = recalcGrand;
+window.refreshPhaseItemOptions = refreshPhaseItemOptions;
+window.refreshLaborPhaseItemOptions = refreshLaborPhaseItemOptions;
+window.onPhaseItemChange  = onPhaseItemChange;
+window.onLaborPhaseItemChange = onLaborPhaseItemChange;
 
 // ── Initial state message (wait for project select) ─────────────────────
 document.getElementById('dtBlocksContainer').innerHTML =
@@ -1213,3 +1437,4 @@ document.getElementById('dtBlocksContainer').innerHTML =
 
 })();
 </script>
+

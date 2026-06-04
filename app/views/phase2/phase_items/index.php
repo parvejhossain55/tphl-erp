@@ -140,102 +140,65 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
     </div>
 </div>
 
+<!-- Add New Sub-item Card -->
+<div class="mf-add-card" style="border-radius:12px;border:2px dashed rgba(99,102,241,.3);padding:16px 20px;margin-bottom:22px;background:rgba(99,102,241,.02)">
+    <h6 style="font-size:12.5px;font-weight:700;margin-bottom:12px;color:var(--pi-primary)"><i class="fal fa-plus-circle me-2"></i>Add Custom Sub-work Item</h6>
+    <form id="addSubItemForm">
+        <div style="display:grid;grid-template-columns:3fr 1fr auto;gap:12px;align-items:end">
+            <div class="mf-ctrl" style="display:flex;flex-direction:column;gap:4px">
+                <label style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted)">Sub-item Name *</label>
+                <input type="text" id="add_item_name" class="mf-inp" style="padding:7px 10px;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:12.5px;background:transparent;color:inherit" placeholder="e.g. Columns Cast" required>
+            </div>
+            <div class="mf-ctrl" style="display:flex;flex-direction:column;gap:4px">
+                <label style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-muted)">Weight %</label>
+                <input type="number" id="add_weight_pct" class="mf-inp" style="padding:7px 10px;border:1px solid rgba(0,0,0,.12);border-radius:8px;font-size:12.5px;background:transparent;color:inherit" step="0.01" min="0" max="100" value="0">
+            </div>
+            <div>
+                <button type="button" class="btn-pi-save" style="padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;background:var(--pi-primary);color:#fff;border:none;cursor:pointer" onclick="addSubItem()">
+                    <i class="fal fa-plus"></i> Add
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
 <!-- ══ ITEMS TABLE ══════════════════════════════════════════════════════ -->
-<form method="POST" action="<?= $base ?>/con-phase-items-update/<?= $phase_id ?>" id="itemsForm">
 <div class="pi-table-wrap">
 <table class="pi-table">
     <thead>
         <tr>
             <th style="width:28px">#</th>
             <th style="min-width:200px">Sub-item Name</th>
-            <th style="text-align:center">Weight %</th>
-            <th style="text-align:center;min-width:120px">Planned %</th>
-            <th style="text-align:center;min-width:120px">Actual %</th>
-            <th>Work Type</th>
-            <th>Status</th>
-            <th style="width:32px"></th>
+            <th style="text-align:center;width:150px">Weight %</th>
+            <th style="width:120px;text-align:right">Actions</th>
         </tr>
     </thead>
     <tbody>
     <?php foreach ($items as $idx => $item):
-        $sm    = $statusMeta[$item['status']] ?? $statusMeta['Not Started'];
         $color = $phaseColors[$idx % count($phaseColors)];
-        $actual = (float)$item['actual_progress'];
     ?>
         <tr>
             <td>
-                <input type="hidden" name="items[<?= $idx ?>][id]" value="<?= $item['id'] ?>">
                 <div style="width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;background:<?= $color ?>22;color:<?= $color ?>">
                     <?= $item['item_order'] ?>
                 </div>
             </td>
             <td>
-                <input type="text"
-                       name="items[<?= $idx ?>][item_name]"
-                       class="pi-item-name"
-                       value="<?= htmlspecialchars($item['item_name']) ?>"
-                       required>
+                <span style="font-size:13px;font-weight:600;padding-left:7px;"><?= htmlspecialchars($item['item_name']) ?></span>
             </td>
-            <td style="text-align:center">
-                <input type="number"
-                       name="items[<?= $idx ?>][weight_pct]"
-                       class="pi-num-inp weight-field"
-                       value="<?= number_format((float)$item['weight_pct'],2,'.','')?>"
-                       min="0" max="100" step="0.01"
-                       oninput="recalcWeight()">
+            <td style="text-align:center;font-weight:700">
+                <?= number_format((float)$item['weight_pct'],2) ?>%
             </td>
-            <td style="text-align:center">
-                <input type="number"
-                       name="items[<?= $idx ?>][planned_progress]"
-                       class="pi-progress-inp"
-                       value="<?= number_format((float)$item['planned_progress'],1,'.','')?>"
-                       min="0" max="100" step="0.1">
-            </td>
-            <td>
-                <input type="number"
-                       name="items[<?= $idx ?>][actual_progress]"
-                       class="pi-progress-inp actual-progress"
-                       data-idx="<?= $idx ?>"
-                       value="<?= number_format($actual,1,'.','')?>"
-                       min="0" max="100" step="0.1"
-                       oninput="updateMiniBar(<?= $idx ?>, this.value)">
-                <div class="pi-mini-bar">
-                    <div class="pi-mini-fill" id="minibar_<?= $idx ?>"
-                         style="width:<?= $actual ?>%;background:<?= $actual>=100?'#10b981':($actual>0?'#6366f1':'#94a3b8') ?>"></div>
-                </div>
-            </td>
-            <td>
-                <select name="items[<?= $idx ?>][work_type_id]" class="pi-status-sel" style="max-width:180px">
-                    <option value="">-- select work type --</option>
-                    <?php 
-                    $grouped = [];
-                    foreach ($workTypes as $wt) {
-                        $g = $wt['design_type_name'] ?? 'Other';
-                        $grouped[$g][] = $wt;
-                    }
-                    foreach ($grouped as $grp => $wts):
-                    ?>
-                    <optgroup label="<?= htmlspecialchars($grp) ?>">
-                        <?php foreach ($wts as $wt): ?>
-                        <option value="<?= $wt['id'] ?>" <?= ((int)$item['work_type_id'] === (int)$wt['id']) ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($wt['work_type_name']) ?>
-                        </option>
-                        <?php endforeach; ?>
-                    </optgroup>
-                    <?php endforeach; ?>
-                </select>
-            </td>
-            <td>
-                <select name="items[<?= $idx ?>][status]" class="pi-status-sel" style="color:<?= $sm['color'] ?>">
-                    <?php foreach ($statusMeta as $sv => $svm): ?>
-                    <option value="<?= $sv ?>" <?= ($item['status']===$sv)?'selected':'' ?>
-                            style="color:<?= $svm['color'] ?>"><?= $sv ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </td>
-            <td>
+            <td style="text-align:right;white-space:nowrap">
+                <button type="button" 
+                        class="btn btn-sm btn-outline-primary"
+                        style="padding:3px 9px;font-size:11px;font-weight:700;border-radius:6px"
+                        onclick='openEditModal(<?= json_encode($item, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
+                    <i class="fal fa-edit me-1"></i>Edit
+                </button>
                 <a href="<?= $base ?>/con-phase-items-delete/<?= $item['id'] ?>"
                    class="pi-del-btn"
+                   style="display:inline-flex;padding:3px 9px;margin-left:4px;vertical-align:middle"
                    onclick="return confirm('Delete sub-item \'<?= htmlspecialchars($item['item_name']) ?>\'?')"
                    title="Delete">
                     <i class="fal fa-trash"></i>
@@ -262,62 +225,123 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
                 </span>
             </div>
         </div>
-        <div id="phaseProgressDisplay" style="font-size:11px;color:var(--text-muted)">
-            Phase progress will update on Save
+        <div style="width:1px;height:24px;background:rgba(0,0,0,.08)"></div>
+        <div id="phaseProgressDisplay" style="font-size:11.5px;color:var(--text-muted)">
+            Phase Progress: <span style="font-weight:800;color:<?= $phaseProgress>=100?'var(--pi-green)':'var(--pi-primary)' ?>"><?= number_format($phaseProgress,1) ?>%</span>
         </div>
     </div>
     <div class="d-flex gap-2">
-        <a href="<?= $base ?>/con-phase-plan/<?= $project_id ?>" class="btn btn-sm btn-outline-secondary">
-            Cancel
+        <a href="<?= $base ?>/con-phase-plan/<?= $project_id ?>" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-weight:600;padding:8px 16px;">
+            Back to Phases
         </a>
-        <button type="submit" class="btn-pi-save" id="saveBtn" <?= $weightOk?'':'disabled' ?>>
-            <i class="fal fa-check-circle me-1"></i>Save & Update Progress
-        </button>
     </div>
 </div>
-</form>
 
 </div></div>
 
+<!-- Edit Sub-item Modal -->
+<div class="modal fade" id="editItemModal" tabindex="-1" aria-labelledby="editItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;border:none;box-shadow:0 10px 30px rgba(0,0,0,.15)">
+            <div class="modal-header" style="border-bottom:1px solid rgba(0,0,0,.08);padding:16px 20px">
+                <h5 class="modal-title" id="editItemModalLabel" style="font-size:14.5px;font-weight:800;color:var(--pi-primary)">
+                    <i class="fal fa-edit me-2"></i>Edit Sub-work Item
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large" style="font-size:12px"></i>
+                </button>
+            </div>
+            <form id="editSubItemForm">
+                <div class="modal-body" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+                    <input type="hidden" id="edit_item_id">
+                    
+                    <div style="display:flex;flex-direction:column;gap:5px">
+                        <label style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted)">Sub-item Name *</label>
+                        <input type="text" id="edit_item_name" class="form-control" style="border-radius:8px;font-size:13px;padding:8px 12px;background:transparent;border:1px solid rgba(0,0,0,.12)" required>
+                    </div>
+                    
+                    <div style="display:flex;flex-direction:column;gap:5px">
+                        <label style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted)">Weight % *</label>
+                        <input type="number" id="edit_weight_pct" class="form-control" step="0.01" min="0" max="100" style="border-radius:8px;font-size:13px;padding:8px 12px;background:transparent;border:1px solid rgba(0,0,0,.12)" required>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid rgba(0,0,0,.08);padding:14px 20px">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" style="border-radius:8px;font-weight:600">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-pi-save" style="background:var(--pi-primary);color:#fff;border:none;font-weight:700;padding:8px 16px;border-radius:8px">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
-// ── Weight recalc ─────────────────────────────────────────────────────
-function recalcWeight() {
-    const fields = document.querySelectorAll('.weight-field');
-    let total = 0;
-    fields.forEach(f => total += parseFloat(f.value) || 0);
-    total = Math.round(total * 100) / 100;
-
-    const ok = Math.abs(total - 100) <= 0.01;
-    document.getElementById('wLabel').textContent = total.toFixed(1) + '%';
-    document.getElementById('wLabel').style.color = ok ? 'var(--pi-green)' : 'var(--pi-red)';
-    const fill = document.getElementById('wFill');
-    fill.style.width = Math.min(total, 100) + '%';
-    fill.className   = 'pi-w-fill ' + (ok ? 'ok' : (total > 100 ? 'over' : ''));
-    document.getElementById('saveBtn').disabled = !ok;
+// ── Open Edit Modal ───────────────────────────────────────────────────
+function openEditModal(item) {
+    document.getElementById('edit_item_id').value = item.id;
+    document.getElementById('edit_item_name').value = item.item_name;
+    document.getElementById('edit_weight_pct').value = item.weight_pct;
+    
+    // Trigger modal show using Bootstrap 5 class
+    const myModal = new bootstrap.Modal(document.getElementById('editItemModal'));
+    myModal.show();
 }
 
-// ── Mini progress bar update ──────────────────────────────────────────
-function updateMiniBar(idx, val) {
-    const pct = Math.min(100, Math.max(0, parseFloat(val) || 0));
-    const bar = document.getElementById('minibar_' + idx);
-    if (bar) {
-        bar.style.width = pct + '%';
-        bar.style.background = pct >= 100 ? '#10b981' : (pct > 0 ? '#6366f1' : '#94a3b8');
-    }
-}
+// ── Edit Form Submit via AJAX ──────────────────────────────────────────
+document.getElementById('editSubItemForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit_item_id').value;
+    const name = document.getElementById('edit_item_name').value.trim();
+    const weight = document.getElementById('edit_weight_pct').value;
 
-// ── Form validation ───────────────────────────────────────────────────
-document.getElementById('itemsForm').addEventListener('submit', function(e) {
-    const fields = document.querySelectorAll('.weight-field');
-    let total = 0;
-    fields.forEach(f => total += parseFloat(f.value) || 0);
-    if (Math.abs(total - 100) > 0.01) {
-        e.preventDefault();
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({ icon:'error', title:'Invalid Weight', text:'Sub-item weights must sum to 100%. Current: '+total.toFixed(2)+'%', confirmButtonColor:'#6366f1' });
+    if (!name) { alert('Sub-item name is required.'); return; }
+
+    const data = new FormData();
+    data.append('id', id);
+    data.append('item_name', name);
+    data.append('weight_pct', weight);
+
+    fetch('<?= $base ?>/con-phase-item-edit', {
+        method: 'POST',
+        body: data
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            location.reload();
         } else {
-            alert('Sub-item weights must sum to 100%.');
+            alert('Error: ' + (res.message || 'Failed to update item'));
         }
-    }
+    })
+    .catch(() => alert('Network error. Please try again.'));
 });
+
+// ── Add new sub-item via AJAX ─────────────────────────────────────────
+function addSubItem() {
+    const name = document.getElementById('add_item_name').value.trim();
+    if (!name) { alert('Sub-item name is required.'); return; }
+
+    const data = new FormData();
+    data.append('phase_id', '<?= $phase_id ?>');
+    data.append('item_name', name);
+    data.append('weight_pct', document.getElementById('add_weight_pct').value);
+    data.append('planned_progress', '0');
+    data.append('actual_progress', '0');
+    data.append('status', 'Not Started');
+
+    fetch('<?= $base ?>/con-phase-item-add', {
+        method: 'POST',
+        body: data
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (res.message || 'Failed to add item'));
+        }
+    })
+    .catch(() => alert('Network error. Please try again.'));
+}
 </script>

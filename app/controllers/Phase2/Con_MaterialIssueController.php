@@ -70,19 +70,37 @@ class Con_MaterialIssueController extends Controller
         $materials  = $this->materialModel->getAll();
         $stocks     = $this->stockModel->getCurrentStock();
 
-        // Fetch Working Plans and Targets
-        $workingPlanModel = new \Con_WorkingPlan($this->db);
-        $workPlans = $workingPlanModel->getAll();
-        
-        $targets = [];
+        // ── Fetch Phases grouped by project ──────────────────────────────────
+        // Structure: $phasesByProject[project_id][] = phase row
+        $phasesByProject = [];
         try {
-            $tRes = $this->db->query("
-                SELECT tf.*, p.name AS project_name 
-                FROM target_fixed tf 
-                LEFT JOIN projects p ON p.id = tf.project_id 
-                ORDER BY tf.id DESC
+            $phRes = $this->db->query("
+                SELECT id AS phase_id, project_id, phase_name, phase_order
+                FROM project_phases
+                ORDER BY project_id ASC, phase_order ASC, phase_name ASC
             ");
-            if ($tRes) $targets = $tRes->fetch_all(MYSQLI_ASSOC);
+            if ($phRes) {
+                while ($row = $phRes->fetch_assoc()) {
+                    $phasesByProject[(int)$row['project_id']][] = $row;
+                }
+            }
+        } catch (\Exception $e) {}
+
+        // ── Fetch Monthly Targets grouped by phase ────────────────────────────
+        // Structure: $monthlyTargetsByPhase[phase_id][] = target row
+        $monthlyTargetsByPhase = [];
+        try {
+            $mtRes = $this->db->query("
+                SELECT id AS monthly_target_id, phase_id, project_id,
+                       target_month, target_month_number, target_year, planning_status
+                FROM phase_monthly_targets
+                ORDER BY phase_id ASC, target_month ASC
+            ");
+            if ($mtRes) {
+                while ($row = $mtRes->fetch_assoc()) {
+                    $monthlyTargetsByPhase[(int)$row['phase_id']][] = $row;
+                }
+            }
         } catch (\Exception $e) {}
 
         // Fetch received materials per project
@@ -119,17 +137,32 @@ class Con_MaterialIssueController extends Controller
             if ($cRes) $contractors = $cRes->fetch_all(MYSQLI_ASSOC);
         } catch (\Exception $e) {}
 
+        // ── Pre-fill params from weekly progress ──────────────────────────────
+        $fromWeekly  = !empty($_GET['from_weekly']);
+        $preProjectId = (int)($_GET['project_id'] ?? 0);
+        $prePhaseId   = (int)($_GET['phase_id']   ?? 0);
+        $preTargetId  = (int)($_GET['target_id']  ?? 0); // phase_monthly_targets.id
+        $preLogDate   = trim($_GET['log_date']     ?? '');
+        $backUrl      = trim($_GET['back_url']     ?? '');
+
         $this->view('phase2/material-issues/create-issue', [
-            'current_route' => 'con-material-issue-create',
-            'page_title'    => 'New Material Issue',
-            'projects'      => $projects,
-            'warehouses'    => $warehouses,
-            'materials'     => $materials,
-            'stocks'        => $stocks,
-            'workPlans'     => $workPlans,
-            'targets'       => $targets,
-            'contractors'   => $contractors,
-            'receivedMaterials' => $receivedMaterials,
+            'current_route'         => 'con-material-issue-create',
+            'page_title'            => 'New Material Issue',
+            'projects'              => $projects,
+            'warehouses'            => $warehouses,
+            'materials'             => $materials,
+            'stocks'                => $stocks,
+            'phasesByProject'       => $phasesByProject,
+            'monthlyTargetsByPhase' => $monthlyTargetsByPhase,
+            'contractors'           => $contractors,
+            'receivedMaterials'     => $receivedMaterials,
+            // weekly progress context (empty strings / 0 when not coming from weekly)
+            'fromWeekly'            => $fromWeekly,
+            'preProjectId'          => $preProjectId,
+            'prePhaseId'            => $prePhaseId,
+            'preTargetId'           => $preTargetId,
+            'preLogDate'            => $preLogDate,
+            'backUrl'               => $backUrl,
         ]);
     }
 
@@ -158,9 +191,12 @@ class Con_MaterialIssueController extends Controller
             'purpose'      => trim($_POST['purpose'] ?? ''),
             'issued_by'    => $userId,
             'issue_date'   => $_POST['issue_date'] ?? date('Y-m-d'),
-            'target_id'    => !empty($_POST['target_id']) ? (int)$_POST['target_id'] : null,
-            'work_plan_id' => !empty($_POST['work_plan_id']) ? (int)$_POST['work_plan_id'] : null,
+            // target_id now stores phase_monthly_targets.id (repurposed, nullable)
+            'target_id'    => !empty($_POST['phase_monthly_target_id']) ? (int)$_POST['phase_monthly_target_id'] : null,
+            'work_plan_id' => null,
         ];
+
+        $backUrl = trim($_POST['back_url'] ?? '');
 
         if (empty($data['material_id']) || $data['quantity'] <= 0) {
             setError('Material and quantity are required.');
@@ -188,7 +224,12 @@ class Con_MaterialIssueController extends Controller
             }
 
             setSuccess("Material Issue ISS-{$id} created. Stock deducted.");
-            header("Location: {$GLOBALS['base_url']}/con-material-issue/{$id}");
+            // If came from weekly progress, redirect back there; otherwise show issue
+            if (!empty($backUrl)) {
+                header("Location: " . $backUrl);
+            } else {
+                header("Location: {$GLOBALS['base_url']}/con-material-issue/{$id}");
+            }
         } else {
             setError('Failed to create issue. Check stock availability.');
             header("Location: {$GLOBALS['base_url']}/con-material-issue-create");
@@ -324,36 +365,39 @@ class Con_MaterialIssueController extends Controller
             // ── BEGIN TRANSACTION per row ─────────────────────────────────────
             $this->db->begin_transaction();
             try {
-                // Find latest working_plan for this project
-                $wpRes      = $this->db->query(
-                    "SELECT id FROM project_working_plans
+                // Find the first phase for this project (replaces project_working_plans lookup)
+                $phaseRes  = $this->db->query(
+                    "SELECT id FROM project_phases
                      WHERE project_id = {$projectId}
-                     ORDER BY id DESC LIMIT 1"
+                     ORDER BY phase_order ASC LIMIT 1"
                 );
-                $workPlanId = ($wpRes && $wp = $wpRes->fetch_assoc()) ? (int)$wp['id'] : null;
+                $phaseId = ($phaseRes && $ph = $phaseRes->fetch_assoc()) ? (int)$ph['id'] : null;
 
-                // Find or create target_fixed
+                // Find or create phase_monthly_targets entry (replaces target_fixed)
                 $safeTitle = $this->db->real_escape_string($targetTitle);
-                $tRes = $this->db->query(
-                    "SELECT id FROM target_fixed
-                     WHERE project_id = {$projectId} AND target_title = '{$safeTitle}'
-                     LIMIT 1"
-                );
-                if ($tRes && $tRes->num_rows > 0) {
-                    $targetId = (int)$tRes->fetch_assoc()['id'];
-                } else {
-                    $tStmt = $this->db->prepare(
-                        "INSERT INTO target_fixed
-                            (project_id, work_plan_id, target_title, user_id, year, month, week_number, target_percentage)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, 0)"
+                $targetId  = null;
+
+                if ($phaseId) {
+                    $tRes = $this->db->query(
+                        "SELECT id FROM phase_monthly_targets
+                         WHERE phase_id = {$phaseId} AND month_number = {$month}
+                         LIMIT 1"
                     );
-                    $tStmt->bind_param('iisiiii',
-                        $projectId, $workPlanId, $targetTitle,
-                        $userId, $year, $month, $weekNum
-                    );
-                    $tStmt->execute();
-                    $targetId = $this->db->insert_id;
+                    if ($tRes && $tRes->num_rows > 0) {
+                        $targetId = (int)$tRes->fetch_assoc()['id'];
+                    } else {
+                        $tStmt = $this->db->prepare(
+                            "INSERT INTO phase_monthly_targets
+                                (phase_id, month_number, title, target_percentage, created_by)
+                             VALUES (?, ?, ?, 0, ?)"
+                        );
+                        $tStmt->bind_param('isis', $phaseId, $month, $targetTitle, $userId);
+                        $tStmt->execute();
+                        $targetId = $this->db->insert_id;
+                    }
                 }
+
+                $workPlanId = null; // legacy column — set to null (migrated)
 
                 // Insert con_material_issues
                 $iStmt = $this->db->prepare(

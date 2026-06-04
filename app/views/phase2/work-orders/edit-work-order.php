@@ -81,7 +81,13 @@ $sel  = fn($field, $v)    => ($wo[$field] ?? '') == $v ? 'selected' : '';
                                 <select name="design_id" id="wo_design_id" class="form-select">
                                     <option value="">-- Loading... --</option>
                                 </select>
-                                <small class="text-muted" id="design_hint">Loading designs...</small>
+                                <div id="phase_info_container" class="mt-2 px-2 py-1 rounded" style="background:#eff6ff; display:none; font-size:0.82rem; border:1px solid #bfdbfe">
+                                    <i class="bi bi-diagram-3 me-1 text-primary"></i>
+                                    <span class="fw-semibold text-muted">Phase:</span>
+                                    <span id="wo_phase_name" class="badge bg-primary ms-1 me-2"></span>
+                                    <span class="text-muted">Weight:</span>
+                                    <span id="wo_phase_weight" class="badge bg-info text-dark ms-1"></span>
+                                </div>
                             </div>
 
                             <!-- Work Order Title -->
@@ -156,15 +162,16 @@ $sel  = fn($field, $v)    => ($wo[$field] ?? '') == $v ? 'selected' : '';
                             <table class="table table-bordered align-middle mb-0" id="workItemsTable" style="font-size:.84rem">
                                 <thead style="background:#1e3a8a;color:#fff">
                                     <tr>
-                                        <th style="width:48px" class="text-center">নং</th>
-                                        <th style="width:22%">কাজের ধরন (Work Type)</th>
+                                        <th style="width:42px" class="text-center">নং</th>
+                                        <th style="width:18%">Phase Item</th>
+                                        <th style="width:18%">কাজের ধরন (Work Type)</th>
                                         <th>বিবরণ (Description)</th>
-                                        <th style="width:14%">অবস্থান (Location)</th>
-                                        <th style="width:7%">Unit</th>
-                                        <th style="width:7%">Qty</th>
-                                        <th style="width:8%">Rate (৳)</th>
-                                        <th style="width:10%" class="text-end">Subtotal (৳)</th>
-                                        <th style="width:38px" class="text-center">Del</th>
+                                        <th style="width:10%">অবস্থান (Location)</th>
+                                        <th style="width:6%">Unit</th>
+                                        <th style="width:6%">Qty</th>
+                                        <th style="width:7%">Rate (৳)</th>
+                                        <th style="width:9%" class="text-end">Subtotal (৳)</th>
+                                        <th style="width:34px" class="text-center">Del</th>
                                     </tr>
                                 </thead>
                                 <tbody id="workItemsBody">
@@ -172,7 +179,7 @@ $sel  = fn($field, $v)    => ($wo[$field] ?? '') == $v ? 'selected' : '';
                                 </tbody>
                                 <tfoot>
                                     <tr style="background:#f0f9ff">
-                                        <td colspan="7" class="text-end fw-bold text-primary">Grand Total:</td>
+                                        <td colspan="8" class="text-end fw-bold text-primary">Grand Total:</td>
                                         <td class="text-end fw-bold text-primary fs-15" id="grandTotalDisplay">৳ 0.00</td>
                                         <td></td>
                                     </tr>
@@ -343,17 +350,17 @@ const SAVED_WO_PROJECT_ID = <?= (int)($wo['project_id'] ?? 0) ?>;
 const SAVED_WO_DESIGN_ID  = <?= (int)($wo['design_id']  ?? 0) ?>;
 const UNITS = ['sqft','rft','cft','nos','kg','ton','ls','set','bag','cum','lm','point'];
 let rowIdx = 0;
+let currentPhaseItems = [];
+let currentWorkTypes  = [];
+let savedItemsRendered = false;
 
 // ============================================================
 // SAVED ITEMS from PHP (pre-fill on page load)
 // ============================================================
 const SAVED_ITEMS = <?= json_encode(array_values($woItems ?? []), JSON_UNESCAPED_UNICODE) ?>;
 
-// ============================================================
-// ON PAGE LOAD — pre-fill saved items + load design dropdown
-// ============================================================
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Load saved items into table
+function renderSavedItems() {
+    if (savedItemsRendered) return;
     SAVED_ITEMS.forEach((it, i) => {
         addWorkItemRow({
             sl:             it.sl_no          || (i + 1),
@@ -364,16 +371,25 @@ document.addEventListener('DOMContentLoaded', () => {
             unit:           it.unit           || 'sqft',
             rate:           parseFloat(it.rate     || 0),
             qty:            parseFloat(it.quantity || 0),
+            phase_item_id:  it.phase_item_id  || ''
         });
     });
     recalcGrandTotal();
+    savedItemsRendered = true;
+}
 
-    // 2. Load design dropdown for current project, then select saved design_id
+// ============================================================
+// ON PAGE LOAD — pre-fill saved items + load design dropdown
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Load design dropdown for current project, then select saved design_id
     if (SAVED_WO_PROJECT_ID) {
         onProjectChange(SAVED_WO_PROJECT_ID, SAVED_WO_DESIGN_ID);
+    } else {
+        renderSavedItems();
     }
 
-    // 3. Init payment cards
+    // Init payment cards
     recalcPayments();
 });
 
@@ -405,6 +421,40 @@ function onProjectChange(projectId, preselectDesignId = null) {
             });
             document.getElementById('design_hint').textContent =
                 preselectDesignId ? 'Saved design type selected' : 'Design Type select করুন';
+            
+            if (preselectDesignId) {
+                loadPhaseInfo(preselectDesignId, true);
+            }
+        });
+}
+
+// ============================================================
+// PHASE INFO LOADER
+// ============================================================
+function loadPhaseInfo(designId, isInit = false) {
+    if (!designId) return;
+    fetch(`${BASE_URL}/con-ajax-wo-work-types?design_id=${designId}`)
+        .then(r => r.json())
+        .then(data => {
+            currentPhaseItems = data.phase_items  || [];
+            currentWorkTypes  = data.work_types   || [];
+            
+            const pInfo = data.phase_info || null;
+            const pContainer = document.getElementById('phase_info_container');
+            if (pInfo && pInfo.phase_name) {
+                document.getElementById('wo_phase_name').textContent   = pInfo.phase_name;
+                document.getElementById('wo_phase_weight').textContent = parseFloat(pInfo.weight_percentage).toFixed(2) + '%';
+                pContainer.style.display = 'block';
+            } else {
+                pContainer.style.display = 'none';
+            }
+            
+            if (isInit) {
+                renderSavedItems();
+            }
+        }).catch(err => {
+            console.error('Phase Info Error:', err);
+            if (isInit) renderSavedItems();
         });
 }
 
@@ -412,7 +462,10 @@ function onProjectChange(projectId, preselectDesignId = null) {
 // DESIGN CHANGE — reload work types (clears current rows!)
 // ============================================================
 function onDesignChange(designId) {
-    if (!designId) return;
+    if (!designId) {
+        document.getElementById('phase_info_container').style.display = 'none';
+        return;
+    }
     if (!confirm('Design Type পরিবর্তন করলে বর্তমান rate schedule rows মুছে যাবে। Continue করবেন?')) {
         // Revert to saved design
         const sel = document.getElementById('wo_design_id');
@@ -421,6 +474,9 @@ function onDesignChange(designId) {
         }
         return;
     }
+
+    // Load Phase Info
+    loadPhaseInfo(designId);
 
     // Clear rows and load new work types
     document.getElementById('workItemsBody').innerHTML = '';
@@ -464,8 +520,29 @@ function addWorkItemRow(data = {}) {
     const unit         = data.unit          || 'sqft';
     const rate         = parseFloat(data.rate  || 0);
     const qty          = (data.qty !== '' && data.qty !== undefined) ? parseFloat(data.qty) : '';
+    const phaseItemId  = data.phase_item_id || '';
 
     const unitOpts = UNITS.map(u => `<option value="${u}" ${u===unit?'selected':''}>${u}</option>`).join('');
+
+    // Phase Item dropdown
+    let phaseItemOpts = '<option value="">-- Phase Item Select করুন --</option>';
+    if (typeof currentPhaseItems !== 'undefined' && currentPhaseItems.length > 0) {
+        currentPhaseItems.forEach(pi => {
+            const isSel = (parseInt(pi.id) === parseInt(phaseItemId)) ? 'selected' : '';
+            phaseItemOpts += `<option value="${pi.id}" ${isSel}>${esc(pi.item_name)}</option>`;
+        });
+    }
+
+    // Work Type dropdown
+    let workTypeOpts = '<option value="">-- Work Type Select করুন --</option>';
+    if (typeof currentWorkTypes !== 'undefined' && currentWorkTypes.length > 0) {
+        currentWorkTypes.forEach(wt => {
+            const isSel = (parseInt(wt.id) === parseInt(workTypeId)) ? 'selected' : '';
+            workTypeOpts += `<option value="${wt.id}" ${isSel}>${esc(wt.work_type_name)}</option>`;
+        });
+    } else if (workTypeId && workTypeName) {
+        workTypeOpts += `<option value="${esc(String(workTypeId))}" selected>${esc(workTypeName)}</option>`;
+    }
 
     const tr = document.createElement('tr');
     tr.dataset.idx = idx;
@@ -473,23 +550,33 @@ function addWorkItemRow(data = {}) {
         <td class="text-center p-1">
             <input type="text" name="wi_items[${idx}][sl_no]"
                    class="form-control form-control-sm text-center"
-                   value="${esc(String(sl))}" placeholder="${idx+1}" style="min-width:42px">
+                   value="${esc(String(sl))}" placeholder="${idx+1}" style="min-width:38px">
+        </td>
+        <td class="p-1">
+            <select name="wi_items[${idx}][phase_item_id]"
+                    class="form-select form-select-sm"
+                    style="font-size:0.78rem; min-width:110px">
+                ${phaseItemOpts}
+            </select>
         </td>
         <td class="p-1">
             <input type="hidden" name="wi_items[${idx}][work_type_id]" value="${esc(String(workTypeId))}">
-            <input type="text" class="form-control form-control-sm text-muted"
-                   value="${esc(workTypeName)}" placeholder="Work Type..." style="min-width:100px;font-size:.78rem"
-                   title="Work Type (for reference)">
+            <select name="wi_items[${idx}][work_type_select]"
+                    class="form-select form-select-sm"
+                    style="font-size:0.78rem; min-width:110px"
+                    onchange="syncWorkType(this, ${idx})">
+                ${workTypeOpts}
+            </select>
         </td>
         <td class="p-1">
             <textarea name="wi_items[${idx}][description]"
                       class="form-control form-control-sm" rows="2"
-                      placeholder="বিস্তারিত বিবরণ..." style="min-width:160px;resize:vertical">${esc(desc)}</textarea>
+                      placeholder="বিস্তারিত বিবরণ..." style="min-width:130px;resize:vertical">${esc(desc)}</textarea>
         </td>
         <td class="p-1">
             <input type="text" name="wi_items[${idx}][location]"
                    class="form-control form-control-sm"
-                   value="${esc(loc)}" placeholder="Floor / Location..." style="min-width:90px">
+                   value="${esc(loc)}" placeholder="Floor..." style="min-width:80px">
         </td>
         <td class="p-1">
             <select name="wi_items[${idx}][unit]" class="form-select form-select-sm">${unitOpts}</select>
@@ -498,15 +585,15 @@ function addWorkItemRow(data = {}) {
             <input type="number" name="wi_items[${idx}][quantity]"
                    class="form-control form-control-sm wi-qty"
                    value="${qty}" min="0" step="0.001" placeholder="0"
-                   oninput="recalcRow(this)" style="min-width:68px">
+                   oninput="recalcRow(this)" style="min-width:60px">
         </td>
         <td class="p-1">
             <input type="number" name="wi_items[${idx}][rate]"
                    class="form-control form-control-sm wi-rate"
                    value="${rate}" min="0" step="0.01" placeholder="0"
-                   oninput="recalcRow(this)" style="min-width:72px">
+                   oninput="recalcRow(this)" style="min-width:65px">
         </td>
-        <td class="text-end fw-semibold wi-subtotal p-2" style="color:#1d4ed8;min-width:90px">৳ 0.00</td>
+        <td class="text-end fw-semibold wi-subtotal p-2" style="color:#1d4ed8;min-width:80px">৳ 0.00</td>
         <td class="text-center p-1">
             <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1"
                     onclick="this.closest('tr').remove(); recalcGrandTotal();" title="Delete">
@@ -516,6 +603,12 @@ function addWorkItemRow(data = {}) {
     document.getElementById('workItemsBody').appendChild(tr);
     recalcRow(tr.querySelector('.wi-qty'));
 }
+
+function syncWorkType(sel, idx) {
+    const hiddenInput = sel.closest('td').querySelector(`input[name="wi_items[${idx}][work_type_id]"]`);
+    if (hiddenInput) hiddenInput.value = sel.value;
+}
+
 
 // ============================================================
 // RECALCULATE

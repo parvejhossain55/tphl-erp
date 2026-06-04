@@ -839,6 +839,8 @@ $routes['con-phase-items/(\d+)']            = ['controller' => 'Phase2\Con_Phase
 $routes['con-phase-items-update/(\d+)']     = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'update'];
 $routes['con-phase-items-delete/(\d+)']     = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'delete'];
 $routes['con-phase-items-progress']         = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'ajaxUpdateProgress'];
+$routes['con-phase-item-add']                 = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'addItem'];
+$routes['con-phase-item-edit']                = ['controller' => 'Phase2\Con_PhaseItemController', 'method' => 'editItem'];
 
 // Phase-wise Construction - Module 4: Monthly Target Planner
 $routes['con-monthly-targets/(\d+)']        = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'index'];
@@ -850,11 +852,31 @@ $routes['con-monthly-item-add']             = ['controller' => 'Phase2\Con_Month
 $routes['con-monthly-item-delete/(\d+)']    = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'deleteItem'];
 $routes['con-monthly-target-delete/(\d+)']  = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'deleteTarget'];
 $routes['con-monthly-worktypes']            = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'ajaxWorkTypes'];
+$routes['con-project-plan-targets']         = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'siteEngineerTargets'];
 
 // Phase-wise Construction - Module 5: Daily / Weekly Progress Entry
 $routes['con-weekly-progress/(\d+)']        = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'show'];
 $routes['con-weekly-progress-save']         = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'saveDailyLog'];
 $routes['con-weekly-progress-submit']       = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'submitWeeklyUpdate'];
+$routes['con-weekly-progress-delete/(\d+)']  = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'deleteDailyLogItem'];
+$routes['con-weekly-progress-qc-approve']   = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'qcApprove'];
+$routes['con-weekly-progress-pm-approve']   = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'pmApprove'];
+
+// Phase-wise Construction - Module 6: Monthly Review
+$routes['con-monthly-review/(\d+)']                                              = ['controller' => 'Phase2\Con_MonthlyReviewController', 'method' => 'index'];
+$routes['con-monthly-review/(\d+)/phase/(\d+)/month/([\d-]+)']                  = ['controller' => 'Phase2\Con_MonthlyReviewController', 'method' => 'show'];
+
+// Phase-wise Construction - Module 7: Risk Dashboard
+$routes['con-risk-dashboard/(\d+)']          = ['controller' => 'Phase2\Con_RiskDashboardController', 'method' => 'index'];
+$routes['con-risk-dashboard-store']          = ['controller' => 'Phase2\Con_RiskDashboardController', 'method' => 'storeRisk'];
+$routes['con-risk-dashboard-update-status']  = ['controller' => 'Phase2\Con_RiskDashboardController', 'method' => 'updateRiskStatus'];
+$routes['con-risk-dashboard-delete/(\d+)']   = ['controller' => 'Phase2\Con_RiskDashboardController', 'method' => 'deleteRisk'];
+
+// Phase-wise Construction - Module 8: Recovery Plan
+$routes['con-recovery-plan/(\d+)']           = ['controller' => 'Phase2\Con_RecoveryPlanController', 'method' => 'index'];
+$routes['con-recovery-plan-create']          = ['controller' => 'Phase2\Con_RecoveryPlanController', 'method' => 'createPlan'];
+$routes['con-recovery-plan-action-store']    = ['controller' => 'Phase2\Con_RecoveryPlanController', 'method' => 'storeActionItem'];
+$routes['con-recovery-plan-action-update']   = ['controller' => 'Phase2\Con_RecoveryPlanController', 'method' => 'updateActionStatus'];
 
 $routes['con-ajax-workplan/(\d+)'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxWorkPlan'];
 $routes['con-ajax-targets/(\d+)']  = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxTargets'];
@@ -1054,12 +1076,7 @@ $routes['con-ajax-material-stock']     = ['controller' => 'Phase2\Con_BOQControl
 // (Working Plan + Budget routes moved below to avoid duplicates — see lines 839+)
 
 // ── Target Fixed ──────────────────────────────────────────────────────────
-$routes['con-targets']                 = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'index'];
-$routes['con-target-create']           = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'create'];
-$routes['con-target-store']            = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'store'];
-$routes['con-target/(\d+)']            = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'show'];
 
-$routes['con-target-approve/(\d+)']    = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'approve'];
 
 // ── Daily Progress Reports ────────────────────────────────────────────────
 $routes['con-weekly-reports']           = ['controller' => 'Phase2\Con_WeeklyReportController', 'method' => 'index'];
@@ -1117,8 +1134,6 @@ $routes['con-work-type-import']              = ['controller' => 'Phase2\\Con_Wor
 
 // ── CSV Imports Batch 3 (Estimation & Targets) ────────────────────────────
 $routes['con-estimate-import']               = ['controller' => 'Phase2\\Con_InitialEstimateController',      'method' => 'importCsv'];
-$routes['con-working-plan-import']           = ['controller' => 'Phase2\\Con_WorkingPlanController',          'method' => 'importCsv'];
-$routes['con-target-import']                 = ['controller' => 'Phase2\\Con_TargetFixedController',          'method' => 'importCsv'];
 
 // ── Initial Estimate Budgets ──────────────────────────────────────────────
 $routes['con-estimates']              = ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'index'];
@@ -1153,9 +1168,6 @@ $routes['con-vendor-penalty-update-status']  = ['controller' => 'Phase2\Con_Vend
 $routes['con-vendor-penalty-delete']         = ['controller' => 'Phase2\Con_VendorPenaltyController', 'method' => 'delete'];
 
 // ── Target Fixed — missing routes ─────────────────────────────────────────
-$routes['con-target-edit/(\d+)']       = ['controller' => 'Phase2\\Con_TargetFixedController', 'method' => 'edit'];
-$routes['con-target-update/(\d+)']     = ['controller' => 'Phase2\\Con_TargetFixedController', 'method' => 'update'];
-$routes['con-target-gain/(\d+)']       = ['controller' => 'Phase2\\Con_TargetFixedController', 'method' => 'updateGain'];
 
 // ── Work Orders ────────────────────────────────────────────────────────────
 $routes['con-work-orders']                 = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'index'];
@@ -1216,28 +1228,12 @@ $routes['asset-extra-purchases/confirm/(\d+)']      = ['controller' => 'Phase2\\
 // =============================================================================
 
 // ── Working Plans ─────────────────────────────────────────────────────────────
-$routes['con-working-plans']              = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'index'];
-$routes['con-working-plan-create']        = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'create'];
-$routes['con-working-plan-store']         = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'store'];
-$routes['con-working-plan-edit/(\d+)']    = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'edit'];
-$routes['con-working-plan-update/(\d+)']  = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'update'];
-$routes['con-working-plan-delete/(\d+)']  = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'delete'];
-$routes['con-working-plan-view/(\d+)']    = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'show'];
-$routes['con-working-plan-print/(\d+)']   = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'printView'];
 $routes['con-project-progress-report/(\d+)'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectProgressReport'];
 
 // ── Budget Extension Requests ─────────────────────────────────────────────────
-$routes['con-budget-extends']             = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'budgetExtends'];
-$routes['con-budget-extend-create']       = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'budgetExtendCreate'];
-$routes['con-budget-extend-store']        = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'budgetExtendStore'];
-$routes['con-budget-extend-approve/(\d+)']= ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'approveExtend'];
-$routes['con-budget-extend-reject/(\d+)'] = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'rejectExtend'];
 
 // ── AJAX: Cascade project → plans + budgets ───────────────────────────────
-$routes['con-ajax-project-data']           = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'ajaxGetProjectData'];
-$routes['con-ajax-budget-estimate']        = ['controller' => 'Phase2\Con_WorkingPlanController', 'method' => 'ajaxGetBudgetEstimate'];
 // ── AJAX: Cascade project → targets ──────────────────────────────────────
-$routes['con-ajax-project-targets']        = ['controller' => 'Phase2\Con_TargetFixedController', 'method' => 'ajaxGetProjectTargets'];
 
 // ==============================================================================
 // QC & INTERNAL AUDIT MODULE

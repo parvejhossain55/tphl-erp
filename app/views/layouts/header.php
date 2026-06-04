@@ -55,37 +55,122 @@
 
 <body class="body-area">
 
-    <!-- Preloader start -->
-    <!-- <div class=" preloader" id="preloader">
-        <div class="loading">
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-        </div>
-    </div> -->
-    <!-- Preloader start -->
+<style>
+  .wrap {
+    display:flex; flex-direction:column; align-items:center;
+    justify-content:center; min-height:280px; gap:2.5rem;
+  }
+  .scene {
+    position:relative; width:120px; height:120px;
+  }
+
+  /* Orbit dots */
+  .orbit {
+    position:absolute; inset:0;
+    animation: spin 4s linear infinite;
+  }
+  .orbit-1 { animation: spin 3s linear infinite; }
+  .orbit-2 { animation: spin 5s linear infinite reverse; }
+  .dot {
+    position:absolute; top:0; left:50%;
+    width:8px; height:8px; border-radius:50%;
+    transform: translateX(-50%);
+    background:#006837;
+  }
+  .orbit-2 .dot { width:5px; height:5px; background:#006837; opacity:0.4; }
+  .orbit-2 .dot:nth-child(2) { top:auto; bottom:0; }
+  .orbit-1 .dot:nth-child(2) { top:auto; bottom:0; }
+  .orbit-1 .dot:nth-child(3) { top:50%; left:0; transform:translateY(-50%); }
+  .orbit-1 .dot:nth-child(4) { top:50%; left:auto; right:0; transform:translateY(-50%); }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* House in center */
+  .house-wrap {
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    animation: floatY 3s ease-in-out infinite;
+  }
+  @keyframes floatY {
+    0%,100% { transform: translateY(0px); }
+    50%      { transform: translateY(-7px); }
+  }
+
+  .house-svg path {
+    fill:none; stroke:#006837; stroke-width:3.5;
+    stroke-linejoin:miter; stroke-linecap:butt;
+  }
+
+  /* Shadow beneath house */
+  .shadow {
+    width:52px; height:8px; border-radius:50%;
+    background:#006837; opacity:0.15;
+    margin:0 auto;
+    animation: shadowScale 3s ease-in-out infinite;
+  }
+  @keyframes shadowScale {
+    0%,100% { transform:scaleX(1); opacity:0.18; }
+    50%      { transform:scaleX(0.55); opacity:0.07; }
+  }
+
+  /* Typewriter text */
+  .txt-wrap {
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+  }
+  .typewriter {
+    font-size:14px; color:var(--color-text-secondary);
+    letter-spacing:0.05em; overflow:hidden;
+    border-right:2px solid #006837;
+    white-space:nowrap; width:0;
+    animation: type 2s steps(14,end) 0.3s infinite alternate,
+               blink 0.7s step-end infinite;
+  }
+  @keyframes type {
+    from { width:0; }
+    to   { width:7.5em; }
+  }
+  @keyframes blink {
+    50% { border-color:transparent; }
+  }
+</style>
+
 <div class="preloader" id="preloader">
-    <div class="loading">
-        <svg width="100" height="110" viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg">
-    
+<div class="wrap">
 
-            <g class="container">
-                <!-- House outline -->
-                <path class="logo-path house-outline" pathLength="100" d="M10,85 L10,50 L50,15 L90,50 L90,85 L10,85 Z" />
-
-                <!-- Vertical lines -->
-                <path class="logo-path vertical-lines" pathLength="100" d="M50,15 L50,85" />
-                <path class="logo-path vertical-lines" pathLength="100" d="M31,32 L31,85 M69,32 L69,85" />
-
-                <!-- Roof and M Shapes -->
-                <path class="logo-path m-shapes" pathLength="100" d="M31,32 L50,51 L69,32" />
-                <path class="logo-path m-shapes" pathLength="100" d="M10,50 L31,31 L50,50 L69,31 L90,50" />
-                <path class="logo-path m-shapes" pathLength="100" d="M10,70 L31,51 L50,70 L69,51 L90,70" />
-            </g>
-        </svg>
+  <div class="scene">
+    <!-- outer ring of 4 dots -->
+    <div class="orbit orbit-1">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
     </div>
+    <!-- inner ring of 2 dots -->
+    <div class="orbit orbit-2">
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+
+    <!-- floating house -->
+    <div class="house-wrap">
+      <svg class="house-svg" width="62" height="56" viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10,85 L10,50 L50,15 L90,50 L90,85 L10,85 Z"/>
+        <path d="M50,15 L50,85"/>
+        <path d="M31,32 L31,85 M69,32 L69,85"/>
+        <path d="M31,32 L50,51 L69,32"/>
+        <path d="M10,50 L31,31 L50,50 L69,31 L90,50"/>
+        <path d="M10,70 L31,51 L50,70 L69,51 L90,70"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="shadow"></div>
+
+  <div class="txt-wrap">
+    <div class="typewriter">Loading...</div>
+  </div>
+
+</div>
 </div>
 
     <!-- Preloader start -->
