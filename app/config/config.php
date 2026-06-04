@@ -17,9 +17,7 @@ if ($current_server == 1) {
         "db_name" => "tphl_db",
     ];
 
-    
 }
-
 
 ///////////////////////////////////////////////
 // Project Testing Server
