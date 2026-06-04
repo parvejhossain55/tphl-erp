@@ -48,9 +48,7 @@ jobs:
 
             # Import fresh database
             echo "Importing fresh database..."
-            mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db \
-              --init-command="SET SESSION FOREIGN_KEY_CHECKS=0;" \
-              < $DATABASE_DIR/tphl_db.sql
+            mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/tphl_db.sql
 
             # Project upload in Main From Staging
             echo "Copying files to production..."
