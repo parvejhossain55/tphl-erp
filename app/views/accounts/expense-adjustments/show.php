@@ -259,16 +259,17 @@ $isExtra = $adj['adjustment_type'] == 'extra';
                                             </button>
                                         </form>
                                     <?php else: ?>
-                                        <div class="alert alert-warning text-center border" style="background:rgba(245,158,11,.08); border-color:rgba(245,158,11,.3) !important;">
-                                            <i class="bi bi-hourglass-split me-1"></i> <strong>Pending Approval</strong>
+                                        <div class="alert alert-warning text-center border mb-0" style="background:rgba(245,158,11,.08); border-color:rgba(245,158,11,.3) !important;">
+                                            <i class="fa-light fa-hourglass-half fa-2x d-block mb-2"></i>
+                                            <strong>Pending Approval</strong>
                                             <div class="text-muted small mt-1">Awaiting Management approval</div>
                                         </div>
                                     <?php endif; ?>
 
                                 <?php elseif (in_array($adj['status'], ['approved', 'partially_paid'])): ?>
                                     <div class="alert alert-info text-center mb-3">
-                                        <strong>Total Approved:</strong> TK.<?= number_format($adj['approved_amount'], 2) ?><br>
-                                        <strong>Due Amount:</strong> <span class="text-danger">TK.<?= number_format($adj['due_amount'], 2) ?></span>
+                                        <div class="mb-1"><strong>Total Approved:</strong> TK.<?= number_format($adj['approved_amount'], 2) ?></div>
+                                        <div><strong>Due Amount:</strong> <span class="text-danger">TK.<?= number_format($adj['due_amount'], 2) ?></span></div>
                                     </div>
                                     
                                     <?php if ($isAccounts && $adj['due_amount'] > 0): ?>
@@ -279,25 +280,27 @@ $isExtra = $adj['adjustment_type'] == 'extra';
                                     <?php endif; ?>
 
                                 <?php elseif ($adj['status'] == 'fully_paid'): ?>
-                                    <div class="alert alert-success text-center">
-                                        <i class="fa-light fa-check-circle fa-2x mb-2 d-block"></i>
-                                        <strong>Settled Successfully</strong><br>
-                                        Total: TK.<?= number_format($adj['approved_amount'], 2) ?>
+                                    <div class="alert alert-success text-center mb-0">
+                                        <i class="fa-light fa-check-circle fa-2x d-block mb-2"></i>
+                                        <strong class="d-block mb-1">Settled Successfully</strong>
+                                        <span>Total: TK.<?= number_format($adj['approved_amount'], 2) ?></span>
                                     </div>
                                 <?php elseif ($adj['status'] == 'rejected'): ?>
-                                    <div class="alert alert-danger text-center">
-                                        <i class="fa-light fa-times-circle fa-2x mb-2 d-block"></i>
+                                    <div class="alert alert-danger text-center mb-0">
+                                        <i class="fa-light fa-times-circle fa-2x d-block mb-2"></i>
                                         <strong>Request Rejected</strong>
                                     </div>
                                 <?php endif; ?>
 
                                 <?php if (!empty($adj['approved_by'])): ?>
-                                    <hr>
-                                    <div class="small">
-                                        <strong>Processed By:</strong> <?= htmlspecialchars($adj['approver_name'] ?? '') ?><br>
-                                        <strong>Date:</strong> <?= date('d M Y, h:i A', strtotime($adj['approved_at'])) ?>
+                                    <div class="border-top mt-3 pt-3">
+                                        <div class="small">
+                                            <div class="mb-1"><strong>Processed By:</strong> <?= htmlspecialchars($adj['approver_name'] ?? '') ?></div>
+                                            <div><strong>Date:</strong> <?= date('d M Y, h:i A', strtotime($adj['approved_at'])) ?></div>
+                                        </div>
                                     </div>
                                 <?php endif; ?>
+
                             </div>
                         </div>
                     </div>

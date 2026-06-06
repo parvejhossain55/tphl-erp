@@ -17,7 +17,7 @@ class AccountMailService
     private $senderName = 'TPHL ERP Notification';
     private $clientId = '684667519692-hcdp7rhi9r64d87g93eq1cagpgqurk35.apps.googleusercontent.com';
     private $clientSecret = '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';
-    private $refreshToken = '1//04Qa5NFioE604CgYIARAAGAQSNwF-L9Ir0mvpawdxz_MgZ4-0oWYYZMB4gaXf12Edo7jGEvz6NdpgTz9Y5UjamdkWwRd6pFRygPM';
+    private $refreshToken = '1//041-wDvZzKIoVCgYIARAAGAQSNwF-L9IrP3uKc9BZMrTRHt9EHVR-PDRZdgog0Hk8uAOapqaf45h4Xkp8rkwzPTIY2Vhxt1DgIx4';
 
     public function __construct($db)
     {
@@ -867,6 +867,261 @@ HTML;
             return $mail->send();
         } catch (Exception $e) {
             error_log("Mail Service Error (Refund Approval): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // =========================================================================
+    // EXPENSE ADJUSTMENT EMAIL NOTIFICATIONS
+    // =========================================================================
+
+    /**
+     * Helper: Format parent request type for display
+     */
+    private function formatParentType($parentType)
+    {
+        $map = [
+            'cashout'    => 'Cashout Request',
+            'vendor'     => 'Vendor Payment Request',
+            'contractor' => 'Contractor Bill',
+            'purchase'   => 'Purchase Request',
+        ];
+        return $map[$parentType] ?? ucfirst($parentType);
+    }
+
+    /**
+     * Expense Adjustment — On Submission
+     * Sent to: Management (1, 3), Accounts (6), and Requester
+     */
+    public function sendOnAdjustmentSubmission($adjData)
+    {
+        try {
+            $mail = $this->getMailer();
+
+            $mail->Subject = "New Expense Adjustment Request — " . htmlspecialchars($adjData['title'] ?? 'Untitled');
+
+            $requester = $this->getUserById($adjData['user_id']);
+            $requesterName = $requester ? htmlspecialchars($requester['full_name']) : 'Unknown User';
+            $amount = number_format($adjData['amount'], 2);
+            $title = htmlspecialchars($adjData['title'] ?? '');
+            $description = nl2br(htmlspecialchars($adjData['description'] ?? ''));
+            $adjustmentType = ucfirst($adjData['adjustment_type'] ?? 'N/A');
+            $parentType = $this->formatParentType($adjData['parent_type'] ?? 'cashout');
+            $originalPurpose = htmlspecialchars($adjData['original_purpose'] ?? 'N/A');
+            $originalAmount = number_format($adjData['original_amount'] ?? 0, 2);
+            $projectName = !empty($adjData['project_name']) ? htmlspecialchars($adjData['project_name']) : null;
+            $office = !empty($adjData['office']) ? htmlspecialchars($adjData['office']) : null;
+
+            $parentInfo = "
+                <div style='background:#f0f4ff; border-left:4px solid #3b82f6; padding:12px 16px; border-radius:6px; margin-bottom:16px;'>
+                    <strong style='color:#1e40af; font-size:14px;'>📋 Made Against: {$parentType} #{$adjData['cashout_request_id']}</strong><br>
+                    <span style='color:#333; font-size:13px;'>Purpose: {$originalPurpose}</span><br>
+                    <span style='color:#333; font-size:13px;'>Original Amount: BDT {$originalAmount}</span>
+                </div>
+            ";
+
+            $extraDetails = "";
+            if ($projectName) {
+                $extraDetails .= "<strong style='color: #000000;'>Project:</strong> {$projectName}<br>";
+            }
+            if ($office) {
+                $extraDetails .= "<strong style='color: #000000;'>Office:</strong> {$office}<br>";
+            }
+
+            $headerTitle = "New Expense Adjustment Request";
+            $greeting = "Hello,";
+            $message = "A new expense adjustment request has been submitted and is pending your review.";
+            $buttonText = "View Adjustment";
+            $buttonUrl = "https://thepremiumhomesltd.com/TPHL-ERP/expense-adjustments";
+
+            $detailsHtml = "
+                {$parentInfo}
+                <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Adjustment Details:</h4>
+                <div style='color: #333333; font-size: 15px; line-height: 1.6;'>
+                    <strong style='color: #000000;'>Requester:</strong> {$requesterName}<br>
+                    <strong style='color: #000000;'>Title:</strong> {$title}<br>
+                    <strong style='color: #000000;'>Type:</strong> {$adjustmentType}<br>
+                    {$extraDetails}
+                    <strong style='color: #000000;'>Adjustment Amount:</strong> BDT {$amount}<br>
+                    <strong style='color: #000000;'>Description:</strong> {$description}
+                </div>
+            ";
+
+            $mail->Body = $this->getHtmlTemplate($headerTitle, $greeting, $message, $buttonText, $buttonUrl, $detailsHtml);
+            $mail->AltBody = "New Expense Adjustment by {$requesterName}. Type: {$adjustmentType}. Amount: BDT {$amount}. Against: {$parentType} #{$adjData['cashout_request_id']}.";
+
+            $recipients = $this->getUsersByRoles([1, 3, 6]);
+
+            $addedEmails = [];
+            foreach ($recipients as $recipient) {
+                if (filter_var($recipient['email'], FILTER_VALIDATE_EMAIL)) {
+                    $mail->addAddress($recipient['email'], $recipient['full_name']);
+                    $addedEmails[] = strtolower($recipient['email']);
+                }
+            }
+
+            // Also notify the requester
+            if ($requester && !empty($requester['email'])
+                && filter_var($requester['email'], FILTER_VALIDATE_EMAIL)
+                && !in_array(strtolower($requester['email']), $addedEmails)) {
+                $mail->addAddress($requester['email'], $requester['full_name']);
+            }
+
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Mail Service Error (Adjustment Submission): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Expense Adjustment — On Approval
+     * Sent to: Management (1, 3), Accounts (6), and Requester
+     */
+    public function sendOnAdjustmentApproval($adjData, $approverId)
+    {
+        try {
+            $mail = $this->getMailer();
+
+            $mail->Subject = "Expense Adjustment Approved — " . htmlspecialchars($adjData['title'] ?? 'Untitled');
+
+            $requester = $this->getUserById($adjData['user_id']);
+            $requesterName = $requester ? htmlspecialchars($requester['full_name']) : 'Unknown User';
+            $approver = $this->getUserById($approverId);
+            $approverName = $approver ? htmlspecialchars($approver['full_name']) : 'System/Admin';
+
+            $approvedAmount = number_format($adjData['approved_amount'] ?? $adjData['amount'], 2);
+            $title = htmlspecialchars($adjData['title'] ?? '');
+            $adjustmentType = ucfirst($adjData['adjustment_type'] ?? 'N/A');
+            $parentType = $this->formatParentType($adjData['parent_type'] ?? 'cashout');
+            $originalPurpose = htmlspecialchars($adjData['original_purpose'] ?? 'N/A');
+            $originalAmount = number_format($adjData['original_amount'] ?? 0, 2);
+            $projectName = !empty($adjData['project_name']) ? htmlspecialchars($adjData['project_name']) : null;
+            $office = !empty($adjData['office']) ? htmlspecialchars($adjData['office']) : null;
+
+            $parentInfo = "
+                <div style='background:#f0fdf4; border-left:4px solid #22c55e; padding:12px 16px; border-radius:6px; margin-bottom:16px;'>
+                    <strong style='color:#166534; font-size:14px;'>📋 Made Against: {$parentType} #{$adjData['cashout_request_id']}</strong><br>
+                    <span style='color:#333; font-size:13px;'>Purpose: {$originalPurpose}</span><br>
+                    <span style='color:#333; font-size:13px;'>Original Amount: BDT {$originalAmount}</span>
+                </div>
+            ";
+
+            $extraDetails = "";
+            if ($projectName) {
+                $extraDetails .= "<strong style='color: #000000;'>Project:</strong> {$projectName}<br>";
+            }
+            if ($office) {
+                $extraDetails .= "<strong style='color: #000000;'>Office:</strong> {$office}<br>";
+            }
+
+            $headerTitle = "Expense Adjustment Approved";
+            $greeting = "Hello,";
+            $message = "An expense adjustment request has been approved and is ready for processing.";
+            $buttonText = "View Adjustment";
+            $buttonUrl = "https://thepremiumhomesltd.com/TPHL-ERP/expense-adjustments/show?id=" . ($adjData['id'] ?? '');
+
+            $detailsHtml = "
+                {$parentInfo}
+                <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Approval Details:</h4>
+                <div style='color: #333333; font-size: 15px; line-height: 1.6;'>
+                    <strong style='color: #000000;'>Requester:</strong> {$requesterName}<br>
+                    <strong style='color: #000000;'>Approved By:</strong> {$approverName}<br>
+                    <strong style='color: #000000;'>Title:</strong> {$title}<br>
+                    <strong style='color: #000000;'>Type:</strong> {$adjustmentType}<br>
+                    {$extraDetails}
+                    <strong style='color: #000000;'>Approved Amount:</strong> BDT {$approvedAmount}
+                </div>
+            ";
+
+            $mail->Body = $this->getHtmlTemplate($headerTitle, $greeting, $message, $buttonText, $buttonUrl, $detailsHtml);
+            $mail->AltBody = "Expense Adjustment Approved for {$requesterName}. Amount: BDT {$approvedAmount}. Approved by: {$approverName}.";
+
+            $recipients = $this->getUsersByRoles([1, 3, 6]);
+            $addedEmails = [];
+
+            foreach ($recipients as $recipient) {
+                if (filter_var($recipient['email'], FILTER_VALIDATE_EMAIL)) {
+                    $mail->addAddress($recipient['email'], $recipient['full_name']);
+                    $addedEmails[] = strtolower($recipient['email']);
+                }
+            }
+
+            // Also notify the requester
+            if ($requester && !empty($requester['email'])
+                && filter_var($requester['email'], FILTER_VALIDATE_EMAIL)
+                && !in_array(strtolower($requester['email']), $addedEmails)) {
+                $mail->addAddress($requester['email'], $requester['full_name']);
+            }
+
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Mail Service Error (Adjustment Approval): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Expense Adjustment — On Rejection
+     * Sent to: Requester only
+     */
+    public function sendOnAdjustmentRejection($adjData, $rejectorId)
+    {
+        try {
+            $mail = $this->getMailer();
+
+            $mail->Subject = "Expense Adjustment Rejected — " . htmlspecialchars($adjData['title'] ?? 'Untitled');
+
+            $requester = $this->getUserById($adjData['user_id']);
+            $requesterName = $requester ? htmlspecialchars($requester['full_name']) : 'Unknown User';
+            $rejector = $this->getUserById($rejectorId);
+            $rejectorName = $rejector ? htmlspecialchars($rejector['full_name']) : 'System/Admin';
+
+            $amount = number_format($adjData['amount'], 2);
+            $title = htmlspecialchars($adjData['title'] ?? '');
+            $adjustmentType = ucfirst($adjData['adjustment_type'] ?? 'N/A');
+            $parentType = $this->formatParentType($adjData['parent_type'] ?? 'cashout');
+            $originalPurpose = htmlspecialchars($adjData['original_purpose'] ?? 'N/A');
+            $originalAmount = number_format($adjData['original_amount'] ?? 0, 2);
+
+            $parentInfo = "
+                <div style='background:#fef2f2; border-left:4px solid #ef4444; padding:12px 16px; border-radius:6px; margin-bottom:16px;'>
+                    <strong style='color:#991b1b; font-size:14px;'>📋 Made Against: {$parentType} #{$adjData['cashout_request_id']}</strong><br>
+                    <span style='color:#333; font-size:13px;'>Purpose: {$originalPurpose}</span><br>
+                    <span style='color:#333; font-size:13px;'>Original Amount: BDT {$originalAmount}</span>
+                </div>
+            ";
+
+            $headerTitle = "Expense Adjustment Rejected";
+            $greeting = "Hello {$requesterName},";
+            $message = "Your expense adjustment request has been rejected.";
+            $buttonText = "View Details";
+            $buttonUrl = "https://thepremiumhomesltd.com/TPHL-ERP/expense-adjustments/show?id=" . ($adjData['id'] ?? '');
+
+            $detailsHtml = "
+                {$parentInfo}
+                <h4 style='margin-top: 0; margin-bottom: 15px; color: #000000; font-size: 16px;'>Rejection Details:</h4>
+                <div style='color: #333333; font-size: 15px; line-height: 1.6;'>
+                    <strong style='color: #000000;'>Title:</strong> {$title}<br>
+                    <strong style='color: #000000;'>Type:</strong> {$adjustmentType}<br>
+                    <strong style='color: #000000;'>Amount Requested:</strong> BDT {$amount}<br>
+                    <strong style='color: #000000;'>Rejected By:</strong> {$rejectorName}
+                </div>
+            ";
+
+            $mail->Body = $this->getHtmlTemplate($headerTitle, $greeting, $message, $buttonText, $buttonUrl, $detailsHtml);
+            $mail->AltBody = "Expense Adjustment Rejected for {$requesterName}. Title: {$title}. Rejected by: {$rejectorName}.";
+
+            // Only notify the requester
+            if ($requester && !empty($requester['email']) && filter_var($requester['email'], FILTER_VALIDATE_EMAIL)) {
+                $mail->addAddress($requester['email'], $requester['full_name']);
+            } else {
+                return false;
+            }
+
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Mail Service Error (Adjustment Rejection): " . $e->getMessage());
             return false;
         }
     }

@@ -1,12 +1,14 @@
 <?php
 require_once __DIR__ . '/../models/ExpenseAdjustment.php';
 require_once __DIR__ . '/../models/CashoutRequest.php';
+require_once __DIR__ . '/../views/accounts/AccountMailService.php';
 
 class ExpenseAdjustmentController extends Controller
 {
     protected $db;
     protected $model;
     protected $cashoutModel;
+    protected $mailService;
     protected $userId;
     protected $userRole;
 
@@ -15,6 +17,7 @@ class ExpenseAdjustmentController extends Controller
         $this->db = $db;
         $this->model = new ExpenseAdjustment($db);
         $this->cashoutModel = new CashoutRequest($db);
+        $this->mailService = new AccountMailService($db);
 
         if (session_status() === PHP_SESSION_NONE) session_start();
         $this->userId = $_SESSION['user']['id'] ?? null;
@@ -207,6 +210,16 @@ class ExpenseAdjustmentController extends Controller
 
         $adjId = $this->model->create($data);
         if ($adjId) {
+            // Send email notification
+            try {
+                $adjData = $this->model->getById($adjId);
+                if ($adjData) {
+                    $this->mailService->sendOnAdjustmentSubmission($adjData);
+                }
+            } catch (\Throwable $e) {
+                error_log("Expense Adjustment Mail Error (Submission): " . $e->getMessage());
+            }
+
             setSuccess('Adjustment request created successfully.');
             header("Location: {$GLOBALS['base_url']}/expense-adjustments");
         } else {
@@ -273,6 +286,16 @@ class ExpenseAdjustmentController extends Controller
         }
 
         if ($this->model->approve($id, $this->userId, $approvedAmount)) {
+            // Send email notification
+            try {
+                $freshAdj = $this->model->getById($id);
+                if ($freshAdj) {
+                    $this->mailService->sendOnAdjustmentApproval($freshAdj, $this->userId);
+                }
+            } catch (\Throwable $e) {
+                error_log("Expense Adjustment Mail Error (Approval): " . $e->getMessage());
+            }
+
             setSuccess('Adjustment request approved successfully.');
         } else {
             setError('Failed to approve request.');
@@ -296,6 +319,16 @@ class ExpenseAdjustmentController extends Controller
         }
 
         if ($this->model->reject($id, $this->userId)) {
+            // Send email notification
+            try {
+                $freshAdj = $this->model->getById($id);
+                if ($freshAdj) {
+                    $this->mailService->sendOnAdjustmentRejection($freshAdj, $this->userId);
+                }
+            } catch (\Throwable $e) {
+                error_log("Expense Adjustment Mail Error (Rejection): " . $e->getMessage());
+            }
+
             setSuccess('Adjustment request rejected.');
         } else {
             setError('Failed to reject request.');
