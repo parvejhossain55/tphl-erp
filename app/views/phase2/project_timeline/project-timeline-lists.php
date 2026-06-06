@@ -109,7 +109,7 @@ function formatTimelineDate($dateStr) {
       .tl-stat-card-handover::after { background: #3b82f6; }
       .tl-stat-card-construction::after { background: #f59e0b; }
       .tl-stat-card-start::after { background: #10b981; }
-      .tl-stat-card-status::after { background: #8b5cf6; }
+      .tl-stat-card-status::after { background: var(--clr-theme-secondary); }
 
       .tl-stat-icon {
         width: 46px;
@@ -125,7 +125,7 @@ function formatTimelineDate($dateStr) {
       .tl-stat-card-handover .tl-stat-icon { background: rgba(59, 130, 246, 0.08); color: #3b82f6; }
       .tl-stat-card-construction .tl-stat-icon { background: rgba(245, 158, 11, 0.08); color: #f59e0b; }
       .tl-stat-card-start .tl-stat-icon { background: rgba(16, 185, 129, 0.08); color: #10b981; }
-      .tl-stat-card-status .tl-stat-icon { background: rgba(139, 92, 246, 0.08); color: #8b5cf6; }
+      .tl-stat-card-status .tl-stat-icon { background: rgba(var(--clr-theme-secondary-rgb), 0.08); color: var(--clr-theme-secondary); }
 
       .tl-stat-info {
         display: flex;
@@ -454,7 +454,7 @@ function formatTimelineDate($dateStr) {
               Edit Timeline Configuration
             </a>
             <a href="<?= $base ?>/con-phase-plan/<?= $project['id'] ?>" class="btn w-100 btn-edit-timeline"
-               style="background:rgba(99,102,241,.1);color:#6366f1;border:1px solid rgba(99,102,241,.25);">
+               style="background:rgba(var(--clr-theme-primary-rgb),.1);color:var(--clr-theme-primary);border:1px solid rgba(var(--clr-theme-primary-rgb),.25);">
               <i class="fal fa-sitemap"></i>
               Go to Phase Plan
             </a>
@@ -537,7 +537,7 @@ function formatTimelineDate($dateStr) {
               </div>
 
               <!-- Milestone 4 -->
-              <div class="tl-milestone-item" style="--m-color: #8b5cf6;">
+              <div class="tl-milestone-item" style="--m-color: var(--clr-theme-secondary);">
                 <div class="tl-milestone-dot"></div>
                 <div class="tl-milestone-title">Post-Construction & Client Handover</div>
                 <div class="tl-milestone-date"><?= formatTimelineDate($expected_handover_date) ?></div>

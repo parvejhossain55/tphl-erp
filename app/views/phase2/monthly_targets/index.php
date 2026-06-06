@@ -10,11 +10,11 @@ $statusMeta = [
     'In Review' => ['color' => '#f59e0b', 'bg' => 'rgba(245,158,11,.12)'],
     'Approved'  => ['color' => '#10b981', 'bg' => 'rgba(16,185,129,.12)'],
 ];
-$phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec4899','#0ea5e9','#f97316','#84cc16'];
+$phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a6','var(--clr-theme-secondary)','#ec4899','#0ea5e9','#f97316','#84cc16'];
 ?>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-:root{ --mt-primary:#6366f1;--mt-green:#10b981;--mt-amber:#f59e0b;--mt-red:#ef4444; }
+:root{ --mt-primary:var(--clr-theme-primary);--mt-green:#10b981;--mt-amber:#f59e0b;--mt-red:#ef4444; }
 
 .mt-header{ display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:10px }
 .mt-header h4{ font-size:19px;font-weight:800;margin:0 0 3px }
@@ -22,7 +22,7 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
 .mt-breadcrumb a{ color:var(--mt-primary);text-decoration:none }
 
 /* Create target card */
-.mt-create-card{ border-radius:14px;border:2px dashed rgba(99,102,241,.3);padding:22px 24px;margin-bottom:24px;background:rgba(99,102,241,.03) }
+.mt-create-card{ border-radius:14px;border:2px dashed rgba(var(--clr-theme-primary-rgb),.3);padding:22px 24px;margin-bottom:24px;background:rgba(var(--clr-theme-primary-rgb),.03) }
 .mt-create-card h6{ font-size:13px;font-weight:700;margin-bottom:14px;color:var(--mt-primary) }
 
 /* Month group */

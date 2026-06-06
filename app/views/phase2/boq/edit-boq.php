@@ -222,7 +222,7 @@ function checkStock(btn) {
             icon: 'warning',
             title: 'Project Required',
             text: 'Please select a Project first.',
-            confirmButtonColor: '#4f46e5'
+            confirmButtonColor: 'var(--clr-theme-primary)'
         });
         return;
     }
@@ -232,7 +232,7 @@ function checkStock(btn) {
             icon: 'warning',
             title: 'Material Required',
             text: 'Please select a Material first.',
-            confirmButtonColor: '#4f46e5'
+            confirmButtonColor: 'var(--clr-theme-primary)'
         });
         return;
     }
@@ -304,7 +304,7 @@ function checkStock(btn) {
                     `,
                     showCloseButton: true,
                     confirmButtonText: 'Close',
-                    confirmButtonColor: '#4f46e5',
+                    confirmButtonColor: 'var(--clr-theme-primary)',
                     customClass: {
                         popup: 'shadow-lg border-0'
                     }

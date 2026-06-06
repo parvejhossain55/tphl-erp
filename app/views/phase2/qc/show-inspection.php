@@ -72,8 +72,8 @@ $st = $statusColor[$ins['overall_status']] ?? $statusColor['passed'];
   }
 
   .ins-meta-item {
-    background: rgba(99, 102, 241, .04);
-    border: 1px solid rgba(99, 102, 241, .1);
+    background: rgba(var(--clr-theme-primary-rgb), .04);
+    border: 1px solid rgba(var(--clr-theme-primary-rgb), .1);
     border-radius: 10px;
     padding: 12px 14px;
   }
@@ -140,7 +140,7 @@ $st = $statusColor[$ins['overall_status']] ?? $statusColor['passed'];
   <div>
     <h4 style="font-size:17px;font-weight:800;margin:0">Inspection #<?= $ins['id'] ?></h4>
     <div style="font-size:12px;color:var(--text-muted);margin-top:3px">
-      <a href="<?= $base ?>/qc-dashboard" style="color:#6366f1;text-decoration:none"><i
+      <a href="<?= $base ?>/qc-dashboard" style="color:var(--clr-theme-primary);text-decoration:none"><i
           class="fal fa-arrow-left me-1"></i> Back to QC Dashboard</a>
     </div>
   </div>
@@ -197,8 +197,8 @@ $st = $statusColor[$ins['overall_status']] ?? $statusColor['passed'];
     <!-- Checklist Items -->
     <div class="ins-card">
       <div class="ins-section-title">
-        <i class="fal fa-clipboard-list" style="color:#6366f1"></i> Checklist Items
-        <span style="margin-left:auto;font-size:11px;font-weight:700;color:#6366f1">
+        <i class="fal fa-clipboard-list" style="color:var(--clr-theme-primary)"></i> Checklist Items
+        <span style="margin-left:auto;font-size:11px;font-weight:700;color:var(--clr-theme-primary)">
           <?= count(array_filter($items, fn($i) => $i['is_passed'])) ?>/<?= count($items) ?> Passed
         </span>
       </div>
@@ -221,7 +221,7 @@ $st = $statusColor[$ins['overall_status']] ?? $statusColor['passed'];
               <?php if (!empty($item['item_attachment'])): ?>
                 <div style="margin-top:6px">
                   <a href="<?= $base ?>/<?= htmlspecialchars($item['item_attachment']) ?>" target="_blank"
-                    style="font-size:10px;color:#6366f1;font-weight:700">
+                    style="font-size:10px;color:var(--clr-theme-primary);font-weight:700">
                     <i class="fal fa-paperclip me-1"></i>View Attachment
                   </a>
                 </div>
@@ -245,7 +245,7 @@ $st = $statusColor[$ins['overall_status']] ?? $statusColor['passed'];
     <!-- Overall Comments -->
     <?php if (!empty($ins['comments'])): ?>
       <div class="ins-card">
-        <div class="ins-section-title"><i class="fal fa-comment-alt" style="color:#6366f1"></i> Overall Comments</div>
+        <div class="ins-section-title"><i class="fal fa-comment-alt" style="color:var(--clr-theme-primary)"></i> Overall Comments</div>
         <div style="font-size:13px;line-height:1.7;color:var(--text)"><?= nl2br(htmlspecialchars($ins['comments'])) ?>
         </div>
       </div>
@@ -254,7 +254,7 @@ $st = $statusColor[$ins['overall_status']] ?? $statusColor['passed'];
     <!-- Related Project Drawings -->
     <div class="ins-card">
       <div class="ins-section-title">
-        <i class="fal fa-drafting-compass" style="color:#6366f1"></i> Related Project Drawings
+        <i class="fal fa-drafting-compass" style="color:var(--clr-theme-primary)"></i> Related Project Drawings
         <span style="margin-left:auto;font-size:10px;font-weight:700;color:var(--text-muted)">
           <?= $ins['work_type_name'] ?> → <?= !empty($drawings) ? $drawings[0]['design_type_name'] : 'N/A' ?>
         </span>
@@ -266,20 +266,20 @@ $st = $statusColor[$ins['overall_status']] ?? $statusColor['passed'];
           $drStatus = $dr['status'];
           $drColor  = match($drStatus) {
             'Approved'  => ['bg'=>'rgba(16,185,129,.1)','c'=>'#059669'],
-            'Submitted' => ['bg'=>'rgba(99,102,241,.1)', 'c'=>'#6366f1'],
+            'Submitted' => ['bg'=>'rgba(var(--clr-theme-primary-rgb),.1)', 'c'=>'var(--clr-theme-primary)'],
             'Rejected'  => ['bg'=>'rgba(239,68,68,.1)',  'c'=>'#dc2626'],
             default     => ['bg'=>'rgba(107,114,128,.1)','c'=>'#6b7280'],
           };
         ?>
-        <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:10px;border:1px solid rgba(0,0,0,.07);margin-bottom:8px;background:rgba(99,102,241,.02)">
-          <div style="width:36px;height:36px;border-radius:10px;background:rgba(99,102,241,.1);color:#6366f1;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">
+        <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:10px;border:1px solid rgba(0,0,0,.07);margin-bottom:8px;background:rgba(var(--clr-theme-primary-rgb),.02)">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(var(--clr-theme-primary-rgb),.1);color:var(--clr-theme-primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">
             <i class="fal fa-file-alt"></i>
           </div>
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <span style="font-size:12px;font-weight:800"><?= htmlspecialchars($dr['design_type_name'] ?? 'N/A') ?></span>
               <?php if ($dr['version']): ?>
-                <span style="font-size:10px;background:rgba(99,102,241,.1);color:#6366f1;padding:2px 8px;border-radius:10px;font-weight:700">v<?= htmlspecialchars($dr['version']) ?></span>
+                <span style="font-size:10px;background:rgba(var(--clr-theme-primary-rgb),.1);color:var(--clr-theme-primary);padding:2px 8px;border-radius:10px;font-weight:700">v<?= htmlspecialchars($dr['version']) ?></span>
               <?php endif; ?>
               <span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;background:<?= $drColor['bg'] ?>;color:<?= $drColor['c'] ?>">
                 <?= $drStatus ?>
@@ -307,7 +307,7 @@ $st = $statusColor[$ins['overall_status']] ?? $statusColor['passed'];
             <?php if (!empty($dr['design_link'])): ?>
               <div style="margin-top:6px">
                 <a href="<?= htmlspecialchars($dr['design_link']) ?>" target="_blank"
-                  style="font-size:11px;color:#6366f1;font-weight:700;text-decoration:none">
+                  style="font-size:11px;color:var(--clr-theme-primary);font-weight:700;text-decoration:none">
                   <i class="fal fa-external-link me-1"></i>View Drawing / Link
                 </a>
               </div>
@@ -328,7 +328,7 @@ $st = $statusColor[$ins['overall_status']] ?? $statusColor['passed'];
   <div class="col-lg-4">
     <!-- Meta Info -->
     <div class="ins-card">
-      <div class="ins-section-title"><i class="fal fa-info-circle" style="color:#6366f1"></i> Inspection Details</div>
+      <div class="ins-section-title"><i class="fal fa-info-circle" style="color:var(--clr-theme-primary)"></i> Inspection Details</div>
       <div class="ins-meta-grid">
         <div class="ins-meta-item">
           <div class="ins-meta-label"><i class="fal fa-building me-1"></i>Project</div>
@@ -357,7 +357,7 @@ $st = $statusColor[$ins['overall_status']] ?? $statusColor['passed'];
 
     <!-- Summary -->
     <div class="ins-card">
-      <div class="ins-section-title"><i class="fal fa-chart-pie" style="color:#6366f1"></i> Summary</div>
+      <div class="ins-section-title"><i class="fal fa-chart-pie" style="color:var(--clr-theme-primary)"></i> Summary</div>
       <?php
       $total = count($items);
       $passed = count(array_filter($items, fn($i) => $i['is_passed']));
@@ -366,7 +366,7 @@ $st = $statusColor[$ins['overall_status']] ?? $statusColor['passed'];
       ?>
       <div style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:5px">
-          <span>Pass Rate</span><span style="color:#6366f1"><?= $pct ?>%</span>
+          <span>Pass Rate</span><span style="color:var(--clr-theme-primary)"><?= $pct ?>%</span>
         </div>
         <div style="height:8px;background:rgba(0,0,0,.07);border-radius:10px;overflow:hidden">
           <div
@@ -383,8 +383,8 @@ $st = $statusColor[$ins['overall_status']] ?? $statusColor['passed'];
           <div style="font-size:22px;font-weight:900;color:#dc2626"><?= $failed ?></div>
           <div style="font-size:10px;font-weight:700;color:var(--text-muted)">FAILED</div>
         </div>
-        <div style="flex:1;text-align:center;background:rgba(99,102,241,.08);border-radius:10px;padding:10px">
-          <div style="font-size:22px;font-weight:900;color:#6366f1"><?= $total ?></div>
+        <div style="flex:1;text-align:center;background:rgba(var(--clr-theme-primary-rgb),.08);border-radius:10px;padding:10px">
+          <div style="font-size:22px;font-weight:900;color:var(--clr-theme-primary)"><?= $total ?></div>
           <div style="font-size:10px;font-weight:700;color:var(--text-muted)">TOTAL</div>
         </div>
       </div>
@@ -393,7 +393,7 @@ $st = $statusColor[$ins['overall_status']] ?? $statusColor['passed'];
     <!-- Overall Attachment -->
     <?php if (!empty($ins['attachment'])): ?>
       <div class="ins-card">
-        <div class="ins-section-title"><i class="fal fa-paperclip" style="color:#6366f1"></i> Overall Attachment</div>
+        <div class="ins-section-title"><i class="fal fa-paperclip" style="color:var(--clr-theme-primary)"></i> Overall Attachment</div>
         <?php $ext = strtolower(pathinfo($ins['attachment'], PATHINFO_EXTENSION)); ?>
         <?php if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])): ?>
           <a href="<?= $base ?>/<?= htmlspecialchars($ins['attachment']) ?>" target="_blank">
@@ -402,7 +402,7 @@ $st = $statusColor[$ins['overall_status']] ?? $statusColor['passed'];
           </a>
         <?php else: ?>
           <a href="<?= $base ?>/<?= htmlspecialchars($ins['attachment']) ?>" target="_blank"
-            style="display:flex;align-items:center;gap:8px;padding:12px;background:rgba(99,102,241,.06);border-radius:10px;text-decoration:none;color:#6366f1;font-weight:700;font-size:12px">
+            style="display:flex;align-items:center;gap:8px;padding:12px;background:rgba(var(--clr-theme-primary-rgb),.06);border-radius:10px;text-decoration:none;color:var(--clr-theme-primary);font-weight:700;font-size:12px">
             <i class="fal fa-file-pdf fa-2x"></i> View Attachment
           </a>
         <?php endif; ?>

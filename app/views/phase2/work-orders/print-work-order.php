@@ -207,9 +207,9 @@ $isOverdue = $wo['end_date'] && strtotime($wo['end_date']) < time() && !in_array
                 <div class="av c-teal">৳<?= number_format($advAmt, 2) ?></div>
             </div>
             <div class="amount-cell">
-                <div class="accent" style="background:#7c3aed;"></div>
+                <div class="accent" style="background:var(--clr-theme-secondary);"></div>
                 <div class="al">Running (<?= $wo['running_percent'] ?? 70 ?>%)</div>
-                <div class="av" style="color:#7c3aed;">৳<?= number_format($runAmt, 2) ?></div>
+                <div class="av" style="color:var(--clr-theme-secondary);">৳<?= number_format($runAmt, 2) ?></div>
             </div>
             <div class="amount-cell">
                 <div class="accent" style="background:#b91c1c;"></div>

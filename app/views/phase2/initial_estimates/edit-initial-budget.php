@@ -95,7 +95,7 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
     }
 
     .dt-color-4 .dt-block-header {
-        background: linear-gradient(135deg, #4c1d95, #7c3aed);
+        background: linear-gradient(135deg, #4c1d95, var(--clr-theme-secondary));
     }
 
     .dt-color-5 .dt-block-header {

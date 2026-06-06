@@ -297,7 +297,7 @@ $grandTotal = $budget['total_estimated_cost'] ?? 0;
         }
 
         .c-purple {
-            color: #7c3aed;
+            color: var(--clr-theme-secondary);
         }
 
         /* ── Section ──────────────────────────────────── */
@@ -450,7 +450,7 @@ $grandTotal = $budget['total_estimated_cost'] ?? 0;
         }
 
         .bp-purple {
-            background: rgba(124, 58, 237, .1);
+            background: rgba(var(--clr-theme-secondary-rgb), .1);
             color: #6d28d9;
         }
 
@@ -608,7 +608,7 @@ $grandTotal = $budget['total_estimated_cost'] ?? 0;
                     <div class="kpi-value c-amber"><?= pib_fmt($otherCost) ?></div>
                 </div>
                 <div class="kpi-cell">
-                    <div class="kpi-accent" style="background:#7c3aed;"></div>
+                    <div class="kpi-accent" style="background:var(--clr-theme-secondary);"></div>
                     <div class="kpi-label">Grand Total</div>
                     <div class="kpi-value c-purple"><?= pib_fmt($grandTotal) ?></div>
                 </div>
@@ -683,7 +683,7 @@ $grandTotal = $budget['total_estimated_cost'] ?? 0;
                                 </div>
                                 <div class="bkd-row">
                                     <span>Design Total</span>
-                                    <span style="color:#7c3aed;"><?= pib_fmt($bk['design_total']) ?></span>
+                                    <span style="color:var(--clr-theme-secondary);"><?= pib_fmt($bk['design_total']) ?></span>
                                 </div>
                             </div>
                         <?php endforeach; ?>

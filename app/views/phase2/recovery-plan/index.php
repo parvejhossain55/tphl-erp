@@ -39,7 +39,7 @@ $projectId = $project['id'];
 .kpi-card.amber  { border-left-color: #f59e0b; }
 .kpi-card.red    { border-left-color: #ef4444; }
 .kpi-card.blue   { border-left-color: #3b82f6; }
-.kpi-card.purple { border-left-color: #8b5cf6; }
+.kpi-card.purple { border-left-color: var(--clr-theme-secondary); }
 .kpi-number { font-size: 2rem; font-weight: 800; line-height: 1; }
 .kpi-label  { font-size: 0.78rem; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: .04em; }
 
@@ -95,7 +95,7 @@ $projectId = $project['id'];
 .pri-high     { background:#ffedd5; color:#9a3412; }
 .pri-critical { background:#fee2e2; color:#991b1b; }
 
-.badge-cat { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; background: #ede9fe; color: #6d28d9; }
+.badge-cat { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; background: rgba(var(--clr-theme-primary-rgb),.08); color: #6d28d9; }
 
 .badge-status-ai {
     display: inline-block; padding: 2px 9px; border-radius: 20px;
@@ -227,7 +227,7 @@ $projectId = $project['id'];
                         <div class="lbl">Extra Labour</div>
                     </div>
                     <div class="plan-meta-item">
-                        <div class="val text-indigo-600" style="color:#6366f1;"><?= number_format((float)$activePlan['extra_working_hours'], 1) ?>h</div>
+                        <div class="val text-indigo-600" style="color:var(--clr-theme-primary);"><?= number_format((float)$activePlan['extra_working_hours'], 1) ?>h</div>
                         <div class="lbl">Extra Hours/Day</div>
                     </div>
                 </div>

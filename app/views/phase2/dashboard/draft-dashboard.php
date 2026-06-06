@@ -30,7 +30,7 @@ $aeStatusLabel = [
         --dr-green: #10b981;
         --dr-amber: #f59e0b;
         --dr-red: #ef4444;
-        --dr-purple: #8b5cf6;
+        --dr-purple: var(--clr-theme-secondary);
         --dr-teal: #14b8a6;
         --dr-pink: #ec4899;
       }
@@ -371,13 +371,13 @@ $aeStatusLabel = [
       <!-- Total Drawings → scroll to recent drawings -->
       <a href="#sec-drawings" class="kpi-card">
         <div class="kpi-accent" style="background:var(--dr-purple)"></div>
-        <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:var(--dr-purple)"><i
+        <div class="kpi-icon" style="background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--dr-purple)"><i
             class="fal fa-pencil-ruler"></i></div>
         <div class="kpi-label" style="color:var(--text-muted)">Total Drawings</div>
         <div class="kpi-value" style="color:var(--dr-purple)"><?= $totalDrawings ?></div>
         <div class="kpi-sub">Uploaded design files</div>
         <span
-          style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(139,92,246,.1);color:var(--dr-purple)"><i
+          style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(var(--clr-theme-secondary-rgb),.1);color:var(--dr-purple)"><i
             class="fal fa-arrow-down me-1"></i>View</span>
       </a>
 
@@ -434,7 +434,7 @@ $aeStatusLabel = [
           </div>
           <?php
           $maxCount = !empty($drawingsByType) ? max(array_column($drawingsByType, 'count')) : 1;
-          $colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#ec4899', '#f97316'];
+          $colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', 'var(--clr-theme-secondary)', '#14b8a6', '#ec4899', '#f97316'];
           $i = 0;
           ?>
           <?php if (empty($drawingsByType)): ?>

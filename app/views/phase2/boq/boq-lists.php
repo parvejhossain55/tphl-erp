@@ -79,7 +79,7 @@ function consumeClass($pct) {
                                         <span class="text-muted" style="font-size:11px">General BOQ</span>
                                     <?php endif; ?>
                                     <?php if (!empty($boq['design_type_name'])): ?>
-                                        <span style="background:rgba(99,102,241,.1);color:#6366f1;padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700">
+                                        <span style="background:rgba(var(--clr-theme-primary-rgb),.1);color:var(--clr-theme-primary);padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700">
                                             <?= htmlspecialchars($boq['design_type_name']) ?>
                                         </span>
                                     <?php endif; ?>

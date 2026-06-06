@@ -21,7 +21,7 @@ $planStatusColors = [
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 body { font-family:'Inter',sans-serif }
-:root { --pri:#4f46e5;--green:#10b981;--amber:#f59e0b;--red:#ef4444;--slate:#64748b }
+:root { --pri:var(--clr-theme-primary);--green:#10b981;--amber:#f59e0b;--red:#ef4444;--slate:#64748b }
 
 .mr-header { margin-bottom:24px }
 .mr-crumb { font-size:11.5px;color:var(--slate);margin-bottom:6px }
@@ -60,7 +60,7 @@ body { font-family:'Inter',sans-serif }
     text-decoration:none;color:inherit;min-width:170px;flex:0 0 auto;
     transition:all .18s;cursor:pointer;background:#fafafa;position:relative;overflow:hidden
 }
-.month-card:hover { border-color:var(--pri);background:#fff;box-shadow:0 4px 14px rgba(79,70,229,.14);transform:translateY(-2px) }
+.month-card:hover { border-color:var(--pri);background:#fff;box-shadow:0 4px 14px rgba(var(--clr-theme-primary-rgb),.14);transform:translateY(-2px) }
 .month-card.approved { border-color:#10b981;background:linear-gradient(135deg,#f0fdf4,#fff) }
 .month-card.draft    { border-color:#e2e8f0 }
 
@@ -133,7 +133,7 @@ body { font-family:'Inter',sans-serif }
         </div>
         <div class="phase-stats">
             <div class="phase-stat">
-                <div class="phase-stat-val" style="color:#4f46e5"><?= number_format($planPct,1) ?>%</div>
+                <div class="phase-stat-val" style="color:var(--clr-theme-primary)"><?= number_format($planPct,1) ?>%</div>
                 <div class="phase-stat-lbl">Planned</div>
             </div>
             <div class="phase-stat">
@@ -194,7 +194,7 @@ body { font-family:'Inter',sans-serif }
                 <i class="bi bi-arrow-right-circle month-arrow"></i>
             </div>
             <div class="month-stat">
-                <i class="bi bi-list-check" style="color:#4f46e5"></i>
+                <i class="bi bi-list-check" style="color:var(--clr-theme-primary)"></i>
                 <span class="month-stat-val"><?= (int)$t['item_count'] ?></span> work items
             </div>
             <?php if ($t['total_target_qty'] > 0): ?>

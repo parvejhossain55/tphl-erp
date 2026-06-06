@@ -20,7 +20,7 @@ function pdFmt($n) {
 
 $progColor = $progress >= 75 ? '#10b981' : ($progress >= 40 ? '#f59e0b' : '#ef4444');
 $statusMap = [
-    'Planning'    => ['bg'=>'rgba(99,102,241,.12)', 'text'=>'#6366f1'],
+    'Planning'    => ['bg'=>'rgba(var(--clr-theme-primary-rgb),.12)', 'text'=>'var(--clr-theme-primary)'],
     'In Progress' => ['bg'=>'rgba(245,158,11,.12)', 'text'=>'#f59e0b'],
     'On Hold'     => ['bg'=>'rgba(239,68,68,.12)',  'text'=>'#ef4444'],
     'Completed'   => ['bg'=>'rgba(16,185,129,.12)', 'text'=>'#10b981'],
@@ -43,7 +43,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
   position:absolute;
   top:0;left:0;right:0;
   height:4px;
-  background:linear-gradient(90deg,#3b82f6,#8b5cf6,#10b981);
+  background:linear-gradient(90deg,#3b82f6,var(--clr-theme-secondary),#10b981);
 }
 .pd-info-grid {
   display:grid;
@@ -127,7 +127,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
 .design-type-badge {
   display:inline-block;font-size:10px;font-weight:700;
   padding:3px 9px;border-radius:6px;margin-bottom:8px;
-  background:rgba(99,102,241,.1);color:#6366f1;
+  background:rgba(var(--clr-theme-primary-rgb),.1);color:var(--clr-theme-primary);
 }
 .design-meta { font-size:11.5px;display:flex;gap:20px;flex-wrap:wrap;margin-top:8px; }
 .design-meta-item { display:flex;flex-direction:column;gap:1px; }
@@ -144,7 +144,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
 .bud-table tr:last-child td { border-bottom:none; }
 .bud-table tfoot td { font-weight:700;font-size:13px;border-top:2px solid rgba(0,0,0,.08); }
 .bud-mat-col { color:#f59e0b;font-weight:600; }
-.bud-lab-col { color:#8b5cf6;font-weight:600; }
+.bud-lab-col { color:var(--clr-theme-secondary);font-weight:600; }
 .bud-tot-col { color:#3b82f6;font-weight:700; }
 
 /* ── Work Plan / Targets ───────────────────────────────────── */
@@ -167,7 +167,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
   cursor:pointer;border:1px solid rgba(0,0,0,.1);background:none;
   transition:all .15s;color:var(--text-muted);
 }
-.wr-week-btn.active { background:#6366f1;color:#fff;border-color:#6366f1; }
+.wr-week-btn.active { background:var(--clr-theme-primary);color:#fff;border-color:var(--clr-theme-primary); }
 .wr-subtabs { display:flex;gap:0;border-bottom:1px solid rgba(0,0,0,.08);margin-bottom:14px; }
 .wr-subtab {
   padding:7px 16px;font-size:12px;font-weight:600;
@@ -388,7 +388,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
 
   <!-- Land Visibility Study -->
   <div class="pd-panel">
-    <div class="pd-panel-title"><i class="fal fa-university me-2" style="color:#6366f1"></i>Land Legal Documents</div>
+    <div class="pd-panel-title"><i class="fal fa-university me-2" style="color:var(--clr-theme-primary)"></i>Land Legal Documents</div>
     <?php if ($landStudy): ?>
     <?php
     $docs = [
@@ -679,7 +679,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
             
             html += '<tr>';
             html += '<td><strong>' + escHtml(item.work_item_name) + '</strong></td>';
-            html += '<td><span style="font-size:10.5px;background:rgba(99,102,241,.1);color:#6366f1;padding:2px 8px;border-radius:5px;font-weight:600">' + escHtml(item.work_type_name || item.design_type_name || '—') + '</span></td>';
+            html += '<td><span style="font-size:10.5px;background:rgba(var(--clr-theme-primary-rgb),.1);color:var(--clr-theme-primary);padding:2px 8px;border-radius:5px;font-weight:600">' + escHtml(item.work_type_name || item.design_type_name || '—') + '</span></td>';
             html += '<td style="text-align:right;font-weight:700;">' + targetQty.toFixed(1) + ' ' + escHtml(item.unit) + '</td>';
             html += '<td style="text-align:center;color:#64748b;">' + parseFloat(item.week_1_qty || 0).toFixed(1) + '</td>';
             html += '<td style="text-align:center;color:#64748b;">' + parseFloat(item.week_2_qty || 0).toFixed(1) + '</td>';
@@ -840,7 +840,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
 
       html += '<tr>';
       html += '<td><strong>' + escHtml(t.work_item_name) + '</strong></td>';
-      html += '<td><span style="font-size:10px; background:rgba(99,102,241,.08); color:#6366f1; padding:2px 6px; border-radius:4px; font-weight:600;">' + escHtml(t.work_type_name || '—') + '</span></td>';
+      html += '<td><span style="font-size:10px; background:rgba(var(--clr-theme-primary-rgb),.08); color:var(--clr-theme-primary); padding:2px 6px; border-radius:4px; font-weight:600;">' + escHtml(t.work_type_name || '—') + '</span></td>';
       html += '<td style="text-align:right; font-weight:600;">' + plannedQty.toFixed(1) + ' ' + escHtml(t.unit || '') + '</td>';
       
       html += '<td style="text-align:right; color:#64748b;">' + (d1 > 0 ? d1.toFixed(1) : '—') + '</td>';
@@ -889,7 +889,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
         html += '<span class="doc-status-pill" style="background:rgba(239,68,68,.1); color:#ef4444; font-size:10px;"><i class="fal fa-exclamation-triangle me-1"></i>Safety Issue</span>';
       }
       if(d.qc_checked == 1) {
-        html += '<span class="doc-status-pill" style="background:rgba(139,92,246,.1); color:#8b5cf6; font-size:10px;"><i class="fal fa-badge-check me-1"></i>QC Passed</span>';
+        html += '<span class="doc-status-pill" style="background:rgba(var(--clr-theme-secondary-rgb),.1); color:var(--clr-theme-secondary); font-size:10px;"><i class="fal fa-badge-check me-1"></i>QC Passed</span>';
       }
       html += '</div>';
       html += '</div>'; // end header row
@@ -902,7 +902,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
         html += '<div><span style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Concrete Poured (CFT)</span><div style="font-size:14px; font-weight:700; color:#2563eb;">' + parseFloat(d.concrete_cft).toFixed(1) + ' CFT</div></div>';
       }
       if(d.concrete_mt > 0) {
-        html += '<div><span style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Concrete Poured (MT)</span><div style="font-size:14px; font-weight:700; color:#4f46e5;">' + parseFloat(d.concrete_mt).toFixed(2) + ' MT</div></div>';
+        html += '<div><span style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Concrete Poured (MT)</span><div style="font-size:14px; font-weight:700; color:var(--clr-theme-primary);">' + parseFloat(d.concrete_mt).toFixed(2) + ' MT</div></div>';
       }
       if(d.equipment_active > 0) {
         html += '<div><span style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Equipments</span><div style="font-size:14px; font-weight:700; color:#0d9488;">' + d.equipment_active + ' Active</div></div>';
@@ -921,7 +921,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
           
           html += '<tr>';
           html += '<td><strong>' + escHtml(item.work_item_name) + '</strong></td>';
-          html += '<td><span style="font-size:10px; background:rgba(99,102,241,.08); color:#6366f1; padding:2px 6px; border-radius:4px; font-weight:600;">' + escHtml(item.work_type_name || '—') + '</span></td>';
+          html += '<td><span style="font-size:10px; background:rgba(var(--clr-theme-primary-rgb),.08); color:var(--clr-theme-primary); padding:2px 6px; border-radius:4px; font-weight:600;">' + escHtml(item.work_type_name || '—') + '</span></td>';
           html += '<td style="text-align:right; font-weight:700;">' + parseFloat(item.qty_done_today).toFixed(1) + ' ' + escHtml(item.unit || '') + '</td>';
           html += '<td>' + escHtml(item.responsible_team || '—') + '</td>';
           html += '<td><span class="doc-status-pill" style="background:'+statusBg+'; color:'+statusColor+'; font-size:10px; font-weight:700;">' + escHtml(item.item_status) + '</span></td>';

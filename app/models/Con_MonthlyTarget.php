@@ -162,19 +162,42 @@ class Con_MonthlyTarget {
     public function createItem(array $d): int {
         $stmt = $this->db->prepare("
             INSERT INTO phase_monthly_target_items
-                (target_id, work_type_id, work_item_name, unit,
+                (target_id, work_type_id, work_item_name, phase_item_id, unit,
                  monthly_target_qty, actual_qty,
                  planned_progress_pct, actual_progress_pct,
                  start_date, end_date, responsible_team, contractor_id,
                  priority, status,
                  week_1_qty, week_2_qty, week_3_qty, week_4_qty,
                  recovery_notes, sort_order)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $nextSort = $this->nextSort((int)$d['target_id']);
 
         $workTypeId         = $d['work_type_id']         ?? null;
         $workItemName       = $d['work_item_name'];
+        
+        $phaseItemId = !empty($d['phase_item_id']) ? (int)$d['phase_item_id'] : null;
+        if (empty($phaseItemId)) {
+            // Find target's phase_id
+            $targetSql = "SELECT phase_id FROM phase_monthly_targets WHERE id = ?";
+            $tStmt = $this->db->prepare($targetSql);
+            $tStmt->bind_param('i', $d['target_id']);
+            $tStmt->execute();
+            $tRow = $tStmt->get_result()->fetch_assoc();
+            $phaseId = (int)($tRow['phase_id'] ?? 0);
+            
+            if ($phaseId > 0) {
+                $ppiSql = "SELECT id FROM project_phase_items WHERE phase_id = ? AND item_name = ? LIMIT 1";
+                $pStmt = $this->db->prepare($ppiSql);
+                $pStmt->bind_param('is', $phaseId, $workItemName);
+                $pStmt->execute();
+                $ppiRow = $pStmt->get_result()->fetch_assoc();
+                if ($ppiRow) {
+                    $phaseItemId = (int)$ppiRow['id'];
+                }
+            }
+        }
+
         $unit               = $d['unit']                 ?? null;
         $monthlyTargetQty   = $d['monthly_target_qty']   ?? 0;
         $actualQty          = $d['actual_qty']           ?? 0;
@@ -192,10 +215,11 @@ class Con_MonthlyTarget {
         $week4Qty           = $d['week_4_qty']           ?? 0;
         $recoveryNotes      = $d['recovery_notes']       ?? null;
 
-        $stmt->bind_param('iissddddsssisdddddsi',
+        $stmt->bind_param('iisisddddsssisdddddsi',
             $d['target_id'],
             $workTypeId,
             $workItemName,
+            $phaseItemId,
             $unit,
             $monthlyTargetQty,
             $actualQty,
@@ -225,6 +249,7 @@ class Con_MonthlyTarget {
                 UPDATE phase_monthly_target_items SET
                     work_type_id        = ?,
                     work_item_name      = ?,
+                    phase_item_id       = ?,
                     unit                = ?,
                     monthly_target_qty  = ?,
                     actual_qty          = ?,
@@ -263,16 +288,43 @@ class Con_MonthlyTarget {
                 $recNotes     = !empty($i['recovery_notes']) ? trim($i['recovery_notes']) : null;
 
                 // Fetch existing actual values (read-only, do not overwrite from form)
-                $existStmt = $this->db->prepare("SELECT actual_qty, actual_progress_pct FROM phase_monthly_target_items WHERE id=?");
+                $existStmt = $this->db->prepare("SELECT target_id, actual_qty, actual_progress_pct FROM phase_monthly_target_items WHERE id=?");
                 $existStmt->bind_param('i', $id);
                 $existStmt->execute();
                 $existRow = $existStmt->get_result()->fetch_assoc();
                 $actQty    = (float)($existRow['actual_qty'] ?? 0);
                 $actualPct = (float)($existRow['actual_progress_pct'] ?? 0);
 
-                $stmt->bind_param('issddddssddddsiissi',
+                $phaseItemId = !empty($i['phase_item_id']) ? (int)$i['phase_item_id'] : null;
+                if (empty($phaseItemId)) {
+                    // Find target's phase_id
+                    $pmtiQuery = $this->db->prepare("
+                        SELECT pmti.target_id, pmt.phase_id 
+                        FROM phase_monthly_target_items pmti
+                        JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
+                        WHERE pmti.id = ?
+                    ");
+                    $pmtiQuery->bind_param('i', $id);
+                    $pmtiQuery->execute();
+                    $pmtiRow = $pmtiQuery->get_result()->fetch_assoc();
+                    $phaseId = (int)($pmtiRow['phase_id'] ?? 0);
+                    
+                    if ($phaseId > 0) {
+                        $ppiSql = "SELECT id FROM project_phase_items WHERE phase_id = ? AND item_name = ? LIMIT 1";
+                        $pStmt = $this->db->prepare($ppiSql);
+                        $pStmt->bind_param('is', $phaseId, $name);
+                        $pStmt->execute();
+                        $ppiRow = $pStmt->get_result()->fetch_assoc();
+                        if ($ppiRow) {
+                            $phaseItemId = (int)$ppiRow['id'];
+                        }
+                    }
+                }
+
+                $stmt->bind_param('isisddddssddddsiissi',
                     $wid,
                     $name,
+                    $phaseItemId,
                     $unit,
                     $qty,
                     $actQty,

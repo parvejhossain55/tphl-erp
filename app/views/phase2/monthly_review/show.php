@@ -36,7 +36,7 @@ $totalPlannedProRated = $totalPlannedProRated ?? $totalPlannedPct ?? 0;
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 body { font-family:'Inter',sans-serif }
-:root { --pri:#4f46e5;--green:#10b981;--amber:#f59e0b;--red:#ef4444;--slate:#64748b }
+:root { --pri:var(--clr-theme-primary);--green:#10b981;--amber:#f59e0b;--red:#ef4444;--slate:#64748b }
 
 /* ── KPI row ── */
 .rev-kpi-row { display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px }
@@ -126,9 +126,9 @@ body { font-family:'Inter',sans-serif }
 <div class="rev-kpi-row">
     <!-- Review Month -->
     <div class="rev-kpi">
-        <div class="rev-kpi-icon" style="background:#ede9fe"><i class="bi bi-calendar3" style="color:#7c3aed"></i></div>
+        <div class="rev-kpi-icon" style="background:rgba(var(--clr-theme-primary-rgb),.08)"><i class="bi bi-calendar3" style="color:var(--clr-theme-secondary)"></i></div>
         <div class="rev-kpi-lbl">Review Month</div>
-        <div class="rev-kpi-val" style="font-size:18px;color:#4f46e5"><?= $monthLabel ?></div>
+        <div class="rev-kpi-val" style="font-size:18px;color:var(--clr-theme-primary)"><?= $monthLabel ?></div>
         <div class="rev-kpi-sub"><?= $monthStart ?> – <?= $monthEnd ?></div>
     </div>
     <!-- Planned Progress -->
@@ -294,7 +294,7 @@ body { font-family:'Inter',sans-serif }
 
                     // Color
                     $pctCol = $achPct>=100?'#065f46':($achPct>=($wi['planned_progress_pct']??0)?'#1d4ed8':($achPct>0?'#92400e':'#94a3b8'));
-                    $barCol = $achPct>=100?'#10b981':($achPct>50?'#4f46e5':'#f59e0b');
+                    $barCol = $achPct>=100?'#10b981':($achPct>50?'var(--clr-theme-primary)':'#f59e0b');
                 ?>
                 <tr>
                     <td style="color:#94a3b8;font-weight:700"><?= $rowN ?></td>
@@ -368,7 +368,7 @@ body { font-family:'Inter',sans-serif }
             <div class="rev-card-body">
                 <?php
                 $delayTotal = array_sum($delayMap);
-                $delayColors = ['#ef4444','#f59e0b','#8b5cf6','#3b82f6','#10b981','#ec4899'];
+                $delayColors = ['#ef4444','#f59e0b','var(--clr-theme-secondary)','#3b82f6','#10b981','#ec4899'];
                 $di = 0;
                 // Donut for delay
                 $delayCirc = 2 * pi() * 38;
@@ -554,9 +554,9 @@ body { font-family:'Inter',sans-serif }
         <div style="margin-top:16px;background:#f8fafc;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px">
             <div style="font-size:11px;font-weight:700;color:#64748b;white-space:nowrap">Overall Weekly Performance:</div>
             <div class="pbar" style="flex:1;height:8px">
-                <div class="pbar-fill" style="width:<?= min(100,$totalActualPct) ?>%;background:linear-gradient(90deg,#4f46e5,#10b981)"></div>
+                <div class="pbar-fill" style="width:<?= min(100,$totalActualPct) ?>%;background:linear-gradient(90deg,var(--clr-theme-primary),#10b981)"></div>
             </div>
-            <div style="font-size:14px;font-weight:900;color:#4f46e5;white-space:nowrap"><?= number_format($totalActualPct,0) ?>%</div>
+            <div style="font-size:14px;font-weight:900;color:var(--clr-theme-primary);white-space:nowrap"><?= number_format($totalActualPct,0) ?>%</div>
         </div>
     </div>
 </div>
@@ -583,7 +583,7 @@ body { font-family:'Inter',sans-serif }
                 <th style="text-align:center;width:70px">M.Target</th>
                 <?php for($w=1;$w<=4;$w++): ?>
                 <th style="text-align:center;width:80px">
-                    <a href="<?= $base ?>/con-weekly-progress/<?= $targetId ?>?week=<?= $w ?>" style="color:#4f46e5;text-decoration:none;font-weight:800;border-bottom:1px dashed #c7d2fe;display:inline-block" title="Go to Week <?= $w ?> progress entry">
+                    <a href="<?= $base ?>/con-weekly-progress/<?= $targetId ?>?week=<?= $w ?>" style="color:var(--clr-theme-primary);text-decoration:none;font-weight:800;border-bottom:1px dashed #c7d2fe;display:inline-block" title="Go to Week <?= $w ?> progress entry">
                         Week <?= $w ?>
                     </a>
                     <?php
@@ -636,7 +636,7 @@ body { font-family:'Inter',sans-serif }
                 // Fallback to DB actual_qty if weekly items have no data
                 if ($totalAch == 0) $totalAch = (float)($wi['actual_qty'] ?? 0);
                 $achPct    = $targetQty > 0 ? min(100, $totalAch / $targetQty * 100) : 0;
-                $barCol    = $achPct >= 100 ? '#10b981' : ($achPct > 0 ? '#4f46e5' : '#e2e8f0');
+                $barCol    = $achPct >= 100 ? '#10b981' : ($achPct > 0 ? 'var(--clr-theme-primary)' : '#e2e8f0');
                 $wtName    = $wi['work_type_name'] ?? '—';
         ?>
         <tr style="border-bottom:1px solid #f1f5f9" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
@@ -651,7 +651,7 @@ body { font-family:'Inter',sans-serif }
             </td>
             <!-- Work type -->
             <td style="vertical-align:middle">
-                <span style="background:#ede9fe;color:#5b21b6;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap">
+                <span style="background:rgba(var(--clr-theme-primary-rgb),.08);color:#5b21b6;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap">
                     <i class="bi bi-tag me-1"></i><?= htmlspecialchars($wtName) ?>
                 </span>
             </td>

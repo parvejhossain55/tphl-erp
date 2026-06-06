@@ -37,9 +37,9 @@ $pendingTargets = $pendingTargets ?? [];
         --qc-green: #10b981;
         --qc-amber: #f59e0b;
         --qc-red: #ef4444;
-        --qc-purple: #8b5cf6;
+        --qc-purple: var(--clr-theme-secondary);
         --qc-teal: #14b8a6;
-        --qc-indigo: #6366f1;
+        --qc-indigo: var(--clr-theme-primary);
       }
 
       .qc-hero {
@@ -398,7 +398,7 @@ $pendingTargets = $pendingTargets ?? [];
 
       <a href="<?= $base ?>/con-daily-reports" class="kpi-card">
         <div class="kpi-accent" style="background:var(--qc-purple)"></div>
-        <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:var(--qc-purple)"><i
+        <div class="kpi-icon" style="background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--qc-purple)"><i
             class="fal fa-chart-bar"></i></div>
         <div class="kpi-label" style="color:var(--text-muted)">Project Reports (WPR)</div>
         <div class="kpi-value" style="color:var(--qc-purple)"><?= $totalDPRs ?></div>
@@ -571,14 +571,14 @@ $pendingTargets = $pendingTargets ?? [];
     </div>
 
     <?php if (!empty($pendingGRNsQC)): ?>
-      <div class="rd-panel" style="border-color:rgba(139,92,246,.3);background:rgba(139,92,246,.03);margin-top:4px">
+      <div class="rd-panel" style="border-color:rgba(var(--clr-theme-secondary-rgb),.3);background:rgba(var(--clr-theme-secondary-rgb),.03);margin-top:4px">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <div class="rd-panel-title" style="margin-bottom:0">
-            <div class="rd-dot" style="background:var(--qc-purple,#8b5cf6)"></div>
-            <i class="fal fa-clipboard-check me-2" style="color:var(--qc-purple,#8b5cf6)"></i>
+            <div class="rd-dot" style="background:var(--qc-purple,var(--clr-theme-secondary))"></div>
+            <i class="fal fa-clipboard-check me-2" style="color:var(--qc-purple,var(--clr-theme-secondary))"></i>
             Pending Material Receivings (GRN) — QC Approval Required
             <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
-        background:rgba(139,92,246,.12);color:var(--qc-purple,#8b5cf6)">
+        background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--qc-purple,var(--clr-theme-secondary))">
               <?= count($pendingGRNsQC) ?> Awaiting
             </span>
           </div>
@@ -602,7 +602,7 @@ $pendingTargets = $pendingTargets ?? [];
               <?php foreach ($pendingGRNsQC as $pi => $grn): ?>
                 <tr>
                   <td style="font-size:11px;color:var(--text-muted)"><?= $pi + 1 ?></td>
-                  <td style="font-weight:800;color:var(--qc-purple,#8b5cf6)">GRN-<?= $grn['id'] ?></td>
+                  <td style="font-weight:800;color:var(--qc-purple,var(--clr-theme-secondary))">GRN-<?= $grn['id'] ?></td>
                   <td style="font-weight:700"><?= htmlspecialchars($grn['project_name'] ?? 'N/A') ?></td>
                   <td style="font-size:11px;color:var(--text-muted)">
                     <?= !empty($grn['receiving_date']) ? date('d M Y', strtotime($grn['receiving_date'])) : '&mdash;' ?>
@@ -610,7 +610,7 @@ $pendingTargets = $pendingTargets ?? [];
                   <td style="font-size:12px"><?= htmlspecialchars($grn['received_by_name'] ?? '&mdash;') ?></td>
                   <td style="text-align:right">
                     <a href="<?= $base ?>/con-material-receiving-qc/<?= $grn['id'] ?>" class="btn btn-sm"
-                      style="font-size:11px;padding:4px 12px;background:linear-gradient(135deg,#7c3aed,#8b5cf6);color:#fff;border-radius:6px;text-decoration:none">
+                      style="font-size:11px;padding:4px 12px;background:linear-gradient(135deg,var(--clr-theme-secondary),var(--clr-theme-secondary));color:#fff;border-radius:6px;text-decoration:none">
                       <i class="fal fa-check-circle me-1"></i> Review &amp; Approve
                     </a>
                   </td>
@@ -715,9 +715,9 @@ $pendingTargets = $pendingTargets ?? [];
                   <td><?= htmlspecialchars($pt['target_title'] ?? '—') ?></td>
                   <td>
                     <div style="display:flex;align-items:center;gap:7px">
-                      <div style="width:26px;height:26px;border-radius:50%;background:rgba(99,102,241,.1);
+                      <div style="width:26px;height:26px;border-radius:50%;background:rgba(var(--clr-theme-primary-rgb),.1);
                 display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                        <i class="fal fa-user" style="font-size:10px;color:#6366f1"></i>
+                        <i class="fal fa-user" style="font-size:10px;color:var(--clr-theme-primary)"></i>
                       </div>
                       <span
                         style="font-size:12px;font-weight:600"><?= htmlspecialchars($pt['creator_name'] ?? '—') ?></span>
@@ -725,7 +725,7 @@ $pendingTargets = $pendingTargets ?? [];
                   </td>
                   <td>
                     <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;
-              background:rgba(99,102,241,.08);color:#6366f1">
+              background:rgba(var(--clr-theme-primary-rgb),.08);color:var(--clr-theme-primary)">
                       <?= htmlspecialchars($pt['creator_designation'] ?: 'SE') ?>
                     </span>
                   </td>

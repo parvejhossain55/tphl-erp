@@ -9438,7 +9438,7 @@ INSERT INTO `platform_budgets` (`id`, `source_id`, `month`, `budget`, `spent`, `
 (2, 2, '2026-04-01', 50000.00, 40000.00, 94, '2026-04-10 10:33:09', '2026-04-10 10:33:09', NULL);
 
 -- --------------------------------------------------------
-
+projects_69d5fe85e4a00.jpeg
 --
 -- Table structure for table `projects`
 --

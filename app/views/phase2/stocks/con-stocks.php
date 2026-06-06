@@ -292,7 +292,7 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                                     aria-controls="pc-<?= $pidx ?>">
                                                 <div class="d-flex align-items-center justify-content-between w-100 pe-3">
                                                     <div class="d-flex align-items-center gap-3">
-                                                        <div class="project-dot" style="background: <?= ['#4f46e5','#059669','#d97706','#dc2626','#7c3aed'][$pidx % 5] ?>;"></div>
+                                                        <div class="project-dot" style="background: <?= ['var(--clr-theme-primary)','#059669','#d97706','#dc2626','var(--clr-theme-secondary)'][$pidx % 5] ?>;"></div>
                                                         <div>
                                                             <div class="fw-bold"><?= htmlspecialchars($proj['project_name']) ?></div>
                                                             <small class="text-muted"><?= $proj['po_count'] ?> POs &bull; <?= $proj['material_count'] ?> material types</small>
@@ -425,7 +425,7 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                                     <tr>
                                                         <td>
                                                             <div class="d-flex align-items-center gap-2">
-                                                                <div class="project-dot" style="background: <?= ['#4f46e5','#059669','#d97706','#dc2626','#7c3aed'][$pidx % 5] ?>;"></div>
+                                                                <div class="project-dot" style="background: <?= ['var(--clr-theme-primary)','#059669','#d97706','#dc2626','var(--clr-theme-secondary)'][$pidx % 5] ?>;"></div>
                                                                 <span class="fw-semibold"><?= htmlspecialchars($proj['project_name']) ?></span>
                                                             </div>
                                                         </td>
@@ -435,7 +435,7 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                                         <td><?= $proj['pct'] ?>%</td>
                                                         <td style="min-width:120px;">
                                                             <div class="progress" style="height:8px;">
-                                                                <div class="progress-bar" style="width:<?= $proj['pct'] ?>%; background: <?= ['#4f46e5','#059669','#d97706','#dc2626','#7c3aed'][$pidx % 5] ?>;"></div>
+                                                                <div class="progress-bar" style="width:<?= $proj['pct'] ?>%; background: <?= ['var(--clr-theme-primary)','#059669','#d97706','#dc2626','var(--clr-theme-secondary)'][$pidx % 5] ?>;"></div>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -546,7 +546,7 @@ $grandTotal = $byProject['grand_total'] ?? 0;
                                                     data-bs-target="#bc-<?= $bidx ?>"
                                                     aria-expanded="<?= $bidx === 0 ? 'true' : 'false' ?>">
                                                 <div class="d-flex align-items-center gap-2">
-                                                    <div class="project-dot" style="background: <?= ['#4f46e5','#059669','#d97706','#dc2626','#7c3aed'][$bidx % 5] ?>;"></div>
+                                                    <div class="project-dot" style="background: <?= ['var(--clr-theme-primary)','#059669','#d97706','#dc2626','var(--clr-theme-secondary)'][$bidx % 5] ?>;"></div>
                                                     Project: <?= htmlspecialchars($bProj['project_name']) ?>
                                                 </div>
                                             </button>
@@ -676,7 +676,7 @@ $grandTotal = $byProject['grand_total'] ?? 0;
     transform: translateY(-3px);
     box-shadow: 0 8px 28px rgba(0,0,0,.14);
 }
-.stock-kpi-card--blue  { background: linear-gradient(135deg, #4f46e5, #818cf8); }
+.stock-kpi-card--blue  { background: linear-gradient(135deg, var(--clr-theme-primary), #818cf8); }
 .stock-kpi-card--green { background: linear-gradient(135deg, #059669, #34d399); }
 .stock-kpi-card--red   { background: linear-gradient(135deg, #dc2626, #f87171); }
 .stock-kpi-card--teal  { background: linear-gradient(135deg, #0891b2, #38bdf8); }
@@ -702,8 +702,8 @@ $grandTotal = $byProject['grand_total'] ?? 0;
 
 /* Tab active style */
 .nav-tabs .nav-link.active {
-    border-bottom: 3px solid #4f46e5;
-    color: #4f46e5 !important;
+    border-bottom: 3px solid var(--clr-theme-primary);
+    color: var(--clr-theme-primary) !important;
     font-weight: 700;
 }
 .nav-tabs .nav-link:not(.active) { color: #6b7280; }

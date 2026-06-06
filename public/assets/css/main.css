@@ -83,16 +83,18 @@ designations
   --clr-text-secondary: #525252;
   --clr-text-rating: #EC8D1D;
   /* --clr-theme-primary: #135737; */
-  --clr-theme-primary: #19915a;
-  --clr-theme-secondary: #1ABC9C;
+  --clr-theme-primary: #198754;
+  --clr-theme-primary-rgb: 25, 135, 84;
+  --clr-theme-secondary: #1abc9c;
+  --clr-theme-secondary-rgb: 26, 188, 156;
   --clr-theme-tertiary: #ABA3FD;
   --clr-action-danger: #FF3A29;
   --clr-action-info: #43a0e3;
   --clr-action-link: #9747FF;
   --clr-action-success: #34B53A;
   --clr-action-warning: #EC8D1D;
-  --clr-bg-primary: #6C5FFC;
-  --clr-bg-secondary: #1ABC9C;
+  --clr-bg-primary: #198754;
+  --clr-bg-secondary: #1abc9c;
   --clr-bg-body: #f8f8fb;
   --clr-bg-card: #FFFFFF;
   --clr-bg-label: #f8f9fd;

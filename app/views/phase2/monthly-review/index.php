@@ -9,7 +9,7 @@ $matByTarget = $matByTarget ?? [];
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 body { font-family:'Inter',sans-serif; }
-:root { --pri:#4f46e5;--green:#10b981;--amber:#f59e0b;--red:#ef4444;--slate:#64748b; }
+:root { --pri:var(--clr-theme-primary);--green:#10b981;--amber:#f59e0b;--red:#ef4444;--slate:#64748b; }
 
 .mr-page { padding:18px 20px; }
 .mr-header { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px }
@@ -108,7 +108,7 @@ foreach ($targets as $t) {
         $statusMap = ['Approved'=>'badge-approved','Draft'=>'badge-draft','In Review'=>'badge-review'];
         $statusBadge = $statusMap[$t['planning_status'] ?? 'Draft'] ?? 'badge-draft';
         $overallBarW = min(100, $actPct);
-        $barColor = $actPct >= 100 ? '#10b981' : ($actPct >= $planPct ? '#4f46e5' : ($actPct > 0 ? '#f59e0b' : '#e2e8f0'));
+        $barColor = $actPct >= 100 ? '#10b981' : ($actPct >= $planPct ? 'var(--clr-theme-primary)' : ($actPct > 0 ? '#f59e0b' : '#e2e8f0'));
         $items = $targetItems[$tid] ?? [];
         $mat   = $matByTarget[$tid] ?? null;
     ?>
@@ -196,7 +196,7 @@ foreach ($targets as $t) {
                 $iTarget  = (float)$item['target_qty'];
                 $iActQty  = (float)$item['actual_qty'];
                 if ($iActual >= 100)             { $iColor='#065f46'; $iStatus='✅ Done'; }
-                elseif ($iActual >= $iPlanned)   { $iColor='#4f46e5'; $iStatus='On Track'; }
+                elseif ($iActual >= $iPlanned)   { $iColor='var(--clr-theme-primary)'; $iStatus='On Track'; }
                 elseif ($iActual > 0)            { $iColor='#d97706'; $iStatus='In Progress'; }
                 else                              { $iColor='#94a3b8'; $iStatus='Not Started'; }
             ?>

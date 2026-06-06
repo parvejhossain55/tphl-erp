@@ -26,7 +26,7 @@ function sib_fmt($n) {
 :root{
   --sib-primary:#198754; --sib-dark:#0f5132; --sib-light:#20a86a;
   --sib-blue:#3b82f6; --sib-green:#10b981; --sib-amber:#f59e0b;
-  --sib-red:#ef4444;  --sib-purple:#8b5cf6;--sib-teal:#14b8a6;
+  --sib-red:#ef4444;  --sib-purple:var(--clr-theme-secondary);--sib-teal:#14b8a6;
 }
 
 /* ── Hero ── */
@@ -232,7 +232,7 @@ function sib_fmt($n) {
   </div>
   <div class="sib-kpi">
     <div class="sib-kpi-accent" style="background:var(--sib-purple)"></div>
-    <div class="sib-kpi-icon" style="background:rgba(139,92,246,.12);color:var(--sib-purple)"><i class="fal fa-coins"></i></div>
+    <div class="sib-kpi-icon" style="background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--sib-purple)"><i class="fal fa-coins"></i></div>
     <div class="sib-kpi-lbl">Grand Total</div>
     <div class="sib-kpi-val" style="color:var(--sib-purple)"><?= sib_fmt($budget['total_estimated_cost'] ?? 0) ?></div>
   </div>
@@ -348,7 +348,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 <div class="sib-tabs">
   <button class="sib-tab-btn active" onclick="sibTab(this,'tab-breakdown')">
     <i class="fal fa-layer-group me-1"></i>Design Breakdown
-    <span class="badge ms-1" style="background:rgba(99,102,241,.12);color:#6366f1;font-size:9px"><?= count($breakdown) ?></span>
+    <span class="badge ms-1" style="background:rgba(var(--clr-theme-primary-rgb),.12);color:var(--clr-theme-primary);font-size:9px"><?= count($breakdown) ?></span>
   </button>
   <button class="sib-tab-btn" onclick="sibTab(this,'tab-materials')">
     <i class="fal fa-boxes-stacked me-1"></i>Materials
@@ -424,7 +424,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
           <td style="color:var(--text-muted);font-size:11px"><?= $si+1 ?></td>
           <td>
             <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
-              background:rgba(139,92,246,.1);color:#8b5cf6">
+              background:rgba(var(--clr-theme-secondary-rgb),.1);color:var(--clr-theme-secondary)">
               <?= htmlspecialchars($item['work_type_label'] ?? $item['design_type_name'] ?? '—') ?>
             </span>
           </td>
@@ -608,7 +608,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
           </td>
           <td>
             <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
-              background:rgba(139,92,246,.1);color:#8b5cf6">
+              background:rgba(var(--clr-theme-secondary-rgb),.1);color:var(--clr-theme-secondary)">
               <?= htmlspecialchars($wp['design_type_name'] ?? '—') ?>
             </span>
           </td>

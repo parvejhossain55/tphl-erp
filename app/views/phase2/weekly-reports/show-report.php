@@ -26,7 +26,7 @@ $statusBadge = function(string $s): string {
 <div class="pagetitle d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 style="font-size:1.1rem;font-weight:800;color:#1e293b;margin:0;">
-            <i class="bi bi-calendar-week me-2" style="color:#6366f1;"></i>
+            <i class="bi bi-calendar-week me-2" style="color:var(--clr-theme-primary);"></i>
             <?= htmlspecialchars($project['name'] ?? '') ?> — Weekly Report
         </h1>
         <nav><ol class="breadcrumb" style="font-size:11px;margin:2px 0 0;">
@@ -45,7 +45,7 @@ $statusBadge = function(string $s): string {
 
 <!-- ═══ PROJECT + TARGET SELECTOR ═══ -->
 <form method="GET" action="<?= $base_url ?>/con-weekly-report/<?= $project['id'] ?>" id="reportFilterForm">
-    <div style="background:#fff;border:1.5px solid rgba(99,102,241,.12);border-radius:12px;
+    <div style="background:#fff;border:1.5px solid rgba(25,135,84,.12);border-radius:12px;
                 padding:14px 18px;margin-bottom:18px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
         <!-- Target Month Select -->
         <div style="flex:1;min-width:220px;">
@@ -59,8 +59,8 @@ $statusBadge = function(string $s): string {
                 <option value="">-- Select Target Month --</option>
                 <?php foreach ($targets as $t): ?>
                 <option value="<?= $t['id'] ?>" <?= $target_id == $t['id'] ? 'selected' : '' ?>>
-                    <?= date('F Y', strtotime($t['target_month'])) ?> — <?= htmlspecialchars($t['phase_name']) ?>
-                    (<?= htmlspecialchars($t['planning_status'] ?? 'Draft') ?>)
+                     <?= date('F Y', strtotime($t['target_month'])) ?> — <?= htmlspecialchars($t['phase_name']) ?>
+                     (<?= htmlspecialchars($t['planning_status'] ?? 'Draft') ?>)
                 </option>
                 <?php endforeach; ?>
             </select>
@@ -80,9 +80,9 @@ $statusBadge = function(string $s): string {
             ?>
             <a href="?target_id=<?= $target_id ?>&week=<?= $w ?>"
                style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;
-                      background:<?= $activeWeek == $w ? '#6366f1' : '#f8fafc' ?>;
+                      background:<?= $activeWeek == $w ? 'var(--clr-theme-primary)' : '#f8fafc' ?>;
                       color:<?= $activeWeek == $w ? '#fff' : '#64748b' ?>;
-                      border:1.5px solid <?= $activeWeek == $w ? '#6366f1' : '#e2e8f0' ?>;">
+                      border:1.5px solid <?= $activeWeek == $w ? 'var(--clr-theme-primary)' : '#e2e8f0' ?>;">
                 Week <?= $w ?>
                 <?php if ($wSession): ?>
                 <span style="display:inline-block;width:6px;height:6px;border-radius:50%;
@@ -98,7 +98,7 @@ $statusBadge = function(string $s): string {
 <?php if (!$target_id): ?>
 <!-- ── No target selected ── -->
 <div style="text-align:center;padding:60px 20px;background:#f8fafc;border-radius:12px;border:1px dashed #cbd5e1;">
-    <i class="bi bi-calendar2-check" style="font-size:40px;color:#c7d2fe;display:block;margin-bottom:12px;"></i>
+    <i class="bi bi-calendar2-check" style="font-size:40px;color:#cbd5e1;display:block;margin-bottom:12px;"></i>
     <div style="font-size:14px;color:#94a3b8;font-weight:600;">Target Month বেছে নিন</div>
     <div style="font-size:12px;color:#cbd5e1;margin-top:4px;">উপরের dropdown থেকে যে মাসের report দেখতে চান সেটি select করুন</div>
 </div>
@@ -115,7 +115,7 @@ $statusBadge = function(string $s): string {
     $sessionsDone = count($weekData);
 ?>
 <!-- Phase Header -->
-<div style="background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border-radius:14px;
+<div style="background:linear-gradient(135deg,var(--clr-theme-primary) 0%,var(--clr-theme-secondary) 100%);border-radius:14px;
             padding:18px 22px;margin-bottom:18px;color:#fff;">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div>
@@ -169,7 +169,7 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
 ?>
 
 <!-- ══ WEEK SESSION HEADER ══ -->
-<div style="background:#fff;border:1.5px solid rgba(99,102,241,.15);border-radius:12px;
+<div style="background:#fff;border:1.5px solid rgba(25,135,84,.15);border-radius:12px;
             padding:14px 18px;margin-bottom:16px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div>
@@ -191,7 +191,7 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
             <!-- Site Engineer (Submitted By) -->
             <div style="background:#f8fafc;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;
                         border:1px solid #e2e8f0;">
-                <div style="width:30px;height:30px;background:#6366f1;border-radius:50%;display:flex;
+                <div style="width:30px;height:30px;background:var(--clr-theme-primary);border-radius:50%;display:flex;
                              align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0;">
                     <i class="bi bi-person-hard-hat"></i>
                 </div>
@@ -225,8 +225,8 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
             <!-- PM Approval -->
             <?php $pmStatus = $wSession['pm_status'] ?? 'Pending'; ?>
             <div style="background:#f8fafc;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;
-                        border:1px solid <?= $pmStatus === 'Approved' ? 'rgba(99,102,241,.25)' : '#e2e8f0' ?>;">
-                <div style="width:30px;height:30px;background:<?= $pmStatus === 'Approved' ? '#6366f1' : '#e2e8f0' ?>;
+                        border:1px solid <?= $pmStatus === 'Approved' ? 'rgba(25,135,84,.25)' : '#e2e8f0' ?>;">
+                <div style="width:30px;height:30px;background:<?= $pmStatus === 'Approved' ? 'var(--clr-theme-primary)' : '#e2e8f0' ?>;
                              border-radius:50%;display:flex;align-items:center;justify-content:center;
                              color:<?= $pmStatus === 'Approved' ? '#fff' : '#94a3b8' ?>;font-size:13px;flex-shrink:0;">
                     <i class="bi bi-person-check"></i>
@@ -257,10 +257,10 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
     <div style="margin-top:12px;">
         <div style="display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;margin-bottom:4px;">
             <span>সাপ্তাহিক অগ্রগতি</span>
-            <span style="font-weight:700;color:<?= $wPct >= 100 ? '#10b981' : '#6366f1' ?>;"><?= $wPct ?>%</span>
+            <span style="font-weight:700;color:<?= $wPct >= 100 ? '#10b981' : 'var(--clr-theme-primary)' ?>;"><?= $wPct ?>%</span>
         </div>
         <div style="height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden;">
-            <div style="width:<?= $wPct ?>%;height:100%;background:<?= $wPct >= 100 ? '#10b981' : 'linear-gradient(90deg,#6366f1,#8b5cf6)' ?>;
+            <div style="width:<?= $wPct ?>%;height:100%;background:<?= $wPct >= 100 ? '#10b981' : 'linear-gradient(90deg,var(--clr-theme-primary),var(--clr-theme-secondary))' ?>;
                          border-radius:4px;transition:width .5s;"></div>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:10.5px;color:#94a3b8;margin-top:4px;">
@@ -273,12 +273,12 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
 
 <!-- ══ WORK ITEMS TABLE ══ -->
 <?php if (!empty($wItems)): ?>
-<div style="background:#fff;border:1.5px solid rgba(99,102,241,.12);border-radius:12px;
+<div style="background:#fff;border:1.5px solid rgba(25,135,84,.12);border-radius:12px;
             margin-bottom:16px;overflow:hidden;">
-    <div style="background:linear-gradient(90deg,rgba(99,102,241,.07),transparent);
-                padding:10px 16px;border-bottom:1px solid rgba(99,102,241,.1);
+    <div style="background:linear-gradient(90deg,rgba(25,135,84,.07),transparent);
+                padding:10px 16px;border-bottom:1px solid rgba(25,135,84,.1);
                 display:flex;align-items:center;justify-content:space-between;">
-        <div style="font-size:12.5px;font-weight:700;color:#6366f1;">
+        <div style="font-size:12.5px;font-weight:700;color:var(--clr-theme-primary);">
             <i class="bi bi-list-check me-2"></i>Work Items — Week <?= $activeWeek ?>
         </div>
     </div>
@@ -311,10 +311,10 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
                     $planQty = (float)($item['planned_qty'] ?? $item['planned_qty_from_target'] ?? 0);
                     $achQty  = (float)($item['achieved_qty'] ?? 0);
                     $pct     = ($planQty > 0) ? min(100, round($achQty / $planQty * 100, 1)) : 0;
-                    $pctColor = $pct >= 100 ? '#10b981' : ($pct > 0 ? '#6366f1' : '#94a3b8');
+                    $pctColor = $pct >= 100 ? '#10b981' : ($pct > 0 ? 'var(--clr-theme-primary)' : '#94a3b8');
                     $iStatus  = $item['item_status'] ?? '—';
                     $stColor  = match($iStatus) {
-                        'Completed' => '#10b981', 'In Progress' => '#6366f1',
+                        'Completed' => '#10b981', 'In Progress' => 'var(--clr-theme-primary)',
                         'Delayed'   => '#ef4444', default => '#94a3b8',
                     };
                 ?>
@@ -355,7 +355,7 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
                            target="_blank" data-lightbox="week-photos">
                             <img src="<?= $base_url ?>/<?= htmlspecialchars($item['photo_path']) ?>"
                                  style="width:36px;height:36px;object-fit:cover;border-radius:6px;
-                                        border:2px solid rgba(99,102,241,.2);">
+                                        border:2px solid rgba(25,135,84,.2);">
                         </a>
                         <?php else: ?>
                         <span style="font-size:10px;color:#cbd5e1;">—</span>
@@ -369,10 +369,10 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
     </div>
 </div>
 <?php elseif ($totPlan > 0): ?>
-<div style="background:#fff;border:1.5px dashed rgba(99,102,241,.2);border-radius:12px;
+<div style="background:#fff;border:1.5px dashed rgba(25,135,84,.2);border-radius:12px;
             padding:20px;text-align:center;margin-bottom:16px;color:#94a3b8;font-size:12.5px;">
-    <i class="bi bi-hourglass-split me-2" style="color:#6366f1;"></i>
-    এই week এ planned qty: <strong style="color:#6366f1;"><?= number_format($totPlan, 1) ?></strong>
+    <i class="bi bi-hourglass-split me-2" style="color:var(--clr-theme-primary);"></i>
+    এই week এ planned qty: <strong style="color:var(--clr-theme-primary);"><?= number_format($totPlan, 1) ?></strong>
     — এখনো daily log entry হয়নি
 </div>
 <?php endif; ?>
@@ -399,7 +399,7 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
             $qcSt       = $log['qc_status']    ?? 'Pending';
             $pmSt       = $log['pm_status']     ?? 'Pending';
             $qcColor    = $qcSt === 'Approved' ? '#10b981' : ($qcSt === 'Rejected' ? '#ef4444' : '#f59e0b');
-            $pmColor    = $pmSt === 'Approved' ? '#6366f1' : ($pmSt === 'Rejected' ? '#ef4444' : '#f59e0b');
+            $pmColor    = $pmSt === 'Approved' ? 'var(--clr-theme-primary)' : ($pmSt === 'Rejected' ? '#ef4444' : '#f59e0b');
         ?>
         <div style="border-bottom:1px solid rgba(0,0,0,.05);">
             <!-- Accordion Header -->
@@ -417,7 +417,7 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
                 <!-- Resource Summary -->
                 <div style="display:flex;gap:10px;flex:1;flex-wrap:wrap;">
                     <?php if ((int)($log['labour_count'] ?? 0) > 0): ?>
-                    <span style="font-size:10.5px;background:rgba(99,102,241,.08);color:#6366f1;
+                    <span style="font-size:10.5px;background:rgba(25,135,84,.08);color:var(--clr-theme-primary);
                                  padding:2px 8px;border-radius:999px;font-weight:600;">
                         <i class="bi bi-people me-1"></i><?= $log['labour_count'] ?> Labour
                     </span>
@@ -457,8 +457,8 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
                     <!-- Daily Work Items -->
                     <?php if (!empty($logItems)): ?>
                     <div style="grid-column:1/-1;background:#f8fafc;border-radius:10px;padding:12px;
-                                border:1px solid rgba(99,102,241,.1);">
-                        <div style="font-size:11px;font-weight:700;color:#6366f1;margin-bottom:8px;">
+                                border:1px solid rgba(25,135,84,.1);">
+                        <div style="font-size:11px;font-weight:700;color:var(--clr-theme-primary);margin-bottom:8px;">
                             <i class="bi bi-check2-square me-1"></i>আজকের কাজ
                         </div>
                         <table style="width:100%;border-collapse:collapse;">
@@ -540,9 +540,9 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
                     </div>
 
                     <!-- PM Approval Details -->
-                    <div style="background:<?= $pmSt === 'Approved' ? 'rgba(99,102,241,.04)' : '#f8fafc' ?>;
+                    <div style="background:<?= $pmSt === 'Approved' ? 'rgba(25,135,84,.04)' : '#f8fafc' ?>;
                                 border-radius:10px;padding:12px;
-                                border:1px solid <?= $pmSt === 'Approved' ? 'rgba(99,102,241,.2)' : '#e2e8f0' ?>;">
+                                border:1px solid <?= $pmSt === 'Approved' ? 'rgba(25,135,84,.2)' : '#e2e8f0' ?>;">
                         <div style="font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:8px;
                                     text-transform:uppercase;letter-spacing:.5px;">
                             <i class="bi bi-person-check me-1" style="color:<?= $pmColor ?>;"></i>PM Approval

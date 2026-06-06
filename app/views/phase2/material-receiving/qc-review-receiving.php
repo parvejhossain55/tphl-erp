@@ -333,10 +333,10 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                         if (in_array($roleId, [1, 3, 15, 20, 22, 23])): 
                     ?>
                     <hr class="my-4" style="border-color:#e2e8f0;">
-                    <div class="con-panel" style="border-color:rgba(139,92,246,.4); background:rgba(139,92,246,.04); border-radius:12px; padding:20px;">
+                    <div class="con-panel" style="border-color:rgba(var(--clr-theme-secondary-rgb),.4); background:rgba(var(--clr-theme-secondary-rgb),.04); border-radius:12px; padding:20px;">
                         <div class="d-flex align-items-center mb-3">
-                            <div style="width:40px;height:40px;border-radius:50%;background:rgba(139,92,246,.15);display:flex;align-items:center;justify-content:center;margin-right:15px;">
-                                <i class="fal fa-user-check" style="color:#7c3aed;font-size:18px;"></i>
+                            <div style="width:40px;height:40px;border-radius:50%;background:rgba(var(--clr-theme-secondary-rgb),.15);display:flex;align-items:center;justify-content:center;margin-right:15px;">
+                                <i class="fal fa-user-check" style="color:var(--clr-theme-secondary);font-size:18px;"></i>
                             </div>
                             <div>
                                 <h6 class="fw-bold mb-1" style="color:#6d28d9;font-size:15px;">PM Approval Required</h6>
@@ -350,7 +350,7 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                                 <textarea name="pm_note" class="form-control" rows="2" placeholder="Any final remarks..." style="border-radius:8px;border:1px solid #cbd5e1;font-size:13px;"></textarea>
                             </div>
                             <div class="text-end">
-                                <button type="submit" class="btn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border-radius:8px;font-weight:600;font-size:13px;padding:8px 20px;border:none;box-shadow:0 4px 6px -1px rgba(139,92,246,.3);" onclick="return confirm('Approve this GRN? Stock will be officially updated.')">
+                                <button type="submit" class="btn" style="background:linear-gradient(135deg,var(--clr-theme-secondary),#6d28d9);color:#fff;border-radius:8px;font-weight:600;font-size:13px;padding:8px 20px;border:none;box-shadow:0 4px 6px -1px rgba(var(--clr-theme-secondary-rgb),.3);" onclick="return confirm('Approve this GRN? Stock will be officially updated.')">
                                     <i class="fal fa-check-double me-1"></i> Acknowledge &amp; Update Stock
                                 </button>
                             </div>

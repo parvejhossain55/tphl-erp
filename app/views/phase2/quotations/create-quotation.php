@@ -137,7 +137,7 @@
                                         </td>
                                         <?php if ($idx === 0): ?>
                                         <td class="text-center align-middle" rowspan="<?= count($prItems) ?>"
-                                            style="background:rgba(99,102,241,.04);vertical-align:middle">
+                                            style="background:rgba(var(--clr-theme-primary-rgb),.04);vertical-align:middle">
                                             <input type="file" name="attachment" id="attachment"
                                                    class="form-control form-control-sm"
                                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">

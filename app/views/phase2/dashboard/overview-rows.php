@@ -1,0 +1,247 @@
+<?php
+$base = $GLOBALS['base_url'];
+if (empty($projects)): ?>
+    <tr>
+        <td colspan="7" style="text-align:center; padding: 40px; color:#64748b;">
+            <i class="fa-solid fa-magnifying-glass fa-2x mb-2" style="opacity:0.3"></i>
+            <div>No matching projects found.</div>
+        </td>
+    </tr>
+<?php else: ?>
+    <?php foreach ($projects as $pr):
+        $pct = round((float) ($pr['progress_pct'] ?? 0));
+        $plPct = round((float) ($pr['planned_progress_pct'] ?? 0));
+        $status = $pr['calculated_status'];
+        $isPhaseBased = ($pr['workflow_version'] ?? '') === 'phase_based';
+        
+        $statusClass = 'status-planning';
+        if ($status === 'On Track') $statusClass = 'status-ontrack';
+        elseif ($status === 'At Risk') $statusClass = 'status-atrisk';
+        elseif ($status === 'Delayed') $statusClass = 'status-delayed';
+        elseif ($status === 'Completed') $statusClass = 'status-completed';
+
+        $detailUrl = ($isPhaseBased) 
+            ? $base . '/con-project-timeline/' . $pr['id'] 
+            : $base . '/con-project/' . $pr['id'];
+
+        $budgetPct = $pr['total_budget'] > 0 ? round(($pr['total_spent'] / $pr['total_budget']) * 100) : 0;
+        
+        // Find current active phase
+        $currentPhaseName = 'N/A';
+        $currentPhaseSub = 'No active phases';
+        if (!empty($pr['phases'])) {
+            $totalPhases = count($pr['phases']);
+            $currentPhaseIdx = 1;
+            foreach ($pr['phases'] as $idx => $phase) {
+                if ((float)$phase['phase_actual_pct'] < 100) {
+                    $currentPhaseName = $phase['phase_name'];
+                    $currentPhaseIdx = $idx + 1;
+                    break;
+                }
+            }
+            // If all phases are completed, default to the last phase
+            if ($currentPhaseName === 'N/A') {
+                $lastPhase = end($pr['phases']);
+                $currentPhaseName = $lastPhase['phase_name'];
+                $currentPhaseIdx = $totalPhases;
+            }
+            $currentPhaseSub = "Phase " . $currentPhaseIdx . " of " . $totalPhases;
+        }
+        
+        // Dynamic building color gradient for thumbnail
+        $colors = ['#4f46e5', '#0891b2', '#0d9488', '#ea580c', '#e11d48', '#2563eb'];
+        $gradColor = $colors[$pr['id'] % count($colors)];
+        ?>
+        <tr class="project-row" 
+            data-name="<?= htmlspecialchars(strtolower($pr['name'])) ?>"
+            data-loc="<?= htmlspecialchars(strtolower($pr['location_name'])) ?>"
+            data-status="<?= $status ?>"
+            data-progress="<?= $pct ?>"
+            data-budget="<?= $pr['total_budget'] ?>">
+            
+            <!-- Column 1: Project & Location with Thumbnail & Phase Toggle -->
+            <td style="padding: 16px; vertical-align: middle;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <!-- Phase Toggle Button -->
+                    <?php if (!empty($pr['phases'])): ?>
+                        <button onclick="togglePhaseItems('phases-breakdown-<?= $pr['id'] ?>', this.querySelector('i'))" 
+                                style="border: none; background: transparent; padding: 4px; color: #94a3b8; cursor: pointer; transition: color 0.15s; outline: none;">
+                            <i class="fa-solid fa-eye" style="font-size: 13px;"></i>
+                        </button>
+                    <?php else: ?>
+                        <span style="width: 19px; display: inline-block;"></span>
+                    <?php endif; ?>
+
+                    <!-- Thumbnail/Image placeholder -->
+                    <?php if (!empty($pr['image'])): ?>
+                        <div style="width: 42px; height: 42px; border-radius: 8px; overflow: hidden; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                            <img src="<?= getImage('projects', $pr['image']) ?>" alt="<?= htmlspecialchars($pr['name']) ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                        </div>
+                    <?php else: ?>
+                        <div style="width: 42px; height: 42px; border-radius: 8px; background: linear-gradient(135deg, <?= $gradColor ?>, <?= $gradColor ?>dd); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                            <i class="fa-solid fa-building"></i>
+                        </div>
+                    <?php endif; ?>
+
+                    <div>
+                        <a href="<?= $detailUrl ?>" class="proj-title" style="font-size: 13.5px; font-weight: 700; color: #0f172a; text-decoration: none; display: block;"><?= htmlspecialchars($pr['name']) ?></a>
+                        <div class="proj-loc" style="font-size: 11px; color: #64748b; margin-top: 2px; display: flex; align-items: center; gap: 4px;">
+                            <i class="fa-solid fa-location-dot" style="font-size: 10px;"></i>
+                            <?= htmlspecialchars($pr['location_name'] ?: 'N/A') ?>
+                        </div>
+                    </div>
+                </div>
+            </td>
+            
+            <!-- Column 2: Current Phase -->
+            <td style="padding: 16px; vertical-align: middle;">
+                <div style="font-weight: 700; color: #1e293b; font-size: 13px;"><?= htmlspecialchars($currentPhaseName) ?></div>
+                <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;"><?= $currentPhaseSub ?></div>
+            </td>
+            
+            <!-- Column 3: Planned vs Actual Progress (Dual stacked horizontal bars) -->
+            <td style="padding: 16px; vertical-align: middle; min-width: 200px;">
+                <div class="prog-compare-wrap" style="display: flex; flex-direction: column; gap: 6px;">
+                    <!-- Planned Bar -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                        <span style="font-size: 10px; font-weight: 700; color: #94a3b8; min-width: 24px;">Pla</span>
+                        <div class="prog-bar-container" style="height: 6px; flex: 1; background: #f1f5f9;">
+                            <div class="prog-bar-fill-planned" style="width: <?= $plPct ?>%; height: 100%; background: #6366f1; opacity: 0.85;"></div>
+                        </div>
+                        <span style="font-size: 11px; font-weight: 800; color: #6366f1; min-width: 32px; text-align: right;"><?= $plPct ?>%</span>
+                    </div>
+                    <!-- Actual Bar -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                        <span style="font-size: 10px; font-weight: 700; color: #94a3b8; min-width: 24px;">Act</span>
+                        <div class="prog-bar-container" style="height: 6px; flex: 1; background: #f1f5f9;">
+                            <div class="prog-bar-fill-actual" style="width: <?= $pct ?>%; height: 100%; background: var(--po-primary, #198754);"></div>
+                        </div>
+                        <span style="font-size: 11px; font-weight: 800; color: var(--po-primary, #198754); min-width: 32px; text-align: right;"><?= $pct ?>%</span>
+                    </div>
+                </div>
+            </td>
+            
+            <!-- Column 4: Status Badge -->
+            <td style="padding: 16px; vertical-align: middle;">
+                <span class="status-pill <?= $statusClass ?>">
+                    <span class="status-pill-dot"></span>
+                    <?= $status ?>
+                </span>
+            </td>
+            
+            <!-- Column 5: Handover Target -->
+            <td style="padding: 16px; vertical-align: middle;">
+                <div style="font-weight: 700; color: #1e293b; font-size: 13px;">
+                    <?= $pr['expected_handover_date'] ? date('M Y', strtotime($pr['expected_handover_date'])) : 'N/A' ?>
+                </div>
+                <div style="font-size:11px; color: #94a3b8; margin-top:2px">
+                    <?php if ($pr['expected_handover_date']):
+                        $diff = time() - strtotime($pr['expected_handover_date']);
+                        $months = abs(round($diff / (60 * 60 * 24 * 30)));
+                        if ($diff < 0) {
+                            echo "In $months months";
+                        } else {
+                            echo "$months months ago";
+                        }
+                    else:
+                        echo 'Timeline unset';
+                    endif; ?>
+                </div>
+            </td>
+            
+            <!-- Column 6: Budget Usage -->
+            <td style="padding: 16px; vertical-align: middle;">
+                <div style="font-weight: 700; color: #1e293b; font-size: 13px;"><?= cpFmt($pr['total_spent']) ?></div>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px;">
+                    <div class="prog-bar-container" style="height: 4px; flex: 1; background: #f1f5f9;">
+                        <div class="prog-bar-fill-actual" style="width: <?= min(100, $budgetPct) ?>%; height: 100%; background: <?= $budgetPct > 90 ? '#ef4444' : 'var(--po-primary, #198754)' ?>;"></div>
+                    </div>
+                    <span style="font-size: 10px; font-weight: 700; color: #64748b; min-width: 26px; text-align: right;"><?= $budgetPct ?>%</span>
+                </div>
+            </td>
+            
+            <!-- Column 7: Actions Menu -->
+            <td style="padding: 16px; vertical-align: middle; text-align: center;">
+                <button style="border: none; background: transparent; color: #94a3b8; cursor: pointer; padding: 4px; font-size: 14px; outline: none;" 
+                        onclick="event.stopPropagation(); window.location.href='<?= $detailUrl ?>'">
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+            </td>
+        </tr>
+
+        <!-- Nested Timeline Phases Detail Block (Collapsible) -->
+        <?php if (!empty($pr['phases'])): ?>
+            <tr id="phases-breakdown-<?= $pr['id'] ?>" class="phase-items-container" style="display: none; background: #fafbfc;">
+                <td colspan="7" style="padding: 18px 24px; border-bottom: 1px solid rgba(0,0,0,0.05);">
+                    <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-folder-open text-primary"></i> Phase Progress Breakdown for <?= htmlspecialchars($pr['name']) ?>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <?php foreach ($pr['phases'] as $phase): 
+                            $phWeight = (float)$phase['phase_weight'];
+                            $phActual = (float)$phase['phase_actual_pct'];
+                            $actWeightVal = ($phActual / 100) * $phWeight;
+                            ?>
+                            <div style="display: grid; grid-template-columns: 200px 1fr; align-items: center; gap: 16px;">
+                                <div style="font-size: 12px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                                    <?php if (!empty($phase['items'])): ?>
+                                        <i class="fa-solid fa-chevron-right phase-toggle-icon" 
+                                           onclick="togglePhaseItems('subitems-<?= $pr['id'] ?>-<?= $phase['phase_id'] ?>', this)" 
+                                           style="cursor: pointer; font-size: 9px; width: 12px; color: var(--po-primary, #198754); transition: transform 0.15s; display: inline-block;"></i>
+                                    <?php else: ?>
+                                        <span style="width: 12px; display: inline-block;"></span>
+                                    <?php endif; ?>
+                                    <span style="<?php if (!empty($phase['items'])): ?>cursor: pointer;<?php endif; ?>" 
+                                          onclick="<?php if (!empty($phase['items'])): ?>togglePhaseItems('subitems-<?= $pr['id'] ?>-<?= $phase['phase_id'] ?>', this.previousElementSibling)<?php endif; ?>">
+                                        <?= htmlspecialchars($phase['phase_name']) ?>
+                                    </span>
+                                </div>
+                                <div style="width: 100%;">
+                                    <div style="font-size: 9px; font-weight: 800; display: flex; justify-content: space-between; margin-bottom: 2px;">
+                                        <span style="color:#6366f1">Phase Weight: <?= number_format($phWeight, 1) ?>%</span>
+                                        <span style="color:var(--po-primary, #198754)">Contribution: <?= number_format($actWeightVal, 2) ?>% (<?= number_format($phActual, 1) ?>% complete)</span>
+                                    </div>
+                                    <div class="prog-bar-container" style="height: 6px; background: #e2e8f0; position: relative;">
+                                        <!-- Planned phase width (representing total phase weight) -->
+                                        <div class="prog-bar-fill-planned" style="width: <?= $phWeight ?>%; height: 100%; background: #6366f1; opacity: 0.15; position: absolute; left: 0;"></div>
+                                        <!-- Actual phase contribution fill -->
+                                        <div class="prog-bar-fill-actual" style="width: <?= $actWeightVal ?>%; height: 100%; background: <?= $phActual >= 100 ? 'var(--po-primary, #198754)' : '#f59e0b' ?>; position: absolute; left: 0;"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Nested Sub-items Loop -->
+                            <?php if (!empty($phase['items'])): ?>
+                                <div id="subitems-<?= $pr['id'] ?>-<?= $phase['phase_id'] ?>" class="phase-items-container" style="display: none; flex-direction: column; gap: 8px; margin-left: 24px; border-left: 2px solid #e2e8f0; padding-left: 14px; margin-top: 4px; margin-bottom: 4px;">
+                                    <?php foreach ($phase['items'] as $item): 
+                                        $itemWeight = (float)$item['item_weight'];
+                                        $itemActualPct = (float)$item['item_actual_pct'];
+                                        $itemProjWeight = ($itemWeight / 100) * $phWeight;
+                                        $itemActWeightVal = ($itemActualPct / 100) * $itemProjWeight;
+                                        ?>
+                                        <div style="display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 16px;">
+                                            <div style="font-size: 11.5px; font-weight: 600; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= htmlspecialchars($item['item_name']) ?>">
+                                                ↳ <?= htmlspecialchars($item['item_name']) ?>
+                                            </div>
+                                            <div style="width: 100%;">
+                                                <div style="font-size: 8px; font-weight: 700; display: flex; justify-content: space-between; margin-bottom: 1px;">
+                                                    <span style="color:#6366f1">Item Weight: <?= number_format($itemProjWeight, 2) ?>%</span>
+                                                    <span style="color:var(--po-primary, #198754)">Contribution: <?= number_format($itemActWeightVal, 2) ?>% (<?= number_format($itemActualPct, 1) ?>% complete)</span>
+                                                </div>
+                                                <div class="prog-bar-container" style="height: 4px; background: #f1f5f9; position: relative;">
+                                                    <div class="prog-bar-fill-planned" style="width: <?= $itemProjWeight ?>%; height: 100%; background: #6366f1; opacity: 0.15; position: absolute; left: 0;"></div>
+                                                    <div class="prog-bar-fill-actual" style="width: <?= $itemActWeightVal ?>%; height: 100%; background: <?= $itemActualPct >= 100 ? 'var(--po-primary, #198754)' : '#f59e0b' ?>; position: absolute; left: 0;"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </div>
+                </td>
+            </tr>
+        <?php endif; ?>
+    <?php endforeach; ?>
+<?php endif; ?>

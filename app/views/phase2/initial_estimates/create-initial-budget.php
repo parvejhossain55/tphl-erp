@@ -14,8 +14,8 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
     --est-success: #16a34a;
     --est-warning: #d97706;
     --est-danger:  #dc2626;
-    --est-purple:  #7c3aed;
-    --dt-colors: #2563eb,#16a34a,#d97706,#7c3aed,#db2777,#0891b2,#ea580c,#65a30d,#9333ea;
+    --est-purple:  var(--clr-theme-secondary);
+    --dt-colors: #2563eb,#16a34a,#d97706,var(--clr-theme-secondary),#db2777,#0891b2,#ea580c,#65a30d,#9333ea;
 }
 .est-form-card {
     background: #fff;
@@ -59,7 +59,7 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
 }
 .dt-color-2 .dt-block-header { background: linear-gradient(135deg,#14532d,#16a34a); }
 .dt-color-3 .dt-block-header { background: linear-gradient(135deg,#78350f,#d97706); }
-.dt-color-4 .dt-block-header { background: linear-gradient(135deg,#4c1d95,#7c3aed); }
+.dt-color-4 .dt-block-header { background: linear-gradient(135deg,#4c1d95,var(--clr-theme-secondary)); }
 .dt-color-5 .dt-block-header { background: linear-gradient(135deg,#831843,#db2777); }
 .dt-color-6 .dt-block-header { background: linear-gradient(135deg,#164e63,#0891b2); }
 .dt-color-7 .dt-block-header { background: linear-gradient(135deg,#7c2d12,#ea580c); }

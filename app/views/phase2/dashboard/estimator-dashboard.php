@@ -23,8 +23,8 @@ $recentEstimates         = $recentEstimates         ?? [];
 $pendingBudgetsList      = $pendingBudgetsList      ?? [];
 
 $typeColors = [
-    '#198754','#3b82f6','#f59e0b','#8b5cf6','#14b8a6',
-    '#ef4444','#f97316','#ec4899','#6366f1','#10b981',
+    '#198754','#3b82f6','#f59e0b','var(--clr-theme-secondary)','#14b8a6',
+    '#ef4444','#f97316','#ec4899','var(--clr-theme-primary)','#10b981',
 ];
 ?>
 <div class="row"><div class="col-12">
@@ -32,7 +32,7 @@ $typeColors = [
 :root {
   --est-primary:#198754; --est-dark:#0f5132; --est-light:#20a86a;
   --est-blue:#3b82f6; --est-green:#10b981; --est-amber:#f59e0b;
-  --est-red:#ef4444; --est-purple:#8b5cf6; --est-teal:#14b8a6;
+  --est-red:#ef4444; --est-purple:var(--clr-theme-secondary); --est-teal:#14b8a6;
 }
 
 .est-hero {
@@ -155,11 +155,11 @@ html { scroll-behavior: smooth; }
   <!-- Design Types → scroll to type bar -->
   <a href="#sec-types" class="est-kpi est-kpi-a">
     <div class="est-accent" style="background:var(--est-purple)"></div>
-    <div class="est-icon" style="background:rgba(139,92,246,.12);color:var(--est-purple)"><i class="fal fa-layer-group"></i></div>
+    <div class="est-icon" style="background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--est-purple)"><i class="fal fa-layer-group"></i></div>
     <div class="est-lbl">Design Types</div>
     <div class="est-val" style="color:var(--est-purple)"><?= $totalDesignTypes ?></div>
     <div class="est-sub">Available categories</div>
-    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(139,92,246,.1);color:var(--est-purple)"><i class="fal fa-arrow-down me-1"></i>View</span>
+    <span style="position:absolute;top:14px;right:14px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(var(--clr-theme-secondary-rgb),.1);color:var(--est-purple)"><i class="fal fa-arrow-down me-1"></i>View</span>
   </a>
 
   <!-- Pending Estimates → scroll to pending table -->
@@ -233,16 +233,16 @@ html { scroll-behavior: smooth; }
               <td style="font-weight:700;font-size:12.5px"><?= htmlspecialchars($pb['project_name'] ?? 'N/A') ?></td>
               <td>
                 <div style="display:flex;align-items:center;gap:7px">
-                  <div style="width:28px;height:28px;border-radius:50%;background:rgba(99,102,241,.12);
+                  <div style="width:28px;height:28px;border-radius:50%;background:rgba(var(--clr-theme-primary-rgb),.12);
                     display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                    <i class="fal fa-user" style="font-size:11px;color:#6366f1"></i>
+                    <i class="fal fa-user" style="font-size:11px;color:var(--clr-theme-primary)"></i>
                   </div>
                   <span style="font-size:12px;font-weight:600"><?= htmlspecialchars($pb['creator_name'] ?? '—') ?></span>
                 </div>
               </td>
               <td>
                 <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
-                  background:rgba(139,92,246,.08);color:#8b5cf6">
+                  background:rgba(var(--clr-theme-secondary-rgb),.08);color:var(--clr-theme-secondary)">
                   <?= htmlspecialchars($pb['creator_designation'] ?: 'Estimator') ?>
                 </span>
               </td>
@@ -304,7 +304,7 @@ html { scroll-behavior: smooth; }
               <td style="font-weight:700;font-size:12.5px"><?= htmlspecialchars($dr['project_name'] ?? 'N/A') ?></td>
               <td>
                 <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
-                  background:rgba(139,92,246,.1);color:#8b5cf6">
+                  background:rgba(var(--clr-theme-secondary-rgb),.1);color:var(--clr-theme-secondary)">
                   <?= htmlspecialchars($dr['design_type_name'] ?? '—') ?>
                 </span>
               </td>
@@ -321,7 +321,7 @@ html { scroll-behavior: smooth; }
               <td>
                 <?php
                   $dSt = $dr['status'] ?? 'Draft';
-                  $dStColor = $dSt === 'Approved' ? '#10b981' : ($dSt === 'In Review' ? '#f59e0b' : '#8b5cf6');
+                  $dStColor = $dSt === 'Approved' ? '#10b981' : ($dSt === 'In Review' ? '#f59e0b' : 'var(--clr-theme-secondary)');
                 ?>
                 <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
                   background:<?= $dStColor ?>18;color:<?= $dStColor ?>"><?= $dSt ?></span>
@@ -485,7 +485,7 @@ html { scroll-behavior: smooth; }
         $actions = [
           ['href'=>'/con-project-drawings','icon'=>'fa-drafting-compass','label'=>'View All Drawings',      'color'=>'#3b82f6'],
           ['href'=>'/con-estimate-create',  'icon'=>'fa-plus-circle',     'label'=>'Create New Estimate',    'color'=>'#198754'],
-          ['href'=>'/con-estimates',        'icon'=>'fa-file-invoice-dollar','label'=>'All Estimates',        'color'=>'#8b5cf6'],
+          ['href'=>'/con-estimates',        'icon'=>'fa-file-invoice-dollar','label'=>'All Estimates',        'color'=>'var(--clr-theme-secondary)'],
           ['href'=>'/con-design-types',     'icon'=>'fa-layer-group',     'label'=>'Design Types',           'color'=>'#f59e0b'],
         ];
         foreach ($actions as $act):

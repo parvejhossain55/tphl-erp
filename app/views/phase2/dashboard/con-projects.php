@@ -23,7 +23,7 @@ function cpFmt($n)
 }
 
 $statusMeta = [
-  'Planning' => ['color' => '#6366f1', 'bg' => 'rgba(99,102,241,.12)', 'icon' => '<i class="fal fa-clipboard-list"></i>', 'dot' => '#6366f1'],
+  'Planning' => ['color' => 'var(--clr-theme-primary)', 'bg' => 'rgba(var(--clr-theme-primary-rgb),.12)', 'icon' => '<i class="fal fa-clipboard-list"></i>', 'dot' => 'var(--clr-theme-primary)'],
   'In Progress' => ['color' => '#f59e0b', 'bg' => 'rgba(245,158,11,.12)', 'icon' => '<i class="fal fa-cog"></i>', 'dot' => '#f59e0b'],
   'On Hold' => ['color' => '#ef4444', 'bg' => 'rgba(239,68,68,.12)', 'icon' => '<i class="fal fa-pause-circle"></i>', 'dot' => '#ef4444'],
   'Completed' => ['color' => '#10b981', 'bg' => 'rgba(16,185,129,.12)', 'icon' => '<i class="fal fa-check-circle"></i>', 'dot' => '#10b981'],
@@ -41,8 +41,8 @@ $statusMeta = [
         --cp-green: #10b981;
         --cp-amber: #f59e0b;
         --cp-red: #ef4444;
-        --cp-indigo: #6366f1;
-        --cp-violet: #8b5cf6;
+        --cp-indigo: var(--clr-theme-primary);
+        --cp-violet: var(--clr-theme-secondary);
         --cp-teal: #14b8a6;
       }
 
@@ -553,7 +553,7 @@ $statusMeta = [
             <div class="cp-card-footer">
               <div class="cp-footer-stat">
                 <?php if ($isPhaseBased): ?>
-                  <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(99,102,241,.12);color:#6366f1;letter-spacing:.3px;">⚡ Phase-Based</span>
+                  <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(var(--clr-theme-primary-rgb),.12);color:var(--clr-theme-primary);letter-spacing:.3px;">⚡ Phase-Based</span>
                 <?php elseif ($pr['total_floors']): ?>
                   <i class="fal fa-layer-group me-1"></i><strong><?= $pr['total_floors'] ?></strong> Floors
                 <?php else: ?>
@@ -562,7 +562,7 @@ $statusMeta = [
                 <?php endif; ?>
               </div>
               <?php if ($canPhaseWork && $isPhaseBased): ?>
-                <div class="cp-view-btn" style="background:rgba(99,102,241,.12);color:#6366f1">Open Phase Work <i class="fal fa-arrow-right ms-1"></i></div>
+                <div class="cp-view-btn" style="background:rgba(var(--clr-theme-primary-rgb),.12);color:var(--clr-theme-primary)">Open Phase Work <i class="fal fa-arrow-right ms-1"></i></div>
               <?php else: ?>
                 <div class="cp-view-btn">View Details <i class="fal fa-arrow-right ms-1"></i></div>
               <?php endif; ?>

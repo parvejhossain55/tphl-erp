@@ -20,13 +20,13 @@ $statusMeta = [
     'Completed'   => ['color' => '#10b981', 'bg' => 'rgba(16,185,129,.12)'],
     'At Risk'     => ['color' => '#ef4444', 'bg' => 'rgba(239,68,68,.12)'],
 ];
-$phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec4899','#0ea5e9'];
+$phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a6','var(--clr-theme-secondary)','#ec4899','#0ea5e9'];
 ?>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-:root { --pi-primary:#6366f1; --pi-green:#10b981; --pi-red:#ef4444; --pi-amber:#f59e0b; }
+:root { --pi-primary:var(--clr-theme-primary); --pi-green:#10b981; --pi-red:#ef4444; --pi-amber:#f59e0b; }
 
 /* ── Header ── */
 .pi-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px }
@@ -55,11 +55,11 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
 }
 .pi-table tbody tr { border-bottom:1px solid rgba(0,0,0,.05);transition:background .15s }
 .pi-table tbody tr:last-child { border-bottom:none }
-.pi-table tbody tr:hover { background:rgba(99,102,241,.03) }
+.pi-table tbody tr:hover { background:rgba(var(--clr-theme-primary-rgb),.03) }
 .pi-table td { padding:8px 12px;vertical-align:middle }
 
 .pi-item-name { font-size:12.5px;font-weight:600;border:1px solid transparent;border-radius:6px;padding:4px 7px;width:100%;background:transparent;color:inherit;transition:border-color .2s }
-.pi-item-name:focus { outline:none;border-color:var(--pi-primary);background:rgba(99,102,241,.05) }
+.pi-item-name:focus { outline:none;border-color:var(--pi-primary);background:rgba(var(--clr-theme-primary-rgb),.05) }
 
 .pi-num-inp { width:64px;text-align:center;font-size:12px;font-weight:700;border:1px solid rgba(0,0,0,.12);border-radius:7px;padding:4px 6px;background:transparent;color:inherit }
 .pi-num-inp:focus { outline:none;border-color:var(--pi-primary) }
@@ -141,7 +141,7 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
 </div>
 
 <!-- Add New Sub-item Card -->
-<div class="mf-add-card" style="border-radius:12px;border:2px dashed rgba(99,102,241,.3);padding:16px 20px;margin-bottom:22px;background:rgba(99,102,241,.02)">
+<div class="mf-add-card" style="border-radius:12px;border:2px dashed rgba(var(--clr-theme-primary-rgb),.3);padding:16px 20px;margin-bottom:22px;background:rgba(var(--clr-theme-primary-rgb),.02)">
     <h6 style="font-size:12.5px;font-weight:700;margin-bottom:12px;color:var(--pi-primary)"><i class="fal fa-plus-circle me-2"></i>Add Custom Sub-work Item</h6>
     <form id="addSubItemForm">
         <div style="display:grid;grid-template-columns:3fr 1fr auto;gap:12px;align-items:end">
@@ -179,7 +179,7 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
     ?>
         <tr>
             <td>
-                <div style="width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;background:<?= $color ?>22;color:<?= $color ?>">
+                <div style="width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;background:<?= (strpos($color, 'var(') === 0 ? ($color === 'var(--clr-theme-primary)' ? 'rgba(var(--clr-theme-primary-rgb),.15)' : 'rgba(var(--clr-theme-secondary-rgb),.15)') : $color.'22') ?>;color:<?= $color ?>">
                     <?= $item['item_order'] ?>
                 </div>
             </td>

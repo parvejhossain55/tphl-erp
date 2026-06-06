@@ -94,20 +94,20 @@
                         <div class="mb-4">
                             <label class="form-label fw-semibold"><i class="fal fa-image me-1 text-primary"></i>Progress Image <span class="text-muted small">(optional)</span></label>
                             <div id="dprImageDropZone" style="
-                                border: 2px dashed rgba(99,102,241,.4);
+                                border: 2px dashed rgba(var(--clr-theme-primary-rgb),.4);
                                 border-radius: 12px;
                                 padding: 28px 20px;
                                 text-align: center;
                                 cursor: pointer;
                                 transition: border-color .2s, background .2s;
-                                background: rgba(99,102,241,.03);
-                            " onclick="document.getElementById('progress_image').click()" ondragover="event.preventDefault();this.style.borderColor='#6366f1'" ondragleave="this.style.borderColor='rgba(99,102,241,.4)'" ondrop="handleDrop(event)">
+                                background: rgba(var(--clr-theme-primary-rgb),.03);
+                            " onclick="document.getElementById('progress_image').click()" ondragover="event.preventDefault();this.style.borderColor='var(--clr-theme-primary)'" ondragleave="this.style.borderColor='rgba(var(--clr-theme-primary-rgb),.4)'" ondrop="handleDrop(event)">
                                 <div id="dprImagePreviewWrap" style="display:none;margin-bottom:12px">
                                     <img id="dprImagePreview" src="" alt="Preview" style="max-width:100%;max-height:220px;border-radius:8px;object-fit:cover;box-shadow:0 4px 12px rgba(0,0,0,.12)">
                                 </div>
                                 <div id="dprImagePlaceholder">
-                                    <i class="fal fa-cloud-upload-alt" style="font-size:32px;color:#6366f1;margin-bottom:8px;display:block"></i>
-                                    <div style="font-size:13px;font-weight:600;color:#6366f1">Click or drag &amp; drop to upload</div>
+                                    <i class="fal fa-cloud-upload-alt" style="font-size:32px;color:var(--clr-theme-primary);margin-bottom:8px;display:block"></i>
+                                    <div style="font-size:13px;font-weight:600;color:var(--clr-theme-primary)">Click or drag &amp; drop to upload</div>
                                     <div style="font-size:11px;color:var(--text-muted);margin-top:4px">JPG, PNG, WebP, GIF — max 5MB</div>
                                 </div>
                                 <div id="dprImageFileName" style="font-size:12px;margin-top:8px;color:var(--text-muted)"></div>
@@ -184,7 +184,7 @@ function previewImage(event) {
 
 function handleDrop(event) {
     event.preventDefault();
-    document.getElementById('dprImageDropZone').style.borderColor = 'rgba(99,102,241,.4)';
+    document.getElementById('dprImageDropZone').style.borderColor = 'rgba(var(--clr-theme-primary-rgb),.4)';
     const file = event.dataTransfer.files[0];
     if (!file || !file.type.startsWith('image/')) return;
     const dt = new DataTransfer();

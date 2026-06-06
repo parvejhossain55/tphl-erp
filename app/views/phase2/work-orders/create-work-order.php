@@ -281,9 +281,9 @@ $page_title = $page_title ?? 'New Work Order';
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <div class="p-3 rounded" style="background:#ede9fe;border-left:4px solid #7c3aed">
+                                <div class="p-3 rounded" style="background:rgba(var(--clr-theme-primary-rgb),.08);border-left:4px solid var(--clr-theme-secondary)">
                                     <div class="small text-muted mb-1">Running Bill</div>
-                                    <div class="fw-bold fs-15" style="color:#7c3aed" id="run_card">৳ 0.00</div>
+                                    <div class="fw-bold fs-15" style="color:var(--clr-theme-secondary)" id="run_card">৳ 0.00</div>
                                 </div>
                             </div>
                             <div class="col-md-4">

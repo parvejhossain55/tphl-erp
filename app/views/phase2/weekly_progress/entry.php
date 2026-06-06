@@ -71,7 +71,7 @@ foreach ($dailyQuantities as $dq) {
 // Entry status meta
 $statusMeta = [
     'Draft'     => ['label'=>'Draft',     'color'=>'#64748b','bg'=>'#f1f5f9','icon'=>'bi-pencil-square'],
-    'Submitted' => ['label'=>'Submitted', 'color'=>'#4f46e5','bg'=>'#ede9fe','icon'=>'bi-send-fill'],
+    'Submitted' => ['label'=>'Submitted', 'color'=>'var(--clr-theme-primary)','bg'=>'rgba(var(--clr-theme-primary-rgb),.08)','icon'=>'bi-send-fill'],
     'Approved'  => ['label'=>'Approved',  'color'=>'#10b981','bg'=>'#d1fae5','icon'=>'bi-check-circle-fill'],
 ];
 $asm = $statusMeta[$entryStatus] ?? $statusMeta['Draft'];
@@ -83,8 +83,8 @@ $phaseWeight = (float)($target['phase_weight'] ?? 35);
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 body { font-family: 'Inter', sans-serif; }
 :root {
-    --pri:#4f46e5; --green:#10b981; --amber:#f59e0b; --red:#ef4444;
-    --cyan:#0ea5e9; --purple:#8b5cf6; --slate:#64748b;
+    --pri:var(--clr-theme-primary); --green:#10b981; --amber:#f59e0b; --red:#ef4444;
+    --cyan:#0ea5e9; --purple:var(--clr-theme-secondary); --slate:#64748b;
 }
 
 /* ---------- KPI Cards ---------- */
@@ -118,7 +118,7 @@ body { font-family: 'Inter', sans-serif; }
 .s-not-started { background:#f1f5f9;color:#64748b }
 
 .qty-input { width:85px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:7px;font-size:12px;font-weight:600;text-align:center;background:#fff;color:#1e293b }
-.qty-input:focus { outline:none;border-color:var(--pri);box-shadow:0 0 0 2px rgba(79,70,229,.15) }
+.qty-input:focus { outline:none;border-color:var(--pri);box-shadow:0 0 0 2px rgba(var(--clr-theme-primary-rgb),.15) }
 .qty-input:disabled { background:#f8fafc;color:#94a3b8 }
 
 .remarks-input { width:100%;padding:5px 8px;border:1px solid #e2e8f0;border-radius:7px;font-size:11.5px;background:#fff;color:#1e293b }
@@ -155,7 +155,7 @@ body { font-family: 'Inter', sans-serif; }
 .gantt-dot { width:10px;height:10px;border-radius:3px }
 
 /* ---------- Phase Progress Card ---------- */
-.phase-rollup { background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:14px;padding:18px 22px;color:#fff;margin-bottom:20px }
+.phase-rollup { background:linear-gradient(135deg,var(--clr-theme-primary),var(--clr-theme-secondary));border-radius:14px;padding:18px 22px;color:#fff;margin-bottom:20px }
 .phase-rollup h6 { font-size:11px;font-weight:700;opacity:.75;text-transform:uppercase;margin-bottom:6px }
 .phase-rollup .phase-val { font-size:28px;font-weight:900 }
 .phase-prog-bar { height:8px;border-radius:4px;background:rgba(255,255,255,.25);overflow:hidden;margin-top:8px }
@@ -183,7 +183,7 @@ body { font-family: 'Inter', sans-serif; }
 .day-bar { display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:16px }
 .day-chip { border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;text-align:center;cursor:pointer;text-decoration:none;color:#1e293b;min-width:70px;position:relative;flex-shrink:0;transition:all .15s }
 .day-chip:hover { border-color:var(--pri);transform:translateY(-1px) }
-.day-chip.active { background:var(--pri);color:#fff;border-color:var(--pri);box-shadow:0 4px 12px rgba(79,70,229,.3) }
+.day-chip.active { background:var(--pri);color:#fff;border-color:var(--pri);box-shadow:0 4px 12px rgba(var(--clr-theme-primary-rgb),.3) }
 .day-chip.has-log { border-top:3px solid var(--green) }
 .day-chip .day-name { font-size:9px;font-weight:700;text-transform:uppercase;opacity:.6 }
 .day-chip .day-num { font-size:18px;font-weight:800;line-height:1;margin:2px 0 }
@@ -195,7 +195,7 @@ body { font-family: 'Inter', sans-serif; }
 .btn-submit { background:var(--red);color:#fff;font-weight:700;font-size:12.5px;padding:8px 22px;border-radius:9px;border:none;cursor:pointer }
 .btn-submit:hover { background:#dc2626 }
 .btn-save { background:var(--pri);color:#fff;font-weight:700;font-size:12.5px;padding:9px 22px;border-radius:9px;border:none;cursor:pointer }
-.btn-save:hover { background:#4338ca }
+.btn-save:hover { background:var(--clr-theme-primary) }
 .btn-add-item { background:transparent;border:1.5px dashed #94a3b8;color:#64748b;font-size:12px;font-weight:600;padding:7px 18px;border-radius:8px;cursor:pointer }
 .btn-add-item:hover { border-color:var(--pri);color:var(--pri) }
 
@@ -296,7 +296,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 <div class="wp-kpi-grid">
     <!-- Selected Week -->
     <div class="wp-kpi">
-        <div class="wp-kpi-icon" style="background:#ede9fe;color:var(--purple)"><i class="bi bi-calendar-week-fill"></i></div>
+        <div class="wp-kpi-icon" style="background:rgba(var(--clr-theme-primary-rgb),.08);color:var(--purple)"><i class="bi bi-calendar-week-fill"></i></div>
         <div>
             <div class="wp-kpi-label">Selected Week</div>
             <div class="wp-kpi-val">Week <?= $weekNo ?></div>
@@ -390,8 +390,8 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         </div>
         <div>
             <span style="font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; 
-                background: <?= $entryStatus === 'Approved' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(79, 70, 229, 0.12)' ?>; 
-                color: <?= $entryStatus === 'Approved' ? '#10b981' : '#4f46e5' ?>;">
+                background: <?= $entryStatus === 'Approved' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(var(--clr-theme-primary-rgb), 0.12)' ?>; 
+                color: <?= $entryStatus === 'Approved' ? '#10b981' : 'var(--clr-theme-primary)' ?>;">
                 <i class="bi <?= $entryStatus === 'Approved' ? 'bi-check-circle-fill' : 'bi-clock-history' ?> me-1"></i>
                 Report Status: <?= $entryStatus ?>
             </span>
@@ -404,7 +404,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
             <!-- Quality Control (QC) Section -->
             <div class="col-md-6" style="border-right: 1px dashed #e2e8f0;">
                 <div class="d-flex align-items-center gap-2 mb-3">
-                    <span style="width: 28px; height: 28px; border-radius: 50%; background: rgba(79, 70, 229, 0.1); color: var(--pri); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">1</span>
+                    <span style="width: 28px; height: 28px; border-radius: 50%; background: rgba(var(--clr-theme-primary-rgb), 0.1); color: var(--pri); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">1</span>
                     <h6 class="mb-0 fw-bold" style="color: #334155; font-size: 14px;">Quality Control Review</h6>
                 </div>
                 
@@ -432,7 +432,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                                 <textarea name="qc_comment" form="qcForm" rows="3" class="form-control form-control-sm" placeholder="Provide quality check observations, notes on workmanship, materials, etc..." style="border-radius: 8px;"></textarea>
                             </div>
                             
-                            <button type="submit" form="qcForm" class="btn btn-sm btn-primary w-100 fw-bold py-2" style="border-radius: 8px; background: var(--pri); border: none; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);">
+                            <button type="submit" form="qcForm" class="btn btn-sm btn-primary w-100 fw-bold py-2" style="border-radius: 8px; background: var(--pri); border: none; box-shadow: 0 4px 12px rgba(var(--clr-theme-primary-rgb), 0.2);">
                                 <i class="bi bi-shield-fill-check me-1"></i> Submit QC Review
                             </button>
                         </div>
@@ -997,7 +997,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         <thead>
             <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
                 <th style="padding:7px 9px;font-size:8.5px;font-weight:700;text-transform:uppercase;color:#94a3b8;text-align:left;min-width:100px">Sub-Item</th>
-                <th style="padding:7px 7px;font-size:8.5px;font-weight:700;text-transform:uppercase;color:#7c3aed;text-align:center;width:36px" title="Weight % of this sub-item in phase">Wt%</th>
+                <th style="padding:7px 7px;font-size:8.5px;font-weight:700;text-transform:uppercase;color:var(--clr-theme-secondary);text-align:center;width:36px" title="Weight % of this sub-item in phase">Wt%</th>
                 <th style="padding:7px 7px;font-size:8.5px;font-weight:700;text-transform:uppercase;color:#64748b;text-align:center;width:52px" title="Monthly Target Quantity">M.Target</th>
                 <th style="padding:7px 7px;font-size:8.5px;font-weight:700;text-transform:uppercase;color:#1d4ed8;text-align:center;width:52px" title="Total Achieved Quantity this month">M.Achieved</th>
                 <th style="padding:7px 7px;font-size:8.5px;font-weight:700;text-transform:uppercase;color:#6d28d9;text-align:center;width:46px" title="Actual monthly % (achieved/target)">Act%</th>
@@ -1040,7 +1040,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 
             // Colors
             if ($monthlyActPct >= 100)                              { $barC='#10b981'; $pctColor='#065f46'; }
-            elseif ($planPct > 0 && $monthlyActPct >= $planPct)    { $barC='#4f46e5'; $pctColor='#3730a3'; }
+            elseif ($planPct > 0 && $monthlyActPct >= $planPct)    { $barC='var(--clr-theme-primary)'; $pctColor='#3730a3'; }
             elseif ($monthlyActPct > 0)                             { $barC='#f59e0b'; $pctColor='#92400e'; }
             else                                                     { $barC='#e2e8f0'; $pctColor='#94a3b8'; }
 
@@ -1060,7 +1060,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 
             <!-- Weight % -->
             <td style="padding:6px 8px;text-align:center;vertical-align:middle">
-                <span style="background:#ede9fe;color:#5b21b6;font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px">
+                <span style="background:rgba(var(--clr-theme-primary-rgb),.08);color:#5b21b6;font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px">
                     <?= number_format($weight,0) ?>%
                 </span>
             </td>
@@ -1188,7 +1188,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
             $offset = 0; $circ = 314.16;
             $segs = [
                 ['pct'=>$cPct,  'color'=>'#10b981'],
-                ['pct'=>$ipPct, 'color'=>'#4f46e5'],
+                ['pct'=>$ipPct, 'color'=>'var(--clr-theme-primary)'],
                 ['pct'=>$dPct,  'color'=>'#ef4444'],
                 ['pct'=>max(0,100-$cPct-$ipPct-$dPct), 'color'=>'#94a3b8'],
             ];
@@ -1205,7 +1205,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         <div style="font-size:11px;font-weight:600;color:#64748b;margin-top:-10px"><?= $totalItems ?> Work Items Total</div>
         <div class="d-flex flex-wrap justify-content-center gap-3 mt-3">
             <div style="font-size:11.5px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#10b981;display:inline-block"></span>Completed <?= $c ?></div>
-            <div style="font-size:11.5px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#4f46e5;display:inline-block"></span>In Progress <?= $ip ?></div>
+            <div style="font-size:11.5px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:var(--clr-theme-primary);display:inline-block"></span>In Progress <?= $ip ?></div>
             <div style="font-size:11.5px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#ef4444;display:inline-block"></span>Delayed <?= $d ?></div>
             <div style="font-size:11.5px;display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#94a3b8;display:inline-block"></span>Not Started <?= $ns ?></div>
         </div>
@@ -1308,8 +1308,8 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                     style="flex:1;background:var(--pri);color:#fff;font-weight:700;font-size:13px;
                            padding:10px 0;border-radius:10px;border:none;cursor:pointer;
                            display:flex;align-items:center;justify-content:center;gap:6px;
-                           box-shadow:0 4px 12px rgba(79,70,229,.3);transition:all .15s"
-                    onmouseover="this.style.background='#4338ca'" onmouseout="this.style.background='var(--pri)'">
+                           box-shadow:0 4px 12px rgba(var(--clr-theme-primary-rgb),.3);transition:all .15s"
+                    onmouseover="this.style.background='var(--clr-theme-primary)'" onmouseout="this.style.background='var(--pri)'">
                 <i class="bi bi-check-circle-fill"></i> Save Progress
             </button>
             <button type="submit" name="save_action" value="draft"

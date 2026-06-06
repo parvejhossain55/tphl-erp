@@ -241,6 +241,15 @@ class Con_PhaseItemController extends Controller {
         $stmt->bind_param('sdi', $itemName, $weightPct, $id);
 
         if ($stmt->execute()) {
+            // Synchronize name to target items
+            $syncStmt = $this->db->prepare("
+                UPDATE phase_monthly_target_items
+                SET work_item_name = ?
+                WHERE phase_item_id = ?
+            ");
+            $syncStmt->bind_param('si', $itemName, $id);
+            $syncStmt->execute();
+
             $this->itemModel->syncPhaseProgress($item['phase_id']);
             header('Content-Type: application/json');
             echo json_encode(['success' => true]);
