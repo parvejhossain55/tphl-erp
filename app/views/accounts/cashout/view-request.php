@@ -377,8 +377,36 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                     $showFullyPaid = $request['due_amount'] <= 0;
                                     ?>
 
-                                    <?php if ($isPending && $canApproveQC && !$isAlreadyApproved): ?>
-                                        <!-- QC Approval -->
+                                    <?php 
+                                    // Management (roles 1,3) can directly approve pending requests — no QC step needed
+                                    $isManagement = in_array(($userRole ?? 0), [1, 3]);
+                                    $isQCOnlyUser = $canApproveQC && !$isManagement;
+                                    ?>
+
+                                    <?php if ($isPending && $isManagement && $canApproveOrReject && !$isAlreadyApproved): ?>
+                                        <!-- Management Direct Approval (skip QC) -->
+                                        <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST" class="mb-2">
+                                            <input type="hidden" name="id" value="<?= $request['id'] ?>">
+                                            <input type="hidden" name="status" value="approved">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Approved Amount (Optional)</label>
+                                                <input type="number" step="0.01" name="approved_amount" class="form-control" value="<?= htmlspecialchars($request['amount']) ?>" max="<?= htmlspecialchars($request['amount']) ?>">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Approval Note (Optional)</label>
+                                                <textarea name="approval_note" class="form-control" rows="2" placeholder="Leave a note..."></textarea>
+                                            </div>
+                                            <button type="submit" class="btn btn-success w-100 mb-2">
+                                                <i class="fa-light fa-check me-2"></i> Approve Request
+                                            </button>
+                                        </form>
+                                        <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal"
+                                            data-bs-target="#rejectModal">
+                                            <i class="fa-light fa-times me-2"></i> Reject Request
+                                        </button>
+
+                                    <?php elseif ($isPending && $isQCOnlyUser && !$isAlreadyApproved): ?>
+                                        <!-- QC Approval (only for QC-role users, not management) -->
                                         <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST" class="mb-2">
                                             <input type="hidden" name="id" value="<?= $request['id'] ?>">
                                             <input type="hidden" name="status" value="qc_approved">
@@ -396,7 +424,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                         </button>
 
                                     <?php elseif ($isQCApproved && $canApproveOrReject && !$isAlreadyApproved): ?>
-                                        <!-- Management Approval -->
+                                        <!-- Management Approval (after QC has approved) -->
                                         <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST" class="mb-2">
                                             <input type="hidden" name="id" value="<?= $request['id'] ?>">
                                             <input type="hidden" name="status" value="approved">
@@ -438,6 +466,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                             <?php endif; ?>
                                         </p>
                                     <?php endif; ?>
+
 
                                     <!-- NEW: Project/Office Info Box -->
                                     <?php if (!empty($request['project_name']) || !empty($request['office'])): ?>
