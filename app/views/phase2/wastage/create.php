@@ -16,7 +16,7 @@
         <form action="<?= $base_url ?>/con-wastage-store" method="POST" enctype="multipart/form-data">
             
             <div class="row mb-4">
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Select Project <span class="text-danger">*</span></label>
                     <select name="project_id" class="form-select select2" required>
                         <option value="">-- Choose Project --</option>
@@ -25,13 +25,20 @@
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
                     <label class="form-label fw-bold">Select Warehouse <span class="text-danger">*</span></label>
                     <select name="warehouse_id" class="form-select select2" required>
                         <option value="">-- Choose Warehouse --</option>
                         <?php foreach($warehouses as $w): ?>
                             <option value="<?= $w['id'] ?>"><?= htmlspecialchars($w['name']) ?></option>
                         <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label fw-bold">Wastage Type <span class="text-danger">*</span></label>
+                    <select name="wastage_type" class="form-select" required>
+                        <option value="selling_scrap">Selling Scrap (No Stock Deduction)</option>
+                        <option value="storage_damage">Storage Damage (Reduces Warehouse Stock)</option>
                     </select>
                 </div>
             </div>
@@ -54,11 +61,11 @@
                         </div>
                         <div class="col-md-2 mb-3">
                             <label class="form-label fw-bold">Quantity <span class="text-danger">*</span></label>
-                            <input type="number" step="0.001" name="quantity[]" class="form-control" required placeholder="0.00">
+                            <input type="number" step="1" min="1" name="quantity[]" class="form-control" required placeholder="0">
                         </div>
                         <div class="col-md-3 mb-3">
                             <label class="form-label fw-bold">Selling Amount (৳) <span class="text-danger">*</span></label>
-                            <input type="number" step="0.01" name="selling_amount[]" class="form-control" required placeholder="0.00">
+                            <input type="number" step="1" min="1" name="selling_amount[]" class="form-control" required placeholder="0">
                         </div>
                         <div class="col-md-3 mb-3">
                             <label class="form-label fw-bold">Upload Photo/Doc <span class="text-danger">*</span></label>

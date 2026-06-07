@@ -1726,9 +1726,9 @@
                 <?php if (hasPermission('Purchase order')): ?>
                     <!-- Module 5: Procurement -->
                     <li
-                        class="slide has-sub <?= isActive(['con-purchase-requests', 'con-purchase-request-create', 'con-purchase-orders'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['con-purchase-requests', 'con-purchase-request-create', 'con-purchase-orders', 'con-wastage', 'con-wastage-create'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-purchase-requests', 'con-purchase-request-create', 'con-purchase-orders'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['con-purchase-requests', 'con-purchase-request-create', 'con-purchase-orders', 'con-wastage', 'con-wastage-create'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-cart-shopping"></i></div>
                             <span class="sidebar__menu-label">Procurement</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -1748,6 +1748,12 @@
                                 <a href="<?= $base_url ?>/con-purchase-orders"
                                     class="sidebar__menu-item <?= isActive('con-purchase-orders', $current_route) ?>">Purchase
                                     Orders</a>
+                            </li>
+                            <li class="slide <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
+                                <a href="<?= $GLOBALS['base_url'] ?>/con-wastage"
+                                    class="sidebar__menu-item <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
+                                    <i class="fal fa-recycle me-1"></i> Wastage Management
+                                </a>
                             </li>
                         </ul>
                     </li>

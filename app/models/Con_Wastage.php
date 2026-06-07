@@ -68,12 +68,13 @@ class Con_Wastage extends Model
         try {
             // 1. Create wastage record
             $stmt = $this->db->prepare(
-                "INSERT INTO {$this->table} (project_id, warehouse_id, recorded_by, total_selling_amount, status)
-                 VALUES (?, ?, ?, ?, 'Pending QC')"
+                "INSERT INTO {$this->table} (project_id, warehouse_id, wastage_type, recorded_by, total_selling_amount, status)
+                 VALUES (?, ?, ?, ?, ?, 'Pending QC')"
             );
-            $stmt->bind_param('iiid', 
+            $stmt->bind_param('iisid', 
                 $data['project_id'], 
-                $data['warehouse_id'], 
+                $data['warehouse_id'],
+                $data['wastage_type'], 
                 $data['recorded_by'], 
                 $data['total_selling_amount']
             );
@@ -123,21 +124,23 @@ class Con_Wastage extends Model
             $stmt->bind_param('issi', $userId, $note, $docPath, $id);
             $stmt->execute();
 
-            // Deduct from Stock (QC confirmed wastage, material is unusable)
-            $items = $this->getItems($id);
-            require_once __DIR__ . '/Con_Stock.php';
-            $stockModel = new \Con_Stock($this->db);
+            // Deduct from Stock (Only if it is storage_damage)
+            if ($wastage['wastage_type'] === 'storage_damage') {
+                $items = $this->getItems($id);
+                require_once __DIR__ . '/Con_Stock.php';
+                $stockModel = new \Con_Stock($this->db);
 
-            foreach ($items as $item) {
-                $stockModel->logMovement([
-                    'material_id'  => $item['material_id'],
-                    'warehouse_id' => $wastage['warehouse_id'],
-                    'type'         => 'OUT',
-                    'quantity'     => $item['quantity'],
-                    'ref_type'     => 'wastage',
-                    'ref_id'       => $wastage['id'],
-                    'moved_by'     => $userId
-                ]);
+                foreach ($items as $item) {
+                    $stockModel->logMovement([
+                        'material_id'  => $item['material_id'],
+                        'warehouse_id' => $wastage['warehouse_id'],
+                        'type'         => 'OUT',
+                        'quantity'     => $item['quantity'],
+                        'ref_type'     => 'wastage',
+                        'ref_id'       => $wastage['id'],
+                        'moved_by'     => $userId
+                    ]);
+                }
             }
 
             $this->db->commit();
