@@ -82,7 +82,15 @@ class Con_WastageController extends Controller
         // Determine number of items
         $count = count($materialIds);
         for ($i = 0; $i < $count; $i++) {
-            $amount = (float)($sellingAmounts[$i] ?? 0);
+            $amount = (int)($sellingAmounts[$i] ?? 0);
+            $qty = (int)($quantities[$i] ?? 0);
+            
+            if ($qty <= 0 || $amount <= 0) {
+                setError('Quantity and Selling Amount must be valid whole numbers greater than 0.');
+                header("Location: {$GLOBALS['base_url']}/con-wastage-create");
+                exit;
+            }
+
             $totalSellingAmount += $amount;
             
             $docPath = null;
@@ -99,7 +107,7 @@ class Con_WastageController extends Controller
 
             $items[] = [
                 'material_id' => (int)$materialIds[$i],
-                'quantity' => (float)$quantities[$i],
+                'quantity' => $qty,
                 'condition_note' => $conditions[$i] ?? '',
                 'selling_amount' => $amount,
                 'document' => $docPath
@@ -109,6 +117,7 @@ class Con_WastageController extends Controller
         $data = [
             'project_id' => $projectId,
             'warehouse_id' => $warehouseId,
+            'wastage_type' => $_POST['wastage_type'] ?? 'selling_scrap',
             'recorded_by' => $userId,
             'total_selling_amount' => $totalSellingAmount
         ];
