@@ -591,7 +591,7 @@
             }
 
             .btn-update {
-                background: linear-gradient(135deg, #5e4cdc 0%, #4b3db1 100%);
+                background: #19915a;
                 color: white;
                 padding: 14px 24px;
                 border: none;
@@ -634,7 +634,7 @@
                 width: 100px;
                 height: 100px;
                 margin: 0 auto 24px;
-                background: linear-gradient(135deg, #5e4cdc 0%, #4b3db1 100%);
+                background: #19915a;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;

@@ -39,7 +39,7 @@ $projectId    = $project['id'];
 .kpi-card.amber { border-left-color: #f59e0b; }
 .kpi-card.green { border-left-color: #10b981; }
 .kpi-card.blue  { border-left-color: #3b82f6; }
-.kpi-card.purple{ border-left-color: #8b5cf6; }
+.kpi-card.purple{ border-left-color: var(--clr-theme-secondary); }
 .kpi-number { font-size: 2rem; font-weight: 800; line-height: 1; }
 .kpi-label  { font-size: 0.78rem; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: .04em; }
 
@@ -82,7 +82,7 @@ $projectId    = $project['id'];
 .risk-tbl tr:hover td { background: #f8fafc; }
 
 /* Auto badge */
-.badge-auto { background: #ede9fe; color: #6d28d9; font-size: 0.68rem; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+.badge-auto { background: rgba(var(--clr-theme-primary-rgb),.08); color: #6d28d9; font-size: 0.68rem; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
 
 /* Missed target rows */
 .missed-row td { font-size: 0.83rem; }
@@ -97,7 +97,7 @@ $projectId    = $project['id'];
 .modal-footer  { border-top: 1px solid #f1f5f9; }
 .form-label    { font-weight: 600; font-size: 0.84rem; color: #374151; margin-bottom: 4px; }
 .form-control, .form-select { border-radius: 8px; border: 1.5px solid #e2e8f0; font-size: 0.88rem; }
-.form-control:focus, .form-select:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+.form-control:focus, .form-select:focus { border-color: var(--clr-theme-primary); box-shadow: 0 0 0 3px rgba(var(--clr-theme-primary-rgb),0.1); }
 
 /* Tabs */
 .risk-tabs .nav-link { color: #64748b; font-weight: 600; font-size: 0.85rem; border: none; padding: 10px 20px; border-radius: 8px; transition: all 0.2s; }
@@ -109,7 +109,7 @@ $projectId    = $project['id'];
 .section-hdr .dot { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; }
 
 /* Recovery link */
-.btn-recovery { background: linear-gradient(135deg, #7c3aed, #6366f1); color: #fff; border: none; border-radius: 10px; padding: 8px 18px; font-weight: 600; font-size: 0.85rem; transition: opacity 0.2s; }
+.btn-recovery { background: linear-gradient(135deg, var(--clr-theme-secondary), var(--clr-theme-primary)); color: #fff; border: none; border-radius: 10px; padding: 8px 18px; font-weight: 600; font-size: 0.85rem; transition: opacity 0.2s; }
 .btn-recovery:hover { opacity: 0.88; color: #fff; }
 </style>
 

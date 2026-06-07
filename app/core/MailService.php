@@ -9,11 +9,11 @@ class MailService
 {
     private $smtpHost = 'smtp.gmail.com';
     private $smtpPort = 587; // TLS
-    private $senderEmail = 'info@dpremiumhomes.com';
+    private $senderEmail = 'tech@dpremiumhomes.com';
     private $senderName = 'TPHL ERP Notification';
-    private $clientId = '893215055562-pbt3j7lg7ufqju370ltss46kh7pati3n.apps.googleusercontent.com';
-    private $clientSecret = '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';
-    private $refreshToken = '1//04tQCZJUfNcm7CgYIARAAGAQSNwF-L9IrFjuXh9BJ80IcIEKsg8h5m5TFRRQS6BQTt-wwIvtJKnUHd4sAtITIw8QJ0pgbijIOF0w'; // Must be permanent, Playground token won't work
+    private $clientId = '684667519692-hcdp7rhi9r64d87g93eq1cagpgqurk35.apps.googleusercontent.com';
+    private $clientSecret = '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';
+    private $refreshToken = '1//041-wDvZzKIoVCgYIARAAGAQSNwF-L9IrP3uKc9BZMrTRHt9EHVR-PDRZdgog0Hk8uAOapqaf45h4Xkp8rkwzPTIY2Vhxt1DgIx4'; // Must be permanent, Playground token won't work
 
 public function sendMail($toEmail, $subject, $link, $assignedBy)
 {

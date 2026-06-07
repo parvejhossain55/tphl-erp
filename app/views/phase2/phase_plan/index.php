@@ -40,16 +40,16 @@ $statusMeta = [
     'In Progress' => ['color' => '#f59e0b', 'bar' => '#f59e0b', 'badge' => 'rgba(245,158,11,.15)'],
     'Completed'   => ['color' => '#10b981', 'bar' => '#10b981', 'badge' => 'rgba(16,185,129,.15)'],
     'At Risk'     => ['color' => '#ef4444', 'bar' => '#ef4444', 'badge' => 'rgba(239,68,68,.15)'],
-    'Delayed'     => ['color' => '#8b5cf6', 'bar' => '#8b5cf6', 'badge' => 'rgba(139,92,246,.15)'],
+    'Delayed'     => ['color' => 'var(--clr-theme-secondary)', 'bar' => 'var(--clr-theme-secondary)', 'badge' => 'rgba(var(--clr-theme-secondary-rgb),.15)'],
 ];
-$phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec4899','#0ea5e9'];
+$phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a6','var(--clr-theme-secondary)','#ec4899','#0ea5e9'];
 ?>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-    --pp-primary : #6366f1;
+    --pp-primary : var(--clr-theme-primary);
     --pp-green   : #10b981;
     --pp-amber   : #f59e0b;
     --pp-red     : #ef4444;
@@ -115,7 +115,7 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
 .pp-config-table thead th:nth-child(2) { text-align: left; }
 .pp-config-table tbody tr { border-bottom: 1px solid rgba(0,0,0,.05); transition: background .15s; }
 .pp-config-table tbody tr:last-child { border-bottom: none; }
-.pp-config-table tbody tr:hover { background: rgba(99,102,241,.03); }
+.pp-config-table tbody tr:hover { background: rgba(var(--clr-theme-primary-rgb),.03); }
 .pp-config-table td { padding: 8px 10px; vertical-align: middle; }
 
 .pp-phase-name-inp {
@@ -125,7 +125,7 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
     background: transparent; color: inherit;
     transition: border-color .2s;
 }
-.pp-phase-name-inp:focus { outline: none; border-color: var(--pp-primary); background: rgba(99,102,241,.05); }
+.pp-phase-name-inp:focus { outline: none; border-color: var(--pp-primary); background: rgba(var(--clr-theme-primary-rgb),.05); }
 
 .pp-month-inp {
     width: 52px; text-align: center;
@@ -141,7 +141,7 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
     font-size: 11px; font-weight: 700;
     padding: 2px 8px;
     border-radius: 6px;
-    background: rgba(99,102,241,.1);
+    background: rgba(var(--clr-theme-primary-rgb),.1);
     color: var(--pp-primary);
     white-space: nowrap;
     display: inline-block;
@@ -185,11 +185,11 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 12px; font-weight: 600;
     padding: 7px 14px; border-radius: 8px;
-    background: rgba(99,102,241,.1); color: var(--pp-primary);
-    border: 1px dashed rgba(99,102,241,.4); cursor: pointer;
+    background: rgba(var(--clr-theme-primary-rgb),.1); color: var(--pp-primary);
+    border: 1px dashed rgba(var(--clr-theme-primary-rgb),.4); cursor: pointer;
     transition: background .2s;
 }
-.btn-add-phase:hover { background: rgba(99,102,241,.18); }
+.btn-add-phase:hover { background: rgba(var(--clr-theme-primary-rgb),.18); }
 .btn-pp-save {
     display: inline-flex; align-items: center; gap: 7px;
     padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 700;
@@ -265,8 +265,8 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
 <!-- ══ KPI STRIP ══════════════════════════════════════════════════════ -->
 <div class="pp-kpi-strip">
     <div class="pp-kpi-card">
-        <div class="pp-kpi-icon" style="background:rgba(99,102,241,.12);color:#6366f1"><i class="fal fa-layer-group"></i></div>
-        <div><div class="pp-kpi-label">Total Phases</div><div class="pp-kpi-value" style="color:#6366f1"><?= count($phases) ?></div></div>
+        <div class="pp-kpi-icon" style="background:rgba(var(--clr-theme-primary-rgb),.12);color:var(--clr-theme-primary)"><i class="fal fa-layer-group"></i></div>
+        <div><div class="pp-kpi-label">Total Phases</div><div class="pp-kpi-value" style="color:var(--clr-theme-primary)"><?= count($phases) ?></div></div>
     </div>
     <div class="pp-kpi-card">
         <div class="pp-kpi-icon" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="fal fa-calendar-alt"></i></div>
@@ -330,7 +330,7 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
                 <td>
                     <input type="hidden" name="phases[<?= $idx ?>][id]"          value="<?= $ph['id'] ?>">
                     <input type="hidden" name="phases[<?= $idx ?>][phase_order]"  value="<?= $ph['phase_order'] ?>">
-                    <div style="width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:<?= $color ?>22;color:<?= $color ?>">
+                    <div style="width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:<?= (strpos($color, 'var(') === 0 ? ($color === 'var(--clr-theme-primary)' ? 'rgba(var(--clr-theme-primary-rgb),.15)' : 'rgba(var(--clr-theme-secondary-rgb),.15)') : $color.'22') ?>;color:<?= $color ?>">
                         <?= $ph['phase_order'] ?>
                     </div>
                 </td>
@@ -388,8 +388,8 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
                            class="btn btn-sm"
                            title="Manage Sub-items"
                            style="font-size:10.5px;font-weight:700;padding:3px 8px;
-                                  background:rgba(99,102,241,.1);color:var(--pp-primary);
-                                  border:1px solid rgba(99,102,241,.2);border-radius:6px;white-space:nowrap">
+                                  background:rgba(var(--clr-theme-primary-rgb),.1);color:var(--pp-primary);
+                                  border:1px solid rgba(var(--clr-theme-primary-rgb),.2);border-radius:6px;white-space:nowrap">
                             <i class="fal fa-list-ul me-1"></i>Items
                         </a>
                         <?php endif; ?>
@@ -607,7 +607,7 @@ document.getElementById('phasePlanForm').addEventListener('submit', function(e) 
     if (Math.abs(total - 100) > 0.01) {
         e.preventDefault();
         if (typeof Swal !== 'undefined') {
-            Swal.fire({ icon: 'error', title: 'Invalid Weight', text: 'Total weight must equal 100%. Current: ' + total.toFixed(2) + '%', confirmButtonColor: '#6366f1' });
+            Swal.fire({ icon: 'error', title: 'Invalid Weight', text: 'Total weight must equal 100%. Current: ' + total.toFixed(2) + '%', confirmButtonColor: 'var(--clr-theme-primary)' });
         } else {
             alert('Total weight must equal 100%. Current: ' + total.toFixed(2) + '%');
         }
@@ -664,7 +664,7 @@ function submitAddPhase() {
                 setTimeout(() => location.reload(), 1300);
             } else {
                 if (typeof Swal !== 'undefined') {
-                    Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Failed.', confirmButtonColor: '#6366f1' });
+                    Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Failed.', confirmButtonColor: 'var(--clr-theme-primary)' });
                 }
             }
         })

@@ -21,13 +21,13 @@ $totalWeight = array_sum(array_column($phases, 'weight_percentage'));
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 :root {
-    --pri:#5e4cdc; --green:#10b981; --amber:#f59e0b; --red:#ef4444;
-    --cyan:#0ea5e9; --purple:#8b5cf6; --slate:#64748b; --navy:#1e3a5f;
+    --pri:var(--clr-theme-primary); --green:#10b981; --amber:#f59e0b; --red:#ef4444;
+    --cyan:#0ea5e9; --purple:var(--clr-theme-secondary); --slate:#64748b; --navy:#1e3a5f;
 }
 
 /* ── Hero Banner ── */
 .prog-hero {
-    background: #5e4cdc;
+    background: var(--clr-theme-primary);
     border-radius: 20px; padding: 28px 32px; color: #fff;
     position: relative; overflow: hidden; margin-bottom: 22px;
 }
@@ -77,7 +77,7 @@ $totalWeight = array_sum(array_column($phases, 'weight_percentage'));
               font-size: 12px; font-weight: 800; color: #fff; flex-shrink: 0 }
 .phase-name { font-weight: 700; font-size: 14px; color: #1e293b; flex: 1 }
 .phase-weight-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
-                      background: #ede9fe; color: #5b21b6 }
+                      background: rgba(var(--clr-theme-primary-rgb),.08); color: #5b21b6 }
 .phase-pct  { font-size: 18px; font-weight: 900; min-width: 60px; text-align: right }
 .phase-bar-wrap { height: 8px; border-radius: 4px; background: #f1f5f9; overflow: hidden; margin: 0 20px 0 }
 .phase-bar-fill { height: 100%; border-radius: 4px; transition: width .4s }
@@ -116,7 +116,7 @@ $totalWeight = array_sum(array_column($phases, 'weight_percentage'));
 <?php
 // Determine phase colors by index
 $phaseColors = [
-    '#4f46e5','#10b981','#f59e0b','#ef4444','#0ea5e9','#8b5cf6','#14b8a6',
+    'var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#0ea5e9','var(--clr-theme-secondary)','#14b8a6',
     '#f97316','#06b6d4','#84cc16','#ec4899','#a855f7','#22c55e','#eab308','#3b82f6'
 ];
 
@@ -174,7 +174,7 @@ if ($startDate && $endDate) {
 <!-- ░░ KPI Strip ░░ -->
 <div class="kpi-strip">
     <div class="kpi-card">
-        <div class="kpi-ico" style="background:#ede9fe;color:var(--purple)"><i class="bi bi-layers-fill"></i></div>
+        <div class="kpi-ico" style="background:rgba(var(--clr-theme-primary-rgb),.08);color:var(--purple)"><i class="bi bi-layers-fill"></i></div>
         <div><div class="kpi-lbl">Total Phases</div><div class="kpi-val"><?= count($phases) ?></div><div class="kpi-sub2"><?= number_format($totalWeight, 0) ?>% total weight</div></div>
     </div>
     <div class="kpi-card">
@@ -409,7 +409,7 @@ if ($startDate && $endDate) {
 <?php endforeach; ?>
 
 <!-- ░░ Project Total Summary ░░ -->
-<div style="background:#5e4cdc;color:#fff;border-radius:16px;padding:20px 24px;margin-top:8px">
+<div style="background:var(--clr-theme-primary);color:#fff;border-radius:16px;padding:20px 24px;margin-top:8px">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div>
             <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.8);margin-bottom:4px">

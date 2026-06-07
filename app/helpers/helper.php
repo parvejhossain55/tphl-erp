@@ -1220,3 +1220,18 @@ function uploadProjectImage($inputName, $quality = 75, $maxWidth = 1000)
 
     return $fileName;
 }
+
+if (!function_exists('cpFmt')) {
+    function cpFmt($n)
+    {
+        $n = (float) $n;
+        if ($n >= 10000000)
+            return '৳' . number_format($n / 10000000, 2) . ' Cr';
+        if ($n >= 100000)
+            return '৳' . number_format($n / 100000, 2) . ' L';
+        if ($n >= 1000)
+            return '৳' . number_format($n / 1000, 1) . 'K';
+        return '৳' . number_format($n, 0);
+    }
+}
+

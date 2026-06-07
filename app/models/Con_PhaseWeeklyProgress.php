@@ -106,7 +106,7 @@ class Con_PhaseWeeklyProgress {
 
         // Fetch existing weekly progress items
         $wItemsStmt = $this->db->prepare("
-            SELECT id, target_item_id, planned_qty, responsible_team, contractor_id FROM phase_weekly_progress_items WHERE weekly_progress_id = ?
+            SELECT id, target_item_id, planned_qty, achieved_qty, responsible_team, contractor_id FROM phase_weekly_progress_items WHERE weekly_progress_id = ?
         ");
         $wItemsStmt->bind_param('i', $sessionId);
         $wItemsStmt->execute();
@@ -116,19 +116,19 @@ class Con_PhaseWeeklyProgress {
         foreach ($wItems as $wi) {
             $wItemsByTargetId[(int)$wi['target_item_id']] = $wi;
         }
-
+ 
         $insItem = $this->db->prepare("
             INSERT INTO phase_weekly_progress_items 
                 (weekly_progress_id, target_item_id, planned_qty, achieved_qty, percent_complete, responsible_team, contractor_id, status)
             VALUES (?, ?, ?, 0.00, 0.00, ?, ?, 'Not Started')
         ");
-
+ 
         $updItem = $this->db->prepare("
             UPDATE phase_weekly_progress_items 
             SET planned_qty = ?, responsible_team = ?, contractor_id = ?
             WHERE id = ?
         ");
-
+ 
         foreach ($mItems as $mi) {
             // Determine target quantity based on week number
             $plannedQty = 0.00;
@@ -136,11 +136,25 @@ class Con_PhaseWeeklyProgress {
             elseif ($weekNo === 2) $plannedQty = (float)$mi['week_2_qty'];
             elseif ($weekNo === 3) $plannedQty = (float)$mi['week_3_qty'];
             elseif ($weekNo === 4) $plannedQty = (float)$mi['week_4_qty'];
+ 
+            // Skip and clean up if no planned quantity for this week
+            if ($plannedQty <= 0) {
+                if (isset($wItemsByTargetId[(int)$mi['id']])) {
+                    $existingWi = $wItemsByTargetId[(int)$mi['id']];
+                    // If achieved quantity is 0, we can delete the record
+                    if ((float)($existingWi['achieved_qty'] ?? 0) <= 0) {
+                        $delStmt = $this->db->prepare("DELETE FROM phase_weekly_progress_items WHERE id = ?");
+                        $delStmt->bind_param('i', $existingWi['id']);
+                        $delStmt->execute();
+                    }
+                }
+                continue;
+            }
 
             $team = $mi['responsible_team'] ?? '';
             $targetItemId = (int)$mi['id'];
             $contractorId = !empty($mi['contractor_id']) ? (int)$mi['contractor_id'] : null;
-
+ 
             if (isset($wItemsByTargetId[$targetItemId])) {
                 $existingWi = $wItemsByTargetId[$targetItemId];
                 $existingContrId = isset($existingWi['contractor_id']) && $existingWi['contractor_id'] !== null ? (int)$existingWi['contractor_id'] : null;
@@ -494,7 +508,10 @@ class Con_PhaseWeeklyProgress {
             $agg = $aggQuery->get_result()->fetch_assoc();
 
             $totalPlannedQuery = $this->db->prepare("
-                SELECT SUM(planned_qty) AS tot_plan, SUM(achieved_qty) AS tot_achieved, AVG(percent_complete) AS avg_pct
+                SELECT 
+                    SUM(planned_qty) AS tot_plan, 
+                    SUM(achieved_qty) AS tot_achieved, 
+                    COALESCE(AVG(CASE WHEN planned_qty > 0 OR achieved_qty > 0 THEN percent_complete END), 0) AS avg_pct
                 FROM phase_weekly_progress_items
                 WHERE weekly_progress_id = ?
             ");
@@ -823,7 +840,10 @@ class Con_PhaseWeeklyProgress {
             $agg = $aggQuery->get_result()->fetch_assoc();
 
             $totalPlannedQuery = $this->db->prepare("
-                SELECT SUM(planned_qty) AS tot_plan, SUM(achieved_qty) AS tot_achieved, AVG(percent_complete) AS avg_pct
+                SELECT 
+                    SUM(planned_qty) AS tot_plan, 
+                    SUM(achieved_qty) AS tot_achieved, 
+                    COALESCE(AVG(CASE WHEN planned_qty > 0 OR achieved_qty > 0 THEN percent_complete END), 0) AS avg_pct
                 FROM phase_weekly_progress_items
                 WHERE weekly_progress_id = ?
             ");

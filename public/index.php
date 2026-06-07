@@ -737,6 +737,7 @@ $route = trim($route, '/');
 // =============================================================================
 // ── Module 1: Pre-Construction ──────────────────────────────────────────────
 $routes['con-dashboard'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'index'];
+$routes['all-projects-overview'] = ['controller' => 'Phase2\Con_ProjectOverviewDashboardController', 'method' => 'index'];
 $routes['con-land-visibility-studies'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'index'];
 $routes['con-land-visibility-studies/create'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'create'];
 $routes['con-land-visibility-studies/store'] = ['controller' => 'Phase2\LandVisibilityStudyController', 'method' => 'store'];

@@ -25,7 +25,7 @@ $soilAlerts = $soilAlerts ?? [];
 $pendingInitialBudgets = $pendingInitialBudgets ?? [];
 
 $statusColor = [
-  'Planning' => ['bg' => 'rgba(99,102,241,.12)', 'text' => '#6366f1'],
+  'Planning' => ['bg' => 'rgba(var(--clr-theme-primary-rgb),.12)', 'text' => 'var(--clr-theme-primary)'],
   'In Progress' => ['bg' => 'rgba(245,158,11,.12)', 'text' => '#f59e0b'],
   'On Hold' => ['bg' => 'rgba(239,68,68,.12)', 'text' => '#ef4444'],
   'Completed' => ['bg' => 'rgba(16,185,129,.12)', 'text' => '#10b981'],
@@ -35,15 +35,15 @@ $statusColor = [
   <div class="col-12">
     <style>
       :root {
-        --cd-primary: #5e4cdc;
-        --cd-dark: #4b3db1;
-        --cd-light: #8b7ef6;
+        --cd-primary: var(--clr-theme-primary, #198754);
+        --cd-dark: var(--clr-theme-primary, #198754);
+        --cd-light: var(--clr-theme-secondary, #1abc9c);
         --cd-blue: #3b82f6;
         --cd-green: #10b981;
         --cd-amber: #f59e0b;
         --cd-red: #ef4444;
-        --cd-purple: #8b5cf6;
-        --cd-indigo: #6366f1;
+        --cd-purple: var(--clr-theme-secondary, #1abc9c);
+        --cd-indigo: var(--clr-theme-primary, #198754);
         --cd-teal: #14b8a6;
         --cd-pink: #ec4899;
       }
@@ -374,7 +374,7 @@ $statusColor = [
     </style>
 
     <!-- ═══════════════════════════════ GREEN HERO BANNER ═══════════════════════════════ -->
-    <div style="background:#5e4cdc;
+    <div style="background:linear-gradient(135deg, var(--clr-theme-primary), var(--clr-theme-secondary));
             border-radius:18px;padding:26px 30px;margin-bottom:22px;
             position:relative;overflow:hidden">
       <div style="position:absolute;width:260px;height:260px;border-radius:50%;
@@ -451,7 +451,7 @@ $statusColor = [
       <!-- 4. Manpower Budget -->
       <a href="<?= $base ?>/con-estimates" class="kpi-card card__wrapper">
         <div class="kpi-accent" style="background:var(--cd-purple)"></div>
-        <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:var(--cd-purple)"><i
+        <div class="kpi-icon" style="background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--cd-purple)"><i
             class="fal fa-hard-hat"></i></div>
         <div class="kpi-label" style="color:var(--text-muted)">Total Manpower Budget</div>
         <div class="kpi-value" style="color:var(--cd-purple)"><?= conFmt($stats['total_labour'] ?? 0) ?></div>
@@ -480,13 +480,13 @@ $statusColor = [
       <!-- 6. Pending Approvals -->
       <a href="<?= $base ?>/con-pending-payments" class="kpi-card card__wrapper">
         <div class="kpi-accent" style="background:var(--cd-indigo)"></div>
-        <div class="kpi-icon" style="background:rgba(99,102,241,.12);color:var(--cd-indigo)"><i
+        <div class="kpi-icon" style="background:rgba(var(--clr-theme-primary-rgb),.12);color:var(--cd-indigo)"><i
             class="fal fa-check-circle"></i></div>
         <div class="kpi-label" style="color:var(--text-muted)">Pending Approvals</div>
         <div class="kpi-value" style="color:var(--cd-indigo)"><?= $stats['pending_approvals'] ?? 0 ?></div>
         <div class="kpi-sub" style="color:var(--text-muted)">Bills, funds &amp; vendor payments</div>
         <?php if (($stats['pending_approvals'] ?? 0) > 0): ?>
-          <span class="kpi-badge" style="background:rgba(99,102,241,.12);color:var(--cd-indigo)">PENDING</span>
+          <span class="kpi-badge" style="background:rgba(var(--clr-theme-primary-rgb),.12);color:var(--cd-indigo)">PENDING</span>
         <?php endif; ?>
       </a>
 
@@ -553,9 +553,9 @@ $statusColor = [
                   </td>
                   <td>
                     <div style="display:flex;align-items:center;gap:8px">
-                      <div style="width:30px;height:30px;border-radius:50%;background:rgba(99,102,241,.1);
+                      <div style="width:30px;height:30px;border-radius:50%;background:rgba(var(--clr-theme-primary-rgb),.1);
                 display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                        <i class="fal fa-user" style="font-size:12px;color:#6366f1"></i>
+                        <i class="fal fa-user" style="font-size:12px;color:var(--clr-theme-primary)"></i>
                       </div>
                       <span
                         style="font-size:12.5px;font-weight:600"><?= htmlspecialchars($pb['creator_name'] ?? '—') ?></span>
@@ -563,7 +563,7 @@ $statusColor = [
                   </td>
                   <td>
                     <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
-              background:rgba(139,92,246,.08);color:#8b5cf6">
+              background:rgba(var(--clr-theme-secondary-rgb),.08);color:var(--clr-theme-secondary)">
                       <?= htmlspecialchars($pb['creator_designation'] ?: 'Estimator') ?>
                     </span>
                   </td>
@@ -580,7 +580,7 @@ $statusColor = [
                   <td style="text-align:right">
                     <a href="<?= $base ?>/con-estimate-show/<?= $pb['id'] ?>" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
                 padding:5px 14px;border-radius:8px;text-decoration:none;
-                background:#5e4cdc;color:#fff" onclick="event.stopPropagation()">
+                background:var(--clr-theme-primary);color:#fff" onclick="event.stopPropagation()">
                       <i class="fal fa-check-circle"></i> Review & Approve
                     </a>
                   </td>
@@ -635,7 +635,7 @@ $statusColor = [
                   $aprBadge = $aprSt === 'Submitted' ? 'bg-primary' : 'bg-warning text-dark';
                 ?>
                 <tr <?= $aprSt === 'Submitted' ? 'class="table-info bg-opacity-10"' : '' ?>>
-                  <td class="fw-bold" style="color:#4338ca">PR-<?= $apr['id'] ?></td>
+                  <td class="fw-bold" style="color:var(--clr-theme-primary)">PR-<?= $apr['id'] ?></td>
                   <td><strong><?= htmlspecialchars($apr['project_name'] ?? 'N/A') ?></strong></td>
                   <td>
                     <span class="badge <?= $aprBadge ?> px-2" style="font-size:10px"><?= $aprSt ?></span>
@@ -898,14 +898,14 @@ $statusColor = [
     $pendingBoqs = $pendingBoqs ?? [];
     if (!empty($pendingBoqs)):
       ?>
-        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(139,92,246,.3);background:rgba(139,92,246,.03)">
+        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(var(--clr-theme-secondary-rgb),.3);background:rgba(var(--clr-theme-secondary-rgb),.03)">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="sec-title" style="margin-bottom:0">
               <div class="sec-title-dot" style="background:var(--cd-purple)"></div>
               <i class="fal fa-clipboard-list me-2" style="color:var(--cd-purple)"></i>
               Pending BOQ Approvals
               <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
-        background:rgba(139,92,246,.12);color:var(--cd-purple)">
+        background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--cd-purple)">
                 <?= count($pendingBoqs) ?> Awaiting
               </span>
             </div>
@@ -941,9 +941,9 @@ $statusColor = [
                       <td style="font-weight:700;font-size:13px"><?= htmlspecialchars($bq['project_name'] ?? 'N/A') ?></td>
                       <td>
                         <div style="display:flex;align-items:center;gap:8px">
-                          <div style="width:30px;height:30px;border-radius:50%;background:rgba(99,102,241,.1);
+                          <div style="width:30px;height:30px;border-radius:50%;background:rgba(var(--clr-theme-primary-rgb),.1);
                 display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                            <i class="fal fa-user" style="font-size:12px;color:#6366f1"></i>
+                            <i class="fal fa-user" style="font-size:12px;color:var(--clr-theme-primary)"></i>
                           </div>
                           <span
                             style="font-size:12.5px;font-weight:600"><?= htmlspecialchars($bq['creator_name'] ?? '—') ?></span>
@@ -951,7 +951,7 @@ $statusColor = [
                       </td>
                       <td>
                         <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
-              background:rgba(99,102,241,.08);color:#6366f1">
+              background:rgba(var(--clr-theme-primary-rgb),.08);color:var(--clr-theme-primary)">
                           <?= htmlspecialchars($bq['creator_designation'] ?: 'Site Engineer') ?>
                         </span>
                       </td>
@@ -984,7 +984,7 @@ $statusColor = [
                       <td style="text-align:right">
                         <a href="<?= $base ?>/con-boq-show/<?= $bq['id'] ?>" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
                 padding:5px 14px;border-radius:8px;text-decoration:none;
-                background:linear-gradient(135deg,#6d28d9,#8b5cf6);color:#fff" onclick="event.stopPropagation()">
+                background:linear-gradient(135deg,var(--clr-theme-primary),var(--clr-theme-secondary));color:#fff" onclick="event.stopPropagation()">
                           <i class="fal fa-check-circle"></i> Review &amp; Approve
                         </a>
                       </td>
@@ -1000,19 +1000,19 @@ $statusColor = [
     $pendingGRNsPM = $pendingGRNsPM ?? [];
     if (!empty($pendingGRNsPM)):
       ?>
-        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(139,92,246,.35);background:rgba(139,92,246,.03)">
+        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(var(--clr-theme-secondary-rgb),.35);background:rgba(var(--clr-theme-secondary-rgb),.03)">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="sec-title" style="margin-bottom:0">
-              <div class="sec-title-dot" style="background:#8b5cf6"></div>
-              <i class="fal fa-file-check me-2" style="color:#7c3aed"></i>
+              <div class="sec-title-dot" style="background:var(--clr-theme-secondary)"></div>
+              <i class="fal fa-file-check me-2" style="color:var(--clr-theme-secondary)"></i>
               Pending Material Receivings (GRN) &mdash; PM Approval Required
               <span
-                style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(139,92,246,.12);color:#7c3aed">
+                style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--clr-theme-secondary)">
                 <?= count($pendingGRNsPM) ?> Awaiting
               </span>
             </div>
             <a href="<?= $base ?>/con-material-receivings" class="cd-btn-outline"
-              style="border-color:#8b5cf6;color:#8b5cf6">
+              style="border-color:var(--clr-theme-secondary);color:var(--clr-theme-secondary)">
               View All <i class="fal fa-arrow-right ms-1"></i>
             </a>
           </div>
@@ -1035,7 +1035,7 @@ $statusColor = [
                     <tr onclick="window.location='<?= $base ?>/con-material-receiving-qc/<?= $pm['id'] ?>'"
                       style="cursor:pointer" class="tr-hover">
                       <td style="font-size:11px;color:var(--text-muted)"><?= $i + 1 ?></td>
-                      <td style="font-weight:700;font-size:12px;color:#7c3aed">GRN-<?= $pm['id'] ?></td>
+                      <td style="font-weight:700;font-size:12px;color:var(--clr-theme-secondary)">GRN-<?= $pm['id'] ?></td>
                       <td style="font-weight:600;font-size:12px"><?= htmlspecialchars($pm['project_name'] ?? '—') ?></td>
                       <td style="font-size:11px;color:var(--text-muted);white-space:nowrap">
                         <i class="fal fa-calendar me-1"></i>
@@ -1043,9 +1043,9 @@ $statusColor = [
                       </td>
                       <td>
                         <div style="display:flex;align-items:center;gap:8px">
-                          <div style="width:28px;height:28px;border-radius:50%;background:rgba(99,102,241,.1);
+                          <div style="width:28px;height:28px;border-radius:50%;background:rgba(var(--clr-theme-primary-rgb),.1);
                 display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                            <i class="fal fa-user" style="font-size:11px;color:#6366f1"></i>
+                            <i class="fal fa-user" style="font-size:11px;color:var(--clr-theme-primary)"></i>
                           </div>
                           <div>
                             <div style="font-size:12px;font-weight:600"><?= htmlspecialchars($pm['received_by_name'] ?? '—') ?>
@@ -1062,7 +1062,7 @@ $statusColor = [
                       <td style="text-align:right">
                         <a href="<?= $base ?>/con-material-receiving-qc/<?= $pm['id'] ?>" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
                 padding:5px 14px;border-radius:8px;text-decoration:none;
-                background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff" onclick="event.stopPropagation()">
+                background:linear-gradient(135deg,var(--clr-theme-secondary),var(--clr-theme-primary));color:#fff" onclick="event.stopPropagation()">
                           <i class="fal fa-check-circle"></i> Acknowledge
                         </a>
                       </td>
@@ -1310,19 +1310,19 @@ $statusColor = [
     $pendingGRNs = $pendingGRNs ?? [];
     if (!empty($pendingGRNs)):
       ?>
-        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(139,92,246,.35);background:rgba(139,92,246,.03)">
+        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(var(--clr-theme-secondary-rgb),.35);background:rgba(var(--clr-theme-secondary-rgb),.03)">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="sec-title" style="margin-bottom:0">
-              <div class="sec-title-dot" style="background:var(--cd-purple,#8b5cf6)"></div>
-              <i class="fal fa-box-open me-2" style="color:var(--cd-purple,#8b5cf6)"></i>
+              <div class="sec-title-dot" style="background:var(--cd-purple)"></div>
+              <i class="fal fa-box-open me-2" style="color:var(--cd-purple)"></i>
               Pending Material Receivings (GRN) &mdash; Awaiting QC
               <span
-                style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(139,92,246,.12);color:var(--cd-purple,#8b5cf6)">
+                style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--cd-purple)">
                 <?= count($pendingGRNs) ?> Awaiting
               </span>
             </div>
             <a href="<?= $base ?>/con-material-receivings"
-              style="font-size:11px;color:var(--cd-purple,#8b5cf6);text-decoration:none">View All <i
+              style="font-size:11px;color:var(--cd-purple);text-decoration:none">View All <i
                 class="fal fa-arrow-right ms-1"></i></a>
           </div>
           <div style="overflow-x:auto">
@@ -1341,14 +1341,14 @@ $statusColor = [
                 <?php foreach ($pendingGRNs as $pi => $grn): ?>
                     <tr>
                       <td style="font-size:11px;color:var(--text-muted)"><?= $pi + 1 ?></td>
-                      <td style="font-weight:800;color:var(--cd-purple,#8b5cf6)">GRN-<?= $grn['id'] ?></td>
+                      <td style="font-weight:800;color:var(--cd-purple,var(--clr-theme-secondary))">GRN-<?= $grn['id'] ?></td>
                       <td style="font-weight:700;font-size:13px"><?= htmlspecialchars($grn['project_name'] ?? '&mdash;') ?></td>
                       <td style="font-size:11px;color:var(--text-muted)">
                         <?= !empty($grn['receiving_date']) ? date('d M Y', strtotime($grn['receiving_date'])) : '&mdash;' ?>
                       </td>
                       <td style="font-size:12px"><?= htmlspecialchars($grn['received_by_name'] ?? '&mdash;') ?></td>
                       <td style="text-align:right"><a href="<?= $base ?>/con-material-receiving-qc/<?= $grn['id'] ?>"
-                          style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 14px;border-radius:8px;text-decoration:none;background:linear-gradient(135deg,#7c3aed,#8b5cf6);color:#fff"><i
+                          style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 14px;border-radius:8px;text-decoration:none;background:linear-gradient(135deg,var(--clr-theme-secondary),var(--clr-theme-primary));color:#fff"><i
                             class="fal fa-eye"></i> View</a></td>
                     </tr>
                 <?php endforeach; ?>
@@ -1792,8 +1792,8 @@ $statusColor = [
 
           <?php if (($stats['pending_approvals'] ?? 0) > 0): ?>
             <a href="<?= $base ?>/con-pending-payments" class="alert-item"
-              style="background:rgba(99,102,241,.05);text-decoration:none">
-              <div class="alert-icon-wrap" style="background:rgba(99,102,241,.12);color:var(--cd-indigo)"><i
+              style="background:rgba(var(--clr-theme-primary-rgb),.05);text-decoration:none">
+              <div class="alert-icon-wrap" style="background:rgba(var(--clr-theme-primary-rgb),.12);color:var(--cd-indigo)"><i
                   class="fal fa-hourglass-half"></i></div>
               <div>
                 <div class="alert-item-title"><?= $stats['pending_approvals'] ?> Pending

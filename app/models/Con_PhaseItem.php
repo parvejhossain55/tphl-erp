@@ -121,6 +121,11 @@ class Con_PhaseItem {
                     design_type_id   = ?
                 WHERE id = ?
             ");
+            $syncStmt = $this->db->prepare("
+                UPDATE phase_monthly_target_items
+                SET work_item_name = ?
+                WHERE phase_item_id = ?
+            ");
             foreach ($items as $item) {
                 $id      = (int)$item['id'];
                 $name    = trim($item['item_name']);
@@ -132,6 +137,10 @@ class Con_PhaseItem {
                 $dtId    = ($item['design_type_id'] > 0) ? (int)$item['design_type_id'] : null;
                 $stmt->bind_param('sddisiii', $name, $wpct, $actual, $planned, $status, $wtId, $dtId, $id);
                 $stmt->execute();
+
+                // Synchronize name to target items
+                $syncStmt->bind_param('si', $name, $id);
+                $syncStmt->execute();
             }
             $this->db->commit();
             return true;

@@ -1,6 +1,4 @@
-
--- 2026-06-04: Final ERP DB Backup after Phase 2 Migration
--- MySQL dump 10.13  Distrib 8.0.46, for Linux (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.46, for Linux (x86_64) 7/june/2026
 --
 -- Host: localhost    Database: final_erp_db
 -- ------------------------------------------------------
@@ -27,16 +25,16 @@ DROP TABLE IF EXISTS `adjustment_transactions`;
 CREATE TABLE `adjustment_transactions` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `adjustment_id` int unsigned NOT NULL COMMENT 'FK to expense_adjustments.id',
-  `transaction_type` enum('cashin','cashout') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Cashin for Returns, Cashout for Extras',
+  `transaction_type` enum('cashin','cashout') COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Cashin for Returns, Cashout for Extras',
   `amount` decimal(15,2) NOT NULL,
   `payment_date` date NOT NULL,
-  `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `transaction_ref` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `payment_method` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `transaction_ref` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `bank_id` int DEFAULT NULL,
-  `bank_account_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `cheque_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `online_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `disbursement_proof` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT 'JSON array of paths',
+  `bank_account_no` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `cheque_no` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `online_type` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `disbursement_proof` text COLLATE utf8mb4_general_ci COMMENT 'JSON array of paths',
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -62,10 +60,10 @@ DROP TABLE IF EXISTS `approval_requests`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `approval_requests` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `department` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `request_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `title` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `source_table` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `department` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `request_type` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `title` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `source_table` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
   `source_id` int unsigned NOT NULL,
   `request_amount` decimal(12,2) DEFAULT NULL,
   `approved_amount` decimal(12,2) DEFAULT NULL,
@@ -73,13 +71,13 @@ CREATE TABLE `approval_requests` (
   `approved_days` int DEFAULT NULL,
   `approved_by` int unsigned DEFAULT NULL,
   `approved_at` timestamp NULL DEFAULT NULL,
-  `status` enum('pending','approved','rejected','partial') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `status` enum('pending','approved','rejected','partial') COLLATE utf8mb4_general_ci DEFAULT 'pending',
   `requested_by` int unsigned NOT NULL,
-  `approve_role` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `approve_role` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
   `meta_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `approval_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `approval_note` text COLLATE utf8mb4_general_ci,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -105,9 +103,9 @@ CREATE TABLE `architect_engineering` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `project_id` int NOT NULL,
   `user_id` int NOT NULL COMMENT 'Internal architect FK users.id',
-  `full_architecture_design_link` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `status` enum('draft','partially','fully') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'draft',
+  `full_architecture_design_link` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `notes` text COLLATE utf8mb4_general_ci,
+  `status` enum('draft','partially','fully') COLLATE utf8mb4_general_ci DEFAULT 'draft',
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -137,16 +135,16 @@ DROP TABLE IF EXISTS `asset_movement_logs`;
 CREATE TABLE `asset_movement_logs` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `asset_id` int unsigned NOT NULL COMMENT 'FK → office_assets.id',
-  `action` enum('assigned','transferred','returned','maintenance','repair_requested','repaired','disposed','status_change','purchased') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `from_location` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `to_location` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `action` enum('assigned','transferred','returned','maintenance','repair_requested','repaired','disposed','status_change','purchased') COLLATE utf8mb4_general_ci NOT NULL,
+  `from_location` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `to_location` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `from_user_id` int DEFAULT NULL,
   `to_user_id` int DEFAULT NULL,
   `from_project_id` int DEFAULT NULL,
   `to_project_id` int DEFAULT NULL,
-  `old_condition` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `new_condition` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `old_condition` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `new_condition` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `notes` text COLLATE utf8mb4_general_ci,
   `performed_by` int NOT NULL COMMENT 'users.id',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -174,11 +172,11 @@ DROP TABLE IF EXISTS `banks`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `banks` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `bank_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `branch_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `account_number` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `routing_number` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `status` enum('active','inactive') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'active',
+  `bank_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `branch_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `account_number` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `routing_number` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `status` enum('active','inactive') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'active',
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -205,15 +203,15 @@ DROP TABLE IF EXISTS `blogs`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `blogs` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `title` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `slug` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `excerpt` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `content` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `author` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `title` text COLLATE utf8mb4_general_ci NOT NULL,
+  `slug` text COLLATE utf8mb4_general_ci,
+  `excerpt` longtext COLLATE utf8mb4_general_ci,
+  `content` longtext COLLATE utf8mb4_general_ci,
+  `image` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `author` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `published_date` date DEFAULT NULL,
   `comments` int DEFAULT '0',
-  `read_time` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `read_time` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `status` tinyint DEFAULT '1' COMMENT '1=Published, 0=Draft',
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -274,8 +272,8 @@ CREATE TABLE `boq_master` (
   `project_id` int NOT NULL,
   `target_id` int DEFAULT NULL,
   `design_type_id` int DEFAULT NULL,
-  `version` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '1.0',
-  `status` enum('Draft','Submitted','Approved','Rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
+  `version` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '1.0',
+  `status` enum('Draft','Submitted','Approved','Rejected') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
   `approved_by` int DEFAULT NULL,
   `approved_at` timestamp NULL DEFAULT NULL,
   `created_by` int NOT NULL,
@@ -294,7 +292,7 @@ CREATE TABLE `boq_master` (
 
 LOCK TABLES `boq_master` WRITE;
 /*!40000 ALTER TABLE `boq_master` DISABLE KEYS */;
-INSERT INTO `boq_master` VALUES (1,13,1,NULL,'1.0','Approved',120,'2026-05-05 13:35:25',123,'2026-05-05 13:33:18','2026-05-05 13:35:25'),(2,13,3,NULL,'1.0','Approved',120,'2026-05-07 12:24:08',123,'2026-05-07 12:23:35','2026-05-07 12:24:08');
+INSERT INTO `boq_master` VALUES (1,13,1,NULL,'1.0','Approved',120,'2026-05-05 13:35:25',123,'2026-05-05 13:33:18','2026-05-05 13:35:25');
 /*!40000 ALTER TABLE `boq_master` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -310,17 +308,17 @@ CREATE TABLE `budget_extend_requests` (
   `project_id` int NOT NULL,
   `initial_budget_id` int unsigned NOT NULL,
   `requested_by` int NOT NULL,
-  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `title` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `amount` decimal(16,4) NOT NULL,
-  `reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `status` enum('Pending','Approved','Rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
+  `reason` text COLLATE utf8mb4_general_ci NOT NULL,
+  `status` enum('Pending','Approved','Rejected') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
   `approved_by` int DEFAULT NULL,
   `approved_at` timestamp NULL DEFAULT NULL,
-  `remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `remarks` text COLLATE utf8mb4_general_ci,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `attachment_file` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'File path for uploaded evidence (PDF/Images)',
-  `docs_link` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'External cloud link for supporting docs',
+  `attachment_file` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'File path for uploaded evidence (PDF/Images)',
+  `docs_link` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'External cloud link for supporting docs',
   PRIMARY KEY (`id`),
   KEY `idx_ber_project` (`project_id`),
   KEY `idx_ber_requested_by` (`requested_by`),
@@ -345,8 +343,8 @@ DROP TABLE IF EXISTS `cache`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `cache` (
-  `key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `value` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value` mediumtext COLLATE utf8mb4_unicode_ci NOT NULL,
   `expiration` int NOT NULL,
   PRIMARY KEY (`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -430,19 +428,19 @@ DROP TABLE IF EXISTS `cashout_payments`;
 CREATE TABLE `cashout_payments` (
   `id` int NOT NULL AUTO_INCREMENT,
   `cashout_request_id` int DEFAULT NULL,
-  `office` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `project_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `purpose_paid_to` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `office` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `project_id` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `purpose_paid_to` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `amount` decimal(15,2) NOT NULL,
-  `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'cash',
+  `payment_method` varchar(50) COLLATE utf8mb4_general_ci DEFAULT 'cash',
   `bank_id` int unsigned DEFAULT NULL COMMENT 'FK → banks.id; set when payment_method = bank',
-  `transaction_ref` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `transaction_ref` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `payment_date` date NOT NULL,
-  `bank_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `bank_account_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `cheque_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `online_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `disbursement_proof` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT 'JSON array of disbursement proof file paths uploaded by Accounts',
+  `bank_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `bank_account_no` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `cheque_no` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `online_type` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `disbursement_proof` text COLLATE utf8mb4_general_ci COMMENT 'JSON array of disbursement proof file paths uploaded by Accounts',
   `created_by` int NOT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -470,29 +468,29 @@ DROP TABLE IF EXISTS `cashout_requests`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `cashout_requests` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `project_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `office` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `project_id` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `office` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `requested_by` int NOT NULL COMMENT 'User who requested cashout',
-  `purpose_paid_to` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Purpose or payee name',
+  `purpose_paid_to` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Purpose or payee name',
   `amount` decimal(15,2) NOT NULL COMMENT 'Total requested amount',
   `approved_amount` decimal(15,2) DEFAULT NULL,
   `due_amount` decimal(15,2) NOT NULL COMMENT 'Remaining unpaid amount',
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'cash',
+  `description` text COLLATE utf8mb4_general_ci,
+  `payment_method` varchar(50) COLLATE utf8mb4_general_ci DEFAULT 'cash',
   `bank_id` int unsigned DEFAULT NULL COMMENT 'FK → banks.id; set when payment_method = bank',
-  `transaction_ref` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `attachment_path` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT 'JSON array of requester-uploaded attachment file paths',
-  `status` enum('pending','qc_approved','approved','rejected','partially_paid','fully_paid') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `transaction_ref` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `attachment_path` text COLLATE utf8mb4_general_ci COMMENT 'JSON array of requester-uploaded attachment file paths',
+  `status` enum('pending','qc_approved','approved','rejected','partially_paid','fully_paid') COLLATE utf8mb4_general_ci DEFAULT 'pending',
   `approved_by` int DEFAULT NULL,
   `qc_approved_by_id` int DEFAULT NULL,
   `qc_approved_at` datetime DEFAULT NULL,
-  `qc_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `qc_note` text COLLATE utf8mb4_general_ci,
   `approved_at` datetime DEFAULT NULL,
   `rejected_by` int DEFAULT NULL,
   `rejected_at` datetime DEFAULT NULL,
-  `rejection_reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `approval_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `management_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `rejection_reason` text COLLATE utf8mb4_general_ci,
+  `approval_note` text COLLATE utf8mb4_general_ci,
+  `management_note` text COLLATE utf8mb4_general_ci,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -553,8 +551,8 @@ CREATE TABLE `client_refund_requests` (
   `total_paid` decimal(15,2) NOT NULL DEFAULT '0.00' COMMENT 'Sum of all verified lead_payments for this booking',
   `retention_amount` decimal(15,2) NOT NULL DEFAULT '0.00' COMMENT 'Company charges that cannot be refunded',
   `refund_amount` decimal(15,2) NOT NULL DEFAULT '0.00' COMMENT 'total_paid - retention_amount',
-  `reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT 'Free-text refund reason',
-  `status` enum('pending','approved','rejected','refunded') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
+  `reason` text COLLATE utf8mb4_general_ci COMMENT 'Free-text refund reason',
+  `status` enum('pending','approved','rejected','refunded') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
   `cashout_request_id` int DEFAULT NULL COMMENT 'FK → cashout_requests.id (created on approval)',
   `requested_by` int NOT NULL COMMENT 'User who initiated the refund (Accounts)',
   `approved_by` int DEFAULT NULL COMMENT 'User who approved/rejected (Management)',
@@ -587,7 +585,7 @@ DROP TABLE IF EXISTS `communities`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `communities` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `status` tinyint(1) DEFAULT '1',
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -615,11 +613,11 @@ DROP TABLE IF EXISTS `company_bank_accounts`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `company_bank_accounts` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `bank_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `account_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `account_number` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `bank_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `account_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `account_number` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `is_default` tinyint(1) DEFAULT '0',
-  `status` enum('active','inactive') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'active',
+  `status` enum('active','inactive') COLLATE utf8mb4_general_ci DEFAULT 'active',
   `created_by` int DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
@@ -677,12 +675,12 @@ DROP TABLE IF EXISTS `con_approval_logs`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `con_approval_logs` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `ref_table` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `ref_table` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `ref_id` int unsigned NOT NULL,
-  `step_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `step_name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `actioned_by` int NOT NULL,
-  `status` enum('approved','rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `status` enum('approved','rejected') COLLATE utf8mb4_general_ci NOT NULL,
+  `remarks` text COLLATE utf8mb4_general_ci,
   `actioned_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `created_by` int NOT NULL,
   PRIMARY KEY (`id`),
@@ -710,19 +708,19 @@ DROP TABLE IF EXISTS `con_financial_transactions`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `con_financial_transactions` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `ref_type` enum('contractor_bill','operational_fund','vendor_payment') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `ref_type` enum('contractor_bill','operational_fund','vendor_payment') COLLATE utf8mb4_general_ci NOT NULL,
   `project_id` int DEFAULT NULL,
   `ref_id` int unsigned NOT NULL,
-  `payment_type` enum('Advance','Partial','Full','Refund') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `payment_method` enum('Cash','Cheque','BankTransfer','MobileWallet','Other') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `payment_type` enum('Advance','Partial','Full','Refund') COLLATE utf8mb4_general_ci NOT NULL,
+  `payment_method` enum('Cash','Cheque','BankTransfer','MobileWallet','Other') COLLATE utf8mb4_general_ci NOT NULL,
   `amount_paid` decimal(15,2) NOT NULL,
-  `reference_number` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `reference_number` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `processed_by` int DEFAULT NULL,
   `transaction_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `transaction_date_str` date DEFAULT NULL,
-  `update_status` enum('Completed','Failed','Pending') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
-  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `disbursement_proof` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `update_status` enum('Completed','Failed','Pending') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
+  `notes` text COLLATE utf8mb4_general_ci,
+  `disbursement_proof` text COLLATE utf8mb4_general_ci,
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -771,32 +769,6 @@ LOCK TABLES `con_material_categories` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `con_material_issue_items`
---
-
-DROP TABLE IF EXISTS `con_material_issue_items`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `con_material_issue_items` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `issue_id` int NOT NULL,
-  `material_id` int NOT NULL,
-  `quantity` decimal(15,3) NOT NULL DEFAULT '0.000',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `con_material_issue_items`
---
-
-LOCK TABLES `con_material_issue_items` WRITE;
-/*!40000 ALTER TABLE `con_material_issue_items` DISABLE KEYS */;
-/*!40000 ALTER TABLE `con_material_issue_items` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `con_material_issues`
 --
 
@@ -810,14 +782,14 @@ CREATE TABLE `con_material_issues` (
   `material_id` int unsigned NOT NULL,
   `quantity` decimal(12,3) NOT NULL,
   `issued_to` int DEFAULT NULL,
-  `purpose` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `purpose` text COLLATE utf8mb4_general_ci,
   `target_id` int DEFAULT NULL,
   `work_plan_id` int DEFAULT NULL,
   `issued_by` int NOT NULL,
   `issue_date` date NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -826,7 +798,7 @@ CREATE TABLE `con_material_issues` (
 
 LOCK TABLES `con_material_issues` WRITE;
 /*!40000 ALTER TABLE `con_material_issues` DISABLE KEYS */;
-INSERT INTO `con_material_issues` VALUES (1,13,1,2,300.000,1,'Column cast',3,1,123,'2026-05-07','2026-05-07 12:59:51');
+INSERT INTO `con_material_issues` VALUES (1,13,1,2,300.000,1,'Column cast',3,1,123,'2026-05-07','2026-05-07 12:59:51'),(2,13,1,2,100.000,3,'structure',1,NULL,120,'2026-06-01','2026-06-01 07:28:54');
 /*!40000 ALTER TABLE `con_material_issues` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -840,8 +812,8 @@ DROP TABLE IF EXISTS `con_materials`;
 CREATE TABLE `con_materials` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `category_id` int unsigned DEFAULT NULL,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `unit` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `unit` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
   `min_stock_level` decimal(12,3) NOT NULL DEFAULT '0.000',
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -875,7 +847,7 @@ CREATE TABLE `con_security_daily_logs` (
   `project_id` int NOT NULL,
   `operator_id` int NOT NULL,
   `log_date` date NOT NULL,
-  `checklist_data` json NOT NULL,
+  `checklist_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
   `condition_status` enum('All Okay','Issue Found') COLLATE utf8mb4_general_ci DEFAULT 'All Okay',
   `remarks` text COLLATE utf8mb4_general_ci,
   `approval_status` enum('Pending','Approved') COLLATE utf8mb4_general_ci DEFAULT 'Pending',
@@ -886,7 +858,8 @@ CREATE TABLE `con_security_daily_logs` (
   `status` enum('Pending','Resolved') COLLATE utf8mb4_general_ci DEFAULT 'Pending',
   `resolved_by` int DEFAULT NULL,
   `resolved_at` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CONSTRAINT `con_security_daily_logs_chk_1` CHECK (json_valid(`checklist_data`))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1015,9 +988,9 @@ CREATE TABLE `con_stock_movements` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `material_id` int unsigned NOT NULL,
   `warehouse_id` int unsigned NOT NULL,
-  `type` enum('IN','OUT') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `type` enum('IN','OUT') COLLATE utf8mb4_general_ci NOT NULL,
   `quantity` decimal(12,3) NOT NULL,
-  `ref_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `ref_type` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `ref_id` int unsigned DEFAULT NULL,
   `moved_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1025,7 +998,7 @@ CREATE TABLE `con_stock_movements` (
   KEY `idx_sm_material` (`material_id`),
   KEY `idx_sm_warehouse` (`warehouse_id`),
   KEY `idx_sm_ref` (`ref_type`,`ref_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1034,7 +1007,7 @@ CREATE TABLE `con_stock_movements` (
 
 LOCK TABLES `con_stock_movements` WRITE;
 /*!40000 ALTER TABLE `con_stock_movements` DISABLE KEYS */;
-INSERT INTO `con_stock_movements` VALUES (1,2,1,'IN',500.000,'material_receiving',1,120,'2026-05-07 12:58:35'),(2,1,1,'IN',300.000,'material_receiving',1,120,'2026-05-07 12:58:35'),(3,2,1,'OUT',300.000,'material_issue',1,123,'2026-05-07 12:59:51');
+INSERT INTO `con_stock_movements` VALUES (1,2,1,'IN',500.000,'material_receiving',1,120,'2026-05-07 12:58:35'),(2,1,1,'IN',300.000,'material_receiving',1,120,'2026-05-07 12:58:35'),(3,2,1,'OUT',300.000,'material_issue',1,123,'2026-05-07 12:59:51'),(4,2,1,'OUT',100.000,'material_issue',2,120,'2026-06-01 07:28:54');
 /*!40000 ALTER TABLE `con_stock_movements` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1065,7 +1038,7 @@ CREATE TABLE `con_stocks` (
 
 LOCK TABLES `con_stocks` WRITE;
 /*!40000 ALTER TABLE `con_stocks` DISABLE KEYS */;
-INSERT INTO `con_stocks` VALUES (1,2,1,200.000,20.00,10000.00,'2026-05-07 12:59:51'),(2,1,1,300.000,200.00,60000.00,NULL);
+INSERT INTO `con_stocks` VALUES (1,2,1,100.000,20.00,10000.00,'2026-06-01 07:28:54'),(2,1,1,300.000,200.00,60000.00,NULL);
 /*!40000 ALTER TABLE `con_stocks` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1078,9 +1051,9 @@ DROP TABLE IF EXISTS `con_warehouses`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `con_warehouses` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
   `project_id` int DEFAULT NULL,
-  `location` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `location` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
@@ -1105,28 +1078,20 @@ DROP TABLE IF EXISTS `con_wastage`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `con_wastage` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `project_id` int NOT NULL,
-  `warehouse_id` int NOT NULL,
-  `recorded_by` int NOT NULL,
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `project_id` int unsigned NOT NULL,
+  `warehouse_id` int unsigned NOT NULL,
+  `wastage_type` enum('storage_damage','selling_scrap') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'selling_scrap',
+  `recorded_by` int unsigned NOT NULL,
   `total_selling_amount` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `status` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Pending QC',
-  `qc_approved_by` int DEFAULT NULL,
-  `qc_approved_at` datetime DEFAULT NULL,
-  `qc_note` text COLLATE utf8mb4_unicode_ci,
-  `qc_doc` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `purchase_approved_by` int DEFAULT NULL,
-  `purchase_approved_at` datetime DEFAULT NULL,
-  `purchase_note` text COLLATE utf8mb4_unicode_ci,
-  `purchase_doc` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `payment_received_by` int DEFAULT NULL,
-  `payment_received_at` datetime DEFAULT NULL,
-  `payment_method` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `payment_doc` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `status` enum('Pending QC','Approved','Rejected') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending QC',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_project_id` (`project_id`),
+  KEY `idx_warehouse_id` (`warehouse_id`),
+  KEY `idx_recorded_by` (`recorded_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1146,18 +1111,20 @@ DROP TABLE IF EXISTS `con_wastage_items`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `con_wastage_items` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `wastage_id` int NOT NULL,
-  `material_id` int NOT NULL,
-  `quantity` decimal(10,3) NOT NULL,
-  `condition_note` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `document` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `wastage_id` int unsigned NOT NULL,
+  `material_id` int unsigned NOT NULL,
+  `quantity` decimal(15,3) NOT NULL DEFAULT '0.000',
+  `condition_note` text COLLATE utf8mb4_general_ci,
+  `document` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `selling_amount` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `wastage_id` (`wastage_id`),
-  CONSTRAINT `con_wastage_items_ibfk_1` FOREIGN KEY (`wastage_id`) REFERENCES `con_wastage` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `idx_wastage_id` (`wastage_id`),
+  KEY `idx_material_id` (`material_id`),
+  CONSTRAINT `fk_wastage_items_wastage` FOREIGN KEY (`wastage_id`) REFERENCES `con_wastage` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1180,10 +1147,10 @@ CREATE TABLE `con_work_order_approvals` (
   `id` int NOT NULL AUTO_INCREMENT,
   `work_order_id` int NOT NULL,
   `role_id` int NOT NULL,
-  `status` enum('pending','approved','rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `status` enum('pending','approved','rejected') COLLATE utf8mb4_general_ci DEFAULT 'pending',
   `action_by` int DEFAULT NULL,
   `action_at` datetime DEFAULT NULL,
-  `remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `remarks` text COLLATE utf8mb4_general_ci,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -1211,10 +1178,11 @@ DROP TABLE IF EXISTS `con_work_order_items`;
 CREATE TABLE `con_work_order_items` (
   `id` int NOT NULL AUTO_INCREMENT,
   `work_order_id` int NOT NULL,
-  `sl_no` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `location` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `unit` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'sqft',
+  `phase_item_id` int DEFAULT NULL,
+  `sl_no` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+  `description` text COLLATE utf8mb4_general_ci NOT NULL,
+  `location` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `unit` varchar(30) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'sqft',
   `quantity` decimal(12,3) NOT NULL DEFAULT '0.000',
   `rate` decimal(12,2) NOT NULL DEFAULT '0.00',
   `amount` decimal(14,2) GENERATED ALWAYS AS ((`quantity` * `rate`)) STORED,
@@ -1246,7 +1214,7 @@ CREATE TABLE `con_work_order_updates` (
   `id` int NOT NULL AUTO_INCREMENT,
   `work_order_id` int NOT NULL,
   `update_date` date NOT NULL COMMENT 'কোন তারিখে update হয়েছে',
-  `update_notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'কী কী পরিবর্তন হয়েছে',
+  `update_notes` text COLLATE utf8mb4_unicode_ci COMMENT 'কী কী পরিবর্তন হয়েছে',
   `updated_by` int NOT NULL DEFAULT '0' COMMENT 'admin user id',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -1283,7 +1251,7 @@ CREATE TABLE `con_work_orders` (
   `description` text COLLATE utf8mb4_general_ci,
   `scope_of_work` text COLLATE utf8mb4_general_ci,
   `document_link` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'External document/BOQ link',
-  `work_items` json DEFAULT NULL COMMENT 'Rate schedule items JSON (ক-১ to ক-১০)',
+  `work_items` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT 'Rate schedule items JSON (ক-১ to ক-১০)',
   `notes` text COLLATE utf8mb4_general_ci,
   `unit` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `unit_rate` decimal(15,2) DEFAULT NULL,
@@ -1310,7 +1278,8 @@ CREATE TABLE `con_work_orders` (
   `work_plan_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `wo_number` (`wo_number`),
-  KEY `idx_project_design` (`project_id`,`design_id`)
+  KEY `idx_project_design` (`project_id`,`design_id`),
+  CONSTRAINT `con_work_orders_chk_1` CHECK (json_valid(`work_items`))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1332,12 +1301,12 @@ DROP TABLE IF EXISTS `contacts`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `contacts` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `subject` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `contact_status` enum('pending','contacted','closed') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending' COMMENT 'Track follow-up status',
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `phone` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `subject` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `message` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `contact_status` enum('pending','contacted','closed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending' COMMENT 'Track follow-up status',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
@@ -1366,22 +1335,22 @@ CREATE TABLE `contractor_bill_requests` (
   `project_id` int NOT NULL,
   `operator_id` int unsigned NOT NULL,
   `target_id` int DEFAULT NULL,
-  `bill_type` enum('Advance','Progress','Retention') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Progress',
+  `bill_type` enum('Advance','Progress','Retention') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Progress',
   `created_by` int NOT NULL,
   `bill_date` date NOT NULL,
-  `work_description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `work_description` text COLLATE utf8mb4_general_ci NOT NULL,
   `bill_amount` decimal(15,2) NOT NULL,
-  `attachment_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `attachment_path` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `verified_by` int DEFAULT NULL,
   `approved_by` int DEFAULT NULL,
   `verified_at` timestamp NULL DEFAULT NULL,
-  `verification_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `verification_note` text COLLATE utf8mb4_general_ci,
   `approved_amount` decimal(15,2) DEFAULT NULL,
   `qc_approved_by_id` int DEFAULT NULL,
   `qc_approved_at` datetime DEFAULT NULL,
-  `qc_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `management_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `status` enum('draft','submitted','verified','qc_approved','approved','rejected','paid','partially_paid','fully_paid') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'draft',
+  `qc_note` text COLLATE utf8mb4_general_ci,
+  `management_note` text COLLATE utf8mb4_general_ci,
+  `status` enum('draft','submitted','verified','qc_approved','approved','rejected','paid','partially_paid','fully_paid') COLLATE utf8mb4_general_ci DEFAULT 'draft',
   `due_amount` decimal(10,2) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -1413,14 +1382,14 @@ DROP TABLE IF EXISTS `contractors`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `contractors` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `role` enum('Contractor','Subcontractor','Supervisor','Worker') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Contractor',
-  `trade` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `phone` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `nid_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `role` enum('Contractor','Subcontractor','Supervisor','Worker') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Contractor',
+  `trade` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `phone` varchar(30) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `nid_number` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `address` text COLLATE utf8mb4_general_ci,
   `daily_rate` decimal(10,2) DEFAULT NULL,
-  `status` enum('active','inactive') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'active',
+  `status` enum('active','inactive') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'active',
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -1449,12 +1418,12 @@ DROP TABLE IF EXISTS `csv_import_logs`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `csv_import_logs` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `filename` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `filename` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `total_rows` int NOT NULL DEFAULT '0',
   `success_count` int NOT NULL DEFAULT '0',
   `error_count` int NOT NULL DEFAULT '0',
-  `error_details` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT 'JSON array of row-level errors',
-  `status` enum('pending','processing','completed','failed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `error_details` longtext COLLATE utf8mb4_general_ci COMMENT 'JSON array of row-level errors',
+  `status` enum('pending','processing','completed','failed') COLLATE utf8mb4_general_ci DEFAULT 'pending',
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
@@ -1488,17 +1457,24 @@ CREATE TABLE `daily_progress_logs` (
   `concrete_cft` decimal(8,2) NOT NULL DEFAULT '0.00',
   `materials_used` int NOT NULL DEFAULT '0',
   `equipment_active` int NOT NULL DEFAULT '0',
-  `weather` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `weather` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `temperature_celsius` decimal(4,1) DEFAULT NULL,
   `safety_ok` tinyint(1) NOT NULL DEFAULT '0',
   `qc_checked` tinyint(1) NOT NULL DEFAULT '0',
-  `site_remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `site_remarks` text COLLATE utf8mb4_general_ci,
   `created_by` int DEFAULT NULL,
+  `qc_approved_id` int DEFAULT NULL,
+  `qc_status` varchar(30) COLLATE utf8mb4_general_ci DEFAULT 'Pending',
+  `qc_image` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `qc_comment` text COLLATE utf8mb4_general_ci,
+  `pm_approved_id` int DEFAULT NULL,
+  `pm_status` varchar(30) COLLATE utf8mb4_general_ci DEFAULT 'Pending',
+  `pm_comment` text COLLATE utf8mb4_general_ci,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_dpl_day` (`weekly_progress_id`,`log_date`),
   CONSTRAINT `fk_dpl_week` FOREIGN KEY (`weekly_progress_id`) REFERENCES `phase_weekly_progress` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Daily work report — one row per calendar day within a week';
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Daily work report — one row per calendar day within a week';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1507,6 +1483,7 @@ CREATE TABLE `daily_progress_logs` (
 
 LOCK TABLES `daily_progress_logs` WRITE;
 /*!40000 ALTER TABLE `daily_progress_logs` DISABLE KEYS */;
+INSERT INTO `daily_progress_logs` VALUES (8,2,13,'2026-06-08',0,0,0.00,0.00,0,0,'Clear',NULL,0,0,'0',120,NULL,'Pending',NULL,NULL,NULL,'Pending',NULL,'2026-06-01 07:56:04'),(9,3,13,'2026-06-15',0,0,0.00,0.00,0,0,NULL,NULL,0,0,NULL,NULL,NULL,'Pending',NULL,NULL,NULL,'Pending',NULL,'2026-06-01 07:57:42'),(10,4,13,'2026-06-22',0,0,0.00,0.00,0,0,NULL,NULL,0,0,NULL,NULL,NULL,'Pending',NULL,NULL,NULL,'Pending',NULL,'2026-06-01 07:57:47'),(11,4,13,'2026-06-23',0,0,0.00,0.00,0,0,NULL,NULL,0,0,NULL,NULL,NULL,'Pending',NULL,NULL,NULL,'Pending',NULL,'2026-06-01 08:18:04'),(15,1,13,'2026-06-03',0,0,0.00,0.00,0,0,NULL,NULL,0,0,NULL,NULL,NULL,'Pending',NULL,NULL,NULL,'Pending',NULL,'2026-06-03 04:59:34'),(16,1,13,'2026-06-01',0,0,0.00,0.00,0,0,NULL,NULL,0,0,NULL,NULL,126,'Approved','uploads/qc-reports/qc_wpr_6a1fb56ad4b57_1780462954.png','Ok approved',120,'Approved','Ok qc approved then pm approved','2026-06-03 04:59:41'),(17,1,13,'2026-06-02',0,0,0.00,0.00,0,0,NULL,NULL,0,0,NULL,NULL,NULL,'Pending',NULL,NULL,NULL,'Pending',NULL,'2026-06-03 05:02:39'),(18,1,13,'2026-06-04',0,0,0.00,0.00,0,0,NULL,NULL,0,0,NULL,NULL,NULL,'Pending',NULL,NULL,NULL,'Pending',NULL,'2026-06-04 07:47:01');
 /*!40000 ALTER TABLE `daily_progress_logs` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1521,16 +1498,22 @@ CREATE TABLE `daily_work_item_logs` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `daily_log_id` int unsigned NOT NULL,
   `target_item_id` int unsigned NOT NULL,
+  `phase_item_detail_id` bigint unsigned DEFAULT NULL,
+  `work_type_id` bigint unsigned DEFAULT NULL,
   `qty_done_today` decimal(12,2) NOT NULL DEFAULT '0.00' COMMENT 'Qty done in item unit (CFT / MT / SFT...)',
-  `unit` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `unit` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `remarks` text COLLATE utf8mb4_general_ci,
+  `item_status` varchar(30) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'In Progress',
+  `responsible_team` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_dwil_log` (`daily_log_id`),
   KEY `idx_dwil_item` (`target_item_id`),
-  CONSTRAINT `fk_dwil_item` FOREIGN KEY (`target_item_id`) REFERENCES `phase_monthly_target_items` (`id`) ON DELETE RESTRICT,
+  KEY `fk_daily_work_item_logs_detail` (`phase_item_detail_id`),
+  CONSTRAINT `fk_daily_work_item_logs_detail` FOREIGN KEY (`phase_item_detail_id`) REFERENCES `project_phase_item_details` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_dwil_item` FOREIGN KEY (`target_item_id`) REFERENCES `phase_monthly_target_items` (`id`),
   CONSTRAINT `fk_dwil_log` FOREIGN KEY (`daily_log_id`) REFERENCES `daily_progress_logs` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Daily qty log per work item';
+) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Daily qty log per work item';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1539,6 +1522,7 @@ CREATE TABLE `daily_work_item_logs` (
 
 LOCK TABLES `daily_work_item_logs` WRITE;
 /*!40000 ALTER TABLE `daily_work_item_logs` DISABLE KEYS */;
+INSERT INTO `daily_work_item_logs` VALUES (34,8,1,NULL,2,100.00,'CFT','','In Progress','','2026-06-04 08:05:58');
 /*!40000 ALTER TABLE `daily_work_item_logs` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1551,7 +1535,7 @@ DROP TABLE IF EXISTS `departments`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `departments` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `status` tinyint(1) DEFAULT '1',
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1579,8 +1563,8 @@ DROP TABLE IF EXISTS `design_types`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `design_types` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `status` enum('active','inactive') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'active',
+  `name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `status` enum('active','inactive') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'active',
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -1607,7 +1591,7 @@ DROP TABLE IF EXISTS `designations`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `designations` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `department_id` int unsigned NOT NULL,
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1640,7 +1624,7 @@ CREATE TABLE `emi_schedules` (
   `emi_no` int DEFAULT NULL,
   `emi_amount` decimal(12,2) NOT NULL,
   `due_date` date NOT NULL,
-  `status` enum('pending','paid','missed','cancelled') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `status` enum('pending','paid','missed','cancelled') COLLATE utf8mb4_general_ci DEFAULT 'pending',
   `lead_payment_id` int unsigned DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `due_emi_amount` decimal(12,2) DEFAULT NULL,
@@ -1674,7 +1658,7 @@ CREATE TABLE `emp_attendances` (
   `attendance_date` date NOT NULL,
   `punch_in_time` timestamp NULL DEFAULT NULL,
   `punch_out_time` timestamp NULL DEFAULT NULL,
-  `today_status` enum('Present','Late','Absent','On Leave','Half-Day') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Absent',
+  `today_status` enum('Present','Late','Absent','On Leave','Half-Day') COLLATE utf8mb4_general_ci DEFAULT 'Absent',
   `created_by` bigint unsigned NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -1703,7 +1687,7 @@ DROP TABLE IF EXISTS `emp_weekly_day_off`;
 CREATE TABLE `emp_weekly_day_off` (
   `id` int NOT NULL AUTO_INCREMENT,
   `employee_id` int NOT NULL,
-  `day_off_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `day_off_name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
@@ -1763,8 +1747,8 @@ CREATE TABLE `employee_leaves` (
   `end_date` date NOT NULL,
   `requested_days` int NOT NULL,
   `approved_days` int DEFAULT '0',
-  `approval_status` enum('pending','approved','partial','rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
-  `reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `approval_status` enum('pending','approved','partial','rejected') COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `reason` text COLLATE utf8mb4_general_ci,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
@@ -1791,10 +1775,10 @@ CREATE TABLE `employee_tasks` (
   `id` int NOT NULL AUTO_INCREMENT,
   `employee_id` int unsigned NOT NULL,
   `work_date` date NOT NULL,
-  `task_description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `task_description` text COLLATE utf8mb4_general_ci NOT NULL,
   `hours_spent` decimal(4,2) NOT NULL DEFAULT '0.00',
-  `status` enum('Pending','In Progress','Done') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Pending',
-  `remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `status` enum('Pending','In Progress','Done') COLLATE utf8mb4_general_ci DEFAULT 'Pending',
+  `remarks` text COLLATE utf8mb4_general_ci,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -1822,38 +1806,38 @@ DROP TABLE IF EXISTS `employees`;
 CREATE TABLE `employees` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `user_id` int DEFAULT NULL,
-  `full_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `employee_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `father_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `emergency_contact` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `qualification` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `experience` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `pass_num` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `nid` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `full_name` varchar(200) COLLATE utf8mb4_general_ci NOT NULL,
+  `employee_id` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `username` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `email` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `father_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `phone` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `emergency_contact` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `qualification` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `experience` text COLLATE utf8mb4_general_ci,
+  `address` text COLLATE utf8mb4_general_ci NOT NULL,
+  `pass_num` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `nid` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `department_id` int unsigned NOT NULL,
   `designation_id` int unsigned DEFAULT NULL,
   `dob` date DEFAULT NULL,
-  `workplace` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `workplace` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `joining_date` date DEFAULT NULL,
   `gross_salary` float DEFAULT NULL,
   `basic_salary` float DEFAULT NULL,
-  `account_holder_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `account_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `account_holder_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `account_number` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `make_user` int DEFAULT '0',
-  `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `bank_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `branch_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `social_media1` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `social_media2` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `social_media3` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `photo` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `employee_type` enum('permanent','contract','director','intern','remote','probation','management') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `employee_status` enum('active','inactive','resigned','terminated','on_leave') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'active',
-  `responsibilities` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `password` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `bank_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `branch_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `social_media1` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `social_media2` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `social_media3` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `photo` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `employee_type` enum('permanent','contract','director','intern','remote','probation','management') COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `employee_status` enum('active','inactive','resigned','terminated','on_leave') COLLATE utf8mb4_general_ci DEFAULT 'active',
+  `responsibilities` text COLLATE utf8mb4_general_ci,
   `created_by` int DEFAULT NULL,
   `deleted_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1890,17 +1874,17 @@ CREATE TABLE `expense_adjustments` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL COMMENT 'User who is making the adjustment request',
   `cashout_request_id` int NOT NULL COMMENT 'FK to cashout_requests.id',
-  `adjustment_type` enum('return','extra') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Return unused money or request extra money',
-  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `adjustment_type` enum('return','extra') COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Return unused money or request extra money',
+  `title` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `description` text COLLATE utf8mb4_general_ci,
   `amount` decimal(15,2) NOT NULL DEFAULT '0.00',
   `approved_amount` decimal(15,2) DEFAULT NULL,
   `due_amount` decimal(15,2) DEFAULT NULL COMMENT 'Amount remaining to be paid/received',
-  `document` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT 'JSON array of paths',
-  `note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `document` text COLLATE utf8mb4_general_ci COMMENT 'JSON array of paths',
+  `note` text COLLATE utf8mb4_general_ci,
   `project_id` int DEFAULT NULL,
-  `office` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `status` enum('pending','approved','rejected','partially_paid','fully_paid') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
+  `office` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `status` enum('pending','approved','rejected','partially_paid','fully_paid') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
   `approved_by` int DEFAULT NULL,
   `approved_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1930,8 +1914,8 @@ DROP TABLE IF EXISTS `flat_purchase_rules`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `flat_purchase_rules` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `rules_description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `declearation` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `rules_description` text COLLATE utf8mb4_general_ci,
+  `declearation` text COLLATE utf8mb4_general_ci,
   `status` int NOT NULL DEFAULT '1',
   `created_by` int DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
@@ -1970,16 +1954,16 @@ CREATE TABLE `flats` (
   `drawing_dining_kitchen` tinyint(1) DEFAULT NULL,
   `common_dining` tinyint(1) DEFAULT NULL,
   `floor_no` int DEFAULT NULL,
-  `flat_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `facing_site` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `flat_name` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `facing_site` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `is_shop` tinyint(1) NOT NULL DEFAULT '0',
-  `unit_type` enum('residential','commercial') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'residential',
+  `unit_type` enum('residential','commercial') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'residential',
   `price_value` decimal(12,2) DEFAULT NULL,
   `shop_service_charge` int DEFAULT NULL,
-  `facilities` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `facilities` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_by` int DEFAULT NULL,
-  `status` enum('available','booked','sold') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'available',
-  `upload_from` enum('From company csv','Manually Add') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Manually Add',
+  `status` enum('available','booked','sold') COLLATE utf8mb4_general_ci DEFAULT 'available',
+  `upload_from` enum('From company csv','Manually Add') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Manually Add',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `deleted_at` datetime DEFAULT NULL,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2010,10 +1994,10 @@ CREATE TABLE `fund_requisition_expenses` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `fund_requisition_id` int unsigned NOT NULL,
   `project_id` int DEFAULT NULL,
-  `other_project_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `other_project_name` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `amount` decimal(12,2) NOT NULL,
-  `purpose` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `attachment_path` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `purpose` text COLLATE utf8mb4_general_ci NOT NULL,
+  `attachment_path` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -2113,7 +2097,7 @@ DROP TABLE IF EXISTS `holidays`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `holidays` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `title` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `start_date` date NOT NULL,
   `end_date` date DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2148,12 +2132,12 @@ CREATE TABLE `initial_estimate_budgets` (
   `material_cost_total` decimal(15,2) DEFAULT '0.00',
   `labor_cost_total` decimal(15,2) DEFAULT '0.00',
   `other_costs` decimal(15,2) DEFAULT '0.00',
-  `budget_link` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `work_details` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `other_cost_detail` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `budget_link` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `work_details` text COLLATE utf8mb4_general_ci,
+  `other_cost_detail` text COLLATE utf8mb4_general_ci,
   `total_estimated_cost` decimal(15,2) DEFAULT '0.00',
   `weight_percentage` decimal(5,2) NOT NULL DEFAULT '100.00',
-  `status` enum('draft','pending','pm_approved','approved','cancelled') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'draft',
+  `status` enum('draft','pending','pm_approved','approved','cancelled') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'draft',
   `approved_by` int DEFAULT NULL,
   `approval_date` timestamp NULL DEFAULT NULL,
   `start_date` date DEFAULT NULL,
@@ -2162,7 +2146,7 @@ CREATE TABLE `initial_estimate_budgets` (
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   `drawing_id` int DEFAULT NULL COMMENT 'Links to project_drawings.id',
-  `status_reason` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `status_reason` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -2189,13 +2173,14 @@ CREATE TABLE `initial_estimate_items` (
   `budget_id` int unsigned NOT NULL,
   `design_type_id` int unsigned NOT NULL,
   `material_id` int unsigned NOT NULL,
-  `material_unit` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `material_unit` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
   `estimated_qty` decimal(12,3) NOT NULL DEFAULT '0.000',
   `unit_cost_approx` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `remarks` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `remarks` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `work_type_id` bigint unsigned DEFAULT NULL,
+  `phase_item_id` int unsigned DEFAULT NULL,
   `sl_no` smallint DEFAULT NULL,
-  `location_desc` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `location_desc` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `nos` decimal(10,3) DEFAULT NULL,
   `length_ft` decimal(10,3) DEFAULT NULL,
   `width_ft` decimal(10,3) DEFAULT NULL,
@@ -2212,7 +2197,7 @@ CREATE TABLE `initial_estimate_items` (
 
 LOCK TABLES `initial_estimate_items` WRITE;
 /*!40000 ALTER TABLE `initial_estimate_items` DISABLE KEYS */;
-INSERT INTO `initial_estimate_items` VALUES (1,1,6,4,'CFT',10000.000,15.00,'work In Foundation',2,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(2,1,6,2,'Pcs',15000.000,25.00,'work In Foundation',1,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(3,1,6,1,'Bags',500.000,199.99,'work In Foundation',2,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+INSERT INTO `initial_estimate_items` VALUES (1,1,6,4,'CFT',10000.000,15.00,'work In Foundation',2,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(2,1,6,2,'Pcs',15000.000,25.00,'work In Foundation',1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(3,1,6,1,'Bags',500.000,199.99,'work In Foundation',2,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `initial_estimate_items` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2227,11 +2212,12 @@ CREATE TABLE `initial_estimate_labors` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `budget_id` int unsigned NOT NULL,
   `design_type_id` int unsigned NOT NULL,
-  `labor_type_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `labor_type_name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `rate_per_sqft` decimal(10,2) NOT NULL DEFAULT '0.00',
   `area_sqft` decimal(12,2) NOT NULL,
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `description` text COLLATE utf8mb4_general_ci,
   `work_type_id` bigint unsigned DEFAULT NULL,
+  `phase_item_id` int unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_iel_budget` (`budget_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -2243,7 +2229,7 @@ CREATE TABLE `initial_estimate_labors` (
 
 LOCK TABLES `initial_estimate_labors` WRITE;
 /*!40000 ALTER TABLE `initial_estimate_labors` DISABLE KEYS */;
-INSERT INTO `initial_estimate_labors` VALUES (1,1,6,'Contractor',1500.00,1200.00,'test electric',2),(2,1,6,'Civil Worker',2000.00,1200.00,'Test work details',1);
+INSERT INTO `initial_estimate_labors` VALUES (1,1,6,'Contractor',1500.00,1200.00,'test electric',2,NULL),(2,1,6,'Civil Worker',2000.00,1200.00,'Test work details',1,NULL);
 /*!40000 ALTER TABLE `initial_estimate_labors` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2257,21 +2243,21 @@ DROP TABLE IF EXISTS `land_acquisitions`;
 CREATE TABLE `land_acquisitions` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `project_id` int NOT NULL,
-  `land_owner_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `land_owner_phone` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `land_owner_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `land_owner_phone` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `total_area` decimal(12,4) NOT NULL COMMENT 'in decimals/kathas',
-  `area_unit` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'decimal',
+  `area_unit` varchar(20) COLLATE utf8mb4_general_ci DEFAULT 'decimal',
   `price_per_unit` decimal(15,2) NOT NULL,
   `total_amount` decimal(15,2) NOT NULL,
-  `location` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `status` enum('selected','bayana','registered','cancelled') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'selected',
-  `remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `location` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `status` enum('selected','bayana','registered','cancelled') COLLATE utf8mb4_general_ci DEFAULT 'selected',
+  `remarks` text COLLATE utf8mb4_general_ci,
   `created_by` int NOT NULL COMMENT 'user_id',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `bayana_status` enum('pending','cancel','complete') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `bayana_status` enum('pending','cancel','complete') COLLATE utf8mb4_general_ci DEFAULT 'pending',
   `bayana_complete_date` date DEFAULT NULL,
-  `registration_status` enum('pending','cancel','complete') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `registration_status` enum('pending','cancel','complete') COLLATE utf8mb4_general_ci DEFAULT 'pending',
   `registration_complete_date` date DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -2298,10 +2284,10 @@ CREATE TABLE `land_bayana_payments` (
   `land_acquisition_id` int unsigned NOT NULL,
   `payment_amount` decimal(15,2) NOT NULL,
   `payment_date` date NOT NULL,
-  `payment_method` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Bank',
-  `transaction_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `bayana_document_link` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `payment_method` varchar(100) COLLATE utf8mb4_general_ci DEFAULT 'Bank',
+  `transaction_no` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `bayana_document_link` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `remarks` text COLLATE utf8mb4_general_ci,
   `created_by` int NOT NULL COMMENT 'user_id',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -2328,22 +2314,22 @@ DROP TABLE IF EXISTS `land_fund_requisitions`;
 CREATE TABLE `land_fund_requisitions` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `land_acquisition_id` int unsigned NOT NULL,
-  `requisition_type` enum('Bayana','Registration','Extra Cost','Other') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `requisition_type` enum('Bayana','Registration','Extra Cost','Other') COLLATE utf8mb4_general_ci NOT NULL,
   `requested_amount` decimal(15,2) NOT NULL,
-  `purpose` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `req_attachment_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `purpose` text COLLATE utf8mb4_general_ci NOT NULL,
+  `req_attachment_path` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `requested_by` int NOT NULL COMMENT 'users.id',
-  `mgmt_status` enum('Pending','Approved','Rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Pending',
+  `mgmt_status` enum('Pending','Approved','Rejected') COLLATE utf8mb4_general_ci DEFAULT 'Pending',
   `mgmt_by` int DEFAULT NULL COMMENT 'users.id',
-  `mgmt_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `mgmt_note` text COLLATE utf8mb4_general_ci,
   `mgmt_approved_at` timestamp NULL DEFAULT NULL,
-  `accounts_status` enum('Pending','Paid','Rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Pending',
+  `accounts_status` enum('Pending','Paid','Rejected') COLLATE utf8mb4_general_ci DEFAULT 'Pending',
   `accounts_by` int DEFAULT NULL COMMENT 'users.id',
-  `accounts_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `accounts_note` text COLLATE utf8mb4_general_ci,
   `accounts_paid_at` timestamp NULL DEFAULT NULL,
-  `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `transaction_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `attachment_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `payment_method` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `transaction_no` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `attachment_path` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
@@ -2401,14 +2387,14 @@ DROP TABLE IF EXISTS `land_registrations`;
 CREATE TABLE `land_registrations` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `land_acquisition_id` int unsigned NOT NULL,
-  `registration_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `registration_no` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `registration_date` date NOT NULL,
-  `sub_registry_office` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `sub_registry_office` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `registration_cost` decimal(15,2) NOT NULL,
-  `mutation_status` enum('Pending','Completed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Pending',
+  `mutation_status` enum('Pending','Completed') COLLATE utf8mb4_general_ci DEFAULT 'Pending',
   `mutation_date` date DEFAULT NULL,
-  `deed_document_link` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `deed_document_link` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `remarks` text COLLATE utf8mb4_general_ci,
   `created_by` int NOT NULL COMMENT 'user_id',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -2435,12 +2421,12 @@ DROP TABLE IF EXISTS `land_visibility_study`;
 CREATE TABLE `land_visibility_study` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `project_id` int NOT NULL,
-  `land_legal_doc_status` enum('Pending','Verified','Rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
-  `digital_survey_report_link` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `govt_approval_doc_link` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `others_doc_link` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `land_legal_doc_status` enum('Pending','Verified','Rejected') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
+  `digital_survey_report_link` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `govt_approval_doc_link` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `others_doc_link` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `qc_reviewed_by_id` int DEFAULT NULL,
-  `qc_approval_status` enum('Pending','Approved','Rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
+  `qc_approval_status` enum('Pending','Approved','Rejected') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
   `qc_reviewed_at` timestamp NULL DEFAULT NULL,
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2476,23 +2462,23 @@ CREATE TABLE `lead_bookings` (
   `agreement_value` decimal(12,2) NOT NULL,
   `discount_amount` float DEFAULT '0',
   `booking_date` date NOT NULL,
-  `booking_status` enum('booked','cancelled','completed','refunded') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'booked',
+  `booking_status` enum('booked','cancelled','completed','refunded') COLLATE utf8mb4_general_ci DEFAULT 'booked',
   `created_by` int NOT NULL,
   `sales_by_id` int DEFAULT NULL,
-  `sales_agent_old` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `sales_agent_old` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `deleted_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `approval_status` enum('not_required','pending','approved','rejected','partial') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'not_required',
+  `approval_status` enum('not_required','pending','approved','rejected','partial') COLLATE utf8mb4_general_ci DEFAULT 'not_required',
   `approved_amount` decimal(12,2) DEFAULT NULL,
   `service_fee_balance` float DEFAULT NULL,
-  `landshare_status` enum('active','completed','cancelled') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'active',
-  `payment_status` enum('unpaid','partial','paid') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'unpaid',
-  `uploaded_from` enum('From Company csv','Manually Add') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Manually Add',
-  `attachment_image` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `landshare_status` enum('active','completed','cancelled') COLLATE utf8mb4_general_ci DEFAULT 'active',
+  `payment_status` enum('unpaid','partial','paid') COLLATE utf8mb4_general_ci DEFAULT 'unpaid',
+  `uploaded_from` enum('From Company csv','Manually Add') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Manually Add',
+  `attachment_image` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `transfer_status` tinyint(1) DEFAULT '0',
   `transfer_date` date DEFAULT NULL,
-  `transfer_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `transfer_note` text COLLATE utf8mb4_general_ci,
   `transfer_updated_by` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `lead_id` (`lead_id`),
@@ -2526,16 +2512,16 @@ CREATE TABLE `lead_follow_ups` (
   `flat_id` int DEFAULT NULL,
   `follow_up_date` date NOT NULL,
   `follow_up_time` time DEFAULT NULL,
-  `follow_up_type` enum('Inbound Call','Phone Call','WA Call','Imo Call','Messenger Call','Messenger Conversesion','WA Conversesion','Imo Message','Phone Massaging','Email','Number Off','Wrong Number','Invalid Number','Face To Face','call','visit','meeting','whatsapp') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `status` enum('pending','completed','missed','canceled') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
-  `discussion_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `follow_up_type` enum('Inbound Call','Phone Call','WA Call','Imo Call','Messenger Call','Messenger Conversesion','WA Conversesion','Imo Message','Phone Massaging','Email','Number Off','Wrong Number','Invalid Number','Face To Face','call','visit','meeting','whatsapp') COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `status` enum('pending','completed','missed','canceled') COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `discussion_note` text COLLATE utf8mb4_general_ci,
   `next_follow_up_date` date DEFAULT NULL,
   `assigned_with` int DEFAULT NULL,
-  `next_action` enum('site visit','booking','call_back','take_time') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `next_action` enum('site visit','booking','call_back','take_time') COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_by` int unsigned NOT NULL,
   `follow_up_agent_id` int DEFAULT NULL,
-  `lead_status` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `next_follow_up_plan_notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `lead_status` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `next_follow_up_plan_notes` text COLLATE utf8mb4_general_ci,
   `deleted_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -2566,34 +2552,34 @@ DROP TABLE IF EXISTS `lead_payments`;
 CREATE TABLE `lead_payments` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `booking_id` int unsigned NOT NULL,
-  `payment_type` enum('booking_money','registration','emi','land_share','development_charge','emi_due_settlement','shop_service_charge') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `payment_type` enum('booking_money','registration','emi','land_share','development_charge','emi_due_settlement','shop_service_charge') COLLATE utf8mb4_general_ci NOT NULL,
   `amount` decimal(12,2) NOT NULL,
   `bulk_emi_discount` decimal(15,2) DEFAULT '0.00',
   `due_emi_amount` decimal(12,2) DEFAULT '0.00',
   `bulk_pay_amount` decimal(12,2) DEFAULT '0.00',
   `parent_payment_id` int unsigned DEFAULT NULL,
-  `settlement_type` enum('emi_due_settlement') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `settlement_type` enum('emi_due_settlement') COLLATE utf8mb4_general_ci DEFAULT NULL,
   `land_share_amount` decimal(12,2) DEFAULT '0.00',
-  `payment_method` enum('cash','bank','online','cheque') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'cash',
-  `payment_status` enum('paid','partially_paid','pending','failed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'paid',
+  `payment_method` enum('cash','bank','online','cheque') COLLATE utf8mb4_general_ci DEFAULT 'cash',
+  `payment_status` enum('paid','partially_paid','pending','failed') COLLATE utf8mb4_general_ci DEFAULT 'paid',
   `payment_date` date NOT NULL,
   `emi_no` int DEFAULT NULL,
   `total_emi_no` int DEFAULT NULL,
-  `transaction_ref` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `bank_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `transaction_ref` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `bank_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `bank_id` int unsigned DEFAULT NULL COMMENT 'FK → banks.id; set when payment_method = bank',
-  `bank_account_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `cheque_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `bank_account_no` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `cheque_no` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `service_fee` float DEFAULT NULL,
-  `online_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `online_type` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_by` int unsigned NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `verification_status` enum('pending','verified','rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
-  `attachment_image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `verification_status` enum('pending','verified','rejected') COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `attachment_image` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `verified_by` int DEFAULT NULL,
   `verified_at` timestamp NULL DEFAULT NULL,
-  `attachment_paths` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT 'JSON array of proof-of-payment file paths (uploads/transactions/)',
-  `rejection_reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci COMMENT 'Mandatory reason text entered by Accounts when rejecting',
+  `attachment_paths` text COLLATE utf8mb4_general_ci COMMENT 'JSON array of proof-of-payment file paths (uploads/transactions/)',
+  `rejection_reason` text COLLATE utf8mb4_general_ci COMMENT 'Mandatory reason text entered by Accounts when rejecting',
   PRIMARY KEY (`id`),
   KEY `fk_payment_booking` (`booking_id`),
   KEY `idx_lp_verification_status` (`verification_status`),
@@ -2621,9 +2607,9 @@ DROP TABLE IF EXISTS `lead_sources`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `lead_sources` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `slug` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `name` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
+  `slug` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
+  `description` text COLLATE utf8mb4_general_ci,
   `is_active` tinyint(1) DEFAULT '1',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -2650,79 +2636,79 @@ DROP TABLE IF EXISTS `leads`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `leads` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `campaign_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `platform` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `which_apartment_size_are_you_interested_in` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `which_floor_are_you_for_shop` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `when_are_you_planning_to_buy` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `would_you_like_to_schedule_a_site_visit` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `when_is_the_best_time_to_contact_you` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `full_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `job_title` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `company_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `phone_number` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `call_status` enum('not_called','called','received','not_received') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'not_called',
-  `call_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `city` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `lead_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `lead_type` enum('No Response','Pending','Prospect','High Prospect','Will Visit','Visited','Sold','Lead Transferred','Project Transferred','Not Interested','Don''t Call Again','Refund','Future','Cold','Hot','Warm') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `company` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `campaign_name` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `platform` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `which_apartment_size_are_you_interested_in` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `which_floor_are_you_for_shop` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `when_are_you_planning_to_buy` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `would_you_like_to_schedule_a_site_visit` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `when_is_the_best_time_to_contact_you` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `full_name` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `job_title` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `company_name` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `phone_number` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `call_status` enum('not_called','called','received','not_received') COLLATE utf8mb4_general_ci DEFAULT 'not_called',
+  `call_note` text COLLATE utf8mb4_general_ci,
+  `city` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `lead_name` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `lead_type` enum('No Response','Pending','Prospect','High Prospect','Will Visit','Visited','Sold','Lead Transferred','Project Transferred','Not Interested','Don''t Call Again','Refund','Future','Cold','Hot','Warm') COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `company` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `value_amount` decimal(15,2) DEFAULT NULL,
-  `currency` enum('USD','EURO','RUBLE','POUND','BDT') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'BDT',
-  `phone` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `alt_phone_number` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `email` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `currency` enum('USD','EURO','RUBLE','POUND','BDT') COLLATE utf8mb4_general_ci DEFAULT 'BDT',
+  `phone` varchar(30) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `alt_phone_number` varchar(30) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `email` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `source_type_id` int DEFAULT NULL,
   `assigned_id` int DEFAULT NULL,
   `assigned_at` datetime DEFAULT NULL,
-  `address` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `father_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `mother_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `address` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `father_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `mother_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `dob` date DEFAULT NULL,
-  `nid_or_passport` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `present_add_bn` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `permanent_add_bn` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `identity_type` enum('NID','Passport') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `permanent_address` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `nid_or_passport` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `present_add_bn` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `permanent_add_bn` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `identity_type` enum('NID','Passport') COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `permanent_address` varchar(250) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `pref_location_id` int DEFAULT NULL,
-  `designation` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `designation` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `project_id` int DEFAULT NULL,
-  `pref_flat_size` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `communication_type` enum('WA Messaging','WA Conversion') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `tags` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `uploaded_from` enum('From Campaign','From Company csv','Manually added','') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'From Campaign',
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `visibility` enum('public','private','selected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'public',
-  `status` enum('active','inactive') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'active',
-  `last_lead_action` enum('new','booked','follow up','visited','cancel') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'new',
+  `pref_flat_size` varchar(250) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `communication_type` enum('WA Messaging','WA Conversion') COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `tags` text COLLATE utf8mb4_general_ci,
+  `uploaded_from` enum('From Campaign','From Company csv','Manually added','') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'From Campaign',
+  `description` text COLLATE utf8mb4_general_ci,
+  `visibility` enum('public','private','selected') COLLATE utf8mb4_general_ci DEFAULT 'public',
+  `status` enum('active','inactive') COLLATE utf8mb4_general_ci DEFAULT 'active',
+  `last_lead_action` enum('new','booked','follow up','visited','cancel') COLLATE utf8mb4_general_ci DEFAULT 'new',
   `deleted_at` datetime DEFAULT NULL,
-  `lead_quality` enum('Not Interested','Prospect','Pending') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Pending',
-  `lead_image` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `lead_name_bn` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `father_name_bn` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `mother_name_bn` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `profession_bn` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `nationality` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `religion` enum('Islam','Hinduism','Buddhism','Christianity','Other') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `nominee_name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `nomi_father_name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `nomi_mother_name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `nomi_profession` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `relation_with_lead` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `lead_quality` enum('Not Interested','Prospect','Pending') COLLATE utf8mb4_general_ci DEFAULT 'Pending',
+  `lead_image` varchar(250) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `lead_name_bn` varchar(250) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `father_name_bn` varchar(250) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `mother_name_bn` varchar(250) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `profession_bn` varchar(250) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `nationality` varchar(250) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `religion` enum('Islam','Hinduism','Buddhism','Christianity','Other') COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `nominee_name` varchar(250) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `nomi_father_name` varchar(250) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `nomi_mother_name` varchar(250) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `nomi_profession` varchar(250) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `relation_with_lead` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `nomi_dob` date DEFAULT NULL,
-  `nomi_nid_passport` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `nomi_phone` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `nomi_email` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `nomi_present_add` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `nomi_permanent_address` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `nomi_image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `nomi_nid_passport` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `nomi_phone` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `nomi_email` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `nomi_present_add` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `nomi_permanent_address` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `nomi_image` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `residency_type` enum('local','expatriate') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'local',
+  `residency_type` enum('local','expatriate') COLLATE utf8mb4_general_ci DEFAULT 'local',
   `team_id` int DEFAULT NULL,
-  `country` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `preferred_contact_time` enum('morning','afternoon','evening','night') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `country` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `preferred_contact_time` enum('morning','afternoon','evening','night') COLLATE utf8mb4_general_ci DEFAULT NULL,
   `has_pending_followup` tinyint(1) DEFAULT '0' COMMENT '1 = follow-up pending, 0 = no pending follow-up',
   PRIMARY KEY (`id`),
   KEY `fk_leads_owner` (`assigned_id`)
@@ -2750,7 +2736,7 @@ DROP TABLE IF EXISTS `leave_types`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `leave_types` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(191) COLLATE utf8mb4_general_ci NOT NULL,
   `total_days` int NOT NULL DEFAULT '0',
   `is_paid` int NOT NULL DEFAULT '1',
   `is_active` tinyint(1) DEFAULT '1',
@@ -2758,7 +2744,7 @@ CREATE TABLE `leave_types` (
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2767,7 +2753,7 @@ CREATE TABLE `leave_types` (
 
 LOCK TABLES `leave_types` WRITE;
 /*!40000 ALTER TABLE `leave_types` DISABLE KEYS */;
-INSERT INTO `leave_types` VALUES (1,'Medical Leave',20,1,1,4,'2026-02-23 07:02:09','2026-02-23 07:02:09'),(2,'Sick Leave',12,1,1,4,'2026-02-23 07:02:30','2026-02-23 07:02:30');
+INSERT INTO `leave_types` VALUES (1,'Casual Leave',12,1,1,92,'2026-02-23 07:02:09','2026-06-06 04:44:29'),(2,'Sick Leave',14,1,1,92,'2026-02-23 07:02:30','2026-06-06 04:44:37'),(3,'Leave Without Pay(LWP)',60,1,1,92,'2026-06-06 04:45:06','2026-06-06 04:45:06');
 /*!40000 ALTER TABLE `leave_types` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2780,10 +2766,10 @@ DROP TABLE IF EXISTS `letter_templates`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `letter_templates` (
   `id` int NOT NULL,
-  `name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `type` enum('appointment','joining','promotion','increment','experience','noc') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `subject` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `body` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `type` enum('appointment','joining','promotion','increment','experience','noc') COLLATE utf8mb4_general_ci NOT NULL,
+  `subject` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `body` longtext COLLATE utf8mb4_general_ci NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -2810,22 +2796,22 @@ CREATE TABLE `letters` (
   `employee_id` int unsigned NOT NULL,
   `department_id` int unsigned NOT NULL,
   `designation_id` int unsigned DEFAULT NULL,
-  `letter_type` enum('appointment','joining','promotion','increment','experience','noc') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `letter_type` enum('appointment','joining','promotion','increment','experience','noc') COLLATE utf8mb4_general_ci NOT NULL,
   `template_id` int DEFAULT NULL,
-  `subject` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `body` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `subject` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `body` longtext COLLATE utf8mb4_general_ci NOT NULL,
   `letter_date` date NOT NULL,
-  `ref_number` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `ref_number` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `joining_date` date DEFAULT NULL,
   `effective_date` date DEFAULT NULL,
   `current_salary` decimal(10,2) DEFAULT NULL,
   `revised_salary` decimal(10,2) DEFAULT NULL,
-  `new_designation` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `signatory_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `signatory_title` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `cc_email` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `new_designation` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `signatory_name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `signatory_title` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `cc_email` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `send_to_email` tinyint(1) DEFAULT '0',
-  `status` enum('draft','issued') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'draft',
+  `status` enum('draft','issued') COLLATE utf8mb4_general_ci DEFAULT 'draft',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -2849,7 +2835,7 @@ DROP TABLE IF EXISTS `locations`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `locations` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -2876,20 +2862,20 @@ DROP TABLE IF EXISTS `management_cashin`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `management_cashin` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `role_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `role_name` varchar(200) COLLATE utf8mb4_general_ci NOT NULL,
   `role_id` int unsigned DEFAULT NULL,
-  `person_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `person_name` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `transaction_date` date NOT NULL,
-  `source` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `source` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `description` text COLLATE utf8mb4_general_ci,
   `amount` decimal(12,2) NOT NULL,
-  `payment_method` enum('cash','bank','cheque','online') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'cash',
-  `payment_status` enum('paid','pending','failed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'paid',
-  `transaction_ref` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `bank_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `bank_account_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `cheque_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `online_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `payment_method` enum('cash','bank','cheque','online') COLLATE utf8mb4_general_ci DEFAULT 'cash',
+  `payment_status` enum('paid','pending','failed') COLLATE utf8mb4_general_ci DEFAULT 'paid',
+  `transaction_ref` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `bank_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `bank_account_no` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `cheque_no` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `online_type` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -2921,20 +2907,20 @@ DROP TABLE IF EXISTS `management_cashout`;
 CREATE TABLE `management_cashout` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `category_id` int DEFAULT NULL,
-  `role_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `role_name` varchar(200) COLLATE utf8mb4_general_ci NOT NULL,
   `role_id` int unsigned DEFAULT NULL,
-  `person_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `person_name` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `transaction_date` date NOT NULL,
-  `paid_to` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Recipient of the payment',
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `paid_to` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Recipient of the payment',
+  `description` text COLLATE utf8mb4_general_ci,
   `amount` decimal(12,2) NOT NULL,
-  `payment_method` enum('cash','bank','cheque','online') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'cash',
-  `payment_status` enum('paid','pending','failed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'paid',
-  `transaction_ref` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `bank_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `bank_account_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `cheque_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `online_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `payment_method` enum('cash','bank','cheque','online') COLLATE utf8mb4_general_ci DEFAULT 'cash',
+  `payment_status` enum('paid','pending','failed') COLLATE utf8mb4_general_ci DEFAULT 'paid',
+  `transaction_ref` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `bank_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `bank_account_no` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `cheque_no` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `online_type` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -2966,8 +2952,8 @@ DROP TABLE IF EXISTS `management_categories`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `management_categories` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `category_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `category_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
   `status` tinyint(1) DEFAULT '1' COMMENT '1=Active, 0=Inactive',
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2997,8 +2983,8 @@ DROP TABLE IF EXISTS `management_roles`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `management_roles` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `role_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `person_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `role_name` varchar(200) COLLATE utf8mb4_general_ci NOT NULL,
+  `person_name` varchar(200) COLLATE utf8mb4_general_ci NOT NULL,
   `status` tinyint(1) DEFAULT '1' COMMENT '1=Active, 0=Inactive',
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -3030,20 +3016,20 @@ CREATE TABLE `manpower_requisitions` (
   `created_by` int NOT NULL,
   `department_id` int NOT NULL,
   `designation_id` int NOT NULL,
-  `job_title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `job_title` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `no_of_vacancies` int NOT NULL,
-  `job_experience` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `job_experience` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `to_be_filled_before` date DEFAULT NULL,
-  `age_limit` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `age_limit` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `report_to` int DEFAULT NULL,
-  `requirement_type` enum('project','replacement','new') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `requirement_type` enum('project','replacement','new') COLLATE utf8mb4_general_ci NOT NULL,
   `replacement_for_id` int DEFAULT NULL,
   `project_id` int DEFAULT NULL,
-  `reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `job_description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `education_qualification` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `special_skills` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `status` enum('pending','approved','rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `reason` text COLLATE utf8mb4_general_ci,
+  `job_description` text COLLATE utf8mb4_general_ci,
+  `education_qualification` text COLLATE utf8mb4_general_ci,
+  `special_skills` text COLLATE utf8mb4_general_ci,
+  `status` enum('pending','approved','rejected') COLLATE utf8mb4_general_ci DEFAULT 'pending',
   `approved_by` int DEFAULT NULL,
   `approved_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -3073,20 +3059,20 @@ CREATE TABLE `material_receiving` (
   `purchase_order_id` int unsigned NOT NULL,
   `received_by` int NOT NULL,
   `receiving_date` date NOT NULL,
-  `received_status` enum('Full','Partial','Rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Partial',
-  `site_eng_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `site_eng_photo` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `received_status` enum('Full','Partial','Rejected') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Partial',
+  `site_eng_note` text COLLATE utf8mb4_general_ci,
+  `site_eng_photo` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `qc_checked_by` int DEFAULT NULL,
-  `qc_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `qc_photo` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `overall_status` enum('Pending QC','Pending PM','Accepted','Partially Accepted','Rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending QC',
+  `qc_note` text COLLATE utf8mb4_general_ci,
+  `qc_photo` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `overall_status` enum('Pending QC','Pending PM','Accepted','Partially Accepted','Rejected') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending QC',
   `created_by` int NOT NULL,
   `warehouse_id` int NOT NULL,
-  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `notes` text COLLATE utf8mb4_general_ci,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   `pm_checked_by` int DEFAULT NULL,
-  `pm_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `pm_note` text COLLATE utf8mb4_general_ci,
   `pm_approved_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_mr_po` (`purchase_order_id`),
@@ -3119,13 +3105,13 @@ CREATE TABLE `material_receiving_items` (
   `purchase_order_item_id` int unsigned NOT NULL,
   `ordered_quantity` decimal(12,3) NOT NULL,
   `received_quantity` decimal(12,3) NOT NULL DEFAULT '0.000',
-  `status` enum('Accepted','Partially Accepted','Rejected','Pending QC') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending QC',
+  `status` enum('Accepted','Partially Accepted','Rejected','Pending QC') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending QC',
   `return_quantity` decimal(12,3) NOT NULL DEFAULT '0.000',
   `penalty_applied` tinyint(1) NOT NULL DEFAULT '0',
   `site_engineer_checked` tinyint(1) NOT NULL DEFAULT '0',
   `qc_checked` tinyint(1) NOT NULL DEFAULT '0',
-  `issue_reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `attachment` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `issue_reason` text COLLATE utf8mb4_general_ci,
+  `attachment` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_by` int NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_mri_receiving` (`receiving_id`),
@@ -3183,9 +3169,9 @@ CREATE TABLE `material_returns` (
   `vendor_id` int NOT NULL,
   `project_id` int NOT NULL,
   `return_date` date NOT NULL,
-  `return_reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `attachment` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `status` enum('pending','sent','acknowledged') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `return_reason` text COLLATE utf8mb4_general_ci,
+  `attachment` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `status` enum('pending','sent','acknowledged') COLLATE utf8mb4_general_ci DEFAULT 'pending',
   `created_by` bigint unsigned NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
@@ -3202,88 +3188,6 @@ LOCK TABLES `material_returns` WRITE;
 UNLOCK TABLES;
 
 --
--- Table structure for table `monthly_phase_snapshots`
---
-
-DROP TABLE IF EXISTS `monthly_phase_snapshots`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `monthly_phase_snapshots` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `review_id` int unsigned NOT NULL,
-  `phase_id` int unsigned NOT NULL,
-  `planned_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
-  `actual_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
-  `variance_pct` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT 'planned - actual',
-  `status` enum('Achieved','At Risk','Delayed','Not Started') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Not Started',
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_mps_review` (`review_id`),
-  KEY `fk_mps_phase` (`phase_id`),
-  CONSTRAINT `fk_mps_phase` FOREIGN KEY (`phase_id`) REFERENCES `project_phases` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `fk_mps_review` FOREIGN KEY (`review_id`) REFERENCES `monthly_progress_reviews` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 5: Phase-level snapshot per monthly review';
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `monthly_phase_snapshots`
---
-
-LOCK TABLES `monthly_phase_snapshots` WRITE;
-/*!40000 ALTER TABLE `monthly_phase_snapshots` DISABLE KEYS */;
-/*!40000 ALTER TABLE `monthly_phase_snapshots` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `monthly_progress_reviews`
---
-
-DROP TABLE IF EXISTS `monthly_progress_reviews`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `monthly_progress_reviews` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `project_id` int NOT NULL,
-  `review_month` date NOT NULL COMMENT 'First day of review month e.g. 2026-08-01',
-  `review_month_number` tinyint NOT NULL,
-  `review_year` year NOT NULL,
-  `planned_progress_pct` decimal(5,2) DEFAULT NULL COMMENT 'Cumulative planned % of total project',
-  `actual_progress_pct` decimal(5,2) DEFAULT NULL COMMENT 'Cumulative actual % of total project',
-  `delay_gap_pct` decimal(5,2) DEFAULT NULL COMMENT 'planned - actual (negative = behind)',
-  `performance_score` decimal(5,2) DEFAULT NULL COMMENT '0-100 score',
-  `risk_status` enum('Low','Medium','High','Critical') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
-  `material_delay_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
-  `labour_shortage_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
-  `contractor_delay_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
-  `drawing_pending_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
-  `weather_issue_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
-  `payment_delay_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
-  `approval_delay_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
-  `next_month_recovery_target` decimal(5,2) DEFAULT NULL COMMENT '+% needed next month',
-  `extra_workload_needed` decimal(5,2) DEFAULT NULL,
-  `critical_focal_area` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `expected_revised_progress` decimal(5,2) DEFAULT NULL,
-  `review_status` enum('Draft','Submitted','Management Approved') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
-  `submitted_by` int DEFAULT NULL,
-  `approved_by` int DEFAULT NULL,
-  `approved_at` datetime DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_mpr_month` (`project_id`,`review_month`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 5: Monthly progress review — KPIs, delays, recovery summary';
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `monthly_progress_reviews`
---
-
-LOCK TABLES `monthly_progress_reviews` WRITE;
-/*!40000 ALTER TABLE `monthly_progress_reviews` DISABLE KEYS */;
-/*!40000 ALTER TABLE `monthly_progress_reviews` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `notifications`
 --
 
@@ -3295,7 +3199,7 @@ CREATE TABLE `notifications` (
   `user_id` int unsigned NOT NULL,
   `task_id` int DEFAULT NULL,
   `assigned_by` int NOT NULL,
-  `message` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `message` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `is_read` tinyint(1) DEFAULT '0',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -3324,16 +3228,16 @@ DROP TABLE IF EXISTS `office_asset_products`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `office_asset_products` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `product_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT 'e.g. OAP-001, ELEC-001',
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `category` enum('Electronics','Furniture','Vehicle','IT Equipment','Office Supplies','Machinery','Safety Equipment','Other') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Other',
-  `brand` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `model` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `unit` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Piece' COMMENT 'Piece, Set, Unit etc.',
+  `product_code` varchar(50) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'e.g. OAP-001, ELEC-001',
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `category` enum('Electronics','Furniture','Vehicle','IT Equipment','Office Supplies','Machinery','Safety Equipment','Other') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Other',
+  `brand` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `model` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `unit` varchar(50) COLLATE utf8mb4_general_ci DEFAULT 'Piece' COMMENT 'Piece, Set, Unit etc.',
   `unit_price` decimal(15,2) DEFAULT '0.00' COMMENT 'Standard/reference price',
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `image_path` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `status` enum('active','inactive') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'active',
+  `description` text COLLATE utf8mb4_general_ci,
+  `image_path` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `status` enum('active','inactive') COLLATE utf8mb4_general_ci DEFAULT 'active',
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -3362,19 +3266,19 @@ DROP TABLE IF EXISTS `office_assets`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `office_assets` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `asset_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT 'e.g. AST-2026-0001',
+  `asset_code` varchar(50) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'e.g. AST-2026-0001',
   `product_id` int unsigned NOT NULL COMMENT 'FK → office_asset_products.id',
   `project_id` int DEFAULT NULL COMMENT 'NULL = Head Office',
   `department_id` int DEFAULT NULL,
   `assigned_to` int DEFAULT NULL COMMENT 'users.id — who is using it',
-  `location` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Head Office',
+  `location` varchar(255) COLLATE utf8mb4_general_ci DEFAULT 'Head Office',
   `purchase_date` date DEFAULT NULL,
   `purchase_price` decimal(15,2) DEFAULT '0.00',
   `warranty_expiry` date DEFAULT NULL,
-  `serial_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `condition_status` enum('new','ok','used','need_repair','repairing','repaired','damaged','disposed','sold') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'new',
-  `asset_status` enum('in_use','in_store','transferred','disposed','maintenance','sold') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'in_store',
-  `remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `serial_no` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `condition_status` enum('new','ok','used','need_repair','repairing','repaired','damaged','disposed','sold') COLLATE utf8mb4_general_ci DEFAULT 'new',
+  `asset_status` enum('in_use','in_store','transferred','disposed','maintenance','sold') COLLATE utf8mb4_general_ci DEFAULT 'in_store',
+  `remarks` text COLLATE utf8mb4_general_ci,
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -3406,12 +3310,12 @@ DROP TABLE IF EXISTS `onboard_clients`;
 CREATE TABLE `onboard_clients` (
   `id` int NOT NULL AUTO_INCREMENT,
   `lead_booking_id` int unsigned DEFAULT NULL,
-  `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `cameraLink1` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `cameraLink2` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `moneyReceiptLink` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `purchaseDetailsLink` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `email` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `password` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `cameraLink1` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `cameraLink2` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `moneyReceiptLink` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `purchaseDetailsLink` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -3444,10 +3348,10 @@ CREATE TABLE `operational_fund_requests` (
   `requester_id` int NOT NULL,
   `operator_id` int unsigned DEFAULT NULL,
   `amount` decimal(15,2) NOT NULL,
-  `purpose` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `purpose` text COLLATE utf8mb4_general_ci NOT NULL,
   `fund_date` date NOT NULL,
   `approved_amount` decimal(15,2) DEFAULT NULL,
-  `status` enum('pending','approved','rejected','paid','partially_paid','fully_paid') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
+  `status` enum('pending','approved','rejected','paid','partially_paid','fully_paid') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
   `due_amount` decimal(10,2) DEFAULT NULL,
   `created_by` int NOT NULL,
   `approved_by` int DEFAULT NULL,
@@ -3545,8 +3449,8 @@ CREATE TABLE `payslips` (
   `total_deduction` decimal(10,2) NOT NULL DEFAULT '0.00',
   `net_salary` decimal(10,2) NOT NULL DEFAULT '0.00',
   `company_bank_id` int DEFAULT NULL,
-  `status` enum('pending','approved','paid') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
-  `payment_method` enum('bank','cash','mobile_banking') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'bank',
+  `status` enum('pending','approved','paid') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
+  `payment_method` enum('bank','cash','mobile_banking') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'bank',
   `created_by` int DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -3574,7 +3478,7 @@ DROP TABLE IF EXISTS `permissions`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `permissions` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(200) COLLATE utf8mb4_general_ci NOT NULL,
   `status` int NOT NULL DEFAULT '1',
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -3589,7 +3493,7 @@ CREATE TABLE `permissions` (
 
 LOCK TABLES `permissions` WRITE;
 /*!40000 ALTER TABLE `permissions` DISABLE KEYS */;
-INSERT INTO `permissions` VALUES (1,'Add Role',1,NULL,'2025-12-04 12:12:58','2025-12-04 12:12:58'),(2,'View Role',1,NULL,'2025-12-04 12:17:47','2025-12-04 12:17:47'),(3,'Add Permission',1,NULL,'2025-12-06 05:51:07','2025-12-06 05:51:07'),(4,'Show Permission',1,NULL,'2025-12-06 05:51:25','2025-12-06 05:51:25'),(5,'Add Task',1,NULL,'2025-12-10 04:26:45','2025-12-10 04:26:45'),(6,'Hr Manage',1,12,'2025-12-17 09:52:36','2025-12-17 09:52:36'),(7,'Sales & Business',1,NULL,'2026-01-04 01:08:25','2026-01-04 01:08:25'),(8,'Payroll Manage',1,NULL,'2026-01-04 01:11:05','2026-01-04 01:11:05'),(10,'Accounts Manage',1,NULL,'2026-01-04 01:11:51','2026-01-04 01:11:51'),(11,'Role & Permission',1,NULL,'2026-01-04 01:17:03','2026-01-04 01:17:03'),(12,'CED Manage',1,NULL,'2026-01-04 04:29:51','2026-01-04 04:29:51'),(13,'Task Manage',1,NULL,'2026-01-04 04:32:50','2026-01-04 04:32:50'),(14,'Others',1,NULL,'2026-01-04 05:04:47','2026-01-04 05:04:47'),(15,'Add Lead',1,12,'2026-01-31 05:23:20','2026-01-31 05:23:20'),(16,'User Manage',1,12,'2026-01-31 12:22:53','2026-01-31 12:22:53'),(17,'Add User',1,12,'2026-01-31 12:23:02','2026-01-31 12:23:02'),(19,'View Lead',1,12,'2026-02-01 12:06:45','2026-02-01 12:06:45'),(20,'My Leave Request',1,12,'2026-02-08 12:00:34','2026-02-08 12:00:34'),(21,'Camera Manage',1,2,'2026-02-21 17:24:42','2026-02-21 17:24:42'),(22,'Upload CSV',1,6,'2026-03-30 16:41:45','2026-03-30 16:41:45'),(23,'Digital Marketing Panel',1,6,'2026-04-02 08:10:46','2026-04-02 08:10:46'),(24,'Sales team Performance',1,6,'2026-04-07 10:13:35','2026-04-07 10:13:35'),(25,'Manpower Requisition',1,6,'2026-04-07 12:49:19','2026-04-07 12:49:19'),(26,'Construction Management',1,6,'2026-04-16 00:38:18','2026-04-16 00:38:18'),(27,'Land Study',1,6,'2026-04-20 22:37:41','2026-04-20 22:37:41'),(28,'Inventory Receiving',1,6,'2026-04-20 22:38:55','2026-04-20 22:38:55'),(29,'Project Drawing',1,6,'2026-04-20 22:45:11','2026-04-20 22:45:11'),(30,'Soil tests',1,6,'2026-04-20 22:46:02','2026-04-20 22:46:02'),(31,'Estimate Budget',1,6,'2026-04-20 22:46:33','2026-04-20 22:46:33'),(32,'Project Target Set',1,6,'2026-04-20 22:47:23','2026-04-20 22:47:23'),(33,'Material Issue',1,6,'2026-04-20 22:47:41','2026-04-20 22:47:41'),(34,'Project Draft Design',1,6,'2026-04-21 23:13:46','2026-04-21 23:13:46'),(35,'Purchase order',1,6,'2026-04-21 23:15:54','2026-04-21 23:15:54'),(36,'Vendor Manage',1,6,'2026-04-21 23:16:11','2026-04-21 23:16:11'),(37,'Estimator dashboard',1,6,'2026-04-21 23:16:57','2026-04-21 23:16:57'),(38,'Procurement Manage',1,6,'2026-04-21 23:18:51','2026-04-21 23:18:51'),(39,'Architect Design',1,6,'2026-04-22 00:04:48','2026-04-22 00:04:48'),(40,'Draft Design',1,6,'2026-04-22 00:05:02','2026-04-22 00:05:02'),(41,'Budget Extend',1,6,'2026-04-22 00:05:51','2026-04-22 00:05:51'),(42,'Working Plan',1,6,'2026-04-22 00:06:18','2026-04-22 00:06:18'),(43,'Operation manage',1,6,'2026-04-22 00:09:23','2026-04-22 00:09:23'),(44,'Material Manage',1,6,'2026-04-22 00:11:03','2026-04-22 00:11:03'),(45,'Contractor Bill',1,6,'2026-04-22 00:12:47','2026-04-22 00:12:47'),(46,'Project Report',1,6,'2026-04-22 00:13:06','2026-04-22 00:13:06'),(47,'Bill & Payments',1,122,'2026-04-23 01:38:32','2026-04-23 01:38:32'),(48,'Project structure design',1,6,'2026-04-29 06:04:01','2026-04-29 06:04:01'),(49,'QC Dashboard',1,6,'2026-05-05 04:22:33','2026-05-05 04:22:33'),(50,'Work Order',1,6,'2026-05-10 12:36:34','2026-05-10 12:36:34'),(51,'Project Manage',1,6,'2026-05-17 04:03:06','2026-05-17 04:03:06'),(52,'site engineer dashboard',1,6,'2026-05-17 19:25:18','2026-05-17 19:25:18'),(53,'Security Operations',1,128,'2026-05-17 19:37:11','2026-05-17 19:37:11'),(54,'QC & Internal Audit',1,NULL,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(55,'Asset Management',1,NULL,'2026-05-24 10:25:08','2026-05-24 10:25:08');
+INSERT INTO `permissions` VALUES (1,'Add Role',1,NULL,'2025-12-04 12:12:58','2025-12-04 12:12:58'),(2,'View Role',1,NULL,'2025-12-04 12:17:47','2025-12-04 12:17:47'),(3,'Add Permission',1,NULL,'2025-12-06 05:51:07','2025-12-06 05:51:07'),(4,'Show Permission',1,NULL,'2025-12-06 05:51:25','2025-12-06 05:51:25'),(5,'Employee Dashboard',1,6,'2025-12-10 04:26:45','2025-12-10 04:26:45'),(6,'Hr Manage',1,12,'2025-12-17 09:52:36','2025-12-17 09:52:36'),(7,'Sales & Business',1,NULL,'2026-01-04 01:08:25','2026-01-04 01:08:25'),(8,'Payroll Manage',1,NULL,'2026-01-04 01:11:05','2026-01-04 01:11:05'),(10,'Accounts Manage',1,NULL,'2026-01-04 01:11:51','2026-01-04 01:11:51'),(11,'Role & Permission',1,NULL,'2026-01-04 01:17:03','2026-01-04 01:17:03'),(12,'CED Manage',1,NULL,'2026-01-04 04:29:51','2026-01-04 04:29:51'),(13,'Task Manage',1,NULL,'2026-01-04 04:32:50','2026-01-04 04:32:50'),(14,'Others',1,NULL,'2026-01-04 05:04:47','2026-01-04 05:04:47'),(15,'Add Lead',1,12,'2026-01-31 05:23:20','2026-01-31 05:23:20'),(16,'User Manage',1,12,'2026-01-31 12:22:53','2026-01-31 12:22:53'),(17,'Add User',1,12,'2026-01-31 12:23:02','2026-01-31 12:23:02'),(19,'View Lead',1,12,'2026-02-01 12:06:45','2026-02-01 12:06:45'),(20,'My Leave Request',1,12,'2026-02-08 12:00:34','2026-02-08 12:00:34'),(21,'Camera Manage',1,2,'2026-02-21 17:24:42','2026-02-21 17:24:42'),(22,'Upload CSV',1,6,'2026-03-30 16:41:45','2026-03-30 16:41:45'),(23,'Digital Marketing Panel',1,6,'2026-04-02 08:10:46','2026-04-02 08:10:46'),(24,'Sales team Performance',1,6,'2026-04-07 10:13:35','2026-04-07 10:13:35'),(25,'Manpower Requisition',1,6,'2026-04-07 12:49:19','2026-04-07 12:49:19'),(26,'Construction Management',1,6,'2026-04-16 00:38:18','2026-04-16 00:38:18'),(27,'Land Study',1,6,'2026-04-20 22:37:41','2026-04-20 22:37:41'),(28,'Inventory Receiving',1,6,'2026-04-20 22:38:55','2026-04-20 22:38:55'),(29,'Project Drawing',1,6,'2026-04-20 22:45:11','2026-04-20 22:45:11'),(30,'Soil tests',1,6,'2026-04-20 22:46:02','2026-04-20 22:46:02'),(31,'Estimate Budget',1,6,'2026-04-20 22:46:33','2026-04-20 22:46:33'),(32,'Project Target Set',1,6,'2026-04-20 22:47:23','2026-04-20 22:47:23'),(33,'Material Issue',1,6,'2026-04-20 22:47:41','2026-04-20 22:47:41'),(34,'Project Draft Design',1,6,'2026-04-21 23:13:46','2026-04-21 23:13:46'),(35,'Purchase order',1,6,'2026-04-21 23:15:54','2026-04-21 23:15:54'),(36,'Vendor Manage',1,6,'2026-04-21 23:16:11','2026-04-21 23:16:11'),(37,'Estimator dashboard',1,6,'2026-04-21 23:16:57','2026-04-21 23:16:57'),(38,'Procurement Manage',1,6,'2026-04-21 23:18:51','2026-04-21 23:18:51'),(39,'Architect Design',1,6,'2026-04-22 00:04:48','2026-04-22 00:04:48'),(40,'Draft Design',1,6,'2026-04-22 00:05:02','2026-04-22 00:05:02'),(41,'Budget Extend',1,6,'2026-04-22 00:05:51','2026-04-22 00:05:51'),(42,'Working Plan',1,6,'2026-04-22 00:06:18','2026-04-22 00:06:18'),(43,'Operation manage',1,6,'2026-04-22 00:09:23','2026-04-22 00:09:23'),(44,'Material Manage',1,6,'2026-04-22 00:11:03','2026-04-22 00:11:03'),(45,'Contractor Bill',1,6,'2026-04-22 00:12:47','2026-04-22 00:12:47'),(46,'Project Report',1,6,'2026-04-22 00:13:06','2026-04-22 00:13:06'),(47,'Bill & Payments',1,122,'2026-04-23 01:38:32','2026-04-23 01:38:32'),(48,'Project structure design',1,6,'2026-04-29 06:04:01','2026-04-29 06:04:01'),(49,'QC Dashboard',1,6,'2026-05-05 04:22:33','2026-05-05 04:22:33'),(50,'Work Order',1,6,'2026-05-10 12:36:34','2026-05-10 12:36:34'),(51,'Project Manage',1,6,'2026-05-17 04:03:06','2026-05-17 04:03:06'),(52,'site engineer dashboard',1,6,'2026-05-17 19:25:18','2026-05-17 19:25:18'),(53,'Security Operations',1,128,'2026-05-17 19:37:11','2026-05-17 19:37:11'),(54,'QC & Internal Audit',1,NULL,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(55,'Asset Management',1,NULL,'2026-05-24 10:25:08','2026-05-24 10:25:08');
 /*!40000 ALTER TABLE `permissions` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -3602,11 +3506,11 @@ DROP TABLE IF EXISTS `personal_access_tokens`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `personal_access_tokens` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `tokenable_type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tokenable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `tokenable_id` bigint unsigned NOT NULL,
-  `name` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `token` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `abilities` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `name` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `token` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `abilities` text COLLATE utf8mb4_unicode_ci,
   `last_used_at` timestamp NULL DEFAULT NULL,
   `expires_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
@@ -3636,8 +3540,8 @@ DROP TABLE IF EXISTS `phase_item_template_defaults`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `phase_item_template_defaults` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `phase_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `item_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `phase_name` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `item_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `item_order` tinyint NOT NULL DEFAULT '1',
   `weight_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
   `design_type_id` int unsigned DEFAULT NULL,
@@ -3670,15 +3574,18 @@ CREATE TABLE `phase_monthly_target_items` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `target_id` int unsigned NOT NULL,
   `work_type_id` bigint unsigned DEFAULT NULL COMMENT 'Optional ref to work_types for categorization',
-  `work_item_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `unit` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'CFT / MT / SFT / Bags / Nos / Days',
+  `work_item_name` varchar(200) COLLATE utf8mb4_general_ci NOT NULL,
+  `phase_item_id` int DEFAULT NULL,
+  `unit` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'CFT / MT / SFT / Bags / Nos / Days',
   `monthly_target_qty` decimal(12,2) DEFAULT NULL,
-  `planned_progress_pct` decimal(5,2) DEFAULT NULL COMMENT 'Planned completion % by month end',
+  `actual_qty` decimal(12,2) NOT NULL DEFAULT '0.00' COMMENT 'Actual quantity achieved',
+  `recovery_notes` text COLLATE utf8mb4_general_ci,
   `start_date` date DEFAULT NULL,
   `end_date` date DEFAULT NULL,
-  `responsible_team` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `priority` enum('High','Medium','Low') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
-  `status` enum('Draft','Ready','Approved','At Risk','Critical') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
+  `responsible_team` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `contractor_id` int unsigned DEFAULT NULL,
+  `priority` enum('High','Medium','Low') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
+  `status` enum('Draft','Ready','Approved','At Risk','Critical') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
   `week_1_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
   `week_2_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
   `week_3_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
@@ -3687,8 +3594,10 @@ CREATE TABLE `phase_monthly_target_items` (
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_pmti_target` (`target_id`),
+  KEY `fk_pmti_contractor` (`contractor_id`),
+  CONSTRAINT `fk_pmti_contractor` FOREIGN KEY (`contractor_id`) REFERENCES `contractors` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_pmti_target` FOREIGN KEY (`target_id`) REFERENCES `phase_monthly_targets` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 3: Work items under each monthly target plan';
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 3: Work items under each monthly target plan';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3697,6 +3606,7 @@ CREATE TABLE `phase_monthly_target_items` (
 
 LOCK TABLES `phase_monthly_target_items` WRITE;
 /*!40000 ALTER TABLE `phase_monthly_target_items` DISABLE KEYS */;
+INSERT INTO `phase_monthly_target_items` VALUES (1,1,2,'Footing & Column Pedestal',NULL,'CFT',3000.00,1100.00,NULL,'2026-06-01','2026-06-21',NULL,NULL,'High','Draft',1000.00,500.00,1000.00,0.00,1,'2026-06-01 04:49:00'),(2,1,1,'Footing & Column Pedestal',NULL,'CFT',500.00,0.00,NULL,'2026-06-22','2026-06-28',NULL,NULL,'Medium','Draft',0.00,0.00,0.00,500.00,2,'2026-06-01 04:54:44');
 /*!40000 ALTER TABLE `phase_monthly_target_items` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -3715,16 +3625,19 @@ CREATE TABLE `phase_monthly_targets` (
   `target_month_number` tinyint NOT NULL COMMENT '1-12',
   `target_year` year NOT NULL,
   `total_target_weight_pct` decimal(5,2) DEFAULT NULL COMMENT '% of total project this month contributes',
-  `planning_status` enum('Draft','In Review','Approved') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
-  `responsible_team` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `planning_status` enum('Draft','In Review','Approved') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
+  `responsible_team` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `contractor_id` int unsigned DEFAULT NULL,
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_pmt_month` (`project_id`,`phase_id`,`target_month`),
   KEY `idx_pmt_phase` (`phase_id`),
-  CONSTRAINT `fk_pmt_phase` FOREIGN KEY (`phase_id`) REFERENCES `project_phases` (`id`) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 3: Monthly target plan header — one per project+phase+month';
+  KEY `fk_pmt_contractor` (`contractor_id`),
+  CONSTRAINT `fk_pmt_contractor` FOREIGN KEY (`contractor_id`) REFERENCES `contractors` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_pmt_phase` FOREIGN KEY (`phase_id`) REFERENCES `project_phases` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 3: Monthly target plan header — one per project+phase+month';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3733,6 +3646,7 @@ CREATE TABLE `phase_monthly_targets` (
 
 LOCK TABLES `phase_monthly_targets` WRITE;
 /*!40000 ALTER TABLE `phase_monthly_targets` DISABLE KEYS */;
+INSERT INTO `phase_monthly_targets` VALUES (1,13,1,'2026-06-01',6,2026,NULL,'Approved','Structural Team',3,120,'2026-06-01 04:20:27','2026-06-02 12:04:35');
 /*!40000 ALTER TABLE `phase_monthly_targets` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -3745,10 +3659,10 @@ DROP TABLE IF EXISTS `phase_template_defaults`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `phase_template_defaults` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `phase_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `phase_name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
   `phase_order` tinyint NOT NULL,
   `default_weight_percentage` decimal(5,2) NOT NULL COMMENT 'Must sum to 100 across all rows',
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `description` text COLLATE utf8mb4_general_ci,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -3790,13 +3704,20 @@ CREATE TABLE `phase_weekly_progress` (
   `concrete_poured_cft` decimal(8,2) NOT NULL DEFAULT '0.00',
   `materials_used` int NOT NULL DEFAULT '0',
   `equipment_active` int NOT NULL DEFAULT '0',
-  `weather_condition` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `weather_condition` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `temperature_celsius` decimal(4,1) DEFAULT NULL,
-  `site_engineer_remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `site_engineer_remarks` text COLLATE utf8mb4_general_ci,
   `safety_ok` tinyint(1) NOT NULL DEFAULT '0',
   `qc_checked` tinyint(1) NOT NULL DEFAULT '0',
   `material_received` tinyint(1) NOT NULL DEFAULT '0',
-  `entry_status` enum('Draft','Submitted','Approved') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
+  `qc_approved_id` int unsigned DEFAULT NULL,
+  `qc_status` varchar(50) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
+  `qc_image` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `qc_comment` text COLLATE utf8mb4_general_ci,
+  `pm_approved_id` int unsigned DEFAULT NULL,
+  `pm_status` varchar(50) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
+  `pm_comment` text COLLATE utf8mb4_general_ci,
+  `entry_status` enum('Draft','Submitted','Approved') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
   `submitted_by` int DEFAULT NULL,
   `submitted_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -3805,9 +3726,9 @@ CREATE TABLE `phase_weekly_progress` (
   UNIQUE KEY `uk_pwp_week` (`project_id`,`phase_id`,`target_id`,`week_number`),
   KEY `idx_pwp_target` (`target_id`),
   KEY `fk_pwp_phase` (`phase_id`),
-  CONSTRAINT `fk_pwp_phase` FOREIGN KEY (`phase_id`) REFERENCES `project_phases` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `fk_pwp_target` FOREIGN KEY (`target_id`) REFERENCES `phase_monthly_targets` (`id`) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Weekly progress entry header — one per week per monthly target';
+  CONSTRAINT `fk_pwp_phase` FOREIGN KEY (`phase_id`) REFERENCES `project_phases` (`id`),
+  CONSTRAINT `fk_pwp_target` FOREIGN KEY (`target_id`) REFERENCES `phase_monthly_targets` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Weekly progress entry header — one per week per monthly target';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3816,6 +3737,7 @@ CREATE TABLE `phase_weekly_progress` (
 
 LOCK TABLES `phase_weekly_progress` WRITE;
 /*!40000 ALTER TABLE `phase_weekly_progress` DISABLE KEYS */;
+INSERT INTO `phase_weekly_progress` VALUES (1,13,1,1,1,'2026-06-01','2026-06-07',50.00,1000.00,1000.00,20,0,0.00,0.00,0,2,NULL,NULL,NULL,0,0,0,NULL,'Pending',NULL,NULL,NULL,'Pending',NULL,'Submitted',1,'2026-06-03 11:01:45','2026-06-01 04:56:02','2026-06-03 05:01:45'),(2,13,1,1,2,'2026-06-08','2026-06-14',10.00,500.00,100.00,0,0,0.00,0.00,0,0,NULL,NULL,NULL,0,0,0,NULL,'Pending',NULL,NULL,NULL,'Pending',NULL,'Draft',NULL,NULL,'2026-06-01 07:56:04','2026-06-04 08:02:49'),(3,13,1,1,3,'2026-06-15','2026-06-21',0.00,NULL,NULL,0,0,0.00,0.00,0,0,NULL,NULL,NULL,0,0,0,NULL,'Pending',NULL,NULL,NULL,'Pending',NULL,'Draft',NULL,NULL,'2026-06-01 07:57:42',NULL),(4,13,1,1,4,'2026-06-22','2026-06-30',0.00,NULL,NULL,0,0,0.00,0.00,0,0,NULL,NULL,NULL,0,0,0,NULL,'Pending',NULL,NULL,NULL,'Pending',NULL,'Draft',NULL,NULL,'2026-06-01 07:57:47','2026-06-01 08:17:44');
 /*!40000 ALTER TABLE `phase_weekly_progress` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -3832,20 +3754,30 @@ CREATE TABLE `phase_weekly_progress_items` (
   `target_item_id` int unsigned NOT NULL,
   `planned_qty` decimal(12,2) DEFAULT NULL,
   `achieved_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `1st_day_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `2nd_day_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `3rd_day_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `4th_day_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `5th_day_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `6_th_day_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `7th_day_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
   `today_progress_qty` decimal(12,2) NOT NULL DEFAULT '0.00' COMMENT 'Qty done on latest entry day',
   `percent_complete` decimal(5,2) NOT NULL DEFAULT '0.00',
-  `responsible_team` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `status` enum('Not Started','In Progress','Completed','Delayed','Pending QA') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Not Started',
+  `responsible_team` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `contractor_id` int unsigned DEFAULT NULL,
+  `status` enum('Not Started','In Progress','Completed','Delayed','Pending QA') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Not Started',
   `has_issue_flag` tinyint(1) NOT NULL DEFAULT '0',
-  `photo_path` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `remarks_action` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `photo_path` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `remarks_action` text COLLATE utf8mb4_general_ci,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_pwpi_weekly` (`weekly_progress_id`),
   KEY `idx_pwpi_item` (`target_item_id`),
-  CONSTRAINT `fk_pwpi_item` FOREIGN KEY (`target_item_id`) REFERENCES `phase_monthly_target_items` (`id`) ON DELETE RESTRICT,
+  KEY `fk_pwpi_contractor` (`contractor_id`),
+  CONSTRAINT `fk_pwpi_contractor` FOREIGN KEY (`contractor_id`) REFERENCES `contractors` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_pwpi_item` FOREIGN KEY (`target_item_id`) REFERENCES `phase_monthly_target_items` (`id`),
   CONSTRAINT `fk_pwpi_progress` FOREIGN KEY (`weekly_progress_id`) REFERENCES `phase_weekly_progress` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Item-level weekly progress update';
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 4: Item-level weekly progress update';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3854,6 +3786,7 @@ CREATE TABLE `phase_weekly_progress_items` (
 
 LOCK TABLES `phase_weekly_progress_items` WRITE;
 /*!40000 ALTER TABLE `phase_weekly_progress_items` DISABLE KEYS */;
+INSERT INTO `phase_weekly_progress_items` VALUES (1,1,1,1000.00,1000.00,200.00,200.00,200.00,100.00,100.00,100.00,100.00,100.00,100.00,'',NULL,'Completed',0,'uploads/photos/photo_6a1d6d91ba636.png',NULL,'2026-06-01 04:56:02'),(2,1,2,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,'',NULL,'Not Started',0,NULL,NULL,'2026-06-01 04:56:02'),(3,2,1,500.00,100.00,100.00,0.00,0.00,0.00,0.00,0.00,0.00,100.00,20.00,'',NULL,'In Progress',0,'uploads/photos/photo_6a21310157732.png',NULL,'2026-06-01 07:56:04'),(4,2,2,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,'',NULL,'Not Started',0,NULL,NULL,'2026-06-01 07:56:04'),(5,3,1,1000.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,'',NULL,'Not Started',0,NULL,NULL,'2026-06-01 07:57:42'),(6,3,2,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,'',NULL,'Not Started',0,NULL,NULL,'2026-06-01 07:57:42'),(7,4,1,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,'',NULL,'Not Started',0,NULL,NULL,'2026-06-01 07:57:47'),(8,4,2,500.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,'',NULL,'Not Started',0,NULL,NULL,'2026-06-01 07:57:47');
 /*!40000 ALTER TABLE `phase_weekly_progress_items` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -3873,7 +3806,7 @@ CREATE TABLE `platform_budgets` (
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `platform_name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `platform_name` varchar(250) COLLATE utf8mb4_general_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -3889,49 +3822,6 @@ INSERT INTO `platform_budgets` VALUES (1,1,'2026-04-01',300000.00,200000.00,94,'
 UNLOCK TABLES;
 
 --
--- Table structure for table `project_delay_snapshots`
---
-
-DROP TABLE IF EXISTS `project_delay_snapshots`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `project_delay_snapshots` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `project_id` int NOT NULL,
-  `snapshot_date` date NOT NULL,
-  `total_delay_days` int NOT NULL DEFAULT '0',
-  `critical_risks_count` int NOT NULL DEFAULT '0',
-  `time_risk_level` enum('Low','Medium','High','Critical') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Low',
-  `budget_risk_amount` decimal(15,2) DEFAULT NULL COMMENT 'Forecasted budget overrun amount',
-  `handover_risk_level` enum('Low','Medium','High','Critical') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Low',
-  `original_handover_date` date DEFAULT NULL,
-  `forecast_handover_date` date DEFAULT NULL,
-  `material_delay_count` int NOT NULL DEFAULT '0',
-  `labour_shortage_count` int NOT NULL DEFAULT '0',
-  `contractor_delay_count` int NOT NULL DEFAULT '0',
-  `design_pending_count` int NOT NULL DEFAULT '0',
-  `approval_delay_count` int NOT NULL DEFAULT '0',
-  `weather_count` int NOT NULL DEFAULT '0',
-  `payment_delay_count` int NOT NULL DEFAULT '0',
-  `confidence_level_pct` decimal(5,2) DEFAULT NULL COMMENT 'Forecast confidence % e.g. 62%',
-  `created_by` int DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_pds_project` (`project_id`),
-  KEY `idx_pds_date` (`snapshot_date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 6: Periodic delay source analytics snapshot';
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `project_delay_snapshots`
---
-
-LOCK TABLES `project_delay_snapshots` WRITE;
-/*!40000 ALTER TABLE `project_delay_snapshots` DISABLE KEYS */;
-/*!40000 ALTER TABLE `project_delay_snapshots` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `project_drawings`
 --
 
@@ -3941,17 +3831,18 @@ DROP TABLE IF EXISTS `project_drawings`;
 CREATE TABLE `project_drawings` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `project_id` int NOT NULL,
+  `phase_id` int unsigned DEFAULT NULL COMMENT 'Optional: which construction phase this drawing belongs to',
   `design_type_id` int unsigned NOT NULL,
   `is_in_house` tinyint(1) NOT NULL DEFAULT '1',
   `user_id` int DEFAULT NULL,
-  `designer_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `designer_designation` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `designer_company` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `designer_name` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `designer_designation` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `designer_company` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `approved_by_id` int DEFAULT NULL,
   `approval_date` date DEFAULT NULL,
-  `design_link` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `version` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `status` enum('Draft','Submitted','Approved','Rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
+  `design_link` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `version` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `status` enum('Draft','Submitted','Approved','Rejected') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -3969,7 +3860,7 @@ CREATE TABLE `project_drawings` (
 
 LOCK TABLES `project_drawings` WRITE;
 /*!40000 ALTER TABLE `project_drawings` DISABLE KEYS */;
-INSERT INTO `project_drawings` VALUES (1,13,6,1,124,NULL,NULL,NULL,NULL,NULL,'https://demediciassociates.com/service/construction-design/','1.0','Approved',124,'2026-05-05 13:05:56');
+INSERT INTO `project_drawings` VALUES (1,13,1,6,1,124,NULL,NULL,NULL,NULL,NULL,'https://demediciassociates.com/service/construction-design/','1.0','Approved',124,'2026-05-05 13:05:56');
 /*!40000 ALTER TABLE `project_drawings` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -3984,39 +3875,38 @@ CREATE TABLE `project_extra_assets` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `project_id` int NOT NULL,
   `product_id` int unsigned DEFAULT NULL COMMENT 'FK → office_asset_products.id (NULL if manual entry)',
-  `item_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Manual entry if product not in master',
+  `item_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Manual entry if product not in master',
   `quantity` int NOT NULL DEFAULT '1',
   `unit_price` decimal(15,2) NOT NULL DEFAULT '0.00',
   `total_price` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `justification` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Why is this purchase needed?',
-  `attachment` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `purchase_head_status` enum('pending','approved','rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `justification` text COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Why is this purchase needed?',
+  `attachment` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `purchase_head_status` enum('pending','approved','rejected') COLLATE utf8mb4_general_ci DEFAULT 'pending',
   `purchase_head_by` int DEFAULT NULL,
   `purchase_head_at` timestamp NULL DEFAULT NULL,
-  `purchase_head_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `qc_audit_status` enum('pending','approved','rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `purchase_head_note` text COLLATE utf8mb4_general_ci,
+  `qc_audit_status` enum('pending','approved','rejected') COLLATE utf8mb4_general_ci DEFAULT 'pending',
   `qc_audit_by` int DEFAULT NULL,
   `qc_audit_at` timestamp NULL DEFAULT NULL,
-  `qc_audit_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `mgmt_status` enum('pending','approved','rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `qc_audit_note` text COLLATE utf8mb4_general_ci,
+  `mgmt_status` enum('pending','approved','rejected') COLLATE utf8mb4_general_ci DEFAULT 'pending',
   `mgmt_by` int DEFAULT NULL,
   `mgmt_at` timestamp NULL DEFAULT NULL,
-  `mgmt_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `payment_status` enum('unpaid','paid') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'unpaid',
+  `mgmt_note` text COLLATE utf8mb4_general_ci,
+  `payment_status` enum('unpaid','paid') COLLATE utf8mb4_general_ci DEFAULT 'unpaid',
   `paid_by` int DEFAULT NULL,
   `paid_at` timestamp NULL DEFAULT NULL,
-  `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `paid_amount` decimal(15,2) DEFAULT NULL,
-  `payment_attachment` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `overall_status` enum('pending','in_review','approved','rejected','paid','purchased') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `payment_method` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `payment_attachment` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `overall_status` enum('pending','in_review','approved','rejected','paid','purchased') COLLATE utf8mb4_general_ci DEFAULT 'pending',
   `requested_by` int NOT NULL,
   `purchase_date` date DEFAULT NULL,
-  `vendor_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `invoice_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `vendor_name` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `invoice_no` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `purchase_document` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `purchase_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `purchase_document` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `purchase_note` text COLLATE utf8mb4_general_ci,
   `purchase_confirmed_by` int DEFAULT NULL,
   `purchase_confirmed_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -4045,12 +3935,12 @@ DROP TABLE IF EXISTS `project_legal_sheets`;
 CREATE TABLE `project_legal_sheets` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `project_id` bigint unsigned NOT NULL,
-  `sheet_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `version` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'V1',
-  `link` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sheet_type` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `version` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'V1',
+  `link` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `submitted_by` bigint unsigned NOT NULL,
-  `remark` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `remark` text COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -4069,6 +3959,38 @@ LOCK TABLES `project_legal_sheets` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `project_phase_item_details`
+--
+
+DROP TABLE IF EXISTS `project_phase_item_details`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `project_phase_item_details` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `phase_item_id` int unsigned NOT NULL,
+  `work_type_id` bigint unsigned NOT NULL,
+  `unit` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `total_boq_qty` decimal(15,2) NOT NULL,
+  `weight_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `actual_progress` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_phase_item_work_type` (`phase_item_id`,`work_type_id`),
+  CONSTRAINT `fk_project_phase_item_details_phase_item` FOREIGN KEY (`phase_item_id`) REFERENCES `project_phase_items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `project_phase_item_details`
+--
+
+LOCK TABLES `project_phase_item_details` WRITE;
+/*!40000 ALTER TABLE `project_phase_item_details` DISABLE KEYS */;
+/*!40000 ALTER TABLE `project_phase_item_details` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `project_phase_items`
 --
 
@@ -4078,22 +4000,22 @@ DROP TABLE IF EXISTS `project_phase_items`;
 CREATE TABLE `project_phase_items` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `phase_id` int unsigned NOT NULL,
-  `item_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `item_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `item_order` tinyint NOT NULL DEFAULT '1',
   `weight_pct` decimal(5,2) NOT NULL DEFAULT '0.00',
   `planned_progress` decimal(5,2) NOT NULL DEFAULT '0.00',
   `actual_progress` decimal(5,2) NOT NULL DEFAULT '0.00',
   `design_type_id` int unsigned DEFAULT NULL,
   `work_type_id` bigint unsigned DEFAULT NULL,
-  `status` enum('Not Started','In Progress','Completed','At Risk') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Not Started',
-  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `status` enum('Not Started','In Progress','Completed','At Risk') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Not Started',
+  `notes` text COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `fk_ppi_phase` (`phase_id`),
   KEY `fk_ppi_wtype` (`work_type_id`),
   KEY `fk_ppi_dtype` (`design_type_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4102,6 +4024,7 @@ CREATE TABLE `project_phase_items` (
 
 LOCK TABLES `project_phase_items` WRITE;
 /*!40000 ALTER TABLE `project_phase_items` DISABLE KEYS */;
+INSERT INTO `project_phase_items` VALUES (2,1,'Footing & Column Pedestal',1,20.00,0.00,0.00,NULL,NULL,'Not Started',NULL,'2026-06-01 04:31:50','2026-06-01 04:41:53'),(3,1,'Grade Beam & UGWR Top Slab',2,5.00,0.00,0.00,NULL,NULL,'Not Started',NULL,'2026-06-01 04:32:31',NULL),(4,1,'GF Column & Stair',3,4.00,0.00,0.00,NULL,NULL,'Not Started',NULL,'2026-06-01 04:34:34',NULL),(5,1,'1st Floor Slab',4,9.00,0.00,0.00,NULL,NULL,'Not Started',NULL,'2026-06-01 04:34:50',NULL),(6,1,'Typical Floor Column',5,15.00,0.00,0.00,NULL,NULL,'Not Started',NULL,'2026-06-01 04:35:11',NULL),(7,1,'2nd Floor Slab to Roof Slab',6,40.00,0.00,0.00,NULL,NULL,'Not Started',NULL,'2026-06-01 04:35:31',NULL),(8,1,'Rooftop',7,7.00,0.00,0.00,NULL,NULL,'Not Started',NULL,'2026-06-01 04:35:43',NULL);
 /*!40000 ALTER TABLE `project_phase_items` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -4115,7 +4038,7 @@ DROP TABLE IF EXISTS `project_phases`;
 CREATE TABLE `project_phases` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `project_id` int NOT NULL,
-  `phase_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `phase_name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
   `phase_order` tinyint NOT NULL DEFAULT '1',
   `weight_percentage` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT 'All phases must sum to 100%',
   `planned_start_date` date DEFAULT NULL,
@@ -4124,14 +4047,14 @@ CREATE TABLE `project_phases` (
   `actual_end_date` date DEFAULT NULL,
   `planned_progress` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '% within this phase planned',
   `actual_progress` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '% within this phase achieved',
-  `status` enum('Not Started','In Progress','Completed','At Risk','Delayed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Not Started',
+  `status` enum('Not Started','In Progress','Completed','At Risk','Delayed') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Not Started',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `phase_type` enum('pre_construction','construction','finishing') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'construction',
+  `phase_type` enum('pre_construction','construction','finishing') COLLATE utf8mb4_general_ci DEFAULT 'construction',
   PRIMARY KEY (`id`),
   KEY `idx_pp_project` (`project_id`),
   KEY `idx_pp_order` (`project_id`,`phase_order`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 2: Per-project phase definitions cloned from phase_template_defaults';
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 2: Per-project phase definitions cloned from phase_template_defaults';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4140,6 +4063,7 @@ CREATE TABLE `project_phases` (
 
 LOCK TABLES `project_phases` WRITE;
 /*!40000 ALTER TABLE `project_phases` DISABLE KEYS */;
+INSERT INTO `project_phases` VALUES (1,13,'Structure',1,35.00,'2026-06-01','2027-03-01',NULL,NULL,0.00,0.00,'In Progress','2026-06-01 04:06:05','2026-06-01 04:48:31','construction'),(2,13,'Brick Work',2,5.00,'2027-04-01','2027-11-01',NULL,NULL,0.00,0.00,'Not Started','2026-06-01 04:06:06','2026-06-01 04:19:50','construction'),(3,13,'Wood Work',3,25.00,'2027-12-01','2028-06-01',NULL,NULL,0.00,0.00,'Not Started','2026-06-01 04:06:06','2026-06-01 04:19:50','construction'),(4,13,'Metal Work',4,20.00,'2028-07-01','2028-09-01',NULL,NULL,0.00,0.00,'Not Started','2026-06-01 04:06:06','2026-06-01 04:19:50','construction'),(5,13,'Plumbing & Sanitary',5,8.00,'2028-10-01','2028-11-01',NULL,NULL,0.00,0.00,'Not Started','2026-06-01 04:06:06','2026-06-01 04:19:50','construction'),(6,13,'Electrical',6,7.00,'2029-01-01','2028-05-01',NULL,NULL,0.00,0.00,'Not Started','2026-06-01 04:06:06','2026-06-01 04:19:50','construction'),(7,13,'Plaster',7,0.00,'2029-04-01','2029-05-01',NULL,NULL,0.00,0.00,'Not Started','2026-06-01 04:14:53','2026-06-01 04:19:50','construction');
 /*!40000 ALTER TABLE `project_phases` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -4154,22 +4078,28 @@ CREATE TABLE `project_risks` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `project_id` int NOT NULL,
   `phase_id` int unsigned DEFAULT NULL,
-  `risk_code` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Auto: R-101, R-102...',
-  `issue_description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `category` enum('Labour','Material','Design Quality','Approval Delay','Contractor Delay','Weather','Budget','Other') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Other',
-  `impact` enum('Very High','High','Medium','Low') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
-  `likelihood` enum('Very High','High','Medium','Low') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
-  `severity` enum('Critical','High','Medium','Low') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
-  `owner` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `risk_code` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Auto: R-101, R-102...',
+  `description` text COLLATE utf8mb4_general_ci NOT NULL,
+  `category` varchar(50) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Other',
+  `impact` varchar(50) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
+  `likelihood` varchar(50) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
+  `severity` varchar(50) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
+  `owner` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `due_date` date DEFAULT NULL,
-  `status` enum('Open','In Progress','Resolved','Closed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Open',
+  `status` enum('Open','In Progress','Resolved','Closed') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Open',
+  `is_auto` tinyint(1) NOT NULL DEFAULT '0',
+  `missed_week` int DEFAULT NULL,
+  `target_item_id` int unsigned DEFAULT NULL,
+  `missed_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `planned_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `achieved_qty` decimal(12,2) NOT NULL DEFAULT '0.00',
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_pr_project` (`project_id`),
   KEY `idx_pr_phase` (`phase_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 6: Risk register — tracks all project risks with heatmap data';
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 6: Risk register — tracks all project risks with heatmap data';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4191,12 +4121,12 @@ DROP TABLE IF EXISTS `project_structural_designs`;
 CREATE TABLE `project_structural_designs` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `project_id` bigint unsigned NOT NULL,
-  `designer_type` enum('internal','external') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'internal',
-  `designer_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `company_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `designer_phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `designer_address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `design_link` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `designer_type` enum('internal','external') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'internal',
+  `designer_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `company_name` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `designer_phone` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `designer_address` text COLLATE utf8mb4_general_ci,
+  `design_link` text COLLATE utf8mb4_general_ci NOT NULL,
   `created_by` bigint unsigned NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -4223,9 +4153,9 @@ DROP TABLE IF EXISTS `project_timelines`;
 CREATE TABLE `project_timelines` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `project_id` int NOT NULL,
-  `project_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `project_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Residential / Commercial / Industrial',
-  `project_category` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'High Rise / Low Rise / Industrial Shed',
+  `project_code` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `project_type` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Residential / Commercial / Industrial',
+  `project_category` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'High Rise / Low Rise / Industrial Shed',
   `handover_months` int NOT NULL COMMENT 'Total timeline in months e.g. 48',
   `construction_months` int NOT NULL COMMENT 'Construction period in months e.g. 32',
   `post_construction_months` int NOT NULL DEFAULT '6' COMMENT 'Post construction months e.g. 6',
@@ -4233,14 +4163,14 @@ CREATE TABLE `project_timelines` (
   `construction_start_date` date NOT NULL COMMENT 'On-site construction start',
   `construction_end_date` date NOT NULL COMMENT 'Construction completion date',
   `expected_handover_date` date NOT NULL COMMENT 'Final handover to client',
-  `current_status` enum('Planning','Pre-Construction','Construction','Post-Construction','Handover','Completed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Planning',
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `current_status` enum('Planning','Pre-Construction','Construction','Post-Construction','Handover','Completed') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Planning',
+  `description` text COLLATE utf8mb4_general_ci,
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_pt_project` (`project_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 1: Project timeline setup — one row per project';
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 1: Project timeline setup — one row per project';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4249,84 +4179,8 @@ CREATE TABLE `project_timelines` (
 
 LOCK TABLES `project_timelines` WRITE;
 /*!40000 ALTER TABLE `project_timelines` DISABLE KEYS */;
+INSERT INTO `project_timelines` VALUES (1,13,'TPD-2026','Residential','High rise Building',36,24,6,'2026-06-01','2029-06-01','2031-06-01','2029-06-01','Planning','',120,'2026-06-01 04:06:01',NULL);
 /*!40000 ALTER TABLE `project_timelines` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `project_working_plan_items`
---
-
-DROP TABLE IF EXISTS `project_working_plan_items`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `project_working_plan_items` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `working_plan_id` int unsigned NOT NULL,
-  `sl_no` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
-  `activity_name` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `floor_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `quantity` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '1 Job',
-  `start_date` date NOT NULL,
-  `req_days` int NOT NULL DEFAULT '1',
-  `end_date` date NOT NULL,
-  `remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `sort_order` int NOT NULL DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `initial_budget_id` int unsigned DEFAULT NULL,
-  `work_type_id` bigint unsigned DEFAULT NULL,
-  `estimated_cost` decimal(15,2) DEFAULT '0.00',
-  `weight_percentage` decimal(5,2) DEFAULT '0.00',
-  PRIMARY KEY (`id`),
-  KEY `fk_pwpi_working_plan` (`working_plan_id`),
-  CONSTRAINT `fk_pwpi_working_plan` FOREIGN KEY (`working_plan_id`) REFERENCES `project_working_plans` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `project_working_plan_items`
---
-
-LOCK TABLES `project_working_plan_items` WRITE;
-/*!40000 ALTER TABLE `project_working_plan_items` DISABLE KEYS */;
-/*!40000 ALTER TABLE `project_working_plan_items` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `project_working_plans`
---
-
-DROP TABLE IF EXISTS `project_working_plans`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `project_working_plans` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `project_id` int NOT NULL,
-  `initial_budget_id` int unsigned NOT NULL,
-  `work_type_id` int unsigned NOT NULL,
-  `year` smallint unsigned NOT NULL,
-  `month` tinyint unsigned NOT NULL,
-  `work_description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `planned_quantity` decimal(12,3) DEFAULT '0.000',
-  `estimated_cost` decimal(16,2) NOT NULL DEFAULT '0.00',
-  `weight_percentage` decimal(5,2) NOT NULL DEFAULT '0.00',
-  `created_by` int NOT NULL,
-  `approved_status` enum('Draft','Approved','Pending','Cancel') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
-  `approved_by` int DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `fk_pwp_budget` (`initial_budget_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `project_working_plans`
---
-
-LOCK TABLES `project_working_plans` WRITE;
-/*!40000 ALTER TABLE `project_working_plans` DISABLE KEYS */;
-INSERT INTO `project_working_plans` VALUES (1,13,1,2,2026,5,'Slub, Column, Beam, Footing',0.000,100000.00,0.00,123,'Pending',NULL,'2026-05-07 12:06:13',NULL);
-/*!40000 ALTER TABLE `project_working_plans` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -4338,33 +4192,33 @@ DROP TABLE IF EXISTS `projects`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `projects` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `slug` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `slug` text COLLATE utf8mb4_general_ci,
   `location_id` int DEFAULT NULL,
   `community_id` int NOT NULL,
-  `building_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `building_type` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `total_share` int DEFAULT NULL,
   `unit_per_floor` int DEFAULT NULL,
   `floor_wise_unit_meta` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
-  `types` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `image2` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `image3` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `front_road` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `price_range` enum('Under 50 Lac BDT','50 Lac - 1 Crore BDT','1 Crore - 2 Crore BDT','2 Crore - 5 Crore BDT','Above 5 Crore BDT') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `hover_text` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `tag` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `types` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `image` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `image2` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `image3` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `front_road` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `price_range` enum('Under 50 Lac BDT','50 Lac - 1 Crore BDT','1 Crore - 2 Crore BDT','2 Crore - 5 Crore BDT','Above 5 Crore BDT') COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `hover_text` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `tag` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `plot_size` float DEFAULT NULL,
-  `plot_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `block_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `brochure_link` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `plot_no` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `block_no` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `brochure_link` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `description` text COLLATE utf8mb4_general_ci,
   `apartment_count` int DEFAULT NULL,
-  `amenities_details` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `amenities_image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `map_image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `map_link` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `project_map_location` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `amenities_details` longtext COLLATE utf8mb4_general_ci,
+  `amenities_image` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `map_image` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `map_link` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `project_map_location` varchar(250) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `passenger_lift` int DEFAULT NULL,
   `cargo_lift` int DEFAULT NULL,
   `created_by` int DEFAULT NULL,
@@ -4375,9 +4229,10 @@ CREATE TABLE `projects` (
   `convention` tinyint(1) DEFAULT '0' COMMENT '1=Yes, 0=No',
   `electricity_backup` tinyint(1) DEFAULT '0' COMMENT '1=Yes, 0=No',
   `car_parking` int DEFAULT NULL,
-  `project_sale_status` enum('Sold Out','On Sale','Upcoming') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'On Sale',
+  `project_sale_status` enum('Sold Out','On Sale','Upcoming') COLLATE utf8mb4_general_ci DEFAULT 'On Sale',
   `service_charge_per_emi` decimal(8,2) DEFAULT NULL,
-  `project_status` enum('Planning','In Progress','On Hold','Completed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `project_status` enum('Planning','In Progress','On Hold','Completed') COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `workflow_version` varchar(50) COLLATE utf8mb4_general_ci DEFAULT 'legacy',
   `pm_id` int DEFAULT NULL,
   `site_engineer_id` int DEFAULT NULL,
   `landman_id` int DEFAULT NULL,
@@ -4402,7 +4257,7 @@ CREATE TABLE `projects` (
 
 LOCK TABLES `projects` WRITE;
 /*!40000 ALTER TABLE `projects` DISABLE KEYS */;
-INSERT INTO `projects` VALUES (5,'The Legacy Residence',NULL,2,2,'B2+B1+G+14',56,4,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1790},{\"unit_name\":\"B\",\"sqft\":1790},{\"unit_name\":\"C\",\"sqft\":1790},{\"unit_name\":\"D\",\"sqft\":1790}]}','3 Bedroom','projects_69d5fee900d47.jpeg','','','50 ','50 Lac - 1 Crore BDT',NULL,NULL,13.91,'2','B','https://drive.google.com/file/d/1PF3KEcpfxBw0Ecz9pHzBsCkFk2SaMgoT/view?usp=drive_link','<p>The Legacy Residence represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>',1,'','','','https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8','The Premium Smart City',2,1,2,'2026-04-08 06:17:20','2026-04-08 07:08:25',1,NULL,1,1,1,'On Sale',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(6,'The Maple Heights',NULL,2,2,'B2+B1+G+14',56,4,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2250},{\"unit_name\":\"B\",\"sqft\":2150},{\"unit_name\":\"C\",\"sqft\":2190},{\"unit_name\":\"D\",\"sqft\":2190}]}','4 Bedroom','projects_69d5ff07e1c77.jpeg','','','30','1 Crore - 2 Crore BDT',NULL,NULL,14.58,'2','B','https://drive.google.com/file/d/1MeywaLCcU3IET53mkHMnL4dXiukEvQ-5/view?usp=drive_link','<p>The Maple Heights represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>',1,'','','','https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8','The Premium Smart City',2,1,2,'2026-04-08 06:22:49','2026-04-08 07:08:55',1,NULL,1,1,1,'On Sale',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(7,'The Premium Signature Heights',NULL,1,3,'B+G+12',36,3,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1950},{\"unit_name\":\"B\",\"sqft\":2000},{\"unit_name\":\"C\",\"sqft\":1750}]}','3 Bedroom','projects_69d5ff409b76f.jpeg','','','25','1 Crore - 2 Crore BDT',NULL,NULL,16.88,'6168 U, 6168 M, 6168 T','N','https://drive.google.com/file/d/1MDZY987dskuwdA2n-zH68W6XsjCSNgUc/view?usp=drive_link','<p class=\"text-base sm:text-lg leading-relaxed text-neutral-700 max-w-xl animate-fade-up delay-200\">The Signature Heights is designed as an home, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>',1,'','','','https://maps.app.goo.gl/nVMLyaaQGiqZn6fi6','23°48\'38.2',2,0,29,'2026-04-08 06:57:40','2026-04-29 05:45:26',1,NULL,1,1,1,'On Sale',12.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(9,'The Crown Pavilion','the-crown-pavilion-1',2,2,'B1+G+14',126,9,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":635},{\"unit_name\":\"B\",\"sqft\":900},{\"unit_name\":\"C\",\"sqft\":680},{\"unit_name\":\"D\",\"sqft\":785},{\"unit_name\":\"E\",\"sqft\":715},{\"unit_name\":\"F\",\"sqft\":755},{\"unit_name\":\"G\",\"sqft\":610},{\"unit_name\":\"H\",\"sqft\":1100},{\"unit_name\":\"I\",\"sqft\":1140}]}','1, 2, 3 Bedroom','projects_69d5fe85e4a00.jpeg','','','30','Under 50 Lac BDT',NULL,NULL,12.77,'2','B','https://drive.google.com/file/d/1WWOYZU0AGGHb6uJDe1SOhOEHsIbJFGpN/view?usp=drive_link','<p>The Premium Crown Pavilion is designed as an studio oasis, where lush greenery meets contemporary modern architecture. With coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>',1,'','','','https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8','The Premium Smart City',2,1,138,'2026-04-08 07:06:45','2026-05-18 05:48:07',1,NULL,1,1,1,'On Sale',NULL,NULL,120,123,121,129,NULL,124,122,125,126,NULL,128,127),(12,'TPRC Crown Tower','tprc-crown-tower',3,1,'B3+B2+B1+G+20',135,9,'{\"typical_floor\":[{\"unit_name\":\"B\",\"sqft\":800},{\"unit_name\":\"C\",\"sqft\":825},{\"unit_name\":\"D\",\"sqft\":1230},{\"unit_name\":\"E\",\"sqft\":2055},{\"unit_name\":\"F\",\"sqft\":2055},{\"unit_name\":\"G\",\"sqft\":1395},{\"unit_name\":\"H\",\"sqft\":800},{\"unit_name\":\"I\",\"sqft\":775}]}','Residential',NULL,NULL,NULL,'40 Feet','50 Lac - 1 Crore BDT',NULL,NULL,71,'14','I','','',0,'',NULL,NULL,'','',2,1,32,'2026-04-19 04:09:44','2026-05-06 10:38:31',1,NULL,1,1,1,'On Sale',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(13,'test project from developer','test-project-from-developer-2',2,2,'B+G+9',10,4,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1200}]}','3  Bedrooms',NULL,NULL,NULL,'30','50 Lac - 1 Crore BDT',NULL,NULL,72.5,'12','B','link','',1,'',NULL,NULL,'','',2,1,6,'2026-04-26 06:18:34','2026-05-04 06:51:15',0,NULL,0,0,0,'On Sale',10.00,NULL,120,123,121,129,NULL,124,122,125,126,NULL,128,NULL),(14,'The Premium  Velinor','the-premium-velinor-1',1,3,'G+8',16,2,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1550},{\"unit_name\":\"B\",\"sqft\":1549}]}','',NULL,NULL,NULL,'25','50 Lac - 1 Crore BDT',NULL,NULL,6,'5512,5513','N','https://drive.google.com/file/d/1yLfDmgSSieHuhfOK61ZPgf_AoXW6Xo-n/view','<p>The Premium velinor is designed as an urban oasis, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>',0,'',NULL,NULL,'','',1,0,6,'2026-05-03 04:09:14','2026-05-10 08:40:33',1,NULL,1,1,1,'Sold Out',12.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(15,'The Premium Studio Suite 3.0','the-premium-studio-suite-3-0',2,2,'G+9',36,4,'{\"typical_floor\":[{\"unit_name\":\"(A)\",\"sqft\":800}]}','Studio Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,5,'','D','https://drive.google.com/file/d/1uzJrwuzeB2Rv_NO-B4mX06u5Zg7TN_w2/view?usp=drive_link','',36,'','project_69f6caef36111.webp',NULL,'','',0,0,22,'2026-05-03 04:11:27','2026-05-08 06:21:26',1,NULL,1,1,1,'Sold Out',10.00,NULL,NULL,NULL,NULL,NULL,NULL,124,NULL,NULL,NULL,NULL,NULL,NULL),(16,'The premium Ariston','the-premium-ariston',1,3,'G+9',9,1,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2050},{\"unit_name\":\"B\",\"sqft\":1049}]}','',NULL,NULL,NULL,'25','1 Crore - 2 Crore BDT','',NULL,5,'','N','https://drive.google.com/file/d/1v8ne9A8Mx2BQXx4tQfN21f3hOeMGOWt8/view','<p>The Premium Ariston is designed as an oasis, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>',1,'',NULL,NULL,'','',1,0,36,'2026-05-03 04:21:59','2026-05-03 04:21:59',0,0,0,0,0,'Sold Out',12.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(17,'The Premium Southpoint Villa','the-premium-southpoint-villa',2,2,'B+G+9',18,2,'{\"typical_floor\":[{\"unit_name\":\"2\",\"sqft\":1600}]}','',NULL,NULL,NULL,'35','Under 50 Lac BDT',NULL,NULL,5,'05','A','','',0,'',NULL,NULL,'','',1,0,6,'2026-05-03 04:49:37','2026-05-10 08:36:58',0,NULL,0,0,0,'Sold Out',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(19,'The Premium Armonia','the-premium-armonia',1,3,'G+9',10,1,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2250},{\"unit_name\":\"B\",\"sqft\":1050}]}','',NULL,NULL,NULL,'25','50 Lac - 1 Crore BDT',NULL,NULL,5,'','N','https://drive.google.com/file/d/1BUZdgAYG0ETRqfdE4emBkdBVfUWZuOXX/view','<p>The Premium Armonia celebrates nature and sustainable living in Dhakas One of the most popular area. With extensive green spaces, rooftop gardens, and eco-friendly features, this development offers a harmonious blend of urban convenience and natural beauty.</p>',1,'',NULL,NULL,'','',1,0,36,'2026-05-03 05:16:34','2026-05-09 04:04:38',1,NULL,1,1,1,'On Sale',12.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(20,'The Premium Twelfth Heights','the-premium-twelfth-heights',1,3,'B+G+9',32,4,'{\"typical_floor\":[{\"unit_name\":\"B\",\"sqft\":1700},{\"unit_name\":\"C\",\"sqft\":1750},{\"unit_name\":\"D\",\"sqft\":1749}]}','',NULL,NULL,NULL,'25','1 Crore - 2 Crore BDT',NULL,NULL,12,'','N','https://drive.google.com/file/d/1Bh_wRkxVuZkOGe5MQvWpDDASaG5WVabD/view','<p>The Premium Twelfeth Heights is designed as an home, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>',0,'',NULL,NULL,'','',2,0,6,'2026-05-03 05:25:29','2026-05-10 08:38:27',0,NULL,0,0,0,'Sold Out',12.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(21,'The Premium Dream Palace ','the-premium-dream-palace',2,4,'B+G+9',18,2,'{\"typical_floor\":[{\"unit_name\":\"2\",\"sqft\":1600}]}','B+G+9','project_69f6e6f617119.webp',NULL,NULL,'60','50 Lac - 1 Crore BDT','',NULL,5,'','F','https://drive.google.com/file/d/1ytbREUTcj6exjL11PlkRONqP3mXFRphC/view?usp=drive_link','',18,'','project_69f6e6f62838b.webp',NULL,'https://maps.app.goo.gl/n6mvS1oBezu5a5fLA','https://maps.app.goo.gl/n6mvS1oBezu5a5fLA',1,0,25,'2026-05-03 06:11:02','2026-05-03 06:11:02',1,0,0,1,1,'On Sale',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(22,'The Premium Lake View Terrace ','the-premium-lake-view-terrace-1',2,4,'B+G+9',18,2,'{\"typical_floor\":[{\"unit_name\":\"2\",\"sqft\":1600}]}','B+G+9','projects_69f6e8631a5ee.png',NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,5,'','H','https://drive.google.com/file/d/1ZZOtvGeRPOBKwJ_j-FzDhi6LUs4ffBys/view?usp=drive_link ','',18,'','projects_69f6e8632b98c.png','projects_69f6e86322a02.png','https://maps.app.goo.gl/pe5o2BxGpYg8gwZX6','https://maps.app.goo.gl/pe5o2BxGpYg8gwZX6',1,0,25,'2026-05-03 06:14:39','2026-05-03 06:17:07',1,NULL,0,1,1,'On Sale',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(27,'The Premium Skypoint Villa','the-premium-skypoint-villa',2,4,'B+G+9',36,4,NULL,'B+G+9',NULL,NULL,NULL,'30','Under 50 Lac BDT',NULL,NULL,9,'10/11E','D','','',36,'',NULL,NULL,'','',1,0,6,'2026-05-05 12:39:09','2026-05-10 08:28:59',1,NULL,0,1,1,'On Sale',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(28,'TPRC Majesty Tower','tprc-majesty-tower',3,1,'B3+B2+B1+G+20',120,8,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1655},{\"unit_name\":\"B\",\"sqft\":580},{\"unit_name\":\"C\",\"sqft\":725},{\"unit_name\":\"D\",\"sqft\":790},{\"unit_name\":\"E\",\"sqft\":830},{\"unit_name\":\"F\",\"sqft\":725},{\"unit_name\":\"G\",\"sqft\":580},{\"unit_name\":\"H\",\"sqft\":1565}]}','Condominium',NULL,NULL,NULL,'40','50 Lac - 1 Crore BDT','',NULL,71,'14','','','',3,'',NULL,NULL,'','',0,0,32,'2026-05-05 12:39:16','2026-05-05 12:39:16',0,0,0,0,0,'On Sale',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(29,'TPRC Imperial Tower','tprc-imperial-tower',3,1,'B3+B2+B1+G+20',135,9,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":775},{\"unit_name\":\"B\",\"sqft\":800},{\"unit_name\":\"C\",\"sqft\":1395},{\"unit_name\":\"D\",\"sqft\":2055},{\"unit_name\":\"E\",\"sqft\":2055},{\"unit_name\":\"F\",\"sqft\":1230},{\"unit_name\":\"G\",\"sqft\":825},{\"unit_name\":\"H\",\"sqft\":800},{\"unit_name\":\"I\",\"sqft\":1310}]}','Condominium',NULL,NULL,NULL,'40','50 Lac - 1 Crore BDT',NULL,NULL,71,'14','I','','',0,'',NULL,NULL,'','',2,1,6,'2026-05-05 12:44:05','2026-05-14 05:50:15',0,NULL,0,0,0,'On Sale',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(31,'The Premium Fortune Residence','the-premium-fortune-residence',2,4,'G+7',14,2,'{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}','G+7',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,3,'23','H','','',14,'',NULL,NULL,'','',1,0,25,'2026-05-06 10:34:39','2026-05-06 10:34:39',1,0,0,1,0,'Sold Out',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(32,'The Premium Luxoria Residence','the-premium-luxoria-residence',2,4,'G+7',14,2,'{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}','G+7',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,3,'','Shornali','','',14,'',NULL,NULL,'','',1,0,6,'2026-05-06 10:39:31','2026-05-10 08:33:44',1,NULL,0,1,0,'Sold Out',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(33,'The Premium Aurora View','the-premium-aurora-view-1',2,4,'B+G+9',18,2,'{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1600}]}','B+G+9',NULL,NULL,NULL,'25','50 Lac - 1 Crore BDT',NULL,NULL,5,'','K','https://drive.google.com/file/d/1R4xhjovd2fUYGSm0jf9KpMfsf9GxWy6A/view?usp=drive_link','',18,'',NULL,NULL,'','',1,0,22,'2026-05-06 10:43:13','2026-05-08 06:27:50',1,NULL,0,1,1,'On Sale',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(34,'The Premium Southern Residence','the-premium-southern-residence',2,4,'G+7',14,2,'{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}','G+7',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,3,'','F','','',14,'',NULL,NULL,'','',1,0,25,'2026-05-06 10:46:22','2026-05-06 10:46:22',1,0,0,1,1,'Sold Out',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(35,'The Premium Breeze Residence','the-premium-breeze-residence',2,4,'G+7',14,2,'{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}','G+7',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,3,'','H','','',14,'',NULL,NULL,'','',1,0,25,'2026-05-06 10:50:17','2026-05-06 10:50:17',1,0,0,1,1,'Sold Out',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(36,'The Premium Urban Residence ','the-premium-urban-residence',2,4,'G+7',14,2,'{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}','G+7',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,3,'','','','',14,'',NULL,NULL,'','',0,0,25,'2026-05-06 10:52:59','2026-05-06 10:52:59',1,0,0,1,0,'Sold Out',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(37,'The Premium studio suite 7.0','the-premium-studio-suite-7-0-1',2,4,'G+9',36,4,'{\"typical_floor\":[{\"unit_name\":\"A,B,C,D\",\"sqft\":800}]}','G+9',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,5,'','D','','',36,'',NULL,NULL,'','',1,0,25,'2026-05-06 10:57:25','2026-05-06 10:57:25',1,0,0,1,0,'On Sale',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(38,'The Premium Studio Suite 6.0','the-premium-studio-suite-6-0',2,4,'G+9',72,8,NULL,'Studio Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,5,'','D','https://drive.google.com/file/d/1B4E2T1eyiiwvhAro2SX8gsJMeNkBrMEM/view?usp=drive_link','',1,'',NULL,NULL,'','',0,0,22,'2026-05-07 05:20:47','2026-05-08 06:16:36',1,NULL,1,1,1,'Sold Out',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(39,'The Premium Studio Suite 2.0','the-premium-studio-suite-2-0-1',2,4,'G+9',126,14,NULL,'Studio Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,10,'','D','https://drive.google.com/file/d/1uzJrwuzeB2Rv_NO-B4mX06u5Zg7TN_w2/view?usp=drive_link','',1,'',NULL,NULL,'','',0,0,22,'2026-05-07 05:30:40','2026-05-08 06:20:09',1,NULL,1,1,1,'On Sale',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(40,'The Premium Studio Suite 1.0','the-premium-studio-suite-1-0',2,4,'G+9',72,8,NULL,'Studio Project',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,NULL,'','','','',NULL,'',NULL,NULL,'','',0,0,22,'2026-05-07 05:32:11','2026-05-07 05:32:11',1,0,1,1,1,'Sold Out',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(41,'The Premium Studio Suite 5.0','the-premium-studio-suite-5-0-1',2,4,'G+9',72,8,NULL,'Studio Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,NULL,'','','https://drive.google.com/file/d/19FixkjcPO_o2SyHJL1p682H2bLQIOasI/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,22,'2026-05-07 05:33:47','2026-05-08 06:18:31',1,NULL,1,1,1,'On Sale',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(42,'The Premium Studio Suite 4.0','the-premium-studio-suite-4-0-1',2,4,'G+9',63,8,NULL,'Studio Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,8,'','F','https://drive.google.com/file/d/1tK8xCqAfZTZsYULBGybfUodjR3eJsiq4/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,22,'2026-05-07 05:36:27','2026-05-08 06:19:23',1,NULL,1,1,1,'On Sale',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(43,'SUNLEAF GARDEN (TPSG)','sunleaf-garden-tpsg-1',2,4,'B+G+9',18,2,NULL,'Single Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,NULL,'','','https://drive.google.com/file/d/1ZMckdZAtWUOTofZtDfVRfyHQicNXgUaI/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,22,'2026-05-08 05:40:07','2026-05-08 06:26:38',1,NULL,1,1,1,'Sold Out',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(44,'The Premium Classic Residence','the-premium-classic-residence',2,4,'G+7',14,2,'{\"typical_floor\":[{\"unit_name\":\"(A,B,)\",\"sqft\":1000}]}','Single Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,NULL,'','E','https://drive.google.com/file/d/1B9j6seJQMRtVol-olK6FbepEhfGeoMfL/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,6,'2026-05-08 05:43:02','2026-05-10 08:29:42',1,NULL,1,1,1,'Sold Out',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(45,'FLORAL HAVEN (TPFH)','floral-haven-tpfh-1',2,4,'B+G+9',18,2,'{\"typical_floor\":[{\"unit_name\":\"(A,B,)\",\"sqft\":1600}]}','Single Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,NULL,'','','https://drive.google.com/file/d/1zUUyyN30RSw0asQHyRXcbzVnez3rcpu4/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,22,'2026-05-08 05:48:11','2026-05-08 06:23:58',1,NULL,1,1,1,'Sold Out',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(46,'The Premium Green Heaven','the-premium-green-heaven',2,4,'B+G+9',18,2,NULL,'Single Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,5,'','','https://drive.google.com/file/d/1ieZxyKkpDCQigWxB1G4_RqSsJtAGk0BA/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,6,'2026-05-08 05:57:20','2026-05-10 08:32:17',1,NULL,1,1,1,'Sold Out',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(47,'The Premium Harmony Residence','the-premium-harmony-residence',2,4,'B+G+9',18,2,NULL,'Single Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,5,'','','https://drive.google.com/file/d/1LSRYMw514gmBoGnTbjv8W3VS3WOFrJac/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,6,'2026-05-08 06:02:20','2026-05-10 08:31:16',1,NULL,1,1,1,'Sold Out',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(48,'The Premium Glory Garden','the-premium-glory-garden',2,4,'B+G+9',36,4,NULL,'Single Project',NULL,NULL,NULL,' Road: 35 & 25 Feet','Under 50 Lac BDT',NULL,NULL,9,'','','https://drive.google.com/file/d/12g_t6p0qPBOjHb4sMtrJIOq13lR-1Ziy/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,6,'2026-05-08 06:07:44','2026-05-10 08:32:48',1,NULL,1,1,1,'Sold Out',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(49,'The Premium Prestige Heights','the-premium-prestige-heights',1,3,'G+9',10,1,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2349}]}','',NULL,NULL,NULL,'25','1 Crore - 2 Crore BDT','',NULL,5.65,'','N','','<p>The Premium Prestige Heights celebrates nature and sustainable living in Dhakas One of the most popular area. With extensive green spaces, rooftop gardens, and eco-friendly features, this development offers a harmonious blend of urban convenience and natural beauty.</p>',NULL,'',NULL,NULL,'','',1,0,36,'2026-05-09 04:15:09','2026-05-09 04:15:09',1,0,1,1,1,'On Sale',12.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(50,'The Noble Court','the-noble-court',2,2,'',56,4,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1250},{\"unit_name\":\"B\",\"sqft\":1250},{\"unit_name\":\"C\",\"sqft\":1250},{\"unit_name\":\"D\",\"sqft\":1250}]}','3 BED ROOM',NULL,NULL,NULL,'30 FEET','50 Lac - 1 Crore BDT','',NULL,10.86,'2','B','https://drive.google.com/drive/folders/1XW8WIgf1y2OpB3UTD7doLgRSYgawRU8W','',1,'',NULL,NULL,'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8','The Premium Smart City',2,0,14,'2026-05-09 05:45:31','2026-05-09 05:45:31',1,0,1,1,1,'On Sale',15.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(51,'The Velvet Heights','the-velvet-heights',2,2,'B1+B2+G+14',56,4,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1680},{\"unit_name\":\"B\",\"sqft\":1680},{\"unit_name\":\"C\",\"sqft\":1680},{\"unit_name\":\"D\",\"sqft\":1680}]}','3 BEDROOM',NULL,NULL,NULL,'50 FEET','1 Crore - 2 Crore BDT',NULL,NULL,NULL,'','B','','',1,'',NULL,NULL,'','',2,1,6,'2026-05-11 11:50:22','2026-05-13 12:44:23',0,NULL,0,0,0,'On Sale',15.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(52,'The Premium Monarch Residence,','the-premium-monarch-residence',2,4,'G+7',14,2,NULL,'Studio Project',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,3,'','','','',NULL,'',NULL,NULL,'','',0,0,22,'2026-05-12 06:22:26','2026-05-12 06:22:26',1,0,1,1,0,'On Sale',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(53,'The Premium Orchid Residence,','the-premium-orchid-residence',2,4,'G+7',14,2,NULL,'Single Project',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,3,'','','','',NULL,'',NULL,NULL,'','',0,0,22,'2026-05-12 06:26:03','2026-05-12 06:26:03',1,0,1,1,0,'Sold Out',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(54,'The Premium  Green Valley ','the-premium-green-valley',2,4,'B+G+9',18,2,NULL,'Single Project',NULL,NULL,NULL,'','Under 50 Lac BDT','',NULL,5,'','k','','',NULL,'',NULL,NULL,'','',0,0,22,'2026-05-12 06:32:14','2026-05-12 06:32:14',1,0,1,1,1,'Sold Out',10.00,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+INSERT INTO `projects` VALUES (5,'The Legacy Residence',NULL,2,2,'B2+B1+G+14',56,4,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1790},{\"unit_name\":\"B\",\"sqft\":1790},{\"unit_name\":\"C\",\"sqft\":1790},{\"unit_name\":\"D\",\"sqft\":1790}]}','3 Bedroom','projects_69d5fee900d47.jpeg','','','50 ','50 Lac - 1 Crore BDT',NULL,NULL,13.91,'2','B','https://drive.google.com/file/d/1PF3KEcpfxBw0Ecz9pHzBsCkFk2SaMgoT/view?usp=drive_link','<p>The Legacy Residence represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>',1,'','','','https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8','The Premium Smart City',2,1,2,'2026-04-08 06:17:20','2026-04-08 07:08:25',1,NULL,1,1,1,'On Sale',NULL,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(6,'The Maple Heights',NULL,2,2,'B2+B1+G+14',56,4,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2250},{\"unit_name\":\"B\",\"sqft\":2150},{\"unit_name\":\"C\",\"sqft\":2190},{\"unit_name\":\"D\",\"sqft\":2190}]}','4 Bedroom','projects_69d5ff07e1c77.jpeg','','','30','1 Crore - 2 Crore BDT',NULL,NULL,14.58,'2','B','https://drive.google.com/file/d/1MeywaLCcU3IET53mkHMnL4dXiukEvQ-5/view?usp=drive_link','<p>The Maple Heights represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>',1,'','','','https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8','The Premium Smart City',2,1,2,'2026-04-08 06:22:49','2026-04-08 07:08:55',1,NULL,1,1,1,'On Sale',NULL,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(7,'The Premium Signature Heights',NULL,1,3,'B+G+12',36,3,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1950},{\"unit_name\":\"B\",\"sqft\":2000},{\"unit_name\":\"C\",\"sqft\":1750}]}','3 Bedroom','projects_69d5ff409b76f.jpeg','','','25','1 Crore - 2 Crore BDT',NULL,NULL,16.88,'6168 U, 6168 M, 6168 T','N','https://drive.google.com/file/d/1MDZY987dskuwdA2n-zH68W6XsjCSNgUc/view?usp=drive_link','<p class=\"text-base sm:text-lg leading-relaxed text-neutral-700 max-w-xl animate-fade-up delay-200\">The Signature Heights is designed as an home, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>',1,'','','','https://maps.app.goo.gl/nVMLyaaQGiqZn6fi6','23°48\'38.2',2,0,29,'2026-04-08 06:57:40','2026-04-29 05:45:26',1,NULL,1,1,1,'On Sale',12.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(9,'The Crown Pavilion','the-crown-pavilion-1',2,2,'B1+G+14',126,9,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":635},{\"unit_name\":\"B\",\"sqft\":900},{\"unit_name\":\"C\",\"sqft\":680},{\"unit_name\":\"D\",\"sqft\":785},{\"unit_name\":\"E\",\"sqft\":715},{\"unit_name\":\"F\",\"sqft\":755},{\"unit_name\":\"G\",\"sqft\":610},{\"unit_name\":\"H\",\"sqft\":1100},{\"unit_name\":\"I\",\"sqft\":1140}]}','1, 2, 3 Bedroom','projects_69d5fe85e4a00.jpeg','','','30','Under 50 Lac BDT',NULL,NULL,12.77,'2','B','https://drive.google.com/file/d/1WWOYZU0AGGHb6uJDe1SOhOEHsIbJFGpN/view?usp=drive_link','<p>The Premium Crown Pavilion is designed as an studio oasis, where lush greenery meets contemporary modern architecture. With coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>',1,'','','','https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8','The Premium Smart City',2,1,138,'2026-04-08 07:06:45','2026-05-18 05:48:07',1,NULL,1,1,1,'On Sale',NULL,NULL,'legacy',120,123,121,129,NULL,124,122,125,126,NULL,128,127),(12,'TPRC Crown Tower','tprc-crown-tower',3,1,'B3+B2+B1+G+20',135,9,'{\"typical_floor\":[{\"unit_name\":\"B\",\"sqft\":800},{\"unit_name\":\"C\",\"sqft\":825},{\"unit_name\":\"D\",\"sqft\":1230},{\"unit_name\":\"E\",\"sqft\":2055},{\"unit_name\":\"F\",\"sqft\":2055},{\"unit_name\":\"G\",\"sqft\":1395},{\"unit_name\":\"H\",\"sqft\":800},{\"unit_name\":\"I\",\"sqft\":775}]}','Residential',NULL,NULL,NULL,'40 Feet','50 Lac - 1 Crore BDT',NULL,NULL,71,'14','I','','',0,'',NULL,NULL,'','',2,1,32,'2026-04-19 04:09:44','2026-05-06 10:38:31',1,NULL,1,1,1,'On Sale',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(13,'test project from developer','test-project-from-developer-2',2,2,'B+G+9',10,4,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1200}]}','3  Bedrooms',NULL,NULL,NULL,'30','50 Lac - 1 Crore BDT',NULL,NULL,72.5,'12','B','link','',1,'',NULL,NULL,'','',2,1,6,'2026-04-26 06:18:34','2026-06-01 04:06:01',0,NULL,0,0,0,'On Sale',10.00,NULL,'phase_based',120,123,121,129,NULL,124,122,125,126,NULL,128,NULL),(14,'The Premium  Velinor','the-premium-velinor-1',1,3,'G+8',16,2,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1550},{\"unit_name\":\"B\",\"sqft\":1549}]}','',NULL,NULL,NULL,'25','50 Lac - 1 Crore BDT',NULL,NULL,6,'5512,5513','N','https://drive.google.com/file/d/1yLfDmgSSieHuhfOK61ZPgf_AoXW6Xo-n/view','<p>The Premium velinor is designed as an urban oasis, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>',0,'',NULL,NULL,'','',1,0,6,'2026-05-03 04:09:14','2026-05-10 08:40:33',1,NULL,1,1,1,'Sold Out',12.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(15,'The Premium Studio Suite 3.0','the-premium-studio-suite-3-0',2,2,'G+9',36,4,'{\"typical_floor\":[{\"unit_name\":\"(A)\",\"sqft\":800}]}','Studio Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,5,'','D','https://drive.google.com/file/d/1uzJrwuzeB2Rv_NO-B4mX06u5Zg7TN_w2/view?usp=drive_link','',36,'','project_69f6caef36111.webp',NULL,'','',0,0,22,'2026-05-03 04:11:27','2026-05-08 06:21:26',1,NULL,1,1,1,'Sold Out',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,124,NULL,NULL,NULL,NULL,NULL,NULL),(16,'The premium Ariston','the-premium-ariston',1,3,'G+9',9,1,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2050},{\"unit_name\":\"B\",\"sqft\":1049}]}','',NULL,NULL,NULL,'25','1 Crore - 2 Crore BDT','',NULL,5,'','N','https://drive.google.com/file/d/1v8ne9A8Mx2BQXx4tQfN21f3hOeMGOWt8/view','<p>The Premium Ariston is designed as an oasis, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>',1,'',NULL,NULL,'','',1,0,36,'2026-05-03 04:21:59','2026-05-03 04:21:59',0,0,0,0,0,'Sold Out',12.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(17,'The Premium Southpoint Villa','the-premium-southpoint-villa',2,2,'B+G+9',18,2,'{\"typical_floor\":[{\"unit_name\":\"2\",\"sqft\":1600}]}','',NULL,NULL,NULL,'35','Under 50 Lac BDT',NULL,NULL,5,'05','A','','',0,'',NULL,NULL,'','',1,0,6,'2026-05-03 04:49:37','2026-05-10 08:36:58',0,NULL,0,0,0,'Sold Out',NULL,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(19,'The Premium Armonia','the-premium-armonia',1,3,'G+9',10,1,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2250},{\"unit_name\":\"B\",\"sqft\":1050}]}','',NULL,NULL,NULL,'25','50 Lac - 1 Crore BDT',NULL,NULL,5,'','N','https://drive.google.com/file/d/1BUZdgAYG0ETRqfdE4emBkdBVfUWZuOXX/view','<p>The Premium Armonia celebrates nature and sustainable living in Dhakas One of the most popular area. With extensive green spaces, rooftop gardens, and eco-friendly features, this development offers a harmonious blend of urban convenience and natural beauty.</p>',1,'',NULL,NULL,'','',1,0,36,'2026-05-03 05:16:34','2026-05-09 04:04:38',1,NULL,1,1,1,'On Sale',12.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(20,'The Premium Twelfth Heights','the-premium-twelfth-heights',1,3,'B+G+9',32,4,'{\"typical_floor\":[{\"unit_name\":\"B\",\"sqft\":1700},{\"unit_name\":\"C\",\"sqft\":1750},{\"unit_name\":\"D\",\"sqft\":1749}]}','',NULL,NULL,NULL,'25','1 Crore - 2 Crore BDT',NULL,NULL,12,'','N','https://drive.google.com/file/d/1Bh_wRkxVuZkOGe5MQvWpDDASaG5WVabD/view','<p>The Premium Twelfeth Heights is designed as an home, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>',0,'',NULL,NULL,'','',2,0,6,'2026-05-03 05:25:29','2026-05-10 08:38:27',0,NULL,0,0,0,'Sold Out',12.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(21,'The Premium Dream Palace ','the-premium-dream-palace',2,4,'B+G+9',18,2,'{\"typical_floor\":[{\"unit_name\":\"2\",\"sqft\":1600}]}','B+G+9','project_69f6e6f617119.webp',NULL,NULL,'60','50 Lac - 1 Crore BDT','',NULL,5,'','F','https://drive.google.com/file/d/1ytbREUTcj6exjL11PlkRONqP3mXFRphC/view?usp=drive_link','',18,'','project_69f6e6f62838b.webp',NULL,'https://maps.app.goo.gl/n6mvS1oBezu5a5fLA','https://maps.app.goo.gl/n6mvS1oBezu5a5fLA',1,0,25,'2026-05-03 06:11:02','2026-05-03 06:11:02',1,0,0,1,1,'On Sale',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(22,'The Premium Lake View Terrace ','the-premium-lake-view-terrace-1',2,4,'B+G+9',18,2,'{\"typical_floor\":[{\"unit_name\":\"2\",\"sqft\":1600}]}','B+G+9','projects_69f6e8631a5ee.png',NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,5,'','H','https://drive.google.com/file/d/1ZZOtvGeRPOBKwJ_j-FzDhi6LUs4ffBys/view?usp=drive_link ','',18,'','projects_69f6e8632b98c.png','projects_69f6e86322a02.png','https://maps.app.goo.gl/pe5o2BxGpYg8gwZX6','https://maps.app.goo.gl/pe5o2BxGpYg8gwZX6',1,0,25,'2026-05-03 06:14:39','2026-05-03 06:17:07',1,NULL,0,1,1,'On Sale',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(27,'The Premium Skypoint Villa','the-premium-skypoint-villa',2,4,'B+G+9',36,4,NULL,'B+G+9',NULL,NULL,NULL,'30','Under 50 Lac BDT',NULL,NULL,9,'10/11E','D','','',36,'',NULL,NULL,'','',1,0,6,'2026-05-05 12:39:09','2026-05-10 08:28:59',1,NULL,0,1,1,'On Sale',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(28,'TPRC Majesty Tower','tprc-majesty-tower',3,1,'B3+B2+B1+G+20',120,8,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1655},{\"unit_name\":\"B\",\"sqft\":580},{\"unit_name\":\"C\",\"sqft\":725},{\"unit_name\":\"D\",\"sqft\":790},{\"unit_name\":\"E\",\"sqft\":830},{\"unit_name\":\"F\",\"sqft\":725},{\"unit_name\":\"G\",\"sqft\":580},{\"unit_name\":\"H\",\"sqft\":1565}]}','Condominium',NULL,NULL,NULL,'40','50 Lac - 1 Crore BDT','',NULL,71,'14','','','',3,'',NULL,NULL,'','',0,0,32,'2026-05-05 12:39:16','2026-05-05 12:39:16',0,0,0,0,0,'On Sale',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(29,'TPRC Imperial Tower','tprc-imperial-tower',3,1,'B3+B2+B1+G+20',135,9,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":775},{\"unit_name\":\"B\",\"sqft\":800},{\"unit_name\":\"C\",\"sqft\":1395},{\"unit_name\":\"D\",\"sqft\":2055},{\"unit_name\":\"E\",\"sqft\":2055},{\"unit_name\":\"F\",\"sqft\":1230},{\"unit_name\":\"G\",\"sqft\":825},{\"unit_name\":\"H\",\"sqft\":800},{\"unit_name\":\"I\",\"sqft\":1310}]}','Condominium',NULL,NULL,NULL,'40','50 Lac - 1 Crore BDT',NULL,NULL,71,'14','I','','',0,'',NULL,NULL,'','',2,1,6,'2026-05-05 12:44:05','2026-05-14 05:50:15',0,NULL,0,0,0,'On Sale',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(31,'The Premium Fortune Residence','the-premium-fortune-residence',2,4,'G+7',14,2,'{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}','G+7',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,3,'23','H','','',14,'',NULL,NULL,'','',1,0,25,'2026-05-06 10:34:39','2026-05-06 10:34:39',1,0,0,1,0,'Sold Out',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(32,'The Premium Luxoria Residence','the-premium-luxoria-residence',2,4,'G+7',14,2,'{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}','G+7',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,3,'','Shornali','','',14,'',NULL,NULL,'','',1,0,6,'2026-05-06 10:39:31','2026-05-10 08:33:44',1,NULL,0,1,0,'Sold Out',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(33,'The Premium Aurora View','the-premium-aurora-view-1',2,4,'B+G+9',18,2,'{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1600}]}','B+G+9',NULL,NULL,NULL,'25','50 Lac - 1 Crore BDT',NULL,NULL,5,'','K','https://drive.google.com/file/d/1R4xhjovd2fUYGSm0jf9KpMfsf9GxWy6A/view?usp=drive_link','',18,'',NULL,NULL,'','',1,0,22,'2026-05-06 10:43:13','2026-05-08 06:27:50',1,NULL,0,1,1,'On Sale',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(34,'The Premium Southern Residence','the-premium-southern-residence',2,4,'G+7',14,2,'{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}','G+7',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,3,'','F','','',14,'',NULL,NULL,'','',1,0,25,'2026-05-06 10:46:22','2026-05-06 10:46:22',1,0,0,1,1,'Sold Out',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(35,'The Premium Breeze Residence','the-premium-breeze-residence',2,4,'G+7',14,2,'{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}','G+7',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,3,'','H','','',14,'',NULL,NULL,'','',1,0,25,'2026-05-06 10:50:17','2026-05-06 10:50:17',1,0,0,1,1,'Sold Out',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(36,'The Premium Urban Residence ','the-premium-urban-residence',2,4,'G+7',14,2,'{\"typical_floor\":[{\"unit_name\":\"A & B\",\"sqft\":1000}]}','G+7',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,3,'','','','',14,'',NULL,NULL,'','',0,0,25,'2026-05-06 10:52:59','2026-05-06 10:52:59',1,0,0,1,0,'Sold Out',NULL,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(37,'The Premium studio suite 7.0','the-premium-studio-suite-7-0-1',2,4,'G+9',36,4,'{\"typical_floor\":[{\"unit_name\":\"A,B,C,D\",\"sqft\":800}]}','G+9',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,5,'','D','','',36,'',NULL,NULL,'','',1,0,25,'2026-05-06 10:57:25','2026-05-06 10:57:25',1,0,0,1,0,'On Sale',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(38,'The Premium Studio Suite 6.0','the-premium-studio-suite-6-0',2,4,'G+9',72,8,NULL,'Studio Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,5,'','D','https://drive.google.com/file/d/1B4E2T1eyiiwvhAro2SX8gsJMeNkBrMEM/view?usp=drive_link','',1,'',NULL,NULL,'','',0,0,22,'2026-05-07 05:20:47','2026-05-08 06:16:36',1,NULL,1,1,1,'Sold Out',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(39,'The Premium Studio Suite 2.0','the-premium-studio-suite-2-0-1',2,4,'G+9',126,14,NULL,'Studio Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,10,'','D','https://drive.google.com/file/d/1uzJrwuzeB2Rv_NO-B4mX06u5Zg7TN_w2/view?usp=drive_link','',1,'',NULL,NULL,'','',0,0,22,'2026-05-07 05:30:40','2026-05-08 06:20:09',1,NULL,1,1,1,'On Sale',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(40,'The Premium Studio Suite 1.0','the-premium-studio-suite-1-0',2,4,'G+9',72,8,NULL,'Studio Project',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,NULL,'','','','',NULL,'',NULL,NULL,'','',0,0,22,'2026-05-07 05:32:11','2026-05-07 05:32:11',1,0,1,1,1,'Sold Out',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(41,'The Premium Studio Suite 5.0','the-premium-studio-suite-5-0-1',2,4,'G+9',72,8,NULL,'Studio Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,NULL,'','','https://drive.google.com/file/d/19FixkjcPO_o2SyHJL1p682H2bLQIOasI/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,22,'2026-05-07 05:33:47','2026-05-08 06:18:31',1,NULL,1,1,1,'On Sale',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(42,'The Premium Studio Suite 4.0','the-premium-studio-suite-4-0-1',2,4,'G+9',63,8,NULL,'Studio Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,8,'','F','https://drive.google.com/file/d/1tK8xCqAfZTZsYULBGybfUodjR3eJsiq4/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,22,'2026-05-07 05:36:27','2026-05-08 06:19:23',1,NULL,1,1,1,'On Sale',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(43,'SUNLEAF GARDEN (TPSG)','sunleaf-garden-tpsg-1',2,4,'B+G+9',18,2,NULL,'Single Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,NULL,'','','https://drive.google.com/file/d/1ZMckdZAtWUOTofZtDfVRfyHQicNXgUaI/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,22,'2026-05-08 05:40:07','2026-05-08 06:26:38',1,NULL,1,1,1,'Sold Out',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(44,'The Premium Classic Residence','the-premium-classic-residence',2,4,'G+7',14,2,'{\"typical_floor\":[{\"unit_name\":\"(A,B,)\",\"sqft\":1000}]}','Single Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,NULL,'','E','https://drive.google.com/file/d/1B9j6seJQMRtVol-olK6FbepEhfGeoMfL/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,6,'2026-05-08 05:43:02','2026-05-10 08:29:42',1,NULL,1,1,1,'Sold Out',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(45,'FLORAL HAVEN (TPFH)','floral-haven-tpfh-1',2,4,'B+G+9',18,2,'{\"typical_floor\":[{\"unit_name\":\"(A,B,)\",\"sqft\":1600}]}','Single Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,NULL,'','','https://drive.google.com/file/d/1zUUyyN30RSw0asQHyRXcbzVnez3rcpu4/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,22,'2026-05-08 05:48:11','2026-05-08 06:23:58',1,NULL,1,1,1,'Sold Out',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(46,'The Premium Green Heaven','the-premium-green-heaven',2,4,'B+G+9',18,2,NULL,'Single Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,5,'','','https://drive.google.com/file/d/1ieZxyKkpDCQigWxB1G4_RqSsJtAGk0BA/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,6,'2026-05-08 05:57:20','2026-05-10 08:32:17',1,NULL,1,1,1,'Sold Out',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(47,'The Premium Harmony Residence','the-premium-harmony-residence',2,4,'B+G+9',18,2,NULL,'Single Project',NULL,NULL,NULL,'25','Under 50 Lac BDT',NULL,NULL,5,'','','https://drive.google.com/file/d/1LSRYMw514gmBoGnTbjv8W3VS3WOFrJac/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,6,'2026-05-08 06:02:20','2026-05-10 08:31:16',1,NULL,1,1,1,'Sold Out',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(48,'The Premium Glory Garden','the-premium-glory-garden',2,4,'B+G+9',36,4,NULL,'Single Project',NULL,NULL,NULL,' Road: 35 & 25 Feet','Under 50 Lac BDT',NULL,NULL,9,'','','https://drive.google.com/file/d/12g_t6p0qPBOjHb4sMtrJIOq13lR-1Ziy/view?usp=drive_link','',0,'',NULL,NULL,'','',0,0,6,'2026-05-08 06:07:44','2026-05-10 08:32:48',1,NULL,1,1,1,'Sold Out',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(49,'The Premium Prestige Heights','the-premium-prestige-heights',1,3,'G+9',10,1,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2349}]}','',NULL,NULL,NULL,'25','1 Crore - 2 Crore BDT','',NULL,5.65,'','N','','<p>The Premium Prestige Heights celebrates nature and sustainable living in Dhakas One of the most popular area. With extensive green spaces, rooftop gardens, and eco-friendly features, this development offers a harmonious blend of urban convenience and natural beauty.</p>',NULL,'',NULL,NULL,'','',1,0,36,'2026-05-09 04:15:09','2026-05-09 04:15:09',1,0,1,1,1,'On Sale',12.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(50,'The Noble Court','the-noble-court',2,2,'',56,4,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1250},{\"unit_name\":\"B\",\"sqft\":1250},{\"unit_name\":\"C\",\"sqft\":1250},{\"unit_name\":\"D\",\"sqft\":1250}]}','3 BED ROOM',NULL,NULL,NULL,'30 FEET','50 Lac - 1 Crore BDT','',NULL,10.86,'2','B','https://drive.google.com/drive/folders/1XW8WIgf1y2OpB3UTD7doLgRSYgawRU8W','',1,'',NULL,NULL,'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8','The Premium Smart City',2,0,14,'2026-05-09 05:45:31','2026-05-09 05:45:31',1,0,1,1,1,'On Sale',15.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(51,'The Velvet Heights','the-velvet-heights',2,2,'B1+B2+G+14',56,4,'{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1680},{\"unit_name\":\"B\",\"sqft\":1680},{\"unit_name\":\"C\",\"sqft\":1680},{\"unit_name\":\"D\",\"sqft\":1680}]}','3 BEDROOM',NULL,NULL,NULL,'50 FEET','1 Crore - 2 Crore BDT',NULL,NULL,NULL,'','B','','',1,'',NULL,NULL,'','',2,1,6,'2026-05-11 11:50:22','2026-05-13 12:44:23',0,NULL,0,0,0,'On Sale',15.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(52,'The Premium Monarch Residence,','the-premium-monarch-residence',2,4,'G+7',14,2,NULL,'Studio Project',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,3,'','','','',NULL,'',NULL,NULL,'','',0,0,22,'2026-05-12 06:22:26','2026-05-12 06:22:26',1,0,1,1,0,'On Sale',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(53,'The Premium Orchid Residence,','the-premium-orchid-residence',2,4,'G+7',14,2,NULL,'Single Project',NULL,NULL,NULL,'25','Under 50 Lac BDT','',NULL,3,'','','','',NULL,'',NULL,NULL,'','',0,0,22,'2026-05-12 06:26:03','2026-05-12 06:26:03',1,0,1,1,0,'Sold Out',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(54,'The Premium  Green Valley ','the-premium-green-valley',2,4,'B+G+9',18,2,NULL,'Single Project',NULL,NULL,NULL,'','Under 50 Lac BDT','',NULL,5,'','k','','',NULL,'',NULL,NULL,'','',0,0,22,'2026-05-12 06:32:14','2026-05-12 06:32:14',1,0,1,1,1,'Sold Out',10.00,NULL,'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `projects` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -4415,15 +4270,15 @@ DROP TABLE IF EXISTS `property_reviews`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `property_reviews` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `reviewer_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `reviewer_role` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `reviewer_name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `reviewer_role` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `project_id` int DEFAULT NULL,
-  `reviewer_image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `review_video_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `reviewer_image` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `review_video_url` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `rating` tinyint unsigned NOT NULL,
-  `review_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `review_text` text COLLATE utf8mb4_general_ci NOT NULL,
   `review_date` date DEFAULT NULL,
-  `status` enum('active','inactive') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'active',
+  `status` enum('active','inactive') COLLATE utf8mb4_general_ci DEFAULT 'active',
   `created_by` int unsigned NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -4485,7 +4340,7 @@ CREATE TABLE `purchase_orders` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `request_id` int unsigned NOT NULL,
   `created_by` int NOT NULL,
-  `status` enum('Draft','Issued','Partially Received','Fully Received','Cancelled') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
+  `status` enum('Draft','Issued','Partially Received','Fully Received','Cancelled') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
   `order_date` date NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -4493,9 +4348,6 @@ CREATE TABLE `purchase_orders` (
   `approved_by_pm` int DEFAULT '0',
   `se_approved_at` datetime DEFAULT NULL,
   `pm_approved_at` datetime DEFAULT NULL,
-  `qc_approved_by_id` int DEFAULT NULL,
-  `qc_approved_at` datetime DEFAULT NULL,
-  `qc_note` text COLLATE utf8mb4_general_ci,
   PRIMARY KEY (`id`),
   KEY `idx_po_request` (`request_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -4507,7 +4359,7 @@ CREATE TABLE `purchase_orders` (
 
 LOCK TABLES `purchase_orders` WRITE;
 /*!40000 ALTER TABLE `purchase_orders` DISABLE KEYS */;
-INSERT INTO `purchase_orders` VALUES (1,2,127,'Fully Received','2026-05-07','2026-05-07 12:36:10','2026-05-07 12:58:35',0,120,NULL,'2026-05-07 12:36:36',NULL,NULL,NULL),(2,1,137,'Issued','2026-05-18','2026-05-18 05:59:28','2026-05-18 12:32:46',0,120,NULL,'2026-05-18 12:32:46',NULL,NULL,NULL);
+INSERT INTO `purchase_orders` VALUES (1,2,127,'Fully Received','2026-05-07','2026-05-07 12:36:10','2026-05-07 12:58:35',0,120,NULL,'2026-05-07 12:36:36'),(2,1,137,'Issued','2026-05-18','2026-05-18 05:59:28','2026-05-18 12:32:46',0,120,NULL,'2026-05-18 12:32:46');
 /*!40000 ALTER TABLE `purchase_orders` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -4552,15 +4404,15 @@ CREATE TABLE `purchase_requests` (
   `project_id` int NOT NULL,
   `bom_id` int DEFAULT NULL,
   `created_by` int NOT NULL,
-  `status` enum('Draft','Submitted','Approved','Rejected','PO Issued') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
-  `notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `status` enum('Draft','Submitted','Approved','Rejected','PO Issued') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
+  `notes` text COLLATE utf8mb4_general_ci,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   `approved_by_id` bigint unsigned DEFAULT NULL,
   `qc_approved_by_id` int DEFAULT NULL,
   `qc_approved_at` datetime DEFAULT NULL,
-  `qc_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `management_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `qc_note` text COLLATE utf8mb4_general_ci,
+  `management_note` text COLLATE utf8mb4_general_ci,
   `management_approved_amount` decimal(15,2) DEFAULT NULL,
   `assigned_executive_id` int DEFAULT NULL,
   `approved_at` timestamp NULL DEFAULT NULL,
@@ -4591,7 +4443,7 @@ CREATE TABLE `qc_checklists` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `work_type_id` bigint unsigned NOT NULL,
   `material_item_id` bigint unsigned DEFAULT NULL,
-  `checklist_item_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `checklist_item_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `created_by` bigint unsigned NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -4623,8 +4475,8 @@ CREATE TABLE `qc_inspection_items` (
   `qc_inspection_id` bigint unsigned NOT NULL,
   `qc_checklist_id` bigint unsigned NOT NULL,
   `is_passed` tinyint(1) DEFAULT '1',
-  `observation_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `attachment` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `observation_note` text COLLATE utf8mb4_general_ci,
+  `attachment` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_ins_master` (`qc_inspection_id`),
   KEY `fk_ins_checklist` (`qc_checklist_id`),
@@ -4655,9 +4507,9 @@ CREATE TABLE `qc_inspections` (
   `work_type_id` bigint unsigned NOT NULL,
   `inspector_id` bigint unsigned NOT NULL,
   `inspection_date` date NOT NULL,
-  `overall_status` enum('passed','failed','rework_needed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `attachment` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `comments` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `overall_status` enum('passed','failed','rework_needed') COLLATE utf8mb4_general_ci NOT NULL,
+  `attachment` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `comments` text COLLATE utf8mb4_general_ci,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `fk_qc_project` (`project_id`),
@@ -4689,14 +4541,14 @@ CREATE TABLE `qc_material_tests` (
   `work_type_id` int DEFAULT NULL,
   `test_type_id` int DEFAULT NULL,
   `material_receiving_id` int DEFAULT NULL COMMENT 'Nullable: Used only for GRN material tests',
-  `test_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `test_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `test_date` date DEFAULT NULL,
   `age_of_sample` int DEFAULT NULL COMMENT 'e.g., 7 or 28 for concrete cylinder tests',
-  `required_value` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Standard threshold/required value (e.g., 3500 PSI)',
-  `result_value` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `test_status` enum('pass','fail') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'fail',
-  `lab_report_link` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `attachment` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `required_value` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Standard threshold/required value (e.g., 3500 PSI)',
+  `result_value` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `test_status` enum('pass','fail') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'fail',
+  `lab_report_link` text COLLATE utf8mb4_general_ci,
+  `attachment` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -4810,7 +4662,7 @@ CREATE TABLE `quotations` (
   `request_id` int unsigned NOT NULL,
   `vendor_id` int unsigned NOT NULL,
   `validity_date` date DEFAULT NULL,
-  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Active',
+  `status` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Active',
   `attachment` int DEFAULT NULL,
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -4839,21 +4691,23 @@ DROP TABLE IF EXISTS `recovery_action_items`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `recovery_action_items` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `recovery_plan_id` int unsigned NOT NULL,
-  `action_item` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `category` enum('Labour','Procurement','MEP','Execution','Logistics','Design','Finance') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Execution',
-  `priority` enum('High','Medium','Low') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
-  `owner` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `plan_id` int unsigned NOT NULL,
+  `project_id` int DEFAULT NULL,
+  `action_description` text COLLATE utf8mb4_general_ci NOT NULL,
+  `action_item` text COLLATE utf8mb4_general_ci NOT NULL,
+  `category` enum('Labour','Procurement','MEP','Execution','Logistics','Design','Finance') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Execution',
+  `priority` enum('High','Medium','Low') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Medium',
+  `owner` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `start_date` date DEFAULT NULL,
   `due_date` date DEFAULT NULL,
-  `expected_impact` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'e.g. +5% Progress',
-  `dependency` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `status` enum('Open','In Progress','Completed','Blocked') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Open',
-  `approval_status` enum('Pending','Approved','Rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
+  `expected_impact` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'e.g. +5% Progress',
+  `dependency` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `status` enum('Open','In Progress','Completed','Blocked') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Open',
+  `approval_status` enum('Pending','Approved','Rejected') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_rai_plan` (`recovery_plan_id`),
-  CONSTRAINT `fk_rai_plan` FOREIGN KEY (`recovery_plan_id`) REFERENCES `recovery_plans` (`id`) ON DELETE CASCADE
+  KEY `idx_rai_plan` (`plan_id`),
+  CONSTRAINT `fk_rai_plan` FOREIGN KEY (`plan_id`) REFERENCES `recovery_plans` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Module 7: Action items within a recovery plan';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -4876,8 +4730,10 @@ DROP TABLE IF EXISTS `recovery_plans`;
 CREATE TABLE `recovery_plans` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `project_id` int NOT NULL,
+  `phase_id` int unsigned DEFAULT NULL,
   `review_id` int unsigned DEFAULT NULL COMMENT 'Linked monthly review',
-  `recovery_month` date NOT NULL COMMENT 'Month this plan targets',
+  `plan_month` date NOT NULL,
+  `delay_carryforward_pct` decimal(5,2) DEFAULT NULL,
   `delay_carry_forward_pct` decimal(5,2) DEFAULT NULL COMMENT '% delay from previous month',
   `recovery_target_pct` decimal(5,2) DEFAULT NULL COMMENT '+% to recover this month',
   `projected_extra_progress_pct` decimal(5,2) DEFAULT NULL COMMENT 'Total extra % achievable',
@@ -4885,13 +4741,15 @@ CREATE TABLE `recovery_plans` (
   `additional_labour` int NOT NULL DEFAULT '0',
   `extra_budget_lac` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT 'In Lacs',
   `extra_working_hours` int NOT NULL DEFAULT '0',
+  `pm_notes` text COLLATE utf8mb4_general_ci,
+  `status` varchar(50) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
   `contractor_teams_added` tinyint NOT NULL DEFAULT '0',
-  `project_manager_notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `final_decision` enum('Approve','Approve with Conditions','Hold') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `decision_conditions` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `project_manager_notes` text COLLATE utf8mb4_general_ci,
+  `final_decision` enum('Approve','Approve with Conditions','Hold') COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `decision_conditions` text COLLATE utf8mb4_general_ci,
   `decision_by` int DEFAULT NULL,
   `decision_at` datetime DEFAULT NULL,
-  `approval_status` enum('Draft','PM Submitted','Management Review','Finance Clearance','Approved','Rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
+  `approval_status` enum('Draft','PM Submitted','Management Review','Finance Clearance','Approved','Rejected') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
   `pm_submitted_at` datetime DEFAULT NULL,
   `management_reviewed_at` datetime DEFAULT NULL,
   `finance_cleared_at` datetime DEFAULT NULL,
@@ -4928,7 +4786,7 @@ CREATE TABLE `role_permissions` (
   PRIMARY KEY (`id`),
   KEY `permission_id` (`permission_id`),
   KEY `role_id` (`role_id`,`permission_id`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=728 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=734 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4937,7 +4795,7 @@ CREATE TABLE `role_permissions` (
 
 LOCK TABLES `role_permissions` WRITE;
 /*!40000 ALTER TABLE `role_permissions` DISABLE KEYS */;
-INSERT INTO `role_permissions` VALUES (26,7,12,'2026-02-05 07:06:27','2026-02-05 07:06:27'),(27,7,13,'2026-02-05 07:06:27','2026-02-05 07:06:27'),(79,11,13,'2026-04-02 08:11:08','2026-04-02 08:11:08'),(80,11,22,'2026-04-02 08:11:08','2026-04-02 08:11:08'),(85,10,23,'2026-04-02 08:11:48','2026-04-02 08:11:48'),(86,10,13,'2026-04-02 08:11:48','2026-04-02 08:11:48'),(87,10,19,'2026-04-02 08:11:48','2026-04-02 08:11:48'),(88,8,15,'2026-04-06 09:20:46','2026-04-06 09:20:46'),(89,8,20,'2026-04-06 09:20:46','2026-04-06 09:20:46'),(90,8,13,'2026-04-06 09:20:46','2026-04-06 09:20:46'),(120,5,17,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(121,5,20,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(122,5,7,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(123,5,24,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(124,5,13,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(133,1,10,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(134,1,3,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(135,1,1,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(136,1,5,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(137,1,21,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(138,1,12,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(139,1,6,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(140,1,25,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(141,1,14,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(142,1,11,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(143,1,7,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(144,1,24,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(145,1,4,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(146,1,13,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(147,1,2,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(164,4,6,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(165,4,25,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(166,4,20,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(167,4,8,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(168,4,24,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(169,4,13,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(170,9,25,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(171,9,24,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(172,9,13,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(173,9,19,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(177,6,10,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(178,6,25,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(179,6,20,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(180,6,13,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(417,14,27,'2026-04-30 04:56:20','2026-04-30 04:56:20'),(437,16,34,'2026-04-30 04:58:52','2026-04-30 04:58:52'),(442,19,41,'2026-04-30 05:30:57','2026-04-30 05:30:57'),(443,19,31,'2026-04-30 05:30:57','2026-04-30 05:30:57'),(470,21,48,'2026-04-30 05:33:10','2026-04-30 05:33:10'),(476,18,39,'2026-05-04 06:53:40','2026-05-04 06:53:40'),(477,13,49,'2026-05-05 04:23:42','2026-05-05 04:23:42'),(573,17,44,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(574,17,38,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(575,17,35,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(576,17,36,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(612,15,41,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(613,15,26,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(614,15,45,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(615,15,40,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(616,15,31,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(617,15,28,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(618,15,27,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(619,15,33,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(620,15,44,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(621,15,43,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(622,15,38,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(623,15,34,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(624,15,29,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(625,15,46,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(626,15,48,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(627,15,32,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(628,15,35,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(629,15,30,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(630,15,36,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(631,15,50,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(632,15,42,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(633,3,10,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(634,3,3,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(635,3,1,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(636,3,5,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(637,3,39,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(638,3,47,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(639,3,41,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(640,3,21,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(641,3,12,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(642,3,26,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(643,3,45,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(644,3,31,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(645,3,6,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(646,3,28,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(647,3,27,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(648,3,25,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(649,3,33,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(650,3,44,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(651,3,43,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(652,3,14,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(653,3,8,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(654,3,38,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(655,3,34,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(656,3,29,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(657,3,46,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(658,3,48,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(659,3,32,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(660,3,35,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(661,3,11,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(662,3,7,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(663,3,24,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(664,3,4,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(665,3,30,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(666,3,13,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(667,3,36,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(668,3,50,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(669,3,42,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(670,22,26,'2026-05-17 04:03:24','2026-05-17 04:03:24'),(671,22,51,'2026-05-17 04:03:24','2026-05-17 04:03:24'),(672,22,50,'2026-05-17 04:03:24','2026-05-17 04:03:24'),(674,23,35,'2026-05-17 18:18:13','2026-05-17 18:18:13'),(700,12,45,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(701,12,40,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(702,12,28,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(703,12,27,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(704,12,33,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(705,12,34,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(706,12,46,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(707,12,32,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(708,12,52,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(709,12,30,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(710,12,42,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(711,20,47,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(712,20,45,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(713,20,43,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(714,20,46,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(715,20,35,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(716,20,53,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(717,24,54,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(718,25,54,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(719,24,49,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(720,25,49,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(721,20,55,'2026-05-24 10:25:21','2026-05-24 10:25:21'),(722,1,55,'2026-05-24 10:25:32','2026-05-24 10:25:32'),(723,3,55,'2026-05-24 10:25:42','2026-05-24 10:25:42'),(724,24,55,'2026-05-24 10:25:52','2026-05-24 10:25:52'),(725,25,55,'2026-05-24 10:26:02','2026-05-24 10:26:02'),(726,17,55,'2026-05-24 10:26:11','2026-05-24 10:26:11'),(727,6,55,'2026-05-24 10:26:22','2026-05-24 10:26:22');
+INSERT INTO `role_permissions` VALUES (26,7,12,'2026-02-05 07:06:27','2026-02-05 07:06:27'),(27,7,13,'2026-02-05 07:06:27','2026-02-05 07:06:27'),(79,11,13,'2026-04-02 08:11:08','2026-04-02 08:11:08'),(80,11,22,'2026-04-02 08:11:08','2026-04-02 08:11:08'),(85,10,23,'2026-04-02 08:11:48','2026-04-02 08:11:48'),(86,10,13,'2026-04-02 08:11:48','2026-04-02 08:11:48'),(87,10,19,'2026-04-02 08:11:48','2026-04-02 08:11:48'),(88,8,15,'2026-04-06 09:20:46','2026-04-06 09:20:46'),(89,8,20,'2026-04-06 09:20:46','2026-04-06 09:20:46'),(90,8,13,'2026-04-06 09:20:46','2026-04-06 09:20:46'),(120,5,17,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(121,5,20,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(122,5,7,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(123,5,24,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(124,5,13,'2026-04-07 10:14:19','2026-04-07 10:14:19'),(133,1,10,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(134,1,3,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(135,1,1,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(136,1,5,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(137,1,21,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(138,1,12,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(139,1,6,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(140,1,25,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(141,1,14,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(142,1,11,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(143,1,7,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(144,1,24,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(145,1,4,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(146,1,13,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(147,1,2,'2026-04-07 12:49:38','2026-04-07 12:49:38'),(164,4,6,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(165,4,25,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(166,4,20,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(167,4,8,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(168,4,24,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(169,4,13,'2026-04-07 12:50:01','2026-04-07 12:50:01'),(170,9,25,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(171,9,24,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(172,9,13,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(173,9,19,'2026-04-07 12:50:21','2026-04-07 12:50:21'),(177,6,10,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(178,6,25,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(179,6,20,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(180,6,13,'2026-04-10 08:55:37','2026-04-10 08:55:37'),(417,14,27,'2026-04-30 04:56:20','2026-04-30 04:56:20'),(437,16,34,'2026-04-30 04:58:52','2026-04-30 04:58:52'),(442,19,41,'2026-04-30 05:30:57','2026-04-30 05:30:57'),(443,19,31,'2026-04-30 05:30:57','2026-04-30 05:30:57'),(470,21,48,'2026-04-30 05:33:10','2026-04-30 05:33:10'),(476,18,39,'2026-05-04 06:53:40','2026-05-04 06:53:40'),(477,13,49,'2026-05-05 04:23:42','2026-05-05 04:23:42'),(573,17,44,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(574,17,38,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(575,17,35,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(576,17,36,'2026-05-07 11:16:53','2026-05-07 11:16:53'),(612,15,41,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(613,15,26,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(614,15,45,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(615,15,40,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(616,15,31,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(617,15,28,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(618,15,27,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(619,15,33,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(620,15,44,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(621,15,43,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(622,15,38,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(623,15,34,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(624,15,29,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(625,15,46,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(626,15,48,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(627,15,32,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(628,15,35,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(629,15,30,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(630,15,36,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(631,15,50,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(632,15,42,'2026-05-10 12:37:13','2026-05-10 12:37:13'),(633,3,10,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(634,3,3,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(635,3,1,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(636,3,5,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(637,3,39,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(638,3,47,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(639,3,41,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(640,3,21,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(641,3,12,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(642,3,26,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(643,3,45,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(644,3,31,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(645,3,6,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(646,3,28,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(647,3,27,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(648,3,25,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(649,3,33,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(650,3,44,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(651,3,43,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(652,3,14,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(653,3,8,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(654,3,38,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(655,3,34,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(656,3,29,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(657,3,46,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(658,3,48,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(659,3,32,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(660,3,35,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(661,3,11,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(662,3,7,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(663,3,24,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(664,3,4,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(665,3,30,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(666,3,13,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(667,3,36,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(668,3,50,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(669,3,42,'2026-05-10 12:37:23','2026-05-10 12:37:23'),(670,22,26,'2026-05-17 04:03:24','2026-05-17 04:03:24'),(671,22,51,'2026-05-17 04:03:24','2026-05-17 04:03:24'),(672,22,50,'2026-05-17 04:03:24','2026-05-17 04:03:24'),(674,23,35,'2026-05-17 18:18:13','2026-05-17 18:18:13'),(700,12,45,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(701,12,40,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(702,12,28,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(703,12,27,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(704,12,33,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(705,12,34,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(706,12,46,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(707,12,32,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(708,12,52,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(709,12,30,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(710,12,42,'2026-05-17 19:27:57','2026-05-17 19:27:57'),(711,20,47,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(712,20,45,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(713,20,43,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(714,20,46,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(715,20,35,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(716,20,53,'2026-05-17 19:37:33','2026-05-17 19:37:33'),(717,24,54,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(718,25,54,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(719,24,49,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(720,25,49,'2026-05-24 09:31:58','2026-05-24 09:31:58'),(721,20,55,'2026-05-24 10:25:21','2026-05-24 10:25:21'),(722,1,55,'2026-05-24 10:25:32','2026-05-24 10:25:32'),(723,3,55,'2026-05-24 10:25:42','2026-05-24 10:25:42'),(724,24,55,'2026-05-24 10:25:52','2026-05-24 10:25:52'),(725,25,55,'2026-05-24 10:26:02','2026-05-24 10:26:02'),(726,17,55,'2026-05-24 10:26:11','2026-05-24 10:26:11'),(727,6,55,'2026-05-24 10:26:22','2026-05-24 10:26:22'),(731,2,5,'2026-06-06 04:37:42','2026-06-06 04:37:42'),(732,2,20,'2026-06-06 04:37:42','2026-06-06 04:37:42'),(733,2,13,'2026-06-06 04:37:42','2026-06-06 04:37:42');
 /*!40000 ALTER TABLE `role_permissions` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -4950,7 +4808,7 @@ DROP TABLE IF EXISTS `roles`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `roles` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(200) COLLATE utf8mb4_general_ci NOT NULL,
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -5009,26 +4867,26 @@ DROP TABLE IF EXISTS `site_settings`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `site_settings` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `website_title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `website_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `footer_text` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `white_logo` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `dark_logo` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `phone` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `alt_phone` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `alt_email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `copyright` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `facebook_link` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `messenger_link` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `instagram_link` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `tiktok_link` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `x_link` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `youtube_link` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `header_code` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `body_code` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `client_declaration` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `website_title` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `website_url` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `footer_text` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `white_logo` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `dark_logo` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `phone` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `alt_phone` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `email` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `alt_email` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `address` text COLLATE utf8mb4_general_ci,
+  `copyright` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `facebook_link` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `messenger_link` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `instagram_link` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `tiktok_link` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `x_link` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `youtube_link` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `header_code` text COLLATE utf8mb4_general_ci,
+  `body_code` text COLLATE utf8mb4_general_ci,
+  `client_declaration` text COLLATE utf8mb4_general_ci,
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -5060,8 +4918,8 @@ CREATE TABLE `site_visits` (
   `flat_id` int DEFAULT NULL,
   `visit_date` date NOT NULL,
   `visit_time` time DEFAULT NULL,
-  `visit_status` enum('scheduled','completed','cancelled','no_show') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'scheduled',
-  `feedback` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `visit_status` enum('scheduled','completed','cancelled','no_show') COLLATE utf8mb4_general_ci DEFAULT 'scheduled',
+  `feedback` text COLLATE utf8mb4_general_ci,
   `created_by` int unsigned DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -5090,10 +4948,10 @@ DROP TABLE IF EXISTS `sliders`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sliders` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `subtitle` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `link` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `title` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `subtitle` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `link` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `image` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `status` tinyint(1) DEFAULT '1' COMMENT '1 = Active, 0 = Inactive',
   `created_by` int DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
@@ -5123,9 +4981,9 @@ CREATE TABLE `soil_tests` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `project_id` int NOT NULL,
   `site_engineer_id` int NOT NULL,
-  `field_data` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `field_test_doc_link` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `lab_test_document_link` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `field_data` text COLLATE utf8mb4_general_ci,
+  `field_test_doc_link` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `lab_test_document_link` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `test_date` date DEFAULT NULL,
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -5147,60 +5005,6 @@ INSERT INTO `soil_tests` VALUES (1,13,123,NULL,'https://demediciassociates.com/s
 UNLOCK TABLES;
 
 --
--- Table structure for table `target_fixed`
---
-
-DROP TABLE IF EXISTS `target_fixed`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `target_fixed` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `project_id` int NOT NULL,
-  `work_plan_id` int DEFAULT NULL,
-  `work_order_id` int DEFAULT NULL,
-  `floor_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `target_title` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `user_id` int NOT NULL,
-  `year` smallint unsigned NOT NULL,
-  `month` tinyint unsigned NOT NULL,
-  `week_number` tinyint unsigned DEFAULT NULL,
-  `target_percentage` decimal(5,2) NOT NULL DEFAULT '0.00',
-  `gain_percentage` decimal(5,2) DEFAULT '0.00',
-  `photo_link` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `field_test_details` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `lab_test_result` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `approved_by_site_eng` tinyint(1) NOT NULL DEFAULT '0',
-  `approved_by_qc` tinyint(1) NOT NULL DEFAULT '0',
-  `approved_by_pc` tinyint(1) NOT NULL DEFAULT '0',
-  `approved_by_pd` tinyint(1) NOT NULL DEFAULT '0',
-  `approved_by_manager` tinyint(1) NOT NULL DEFAULT '0',
-  `qc_reviewed_by_id` int DEFAULT NULL,
-  `is_lab_test` int NOT NULL DEFAULT '0',
-  `lab_test_date` date DEFAULT NULL,
-  `target_details` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `description` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `qc_reviewed_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `manager_approved_by_id` bigint unsigned DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_tf_project` (`project_id`),
-  KEY `idx_tf_user` (`user_id`),
-  KEY `idx_tf_qc_reviewed_by` (`qc_reviewed_by_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `target_fixed`
---
-
-LOCK TABLES `target_fixed` WRITE;
-/*!40000 ALTER TABLE `target_fixed` DISABLE KEYS */;
-INSERT INTO `target_fixed` VALUES (1,13,1,NULL,NULL,'0',123,2026,5,1,25.00,0.00,NULL,NULL,NULL,0,1,0,0,1,126,0,NULL,'test',NULL,'2026-05-05 13:28:44','2026-05-05 13:20:01','2026-05-05 13:29:15',NULL),(2,13,1,NULL,NULL,'Test Week 1',123,2026,5,1,25.00,0.00,NULL,NULL,NULL,0,0,0,0,0,NULL,0,NULL,'Column,Beam,Footing',NULL,NULL,'2026-05-07 12:07:42',NULL,NULL),(3,13,1,NULL,NULL,'Column Cast',120,2026,5,1,25.00,80.00,NULL,'1 column error','test 80',0,1,0,0,1,126,0,NULL,'Column\r\nBeam\r\nFooting',NULL,'2026-05-07 13:12:59','2026-05-07 12:09:08','2026-05-07 13:12:59',NULL);
-/*!40000 ALTER TABLE `target_fixed` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `tasks`
 --
 
@@ -5211,14 +5015,14 @@ CREATE TABLE `tasks` (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id` int unsigned NOT NULL,
   `assigned_by` int DEFAULT NULL,
-  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `title` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `description` text COLLATE utf8mb4_general_ci,
   `start_date` date DEFAULT NULL,
   `deadline` datetime DEFAULT NULL,
   `employee_accept` tinyint(1) DEFAULT '0',
-  `status` enum('pending','in_progress','completed','expired') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `status` enum('pending','in_progress','completed','expired') COLLATE utf8mb4_general_ci DEFAULT 'pending',
   `progress` int DEFAULT '0',
-  `priority` enum('low','medium','high','urgent') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'medium',
+  `priority` enum('low','medium','high','urgent') COLLATE utf8mb4_general_ci DEFAULT 'medium',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -5245,7 +5049,7 @@ DROP TABLE IF EXISTS `teams`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `teams` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `status` int NOT NULL DEFAULT '1',
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -5273,7 +5077,7 @@ DROP TABLE IF EXISTS `units`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `units` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
@@ -5300,18 +5104,18 @@ DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
   `id` int NOT NULL AUTO_INCREMENT,
   `employee_id` int unsigned DEFAULT NULL,
-  `full_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `user_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `full_name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `user_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `phone` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `email` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `designation_id` int DEFAULT NULL,
-  `address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `nid` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `address` text COLLATE utf8mb4_general_ci,
+  `nid` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `role_id` int NOT NULL,
-  `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `photo` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `media_link1` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `media_link2` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `password` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `photo` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `media_link1` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `media_link2` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `last_logout` datetime DEFAULT CURRENT_TIMESTAMP,
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -5330,7 +5134,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,0,'Farzana','farzana','01873244236','farzana.tphl@gmail.com',28,'Dhaka','123',1,'$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS',NULL,'','','2026-04-09 05:34:11',6,'2026-02-22 06:47:08','2026-04-30 04:25:17',0),(2,NULL,'Sojib','sojib','01798342755','sales@gmail.com',1,'Dhaka',NULL,5,'$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS',NULL,NULL,NULL,'2026-05-09 04:45:14',NULL,'2026-02-22 06:47:08','2026-05-09 04:45:14',NULL),(3,1,'Fahim','Fahim','01790128471','fahim@gmail.com',0,'Mohammadpur, Dhaka-1207','23445',8,'$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG',NULL,'','','2026-04-19 05:54:47',4,'2026-02-23 03:24:25','2026-04-19 05:54:47',0),(4,1008,'Md. Jasim Uddin','Jasim Uddin','01762013007','hr@gmail.com',14,'House:01, Road:03, Block: B, Section:02, Mirpur, Dhaka-1216.','1903663282',4,'$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry',NULL,'','','2026-04-24 12:21:28',4,'2026-02-23 05:44:19','2026-04-24 12:21:28',NULL),(5,0,'Mr. Jisan','Mr. Jisan','01390128223','accounts@gmail.com',3,'Mohammadpur, Dhaka-1207','2345676',6,'$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6',NULL,'','','2026-04-08 09:48:37',6,'2026-02-23 06:11:06','2026-04-08 09:48:37',NULL),(6,1,'Management','Management','01933657804','management@gmail.com',0,'dhaka','32453',3,'$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW',NULL,'','','2026-05-23 15:31:30',110,'2026-03-29 03:44:44','2026-05-23 15:31:30',0),(7,NULL,'CED','CED','01872364346','ced@gmail.com',1,'Dhaka','823445',7,'$2y$10$a51psvUGsp/WsSE5cY2xNuKpuKSNoG/QZNNxxfWs0I.eSPM1KPAX.',NULL,'','','2026-03-31 12:05:54',6,'2026-03-29 04:01:38','2026-03-31 12:05:54',NULL),(8,NULL,'Sales Team Head','Sales Head','01327488234','sales-head@gmail.com',1,'Dhaka','09231943',9,'$2y$10$Hr8gjcm14bLK/Ns6ws/pt.jz0PA5ObSc.jo4Z7epS23UsEkVDUXn.',NULL,'','','2026-04-08 09:30:55',1,'2026-03-29 04:16:47','2026-04-08 09:30:55',NULL),(9,3,'Md. rafi','admin_39_','01234567890','rafi@easytechx.com',9,'ADDL Tower, Dhanmondi 27/A','',8,'$2y$10$nId2sBtusb0qFr2136IMrOZVDVkHq8RTjbsJIzgZ8GpaDXDTMhhHG',NULL,'','','2026-03-29 10:24:18',0,'2026-03-29 10:23:39','2026-03-30 16:36:23',NULL),(11,5,'Bornali Haque','Bornali Haque','01335258340','bornalihaque.tphl@gmail.com',13,'RUAP, Uttara 18, Dhaka','',2,'$2y$10$R9YSZd3L1v262q20VEtdG.dyT9xPRWmHFtjeTvwao5i8i24T5Hpm.',NULL,'','','2026-03-31 08:48:42',0,'2026-03-29 10:31:45','2026-04-11 08:52:14',0),(12,8,'Sanjana Hossain Moure','sanjana moure','01901310848','moure.tphl@gmail.com',15,'Mirpur-2 water tank, Block - F, road -3, Dhaka -1216','',8,'$2y$10$2J2ciVq5whQHb80.zq0zYuQcH.eb0B3pagwhnmx9TEsy.elK3J1ry',NULL,'','','2026-03-30 05:15:10',0,'2026-03-30 05:15:10','2026-03-30 16:36:23',NULL),(13,9,'Md. Rabbi Hossain','rabbi hossain','0 1901-3108','rabbihossain.tphl@gmail.com',20,'Baro Bazar, Ashulia Model Town, Savar, Dhaka.','',8,'$2y$10$uWAvlmxoW/gvdDhxn.IT9.HU7.NBPwqpbWipciGD0eZWdJQ6z9vvG',NULL,'','','2026-03-30 05:15:44',0,'2026-03-30 05:15:44','2026-04-12 11:40:43',4),(14,7,'Saleh Ahamed','saleh ahmed','0 1901-3650','saleh.tphl@gmail.com',21,'','',5,'$2y$10$fsUbevYAvi9OQguKgaiyEOzj/63NgEbIFqoqshjTVDdjkBrNhQ.Sq',NULL,'','','2026-04-30 05:27:15',0,'2026-03-30 05:18:44','2026-04-30 05:27:15',4),(15,6,'Md. Kawsar Ahammed','kowsar ahammed','01901310845','kawsar.tphl@gmail.com',21,'Vill: Bhubangati, Post: Biswarigacha, Thana: Dhunat, Zilla: Bogura','',5,'$2y$10$o4oawe3QpdDiLJTIH4chT.gwAdLBA52i.HFtGH.M1KDmjzkTfFDZy',NULL,'','','2026-04-25 03:54:29',0,'2026-03-30 05:19:07','2026-04-25 03:54:29',0),(16,0,'Ashfaque Bhuiyan Omi','Ashfaque Omi','01958253303','ashfaqueomi.tphl25@gmail.com',20,'Darul Aman Housing, Mirpur-2, Dhaka - 1206','',2,'$2y$10$29JSW4M8FbD3VNZnoUD8AOXB5LRrqo7vS22WMNfWezI11UlsObVCa',NULL,'','','2026-03-30 05:19:52',0,'2026-03-30 05:19:52','2026-03-30 16:36:23',NULL),(18,10,'Mehnaz Ahmed','mehnaz ahmed','0 1901-3650','mehnaz.tphl@gmail.com',20,'South chayabithi, Joydebpur, Gazipur','9160336244',8,'$2y$10$edszxcW7aAhMpXKVGUIZZePVtP.RhKwPuC8vA2baFfd8jmrYS8mEG',NULL,'','','2026-03-30 05:26:05',0,'2026-03-30 05:26:05','2026-03-30 16:36:23',NULL),(19,11,'Mr. Ibrahim Khalil','ibrahim khalil','01958253319','ibrahim.tphl@gmail.com',20,'5/9, Dakkhin Rajashon, Savar, Dhaka','2805006299',8,'$2y$10$iSTZaE4q9PCH.qM.53lFp.4EuEh2KoQKQRkD/q4SGrvV9Un84T1Pa',NULL,'','','2026-03-30 05:30:21',0,'2026-03-30 05:30:21','2026-03-30 16:36:23',NULL),(20,12,'Shammi Akther','shammi akhter','0 1901-3108','shammi.tphl@gmail.com',20,'13 no sector ,uttara.','',5,'$2y$10$bOb3g/W82j7pq3Jk9s520uIK1KOulFlbRWN4NVT55EC/1NxigzSJm',NULL,'','','2026-05-07 11:05:31',0,'2026-03-30 05:35:10','2026-05-07 11:05:31',10),(21,13,'Rejwan Ahmed','rejwan ahmad','01901365040','rejwantphl@gmail.com',21,'Sreemangal, Moulvibazar.','',5,'$2y$10$kQcMOXqxvt92qxB0nnSFtexGzH.iIcEQMC66.kOAasjnr943R9lBG',NULL,'','','2026-03-30 05:40:37',0,'2026-03-30 05:40:37','2026-04-06 06:29:52',2),(22,14,'MD. Feroz Ahamed','feroz ahamed','01958253327','feroz.tphl@gmail.com',20,'Savar, Dhaka','',5,'$2y$10$7hG94FPqPG5HzIWpCm/8QufyocDjtDn.onUagAcqBZEMNRvMX6Z/e',NULL,'','','2026-04-07 04:40:50',0,'2026-03-30 05:47:14','2026-04-07 04:40:50',9),(23,15,'Mojammel Haque','mojammel haque','01958253324','mojammel.tphl@gmail.com',21,'B-4, G-1, Sher-E-Bangla Nagar Staff Quarter, Dhaka-1207','',5,'$2y$10$U15bgAj.WrcLRkMMhITZXOezRY5D9EqGXHeNN79JuKjwaygBddySy',NULL,'','','2026-05-06 10:46:45',6,'2026-03-30 05:51:15','2026-05-06 10:46:45',0),(25,17,'Rakib Al Hasan','rakibal hasan','01958253321','rakib.tphl@gmail.com',20,'Daffodil smart city, Birulia savar Dhaka','',5,'$2y$10$yBQjX3SvmWQXO2cA.ol4B.zPmjIqbyUiqysRN7HTZfXLlo4Z95qfq',NULL,'','','2026-04-16 12:12:39',0,'2026-03-30 06:43:56','2026-04-16 12:12:39',8),(26,18,'Md. Nazmul Khan Shihab','khan Shihab','01958253326','shihab.tphl@gmail.com',20,'2450/11,East Dandabor, Palashbari, Savar cantonment -1344, Savar, Dhaka','',8,'$2y$10$b/geGkDCcdjnJY4j931Ia.YyXu1/FBrONUVr8jCr9csPFZXJ8BYMi',NULL,'','','2026-03-30 06:50:40',0,'2026-03-30 06:50:40','2026-04-12 11:58:01',10),(27,19,'Munshi Aiman Kabir','aiman kabir','01958253318','aiman.tphl@gmail.com',20,'Savar, Dhaka','',8,'$2y$10$lxze0zOCDKCiYZanahnfO.8tgO6v4MZiK8OBHsMxiXr7/4qH3s2FO',NULL,'','','2026-03-30 07:01:11',0,'2026-03-30 07:01:11','2026-04-16 07:46:31',4),(28,20,'Md. Tariqul Islam Illion','tariqul islam','0 1958-2533','illion.tphl@gmail.com',20,'Ashulia Model Town, Khagan Bazar, Birulia, Savar, Dhaka','',0,'$2y$10$Sj/S3IIUnt4EttdRVs/lXOCGvn9i/funVCadYEXd0ENgLdmEXSZF6',NULL,'','','2026-03-30 07:06:02',6,'2026-03-30 07:06:02','2026-05-13 11:11:43',0),(29,21,'Shafia Afrin Shahana','Shafia Afrin Shahana','01335258332','shafia.tphl@gmail.com',15,'Apon Bazar Samiti Market, Rayerbag, Jatrabari, Dhaka','',5,'$2y$10$jg9yoH8rHsH2A7wrOb6D8urj1iUv889LWfvhL3dU95RDg8t7HIYpK',NULL,'','','2026-05-13 11:15:12',0,'2026-03-30 07:56:24','2026-05-13 11:15:12',11),(30,22,'Abir Ahmed','Abir Ahmed','01335258328','abir0.tphl@gmail.com',15,'Poshu Hospital Para, Magura Sadar,Magura','',8,'$2y$10$IU8I8sJvyYl06UUHgy8XHuzHv66J7mAfVdPACHogEpVjTZ8Wuq2bG',NULL,'','','2026-03-30 08:29:14',0,'2026-03-30 08:29:14','2026-04-12 11:58:59',10),(31,23,'Shanawaz Khan','Shanawaz Khan','01335258330','shanawaz.tphl@gmail.com',15,'House-12,Road-4,Block-J,Banasree Meradia Khilgaon Dhaka 1219','',8,'$2y$10$Px7TN7veOADIqwYdPfISbOLfxqwEkSq9S1R8sTPWDUpAYRo4hb4uS',NULL,'','','2026-05-09 04:03:04',0,'2026-03-30 08:42:17','2026-05-09 04:03:04',3),(32,24,'Md. Saiful Islam Jony','saiful jony','01958253340','saif.thpl@gmail.com',21,'104/A/9 Buddhibi Road,Mohammadpur,Dhaka-1207','',5,'$2y$10$iJlvDYNOYQ5.AFtGpin74uRVIvXn//mKEgfeHXBvVTXXvqLEteiJa',NULL,'','','2026-04-20 05:23:04',0,'2026-03-30 08:46:37','2026-04-20 05:23:04',12),(33,25,'Aranya Bhowmick Dhrubo','Aranya Bhowmick Dhrubo','01335258329','dhrubo.tphl@gmail.com',20,'15 Shah-Shaheb Lane Narinda, Dhaka','',8,'$2y$10$U/nrFg9Eyc.ss5Oi2gFWV.BgzE8NXmjGHyhD9aY2VLUaGv9dr8KwO',NULL,'','','2026-03-30 08:47:19',0,'2026-03-30 08:47:19','2026-04-12 11:55:20',2),(34,26,'Tabassum Akter Soma','tabassum soma','01958253374','soma.tphl@gmail.com',23,'Ashulia Model Town, Savar, Dhaka','',8,'$2y$10$tfmvA.ksOc8S9hmYTwU5Xut8ERUg7YztJfCydw1f9.K4jRF.HKBom','users_69d480ed67778.jpg','','','2026-03-30 08:50:26',0,'2026-03-30 08:50:26','2026-04-12 11:54:19',9),(35,27,'Sadat Hossain','Sadat Hossain','01335258331','sadathossain11@gmail.com',15,'116, Jagannath Saha Road, Lalbagh, Dhaka-1211','',8,'$2y$10$cRtbvkGvyjShTPIsq0egPO4PYdXmFT3jJ5NzOBGAKeu823cA2CA7K',NULL,'','','2026-03-30 08:52:52',0,'2026-03-30 08:52:52','2026-04-12 12:09:57',6),(36,28,'Md. Ajizul Islam Manik','ajizul manik','01958253338','manik.tphl@gmail.com',20,'1/B , Nondipara, Dhaka ,1219','',5,'$2y$10$fGHgvRrPvCdxk8IUbwWnse1eebLaQ2c6q3h4pbfPmGkOb.hP60IH.',NULL,'','','2026-05-09 04:19:04',0,'2026-03-30 08:56:43','2026-05-09 04:19:04',3),(37,29,'Tasnur Aman Satu','aman satu','01958253363','satu.tphl@gmail.com',20,'kumkumari- Midha bari','',8,'$2y$10$B8RxH6k07S5uVYeOQdAySusGhyguSq1rwA5ZNa7DcFbo.kd7jwNCe',NULL,'','','2026-03-30 09:00:39',0,'2026-03-30 09:00:39','2026-04-12 11:53:21',8),(38,30,'Md. Tasdikul Hasan Sikder','Md. Tasdikul Hasan Sikder','01335258317','tasdik.tphl@gmail.com',13,'523 East Kazipara, Dhaka, Mirpur-1216','',8,'$2y$10$hvyLcozNhFKHKyzSHob2LurUMAn1cka7WeuKy6354xGTxHOCEFMv.',NULL,'','','2026-03-30 09:03:57',0,'2026-03-30 09:03:57','2026-04-12 11:59:21',10),(40,31,'Qazi Nadeem Javed','Qazi Nadeem Javed','‪0195825333','nadeem.tphl@gmail.com',25,'Sector 10 Road 7 uttara','2350020026',2,'$2y$10$HwTS4uTRRrfpsjH0iIssnO2q8R1aJb/JKRdGmr8vK3Od7JyC8RaU.',NULL,'','','2026-03-30 09:09:53',0,'2026-03-30 09:09:53','2026-03-30 16:36:23',NULL),(41,32,'Nayeemur Rahman','Nayeemur Rahman','01335258318','nayeemtonmoytphl@gmail.com',15,'Road No. 4, F Block, Mirpur-2','',8,'$2y$10$vNpgHQwRP33k2ftwwnzuuO8mJSGtb2K6MSgQyyzBm5hlu1pxQKt0.',NULL,'','','2026-03-30 09:12:53',0,'2026-03-30 09:12:53','2026-04-12 11:57:29',3),(42,33,'Mahin - Al Beruni','Mahin - Al Beruni','01958253328','tphl.mahin@gmail.com',26,'House 40/3, Varalipara, Boro Bangram, Sopura, Shah Mokhdum, Rajshahi - 6203','8710606925',2,'$2y$10$w0GwPk82B7c/775XmUq6V.XOJnByBk5qE3Ux5I6nJB.0m2d0NhGWW',NULL,'','','2026-03-30 09:16:00',0,'2026-03-30 09:16:00','2026-03-30 16:36:23',NULL),(44,35,'Md. Momidul Islam','Md. Momidul Islam','01958253335','momidul.tphl@gmail.com',20,'Nolbata, Hatiandaha, Singra, Natore','',5,'$2y$10$EBQ3p.5EUXFhu8yNczeCdeEXYQT4DVq.eNcdL32sCZsICVTFc1/ry',NULL,'','','2026-04-09 11:09:59',0,'2026-03-30 09:23:02','2026-04-09 11:09:59',13),(48,36,'Rifat Ahsan','Rifat Ahsan','01958583350','rifat.tphl@gmail.com',20,'Khilkhet kha para','4213633714',8,'$2y$10$O3uQB5h/6KwsPWex8ESVzee39365moqUtNr9DIoqhxeJJM1JDLB4e',NULL,'','','2026-03-30 09:32:02',0,'2026-03-30 09:30:56','2026-03-30 16:36:23',NULL),(51,38,'Sudipto Azad Hriday','Sudipto Azad Hriday','01901365046','sudiptoazad.tphl@gmail.com',17,'38, Road 3B, Mohammadia Housing Limited, Mohammadpur, Dhaka-1207','9151890663',8,'$2y$10$BMBC8TMV0h.nDrahyrmUO.dhGkDQwII8Ov.UT/Hg.JVRBA6wTMUY2',NULL,'','','2026-03-30 09:38:33',0,'2026-03-30 09:38:33','2026-03-30 16:36:23',NULL),(53,39,'Al Mubin Shuvo','Al Mubin Shuvo','01335258302','almubintphl@gmail.com',15,'Kumarkhali,Kushtia','',8,'$2y$10$mXwL/qloJHAWt2lal/Y9HO4yO0sCjGHKGgr1/AckNXExlPEy1iaKS',NULL,'','','2026-05-02 11:55:02',0,'2026-03-30 09:40:37','2026-05-02 11:55:02',11),(54,40,'France Roy','France Roy','01335258303','franceroy.tphl26@gmail.com',13,'N/A','',8,'$2y$10$Vo6DJxaJpxggwx.KMaNnWuioSOc6n06nnQh/dignLkfcZQM5Re7Pa',NULL,'','','2026-04-15 10:49:21',0,'2026-03-30 09:41:04','2026-04-15 10:49:21',5),(55,41,'Md. Anwar Parvez','Md. Anwar Parvez','01335258305','anwar.tphl@gmail.com',13,'N/A','',8,'$2y$10$nD6apWdkQA9A4pxQ2WK.TuXjrF./xCNaUOMtnxEXIhYBUEm6ec5v.',NULL,'','','2026-03-30 09:44:21',0,'2026-03-30 09:44:21','2026-04-16 12:12:32',7),(56,42,'Nafisa Anjum','Nafisa Anjum','01335258319','nafisaanjum.tphl@gmail.com',23,'Ilisha Road, Ward No-1, Bhola Pourashava.\r\nBhola Sadar, District- Bhola.','8727836291',8,'$2y$10$Njcwsx0qybiXNWr6I4xU6OXrnNZ0Gez0PTeiI9mymsLEByvmFtFau',NULL,'','','2026-03-30 09:48:38',0,'2026-03-30 09:48:38','2026-03-30 16:36:23',NULL),(57,43,'Md.Minhazul Islam Sumon','Md. Minhazul Islam Sumon','01607037251','sumon.tphl@gmail.com',20,'Datta para, birulia,Savar,Dhaka','6445593269',0,'$2y$10$Vxxg305sx5c9QTdS1nZe5Ow1VTzQGDXu6Vo101UVl3iRJTGWLHPmq',NULL,'','','2026-03-30 09:56:21',0,'2026-03-30 09:56:21','2026-03-30 16:36:23',NULL),(58,44,'Md Tarekul Islam','Md Tarekul Islam','01335258316','tarekul.tphl@gmail.com',16,'Kalai, Joypurhat','',8,'$2y$10$FgfGch01R5MmOmV06QbSE.Ztcu6ohd1xekC57B9SwWwuMmnbs1KSq',NULL,'','','2026-03-30 09:59:28',0,'2026-03-30 09:59:28','2026-04-12 12:13:49',12),(59,45,'Kazi Jahid Hasan','Kazi Jahid Hasan','01335258339','jahid.tphl@gmail.com',23,'Shah Ali Thana, Mirpur 1, Dhaka, 1229','',8,'$2y$10$o1c8bwaEWyTgxCs8OKnmy.155Q2E1XV.Y5Zt2/N.AwJB9HhD39PbC',NULL,'','','2026-03-30 10:03:44',0,'2026-03-30 10:03:44','2026-04-12 12:10:37',6),(60,46,'H M Nazmul Alam','H M Nazmul Alam','01335258313','nazmulshakib.tphl@gmail.com',15,'Tulashar, Shilpakala Academy, Aminbag, Shariatpur Sadar','',8,'$2y$10$j8oSuPOI0BarG10VQLdlgu3XQLs9u4HXgl7l1S1GgnNFTSjDm5X2C','users_69cb86772a604.jpg','','','2026-03-30 10:05:23',0,'2026-03-30 10:05:23','2026-04-12 11:58:36',10),(61,47,'Mst. Tamanna Aktar Meghna','Mst. Tamanna Aktar Meghna','01958253348','tamanna.tphl@gmail.com',23,'Khagan, Birulia, savar, 1340','',8,'$2y$10$GAromZnC1DJDwjgu1qW4.eU0/aoDJbqvJPr3oyFS3HflvESXRJTwi',NULL,'','','2026-03-30 10:07:57',0,'2026-03-30 10:07:57','2026-04-12 11:53:50',8),(62,48,'Md. Rayhan Kabir Roni','Md. Rayhan Kabir Roni','01335-25832','rayhan.tphl@gmail.com',15,'Palashbari,Gaibandha','',8,'$2y$10$nN8hAqbsVXHTLsh.zHew2.nqBcRmvzezxII7SAQl3DPS8vx9/0NHy',NULL,'','','2026-04-28 10:40:13',0,'2026-03-30 10:09:50','2026-04-28 10:40:13',3),(63,49,'Sayed Al Shahab','Sayed Al Shahab','01335258322','shahab.tphl@gmail.com',15,'\" Village/Street: Rouha, Post Office:Niamatpur - 2310, Karimganj, Kishoreganj\"','',8,'$2y$10$bjXDvIEqOg9VeQ5bhNDq5exrakmbZyDeQ9w8WES/Ia06fay.8Mfgi',NULL,'','','2026-03-30 10:16:53',0,'2026-03-30 10:16:53','2026-04-12 12:15:37',13),(64,50,'Rafiqul Islam','Rafiqul Islam','01958253345','rafiqul.tphl@gmail.com',20,'Khalpar,Tarabo,Rupganj,Narayanganj, post code:1460','',8,'$2y$10$2N5KDT5gZ0UCL6S8SeRxWuZ3fxTOOWUgw3LABYD4NHzmf06UsJGNS','users_69d34f1238f61.jpeg','','','2026-03-30 10:20:00',0,'2026-03-30 10:20:00','2026-04-12 12:11:33',7),(65,51,'Md. Mahabubur Rahman Mehedee','Md. Mahabubur Rahman Mehedee','01335258307','mehedee.tphl@gmail.com',21,'N/A','',8,'$2y$10$8RKSqAv7Ir8wx2sEjdhPR.h.toEB4e5Xhoj1IGdstx2f89Hd/gKse',NULL,'','','2026-03-30 10:24:57',0,'2026-03-30 10:24:57','2026-04-12 12:13:29',12),(66,52,'Md. Sakib Al Hasan','Md. Sakib Al Hasan','01335258325','sakibhasan.tphl@gmail.com',17,'Changone, Ahulia, Dhaka 1341','',8,'$2y$10$A/mGm65CzDyqbYojepkTpOWidQpnLF4HkAhx0vkylEh38peYQuX26',NULL,'','','2026-03-30 10:25:00',0,'2026-03-30 10:25:00','2026-04-12 12:09:24',6),(67,53,'Md Asim Akram','Md Asim Akram','01335258308','akram.tphl@gmail.com',15,'N/A','',8,'$2y$10$FYOiBtICro0TkZQIb4VfhOwX5a0nUwvvFVxi2oZD3gp6ZDK75ngoW',NULL,'','','2026-04-13 05:25:31',0,'2026-03-30 10:31:00','2026-04-13 05:25:31',6),(68,54,'Rakib Hasan Rubai','Rakib Rubai','01335258309','rubai.tphl@gmail.com',13,'Nobabgonj Bazar, Lalbagh , Dhaka -1205','',5,'$2y$10$hRRDNYUbrDDK2dgBOaM/TOSCNK3VDn0TMTAfHfkMgI8Ar59HNZb1O',NULL,'','','2026-04-15 09:54:03',0,'2026-03-30 10:31:59','2026-04-15 09:54:03',7),(69,55,'Md. Rawnak Hassan Seyam','Md. Rawnak Hassan Seyam','01335-25832','rawnak.tphl@gmail.com',20,'N/A','',2,'$2y$10$GKoc1DcZdbOmsLGSBPsJU.6NaH/06m1BMsff0OFZGr05BZYXR5BgS',NULL,'','','2026-03-30 10:35:13',6,'2026-03-30 10:35:13','2026-05-13 11:10:27',0),(70,56,'Zannatul Ferdous','Zannatul Ferdous','01335258315','zannatul.tphl@gmail.com',20,'Ghoshbagh,Ashulia, Dhaka','',8,'$2y$10$N5VFRRAr6NPeO2sNHAv6hOhir6DidyOkV8l6C54kSifQZw/MVhYiG',NULL,'','','2026-03-30 10:35:17',0,'2026-03-30 10:35:17','2026-04-12 11:53:03',8),(71,57,'Mst. Mahzabin Reza','MST. MAHZABIN REZA','01335258311','mahzabin.tphl@gmail.com',23,'N/A','',8,'$2y$10$Y1Zl3QED4PDxFZhq9szMzOObIZ2wSz/pd0Dqy2e9zB8zJi4Yy4E4y',NULL,'','','2026-03-30 10:40:34',0,'2026-03-30 10:40:34','2026-04-12 12:15:01',13),(72,58,'Md. Ali Haider Abdullah','Md. Ali Haider Abdullah','0 1958-2533','tphl.alihaider@gmail.com',17,'N/A','',8,'$2y$10$/T5eDgeej3P.JoXuhChGceCnDHOceBwixNyIGehU4lHJ0xHtdqDFe',NULL,'','','2026-03-30 10:41:19',0,'2026-03-30 10:41:19','2026-04-12 11:43:16',5),(73,59,'Tanvir Hossain Jian','Tanvir Hossain Jian','01335258314','tanvir.tphl@gmail.com',20,'Uttor badda, Abdullah bag masjid','',8,'$2y$10$8YxvgfxnkLTwgnksEVIeRu3dLINjXElLIbY6LUvy4.t6K3HzQ3b2a',NULL,'','','2026-03-30 10:44:55',0,'2026-03-30 10:44:55','2026-04-12 11:58:20',10),(74,60,'Ahnaf Adil Roxy','Ahnaf Adil Roxy','01335-25832','roxy.tphl@gmail.com',13,'','4213421763',8,'$2y$10$EidwlET76JrkaxbXZWi1b.WHbW2IdKsfzevS5cbMDnLM3pJPk/arK',NULL,'','','2026-03-30 10:45:59',0,'2026-03-30 10:45:59','2026-03-30 16:36:23',NULL),(75,61,'Md.Tamim','Md.Tamim','01308212749','tamim.tphl@gmail.com',23,'Dattapara, Birulia,Savar, Dhaka 1216','',8,'$2y$10$vP/q95cSabGHgVL9h3sBw.MWwc8JGYQiRXLarqEx6zl8p6A43uwk2',NULL,'','','2026-03-30 10:49:04',0,'2026-03-30 10:49:04','2026-03-30 16:36:23',NULL),(76,63,'Akhoy kumer Nibir Roy','Akhoy kumer Nibir Roy','01335258301','akhoy.tphl@gmail.com',15,'N/A','',0,'$2y$10$/A2yZtrb7UELabmGdPX.IuVuX/LcgmoxPoe0CV56vCoxJGAfGOUie',NULL,'','','2026-03-30 10:54:37',6,'2026-03-30 10:54:37','2026-05-13 11:09:13',0),(77,64,'Md. Amanullah Aman','Md. Amanullah Aman','01335258306','aman.tphl@gmail.com',20,'South Bhandaria-8550, Bhandaria, Pirojpur','',8,'$2y$10$GvrxHKdWRY2m3tvvUsFMRuAgqeM6L993ISeHJG/42UBRYVYI6UnQ6','users_69eaf30d55fcd.jpeg','','','2026-03-30 10:56:23',77,'2026-03-30 10:56:23','2026-04-24 04:35:25',0),(78,65,'Abu Naym','Abu Naym','01335258312','naymtphl@gmail.com',20,'Ati-1312, Keraniganj, Dhaka','',8,'$2y$10$CojmU9mTBwgDjkx4CfkdYeaQ57vvBBDxV/seIXX4jy.25RgK19WMG','users_69cb90acdaad5.jpg','','','2026-04-19 05:10:00',0,'2026-03-30 10:59:42','2026-04-20 05:23:44',12),(79,66,'Md. Sakib Inam','Md. Sakib Inam','01335258310','sakibinam.tphl@gmail.com',16,'N/A','',8,'$2y$10$uhKw9sTOb03dEHxMvZb/KekSOvQ6RjfanioES3ZW5pOa4m.VkexNO',NULL,'','','2026-03-30 11:00:09',0,'2026-03-30 11:00:09','2026-04-18 04:34:42',12),(80,67,'Md Bakhtiar Hasan','Md Bakhtiar Hasan','01335258300','bakhtiar.tphl@gmail.com',13,'N/A','',0,'$2y$10$3KjxMU.PqmWBXo77Kd3nbO4vYx55T4pByMR7U.kHE91Sro2ch8sLe',NULL,'','','2026-03-30 11:10:48',0,'2026-03-30 11:10:48','2026-04-11 04:35:06',0),(81,68,'Md Lutfor Rahaman','Md Lutfor Rahaman','01335258334','lutfor.tphl@gmail.com',27,'Vill: Asapur, PO: Phancherkanda, Thana: Ghior, Dist: Manikganj, Dhaka','7350928797',2,'$2y$10$SiSPnIWXvfbAy0DznRqjNebZp6fjgF0LGkHEVG7NPoNy8.J2fdc9O',NULL,'','','2026-03-30 11:17:42',0,'2026-03-30 11:17:42','2026-03-30 16:36:23',NULL),(82,69,'Dipto Kumar Roy','Dipto Kumar Roy','01958253358','dipto.tphl@gmail.com',20,'Khagan,Ashulia,Saver Dhaka','2851653333',2,'$2y$10$pB9uAIYgkG6tt/yMZQzVUuiQzSe3shbNwKlu45kAtQqlTrNGZ/JPu',NULL,'','','2026-03-30 11:19:42',0,'2026-03-30 11:19:42','2026-03-30 16:36:23',NULL),(83,70,'B. M Shaharear Hasan','B. M Shaharear Hasan','01917331397','shaharear.tphl@gmail.com',27,'Korotoa road, latifpur kolony, Bogra','7318135568',6,'$2y$10$IR.UVy4pARa366NVJj3DGejR6j1MB0KlvUqEi5kvhJeZSLVd3RenW',NULL,'','','2026-03-30 11:22:17',0,'2026-03-30 11:22:17','2026-03-30 16:36:23',NULL),(84,71,'MD. Sakhawat Hossain Emon','MD. Sakhawat Hossain Emon','01335258335','emon.tphl@gmail.com',23,'Block-A, Lane-6, Mirpur-6, Dhaka 1216','1962405062',2,'$2y$10$zbxbowLRq8arKWPKWtXlmutMu0HgAD/L0jo0QOuiV5v1tzE/5MBoK',NULL,'','','2026-03-30 11:22:57',0,'2026-03-30 11:22:57','2026-03-30 16:36:23',NULL),(85,72,'MD. Zamiul Islam','MD. Zamiul Islam','01335258338','zamiul.tphl@gmail.com',17,'130/6/A Baganbari,  Madatek, Basabo, Dhaka -1214.','5086466165',2,'$2y$10$JNlsOeAu7vANay8HvhgzTu8qrFZTw42wEfb9hvza857xBIdxSE5kq',NULL,'','','2026-03-30 11:25:48',0,'2026-03-30 11:25:48','2026-03-30 16:36:23',NULL),(86,73,'MD. Ahadul Islam','MD. Ahadul Islam','01314010972','asif.tphl@gmail.com',23,'Amula Dahabharatta, Nikrail, Bhuapur.','3314775515',2,'$2y$10$YlJmkkdgPI02YYTHw5G/o.tJE.7k/v6D34A6bHyNdlPuQztkA1IFe',NULL,'','','2026-03-30 11:26:09',0,'2026-03-30 11:26:09','2026-03-30 16:36:23',NULL),(87,74,'Sadman Islam Sakib','Sadman Islam Sakib','01958253344','sakib.tphl@gmail.com',21,'H-12, Kusumbag Residential Area, North Bisil  Road, Mirpur-1,Dhaka-1216','',8,'$2y$10$EZYoIwrFc/RwFFaj299PeOTVK1Jjf4pVV8dFhN0apKOxd6.BoIP9C','users_69d4989074172.jpg','','','2026-04-22 10:19:56',0,'2026-03-30 11:33:39','2026-04-22 10:19:56',2),(88,75,'Mahaananda Kumar Saha','Mahaananda Kumar Saha','01335258327','mahaanandakumarsaha@gmail.com',22,'Faridpur, sadarpur,hatkrishnapur','5506251882',2,'$2y$10$IawCX1UOcrjxps1aO4QTWeip4b8tKdN3JGDyduTJtnqLNYVuIzYXu',NULL,'','','2026-03-30 11:34:33',0,'2026-03-30 11:34:33','2026-03-30 16:36:23',NULL),(90,79,'Moonmoon Akter Oishy','Moonmoon Akter Oishy','01958253355','oishytphl@gmail.com',24,'Road No -1,  B - 45 Bank Town,  Savar','1047316906',2,'$2y$10$Sdqb84cXh8GKU9Okw2rRSe7k3N6a0riQJVPBDqnRhqa9px28WsDY.',NULL,'','','2026-03-30 11:43:09',0,'2026-03-30 11:43:09','2026-03-30 16:36:23',NULL),(91,76,'Rubina Islam','Rubina Islam','01958253349','rubinatphl49@gmail.com',15,'','',2,'$2y$10$r8GdWRKSpeZjr24W1pjGn.uaye6s/.clnO7G8ESZI3NnV844NrnCS',NULL,'','','2026-03-30 11:44:43',0,'2026-03-30 11:44:43','2026-03-30 16:36:23',NULL),(92,80,'Afrin Jahan Anika','Afrin Jahan Anika','01958253335','anika.tphl@gmail.com',13,'39/b senpara porbota mirpur 10','1032936708',2,'$2y$10$nBTOuqyG5vmEhBfJADloguSRdoA383Hrd.mFIuseKxOXG3bkfZYZG',NULL,'','','2026-03-30 11:52:36',0,'2026-03-30 11:52:36','2026-03-30 16:36:23',NULL),(94,0,'Mehedi H. Jony','Mehedi H. Jony','01861685153','mehedihjony.tphl@gmail.com',28,'Dhaka','',10,'$2y$10$YO/Y1hPq8lo0NTFbWbSX5u1hyUYn.i0F1s3KcNN9Xx8Askz3/5q0O',NULL,'','','2026-04-27 06:07:13',6,'2026-03-30 16:43:54','2026-04-27 06:07:13',0),(95,81,'Riya','Riya','01778234546','riya@gmail.com',28,'Dhaka','34',5,'$2y$10$cUYgCjvi4yiNDYS8mTGWsOkEvOJR32hiN/5Dsku7ULURP.tcviqpK',NULL,'','','2026-04-04 11:27:15',4,'2026-03-31 06:40:46','2026-04-04 11:27:15',0),(98,82,'S.A Arnob','S.A Arnob','01958253347','arnob.tphl@gmail.com',20,'Dottopara, Asuliya, Dhaka','',8,'$2y$10$aaooqfFW63prXcheowgGMeuZAHV88qpV1JQMljfQiHbOv2qCKtFdy',NULL,'','','2026-03-31 08:18:16',0,'2026-03-31 08:18:16','2026-04-12 11:41:08',4),(100,83,'Md. Mamunur Rahman','Md. Mamunur Rahman','01958253342','mamunur.tphl@gmail.com',19,'','1947418776',7,'$2y$10$ADpw3aS2xygSq6zySs.GaOoDAhv9XTdf3jXLxpZeyQ8fJinfXiZwG',NULL,'','','2026-03-31 08:58:36',0,'2026-03-31 08:58:36','2026-03-31 08:58:36',2),(102,84,'Mehedi Hasan Rudro','Rudro','01872356456','rudro@gmail.com',21,'N/A','',11,'$2y$10$XZKNktLIkAjqt/eY93vvFuKVMkut4pqaro7pZDaJm1PCHN7EApKra',NULL,'','','2026-05-14 05:32:11',4,'2026-04-02 08:14:46','2026-05-14 05:32:11',0),(103,85,'Mehedi Hasan Shuvo','hasan shuvo','01901365048','shuvo.tphl@gmail.com',17,'Dhaka','',5,'$2y$10$IQykvHC0cycV2VPhGMjfz.h6JdRuJzPkX4fw20XGlbQlHrPo4hKbu',NULL,'','','2026-04-09 04:00:41',0,'2026-04-03 13:29:06','2026-04-09 04:00:41',5),(105,11,'Mr. Ibrahim Khalil','ibrahim khalil','01958253319','ibrahimkhalil.tphl@gmail.com',20,'5/9, Dakkhin Rajashon, Savar, Dhaka','',8,'$2y$10$qExZ9v2Jozj5g9ct4UC3TeFToO.2UTmVBXrWXXmDmmjelR0co0hTG',NULL,'','','2026-04-04 05:57:01',0,'2026-04-04 05:57:01','2026-04-12 11:54:39',9),(110,NULL,'Mainul Hassan Dulon','Mainul H. Dulon','01933657804','ceo@dpremiumhomes.com',29,'Dhaka','',3,'$2y$10$8Z5Mj0/6UMu4MDupWjOnGOv6CvqtAqS5E0SdhEiOBvEp.oUszI5/e',NULL,'','','2026-04-08 11:18:00',6,'2026-04-04 11:35:30','2026-04-08 11:18:00',0),(112,NULL,'Ejaz Ur Rahman','Ejaz Ur Rahman','01738822694','dceo@dpremiumhomes.com',31,'Dhaka','',3,'$2y$10$BKhqSTbXDhPI4toSjpUiH.QnGD.lvBC5o5fB8IhwrVpolh1E0RIh2',NULL,'','','2026-04-04 12:40:57',6,'2026-04-04 12:29:06','2026-04-04 12:50:30',0),(113,NULL,'Mahfuza Shikder Tanha','Mahfuza Shikder Tanha','01721316211','pd@dpremiumhomes.com',32,'Dhaka','',3,'$2y$10$uSiCIm/rYxSI2Q5jXfsOBuz8w4.dja8GlRNx5WYsUdkc7AzjHiBA6',NULL,'','','2026-04-04 12:41:12',6,'2026-04-04 12:30:16','2026-04-04 12:51:08',0),(114,NULL,'Md. Rayhan Bhuiyan','Md. Rayhan Bhuiyan','01689-58433','coo@dpremiumhomes.com',30,'Dhaka','',3,'$2y$10$099WG2xiU7I7762yH70l5e4KtEODir4przyxvpdHPB.GPPToQ7huC',NULL,'','','2026-04-04 12:56:53',110,'2026-04-04 12:56:53','2026-04-08 11:17:49',0),(115,62,'Md. Abul Hasan Hasib','Md. Abul Hasan Hasib','01335258320','hasib.tphl@gmail.com',21,'N/A','',8,'$2y$10$lzrZhqIiXpnom1CIBmwptuuVKJBUsTDJ3x85HjDOElQ.eR3EPLzry',NULL,'','','2026-04-07 09:26:45',0,'2026-04-07 09:26:45','2026-04-12 12:15:19',13),(116,12,'Nahian','rafi','01123456789','nahian.easytechx@gmail.com',14,'asdfadf','55555534434',8,'$2y$10$RHjmhMhmgwE/OuuD2c92suYCaEZlm5RN0UhhFbAz2hRBKdeXj6Fe2',NULL,'','','2026-04-08 10:14:38',6,'2026-04-08 10:14:38','2026-04-08 10:15:58',0),(117,86,'Test Employee','Test','01790128472','test3@gmail.com',32,'Mohammadpur, Dhaka-1207','',0,'$2y$10$sw5JwFNK.bYOVVwur2/1FOxpkSV/FOm7WWdLEfTzh//K3GkkykKQW',NULL,'','','2026-04-10 10:07:16',0,'2026-04-10 10:07:16','2026-04-10 10:07:16',0),(118,87,'Shazzadur Rahman Shoumic','Shazzad','01765562314','shazzadur.tphl@gmail.com',20,'','',8,'$2y$10$TX/Hto3FA3ypCs4fd8al4euM8Mh1vmGy/3mIbgelj8wuiwLDJw0/6',NULL,'','','2026-04-12 11:46:52',0,'2026-04-12 11:46:52','2026-04-12 11:46:52',5),(119,90,'Shohanur Rahaman','Shohanur Rahaman','01958253372','shohan.tphl@gmail.com',13,'Khagan Ashulia','',11,'$2y$10$AIzAW5dhzVr58q5NyyyBueMXK5aTZHZwHOyGVa3EEz842ZAWUsxZK',NULL,'','','2026-04-19 04:42:58',119,'2026-04-17 13:13:21','2026-04-19 04:42:58',0),(120,NULL,'Project Manager1','Project Manager1','01876123454','project.manager1@gmail.com',36,'Dhaka','',15,'$2y$10$GhwOi2FtFs9pBw7GkpZaCefIBQhTiY9GoQLUgUKfBDa9p.XtUvlXu',NULL,'','','2026-05-18 12:35:01',6,'2026-04-26 03:55:58','2026-05-18 12:35:01',0),(121,NULL,'Land Man1','Land Man1','01993878733','land.manager1@gmail.com',33,'Dhaka','',14,'$2y$10$0Zg/ELOPJh5n.sSZkO2i8eMKon1lIWKj5lHQq2cLgbKrqVaYZcUhO',NULL,'','','2026-05-23 05:03:50',6,'2026-04-26 03:56:52','2026-05-23 05:03:50',0),(122,NULL,'Mr. Architect1','Mr. Architect1','01875438578','architecture1@gmail.com',34,'Dhaka','',18,'$2y$10$uYzkPN7DDLAanWYNsI02.OvkqvUIS35JblMvG0NRUHLTaXBemryL2',NULL,'','','2026-05-23 05:09:18',6,'2026-04-26 03:58:02','2026-05-23 05:09:18',0),(123,NULL,'Mr. Site Engineer1','Mr. Site Engineer1','01987328476','site.engineer1@gmail.com',38,'Dhaka','',12,'$2y$10$C.kuqYaBXt7SNIuwlDSoi.NySk5tcj67PFfUBFUqWc1bYrnCqCqIi',NULL,'','','2026-05-18 12:32:12',6,'2026-04-26 03:58:54','2026-05-18 12:32:12',0),(124,NULL,'Mr. Draftsman1','Mr. Draftsman1','01763425454','draftsman1@gmail.com',35,'dhaka','',16,'$2y$10$GpWdksQaMYX5TguAlFBFYO/ygwnc8af9LA0SqWRf./0oVspQwc.De',NULL,'','','2026-05-23 05:23:16',6,'2026-04-26 03:59:33','2026-05-23 05:23:16',0),(125,NULL,'Mr Estimator1','Mr Estimator1','','estimator1@gmail.com',37,'dhaka','',19,'$2y$10$NgvBE.GRBJt0HNyQmSqua.PeaLLgA2oWcVuGhwv7Im31Jz6SgAjay',NULL,'','','2026-05-18 12:06:48',6,'2026-04-26 04:00:08','2026-05-18 12:06:48',0),(126,NULL,'Mr. QC1','Mr. QC1','01986378256','qc1@gmail.com',43,'Dhaka','',13,'$2y$10$paZNUceDQ1b3BWWwfP6jReGr3d9ZLqKdMwisIHzdYTR0toYXK3GXi',NULL,'','','2026-05-18 12:37:00',6,'2026-04-26 04:00:52','2026-05-18 12:37:00',0),(127,NULL,'Mr Purchase Head1','Mr Purchase Head1','01782354543','purchase1@gmail.com',42,'Dhaka','',17,'$2y$10$WWHjM9YQBDTjCW7Dvf6KC.5mbo/0tJPW.WOLTXy2Ahhfz2xnoAPEe',NULL,'','','2026-05-18 07:02:41',6,'2026-04-26 04:01:41','2026-05-18 07:02:41',0),(128,NULL,'Mr Site Operators1','Mr Site Operators1','01723876324','operations1@gmail.com',38,'Dhaka','',20,'$2y$10$NN/GFnq6O6qtzqFyavU4EO4eOwgFH5JJi8J409SIOJZfvrNPlsT5q',NULL,'','','2026-05-17 19:37:41',6,'2026-04-26 04:05:25','2026-05-17 19:37:41',0),(129,NULL,'Mr Structural Designer1','Mr Structure Designer1','01653247632','structural.designer1@gmail.com',15,'Dhaka','',21,'$2y$10$tzAM7hH8kzCv2PnyRdzMneFlpt2yMJBcbMCvxSp2Zj16X/GNO6i4G',NULL,'','','2026-05-18 11:47:43',6,'2026-04-26 05:41:57','2026-05-18 11:47:43',0),(130,NULL,'M.H Jony','M.H Jony','01861685153','admin@gmail.com',28,'Dhaka','',1,'$2y$10$ZsoxIYkWS/zUeQjawL6/4.9oL7L21uVMvqu/7bIAQq6r4OL29eByy',NULL,'','','2026-05-02 04:44:05',130,'2026-05-02 04:34:07','2026-05-02 04:44:05',0),(131,91,'Tamjid Chowdhury','Tamjid Chowdhury','01711111111','tamjid.tphl@gmail.com',43,'Dhaka','',8,'$2y$10$eIiFrakD3xjjCre.joh9QOYdHUd404LHwfN7/ve915KZ6qv33EDWu',NULL,'','','2026-05-13 11:48:35',0,'2026-05-13 10:58:31','2026-05-13 11:48:35',11),(132,94,'Md. Nazmul Islam Robin','Md. Nazmul Islam Robin','01711111111','robintphl@gmail.com',15,'Dhaka','',8,'$2y$10$UwAYoAFri6gXhS8H0CMQMuPmviXy6KFdypiqAAniO.cNSvzqT/3Se',NULL,'','','2026-05-13 11:16:41',0,'2026-05-13 11:07:27','2026-05-13 11:16:41',11),(133,95,'Nazmus Sakib','Nazmus','','Nazmus.tphl@gmail.com',15,'','',8,'$2y$10$PJ8XliE0vfcgQdQPXwMRf.Mx/3J.QEVWZY125PcaR5YHGHZcC7xdC',NULL,'','','2026-05-13 11:36:11',0,'2026-05-13 11:36:11','2026-05-13 11:36:11',9),(134,97,'Nehemiah Biswas Prottoy','Nehemiah Biswas Prottoy','','prottoy.tphl@gmail.com',15,'','',8,'$2y$10$c3NHOint06moTU8hFBAUJOD0gyRwcsFcAzXLu7gjbD8YNwrx./vry',NULL,'','','2026-05-13 11:41:00',0,'2026-05-13 11:41:00','2026-05-13 11:41:00',9),(135,98,'Mst. Sania Khatun','Mst. Sania Khatun','','sania.tphl@gmail.com',15,'','',8,'$2y$10$BsSiQVv1B17SuGJVfEH8S.NX2OHHXaZCrs7zg8hGAVlThrGd4lBZm',NULL,'','','2026-05-13 11:44:56',0,'2026-05-13 11:44:56','2026-05-13 11:44:56',9),(136,99,'Irfan Kabir Abir','Irfan Kabir Abir','','rfan85.tphl@gmail.com',15,'','',8,'$2y$10$8Jd7KDaHOW1p/qvpUlK9feSACKBvGpeh9tD.g.jpZBPJr4XEU4nBe',NULL,'','','2026-05-13 11:57:09',0,'2026-05-13 11:57:09','2026-05-13 11:57:09',3),(137,NULL,'Mr Purchase Executive','Mr Purchase Executive','01987387434','purchase.executive1@gmail.com',15,'Dhaka','',23,'$2y$10$mkIgzsJd1h0CJlBJNvXKh.dVbnJnhXWRA.o6dGx8qsMv0Tv132rJu',NULL,'','','2026-05-18 06:00:52',6,'2026-05-17 11:39:47','2026-05-18 06:00:52',0),(138,NULL,'Project Manager Head','project.manager1@gmail.com','01847363455','project.manager.head@gmail.com',36,'Dhaka','',22,'$2y$10$6L/QBuSQ1AEhS07jnJNeReoBI9l5ir74f1eNFi56LXSNWDle35rgK',NULL,'','','2026-05-18 06:10:18',6,'2026-05-17 16:54:08','2026-05-18 06:10:18',0),(139,NULL,'QC & Internal Audit','qc_audit','','qcaudit@gmail.com',NULL,'Dhaka','',24,'$2y$10$E.zADr8CuCrTUOy1RLAzU.wVaZSFKvBHOHd.BNXIu3mZOOG4ck7MG',NULL,'','','2026-05-24 09:31:58',1,'2026-05-24 09:31:58','2026-05-24 09:31:58',0);
+INSERT INTO `users` VALUES (1,0,'Farzana','farzana','01873244236','farzana.tphl@gmail.com',28,'Dhaka','123',1,'$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS',NULL,'','','2026-04-09 05:34:11',6,'2026-02-22 06:47:08','2026-04-30 04:25:17',0),(2,NULL,'Sojib','sojib','01798342755','sales@gmail.com',1,'Dhaka',NULL,5,'$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS',NULL,NULL,NULL,'2026-05-09 04:45:14',NULL,'2026-02-22 06:47:08','2026-05-09 04:45:14',NULL),(3,1,'Fahim','Fahim','01790128471','fahim@gmail.com',0,'Mohammadpur, Dhaka-1207','23445',8,'$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG',NULL,'','','2026-04-19 05:54:47',4,'2026-02-23 03:24:25','2026-04-19 05:54:47',0),(4,1008,'Md. Jasim Uddin','Jasim Uddin','01762013007','hr@gmail.com',14,'House:01, Road:03, Block: B, Section:02, Mirpur, Dhaka-1216.','1903663282',4,'$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry',NULL,'','','2026-04-24 12:21:28',4,'2026-02-23 05:44:19','2026-04-24 12:21:28',NULL),(5,0,'Mr. Jisan','Mr. Jisan','01390128223','accounts@gmail.com',3,'Mohammadpur, Dhaka-1207','2345676',6,'$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6',NULL,'','','2026-04-08 09:48:37',6,'2026-02-23 06:11:06','2026-04-08 09:48:37',NULL),(6,1,'Management','Management','01933657804','management@gmail.com',0,'dhaka','32453',3,'$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW',NULL,'','','2026-06-06 04:37:47',110,'2026-03-29 03:44:44','2026-06-06 04:37:47',0),(7,NULL,'CED','CED','01872364346','ced@gmail.com',1,'Dhaka','823445',7,'$2y$10$a51psvUGsp/WsSE5cY2xNuKpuKSNoG/QZNNxxfWs0I.eSPM1KPAX.',NULL,'','','2026-03-31 12:05:54',6,'2026-03-29 04:01:38','2026-03-31 12:05:54',NULL),(8,NULL,'Sales Team Head','Sales Head','01327488234','sales-head@gmail.com',1,'Dhaka','09231943',9,'$2y$10$Hr8gjcm14bLK/Ns6ws/pt.jz0PA5ObSc.jo4Z7epS23UsEkVDUXn.',NULL,'','','2026-04-08 09:30:55',1,'2026-03-29 04:16:47','2026-04-08 09:30:55',NULL),(9,3,'Md. rafi','admin_39_','01234567890','rafi@easytechx.com',9,'ADDL Tower, Dhanmondi 27/A','',8,'$2y$10$nId2sBtusb0qFr2136IMrOZVDVkHq8RTjbsJIzgZ8GpaDXDTMhhHG',NULL,'','','2026-03-29 10:24:18',0,'2026-03-29 10:23:39','2026-03-30 16:36:23',NULL),(11,5,'Bornali Haque','Bornali Haque','01335258340','bornalihaque.tphl@gmail.com',13,'RUAP, Uttara 18, Dhaka','',2,'$2y$10$R9YSZd3L1v262q20VEtdG.dyT9xPRWmHFtjeTvwao5i8i24T5Hpm.',NULL,'','','2026-03-31 08:48:42',0,'2026-03-29 10:31:45','2026-04-11 08:52:14',0),(12,8,'Sanjana Hossain Moure','sanjana moure','01901310848','moure.tphl@gmail.com',15,'Mirpur-2 water tank, Block - F, road -3, Dhaka -1216','',8,'$2y$10$2J2ciVq5whQHb80.zq0zYuQcH.eb0B3pagwhnmx9TEsy.elK3J1ry',NULL,'','','2026-03-30 05:15:10',0,'2026-03-30 05:15:10','2026-03-30 16:36:23',NULL),(13,9,'Md. Rabbi Hossain','rabbi hossain','0 1901-3108','rabbihossain.tphl@gmail.com',20,'Baro Bazar, Ashulia Model Town, Savar, Dhaka.','',8,'$2y$10$uWAvlmxoW/gvdDhxn.IT9.HU7.NBPwqpbWipciGD0eZWdJQ6z9vvG',NULL,'','','2026-03-30 05:15:44',0,'2026-03-30 05:15:44','2026-04-12 11:40:43',4),(14,7,'Saleh Ahamed','saleh ahmed','0 1901-3650','saleh.tphl@gmail.com',21,'','',5,'$2y$10$fsUbevYAvi9OQguKgaiyEOzj/63NgEbIFqoqshjTVDdjkBrNhQ.Sq',NULL,'','','2026-04-30 05:27:15',0,'2026-03-30 05:18:44','2026-04-30 05:27:15',4),(15,6,'Md. Kawsar Ahammed','kowsar ahammed','01901310845','kawsar.tphl@gmail.com',21,'Vill: Bhubangati, Post: Biswarigacha, Thana: Dhunat, Zilla: Bogura','',5,'$2y$10$o4oawe3QpdDiLJTIH4chT.gwAdLBA52i.HFtGH.M1KDmjzkTfFDZy',NULL,'','','2026-04-25 03:54:29',0,'2026-03-30 05:19:07','2026-04-25 03:54:29',0),(16,0,'Ashfaque Bhuiyan Omi','Ashfaque Omi','01958253303','ashfaqueomi.tphl25@gmail.com',20,'Darul Aman Housing, Mirpur-2, Dhaka - 1206','',2,'$2y$10$29JSW4M8FbD3VNZnoUD8AOXB5LRrqo7vS22WMNfWezI11UlsObVCa',NULL,'','','2026-03-30 05:19:52',0,'2026-03-30 05:19:52','2026-03-30 16:36:23',NULL),(18,10,'Mehnaz Ahmed','mehnaz ahmed','0 1901-3650','mehnaz.tphl@gmail.com',20,'South chayabithi, Joydebpur, Gazipur','9160336244',8,'$2y$10$edszxcW7aAhMpXKVGUIZZePVtP.RhKwPuC8vA2baFfd8jmrYS8mEG',NULL,'','','2026-03-30 05:26:05',0,'2026-03-30 05:26:05','2026-03-30 16:36:23',NULL),(19,11,'Mr. Ibrahim Khalil','ibrahim khalil','01958253319','ibrahim.tphl@gmail.com',20,'5/9, Dakkhin Rajashon, Savar, Dhaka','2805006299',8,'$2y$10$iSTZaE4q9PCH.qM.53lFp.4EuEh2KoQKQRkD/q4SGrvV9Un84T1Pa',NULL,'','','2026-03-30 05:30:21',0,'2026-03-30 05:30:21','2026-03-30 16:36:23',NULL),(20,12,'Shammi Akther','shammi akhter','0 1901-3108','shammi.tphl@gmail.com',20,'13 no sector ,uttara.','',5,'$2y$10$bOb3g/W82j7pq3Jk9s520uIK1KOulFlbRWN4NVT55EC/1NxigzSJm',NULL,'','','2026-05-07 11:05:31',0,'2026-03-30 05:35:10','2026-05-07 11:05:31',10),(21,13,'Rejwan Ahmed','rejwan ahmad','01901365040','rejwantphl@gmail.com',21,'Sreemangal, Moulvibazar.','',5,'$2y$10$kQcMOXqxvt92qxB0nnSFtexGzH.iIcEQMC66.kOAasjnr943R9lBG',NULL,'','','2026-03-30 05:40:37',0,'2026-03-30 05:40:37','2026-04-06 06:29:52',2),(22,14,'MD. Feroz Ahamed','feroz ahamed','01958253327','feroz.tphl@gmail.com',20,'Savar, Dhaka','',5,'$2y$10$7hG94FPqPG5HzIWpCm/8QufyocDjtDn.onUagAcqBZEMNRvMX6Z/e',NULL,'','','2026-04-07 04:40:50',0,'2026-03-30 05:47:14','2026-04-07 04:40:50',9),(23,15,'Mojammel Haque','mojammel haque','01958253324','mojammel.tphl@gmail.com',21,'B-4, G-1, Sher-E-Bangla Nagar Staff Quarter, Dhaka-1207','',5,'$2y$10$U15bgAj.WrcLRkMMhITZXOezRY5D9EqGXHeNN79JuKjwaygBddySy',NULL,'','','2026-05-06 10:46:45',6,'2026-03-30 05:51:15','2026-05-06 10:46:45',0),(25,17,'Rakib Al Hasan','rakibal hasan','01958253321','rakib.tphl@gmail.com',20,'Daffodil smart city, Birulia savar Dhaka','',5,'$2y$10$yBQjX3SvmWQXO2cA.ol4B.zPmjIqbyUiqysRN7HTZfXLlo4Z95qfq',NULL,'','','2026-04-16 12:12:39',0,'2026-03-30 06:43:56','2026-04-16 12:12:39',8),(26,18,'Md. Nazmul Khan Shihab','khan Shihab','01958253326','shihab.tphl@gmail.com',20,'2450/11,East Dandabor, Palashbari, Savar cantonment -1344, Savar, Dhaka','',8,'$2y$10$b/geGkDCcdjnJY4j931Ia.YyXu1/FBrONUVr8jCr9csPFZXJ8BYMi',NULL,'','','2026-03-30 06:50:40',0,'2026-03-30 06:50:40','2026-04-12 11:58:01',10),(27,19,'Munshi Aiman Kabir','aiman kabir','01958253318','aiman.tphl@gmail.com',20,'Savar, Dhaka','',8,'$2y$10$lxze0zOCDKCiYZanahnfO.8tgO6v4MZiK8OBHsMxiXr7/4qH3s2FO',NULL,'','','2026-03-30 07:01:11',0,'2026-03-30 07:01:11','2026-04-16 07:46:31',4),(28,20,'Md. Tariqul Islam Illion','tariqul islam','0 1958-2533','illion.tphl@gmail.com',20,'Ashulia Model Town, Khagan Bazar, Birulia, Savar, Dhaka','',0,'$2y$10$Sj/S3IIUnt4EttdRVs/lXOCGvn9i/funVCadYEXd0ENgLdmEXSZF6',NULL,'','','2026-03-30 07:06:02',6,'2026-03-30 07:06:02','2026-05-13 11:11:43',0),(29,21,'Shafia Afrin Shahana','Shafia Afrin Shahana','01335258332','shafia.tphl@gmail.com',15,'Apon Bazar Samiti Market, Rayerbag, Jatrabari, Dhaka','',5,'$2y$10$jg9yoH8rHsH2A7wrOb6D8urj1iUv889LWfvhL3dU95RDg8t7HIYpK',NULL,'','','2026-05-13 11:15:12',0,'2026-03-30 07:56:24','2026-05-13 11:15:12',11),(30,22,'Abir Ahmed','Abir Ahmed','01335258328','abir0.tphl@gmail.com',15,'Poshu Hospital Para, Magura Sadar,Magura','',8,'$2y$10$IU8I8sJvyYl06UUHgy8XHuzHv66J7mAfVdPACHogEpVjTZ8Wuq2bG',NULL,'','','2026-03-30 08:29:14',0,'2026-03-30 08:29:14','2026-04-12 11:58:59',10),(31,23,'Shanawaz Khan','Shanawaz Khan','01335258330','shanawaz.tphl@gmail.com',15,'House-12,Road-4,Block-J,Banasree Meradia Khilgaon Dhaka 1219','',8,'$2y$10$Px7TN7veOADIqwYdPfISbOLfxqwEkSq9S1R8sTPWDUpAYRo4hb4uS',NULL,'','','2026-05-09 04:03:04',0,'2026-03-30 08:42:17','2026-05-09 04:03:04',3),(32,24,'Md. Saiful Islam Jony','saiful jony','01958253340','saif.thpl@gmail.com',21,'104/A/9 Buddhibi Road,Mohammadpur,Dhaka-1207','',5,'$2y$10$iJlvDYNOYQ5.AFtGpin74uRVIvXn//mKEgfeHXBvVTXXvqLEteiJa',NULL,'','','2026-04-20 05:23:04',0,'2026-03-30 08:46:37','2026-04-20 05:23:04',12),(33,25,'Aranya Bhowmick Dhrubo','Aranya Bhowmick Dhrubo','01335258329','dhrubo.tphl@gmail.com',20,'15 Shah-Shaheb Lane Narinda, Dhaka','',8,'$2y$10$U/nrFg9Eyc.ss5Oi2gFWV.BgzE8NXmjGHyhD9aY2VLUaGv9dr8KwO',NULL,'','','2026-03-30 08:47:19',0,'2026-03-30 08:47:19','2026-04-12 11:55:20',2),(34,26,'Tabassum Akter Soma','tabassum soma','01958253374','soma.tphl@gmail.com',23,'Ashulia Model Town, Savar, Dhaka','',8,'$2y$10$tfmvA.ksOc8S9hmYTwU5Xut8ERUg7YztJfCydw1f9.K4jRF.HKBom','users_69d480ed67778.jpg','','','2026-03-30 08:50:26',0,'2026-03-30 08:50:26','2026-04-12 11:54:19',9),(35,27,'Sadat Hossain','Sadat Hossain','01335258331','sadathossain11@gmail.com',15,'116, Jagannath Saha Road, Lalbagh, Dhaka-1211','',8,'$2y$10$cRtbvkGvyjShTPIsq0egPO4PYdXmFT3jJ5NzOBGAKeu823cA2CA7K',NULL,'','','2026-03-30 08:52:52',0,'2026-03-30 08:52:52','2026-04-12 12:09:57',6),(36,28,'Md. Ajizul Islam Manik','ajizul manik','01958253338','manik.tphl@gmail.com',20,'1/B , Nondipara, Dhaka ,1219','',5,'$2y$10$fGHgvRrPvCdxk8IUbwWnse1eebLaQ2c6q3h4pbfPmGkOb.hP60IH.',NULL,'','','2026-05-09 04:19:04',0,'2026-03-30 08:56:43','2026-05-09 04:19:04',3),(37,29,'Tasnur Aman Satu','aman satu','01958253363','satu.tphl@gmail.com',20,'kumkumari- Midha bari','',8,'$2y$10$B8RxH6k07S5uVYeOQdAySusGhyguSq1rwA5ZNa7DcFbo.kd7jwNCe',NULL,'','','2026-03-30 09:00:39',0,'2026-03-30 09:00:39','2026-04-12 11:53:21',8),(38,30,'Md. Tasdikul Hasan Sikder','Md. Tasdikul Hasan Sikder','01335258317','tasdik.tphl@gmail.com',13,'523 East Kazipara, Dhaka, Mirpur-1216','',8,'$2y$10$hvyLcozNhFKHKyzSHob2LurUMAn1cka7WeuKy6354xGTxHOCEFMv.',NULL,'','','2026-03-30 09:03:57',0,'2026-03-30 09:03:57','2026-04-12 11:59:21',10),(40,31,'Qazi Nadeem Javed','Qazi Nadeem Javed','‪0195825333','nadeem.tphl@gmail.com',25,'Sector 10 Road 7 uttara','2350020026',2,'$2y$10$HwTS4uTRRrfpsjH0iIssnO2q8R1aJb/JKRdGmr8vK3Od7JyC8RaU.',NULL,'','','2026-03-30 09:09:53',0,'2026-03-30 09:09:53','2026-03-30 16:36:23',NULL),(41,32,'Nayeemur Rahman','Nayeemur Rahman','01335258318','nayeemtonmoytphl@gmail.com',15,'Road No. 4, F Block, Mirpur-2','',8,'$2y$10$vNpgHQwRP33k2ftwwnzuuO8mJSGtb2K6MSgQyyzBm5hlu1pxQKt0.',NULL,'','','2026-03-30 09:12:53',0,'2026-03-30 09:12:53','2026-04-12 11:57:29',3),(42,33,'Mahin - Al Beruni','Mahin - Al Beruni','01958253328','tphl.mahin@gmail.com',26,'House 40/3, Varalipara, Boro Bangram, Sopura, Shah Mokhdum, Rajshahi - 6203','8710606925',2,'$2y$10$w0GwPk82B7c/775XmUq6V.XOJnByBk5qE3Ux5I6nJB.0m2d0NhGWW',NULL,'','','2026-03-30 09:16:00',0,'2026-03-30 09:16:00','2026-03-30 16:36:23',NULL),(44,35,'Md. Momidul Islam','Md. Momidul Islam','01958253335','momidul.tphl@gmail.com',20,'Nolbata, Hatiandaha, Singra, Natore','',5,'$2y$10$EBQ3p.5EUXFhu8yNczeCdeEXYQT4DVq.eNcdL32sCZsICVTFc1/ry',NULL,'','','2026-04-09 11:09:59',0,'2026-03-30 09:23:02','2026-04-09 11:09:59',13),(48,36,'Rifat Ahsan','Rifat Ahsan','01958583350','rifat.tphl@gmail.com',20,'Khilkhet kha para','4213633714',8,'$2y$10$O3uQB5h/6KwsPWex8ESVzee39365moqUtNr9DIoqhxeJJM1JDLB4e',NULL,'','','2026-03-30 09:32:02',0,'2026-03-30 09:30:56','2026-03-30 16:36:23',NULL),(51,38,'Sudipto Azad Hriday','Sudipto Azad Hriday','01901365046','sudiptoazad.tphl@gmail.com',17,'38, Road 3B, Mohammadia Housing Limited, Mohammadpur, Dhaka-1207','9151890663',8,'$2y$10$BMBC8TMV0h.nDrahyrmUO.dhGkDQwII8Ov.UT/Hg.JVRBA6wTMUY2',NULL,'','','2026-03-30 09:38:33',0,'2026-03-30 09:38:33','2026-03-30 16:36:23',NULL),(53,39,'Al Mubin Shuvo','Al Mubin Shuvo','01335258302','almubintphl@gmail.com',15,'Kumarkhali,Kushtia','',8,'$2y$10$mXwL/qloJHAWt2lal/Y9HO4yO0sCjGHKGgr1/AckNXExlPEy1iaKS',NULL,'','','2026-05-02 11:55:02',0,'2026-03-30 09:40:37','2026-05-02 11:55:02',11),(54,40,'France Roy','France Roy','01335258303','franceroy.tphl26@gmail.com',13,'N/A','',8,'$2y$10$Vo6DJxaJpxggwx.KMaNnWuioSOc6n06nnQh/dignLkfcZQM5Re7Pa',NULL,'','','2026-04-15 10:49:21',0,'2026-03-30 09:41:04','2026-04-15 10:49:21',5),(55,41,'Md. Anwar Parvez','Md. Anwar Parvez','01335258305','anwar.tphl@gmail.com',13,'N/A','',8,'$2y$10$nD6apWdkQA9A4pxQ2WK.TuXjrF./xCNaUOMtnxEXIhYBUEm6ec5v.',NULL,'','','2026-03-30 09:44:21',0,'2026-03-30 09:44:21','2026-04-16 12:12:32',7),(56,42,'Nafisa Anjum','Nafisa Anjum','01335258319','nafisaanjum.tphl@gmail.com',23,'Ilisha Road, Ward No-1, Bhola Pourashava.\r\nBhola Sadar, District- Bhola.','8727836291',8,'$2y$10$Njcwsx0qybiXNWr6I4xU6OXrnNZ0Gez0PTeiI9mymsLEByvmFtFau',NULL,'','','2026-03-30 09:48:38',0,'2026-03-30 09:48:38','2026-03-30 16:36:23',NULL),(57,43,'Md.Minhazul Islam Sumon','Md. Minhazul Islam Sumon','01607037251','sumon.tphl@gmail.com',20,'Datta para, birulia,Savar,Dhaka','6445593269',0,'$2y$10$Vxxg305sx5c9QTdS1nZe5Ow1VTzQGDXu6Vo101UVl3iRJTGWLHPmq',NULL,'','','2026-03-30 09:56:21',0,'2026-03-30 09:56:21','2026-03-30 16:36:23',NULL),(58,44,'Md Tarekul Islam','Md Tarekul Islam','01335258316','tarekul.tphl@gmail.com',16,'Kalai, Joypurhat','',8,'$2y$10$FgfGch01R5MmOmV06QbSE.Ztcu6ohd1xekC57B9SwWwuMmnbs1KSq',NULL,'','','2026-03-30 09:59:28',0,'2026-03-30 09:59:28','2026-04-12 12:13:49',12),(59,45,'Kazi Jahid Hasan','Kazi Jahid Hasan','01335258339','jahid.tphl@gmail.com',23,'Shah Ali Thana, Mirpur 1, Dhaka, 1229','',8,'$2y$10$o1c8bwaEWyTgxCs8OKnmy.155Q2E1XV.Y5Zt2/N.AwJB9HhD39PbC',NULL,'','','2026-03-30 10:03:44',0,'2026-03-30 10:03:44','2026-04-12 12:10:37',6),(60,46,'H M Nazmul Alam','H M Nazmul Alam','01335258313','nazmulshakib.tphl@gmail.com',15,'Tulashar, Shilpakala Academy, Aminbag, Shariatpur Sadar','',8,'$2y$10$j8oSuPOI0BarG10VQLdlgu3XQLs9u4HXgl7l1S1GgnNFTSjDm5X2C','users_69cb86772a604.jpg','','','2026-03-30 10:05:23',0,'2026-03-30 10:05:23','2026-04-12 11:58:36',10),(61,47,'Mst. Tamanna Aktar Meghna','Mst. Tamanna Aktar Meghna','01958253348','tamanna.tphl@gmail.com',23,'Khagan, Birulia, savar, 1340','',8,'$2y$10$GAromZnC1DJDwjgu1qW4.eU0/aoDJbqvJPr3oyFS3HflvESXRJTwi',NULL,'','','2026-03-30 10:07:57',0,'2026-03-30 10:07:57','2026-04-12 11:53:50',8),(62,48,'Md. Rayhan Kabir Roni','Md. Rayhan Kabir Roni','01335-25832','rayhan.tphl@gmail.com',15,'Palashbari,Gaibandha','',8,'$2y$10$nN8hAqbsVXHTLsh.zHew2.nqBcRmvzezxII7SAQl3DPS8vx9/0NHy',NULL,'','','2026-04-28 10:40:13',0,'2026-03-30 10:09:50','2026-04-28 10:40:13',3),(63,49,'Sayed Al Shahab','Sayed Al Shahab','01335258322','shahab.tphl@gmail.com',15,'\" Village/Street: Rouha, Post Office:Niamatpur - 2310, Karimganj, Kishoreganj\"','',8,'$2y$10$bjXDvIEqOg9VeQ5bhNDq5exrakmbZyDeQ9w8WES/Ia06fay.8Mfgi',NULL,'','','2026-03-30 10:16:53',0,'2026-03-30 10:16:53','2026-04-12 12:15:37',13),(64,50,'Rafiqul Islam','Rafiqul Islam','01958253345','rafiqul.tphl@gmail.com',20,'Khalpar,Tarabo,Rupganj,Narayanganj, post code:1460','',8,'$2y$10$2N5KDT5gZ0UCL6S8SeRxWuZ3fxTOOWUgw3LABYD4NHzmf06UsJGNS','users_69d34f1238f61.jpeg','','','2026-03-30 10:20:00',0,'2026-03-30 10:20:00','2026-04-12 12:11:33',7),(65,51,'Md. Mahabubur Rahman Mehedee','Md. Mahabubur Rahman Mehedee','01335258307','mehedee.tphl@gmail.com',21,'N/A','',8,'$2y$10$8RKSqAv7Ir8wx2sEjdhPR.h.toEB4e5Xhoj1IGdstx2f89Hd/gKse',NULL,'','','2026-03-30 10:24:57',0,'2026-03-30 10:24:57','2026-04-12 12:13:29',12),(66,52,'Md. Sakib Al Hasan','Md. Sakib Al Hasan','01335258325','sakibhasan.tphl@gmail.com',17,'Changone, Ahulia, Dhaka 1341','',8,'$2y$10$A/mGm65CzDyqbYojepkTpOWidQpnLF4HkAhx0vkylEh38peYQuX26',NULL,'','','2026-03-30 10:25:00',0,'2026-03-30 10:25:00','2026-04-12 12:09:24',6),(67,53,'Md Asim Akram','Md Asim Akram','01335258308','akram.tphl@gmail.com',15,'N/A','',8,'$2y$10$FYOiBtICro0TkZQIb4VfhOwX5a0nUwvvFVxi2oZD3gp6ZDK75ngoW',NULL,'','','2026-04-13 05:25:31',0,'2026-03-30 10:31:00','2026-04-13 05:25:31',6),(68,54,'Rakib Hasan Rubai','Rakib Rubai','01335258309','rubai.tphl@gmail.com',13,'Nobabgonj Bazar, Lalbagh , Dhaka -1205','',5,'$2y$10$hRRDNYUbrDDK2dgBOaM/TOSCNK3VDn0TMTAfHfkMgI8Ar59HNZb1O',NULL,'','','2026-04-15 09:54:03',0,'2026-03-30 10:31:59','2026-04-15 09:54:03',7),(69,55,'Md. Rawnak Hassan Seyam','Md. Rawnak Hassan Seyam','01335-25832','rawnak.tphl@gmail.com',20,'N/A','',2,'$2y$10$GKoc1DcZdbOmsLGSBPsJU.6NaH/06m1BMsff0OFZGr05BZYXR5BgS',NULL,'','','2026-03-30 10:35:13',6,'2026-03-30 10:35:13','2026-05-13 11:10:27',0),(70,56,'Zannatul Ferdous','Zannatul Ferdous','01335258315','zannatul.tphl@gmail.com',20,'Ghoshbagh,Ashulia, Dhaka','',8,'$2y$10$N5VFRRAr6NPeO2sNHAv6hOhir6DidyOkV8l6C54kSifQZw/MVhYiG',NULL,'','','2026-03-30 10:35:17',0,'2026-03-30 10:35:17','2026-04-12 11:53:03',8),(71,57,'Mst. Mahzabin Reza','MST. MAHZABIN REZA','01335258311','mahzabin.tphl@gmail.com',23,'N/A','',8,'$2y$10$Y1Zl3QED4PDxFZhq9szMzOObIZ2wSz/pd0Dqy2e9zB8zJi4Yy4E4y',NULL,'','','2026-03-30 10:40:34',0,'2026-03-30 10:40:34','2026-04-12 12:15:01',13),(72,58,'Md. Ali Haider Abdullah','Md. Ali Haider Abdullah','0 1958-2533','tphl.alihaider@gmail.com',17,'N/A','',8,'$2y$10$/T5eDgeej3P.JoXuhChGceCnDHOceBwixNyIGehU4lHJ0xHtdqDFe',NULL,'','','2026-03-30 10:41:19',0,'2026-03-30 10:41:19','2026-04-12 11:43:16',5),(73,59,'Tanvir Hossain Jian','Tanvir Hossain Jian','01335258314','tanvir.tphl@gmail.com',20,'Uttor badda, Abdullah bag masjid','',8,'$2y$10$8YxvgfxnkLTwgnksEVIeRu3dLINjXElLIbY6LUvy4.t6K3HzQ3b2a',NULL,'','','2026-03-30 10:44:55',0,'2026-03-30 10:44:55','2026-04-12 11:58:20',10),(74,60,'Ahnaf Adil Roxy','Ahnaf Adil Roxy','01335-25832','roxy.tphl@gmail.com',13,'','4213421763',8,'$2y$10$EidwlET76JrkaxbXZWi1b.WHbW2IdKsfzevS5cbMDnLM3pJPk/arK',NULL,'','','2026-03-30 10:45:59',0,'2026-03-30 10:45:59','2026-03-30 16:36:23',NULL),(75,61,'Md.Tamim','Md.Tamim','01308212749','tamim.tphl@gmail.com',23,'Dattapara, Birulia,Savar, Dhaka 1216','',8,'$2y$10$vP/q95cSabGHgVL9h3sBw.MWwc8JGYQiRXLarqEx6zl8p6A43uwk2',NULL,'','','2026-03-30 10:49:04',0,'2026-03-30 10:49:04','2026-03-30 16:36:23',NULL),(76,63,'Akhoy kumer Nibir Roy','Akhoy kumer Nibir Roy','01335258301','akhoy.tphl@gmail.com',15,'N/A','',0,'$2y$10$/A2yZtrb7UELabmGdPX.IuVuX/LcgmoxPoe0CV56vCoxJGAfGOUie',NULL,'','','2026-03-30 10:54:37',6,'2026-03-30 10:54:37','2026-05-13 11:09:13',0),(77,64,'Md. Amanullah Aman','Md. Amanullah Aman','01335258306','aman.tphl@gmail.com',20,'South Bhandaria-8550, Bhandaria, Pirojpur','',8,'$2y$10$GvrxHKdWRY2m3tvvUsFMRuAgqeM6L993ISeHJG/42UBRYVYI6UnQ6','users_69eaf30d55fcd.jpeg','','','2026-03-30 10:56:23',77,'2026-03-30 10:56:23','2026-04-24 04:35:25',0),(78,65,'Abu Naym','Abu Naym','01335258312','naymtphl@gmail.com',20,'Ati-1312, Keraniganj, Dhaka','',8,'$2y$10$CojmU9mTBwgDjkx4CfkdYeaQ57vvBBDxV/seIXX4jy.25RgK19WMG','users_69cb90acdaad5.jpg','','','2026-04-19 05:10:00',0,'2026-03-30 10:59:42','2026-04-20 05:23:44',12),(79,66,'Md. Sakib Inam','Md. Sakib Inam','01335258310','sakibinam.tphl@gmail.com',16,'N/A','',8,'$2y$10$uhKw9sTOb03dEHxMvZb/KekSOvQ6RjfanioES3ZW5pOa4m.VkexNO',NULL,'','','2026-03-30 11:00:09',0,'2026-03-30 11:00:09','2026-04-18 04:34:42',12),(80,67,'Md Bakhtiar Hasan','Md Bakhtiar Hasan','01335258300','bakhtiar.tphl@gmail.com',13,'N/A','',0,'$2y$10$3KjxMU.PqmWBXo77Kd3nbO4vYx55T4pByMR7U.kHE91Sro2ch8sLe',NULL,'','','2026-03-30 11:10:48',0,'2026-03-30 11:10:48','2026-04-11 04:35:06',0),(81,68,'Md Lutfor Rahaman','Md Lutfor Rahaman','01335258334','lutfor.tphl@gmail.com',27,'Vill: Asapur, PO: Phancherkanda, Thana: Ghior, Dist: Manikganj, Dhaka','7350928797',2,'$2y$10$SiSPnIWXvfbAy0DznRqjNebZp6fjgF0LGkHEVG7NPoNy8.J2fdc9O',NULL,'','','2026-03-30 11:17:42',0,'2026-03-30 11:17:42','2026-03-30 16:36:23',NULL),(82,69,'Dipto Kumar Roy','Dipto Kumar Roy','01958253358','dipto.tphl@gmail.com',20,'Khagan,Ashulia,Saver Dhaka','2851653333',2,'$2y$10$pB9uAIYgkG6tt/yMZQzVUuiQzSe3shbNwKlu45kAtQqlTrNGZ/JPu',NULL,'','','2026-03-30 11:19:42',0,'2026-03-30 11:19:42','2026-03-30 16:36:23',NULL),(83,70,'B. M Shaharear Hasan','B. M Shaharear Hasan','01917331397','shaharear.tphl@gmail.com',27,'Korotoa road, latifpur kolony, Bogra','7318135568',6,'$2y$10$IR.UVy4pARa366NVJj3DGejR6j1MB0KlvUqEi5kvhJeZSLVd3RenW',NULL,'','','2026-03-30 11:22:17',0,'2026-03-30 11:22:17','2026-03-30 16:36:23',NULL),(84,71,'MD. Sakhawat Hossain Emon','MD. Sakhawat Hossain Emon','01335258335','emon.tphl@gmail.com',23,'Block-A, Lane-6, Mirpur-6, Dhaka 1216','1962405062',2,'$2y$10$zbxbowLRq8arKWPKWtXlmutMu0HgAD/L0jo0QOuiV5v1tzE/5MBoK',NULL,'','','2026-03-30 11:22:57',0,'2026-03-30 11:22:57','2026-03-30 16:36:23',NULL),(85,72,'MD. Zamiul Islam','MD. Zamiul Islam','01335258338','zamiul.tphl@gmail.com',17,'130/6/A Baganbari,  Madatek, Basabo, Dhaka -1214.','5086466165',2,'$2y$10$JNlsOeAu7vANay8HvhgzTu8qrFZTw42wEfb9hvza857xBIdxSE5kq',NULL,'','','2026-03-30 11:25:48',0,'2026-03-30 11:25:48','2026-03-30 16:36:23',NULL),(86,73,'MD. Ahadul Islam','MD. Ahadul Islam','01314010972','asif.tphl@gmail.com',23,'Amula Dahabharatta, Nikrail, Bhuapur.','3314775515',2,'$2y$10$YlJmkkdgPI02YYTHw5G/o.tJE.7k/v6D34A6bHyNdlPuQztkA1IFe',NULL,'','','2026-03-30 11:26:09',0,'2026-03-30 11:26:09','2026-03-30 16:36:23',NULL),(87,74,'Sadman Islam Sakib','Sadman Islam Sakib','01958253344','sakib.tphl@gmail.com',21,'H-12, Kusumbag Residential Area, North Bisil  Road, Mirpur-1,Dhaka-1216','',8,'$2y$10$EZYoIwrFc/RwFFaj299PeOTVK1Jjf4pVV8dFhN0apKOxd6.BoIP9C','users_69d4989074172.jpg','','','2026-04-22 10:19:56',0,'2026-03-30 11:33:39','2026-04-22 10:19:56',2),(88,75,'Mahaananda Kumar Saha','Mahaananda Kumar Saha','01335258327','mahaanandakumarsaha@gmail.com',22,'Faridpur, sadarpur,hatkrishnapur','5506251882',2,'$2y$10$IawCX1UOcrjxps1aO4QTWeip4b8tKdN3JGDyduTJtnqLNYVuIzYXu',NULL,'','','2026-03-30 11:34:33',0,'2026-03-30 11:34:33','2026-03-30 16:36:23',NULL),(90,79,'Moonmoon Akter Oishy','Moonmoon Akter Oishy','01958253355','oishytphl@gmail.com',24,'Road No -1,  B - 45 Bank Town,  Savar','1047316906',2,'$2y$10$Sdqb84cXh8GKU9Okw2rRSe7k3N6a0riQJVPBDqnRhqa9px28WsDY.',NULL,'','','2026-03-30 11:43:09',0,'2026-03-30 11:43:09','2026-03-30 16:36:23',NULL),(91,76,'Rubina Islam','Rubina Islam','01958253349','rubinatphl49@gmail.com',15,'','',2,'$2y$10$r8GdWRKSpeZjr24W1pjGn.uaye6s/.clnO7G8ESZI3NnV844NrnCS',NULL,'','','2026-03-30 11:44:43',0,'2026-03-30 11:44:43','2026-03-30 16:36:23',NULL),(92,80,'Afrin Jahan Anika','Afrin Jahan Anika','01958253335','anika.tphl@gmail.com',13,'39/b senpara porbota mirpur 10','1032936708',2,'$2y$10$nBTOuqyG5vmEhBfJADloguSRdoA383Hrd.mFIuseKxOXG3bkfZYZG',NULL,'','','2026-06-06 04:45:35',0,'2026-03-30 11:52:36','2026-06-06 04:45:35',NULL),(94,0,'Mehedi H. Jony','Mehedi H. Jony','01861685153','mehedihjony.tphl@gmail.com',28,'Dhaka','',10,'$2y$10$YO/Y1hPq8lo0NTFbWbSX5u1hyUYn.i0F1s3KcNN9Xx8Askz3/5q0O',NULL,'','','2026-04-27 06:07:13',6,'2026-03-30 16:43:54','2026-04-27 06:07:13',0),(95,81,'Riya','Riya','01778234546','riya@gmail.com',28,'Dhaka','34',5,'$2y$10$cUYgCjvi4yiNDYS8mTGWsOkEvOJR32hiN/5Dsku7ULURP.tcviqpK',NULL,'','','2026-04-04 11:27:15',4,'2026-03-31 06:40:46','2026-04-04 11:27:15',0),(98,82,'S.A Arnob','S.A Arnob','01958253347','arnob.tphl@gmail.com',20,'Dottopara, Asuliya, Dhaka','',8,'$2y$10$aaooqfFW63prXcheowgGMeuZAHV88qpV1JQMljfQiHbOv2qCKtFdy',NULL,'','','2026-03-31 08:18:16',0,'2026-03-31 08:18:16','2026-04-12 11:41:08',4),(100,83,'Md. Mamunur Rahman','Md. Mamunur Rahman','01958253342','mamunur.tphl@gmail.com',19,'','1947418776',7,'$2y$10$ADpw3aS2xygSq6zySs.GaOoDAhv9XTdf3jXLxpZeyQ8fJinfXiZwG',NULL,'','','2026-03-31 08:58:36',0,'2026-03-31 08:58:36','2026-03-31 08:58:36',2),(102,84,'Mehedi Hasan Rudro','Rudro','01872356456','rudro@gmail.com',21,'N/A','',11,'$2y$10$XZKNktLIkAjqt/eY93vvFuKVMkut4pqaro7pZDaJm1PCHN7EApKra',NULL,'','','2026-05-14 05:32:11',4,'2026-04-02 08:14:46','2026-05-14 05:32:11',0),(103,85,'Mehedi Hasan Shuvo','hasan shuvo','01901365048','shuvo.tphl@gmail.com',17,'Dhaka','',5,'$2y$10$IQykvHC0cycV2VPhGMjfz.h6JdRuJzPkX4fw20XGlbQlHrPo4hKbu',NULL,'','','2026-04-09 04:00:41',0,'2026-04-03 13:29:06','2026-04-09 04:00:41',5),(105,11,'Mr. Ibrahim Khalil','ibrahim khalil','01958253319','ibrahimkhalil.tphl@gmail.com',20,'5/9, Dakkhin Rajashon, Savar, Dhaka','',8,'$2y$10$qExZ9v2Jozj5g9ct4UC3TeFToO.2UTmVBXrWXXmDmmjelR0co0hTG',NULL,'','','2026-04-04 05:57:01',0,'2026-04-04 05:57:01','2026-04-12 11:54:39',9),(110,NULL,'Mainul Hassan Dulon','Mainul H. Dulon','01933657804','ceo@dpremiumhomes.com',29,'Dhaka','',3,'$2y$10$8Z5Mj0/6UMu4MDupWjOnGOv6CvqtAqS5E0SdhEiOBvEp.oUszI5/e',NULL,'','','2026-04-08 11:18:00',6,'2026-04-04 11:35:30','2026-04-08 11:18:00',0),(112,NULL,'Ejaz Ur Rahman','Ejaz Ur Rahman','01738822694','dceo@dpremiumhomes.com',31,'Dhaka','',3,'$2y$10$BKhqSTbXDhPI4toSjpUiH.QnGD.lvBC5o5fB8IhwrVpolh1E0RIh2',NULL,'','','2026-04-04 12:40:57',6,'2026-04-04 12:29:06','2026-04-04 12:50:30',0),(113,NULL,'Mahfuza Shikder Tanha','Mahfuza Shikder Tanha','01721316211','pd@dpremiumhomes.com',32,'Dhaka','',3,'$2y$10$uSiCIm/rYxSI2Q5jXfsOBuz8w4.dja8GlRNx5WYsUdkc7AzjHiBA6',NULL,'','','2026-04-04 12:41:12',6,'2026-04-04 12:30:16','2026-04-04 12:51:08',0),(114,NULL,'Md. Rayhan Bhuiyan','Md. Rayhan Bhuiyan','01689-58433','coo@dpremiumhomes.com',30,'Dhaka','',3,'$2y$10$099WG2xiU7I7762yH70l5e4KtEODir4przyxvpdHPB.GPPToQ7huC',NULL,'','','2026-04-04 12:56:53',110,'2026-04-04 12:56:53','2026-04-08 11:17:49',0),(115,62,'Md. Abul Hasan Hasib','Md. Abul Hasan Hasib','01335258320','hasib.tphl@gmail.com',21,'N/A','',8,'$2y$10$lzrZhqIiXpnom1CIBmwptuuVKJBUsTDJ3x85HjDOElQ.eR3EPLzry',NULL,'','','2026-04-07 09:26:45',0,'2026-04-07 09:26:45','2026-04-12 12:15:19',13),(116,12,'Nahian','rafi','01123456789','nahian.easytechx@gmail.com',14,'asdfadf','55555534434',8,'$2y$10$RHjmhMhmgwE/OuuD2c92suYCaEZlm5RN0UhhFbAz2hRBKdeXj6Fe2',NULL,'','','2026-04-08 10:14:38',6,'2026-04-08 10:14:38','2026-04-08 10:15:58',0),(117,86,'Test Employee','Test','01790128472','test3@gmail.com',32,'Mohammadpur, Dhaka-1207','',0,'$2y$10$sw5JwFNK.bYOVVwur2/1FOxpkSV/FOm7WWdLEfTzh//K3GkkykKQW',NULL,'','','2026-04-10 10:07:16',0,'2026-04-10 10:07:16','2026-04-10 10:07:16',0),(118,87,'Shazzadur Rahman Shoumic','Shazzad','01765562314','shazzadur.tphl@gmail.com',20,'','',8,'$2y$10$TX/Hto3FA3ypCs4fd8al4euM8Mh1vmGy/3mIbgelj8wuiwLDJw0/6',NULL,'','','2026-04-12 11:46:52',0,'2026-04-12 11:46:52','2026-04-12 11:46:52',5),(119,90,'Shohanur Rahaman','Shohanur Rahaman','01958253372','shohan.tphl@gmail.com',13,'Khagan Ashulia','',11,'$2y$10$AIzAW5dhzVr58q5NyyyBueMXK5aTZHZwHOyGVa3EEz842ZAWUsxZK',NULL,'','','2026-04-19 04:42:58',119,'2026-04-17 13:13:21','2026-04-19 04:42:58',0),(120,NULL,'Project Manager1','Project Manager1','01876123454','project.manager1@gmail.com',36,'Dhaka','',15,'$2y$10$GhwOi2FtFs9pBw7GkpZaCefIBQhTiY9GoQLUgUKfBDa9p.XtUvlXu',NULL,'','','2026-06-04 12:31:44',6,'2026-04-26 03:55:58','2026-06-04 12:31:44',0),(121,NULL,'Land Man1','Land Man1','01993878733','land.manager1@gmail.com',33,'Dhaka','',14,'$2y$10$0Zg/ELOPJh5n.sSZkO2i8eMKon1lIWKj5lHQq2cLgbKrqVaYZcUhO',NULL,'','','2026-05-23 05:03:50',6,'2026-04-26 03:56:52','2026-05-23 05:03:50',0),(122,NULL,'Mr. Architect1','Mr. Architect1','01875438578','architecture1@gmail.com',34,'Dhaka','',18,'$2y$10$uYzkPN7DDLAanWYNsI02.OvkqvUIS35JblMvG0NRUHLTaXBemryL2',NULL,'','','2026-05-23 05:09:18',6,'2026-04-26 03:58:02','2026-05-23 05:09:18',0),(123,NULL,'Mr. Site Engineer1','Mr. Site Engineer1','01987328476','site.engineer1@gmail.com',38,'Dhaka','',12,'$2y$10$C.kuqYaBXt7SNIuwlDSoi.NySk5tcj67PFfUBFUqWc1bYrnCqCqIi',NULL,'','','2026-06-04 12:19:50',6,'2026-04-26 03:58:54','2026-06-04 06:19:50',0),(124,NULL,'Mr. Draftsman1','Mr. Draftsman1','01763425454','draftsman1@gmail.com',35,'dhaka','',16,'$2y$10$GpWdksQaMYX5TguAlFBFYO/ygwnc8af9LA0SqWRf./0oVspQwc.De',NULL,'','','2026-05-23 05:23:16',6,'2026-04-26 03:59:33','2026-05-23 05:23:16',0),(125,NULL,'Mr Estimator1','Mr Estimator1','','estimator1@gmail.com',37,'dhaka','',19,'$2y$10$NgvBE.GRBJt0HNyQmSqua.PeaLLgA2oWcVuGhwv7Im31Jz6SgAjay',NULL,'','','2026-05-18 12:06:48',6,'2026-04-26 04:00:08','2026-05-18 12:06:48',0),(126,NULL,'Mr. QC1','Mr. QC1','01986378256','qc1@gmail.com',43,'Dhaka','',13,'$2y$10$paZNUceDQ1b3BWWwfP6jReGr3d9ZLqKdMwisIHzdYTR0toYXK3GXi',NULL,'','','2026-06-03 11:29:09',6,'2026-04-26 04:00:52','2026-06-03 05:29:09',0),(127,NULL,'Mr Purchase Head1','Mr Purchase Head1','01782354543','purchase1@gmail.com',42,'Dhaka','',17,'$2y$10$WWHjM9YQBDTjCW7Dvf6KC.5mbo/0tJPW.WOLTXy2Ahhfz2xnoAPEe',NULL,'','','2026-05-18 07:02:41',6,'2026-04-26 04:01:41','2026-05-18 07:02:41',0),(128,NULL,'Mr Site Operators1','Mr Site Operators1','01723876324','operations1@gmail.com',38,'Dhaka','',20,'$2y$10$NN/GFnq6O6qtzqFyavU4EO4eOwgFH5JJi8J409SIOJZfvrNPlsT5q',NULL,'','','2026-05-17 19:37:41',6,'2026-04-26 04:05:25','2026-05-17 19:37:41',0),(129,NULL,'Mr Structural Designer1','Mr Structure Designer1','01653247632','structural.designer1@gmail.com',15,'Dhaka','',21,'$2y$10$tzAM7hH8kzCv2PnyRdzMneFlpt2yMJBcbMCvxSp2Zj16X/GNO6i4G',NULL,'','','2026-05-18 11:47:43',6,'2026-04-26 05:41:57','2026-05-18 11:47:43',0),(130,NULL,'M.H Jony','M.H Jony','01861685153','admin@gmail.com',28,'Dhaka','',1,'$2y$10$ZsoxIYkWS/zUeQjawL6/4.9oL7L21uVMvqu/7bIAQq6r4OL29eByy',NULL,'','','2026-05-02 04:44:05',130,'2026-05-02 04:34:07','2026-05-02 04:44:05',0),(131,91,'Tamjid Chowdhury','Tamjid Chowdhury','01711111111','tamjid.tphl@gmail.com',43,'Dhaka','',8,'$2y$10$eIiFrakD3xjjCre.joh9QOYdHUd404LHwfN7/ve915KZ6qv33EDWu',NULL,'','','2026-05-13 11:48:35',0,'2026-05-13 10:58:31','2026-05-13 11:48:35',11),(132,94,'Md. Nazmul Islam Robin','Md. Nazmul Islam Robin','01711111111','robintphl@gmail.com',15,'Dhaka','',8,'$2y$10$UwAYoAFri6gXhS8H0CMQMuPmviXy6KFdypiqAAniO.cNSvzqT/3Se',NULL,'','','2026-05-13 11:16:41',0,'2026-05-13 11:07:27','2026-05-13 11:16:41',11),(133,95,'Nazmus Sakib','Nazmus','','Nazmus.tphl@gmail.com',15,'','',8,'$2y$10$PJ8XliE0vfcgQdQPXwMRf.Mx/3J.QEVWZY125PcaR5YHGHZcC7xdC',NULL,'','','2026-05-13 11:36:11',0,'2026-05-13 11:36:11','2026-05-13 11:36:11',9),(134,97,'Nehemiah Biswas Prottoy','Nehemiah Biswas Prottoy','','prottoy.tphl@gmail.com',15,'','',8,'$2y$10$c3NHOint06moTU8hFBAUJOD0gyRwcsFcAzXLu7gjbD8YNwrx./vry',NULL,'','','2026-05-13 11:41:00',0,'2026-05-13 11:41:00','2026-05-13 11:41:00',9),(135,98,'Mst. Sania Khatun','Mst. Sania Khatun','','sania.tphl@gmail.com',15,'','',8,'$2y$10$BsSiQVv1B17SuGJVfEH8S.NX2OHHXaZCrs7zg8hGAVlThrGd4lBZm',NULL,'','','2026-05-13 11:44:56',0,'2026-05-13 11:44:56','2026-05-13 11:44:56',9),(136,99,'Irfan Kabir Abir','Irfan Kabir Abir','','rfan85.tphl@gmail.com',15,'','',8,'$2y$10$8Jd7KDaHOW1p/qvpUlK9feSACKBvGpeh9tD.g.jpZBPJr4XEU4nBe',NULL,'','','2026-05-13 11:57:09',0,'2026-05-13 11:57:09','2026-05-13 11:57:09',3),(137,NULL,'Mr Purchase Executive','Mr Purchase Executive','01987387434','purchase.executive1@gmail.com',15,'Dhaka','',23,'$2y$10$mkIgzsJd1h0CJlBJNvXKh.dVbnJnhXWRA.o6dGx8qsMv0Tv132rJu',NULL,'','','2026-05-18 06:00:52',6,'2026-05-17 11:39:47','2026-05-18 06:00:52',0),(138,NULL,'Project Manager Head','project.manager1@gmail.com','01847363455','project.manager.head@gmail.com',36,'Dhaka','',22,'$2y$10$6L/QBuSQ1AEhS07jnJNeReoBI9l5ir74f1eNFi56LXSNWDle35rgK',NULL,'','','2026-06-03 11:09:42',6,'2026-05-17 16:54:08','2026-06-03 05:09:42',0),(139,NULL,'QC & Internal Audit','qc_audit','','qcaudit@gmail.com',NULL,'Dhaka','',24,'$2y$10$E.zADr8CuCrTUOy1RLAzU.wVaZSFKvBHOHd.BNXIu3mZOOG4ck7MG',NULL,'','','2026-05-24 09:31:58',1,'2026-05-24 09:31:58','2026-05-24 09:31:58',0);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -5346,9 +5150,9 @@ CREATE TABLE `vendor_payment_requests` (
   `vendor_id` int unsigned NOT NULL,
   `project_id` int DEFAULT NULL,
   `purchase_order_id` int unsigned NOT NULL,
-  `payment_type` enum('Advance','Partial','Final') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Final',
+  `payment_type` enum('Advance','Partial','Final') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Final',
   `created_by` int NOT NULL,
-  `invoice_number` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `invoice_number` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `invoice_amount` decimal(16,4) NOT NULL,
   `delivery_verified` tinyint(1) NOT NULL DEFAULT '0',
   `penalty_amount` decimal(10,2) NOT NULL DEFAULT '0.00',
@@ -5356,12 +5160,12 @@ CREATE TABLE `vendor_payment_requests` (
   `qc_verified` tinyint(1) NOT NULL DEFAULT '0',
   `qc_approved_by_id` int DEFAULT NULL,
   `qc_approved_at` datetime DEFAULT NULL,
-  `qc_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `management_note` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `status` enum('Draft','Submitted','QC Approved','Approved','Rejected','Paid','Partially_Paid','Fully_Paid') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Draft',
+  `qc_note` text COLLATE utf8mb4_general_ci,
+  `management_note` text COLLATE utf8mb4_general_ci,
+  `status` enum('Draft','Submitted','QC Approved','Approved','Rejected','Paid','Partially_Paid','Fully_Paid') COLLATE utf8mb4_general_ci DEFAULT 'Draft',
   `approved_amount` decimal(16,4) DEFAULT NULL,
   `net_payable` decimal(10,2) NOT NULL DEFAULT '0.00',
-  `payment_attachment` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `payment_attachment` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `approved_by` int DEFAULT NULL,
   `due_amount` decimal(10,2) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -5396,13 +5200,13 @@ CREATE TABLE `vendor_penalties` (
   `purchase_order_id` int unsigned NOT NULL,
   `receiving_id` int unsigned DEFAULT NULL,
   `payment_request_id` int unsigned DEFAULT NULL,
-  `penalty_category` enum('Late Delivery','Quality Issue','Shortage','Others') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `penalty_category` enum('Late Delivery','Quality Issue','Shortage','Others') COLLATE utf8mb4_general_ci NOT NULL,
   `penalty_amount` decimal(14,2) NOT NULL DEFAULT '0.00',
   `is_fixed_amount` tinyint(1) DEFAULT '1',
-  `reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `action_taken` enum('Deduct from Bill','Replacement Taken','Fine Paid') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Deduct from Bill',
-  `penalty_status` enum('Pending','Approved','Rejected') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
-  `attachment` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `reason` text COLLATE utf8mb4_general_ci NOT NULL,
+  `action_taken` enum('Deduct from Bill','Replacement Taken','Fine Paid') COLLATE utf8mb4_general_ci DEFAULT 'Deduct from Bill',
+  `penalty_status` enum('Pending','Approved','Rejected') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
+  `attachment` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -5431,7 +5235,7 @@ CREATE TABLE `vendor_ratings` (
   `vendor_id` int unsigned NOT NULL,
   `rated_by` int NOT NULL,
   `rating` decimal(2,1) NOT NULL,
-  `reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `reason` text COLLATE utf8mb4_general_ci,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_vr_vendor` (`vendor_id`),
@@ -5457,13 +5261,13 @@ DROP TABLE IF EXISTS `vendors`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `vendors` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `phone` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `email` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `company_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `phone` varchar(30) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `email` varchar(191) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `address` text COLLATE utf8mb4_general_ci,
+  `company_name` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `rating` decimal(3,2) NOT NULL DEFAULT '5.00',
-  `status` enum('active','blacklisted') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'active',
+  `status` enum('active','blacklisted') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'active',
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -5483,53 +5287,6 @@ INSERT INTO `vendors` VALUES (1,'ABC Suppliers Ltd','01711223344','abcvendor@abc
 UNLOCK TABLES;
 
 --
--- Table structure for table `weekly_progress_report`
---
-
-DROP TABLE IF EXISTS `weekly_progress_report`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `weekly_progress_report` (
-  `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `project_id` int NOT NULL,
-  `site_engineer_id` int NOT NULL,
-  `work_plan_id` int DEFAULT NULL,
-  `week_no` int DEFAULT NULL,
-  `target_id` int DEFAULT NULL,
-  `work_done` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `progress_percentage` decimal(5,2) NOT NULL DEFAULT '0.00',
-  `report_date` date NOT NULL,
-  `progress_image` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `weather_condition` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `approved_by_pm` int DEFAULT NULL,
-  `manpower_count` smallint unsigned DEFAULT NULL,
-  `approved_by_qc` int DEFAULT NULL,
-  `qc_gain_percentage` decimal(5,2) DEFAULT '0.00',
-  `qc_photo` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `qc_field_test_details` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `qc_lab_test_result` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `created_by` int NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `work_order_id` int DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_dpr_project` (`project_id`),
-  KEY `idx_dpr_engineer` (`site_engineer_id`),
-  KEY `idx_dpr_date` (`report_date`),
-  KEY `idx_dpr_created_by` (`created_by`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `weekly_progress_report`
---
-
-LOCK TABLES `weekly_progress_report` WRITE;
-/*!40000 ALTER TABLE `weekly_progress_report` DISABLE KEYS */;
-INSERT INTO `weekly_progress_report` VALUES (1,13,123,1,1,3,'First week work done',90.00,'2026-05-07',NULL,'average',120,10,126,0.00,NULL,NULL,NULL,123,'2026-05-07 13:00:49',NULL);
-/*!40000 ALTER TABLE `weekly_progress_report` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `whatsapp_campaigns`
 --
 
@@ -5538,13 +5295,13 @@ DROP TABLE IF EXISTS `whatsapp_campaigns`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `whatsapp_campaigns` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `target_project_id` int DEFAULT NULL,
-  `message_type` enum('text','image','pdf','button','brocure') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'text',
-  `message_content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `message_type` enum('text','image','pdf','button','brocure') COLLATE utf8mb4_general_ci DEFAULT 'text',
+  `message_content` text COLLATE utf8mb4_general_ci NOT NULL,
   `schedule_time` datetime NOT NULL,
-  `device` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Auto Select',
-  `status` enum('Active','Scheduled','Paused','Completed','Failed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'Scheduled',
+  `device` varchar(50) COLLATE utf8mb4_general_ci DEFAULT 'Auto Select',
+  `status` enum('Active','Scheduled','Paused','Completed','Failed') COLLATE utf8mb4_general_ci DEFAULT 'Scheduled',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
@@ -5573,7 +5330,7 @@ CREATE TABLE `whatsapp_messages` (
   `lead_id` int unsigned DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `status` enum('pending','sent','delivered','failed') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `status` enum('pending','sent','delivered','failed') COLLATE utf8mb4_general_ci DEFAULT 'pending',
   PRIMARY KEY (`id`),
   KEY `campaign_id` (`campaign_id`),
   KEY `lead_id` (`lead_id`)
@@ -5599,8 +5356,9 @@ DROP TABLE IF EXISTS `work_types`;
 CREATE TABLE `work_types` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `design_type_id` bigint unsigned NOT NULL,
-  `work_type_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
+  `default_phase_name` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Suggested construction phase for this work type',
+  `work_type_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `description` text COLLATE utf8mb4_general_ci,
   `created_by` bigint unsigned NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -5614,7 +5372,7 @@ CREATE TABLE `work_types` (
 
 LOCK TABLES `work_types` WRITE;
 /*!40000 ALTER TABLE `work_types` DISABLE KEYS */;
-INSERT INTO `work_types` VALUES (1,6,'Soil Analysis & Footing Design','<p>Test data </p>',123,'2026-05-05 13:07:56','2026-05-05 13:07:56'),(2,6,'Floor Plan & Elevation','<p>test </p>',123,'2026-05-05 13:08:27','2026-05-05 13:08:27');
+INSERT INTO `work_types` VALUES (1,6,NULL,'Soil Analysis & Footing Design','<p>Test data </p>',123,'2026-05-05 13:07:56','2026-05-05 13:07:56'),(2,6,NULL,'Floor Plan & Elevation','<p>test </p>',123,'2026-05-05 13:08:27','2026-05-05 13:08:27');
 /*!40000 ALTER TABLE `work_types` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -5627,4 +5385,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-06-04 10:28:26
+-- Dump completed on 2026-06-07 17:16:05

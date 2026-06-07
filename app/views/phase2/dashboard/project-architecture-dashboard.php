@@ -25,8 +25,8 @@ $isAdmin = $isAdmin ?? false;
         --pa-blue: #3b82f6;
         --pa-amber: #f59e0b;
         --pa-red: #ef4444;
-        --pa-purple: #8b5cf6;
-        --pa-indigo: #6366f1;
+        --pa-purple: var(--clr-theme-secondary);
+        --pa-indigo: var(--clr-theme-primary);
         --pa-teal: #14b8a6;
       }
 
@@ -538,11 +538,11 @@ $isAdmin = $isAdmin ?? false;
           $partialPct = ($totalAE > 0) ? round($aePartial / $totalAE * 100) : 0;
           ?>
           <div class="type-row">
-            <div style="min-width:90px;font-size:12px;font-weight:700;color:#6366f1">Internal</div>
+            <div style="min-width:90px;font-size:12px;font-weight:700;color:var(--clr-theme-primary)">Internal</div>
             <div class="type-track">
-              <div class="type-fill" style="width:<?= $intPct ?>%;background:#6366f1"></div>
+              <div class="type-fill" style="width:<?= $intPct ?>%;background:var(--clr-theme-primary)"></div>
             </div>
-            <div style="font-size:12px;font-weight:800;min-width:32px;text-align:right;color:#6366f1">
+            <div style="font-size:12px;font-weight:800;min-width:32px;text-align:right;color:var(--clr-theme-primary)">
               <?= $internalArchitects ?></div>
           </div>
           <div class="type-row">

@@ -10,20 +10,22 @@ $statusCounts = $statusCounts ?? [];
 $userRoleId = $_SESSION['user']['role_id'] ?? 0;
 $canPhaseWork = in_array($userRoleId, [1, 3, 15, 22]);
 
-function cpFmt($n)
-{
-  $n = (float) $n;
-  if ($n >= 10000000)
-    return '৳' . number_format($n / 10000000, 2) . ' Cr';
-  if ($n >= 100000)
-    return '৳' . number_format($n / 100000, 2) . ' L';
-  if ($n >= 1000)
-    return '৳' . number_format($n / 1000, 1) . 'K';
-  return '৳' . number_format($n, 0);
+if (!function_exists('cpFmt')) {
+  function cpFmt($n)
+  {
+    $n = (float) $n;
+    if ($n >= 10000000)
+      return '৳' . number_format($n / 10000000, 2) . ' Cr';
+    if ($n >= 100000)
+      return '৳' . number_format($n / 100000, 2) . ' L';
+    if ($n >= 1000)
+      return '৳' . number_format($n / 1000, 1) . 'K';
+    return '৳' . number_format($n, 0);
+  }
 }
 
 $statusMeta = [
-  'Planning' => ['color' => '#6366f1', 'bg' => 'rgba(99,102,241,.12)', 'icon' => '<i class="fal fa-clipboard-list"></i>', 'dot' => '#6366f1'],
+  'Planning' => ['color' => 'var(--clr-theme-primary)', 'bg' => 'rgba(var(--clr-theme-primary-rgb),.12)', 'icon' => '<i class="fal fa-clipboard-list"></i>', 'dot' => 'var(--clr-theme-primary)'],
   'In Progress' => ['color' => '#f59e0b', 'bg' => 'rgba(245,158,11,.12)', 'icon' => '<i class="fal fa-cog"></i>', 'dot' => '#f59e0b'],
   'On Hold' => ['color' => '#ef4444', 'bg' => 'rgba(239,68,68,.12)', 'icon' => '<i class="fal fa-pause-circle"></i>', 'dot' => '#ef4444'],
   'Completed' => ['color' => '#10b981', 'bg' => 'rgba(16,185,129,.12)', 'icon' => '<i class="fal fa-check-circle"></i>', 'dot' => '#10b981'],
@@ -41,8 +43,8 @@ $statusMeta = [
         --cp-green: #10b981;
         --cp-amber: #f59e0b;
         --cp-red: #ef4444;
-        --cp-indigo: #6366f1;
-        --cp-violet: #8b5cf6;
+        --cp-indigo: var(--clr-theme-primary);
+        --cp-violet: var(--clr-theme-secondary);
         --cp-teal: #14b8a6;
       }
 
@@ -467,13 +469,16 @@ $statusMeta = [
         </div>
       <?php else: ?>
         <?php foreach ($projects as $pr):
-          $pct = round((float) ($pr['progress_pct'] ?? 0), 1);
+          $isPhaseBased = ($pr['workflow_version'] ?? '') === 'phase_based';
+          $actual_pct = round((float) ($pr['overall_project_actual'] ?? $pr['progress_pct'] ?? 0.0), 1);
+          $planned_pct = round((float) ($pr['overall_project_planned'] ?? $pr['progress_pct'] ?? 0.0), 1);
+          $pct = $actual_pct;
           $status = $pr['project_status'] ?? 'Planning';
           $meta = $statusMeta[$status] ?? ['color' => '#888', 'bg' => 'rgba(0,0,0,.07)', 'icon' => '🏗️', 'dot' => '#888'];
-          $grad = $pct >= 75 ? 'linear-gradient(90deg,#059669,#10b981)'
-            : ($pct >= 40 ? 'linear-gradient(90deg,#d97706,#f59e0b)'
+          $grad = $actual_pct >= 75 ? 'linear-gradient(90deg,#059669,#10b981)'
+            : ($actual_pct >= 40 ? 'linear-gradient(90deg,#d97706,#f59e0b)'
               : 'linear-gradient(90deg,#dc2626,#ef4444)');
-          $pctColor = $pct >= 75 ? '#10b981' : ($pct >= 40 ? '#f59e0b' : '#ef4444');
+          $pctColor = $actual_pct >= 75 ? '#10b981' : ($actual_pct >= 40 ? '#f59e0b' : '#ef4444');
           $budgetUsedPct = ($pr['total_budget'] > 0) ? round($pr['total_spent'] / $pr['total_budget'] * 100, 1) : 0;
           $startDate = $pr['start_date'] ? date('M Y', strtotime($pr['start_date'])) : '—';
           $endDate = $pr['end_date'] ? date('M Y', strtotime($pr['end_date'])) : '—';
@@ -536,12 +541,21 @@ $statusMeta = [
 
               <!-- Progress -->
               <div class="cp-progress-wrap">
-                <div class="cp-prog-header">
-                  <span class="cp-prog-label">Construction Progress</span>
-                  <span class="cp-prog-pct" style="color:<?= $pctColor ?>"><?= $pct ?>%</span>
+                <div class="cp-prog-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 11px;">
+                  <span class="cp-prog-label" style="color: var(--text-muted); font-weight: 600;">
+                    <?= $isPhaseBased ? 'Overall Progress (Actual / Planned)' : 'Construction Progress' ?>
+                  </span>
+                  <span class="cp-prog-pct" style="font-weight: 800; font-size: 13px; color:<?= $pctColor ?>;">
+                    <?= $isPhaseBased ? number_format($actual_pct, 1) . '% / ' . number_format($planned_pct, 1) . '%' : number_format($actual_pct, 1) . '%' ?>
+                  </span>
                 </div>
-                <div class="cp-prog-track">
-                  <div class="cp-prog-fill" style="width:<?= $pct ?>%;background:<?= $grad ?>"></div>
+                <div class="cp-prog-track" style="position: relative; height: 7px; border-radius: 6px; background: rgba(0, 0, 0, .07); overflow: hidden;">
+                  <?php if ($isPhaseBased): ?>
+                    <!-- Planned progress bar (light semi-transparent blue) -->
+                    <div class="cp-prog-fill-planned" style="position: absolute; left: 0; top: 0; height: 100%; border-radius: 6px; background: rgba(59, 130, 246, 0.35); width: <?= $planned_pct ?>%; transition: width .6s cubic-bezier(.4, 0, .2, 1);"></div>
+                  <?php endif; ?>
+                  <!-- Actual progress bar -->
+                  <div class="cp-prog-fill" style="position: absolute; left: 0; top: 0; height: 100%; border-radius: 6px; background: <?= $grad ?>; width: <?= $actual_pct ?>%; transition: width .6s cubic-bezier(.4, 0, .2, 1);"></div>
                 </div>
               </div>
 
@@ -553,7 +567,7 @@ $statusMeta = [
             <div class="cp-card-footer">
               <div class="cp-footer-stat">
                 <?php if ($isPhaseBased): ?>
-                  <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(99,102,241,.12);color:#6366f1;letter-spacing:.3px;">⚡ Phase-Based</span>
+                  <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(var(--clr-theme-primary-rgb),.12);color:var(--clr-theme-primary);letter-spacing:.3px;">⚡ Phase-Based</span>
                 <?php elseif ($pr['total_floors']): ?>
                   <i class="fal fa-layer-group me-1"></i><strong><?= $pr['total_floors'] ?></strong> Floors
                 <?php else: ?>
@@ -562,7 +576,7 @@ $statusMeta = [
                 <?php endif; ?>
               </div>
               <?php if ($canPhaseWork && $isPhaseBased): ?>
-                <div class="cp-view-btn" style="background:rgba(99,102,241,.12);color:#6366f1">Open Phase Work <i class="fal fa-arrow-right ms-1"></i></div>
+                <div class="cp-view-btn" style="background:rgba(var(--clr-theme-primary-rgb),.12);color:var(--clr-theme-primary)">Open Phase Work <i class="fal fa-arrow-right ms-1"></i></div>
               <?php else: ?>
                 <div class="cp-view-btn">View Details <i class="fal fa-arrow-right ms-1"></i></div>
               <?php endif; ?>
@@ -620,7 +634,7 @@ $statusMeta = [
 
       // Animate progress bars on load
       window.addEventListener('load', () => {
-        document.querySelectorAll('.cp-prog-fill').forEach(bar => {
+        document.querySelectorAll('.cp-prog-fill, .cp-prog-fill-planned').forEach(bar => {
           const w = bar.style.width;
           bar.style.width = '0';
           setTimeout(() => { bar.style.width = w; }, 200);

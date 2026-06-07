@@ -35,10 +35,10 @@ $prsForApproval   = $prsForApproval   ?? [];
   --ptl-green:   #10b981;
   --ptl-amber:   #f59e0b;
   --ptl-red:     #ef4444;
-  --ptl-purple:  #8b5cf6;
+  --ptl-purple:  var(--clr-theme-secondary);
   --ptl-teal:    #14b8a6;
   --ptl-orange:  #f97316;
-  --ptl-indigo:  #6366f1;
+  --ptl-indigo:  var(--clr-theme-primary);
 }
 .ptl-hero {
   background: linear-gradient(135deg, #0f5132 0%, #198754 55%, #20a86a 100%);
@@ -192,7 +192,7 @@ $prsForApproval   = $prsForApproval   ?? [];
           </span>
         </td>
         <td>
-          <span style="font-size:11px;background:rgba(139,92,246,.1);color:#7c3aed;padding:2px 8px;border-radius:10px">
+          <span style="font-size:11px;background:rgba(var(--clr-theme-secondary-rgb),.1);color:var(--clr-theme-secondary);padding:2px 8px;border-radius:10px">
             <?= (int)$apr['item_count'] ?> items
           </span>
         </td>
@@ -205,7 +205,7 @@ $prsForApproval   = $prsForApproval   ?? [];
         <td style="font-size:11px;color:var(--text-muted)"><?= !empty($apr['created_at']) ? date('d M Y', strtotime($apr['created_at'])) : '—' ?></td>
         <td style="text-align:right;white-space:nowrap">
           <a href="<?= $base ?>/con-purchase-request/<?= $apr['id'] ?>"
-             style="display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;
+             style="display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,var(--clr-theme-primary),var(--clr-theme-primary));color:#fff;
                     border:none;border-radius:8px;padding:5px 12px;font-size:11.5px;font-weight:700;text-decoration:none">
             <i class="fal fa-eye"></i> View
           </a>
@@ -266,7 +266,7 @@ $prsForApproval   = $prsForApproval   ?? [];
 
   <a href="<?= $base ?>/con-materials" class="kpi-card">
     <div class="kpi-accent" style="background:var(--ptl-purple)"></div>
-    <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:var(--ptl-purple)"><i class="fal fa-boxes-stacked"></i></div>
+    <div class="kpi-icon" style="background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--ptl-purple)"><i class="fal fa-boxes-stacked"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)">Materials</div>
     <div class="kpi-value" style="color:var(--ptl-purple)"><?= $totalMaterials ?></div>
     <div class="kpi-sub">Total material types</div>
@@ -393,7 +393,7 @@ $prsForApproval   = $prsForApproval   ?? [];
           <span>Issue Penalty</span>
         </a>
         <a href="<?= $base ?>/con-material-create" class="ql2-btn" style="color:var(--ptl-purple)">
-          <div class="ql2-icon" style="background:rgba(139,92,246,.12);color:var(--ptl-purple)"><i class="fal fa-boxes-stacked"></i></div>
+          <div class="ql2-icon" style="background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--ptl-purple)"><i class="fal fa-boxes-stacked"></i></div>
           <span>Add Material</span>
         </a>
       </div>
@@ -510,7 +510,7 @@ $prsForApproval   = $prsForApproval   ?? [];
         <td style="font-size:11px;color:var(--text-muted)">#<?= $pr['id'] ?></td>
         <td><strong><?= htmlspecialchars($pr['project_name'] ?? 'N/A') ?></strong></td>
         <td style="font-size:11.5px;color:var(--text-muted)"><?= htmlspecialchars($pr['created_by_name'] ?? '—') ?></td>
-        <td><span style="font-size:11px;background:rgba(139,92,246,.1);color:#7c3aed;padding:2px 8px;border-radius:10px"><?= (int)$pr['item_count'] ?> items</span></td>
+        <td><span style="font-size:11px;background:rgba(var(--clr-theme-secondary-rgb),.1);color:var(--clr-theme-secondary);padding:2px 8px;border-radius:10px"><?= (int)$pr['item_count'] ?> items</span></td>
         <td><span style="background:<?= $prSc['bg'] ?>;color:<?= $prSc['text'] ?>;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px"><?= $prSt ?></span></td>
         <td>
           <a href="<?= $base ?>/con-purchase-request/<?= $pr['id'] ?>"
@@ -528,12 +528,12 @@ $prsForApproval   = $prsForApproval   ?? [];
 
 <?php if (!empty($allBOQs)): ?>
 <!-- ═════════════════ ALL BOQs OVERVIEW PANEL ═════════════════ -->
-<div class="ptl-panel" style="border:2px solid rgba(99,102,241,.25);background:rgba(99,102,241,.03);margin-bottom:22px">
-  <div class="ptl-panel-title" style="color:#4338ca">
+<div class="ptl-panel" style="border:2px solid rgba(var(--clr-theme-primary-rgb),.25);background:rgba(var(--clr-theme-primary-rgb),.03);margin-bottom:22px">
+  <div class="ptl-panel-title" style="color:var(--clr-theme-primary)">
     <div class="ptl-dot" style="background:var(--ptl-indigo)"></div>
     <i class="fal fa-file-lines me-2" style="color:var(--ptl-indigo)"></i>
     সকল BOQ Overview
-    <span style="margin-left:auto;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(99,102,241,.12);color:#4338ca">
+    <span style="margin-left:auto;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(var(--clr-theme-primary-rgb),.12);color:var(--clr-theme-primary)">
       <?= count($allBOQs) ?> BOQ<?= count($allBOQs) > 1 ? 's' : '' ?>
     </span>
   </div>
@@ -595,7 +595,7 @@ $prsForApproval   = $prsForApproval   ?? [];
         </td>
         <td style="text-align:right">
           <a href="<?= $base ?>/con-boq-show/<?= $bq['boq_id'] ?>"
-             style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;
+             style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,var(--clr-theme-primary),var(--clr-theme-primary));color:#fff;
                     border:none;border-radius:8px;padding:5px 14px;font-size:11.5px;font-weight:700;text-decoration:none">
             <i class="fal fa-eye"></i> View
           </a>

@@ -3,14 +3,13 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 04, 2026 at 12:30 PM
+-- Generation Time: Jun 07, 2026 at 02:37 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
-SET FOREIGN_KEY_CHECKS=0;
 
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -1109,14 +1108,15 @@ CREATE TABLE `daily_progress_logs` (
 --
 
 INSERT INTO `daily_progress_logs` (`id`, `weekly_progress_id`, `project_id`, `log_date`, `labour_count`, `cement_bags`, `concrete_mt`, `concrete_cft`, `materials_used`, `equipment_active`, `weather`, `temperature_celsius`, `safety_ok`, `qc_checked`, `site_remarks`, `created_by`, `qc_approved_id`, `qc_status`, `qc_image`, `qc_comment`, `pm_approved_id`, `pm_status`, `pm_comment`, `created_at`) VALUES
-(8, 2, 13, '2026-06-08', 0, 0, 0.00, 0.00, 0, 0, 'Clear', NULL, 0, 0, '0', 120, NULL, 'Pending', NULL, NULL, NULL, 'Pending', NULL, '2026-06-01 07:56:04'),
+(8, 2, 13, '2026-06-08', 0, 0, 0.00, 0.00, 0, 0, 'Clear', NULL, 0, 0, '0', 120, NULL, 'Approved', NULL, NULL, NULL, 'Approved', NULL, '2026-06-01 07:56:04'),
 (9, 3, 13, '2026-06-15', 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, 0, 0, NULL, NULL, NULL, 'Pending', NULL, NULL, NULL, 'Pending', NULL, '2026-06-01 07:57:42'),
 (10, 4, 13, '2026-06-22', 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, 0, 0, NULL, NULL, NULL, 'Pending', NULL, NULL, NULL, 'Pending', NULL, '2026-06-01 07:57:47'),
 (11, 4, 13, '2026-06-23', 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, 0, 0, NULL, NULL, NULL, 'Pending', NULL, NULL, NULL, 'Pending', NULL, '2026-06-01 08:18:04'),
 (15, 1, 13, '2026-06-03', 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, 0, 0, NULL, NULL, NULL, 'Pending', NULL, NULL, NULL, 'Pending', NULL, '2026-06-03 04:59:34'),
-(16, 1, 13, '2026-06-01', 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, 0, 0, NULL, NULL, 126, 'Approved', 'uploads/qc-reports/qc_wpr_6a1fb56ad4b57_1780462954.png', 'Ok approved', 120, 'Approved', 'Ok qc approved then pm approved', '2026-06-03 04:59:41'),
 (17, 1, 13, '2026-06-02', 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, 0, 0, NULL, NULL, NULL, 'Pending', NULL, NULL, NULL, 'Pending', NULL, '2026-06-03 05:02:39'),
-(18, 1, 13, '2026-06-04', 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, 0, 0, NULL, NULL, NULL, 'Pending', NULL, NULL, NULL, 'Pending', NULL, '2026-06-04 07:47:01');
+(18, 1, 13, '2026-06-04', 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, 0, 0, NULL, NULL, NULL, 'Pending', NULL, NULL, NULL, 'Pending', NULL, '2026-06-04 07:47:01'),
+(20, 1, 13, '2026-06-07', 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, 0, 0, NULL, NULL, NULL, 'Pending', NULL, NULL, NULL, 'Pending', NULL, '2026-06-07 09:45:34'),
+(21, 1, 13, '2026-06-01', 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, 0, 0, NULL, NULL, NULL, 'Pending', NULL, NULL, NULL, 'Pending', NULL, '2026-06-07 10:25:37');
 
 -- --------------------------------------------------------
 
@@ -1128,6 +1128,7 @@ CREATE TABLE `daily_work_item_logs` (
   `id` int(10) UNSIGNED NOT NULL,
   `daily_log_id` int(10) UNSIGNED NOT NULL,
   `target_item_id` int(10) UNSIGNED NOT NULL,
+  `phase_item_detail_id` bigint(20) UNSIGNED DEFAULT NULL,
   `work_type_id` bigint(20) UNSIGNED DEFAULT NULL,
   `qty_done_today` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Qty done in item unit (CFT / MT / SFT...)',
   `unit` varchar(50) DEFAULT NULL,
@@ -1141,8 +1142,8 @@ CREATE TABLE `daily_work_item_logs` (
 -- Dumping data for table `daily_work_item_logs`
 --
 
-INSERT INTO `daily_work_item_logs` (`id`, `daily_log_id`, `target_item_id`, `work_type_id`, `qty_done_today`, `unit`, `remarks`, `item_status`, `responsible_team`, `created_at`) VALUES
-(34, 8, 1, 2, 100.00, 'CFT', '', 'In Progress', '', '2026-06-04 08:05:58');
+INSERT INTO `daily_work_item_logs` (`id`, `daily_log_id`, `target_item_id`, `phase_item_detail_id`, `work_type_id`, `qty_done_today`, `unit`, `remarks`, `item_status`, `responsible_team`, `created_at`) VALUES
+(34, 8, 1, NULL, 2, 100.00, 'CFT', '', 'In Progress', '', '2026-06-04 08:05:58');
 
 -- --------------------------------------------------------
 
@@ -2686,7 +2687,7 @@ CREATE TABLE `initial_estimate_budgets` (
 --
 
 INSERT INTO `initial_estimate_budgets` (`id`, `project_id`, `architecture_id`, `work_type_id`, `total_area_sqft`, `material_cost_total`, `labor_cost_total`, `other_costs`, `budget_link`, `work_details`, `other_cost_detail`, `total_estimated_cost`, `weight_percentage`, `status`, `approved_by`, `approval_date`, `start_date`, `end_date`, `created_by`, `created_at`, `updated_at`, `drawing_id`, `status_reason`) VALUES
-(1, 13, 1, 0, 1200.00, 624995.00, 4200000.00, 100000.00, '', NULL, 'Transport', 4924995.00, 100.00, 'approved', 120, '2026-05-07 11:57:22', '2026-05-07', '2030-07-07', 123, '2026-05-07 11:55:55', '2026-05-07 11:57:22', NULL, NULL);
+(2, 13, 1, NULL, 3200.00, 2812000.00, 4800000.00, 10000.00, '', NULL, 'transport', 7622000.00, 100.00, 'pm_approved', 120, '2026-06-07 09:12:21', NULL, '2026-06-01', 120, '2026-06-07 09:03:56', '2026-06-07 09:12:21', 1, NULL);
 
 -- --------------------------------------------------------
 
@@ -2719,9 +2720,10 @@ CREATE TABLE `initial_estimate_items` (
 --
 
 INSERT INTO `initial_estimate_items` (`id`, `budget_id`, `design_type_id`, `material_id`, `material_unit`, `estimated_qty`, `unit_cost_approx`, `remarks`, `work_type_id`, `phase_item_id`, `sl_no`, `location_desc`, `nos`, `length_ft`, `width_ft`, `height_ft`, `volume_qty`) VALUES
-(1, 1, 6, 4, 'CFT', 10000.000, 15.00, 'work In Foundation', 2, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(2, 1, 6, 2, 'Pcs', 15000.000, 25.00, 'work In Foundation', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(3, 1, 6, 1, 'Bags', 500.000, 199.99, 'work In Foundation', 2, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+(4, 2, 6, 4, 'CFT', 20000.000, 20.00, '', 2, 2, 1, 'C1:Grid(E/4),(F/1),(A/1),(A/8)=04 Nos', 20.000, 5.000, 20.000, 10.000, 20000.000),
+(5, 2, 6, 2, 'Pcs', 240000.000, 10.00, '', 2, 2, 2, 'C1:Grid(E/4),(F/1),(A/1),(A/8)=04 Nos', 30.000, 40.000, 20.000, 10.000, 240000.000),
+(6, 2, 6, 4, 'CFT', 400.000, 10.00, '', 1, 2, 1, 'C1:Grid(E/4),(F/1),(A/1),(A/8)=04 Nos', 10.000, 4.000, 5.000, 2.000, 400.000),
+(7, 2, 6, 2, 'Pcs', 400.000, 20.00, '', 1, 2, 2, 'C1:Grid(E/4),(F/1),(A/1),(A/8)=04 Nos', 5.000, 20.000, 2.000, 2.000, 400.000);
 
 -- --------------------------------------------------------
 
@@ -2746,8 +2748,7 @@ CREATE TABLE `initial_estimate_labors` (
 --
 
 INSERT INTO `initial_estimate_labors` (`id`, `budget_id`, `design_type_id`, `labor_type_name`, `rate_per_sqft`, `area_sqft`, `description`, `work_type_id`, `phase_item_id`) VALUES
-(1, 1, 6, 'Contractor', 1500.00, 1200.00, 'test electric', 2, NULL),
-(2, 1, 6, 'Civil Worker', 2000.00, 1200.00, 'Test work details', 1, NULL);
+(3, 2, 6, 'Civil Work', 1500.00, 3200.00, 'Test work details', 0, 2);
 
 -- --------------------------------------------------------
 
@@ -8936,7 +8937,9 @@ INSERT INTO `notifications` (`id`, `user_id`, `task_id`, `assigned_by`, `message
 (4, 3, 4, 68, 'New task assigned: Test Task 1', 1, '2026-04-06 15:49:52'),
 (5, 1, 5, 6, 'New task assigned: Test Task From developer', 0, '2026-04-08 09:07:02'),
 (6, 1, 6, 68, 'New task assigned: Test Task From', 0, '2026-04-08 10:43:38'),
-(7, 3, 7, 4, 'New task assigned: Test task to Fahim', 0, '2026-04-10 10:23:57');
+(7, 3, 7, 4, 'New task assigned: Test task to Fahim', 0, '2026-04-10 10:23:57'),
+(8, 9, 8, 120, 'New task assigned: Task test', 0, '2026-06-06 07:14:51'),
+(9, 1, 9, 120, 'New task assigned: test 2', 0, '2026-06-06 07:22:57');
 
 -- --------------------------------------------------------
 
@@ -9119,7 +9122,7 @@ INSERT INTO `permissions` (`id`, `name`, `status`, `created_by`, `created_at`, `
 (2, 'View Role', 1, NULL, '2025-12-04 12:17:47', '2025-12-04 12:17:47'),
 (3, 'Add Permission', 1, NULL, '2025-12-06 05:51:07', '2025-12-06 05:51:07'),
 (4, 'Show Permission', 1, NULL, '2025-12-06 05:51:25', '2025-12-06 05:51:25'),
-(5, 'Add Task', 1, NULL, '2025-12-10 04:26:45', '2025-12-10 04:26:45'),
+(5, 'Employee Dashboard', 1, 6, '2025-12-10 04:26:45', '2025-12-10 04:26:45'),
 (6, 'Hr Manage', 1, 12, '2025-12-17 09:52:36', '2025-12-17 09:52:36'),
 (7, 'Sales & Business', 1, NULL, '2026-01-04 01:08:25', '2026-01-04 01:08:25'),
 (8, 'Payroll Manage', 1, NULL, '2026-01-04 01:11:05', '2026-01-04 01:11:05'),
@@ -9245,7 +9248,8 @@ CREATE TABLE `phase_monthly_targets` (
 --
 
 INSERT INTO `phase_monthly_targets` (`id`, `project_id`, `phase_id`, `target_month`, `target_month_number`, `target_year`, `total_target_weight_pct`, `planning_status`, `responsible_team`, `contractor_id`, `created_by`, `created_at`, `updated_at`) VALUES
-(1, 13, 1, '2026-06-01', 6, '2026', NULL, 'Approved', 'Structural Team', 3, 120, '2026-06-01 04:20:27', '2026-06-02 12:04:35');
+(1, 13, 1, '2026-06-01', 6, '2026', NULL, 'Approved', 'Structural Team', 3, 120, '2026-06-01 04:20:27', '2026-06-02 12:04:35'),
+(2, 13, 1, '2026-07-01', 7, '2026', NULL, 'Draft', 'Civil Work', NULL, 120, '2026-06-07 09:24:19', NULL);
 
 -- --------------------------------------------------------
 
@@ -9258,11 +9262,10 @@ CREATE TABLE `phase_monthly_target_items` (
   `target_id` int(10) UNSIGNED NOT NULL,
   `work_type_id` bigint(20) UNSIGNED DEFAULT NULL COMMENT 'Optional ref to work_types for categorization',
   `work_item_name` varchar(200) NOT NULL,
+  `phase_item_id` int(11) DEFAULT NULL,
   `unit` varchar(50) DEFAULT NULL COMMENT 'CFT / MT / SFT / Bags / Nos / Days',
   `monthly_target_qty` decimal(12,2) DEFAULT NULL,
   `actual_qty` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Actual quantity achieved',
-  `planned_progress_pct` decimal(5,2) DEFAULT NULL COMMENT 'Planned completion % by month end',
-  `actual_progress_pct` decimal(5,2) NOT NULL DEFAULT 0.00 COMMENT 'Actual % achieved this month',
   `recovery_notes` text DEFAULT NULL,
   `start_date` date DEFAULT NULL,
   `end_date` date DEFAULT NULL,
@@ -9282,9 +9285,9 @@ CREATE TABLE `phase_monthly_target_items` (
 -- Dumping data for table `phase_monthly_target_items`
 --
 
-INSERT INTO `phase_monthly_target_items` (`id`, `target_id`, `work_type_id`, `work_item_name`, `unit`, `monthly_target_qty`, `actual_qty`, `planned_progress_pct`, `actual_progress_pct`, `recovery_notes`, `start_date`, `end_date`, `responsible_team`, `contractor_id`, `priority`, `status`, `week_1_qty`, `week_2_qty`, `week_3_qty`, `week_4_qty`, `sort_order`, `created_at`) VALUES
-(1, 1, 2, 'Footing & Column Pedestal', 'CFT', 3000.00, 1100.00, 70.00, 36.67, NULL, '2026-06-01', '2026-06-21', NULL, NULL, 'High', 'Draft', 1000.00, 500.00, 1000.00, 0.00, 1, '2026-06-01 04:49:00'),
-(2, 1, 1, 'Footing & Column Pedestal', 'CFT', 500.00, 0.00, 30.00, 0.00, NULL, '2026-06-22', '2026-06-28', NULL, NULL, 'Medium', 'Draft', 0.00, 0.00, 0.00, 500.00, 2, '2026-06-01 04:54:44');
+INSERT INTO `phase_monthly_target_items` (`id`, `target_id`, `work_type_id`, `work_item_name`, `phase_item_id`, `unit`, `monthly_target_qty`, `actual_qty`, `recovery_notes`, `start_date`, `end_date`, `responsible_team`, `contractor_id`, `priority`, `status`, `week_1_qty`, `week_2_qty`, `week_3_qty`, `week_4_qty`, `sort_order`, `created_at`) VALUES
+(1, 1, 2, 'Footing & Column Pedestal', 2, 'CFT', 3000.00, 1100.00, NULL, '2026-06-01', '2026-06-21', NULL, NULL, 'High', 'Draft', 1000.00, 500.00, 1000.00, 0.00, 1, '2026-06-01 04:49:00'),
+(2, 1, 1, 'Footing & Column Pedestal', 2, 'CFT', 500.00, 0.00, NULL, '2026-06-22', '2026-06-28', NULL, NULL, 'Medium', 'Draft', 0.00, 0.00, 0.00, 500.00, 2, '2026-06-01 04:54:44');
 
 -- --------------------------------------------------------
 
@@ -9362,8 +9365,8 @@ CREATE TABLE `phase_weekly_progress` (
 --
 
 INSERT INTO `phase_weekly_progress` (`id`, `project_id`, `phase_id`, `target_id`, `week_number`, `week_start_date`, `week_end_date`, `overall_progress_pct`, `total_planned_qty`, `total_achieved_qty`, `labour_used`, `cement_used_bags`, `concrete_poured_mt`, `concrete_poured_cft`, `materials_used`, `equipment_active`, `weather_condition`, `temperature_celsius`, `site_engineer_remarks`, `safety_ok`, `qc_checked`, `material_received`, `qc_approved_id`, `qc_status`, `qc_image`, `qc_comment`, `pm_approved_id`, `pm_status`, `pm_comment`, `entry_status`, `submitted_by`, `submitted_at`, `created_at`, `updated_at`) VALUES
-(1, 13, 1, 1, 1, '2026-06-01', '2026-06-07', 50.00, 1000.00, 1000.00, 20, 0, 0.00, 0.00, 0, 2, NULL, NULL, NULL, 0, 0, 0, NULL, 'Pending', NULL, NULL, NULL, 'Pending', NULL, 'Submitted', 1, '2026-06-03 11:01:45', '2026-06-01 04:56:02', '2026-06-03 05:01:45'),
-(2, 13, 1, 1, 2, '2026-06-08', '2026-06-14', 10.00, 500.00, 100.00, 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, NULL, 0, 0, 0, NULL, 'Pending', NULL, NULL, NULL, 'Pending', NULL, 'Draft', NULL, NULL, '2026-06-01 07:56:04', '2026-06-04 08:02:49'),
+(1, 13, 1, 1, 1, '2026-06-01', '2026-06-07', 100.00, 1000.00, 1000.00, 20, 0, 0.00, 0.00, 0, 2, NULL, NULL, NULL, 0, 0, 0, NULL, 'Approved', NULL, NULL, NULL, 'Approved', NULL, 'Submitted', 1, '2026-06-03 11:01:45', '2026-06-01 04:56:02', '2026-06-06 10:35:34'),
+(2, 13, 1, 1, 2, '2026-06-08', '2026-06-14', 20.00, 500.00, 100.00, 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, NULL, 0, 0, 0, NULL, 'Pending', NULL, NULL, NULL, 'Pending', NULL, 'Draft', NULL, NULL, '2026-06-01 07:56:04', '2026-06-06 10:35:34'),
 (3, 13, 1, 1, 3, '2026-06-15', '2026-06-21', 0.00, NULL, NULL, 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, NULL, 0, 0, 0, NULL, 'Pending', NULL, NULL, NULL, 'Pending', NULL, 'Draft', NULL, NULL, '2026-06-01 07:57:42', NULL),
 (4, 13, 1, 1, 4, '2026-06-22', '2026-06-30', 0.00, NULL, NULL, 0, 0, 0.00, 0.00, 0, 0, NULL, NULL, NULL, 0, 0, 0, NULL, 'Pending', NULL, NULL, NULL, 'Pending', NULL, 'Draft', NULL, NULL, '2026-06-01 07:57:47', '2026-06-01 08:17:44');
 
@@ -9403,12 +9406,8 @@ CREATE TABLE `phase_weekly_progress_items` (
 
 INSERT INTO `phase_weekly_progress_items` (`id`, `weekly_progress_id`, `target_item_id`, `planned_qty`, `achieved_qty`, `1st_day_qty`, `2nd_day_qty`, `3rd_day_qty`, `4th_day_qty`, `5th_day_qty`, `6_th_day_qty`, `7th_day_qty`, `today_progress_qty`, `percent_complete`, `responsible_team`, `contractor_id`, `status`, `has_issue_flag`, `photo_path`, `remarks_action`, `created_at`) VALUES
 (1, 1, 1, 1000.00, 1000.00, 200.00, 200.00, 200.00, 100.00, 100.00, 100.00, 100.00, 100.00, 100.00, '', NULL, 'Completed', 0, 'uploads/photos/photo_6a1d6d91ba636.png', NULL, '2026-06-01 04:56:02'),
-(2, 1, 2, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, '', NULL, 'Not Started', 0, NULL, NULL, '2026-06-01 04:56:02'),
 (3, 2, 1, 500.00, 100.00, 100.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 100.00, 20.00, '', NULL, 'In Progress', 0, 'uploads/photos/photo_6a21310157732.png', NULL, '2026-06-01 07:56:04'),
-(4, 2, 2, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, '', NULL, 'Not Started', 0, NULL, NULL, '2026-06-01 07:56:04'),
 (5, 3, 1, 1000.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, '', NULL, 'Not Started', 0, NULL, NULL, '2026-06-01 07:57:42'),
-(6, 3, 2, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, '', NULL, 'Not Started', 0, NULL, NULL, '2026-06-01 07:57:42'),
-(7, 4, 1, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, '', NULL, 'Not Started', 0, NULL, NULL, '2026-06-01 07:57:47'),
 (8, 4, 2, 500.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, '', NULL, 'Not Started', 0, NULL, NULL, '2026-06-01 07:57:47');
 
 -- --------------------------------------------------------
@@ -9508,9 +9507,9 @@ INSERT INTO `projects` (`id`, `name`, `slug`, `location_id`, `community_id`, `bu
 (5, 'The Legacy Residence', NULL, 2, 2, 'B2+B1+G+14', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1790},{\"unit_name\":\"B\",\"sqft\":1790},{\"unit_name\":\"C\",\"sqft\":1790},{\"unit_name\":\"D\",\"sqft\":1790}]}', '3 Bedroom', 'projects_69d5fee900d47.jpeg', '', '', '50 ', '50 Lac - 1 Crore BDT', NULL, NULL, 13.91, '2', 'B', 'https://drive.google.com/file/d/1PF3KEcpfxBw0Ecz9pHzBsCkFk2SaMgoT/view?usp=drive_link', '<p>The Legacy Residence represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 2, '2026-04-08 06:17:20', '2026-04-08 07:08:25', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, 'legacy', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (6, 'The Maple Heights', NULL, 2, 2, 'B2+B1+G+14', 56, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2250},{\"unit_name\":\"B\",\"sqft\":2150},{\"unit_name\":\"C\",\"sqft\":2190},{\"unit_name\":\"D\",\"sqft\":2190}]}', '4 Bedroom', 'projects_69d5ff07e1c77.jpeg', '', '', '30', '1 Crore - 2 Crore BDT', NULL, NULL, 14.58, '2', 'B', 'https://drive.google.com/file/d/1MeywaLCcU3IET53mkHMnL4dXiukEvQ-5/view?usp=drive_link', '<p>The Maple Heights represents the pinnacle of modern luxury living in Ashulia Model Town. Inspired by timeless elegance and contemporary design, this residential masterpiece combines architectural brilliance with natural harmony, offering residents an unparalleled lifestyle experience.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 2, '2026-04-08 06:22:49', '2026-04-08 07:08:55', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, 'legacy', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (7, 'The Premium Signature Heights', NULL, 1, 3, 'B+G+12', 36, 3, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1950},{\"unit_name\":\"B\",\"sqft\":2000},{\"unit_name\":\"C\",\"sqft\":1750}]}', '3 Bedroom', 'projects_69d5ff409b76f.jpeg', '', '', '25', '1 Crore - 2 Crore BDT', NULL, NULL, 16.88, '6168 U, 6168 M, 6168 T', 'N', 'https://drive.google.com/file/d/1MDZY987dskuwdA2n-zH68W6XsjCSNgUc/view?usp=drive_link', '<p class=\"text-base sm:text-lg leading-relaxed text-neutral-700 max-w-xl animate-fade-up delay-200\">The Signature Heights is designed as an home, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', '', '', 'https://maps.app.goo.gl/nVMLyaaQGiqZn6fi6', '23°48\'38.2', 2, 0, 29, '2026-04-08 06:57:40', '2026-04-29 05:45:26', 1, NULL, 1, 1, 1, 'On Sale', 12.00, NULL, 'legacy', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(9, 'The Crown Pavilion', 'the-crown-pavilion-1', 2, 2, 'B1+G+14', 126, 9, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":635},{\"unit_name\":\"B\",\"sqft\":900},{\"unit_name\":\"C\",\"sqft\":680},{\"unit_name\":\"D\",\"sqft\":785},{\"unit_name\":\"E\",\"sqft\":715},{\"unit_name\":\"F\",\"sqft\":755},{\"unit_name\":\"G\",\"sqft\":610},{\"unit_name\":\"H\",\"sqft\":1100},{\"unit_name\":\"I\",\"sqft\":1140}]}', '1, 2, 3 Bedroom', 'projects_69d5fe85e4a00.jpeg', '', '', '30', 'Under 50 Lac BDT', NULL, NULL, 12.77, '2', 'B', 'https://drive.google.com/file/d/1WWOYZU0AGGHb6uJDe1SOhOEHsIbJFGpN/view?usp=drive_link', '<p>The Premium Crown Pavilion is designed as an studio oasis, where lush greenery meets contemporary modern architecture. With coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 138, '2026-04-08 07:06:45', '2026-05-18 05:48:07', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, 'legacy', 120, 123, 121, 129, NULL, 124, 122, 125, 126, NULL, 128, 127),
+(9, 'The Crown Pavilion', 'the-crown-pavilion-1', 2, 2, 'B1+G+14', 126, 9, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":635},{\"unit_name\":\"B\",\"sqft\":900},{\"unit_name\":\"C\",\"sqft\":680},{\"unit_name\":\"D\",\"sqft\":785},{\"unit_name\":\"E\",\"sqft\":715},{\"unit_name\":\"F\",\"sqft\":755},{\"unit_name\":\"G\",\"sqft\":610},{\"unit_name\":\"H\",\"sqft\":1100},{\"unit_name\":\"I\",\"sqft\":1140}]}', '1, 2, 3 Bedroom', 'projects_6a2410f12c5a8.jpg', '', '', '30', 'Under 50 Lac BDT', NULL, NULL, 12.77, '2', 'B', 'https://drive.google.com/file/d/1WWOYZU0AGGHb6uJDe1SOhOEHsIbJFGpN/view?usp=drive_link', '<p>The Premium Crown Pavilion is designed as an studio oasis, where lush greenery meets contemporary modern architecture. With coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', '', '', 'https://maps.app.goo.gl/74YJmkYPuLqxkGBJ8', 'The Premium Smart City', 2, 1, 120, '2026-04-08 07:06:45', '2026-06-06 12:22:09', 1, NULL, 1, 1, 1, 'On Sale', NULL, NULL, 'legacy', 120, 123, 121, 129, NULL, 124, 122, 125, 126, NULL, 128, 127),
 (12, 'TPRC Crown Tower', 'tprc-crown-tower', 3, 1, 'B3+B2+B1+G+20', 135, 9, '{\"typical_floor\":[{\"unit_name\":\"B\",\"sqft\":800},{\"unit_name\":\"C\",\"sqft\":825},{\"unit_name\":\"D\",\"sqft\":1230},{\"unit_name\":\"E\",\"sqft\":2055},{\"unit_name\":\"F\",\"sqft\":2055},{\"unit_name\":\"G\",\"sqft\":1395},{\"unit_name\":\"H\",\"sqft\":800},{\"unit_name\":\"I\",\"sqft\":775}]}', 'Residential', NULL, NULL, NULL, '40 Feet', '50 Lac - 1 Crore BDT', NULL, NULL, 71, '14', 'I', '', '', 0, '', NULL, NULL, '', '', 2, 1, 32, '2026-04-19 04:09:44', '2026-05-06 10:38:31', 1, NULL, 1, 1, 1, 'On Sale', 10.00, NULL, 'legacy', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(13, 'test project from developer', 'test-project-from-developer-2', 2, 2, 'B+G+9', 10, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1200}]}', '3  Bedrooms', NULL, NULL, NULL, '30', '50 Lac - 1 Crore BDT', NULL, NULL, 72.5, '12', 'B', 'link', '', 1, '', NULL, NULL, '', '', 2, 1, 6, '2026-04-26 06:18:34', '2026-06-01 04:06:01', 0, NULL, 0, 0, 0, 'On Sale', 10.00, NULL, 'phase_based', 120, 123, 121, 129, NULL, 124, 122, 125, 126, NULL, 128, NULL),
+(13, 'test project from developer', 'test-project-from-developer', 2, 2, 'B+G+9', 10, 4, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1200}]}', '3  Bedrooms', 'projects_6a241096f13bb.png', NULL, NULL, '30', '50 Lac - 1 Crore BDT', NULL, NULL, 72.5, '12', 'B', 'link', '', 1, '', NULL, NULL, '', '', 2, 1, 120, '2026-04-26 06:18:34', '2026-06-06 12:20:39', 0, NULL, 0, 0, 0, 'On Sale', 10.00, NULL, 'phase_based', 120, 123, 121, 129, NULL, 124, 122, 125, 126, NULL, 128, NULL),
 (14, 'The Premium  Velinor', 'the-premium-velinor-1', 1, 3, 'G+8', 16, 2, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":1550},{\"unit_name\":\"B\",\"sqft\":1549}]}', '', NULL, NULL, NULL, '25', '50 Lac - 1 Crore BDT', NULL, NULL, 6, '5512,5513', 'N', 'https://drive.google.com/file/d/1yLfDmgSSieHuhfOK61ZPgf_AoXW6Xo-n/view', '<p>The Premium velinor is designed as an urban oasis, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 0, '', NULL, NULL, '', '', 1, 0, 6, '2026-05-03 04:09:14', '2026-05-10 08:40:33', 1, NULL, 1, 1, 1, 'Sold Out', 12.00, NULL, 'legacy', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 (15, 'The Premium Studio Suite 3.0', 'the-premium-studio-suite-3-0', 2, 2, 'G+9', 36, 4, '{\"typical_floor\":[{\"unit_name\":\"(A)\",\"sqft\":800}]}', 'Studio Project', NULL, NULL, NULL, '25', 'Under 50 Lac BDT', NULL, NULL, 5, '', 'D', 'https://drive.google.com/file/d/1uzJrwuzeB2Rv_NO-B4mX06u5Zg7TN_w2/view?usp=drive_link', '', 36, '', 'project_69f6caef36111.webp', NULL, '', '', 0, 0, 22, '2026-05-03 04:11:27', '2026-05-08 06:21:26', 1, NULL, 1, 1, 1, 'Sold Out', 10.00, NULL, 'legacy', NULL, NULL, NULL, NULL, NULL, 124, NULL, NULL, NULL, NULL, NULL, NULL),
 (16, 'The premium Ariston', 'the-premium-ariston', 1, 3, 'G+9', 9, 1, '{\"typical_floor\":[{\"unit_name\":\"A\",\"sqft\":2050},{\"unit_name\":\"B\",\"sqft\":1049}]}', '', NULL, NULL, NULL, '25', '1 Crore - 2 Crore BDT', '', NULL, 5, '', 'N', 'https://drive.google.com/file/d/1v8ne9A8Mx2BQXx4tQfN21f3hOeMGOWt8/view', '<p>The Premium Ariston is designed as an oasis, where lush greenery meets contemporary architecture. With over 60% green coverage and sustainable design principles, it offers residents a peaceful retreat from city life.</p>', 1, '', NULL, NULL, '', '', 1, 0, 36, '2026-05-03 04:21:59', '2026-05-03 04:21:59', 0, 0, 0, 0, 0, 'Sold Out', 12.00, NULL, 'legacy', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
@@ -9715,6 +9714,32 @@ INSERT INTO `project_phase_items` (`id`, `phase_id`, `item_name`, `item_order`, 
 (6, 1, 'Typical Floor Column', 5, 15.00, 0.00, 0.00, NULL, NULL, 'Not Started', NULL, '2026-06-01 04:35:11', NULL),
 (7, 1, '2nd Floor Slab to Roof Slab', 6, 40.00, 0.00, 0.00, NULL, NULL, 'Not Started', NULL, '2026-06-01 04:35:31', NULL),
 (8, 1, 'Rooftop', 7, 7.00, 0.00, 0.00, NULL, NULL, 'Not Started', NULL, '2026-06-01 04:35:43', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `project_phase_item_details`
+--
+
+CREATE TABLE `project_phase_item_details` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `phase_item_id` int(10) UNSIGNED NOT NULL,
+  `work_type_id` bigint(20) UNSIGNED NOT NULL,
+  `unit` varchar(20) NOT NULL,
+  `total_boq_qty` decimal(15,2) NOT NULL,
+  `weight_pct` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `actual_progress` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `project_phase_item_details`
+--
+
+INSERT INTO `project_phase_item_details` (`id`, `phase_item_id`, `work_type_id`, `unit`, `total_boq_qty`, `weight_pct`, `actual_progress`, `created_at`, `updated_at`) VALUES
+(3, 2, 2, 'CFT ', 260000.00, 5.00, 0.00, '2026-06-07 09:03:56', NULL),
+(4, 2, 1, '', 800.00, 15.00, 0.00, '2026-06-07 09:03:56', NULL);
 
 -- --------------------------------------------------------
 
@@ -10414,7 +10439,9 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `created_at`, 
 (724, 24, 55, '2026-05-24 10:25:52', '2026-05-24 10:25:52'),
 (725, 25, 55, '2026-05-24 10:26:02', '2026-05-24 10:26:02'),
 (726, 17, 55, '2026-05-24 10:26:11', '2026-05-24 10:26:11'),
-(727, 6, 55, '2026-05-24 10:26:22', '2026-05-24 10:26:22');
+(727, 6, 55, '2026-05-24 10:26:22', '2026-05-24 10:26:22'),
+(731, 2, 5, '2026-06-06 04:34:33', '2026-06-06 04:34:33'),
+(732, 2, 13, '2026-06-06 04:34:33', '2026-06-06 04:34:33');
 
 -- --------------------------------------------------------
 
@@ -10585,7 +10612,9 @@ INSERT INTO `tasks` (`id`, `user_id`, `assigned_by`, `title`, `description`, `st
 (4, 3, 68, 'Test Task 1', '<p>Do The task Please</p>', '2026-04-06', '2026-04-16 00:00:00', 1, 'in_progress', 50, 'high', '2026-04-06 15:49:52', '2026-04-08 09:16:24'),
 (5, 1, 6, 'Test Task From developer', '<p>Test</p>', '2026-04-08', '2026-04-09 00:00:00', 0, 'pending', 0, 'high', '2026-04-08 09:07:02', NULL),
 (6, 1, 68, 'Test Task From', '<p>Please Work As My Requisition</p>', '2026-04-08', '2026-04-09 00:00:00', 0, 'pending', 0, 'high', '2026-04-08 10:43:38', NULL),
-(7, 3, 4, 'Test task to Fahim', '<p>Pleas Do FIrst</p>', '2026-04-10', '2026-04-11 00:00:00', 0, 'pending', 0, 'high', '2026-04-10 10:23:57', NULL);
+(7, 3, 4, 'Test task to Fahim', '<p>Pleas Do FIrst</p>', '2026-04-10', '2026-04-11 00:00:00', 0, 'pending', 0, 'high', '2026-04-10 10:23:57', NULL),
+(8, 9, 120, 'Task test', '<p>test task do</p>', '2026-06-06', '2026-06-15 00:00:00', 0, 'pending', 0, 'high', '2026-06-06 07:14:51', NULL),
+(9, 1, 120, 'test 2', '<p>tyaghsdh</p>', '2026-06-06', '2026-06-06 00:00:00', 0, 'pending', 0, 'high', '2026-06-06 07:22:57', NULL);
 
 -- --------------------------------------------------------
 
@@ -10685,15 +10714,15 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `email`, `designation_id`, `address`, `nid`, `role_id`, `password`, `photo`, `media_link1`, `media_link2`, `last_logout`, `created_by`, `created_at`, `updated_at`, `team_id`) VALUES
-(1, 0, 'Farzana', 'farzana', '01873244236', 'farzana.tphl@gmail.com', 28, 'Dhaka', '123', 1, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, '', '', '2026-04-09 05:34:11', 6, '2026-02-22 06:47:08', '2026-04-30 04:25:17', 0),
+(1, NULL, 'Farzana', 'farzana', '01873244236', 'farzana.tphl13@gmail.com', 28, 'Dhaka', '123', 2, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, '', '', '2026-04-09 05:34:11', 120, '2026-02-22 06:47:08', '2026-06-06 07:22:24', 0),
 (2, NULL, 'Sojib', 'sojib', '01798342755', 'sales@gmail.com', 1, 'Dhaka', NULL, 5, '$2y$10$tyGb6XsaCzqrB5/fmTtTEualGz9EEsCTS4F0mAz7b/ITjBISkKirS', NULL, NULL, NULL, '2026-05-09 04:45:14', NULL, '2026-02-22 06:47:08', '2026-05-09 04:45:14', NULL),
 (3, 1, 'Fahim', 'Fahim', '01790128471', 'fahim@gmail.com', 0, 'Mohammadpur, Dhaka-1207', '23445', 8, '$2y$10$Jy1aK9a5d9P7mA0TqHEkT.RS/7kPh0x/fxpmRaOR1JrLJXEV0ObsG', NULL, '', '', '2026-04-19 05:54:47', 4, '2026-02-23 03:24:25', '2026-04-19 05:54:47', 0),
 (4, 1008, 'Md. Jasim Uddin', 'Jasim Uddin', '01762013007', 'hr@gmail.com', 14, 'House:01, Road:03, Block: B, Section:02, Mirpur, Dhaka-1216.', '1903663282', 4, '$2y$10$bhU084TG9E1hi2gpC3g4nODNLbG5lzKoo7vj/Uv6KeYWXtzduE0Ry', NULL, '', '', '2026-04-24 12:21:28', 4, '2026-02-23 05:44:19', '2026-04-24 12:21:28', NULL),
 (5, 0, 'Mr. Jisan', 'Mr. Jisan', '01390128223', 'accounts@gmail.com', 3, 'Mohammadpur, Dhaka-1207', '2345676', 6, '$2y$10$cIIGEotRMUt4NdR3BelTA.wRCL7CDcC.s.1UY0ncO7lbttcKda2C6', NULL, '', '', '2026-04-08 09:48:37', 6, '2026-02-23 06:11:06', '2026-04-08 09:48:37', NULL),
-(6, 1, 'Management', 'Management', '01933657804', 'management@gmail.com', 0, 'dhaka', '32453', 3, '$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW', NULL, '', '', '2026-06-03 10:26:27', 110, '2026-03-29 03:44:44', '2026-06-03 04:26:27', 0),
+(6, 1, 'Management', 'Management', '01933657804', 'management@gmail.com', 0, 'dhaka', '32453', 3, '$2y$10$BNGc9RJClg5hlb4tqTasqebYBq3PmZCLGw4yiWjiPN.Gh89QF9JoW', NULL, '', '', '2026-06-06 15:03:33', 110, '2026-03-29 03:44:44', '2026-06-06 09:03:33', 0),
 (7, NULL, 'CED', 'CED', '01872364346', 'ced@gmail.com', 1, 'Dhaka', '823445', 7, '$2y$10$a51psvUGsp/WsSE5cY2xNuKpuKSNoG/QZNNxxfWs0I.eSPM1KPAX.', NULL, '', '', '2026-03-31 12:05:54', 6, '2026-03-29 04:01:38', '2026-03-31 12:05:54', NULL),
 (8, NULL, 'Sales Team Head', 'Sales Head', '01327488234', 'sales-head@gmail.com', 1, 'Dhaka', '09231943', 9, '$2y$10$Hr8gjcm14bLK/Ns6ws/pt.jz0PA5ObSc.jo4Z7epS23UsEkVDUXn.', NULL, '', '', '2026-04-08 09:30:55', 1, '2026-03-29 04:16:47', '2026-04-08 09:30:55', NULL),
-(9, 3, 'Md. rafi', 'admin_39_', '01234567890', 'rafi@easytechx.com', 9, 'ADDL Tower, Dhanmondi 27/A', '', 8, '$2y$10$nId2sBtusb0qFr2136IMrOZVDVkHq8RTjbsJIzgZ8GpaDXDTMhhHG', NULL, '', '', '2026-03-29 10:24:18', 0, '2026-03-29 10:23:39', '2026-03-30 16:36:23', NULL),
+(9, 3, 'Md. rafi', 'admin_39_', '01234567890', 'nahian.tphl@gmail.com', 0, 'ADDL Tower, Dhanmondi 27/A', '', 8, '$2y$10$nId2sBtusb0qFr2136IMrOZVDVkHq8RTjbsJIzgZ8GpaDXDTMhhHG', NULL, '', '', '2026-03-29 10:24:18', 120, '2026-03-29 10:23:39', '2026-06-06 07:13:18', 0),
 (11, 5, 'Bornali Haque', 'Bornali Haque', '01335258340', 'bornalihaque.tphl@gmail.com', 13, 'RUAP, Uttara 18, Dhaka', '', 2, '$2y$10$R9YSZd3L1v262q20VEtdG.dyT9xPRWmHFtjeTvwao5i8i24T5Hpm.', NULL, '', '', '2026-03-31 08:48:42', 0, '2026-03-29 10:31:45', '2026-04-11 08:52:14', 0),
 (12, 8, 'Sanjana Hossain Moure', 'sanjana moure', '01901310848', 'moure.tphl@gmail.com', 15, 'Mirpur-2 water tank, Block - F, road -3, Dhaka -1216', '', 8, '$2y$10$2J2ciVq5whQHb80.zq0zYuQcH.eb0B3pagwhnmx9TEsy.elK3J1ry', NULL, '', '', '2026-03-30 05:15:10', 0, '2026-03-30 05:15:10', '2026-03-30 16:36:23', NULL),
 (13, 9, 'Md. Rabbi Hossain', 'rabbi hossain', '0 1901-3108', 'rabbihossain.tphl@gmail.com', 20, 'Baro Bazar, Ashulia Model Town, Savar, Dhaka.', '', 8, '$2y$10$uWAvlmxoW/gvdDhxn.IT9.HU7.NBPwqpbWipciGD0eZWdJQ6z9vvG', NULL, '', '', '2026-03-30 05:15:44', 0, '2026-03-30 05:15:44', '2026-04-12 11:40:43', 4),
@@ -10764,7 +10793,7 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (88, 75, 'Mahaananda Kumar Saha', 'Mahaananda Kumar Saha', '01335258327', 'mahaanandakumarsaha@gmail.com', 22, 'Faridpur, sadarpur,hatkrishnapur', '5506251882', 2, '$2y$10$IawCX1UOcrjxps1aO4QTWeip4b8tKdN3JGDyduTJtnqLNYVuIzYXu', NULL, '', '', '2026-03-30 11:34:33', 0, '2026-03-30 11:34:33', '2026-03-30 16:36:23', NULL),
 (90, 79, 'Moonmoon Akter Oishy', 'Moonmoon Akter Oishy', '01958253355', 'oishytphl@gmail.com', 24, 'Road No -1,  B - 45 Bank Town,  Savar', '1047316906', 2, '$2y$10$Sdqb84cXh8GKU9Okw2rRSe7k3N6a0riQJVPBDqnRhqa9px28WsDY.', NULL, '', '', '2026-03-30 11:43:09', 0, '2026-03-30 11:43:09', '2026-03-30 16:36:23', NULL),
 (91, 76, 'Rubina Islam', 'Rubina Islam', '01958253349', 'rubinatphl49@gmail.com', 15, '', '', 2, '$2y$10$r8GdWRKSpeZjr24W1pjGn.uaye6s/.clnO7G8ESZI3NnV844NrnCS', NULL, '', '', '2026-03-30 11:44:43', 0, '2026-03-30 11:44:43', '2026-03-30 16:36:23', NULL),
-(92, 80, 'Afrin Jahan Anika', 'Afrin Jahan Anika', '01958253335', 'anika.tphl@gmail.com', 13, '39/b senpara porbota mirpur 10', '1032936708', 2, '$2y$10$nBTOuqyG5vmEhBfJADloguSRdoA383Hrd.mFIuseKxOXG3bkfZYZG', NULL, '', '', '2026-03-30 11:52:36', 0, '2026-03-30 11:52:36', '2026-03-30 16:36:23', NULL),
+(92, 80, 'Afrin Jahan Anika', 'Afrin Jahan Anika', '01958253335', 'anika.tphl@gmail.com', 13, '39/b senpara porbota mirpur 10', '1032936708', 2, '$2y$10$nBTOuqyG5vmEhBfJADloguSRdoA383Hrd.mFIuseKxOXG3bkfZYZG', NULL, '', '', '2026-06-06 11:44:50', 0, '2026-03-30 11:52:36', '2026-06-06 05:44:50', NULL),
 (94, 0, 'Mehedi H. Jony', 'Mehedi H. Jony', '01861685153', 'mehedihjony.tphl@gmail.com', 28, 'Dhaka', '', 10, '$2y$10$YO/Y1hPq8lo0NTFbWbSX5u1hyUYn.i0F1s3KcNN9Xx8Askz3/5q0O', NULL, '', '', '2026-04-27 06:07:13', 6, '2026-03-30 16:43:54', '2026-04-27 06:07:13', 0),
 (95, 81, 'Riya', 'Riya', '01778234546', 'riya@gmail.com', 28, 'Dhaka', '34', 5, '$2y$10$cUYgCjvi4yiNDYS8mTGWsOkEvOJR32hiN/5Dsku7ULURP.tcviqpK', NULL, '', '', '2026-04-04 11:27:15', 4, '2026-03-31 06:40:46', '2026-04-04 11:27:15', 0),
 (98, 82, 'S.A Arnob', 'S.A Arnob', '01958253347', 'arnob.tphl@gmail.com', 20, 'Dottopara, Asuliya, Dhaka', '', 8, '$2y$10$aaooqfFW63prXcheowgGMeuZAHV88qpV1JQMljfQiHbOv2qCKtFdy', NULL, '', '', '2026-03-31 08:18:16', 0, '2026-03-31 08:18:16', '2026-04-12 11:41:08', 4),
@@ -10781,7 +10810,7 @@ INSERT INTO `users` (`id`, `employee_id`, `full_name`, `user_name`, `phone`, `em
 (117, 86, 'Test Employee', 'Test', '01790128472', 'test3@gmail.com', 32, 'Mohammadpur, Dhaka-1207', '', 0, '$2y$10$sw5JwFNK.bYOVVwur2/1FOxpkSV/FOm7WWdLEfTzh//K3GkkykKQW', NULL, '', '', '2026-04-10 10:07:16', 0, '2026-04-10 10:07:16', '2026-04-10 10:07:16', 0),
 (118, 87, 'Shazzadur Rahman Shoumic', 'Shazzad', '01765562314', 'shazzadur.tphl@gmail.com', 20, '', '', 8, '$2y$10$TX/Hto3FA3ypCs4fd8al4euM8Mh1vmGy/3mIbgelj8wuiwLDJw0/6', NULL, '', '', '2026-04-12 11:46:52', 0, '2026-04-12 11:46:52', '2026-04-12 11:46:52', 5),
 (119, 90, 'Shohanur Rahaman', 'Shohanur Rahaman', '01958253372', 'shohan.tphl@gmail.com', 13, 'Khagan Ashulia', '', 11, '$2y$10$AIzAW5dhzVr58q5NyyyBueMXK5aTZHZwHOyGVa3EEz842ZAWUsxZK', NULL, '', '', '2026-04-19 04:42:58', 119, '2026-04-17 13:13:21', '2026-04-19 04:42:58', 0),
-(120, NULL, 'Project Manager1', 'Project Manager1', '01876123454', 'project.manager1@gmail.com', 36, 'Dhaka', '', 15, '$2y$10$GhwOi2FtFs9pBw7GkpZaCefIBQhTiY9GoQLUgUKfBDa9p.XtUvlXu', NULL, '', '', '2026-06-04 16:09:29', 6, '2026-04-26 03:55:58', '2026-06-04 10:09:29', 0),
+(120, NULL, 'Project Manager1', 'Project Manager1', '01876123454', 'project.manager1@gmail.com', 36, 'Dhaka', '', 15, '$2y$10$GhwOi2FtFs9pBw7GkpZaCefIBQhTiY9GoQLUgUKfBDa9p.XtUvlXu', NULL, '', '', '2026-06-07 10:39:41', 6, '2026-04-26 03:55:58', '2026-06-07 04:39:41', 0),
 (121, NULL, 'Land Man1', 'Land Man1', '01993878733', 'land.manager1@gmail.com', 33, 'Dhaka', '', 14, '$2y$10$0Zg/ELOPJh5n.sSZkO2i8eMKon1lIWKj5lHQq2cLgbKrqVaYZcUhO', NULL, '', '', '2026-05-23 05:03:50', 6, '2026-04-26 03:56:52', '2026-05-23 05:03:50', 0),
 (122, NULL, 'Mr. Architect1', 'Mr. Architect1', '01875438578', 'architecture1@gmail.com', 34, 'Dhaka', '', 18, '$2y$10$uYzkPN7DDLAanWYNsI02.OvkqvUIS35JblMvG0NRUHLTaXBemryL2', NULL, '', '', '2026-05-23 05:09:18', 6, '2026-04-26 03:58:02', '2026-05-23 05:09:18', 0),
 (123, NULL, 'Mr. Site Engineer1', 'Mr. Site Engineer1', '01987328476', 'site.engineer1@gmail.com', 38, 'Dhaka', '', 12, '$2y$10$C.kuqYaBXt7SNIuwlDSoi.NySk5tcj67PFfUBFUqWc1bYrnCqCqIi', NULL, '', '', '2026-06-04 12:19:50', 6, '2026-04-26 03:58:54', '2026-06-04 06:19:50', 0),
@@ -11292,7 +11321,8 @@ ALTER TABLE `daily_progress_logs`
 ALTER TABLE `daily_work_item_logs`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_dwil_log` (`daily_log_id`),
-  ADD KEY `idx_dwil_item` (`target_item_id`);
+  ADD KEY `idx_dwil_item` (`target_item_id`),
+  ADD KEY `fk_daily_work_item_logs_detail` (`phase_item_detail_id`);
 
 --
 -- Indexes for table `departments`
@@ -11794,6 +11824,13 @@ ALTER TABLE `project_phase_items`
   ADD KEY `fk_ppi_phase` (`phase_id`),
   ADD KEY `fk_ppi_wtype` (`work_type_id`),
   ADD KEY `fk_ppi_dtype` (`design_type_id`);
+
+--
+-- Indexes for table `project_phase_item_details`
+--
+ALTER TABLE `project_phase_item_details`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_phase_item_work_type` (`phase_item_id`,`work_type_id`);
 
 --
 -- Indexes for table `project_risks`
@@ -12306,13 +12343,13 @@ ALTER TABLE `csv_import_logs`
 -- AUTO_INCREMENT for table `daily_progress_logs`
 --
 ALTER TABLE `daily_progress_logs`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `daily_work_item_logs`
 --
 ALTER TABLE `daily_work_item_logs`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
 -- AUTO_INCREMENT for table `departments`
@@ -12420,19 +12457,19 @@ ALTER TABLE `holidays`
 -- AUTO_INCREMENT for table `initial_estimate_budgets`
 --
 ALTER TABLE `initial_estimate_budgets`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `initial_estimate_items`
 --
 ALTER TABLE `initial_estimate_items`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `initial_estimate_labors`
 --
 ALTER TABLE `initial_estimate_labors`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `land_acquisitions`
@@ -12570,7 +12607,7 @@ ALTER TABLE `material_return_items`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `office_assets`
@@ -12636,13 +12673,13 @@ ALTER TABLE `phase_item_template_defaults`
 -- AUTO_INCREMENT for table `phase_monthly_targets`
 --
 ALTER TABLE `phase_monthly_targets`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `phase_monthly_target_items`
 --
 ALTER TABLE `phase_monthly_target_items`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `phase_template_defaults`
@@ -12702,7 +12739,13 @@ ALTER TABLE `project_phases`
 -- AUTO_INCREMENT for table `project_phase_items`
 --
 ALTER TABLE `project_phase_items`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+
+--
+-- AUTO_INCREMENT for table `project_phase_item_details`
+--
+ALTER TABLE `project_phase_item_details`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `project_risks`
@@ -12822,7 +12865,7 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT for table `role_permissions`
 --
 ALTER TABLE `role_permissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=728;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=733;
 
 --
 -- AUTO_INCREMENT for table `sales_targets`
@@ -12858,7 +12901,7 @@ ALTER TABLE `soil_tests`
 -- AUTO_INCREMENT for table `tasks`
 --
 ALTER TABLE `tasks`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `teams`
@@ -12976,6 +13019,7 @@ ALTER TABLE `daily_progress_logs`
 -- Constraints for table `daily_work_item_logs`
 --
 ALTER TABLE `daily_work_item_logs`
+  ADD CONSTRAINT `fk_daily_work_item_logs_detail` FOREIGN KEY (`phase_item_detail_id`) REFERENCES `project_phase_item_details` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_dwil_item` FOREIGN KEY (`target_item_id`) REFERENCES `phase_monthly_target_items` (`id`),
   ADD CONSTRAINT `fk_dwil_log` FOREIGN KEY (`daily_log_id`) REFERENCES `daily_progress_logs` (`id`) ON DELETE CASCADE;
 
@@ -13015,6 +13059,12 @@ ALTER TABLE `phase_weekly_progress_items`
   ADD CONSTRAINT `fk_pwpi_progress` FOREIGN KEY (`weekly_progress_id`) REFERENCES `phase_weekly_progress` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `project_phase_item_details`
+--
+ALTER TABLE `project_phase_item_details`
+  ADD CONSTRAINT `fk_project_phase_item_details_phase_item` FOREIGN KEY (`phase_item_id`) REFERENCES `project_phase_items` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `qc_checklists`
 --
 ALTER TABLE `qc_checklists`
@@ -13039,7 +13089,6 @@ ALTER TABLE `qc_inspection_items`
 --
 ALTER TABLE `recovery_action_items`
   ADD CONSTRAINT `fk_rai_plan` FOREIGN KEY (`plan_id`) REFERENCES `recovery_plans` (`id`) ON DELETE CASCADE;
-SET FOREIGN_KEY_CHECKS=1;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

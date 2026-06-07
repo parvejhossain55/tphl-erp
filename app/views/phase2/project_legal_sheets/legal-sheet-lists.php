@@ -92,7 +92,7 @@ unset($_SESSION['csv_legal_sheet_skipped']); // clear after reading
                                                 <i class="fal fa-building text-secondary me-1"></i> <?= htmlspecialchars($s['project_name']) ?>
                                             </td>
                                             <td style="padding:15px">
-                                                <span class="badge" style="background:rgba(99,102,241,0.1); color:#6366f1; padding:5px 10px; border-radius:6px; font-weight:600">
+                                                <span class="badge" style="background:rgba(var(--clr-theme-primary-rgb),0.1); color:var(--clr-theme-primary); padding:5px 10px; border-radius:6px; font-weight:600">
                                                     <?= htmlspecialchars($s['sheet_type']) ?>
                                                 </span>
                                             </td>

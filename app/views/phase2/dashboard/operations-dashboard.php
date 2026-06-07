@@ -30,7 +30,7 @@ $recentVendorPayments = $recentVendorPayments ?? [];
   --op-blue:    #3b82f6;
   --op-green:   #10b981;
   --op-amber:   #f59e0b;
-  --op-purple:  #8b5cf6;
+  --op-purple:  var(--clr-theme-secondary);
 }
 .op-hero {
   background: linear-gradient(135deg, #0f5132 0%, #198754 55%, #20a86a 100%);
@@ -129,7 +129,7 @@ $recentVendorPayments = $recentVendorPayments ?? [];
 
   <a href="<?= $base ?>/con-vendor-payments" class="kpi-card">
     <div class="kpi-accent" style="background:var(--op-purple)"></div>
-    <div class="kpi-icon" style="background:rgba(139,92,246,.12);color:var(--op-purple)"><i class="fal fa-file-invoice-dollar"></i></div>
+    <div class="kpi-icon" style="background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--op-purple)"><i class="fal fa-file-invoice-dollar"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)">Pending Vendor Payments</div>
     <div class="kpi-value" style="color:var(--op-purple)"><?= $pendingVendorPayments ?></div>
   </a>

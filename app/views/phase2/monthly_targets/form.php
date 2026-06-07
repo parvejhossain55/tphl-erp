@@ -50,7 +50,7 @@ $priorityColors = [
 ?>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-:root { --pri: #6366f1; --green: #10b981; --amber: #f59e0b; --red: #ef4444; }
+:root { --pri: var(--clr-theme-primary); --green: #10b981; --amber: #f59e0b; --red: #ef4444; }
 
 /* Layout */
 .mf-header { display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap }
@@ -83,7 +83,7 @@ $priorityColors = [
 .btn-save { padding:7px 18px;border-radius:8px;font-size:12.5px;font-weight:700;background:var(--pri);color:#fff;border:none;cursor:pointer }
 
 /* Add item form */
-.mf-add-card { border-radius:12px;border:2px dashed rgba(99,102,241,.3);padding:16px 20px;margin-bottom:22px;background:rgba(99,102,241,.02) }
+.mf-add-card { border-radius:12px;border:2px dashed rgba(var(--clr-theme-primary-rgb),.3);padding:16px 20px;margin-bottom:22px;background:rgba(var(--clr-theme-primary-rgb),.02) }
 .mf-add-card h6 { font-size:12.5px;font-weight:700;margin-bottom:12px;color:var(--pri) }
 .mf-add-grid { display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:9px;align-items:end }
 
@@ -96,7 +96,7 @@ table.mf-table tr:last-child td { border-bottom:none }
 table.mf-table input,table.mf-table select { width:100%;padding:4px 7px;border:1px solid rgba(0,0,0,.1);border-radius:6px;font-size:12px;background:transparent;color:inherit }
 table.mf-table input:focus,table.mf-table select:focus { outline:none;border-color:var(--pri) }
 
-.pct-badge { display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(99,102,241,.1);color:var(--pri) }
+.pct-badge { display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(var(--clr-theme-primary-rgb),.1);color:var(--pri) }
 .pct-badge.green { background:rgba(16,185,129,.1);color:var(--green) }
 .pct-badge.amber { background:rgba(245,158,11,.1);color:var(--amber) }
 
@@ -249,6 +249,7 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                     <option value="">-- Select Sub-item --</option>
                     <?php foreach ($phaseSubItems as $sub): ?>
                     <option value="<?= htmlspecialchars($sub['item_name']) ?>"
+                            data-id="<?= htmlspecialchars($sub['id']) ?>"
                             data-weight="<?= htmlspecialchars($sub['weight_pct']) ?>"
                             data-worktype="<?= htmlspecialchars($sub['work_type_id'] ?? '') ?>">
                         <?= htmlspecialchars($sub['item_name']) ?> (<?= number_format((float)$sub['weight_pct'], 2) ?>%)
@@ -444,6 +445,7 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
         <td>
             <span style="font-weight:600;font-size:12.5px;"><?= htmlspecialchars($item['work_item_name']) ?></span>
             <input type="hidden" name="items[<?= $i ?>][work_item_name]" value="<?= htmlspecialchars($item['work_item_name']) ?>">
+            <input type="hidden" name="items[<?= $i ?>][phase_item_id]" value="<?= htmlspecialchars($item['phase_item_id'] ?? '') ?>">
             <input type="hidden" name="items[<?= $i ?>][id]" value="<?= $item['id'] ?>">
         </td>
         <td>
@@ -556,12 +558,16 @@ function onSubItemSelect() {
 
 // ── Add Item ───────────────────────────────────────────────────────────
 function addItem() {
-    var name = document.getElementById('wi_name').value.trim();
+    var select = document.getElementById('wi_name');
+    var opt = select.options[select.selectedIndex];
+    var phaseItemId = opt ? opt.getAttribute('data-id') : '';
+    var name = select.value.trim();
     if (!name) { alert('Work item selection is required.'); return; }
-
+ 
     var data = new FormData();
     data.append('target_id', '<?= $targetId ?>');
     data.append('work_item_name', name);
+    data.append('phase_item_id', phaseItemId);
     data.append('work_type_id', document.getElementById('wi_work_type').value);
     data.append('unit', document.getElementById('wi_unit').value);
     data.append('monthly_target_qty', document.getElementById('wi_qty').value);

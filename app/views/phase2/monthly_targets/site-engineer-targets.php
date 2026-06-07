@@ -7,12 +7,12 @@ $statusColors = [
     'In Review' => ['color' => '#f59e0b', 'bg' => 'rgba(245,158,11,.13)'],
     'Approved'  => ['color' => '#10b981', 'bg' => 'rgba(16,185,129,.13)'],
 ];
-$phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec4899','#0ea5e9','#f97316','#84cc16'];
+$phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a6','var(--clr-theme-secondary)','#ec4899','#0ea5e9','#f97316','#84cc16'];
 ?>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 :root {
-    --pt-primary: #6366f1;
+    --pt-primary: var(--clr-theme-primary);
     --pt-green:   #10b981;
     --pt-amber:   #f59e0b;
     --pt-red:     #ef4444;
@@ -34,7 +34,7 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
 .pt-project-group { margin-bottom: 28px; }
 .pt-project-label {
     display: flex; align-items: center; gap: 10px;
-    background: linear-gradient(90deg, rgba(99,102,241,.07), transparent);
+    background: linear-gradient(90deg, rgba(var(--clr-theme-primary-rgb),.07), transparent);
     border-left: 4px solid var(--pt-primary);
     padding: 10px 16px; border-radius: 0 8px 8px 0;
     margin-bottom: 12px;
@@ -52,7 +52,7 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
     transition: box-shadow .2s, transform .15s;
     background: var(--custom-white);
 }
-.pt-card:hover { box-shadow: 0 4px 20px rgba(99,102,241,.1); transform: translateY(-1px); }
+.pt-card:hover { box-shadow: 0 4px 20px rgba(var(--clr-theme-primary-rgb),.1); transform: translateY(-1px); }
 
 .pt-card-head {
     padding: 13px 18px;
@@ -111,8 +111,8 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
     display: inline-flex; align-items: center; gap: 5px;
     font-size: 11px; font-weight: 600;
     padding: 5px 12px; border-radius: 7px;
-    background: rgba(99,102,241,.08); color: var(--pt-primary);
-    text-decoration: none; border: 1px solid rgba(99,102,241,.2);
+    background: rgba(var(--clr-theme-primary-rgb),.08); color: var(--pt-primary);
+    text-decoration: none; border: 1px solid rgba(var(--clr-theme-primary-rgb),.2);
     transition: all .2s;
 }
 .btn-target-view:hover { background: var(--pt-primary); color: #fff; }
@@ -122,7 +122,7 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
     display: inline-block;
     font-size: 10px; font-weight: 700;
     padding: 2px 9px; border-radius: 999px;
-    background: rgba(99,102,241,.1); color: var(--pt-primary);
+    background: rgba(var(--clr-theme-primary-rgb),.1); color: var(--pt-primary);
 }
 
 /* Empty state */
@@ -183,7 +183,7 @@ $phaseColors = ['#6366f1','#10b981','#f59e0b','#ef4444','#14b8a6','#8b5cf6','#ec
             <!-- Project-level quick links: Stock & Material Issue -->
             <div class="d-flex gap-2 flex-wrap">
                 <a href="<?= $base ?>/con-stocks?project_id=<?= $pid ?>"
-                   style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 12px;border-radius:7px;background:rgba(99,102,241,.08);color:var(--pt-primary);text-decoration:none;border:1px solid rgba(99,102,241,.2)">
+                   style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 12px;border-radius:7px;background:rgba(var(--clr-theme-primary-rgb),.08);color:var(--pt-primary);text-decoration:none;border:1px solid rgba(var(--clr-theme-primary-rgb),.2)">
                     <i class="fal fa-boxes"></i> Stock দেখুন
                 </a>
                 <a href="<?= $base ?>/con-material-issues?project_id=<?= $pid ?>"

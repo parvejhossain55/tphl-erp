@@ -59,17 +59,17 @@
       }
 
       .wt-pill.active {
-        background: linear-gradient(135deg, #4f46e5, #6366f1);
+        background: linear-gradient(135deg, var(--clr-theme-primary), var(--clr-theme-primary));
         color: #fff;
       }
 
       .wt-pill:not(.active) {
-        background: rgba(99, 102, 241, .08);
-        color: #6366f1;
+        background: rgba(var(--clr-theme-primary-rgb), .08);
+        color: var(--clr-theme-primary);
       }
 
       .wt-pill:hover:not(.active) {
-        background: rgba(99, 102, 241, .15);
+        background: rgba(var(--clr-theme-primary-rgb), .15);
       }
 
       .cl-item-row {
@@ -85,15 +85,15 @@
       }
 
       .cl-item-row:hover {
-        box-shadow: 0 3px 12px rgba(99, 102, 241, .12);
+        box-shadow: 0 3px 12px rgba(var(--clr-theme-primary-rgb), .12);
       }
 
       .cl-num {
         width: 26px;
         height: 26px;
         border-radius: 50%;
-        background: rgba(99, 102, 241, .1);
-        color: #6366f1;
+        background: rgba(var(--clr-theme-primary-rgb), .1);
+        color: var(--clr-theme-primary);
         font-size: 11px;
         font-weight: 800;
         display: flex;
@@ -141,8 +141,8 @@
       }
 
       .add-form {
-        background: rgba(99, 102, 241, .04);
-        border: 1.5px dashed rgba(99, 102, 241, .3);
+        background: rgba(var(--clr-theme-primary-rgb), .04);
+        border: 1.5px dashed rgba(var(--clr-theme-primary-rgb), .3);
         border-radius: 12px;
         padding: 16px;
         margin-top: 14px;
@@ -214,7 +214,7 @@
               <div class="empty-msg" style="padding:16px 0;font-size:11px">
                 <i class="fal fa-exclamation-circle d-block mb-2" style="font-size:22px;opacity:.3"></i>
                 No work types found.<br>
-                <a href="<?= $base ?>/con-work-types" style="color:#6366f1;font-size:11px">Add Work Types first</a>
+                <a href="<?= $base ?>/con-work-types" style="color:var(--clr-theme-primary);font-size:11px">Add Work Types first</a>
               </div>
             <?php endif; ?>
           </div>
@@ -229,7 +229,7 @@
               style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
               <div>
                 <div
-                  style="font-size:10px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:#6366f1;margin-bottom:4px">
+                  style="font-size:10px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:var(--clr-theme-primary);margin-bottom:4px">
                   <i class="fal fa-clipboard-list me-1"></i> Checklist Items
                 </div>
                 <div style="font-size:15px;font-weight:800"><?= htmlspecialchars($selectedWorkType['work_type_name']) ?>
@@ -237,14 +237,14 @@
                 <div style="font-size:11px;color:var(--text-muted)"><?= count($checklists) ?> items configured</div>
               </div>
               <button onclick="toggleAddForm()"
-                style="background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;border:none;border-radius:10px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                style="background:linear-gradient(135deg,var(--clr-theme-primary),var(--clr-theme-primary));color:#fff;border:none;border-radius:10px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
                 <i class="fal fa-plus"></i> Add Checklist Item
               </button>
             </div>
 
             <!-- Add Form -->
             <div class="add-form" id="addForm" style="display:none">
-              <div style="font-size:11px;font-weight:700;color:#6366f1;margin-bottom:10px"><i
+              <div style="font-size:11px;font-weight:700;color:var(--clr-theme-primary);margin-bottom:10px"><i
                   class="fal fa-plus-circle me-1"></i> New Checklist Item for
                 "<?= htmlspecialchars($selectedWorkType['work_type_name']) ?>"</div>
               <form action="<?= $base ?>/qc-checklist-store" method="POST"
@@ -321,7 +321,7 @@
           </div>
         <?php elseif (!empty($workTypes)): ?>
           <div class="cl-panel" style="text-align:center;padding:50px 20px">
-            <i class="fal fa-hand-pointer fa-3x" style="color:#6366f1;opacity:.3;display:block;margin-bottom:14px"></i>
+            <i class="fal fa-hand-pointer fa-3x" style="color:var(--clr-theme-primary);opacity:.3;display:block;margin-bottom:14px"></i>
             <div style="font-size:14px;font-weight:700;color:var(--text-muted)">Select a Work Type</div>
             <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Choose a work type from the left panel to
               manage its checklist items.</div>

@@ -10,7 +10,7 @@ $roleId       = (int)($_SESSION['user']['role_id'] ?? 0);
 <div class="pagetitle d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 style="font-size:1.25rem;font-weight:800;color:#1e293b;margin:0;">
-            <i class="bi bi-calendar-week me-2" style="color:#6366f1;"></i>
+            <i class="bi bi-calendar-week me-2" style="color:var(--clr-theme-primary);"></i>
             সাপ্তাহিক Progress Report
         </h1>
         <nav><ol class="breadcrumb" style="font-size:11.5px;margin:2px 0 0;">
@@ -21,7 +21,7 @@ $roleId       = (int)($_SESSION['user']['role_id'] ?? 0);
 </div>
 
 <!-- ══ HERO BAND ══ -->
-<div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:14px;padding:20px 24px;
+<div style="background:linear-gradient(135deg,var(--clr-theme-primary),var(--clr-theme-secondary));border-radius:14px;padding:20px 24px;
             margin-bottom:24px;color:#fff;display:flex;align-items:center;gap:16px;">
     <div style="width:52px;height:52px;background:rgba(255,255,255,.15);border-radius:12px;
                 display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -62,7 +62,7 @@ $roleId       = (int)($_SESSION['user']['role_id'] ?? 0);
         $statusColor = match($proj['project_status'] ?? '') {
             'Active'     => '#10b981',
             'On Hold'    => '#f59e0b',
-            'Completed'  => '#6366f1',
+            'Completed'  => 'var(--clr-theme-primary)',
             default      => '#94a3b8',
         };
     ?>
@@ -70,7 +70,7 @@ $roleId       = (int)($_SESSION['user']['role_id'] ?? 0);
        class="project-card"
        data-name="<?= strtolower(htmlspecialchars($proj['name'])) ?>"
        style="display:block;text-decoration:none;background:#fff;border-radius:12px;
-              border:1.5px solid rgba(99,102,241,.12);padding:16px 18px;
+              border:1.5px solid rgba(25,135,84,.12);padding:16px 18px;
               transition:all .2s;box-shadow:0 1px 4px rgba(0,0,0,.04);">
         <!-- Header row -->
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
@@ -78,8 +78,9 @@ $roleId       = (int)($_SESSION['user']['role_id'] ?? 0);
                 <?= htmlspecialchars($proj['name']) ?>
             </div>
             <span style="font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:999px;
-                         background:<?= $statusColor ?>18;color:<?= $statusColor ?>;
-                         border:1px solid <?= $statusColor ?>30;white-space:nowrap;flex-shrink:0;">
+                         background:<?= strpos($statusColor, 'var') !== false ? 'rgba(25,135,84,.08)' : $statusColor . '18' ?>;
+                         color:<?= $statusColor ?>;
+                         border:1px solid <?= strpos($statusColor, 'var') !== false ? 'rgba(25,135,84,.3)' : $statusColor . '30' ?>;white-space:nowrap;flex-shrink:0;">
                 <?= htmlspecialchars($proj['project_status'] ?? 'Active') ?>
             </span>
         </div>
@@ -94,8 +95,8 @@ $roleId       = (int)($_SESSION['user']['role_id'] ?? 0);
 
         <!-- Stats row -->
         <div style="display:flex;gap:10px;">
-            <div style="flex:1;background:rgba(99,102,241,.05);border-radius:8px;padding:8px 10px;text-align:center;">
-                <div style="font-size:18px;font-weight:900;color:#6366f1;">
+            <div style="flex:1;background:rgba(25,135,84,.05);border-radius:8px;padding:8px 10px;text-align:center;">
+                <div style="font-size:18px;font-weight:900;color:var(--clr-theme-primary);">
                     <?= $proj['total_targets'] ?? 0 ?>
                 </div>
                 <div style="font-size:9.5px;color:#94a3b8;margin-top:1px;">Targets</div>
@@ -117,7 +118,7 @@ $roleId       = (int)($_SESSION['user']['role_id'] ?? 0);
 
         <!-- Arrow -->
         <div style="text-align:right;margin-top:6px;">
-            <span style="font-size:11px;color:#6366f1;font-weight:600;">
+            <span style="font-size:11px;color:var(--clr-theme-primary);font-weight:600;">
                 Report দেখুন <i class="bi bi-arrow-right-short"></i>
             </span>
         </div>
@@ -139,13 +140,13 @@ document.getElementById('projectSearch')?.addEventListener('input', function() {
 document.querySelectorAll('.project-card').forEach(el => {
     el.addEventListener('mouseenter', () => {
         el.style.transform = 'translateY(-2px)';
-        el.style.boxShadow = '0 6px 20px rgba(99,102,241,.15)';
-        el.style.borderColor = 'rgba(99,102,241,.3)';
+        el.style.boxShadow = '0 6px 20px rgba(25,135,84,.15)';
+        el.style.borderColor = 'rgba(25,135,84,.3)';
     });
     el.addEventListener('mouseleave', () => {
         el.style.transform = '';
         el.style.boxShadow = '0 1px 4px rgba(0,0,0,.04)';
-        el.style.borderColor = 'rgba(99,102,241,.12)';
+        el.style.borderColor = 'rgba(25,135,84,.12)';
     });
 });
 </script>

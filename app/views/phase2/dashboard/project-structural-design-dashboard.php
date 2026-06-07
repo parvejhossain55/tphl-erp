@@ -21,7 +21,7 @@ $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
 <div class="row"><div class="col-12">
 <style>
   :root {
-    --sd-primary: #7c3aed;
+    --sd-primary: var(--clr-theme-secondary);
     --sd-dark:    #4c1d95;
     --sd-light:   #a78bfa;
     --sd-blue:    #3b82f6;
@@ -217,11 +217,11 @@ $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
   <!-- My Projects → scroll to projects table -->
   <a href="#sec-projects" class="kpi-card">
     <div class="kpi-accent" style="background:var(--sd-primary)"></div>
-    <div class="kpi-icon" style="background:rgba(124,58,237,.12);color:var(--sd-primary)"><i class="fal fa-building"></i></div>
+    <div class="kpi-icon" style="background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--sd-primary)"><i class="fal fa-building"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)"><?= $isAdmin ? 'Total Projects' : 'My Projects' ?></div>
     <div class="kpi-value" style="color:var(--sd-primary)"><?= $myProjectsCount ?></div>
     <div class="kpi-sub"><?= $isAdmin ? 'All construction projects' : 'Projects assigned to me' ?></div>
-    <span class="kpi-badge" style="background:rgba(124,58,237,.1);color:var(--sd-primary)"><i class="fal fa-arrow-down me-1"></i>View</span>
+    <span class="kpi-badge" style="background:rgba(var(--clr-theme-secondary-rgb),.1);color:var(--sd-primary)"><i class="fal fa-arrow-down me-1"></i>View</span>
   </a>
 
   <!-- Designs Done → scroll to designs table -->
@@ -376,7 +376,7 @@ $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
                 </div>
                 <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
                   <?php if (($sd['designer_type'] ?? '') === 'internal'): ?>
-                    <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(124,58,237,.1);color:var(--sd-primary)">
+                    <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(var(--clr-theme-secondary-rgb),.1);color:var(--sd-primary)">
                       <i class="fas fa-user me-1"></i>Internal
                     </span>
                   <?php else: ?>
@@ -405,7 +405,7 @@ $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
 
         <div style="text-align:center;margin-top:16px;padding-top:16px;border-top:1px solid rgba(0,0,0,.07)">
           <a href="<?= $base ?>/structure-design/create" class="btn btn-sm"
-             style="background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#fff;border-radius:10px;font-size:12px;font-weight:700;padding:8px 20px">
+             style="background:linear-gradient(135deg,#4c1d95,var(--clr-theme-secondary));color:#fff;border-radius:10px;font-size:12px;font-weight:700;padding:8px 20px">
             <i class="fal fa-plus me-2"></i>Add New Structure Design
           </a>
         </div>
@@ -480,7 +480,7 @@ $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
       <div class="sd-panel-title">
         <div class="sd-dot" style="background:var(--sd-primary)"></div>
         <?= $isAdmin ? 'All Projects' : 'My Assigned Projects' ?>
-        <span style="margin-left:auto;font-size:10px;font-weight:700;background:rgba(124,58,237,.1);color:var(--sd-primary);padding:3px 10px;border-radius:20px">
+        <span style="margin-left:auto;font-size:10px;font-weight:700;background:rgba(var(--clr-theme-secondary-rgb),.1);color:var(--sd-primary);padding:3px 10px;border-radius:20px">
           <?= count($myProjects) ?> Projects
         </span>
       </div>
@@ -511,7 +511,7 @@ $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
                       $st = $p['project_status'] ?? '';
                       $sc = match($st) {
                         'ongoing'   => ['#10b981', 'Ongoing'],
-                        'completed' => ['#6366f1', 'Completed'],
+                        'completed' => ['var(--clr-theme-primary)', 'Completed'],
                         'planning'  => ['#f59e0b', 'Planning'],
                         'on-hold'   => ['#ef4444', 'On Hold'],
                         default     => ['#94a3b8', ucfirst($st ?: 'N/A')],
@@ -580,7 +580,7 @@ $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
                   <td><?= htmlspecialchars($sd['location_name'] ?: '—') ?></td>
                   <td>
                     <?php if (($sd['designer_type'] ?? '') === 'internal'): ?>
-                      <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(124,58,237,.1);color:var(--sd-primary)">
+                      <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(var(--clr-theme-secondary-rgb),.1);color:var(--sd-primary)">
                         <i class="fas fa-user me-1"></i>Internal
                       </span>
                     <?php else: ?>
@@ -608,7 +608,7 @@ $userName    = $_SESSION['user']['full_name'] ?? 'Structural Engineer';
         </div>
         <div style="text-align:center;margin-top:16px;padding-top:16px;border-top:1px solid rgba(0,0,0,.07)">
           <a href="<?= $base ?>/structure-design/create" class="btn btn-sm"
-             style="background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#fff;border-radius:10px;font-size:12px;font-weight:700;padding:8px 20px">
+             style="background:linear-gradient(135deg,#4c1d95,var(--clr-theme-secondary));color:#fff;border-radius:10px;font-size:12px;font-weight:700;padding:8px 20px">
             <i class="fal fa-plus me-2"></i>Add New Structure Design
           </a>
         </div>

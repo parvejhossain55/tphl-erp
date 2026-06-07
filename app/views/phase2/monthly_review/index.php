@@ -21,7 +21,7 @@ $planStatusColors = [
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 body { font-family:'Inter',sans-serif }
-:root { --pri:#4f46e5;--green:#10b981;--amber:#f59e0b;--red:#ef4444;--slate:#64748b }
+:root { --pri:var(--clr-theme-primary);--green:#10b981;--amber:#f59e0b;--red:#ef4444;--slate:#64748b }
 
 .mr-header { margin-bottom:24px }
 .mr-crumb { font-size:11.5px;color:var(--slate);margin-bottom:6px }
@@ -60,7 +60,7 @@ body { font-family:'Inter',sans-serif }
     text-decoration:none;color:inherit;min-width:170px;flex:0 0 auto;
     transition:all .18s;cursor:pointer;background:#fafafa;position:relative;overflow:hidden
 }
-.month-card:hover { border-color:var(--pri);background:#fff;box-shadow:0 4px 14px rgba(79,70,229,.14);transform:translateY(-2px) }
+.month-card:hover { border-color:var(--pri);background:#fff;box-shadow:0 4px 14px rgba(var(--clr-theme-primary-rgb),.14);transform:translateY(-2px) }
 .month-card.approved { border-color:#10b981;background:linear-gradient(135deg,#f0fdf4,#fff) }
 .month-card.draft    { border-color:#e2e8f0 }
 
@@ -106,8 +106,8 @@ body { font-family:'Inter',sans-serif }
 <?php else: ?>
 <?php foreach ($phases as $phase):
     $sc  = $statusColors[$phase['status']] ?? $statusColors['Not Started'];
-    $planPct = (float)($phase['planned_progress'] ?? 0);
-    $actPct  = (float)($phase['actual_progress']  ?? 0);
+    $planPct = round((float)($phase['planned_progress'] ?? 0), 1);
+    $actPct  = round((float)($phase['actual_progress']  ?? 0), 1);
     $gap     = $actPct - $planPct;
     $targets = $targetsByPhase[(int)$phase['id']] ?? [];
 ?>
@@ -133,7 +133,7 @@ body { font-family:'Inter',sans-serif }
         </div>
         <div class="phase-stats">
             <div class="phase-stat">
-                <div class="phase-stat-val" style="color:#4f46e5"><?= number_format($planPct,1) ?>%</div>
+                <div class="phase-stat-val" style="color:var(--clr-theme-primary)"><?= number_format($planPct,1) ?>%</div>
                 <div class="phase-stat-lbl">Planned</div>
             </div>
             <div class="phase-stat">
@@ -171,8 +171,8 @@ body { font-family:'Inter',sans-serif }
         <div class="months-label"><i class="bi bi-calendar3 me-1"></i>Monthly Targets</div>
         <div class="months-grid">
         <?php foreach ($targets as $t):
-            $tPlan = (float)($t['avg_planned_pct'] ?? 0);
-            $tAct  = (float)($t['avg_actual_pct']  ?? 0);
+            $tPlan = round((float)($t['avg_planned_pct'] ?? 0), 1);
+            $tAct  = round((float)($t['avg_actual_pct']  ?? 0), 1);
             $tGap  = $tAct - $tPlan;
             $tStatus = $t['planning_status'] ?? 'Draft';
             $psc   = $planStatusColors[$tStatus] ?? $planStatusColors['Draft'];
@@ -194,7 +194,7 @@ body { font-family:'Inter',sans-serif }
                 <i class="bi bi-arrow-right-circle month-arrow"></i>
             </div>
             <div class="month-stat">
-                <i class="bi bi-list-check" style="color:#4f46e5"></i>
+                <i class="bi bi-list-check" style="color:var(--clr-theme-primary)"></i>
                 <span class="month-stat-val"><?= (int)$t['item_count'] ?></span> work items
             </div>
             <?php if ($t['total_target_qty'] > 0): ?>
@@ -203,14 +203,18 @@ body { font-family:'Inter',sans-serif }
                 Target: <span class="month-stat-val"><?= number_format((float)$t['total_target_qty'],0,'.',',') ?></span>
                 / Achieved: <span class="month-stat-val" style="color:#10b981"><?= number_format((float)$t['total_actual_qty'],0,'.',',') ?></span>
             </div>
+            <div class="month-stat" style="font-size: 10px; margin-top: 1px; color: var(--slate);">
+                <i class="bi bi-info-circle-fill" style="color:#94a3b8; font-size: 9px; margin-left: 2px; margin-right: 4px;"></i>
+                <span>Total Phase BOQ: <span class="month-stat-val"><?= number_format((float)($phase['total_phase_boq'] ?? 0),0,'.',',') ?></span></span>
+            </div>
             <?php endif; ?>
             <div class="month-pct-row">
-                <span class="month-pct-chip month-pct-plan">Plan <?= number_format($tPlan,0) ?>%</span>
+                <span class="month-pct-chip month-pct-plan">Plan <?= number_format($tPlan,1) ?>%</span>
                 <span class="month-pct-chip <?= $tAct>=$tPlan?'month-pct-act':'month-pct-behind' ?>">
-                    Act <?= number_format($tAct,0) ?>%
+                    Act <?= number_format($tAct,1) ?>%
                 </span>
                 <?php if ($tGap < -2): ?>
-                <span class="month-pct-chip month-pct-behind"><?= number_format($tGap,0) ?>% gap</span>
+                <span class="month-pct-chip month-pct-behind"><?= number_format($tGap,1) ?>% gap</span>
                 <?php endif; ?>
             </div>
         </a>

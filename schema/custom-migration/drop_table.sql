@@ -146,6 +146,8 @@ DROP TABLE IF EXISTS project_risks;
 DROP TABLE IF EXISTS project_timelines;
 DROP TABLE IF EXISTS recovery_action_items;
 DROP TABLE IF EXISTS recovery_plans;
+DROP TABLE IF EXISTS project_phase_item_details;
+
 
 -- ====== Office Asset Module ======
 DROP TABLE IF EXISTS asset_movement_logs;
@@ -155,17 +157,5 @@ DROP TABLE IF EXISTS office_assets;
 -- ====== Wastage Module ======
 DROP TABLE IF EXISTS con_wastage;
 DROP TABLE IF EXISTS con_wastage_items;
-
--- ====== Legacy / Redundant Tables (must drop before fresh import) ======
-DROP TABLE IF EXISTS monthly_phase_snapshots;
-DROP TABLE IF EXISTS monthly_progress_reviews;
-DROP TABLE IF EXISTS project_delay_snapshots;
-DROP TABLE IF EXISTS con_material_issue_items;
-DROP TABLE IF EXISTS weekly_progress_report;
-DROP TABLE IF EXISTS target_fixed;
-DROP TABLE IF EXISTS project_working_plan_items;
-DROP TABLE IF EXISTS project_working_plans;
-
-
 
 SET FOREIGN_KEY_CHECKS = 1;

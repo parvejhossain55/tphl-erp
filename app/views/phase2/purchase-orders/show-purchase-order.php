@@ -312,7 +312,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
   <div class="col-xl-4">
     <div class="po-panel" style="<?= !$fullyApproved ? 'border-color:rgba(245,158,11,.3)' : 'border-color:rgba(16,185,129,.3)' ?>">
       <div class="po-panel-title">
-        <div class="po-dot" style="background:#8b5cf6"></div>
+        <div class="po-dot" style="background:var(--clr-theme-secondary)"></div>
         Approval Status
         <span style="margin-left:auto;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;
           background:<?= $fullyApproved ? 'rgba(16,185,129,.12)' : 'rgba(245,158,11,.12)' ?>;
@@ -470,20 +470,20 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
       ];
       $boqMonthName = $months[(int)($boqRef['target_month'] ?? 0)] ?? '';
       ?>
-      <div class="po-panel mt-3" style="border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.03)">
-        <div class="po-panel-title" style="color:#4f46e5">
-          <div class="po-dot" style="background:#4f46e5"></div>
+      <div class="po-panel mt-3" style="border-color:rgba(var(--clr-theme-primary-rgb),.3);background:rgba(var(--clr-theme-primary-rgb),.03)">
+        <div class="po-panel-title" style="color:var(--clr-theme-primary)">
+          <div class="po-dot" style="background:var(--clr-theme-primary)"></div>
           BOQ Reference
           <span style="margin-left:auto;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;
-          background:rgba(99,102,241,.1);color:#4f46e5">
+          background:rgba(var(--clr-theme-primary-rgb),.1);color:var(--clr-theme-primary)">
             BOQ #<?= $boqRef['id'] ?> · v<?= htmlspecialchars($boqRef['version'] ?? '1.0') ?>
           </span>
         </div>
 
         <!-- BOQ Meta Info -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-          <div style="background:rgba(99,102,241,.06);border-radius:10px;padding:10px 13px">
-            <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6366f1;margin-bottom:4px">Target</div>
+          <div style="background:rgba(var(--clr-theme-primary-rgb),.06);border-radius:10px;padding:10px 13px">
+            <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--clr-theme-primary);margin-bottom:4px">Target</div>
             <div style="font-size:12px;font-weight:700"><?= htmlspecialchars($boqRef['target_title'] ?? '—') ?></div>
             <?php if (!empty($boqRef['target_year'])): ?>
               <div style="font-size:10px;color:var(--text-muted)">
@@ -492,26 +492,26 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
               </div>
             <?php endif; ?>
           </div>
-          <div style="background:rgba(99,102,241,.06);border-radius:10px;padding:10px 13px">
-            <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6366f1;margin-bottom:4px">Design Type</div>
+          <div style="background:rgba(var(--clr-theme-primary-rgb),.06);border-radius:10px;padding:10px 13px">
+            <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--clr-theme-primary);margin-bottom:4px">Design Type</div>
             <div style="font-size:12px;font-weight:700"><?= htmlspecialchars($boqRef['design_type_name'] ?? '—') ?></div>
             <div style="font-size:10px;color:var(--text-muted)">Status: <?= htmlspecialchars($boqRef['status'] ?? '') ?></div>
           </div>
-          <div style="background:rgba(99,102,241,.06);border-radius:10px;padding:10px 13px">
-            <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6366f1;margin-bottom:4px">Prepared By</div>
+          <div style="background:rgba(var(--clr-theme-primary-rgb),.06);border-radius:10px;padding:10px 13px">
+            <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--clr-theme-primary);margin-bottom:4px">Prepared By</div>
             <div style="font-size:12px;font-weight:700"><?= htmlspecialchars($boqRef['created_by_name'] ?? '—') ?></div>
           </div>
-          <div style="background:rgba(99,102,241,.06);border-radius:10px;padding:10px 13px">
-            <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6366f1;margin-bottom:4px">BOQ Total Value</div>
-            <div style="font-size:14px;font-weight:900;color:#4f46e5">৳ <?= number_format($boqTotal, 2) ?></div>
+          <div style="background:rgba(var(--clr-theme-primary-rgb),.06);border-radius:10px;padding:10px 13px">
+            <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--clr-theme-primary);margin-bottom:4px">BOQ Total Value</div>
+            <div style="font-size:14px;font-weight:900;color:var(--clr-theme-primary)">৳ <?= number_format($boqTotal, 2) ?></div>
             <div style="font-size:10px;color:var(--text-muted)"><?= count($boqItems) ?> material(s)</div>
           </div>
         </div>
 
         <!-- Toggle Button -->
         <button onclick="toggleBoqItems()" id="boq-toggle-btn"
-          style="width:100%;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);
-          color:#4f46e5;border-radius:8px;padding:7px;font-size:11px;font-weight:700;cursor:pointer;
+          style="width:100%;background:rgba(var(--clr-theme-primary-rgb),.1);border:1px solid rgba(var(--clr-theme-primary-rgb),.25);
+          color:var(--clr-theme-primary);border-radius:8px;padding:7px;font-size:11px;font-weight:700;cursor:pointer;
           margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:6px">
           <i class="fal fa-list-ul" id="boq-toggle-icon"></i>
           <span id="boq-toggle-text">Show BOQ Items (<?= count($boqItems) ?>)</span>
@@ -521,14 +521,14 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
         <div id="boq-items-table" style="display:none">
           <div class="table-responsive">
             <table class="table table-sm table-bordered align-middle mb-2" style="font-size:11px">
-              <thead style="background:rgba(99,102,241,.08)">
+              <thead style="background:rgba(var(--clr-theme-primary-rgb),.08)">
                 <tr>
-                  <th style="color:#4f46e5">#</th>
-                  <th style="color:#4f46e5">Material</th>
-                  <th style="color:#4f46e5">Unit</th>
-                  <th class="text-end" style="color:#4f46e5">BOQ Qty</th>
-                  <th class="text-end" style="color:#4f46e5">Unit Cost</th>
-                  <th class="text-end" style="color:#4f46e5">Line Total</th>
+                  <th style="color:var(--clr-theme-primary)">#</th>
+                  <th style="color:var(--clr-theme-primary)">Material</th>
+                  <th style="color:var(--clr-theme-primary)">Unit</th>
+                  <th class="text-end" style="color:var(--clr-theme-primary)">BOQ Qty</th>
+                  <th class="text-end" style="color:var(--clr-theme-primary)">Unit Cost</th>
+                  <th class="text-end" style="color:var(--clr-theme-primary)">Line Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -546,10 +546,10 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
                   </tr>
                 <?php endforeach; ?>
               </tbody>
-              <tfoot style="background:rgba(99,102,241,.06)">
+              <tfoot style="background:rgba(var(--clr-theme-primary-rgb),.06)">
                 <tr>
-                  <th colspan="5" class="text-end py-2" style="color:#4f46e5">BOQ TOTAL:</th>
-                  <th class="text-end py-2" style="color:#4f46e5;font-size:13px">৳ <?= number_format($boqTotal, 2) ?></th>
+                  <th colspan="5" class="text-end py-2" style="color:var(--clr-theme-primary)">BOQ TOTAL:</th>
+                  <th class="text-end py-2" style="color:var(--clr-theme-primary);font-size:13px">৳ <?= number_format($boqTotal, 2) ?></th>
                 </tr>
               </tfoot>
             </table>
@@ -559,7 +559,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
         <!-- Full BOQ Link -->
         <a href="<?= $base_url ?>/con-boq-show/<?= $boqRef['id'] ?>" target="_blank"
           style="display:flex;align-items:center;justify-content:center;gap:6px;
-          padding:8px;border-radius:8px;background:linear-gradient(135deg,#4f46e5,#6366f1);
+          padding:8px;border-radius:8px;background:linear-gradient(135deg,var(--clr-theme-primary),var(--clr-theme-primary));
           color:#fff;font-size:11px;font-weight:700;text-decoration:none;margin-top:4px">
           <i class="fal fa-external-link"></i> View Full BOQ Sheet
         </a>
@@ -585,12 +585,12 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
       table.style.display = 'block';
       icon.className = 'fal fa-chevron-up';
       text.textContent = 'Hide BOQ Items';
-      btn.style.background = 'rgba(99,102,241,.18)';
+      btn.style.background = 'rgba(var(--clr-theme-primary-rgb),.18)';
     } else {
       table.style.display = 'none';
       icon.className = 'fal fa-list-ul';
       text.textContent = 'Show BOQ Items (<?= count($linkedBoq["items"] ?? []) ?>)';
-      btn.style.background = 'rgba(99,102,241,.1)';
+      btn.style.background = 'rgba(var(--clr-theme-primary-rgb),.1)';
     }
   }
 </script>

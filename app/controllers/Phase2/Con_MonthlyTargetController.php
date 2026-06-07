@@ -247,6 +247,7 @@ class Con_MonthlyTargetController extends Controller {
             'target_id'           => $target_id,
             'work_type_id'        => $wid,
             'work_item_name'      => $name,
+            'phase_item_id'       => !empty($_POST['phase_item_id']) ? (int)$_POST['phase_item_id'] : null,
             'unit'                => trim($_POST['unit']               ?? ''),
             'monthly_target_qty'  => (float)($_POST['monthly_target_qty'] ?? 0),
             'planned_progress_pct'=> (float)($_POST['planned_progress_pct'] ?? 0),

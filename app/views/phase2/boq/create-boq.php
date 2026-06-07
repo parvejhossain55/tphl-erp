@@ -62,9 +62,9 @@ if ($phaseTarget) {
 
 <?php if ($phaseTarget): ?>
 <!-- ══════════════ PHASE HERO PANEL ══════════════ -->
-<div style="background:linear-gradient(135deg,#4f46e5 0%,#6366f1 55%,#818cf8 100%);
+<div style="background:linear-gradient(135deg,var(--clr-theme-primary) 0%,var(--clr-theme-primary) 55%,#818cf8 100%);
             border-radius:16px;padding:24px 28px;margin-bottom:24px;
-            position:relative;overflow:hidden;box-shadow:0 8px 32px rgba(99,102,241,.28);">
+            position:relative;overflow:hidden;box-shadow:0 8px 32px rgba(var(--clr-theme-primary-rgb),.28);">
     <!-- Decorative circles -->
     <div style="position:absolute;width:300px;height:300px;border-radius:50%;
                 background:rgba(255,255,255,.05);top:-90px;right:-70px;pointer-events:none;"></div>
@@ -218,11 +218,11 @@ if ($phaseTarget) {
 
 <?php if (!empty($targetPhaseItems)): ?>
 <!-- ══════════════ PHASE ITEMS PANEL ══════════════ -->
-<div class="mb-3" style="border:1.5px solid rgba(99,102,241,.2);border-radius:10px;overflow:hidden;">
-    <div style="background:linear-gradient(90deg,rgba(99,102,241,.08),transparent);
-                padding:10px 16px;border-bottom:1px solid rgba(99,102,241,.1);
+<div class="mb-3" style="border:1.5px solid rgba(var(--clr-theme-primary-rgb),.2);border-radius:10px;overflow:hidden;">
+    <div style="background:linear-gradient(90deg,rgba(var(--clr-theme-primary-rgb),.08),transparent);
+                padding:10px 16px;border-bottom:1px solid rgba(var(--clr-theme-primary-rgb),.1);
                 display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-        <div style="font-size:12.5px;font-weight:700;color:#6366f1;">
+        <div style="font-size:12.5px;font-weight:700;color:var(--clr-theme-primary);">
             <i class="bi bi-list-check me-2"></i>
             এই Target এর Work Items (<?= count($targetPhaseItems) ?>টি)
             <span style="font-size:11px;font-weight:500;color:var(--text-muted);margin-left:6px;">
@@ -242,7 +242,7 @@ if ($phaseTarget) {
     $th = 'padding:6px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b;border-bottom:2px solid rgba(0,0,0,.07);white-space:nowrap;background:rgba(0,0,0,.02);';
     $td = 'padding:7px 10px;border-bottom:1px solid rgba(0,0,0,.05);font-size:12px;vertical-align:middle;';
     $priColors = ['High'=>'#ef4444','Medium'=>'#f59e0b','Low'=>'#10b981'];
-    $stColors  = ['Draft'=>'#94a3b8','Ready'=>'#6366f1','Approved'=>'#10b981','At Risk'=>'#f59e0b','Critical'=>'#ef4444'];
+    $stColors  = ['Draft'=>'#94a3b8','Ready'=>'var(--clr-theme-primary)','Approved'=>'#10b981','At Risk'=>'#f59e0b','Critical'=>'#ef4444'];
     ?>
     <div style="overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
@@ -276,11 +276,11 @@ if ($phaseTarget) {
             <td style="<?= $td ?>;color:#94a3b8;font-weight:700;"><?= $idx + 1 ?></td>
             <td style="<?= $td ?>;font-weight:700;"><?= htmlspecialchars($pi['work_item_name']) ?></td>
             <td style="<?= $td ?>;color:#64748b;"><?= htmlspecialchars($pi['work_type_name'] ?? '—') ?></td>
-            <td style="<?= $td ?>;font-weight:600;color:#6366f1;"><?= htmlspecialchars($pi['unit'] ?? '—') ?></td>
+            <td style="<?= $td ?>;font-weight:600;color:var(--clr-theme-primary);"><?= htmlspecialchars($pi['unit'] ?? '—') ?></td>
             <td style="<?= $td ?>;text-align:center;font-weight:700;"><?= number_format((float)($pi['monthly_target_qty'] ?? 0), 2) ?></td>
             <td style="<?= $td ?>;text-align:center;font-weight:700;color:#10b981;"><?= number_format((float)($pi['actual_qty'] ?? 0), 2) ?></td>
             <td style="<?= $td ?>;text-align:center;">
-                <span style="display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(99,102,241,.1);color:#6366f1;">
+                <span style="display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(var(--clr-theme-primary-rgb),.1);color:var(--clr-theme-primary);">
                     <?= number_format($planPct, 1) ?>%
                 </span>
             </td>
@@ -362,20 +362,20 @@ if (!empty($weeklyProgress) || $anyWeekHasPlan):
                     'Draft'      => ['#94a3b8','rgba(148,163,184,.1)'],
                     'Submitted'  => ['#f59e0b','rgba(245,158,11,.1)'],
                     'Approved'   => ['#10b981','rgba(16,185,129,.1)'],
-                    'Planned'    => ['#6366f1','rgba(99,102,241,.1)'],
+                    'Planned'    => ['var(--clr-theme-primary)','rgba(var(--clr-theme-primary-rgb),.1)'],
                     'Not Started'=> ['#cbd5e1','rgba(0,0,0,.04)'],
                     'No Data'    => ['#cbd5e1','rgba(0,0,0,.04)'],
                 ];
                 [$sColor, $sBg] = $wkPlannedStatusColors[$status] ?? ['#94a3b8','rgba(0,0,0,.05)'];
-                $progColor = $pct >= 100 ? '#10b981' : ($pct > 0 ? '#6366f1' : '#94a3b8');
-                $borderColor = $hasSession ? 'rgba(99,102,241,.18)' : ($hasPlan ? 'rgba(99,102,241,.1)' : 'rgba(0,0,0,.06)');
-                $bgColor     = $hasSession ? 'rgba(99,102,241,.02)' : ($hasPlan ? 'rgba(99,102,241,.01)' : 'rgba(0,0,0,.01)');
+                $progColor = $pct >= 100 ? '#10b981' : ($pct > 0 ? 'var(--clr-theme-primary)' : '#94a3b8');
+                $borderColor = $hasSession ? 'rgba(var(--clr-theme-primary-rgb),.18)' : ($hasPlan ? 'rgba(var(--clr-theme-primary-rgb),.1)' : 'rgba(0,0,0,.06)');
+                $bgColor     = $hasSession ? 'rgba(var(--clr-theme-primary-rgb),.02)' : ($hasPlan ? 'rgba(var(--clr-theme-primary-rgb),.01)' : 'rgba(0,0,0,.01)');
             ?>
             <div style="border:1.5px solid <?= $borderColor ?>;
                         border-radius:10px;padding:12px 14px;
                         background:<?= $bgColor ?>;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                    <span style="font-size:11px;font-weight:800;color:<?= $hasData ? '#6366f1' : '#94a3b8' ?>;">
+                    <span style="font-size:11px;font-weight:800;color:<?= $hasData ? 'var(--clr-theme-primary)' : '#94a3b8' ?>;">
                         Week <?= $w ?>
                     </span>
                     <span style="font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:20px;
@@ -406,14 +406,14 @@ if (!empty($weeklyProgress) || $anyWeekHasPlan):
                 <?php elseif ($hasPlan): ?>
                 <!-- No session yet but has planned qty from target items -->
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-                    <i class="bi bi-hourglass-split" style="font-size:14px;color:#6366f1;"></i>
-                    <span style="font-size:10px;color:#6366f1;font-weight:600;">কাজ শুরু হয়নি</span>
+                    <i class="bi bi-hourglass-split" style="font-size:14px;color:var(--clr-theme-primary);"></i>
+                    <span style="font-size:10px;color:var(--clr-theme-primary);font-weight:600;">কাজ শুরু হয়নি</span>
                 </div>
                 <div style="height:5px;background:rgba(0,0,0,.06);border-radius:3px;overflow:hidden;margin-bottom:8px;">
-                    <div style="width:0%;height:100%;background:#6366f1;border-radius:3px;"></div>
+                    <div style="width:0%;height:100%;background:var(--clr-theme-primary);border-radius:3px;"></div>
                 </div>
                 <div style="font-size:10px;color:#94a3b8;margin-bottom:2px;">
-                    Plan: <strong style="color:#6366f1;font-size:13px;"><?= number_format($totPlan, 1) ?></strong>
+                    Plan: <strong style="color:var(--clr-theme-primary);font-size:13px;"><?= number_format($totPlan, 1) ?></strong>
                     <span style="font-size:9px;margin-left:3px;">qty</span>
                 </div>
                 <div style="font-size:9px;color:#cbd5e1;margin-top:4px;">
@@ -642,12 +642,12 @@ function checkStock(btn) {
 
     if (!projectId) {
         Swal.fire({ icon:'warning', title:'Project Required',
-            text:'Please select a Project first.', confirmButtonColor:'#4f46e5' });
+            text:'Please select a Project first.', confirmButtonColor:'var(--clr-theme-primary)' });
         return;
     }
     if (!materialId) {
         Swal.fire({ icon:'warning', title:'Material Required',
-            text:'Please select a Material first.', confirmButtonColor:'#4f46e5' });
+            text:'Please select a Material first.', confirmButtonColor:'var(--clr-theme-primary)' });
         return;
     }
 
@@ -697,7 +697,7 @@ function checkStock(btn) {
                     </div>`,
                     showCloseButton: true,
                     confirmButtonText: 'Close',
-                    confirmButtonColor: '#4f46e5',
+                    confirmButtonColor: 'var(--clr-theme-primary)',
                     customClass: { popup: 'shadow-lg border-0' }
                 });
             } else {

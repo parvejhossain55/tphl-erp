@@ -41,8 +41,8 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
     --boq-green: #10b981;
     --boq-amber: #f59e0b;
     --boq-red: #ef4444;
-    --boq-purple: #8b5cf6;
-    --boq-indigo: #6366f1;
+    --boq-purple: var(--clr-theme-secondary);
+    --boq-indigo: var(--clr-theme-primary);
   }
 
   /* Hero */
@@ -402,13 +402,13 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
 
 <?php if (!empty($linkedPr)): ?>
   <!-- ══════════ PROCUREMENT & PAYMENT TRACKING DASHBOARD ══════════ -->
-  <div class="boq-panel" style="border: 1px solid rgba(99, 102, 241, 0.25); background: linear-gradient(180deg, rgba(99, 102, 241, 0.02) 0%, rgba(255, 255, 255, 1) 100%); margin-bottom: 22px;">
-    <div class="boq-panel-title" style="color: #4f46e5; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(99, 102, 241, 0.15); padding-bottom: 12px; margin-bottom: 20px;">
+  <div class="boq-panel" style="border: 1px solid rgba(var(--clr-theme-primary-rgb), 0.25); background: linear-gradient(180deg, rgba(var(--clr-theme-primary-rgb), 0.02) 0%, rgba(255, 255, 255, 1) 100%); margin-bottom: 22px;">
+    <div class="boq-panel-title" style="color: var(--clr-theme-primary); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(var(--clr-theme-primary-rgb), 0.15); padding-bottom: 12px; margin-bottom: 20px;">
       <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
-        <div class="boq-dot" style="background: #4f46e5; box-shadow: 0 0 8px #4f46e5;"></div>
+        <div class="boq-dot" style="background: var(--clr-theme-primary); box-shadow: 0 0 8px var(--clr-theme-primary);"></div>
         <i class="fal fa-truck-ramp-box" style="font-size: 16px;"></i> Procurement &amp; Payment Pipeline
       </div>
-      <span style="font-size: 10px; font-weight: 800; background: rgba(99, 102, 241, 0.12); color: #4f46e5; padding: 4px 12px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px;">
+      <span style="font-size: 10px; font-weight: 800; background: rgba(var(--clr-theme-primary-rgb), 0.12); color: var(--clr-theme-primary); padding: 4px 12px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px;">
         Already PR Created
       </span>
     </div>
@@ -518,13 +518,13 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
     </div>
 
     <!-- Bottom Stage Status & Timeline -->
-    <div style="background: rgba(99, 102, 241, 0.04); border: 1px solid rgba(99, 102, 241, 0.12); border-radius: 10px; padding: 14px 16px;">
+    <div style="background: rgba(var(--clr-theme-primary-rgb), 0.04); border: 1px solid rgba(var(--clr-theme-primary-rgb), 0.12); border-radius: 10px; padding: 14px 16px;">
       <div style="display: flex; align-items: flex-start; gap: 12px;">
-        <div style="width: 24px; height: 24px; border-radius: 50%; background: #4f46e5; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; animation: pulse 2s infinite;">
+        <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--clr-theme-primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; animation: pulse 2s infinite;">
           <i class="fal fa-spinner fa-spin" style="font-size: 11px;"></i>
         </div>
         <div>
-          <div style="font-size: 11px; font-weight: 700; color: #4f46e5; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--clr-theme-primary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">
             Next Action / Stuck At
           </div>
           <div style="font-size: 13.5px; font-weight: 700; color: #1f2937;">
@@ -537,9 +537,9 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
 
   <style>
     @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
-      70% { box-shadow: 0 0 0 8px rgba(79, 70, 229, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+      0% { box-shadow: 0 0 0 0 rgba(var(--clr-theme-primary-rgb), 0.4); }
+      70% { box-shadow: 0 0 0 8px rgba(var(--clr-theme-primary-rgb), 0); }
+      100% { box-shadow: 0 0 0 0 rgba(var(--clr-theme-primary-rgb), 0); }
     }
   </style>
 <?php endif; ?>
@@ -551,13 +551,13 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
     <!-- Creator Info Banner -->
     <?php if (!empty($creatorInfo)): ?>
       <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:10px;
-    background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.15);margin-bottom:16px">
-        <div style="width:38px;height:38px;border-radius:50%;background:rgba(99,102,241,.12);
+    background:rgba(var(--clr-theme-primary-rgb),.06);border:1px solid rgba(var(--clr-theme-primary-rgb),.15);margin-bottom:16px">
+        <div style="width:38px;height:38px;border-radius:50%;background:rgba(var(--clr-theme-primary-rgb),.12);
       display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <i class="fal fa-user" style="color:#6366f1;font-size:16px"></i>
+          <i class="fal fa-user" style="color:var(--clr-theme-primary);font-size:16px"></i>
         </div>
         <div>
-          <div style="font-size:13px;font-weight:800;color:#6366f1">
+          <div style="font-size:13px;font-weight:800;color:var(--clr-theme-primary)">
             <?= htmlspecialchars($creatorInfo['full_name'] ?? 'Unknown') ?>
           </div>
           <div style="font-size:11px;color:var(--text-muted)">
