@@ -224,7 +224,6 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                 font-weight: 800;
                 color: #0f172a;
             }
-
             /* Premium Card Styling for Main Widgets */
             .po-card-wrapper {
                 background: var(--po-bg-card);

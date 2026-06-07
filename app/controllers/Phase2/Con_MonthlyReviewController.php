@@ -37,19 +37,113 @@ class Con_MonthlyReviewController extends Controller {
         }
         $_SESSION['active_project_name'] = $project['name'];
 
-        // All phases for this project
+        // All phases for this project (including total BOQ sum across phase items)
         $phStmt = $this->db->prepare("
-            SELECT id, phase_name, phase_order, weight_percentage,
-                   planned_start_date, planned_end_date,
-                   actual_start_date, actual_end_date,
-                   status, actual_progress, planned_progress
-            FROM project_phases
-            WHERE project_id = ?
-            ORDER BY phase_order ASC
+            SELECT pp.id, pp.phase_name, pp.phase_order, pp.weight_percentage,
+                   pp.planned_start_date, pp.planned_end_date,
+                   pp.actual_start_date, pp.actual_end_date,
+                   pp.status,
+                   COALESCE(SUM(ppid.total_boq_qty), 0) AS total_phase_boq
+            FROM project_phases pp
+            LEFT JOIN project_phase_items ppi ON ppi.phase_id = pp.id
+            LEFT JOIN project_phase_item_details ppid ON ppid.phase_item_id = ppi.id
+            WHERE pp.project_id = ?
+            GROUP BY pp.id
+            ORDER BY pp.phase_order ASC
         ");
         $phStmt->bind_param('i', $projectId);
         $phStmt->execute();
         $phases = $phStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Fetch all BOQ details for this project's phases to calculate progress dynamically in PHP
+        $dtStmt = $this->db->prepare("
+            SELECT ppi.phase_id, ppi.id AS phase_item_id, ppid.id AS detail_id,
+                   ppid.work_type_id, ppid.total_boq_qty, ppid.weight_pct AS detail_weight
+            FROM project_phase_items ppi
+            INNER JOIN project_phase_item_details ppid ON ppid.phase_item_id = ppi.id
+            INNER JOIN project_phases pp ON pp.id = ppi.phase_id
+            WHERE pp.project_id = ?
+        ");
+        $dtStmt->bind_param('i', $projectId);
+        $dtStmt->execute();
+        $details = $dtStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Fetch planned quantities from monthly targets
+        $planStmt = $this->db->prepare("
+            SELECT pmti.phase_item_id, pmti.work_type_id, SUM(pmti.monthly_target_qty) AS total_target_qty
+            FROM phase_monthly_target_items pmti
+            INNER JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
+            WHERE pmt.project_id = ?
+            GROUP BY pmti.phase_item_id, pmti.work_type_id
+        ");
+        $planStmt->bind_param('i', $projectId);
+        $planStmt->execute();
+        $plannedQuantities = $planStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Fetch actual completed quantities from approved daily logs with fallback for NULL detail IDs
+        $actStmt = $this->db->prepare("
+            SELECT COALESCE(dwil.phase_item_detail_id, ppid.id) AS phase_item_detail_id,
+                   SUM(dwil.qty_done_today) AS total_actual_qty
+            FROM daily_work_item_logs dwil
+            INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+            LEFT JOIN phase_monthly_target_items pmti ON pmti.id = dwil.target_item_id
+            LEFT JOIN project_phase_item_details ppid ON ppid.phase_item_id = pmti.phase_item_id AND ppid.work_type_id = dwil.work_type_id
+            WHERE dpl.project_id = ?
+              AND dpl.qc_status = 'Approved'
+              AND dpl.pm_status = 'Approved'
+            GROUP BY COALESCE(dwil.phase_item_detail_id, ppid.id)
+        ");
+        $actStmt->bind_param('i', $projectId);
+        $actStmt->execute();
+        $actualQuantities = $actStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Map data in PHP
+        $targetsMap = [];
+        foreach ($plannedQuantities as $q) {
+            $key = $q['phase_item_id'] . '_' . $q['work_type_id'];
+            $targetsMap[$key] = (float)$q['total_target_qty'];
+        }
+
+        $actualsMap = [];
+        foreach ($actualQuantities as $q) {
+            if ($q['phase_item_detail_id'] !== null) {
+                $actualsMap[(int)$q['phase_item_detail_id']] = (float)$q['total_actual_qty'];
+            }
+        }
+
+        $phasePlannedProgress = [];
+        $phaseActualProgress  = [];
+
+        foreach ($details as $d) {
+            $phaseId = (int)$d['phase_id'];
+            $boqQty  = (float)$d['total_boq_qty'];
+            $weight  = (float)$d['detail_weight'];
+
+            if (!isset($phasePlannedProgress[$phaseId])) {
+                $phasePlannedProgress[$phaseId] = 0.0;
+                $phaseActualProgress[$phaseId]  = 0.0;
+            }
+
+            if ($boqQty > 0) {
+                // Planned ratio (capped at 1.0)
+                $targetKey = $d['phase_item_id'] . '_' . $d['work_type_id'];
+                $targetQty = $targetsMap[$targetKey] ?? 0.0;
+                $plannedRatio = min(1.0, $targetQty / $boqQty);
+                $phasePlannedProgress[$phaseId] += $plannedRatio * $weight;
+
+                // Actual ratio (capped at 1.0)
+                $actualQty = $actualsMap[(int)$d['detail_id']] ?? 0.0;
+                $actualRatio = min(1.0, $actualQty / $boqQty);
+                $phaseActualProgress[$phaseId] += $actualRatio * $weight;
+            }
+        }
+
+        foreach ($phases as &$phase) {
+            $phaseId = (int)$phase['id'];
+            $phase['planned_progress'] = $phasePlannedProgress[$phaseId] ?? 0.0;
+            $phase['actual_progress']  = $phaseActualProgress[$phaseId]  ?? 0.0;
+        }
+        unset($phase);
 
         // Monthly targets for all phases (group by phase_id)
         $tmStmt = $this->db->prepare("
@@ -58,10 +152,11 @@ class Con_MonthlyReviewController extends Controller {
                    COUNT(pmti.id)                        AS item_count,
                    SUM(pmti.monthly_target_qty)          AS total_target_qty,
                    SUM(pmti.actual_qty)                  AS total_actual_qty,
-                   SUM(pmti.planned_progress_pct)        AS avg_planned_pct,
-                   SUM(pmti.actual_progress_pct)         AS avg_actual_pct
+                   SUM(COALESCE((pmti.monthly_target_qty / NULLIF(ppid.total_boq_qty, 0)) * 100, 0)) AS avg_planned_pct,
+                   SUM(COALESCE((pmti.actual_qty / NULLIF(ppid.total_boq_qty, 0)) * 100, 0)) AS avg_actual_pct
             FROM phase_monthly_targets pmt
             LEFT JOIN phase_monthly_target_items pmti ON pmti.target_id = pmt.id
+            LEFT JOIN project_phase_item_details ppid ON ppid.phase_item_id = pmti.phase_item_id AND ppid.work_type_id = pmti.work_type_id
             WHERE pmt.project_id = ?
             GROUP BY pmt.id
             ORDER BY pmt.target_month ASC
@@ -132,10 +227,13 @@ class Con_MonthlyReviewController extends Controller {
         $itemsStmt = $this->db->prepare("
             SELECT pmti.*,
                    wt.work_type_name,
-                   dt.name AS design_type_name
+                   dt.name AS design_type_name,
+                   COALESCE((pmti.monthly_target_qty / NULLIF(ppid.total_boq_qty, 0)) * 100, 0) AS planned_progress_pct,
+                   COALESCE((pmti.actual_qty / NULLIF(ppid.total_boq_qty, 0)) * 100, 0) AS actual_progress_pct
             FROM phase_monthly_target_items pmti
             LEFT JOIN work_types wt ON wt.id = pmti.work_type_id
             LEFT JOIN design_types dt ON dt.id = wt.design_type_id
+            LEFT JOIN project_phase_item_details ppid ON ppid.phase_item_id = pmti.phase_item_id AND ppid.work_type_id = pmti.work_type_id
             WHERE pmti.target_id = ?
             ORDER BY pmti.sort_order ASC, pmti.id ASC
         ");

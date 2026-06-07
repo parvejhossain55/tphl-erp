@@ -486,6 +486,7 @@ class Con_DashboardController extends Controller
                     p.total_share        AS total_floors,
                     p.plot_size,
                     p.building_type,
+                    p.workflow_version,
                     COALESCE(l.name,'')  AS location_name,
                     COALESCE(prog.progress_pct, 0)    AS progress_pct,
                     COALESCE(bud.total_budget, 0)      AS total_budget,
@@ -511,7 +512,70 @@ class Con_DashboardController extends Controller
             ORDER BY p.id DESC";
 
         $result = $this->db->query($sql);
-        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+        $projects = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Fetch overall project progress roll-up (Actual & Planned) for phase-based projects
+        $phaseBasedProjectIds = [];
+        foreach ($projects as $pr) {
+            if (($pr['workflow_version'] ?? '') === 'phase_based') {
+                $phaseBasedProjectIds[] = (int)$pr['id'];
+            }
+        }
+
+        if (!empty($phaseBasedProjectIds)) {
+            $idsList = implode(',', $phaseBasedProjectIds);
+            
+            // Fetch weight_percentage, actual_progress, and planned_progress for the phases of these projects
+            $phasesRes = $this->db->query("
+                SELECT project_id, weight_percentage, actual_progress, planned_progress
+                FROM project_phases
+                WHERE project_id IN ($idsList)
+            ");
+            $phases = $phasesRes ? $phasesRes->fetch_all(MYSQLI_ASSOC) : [];
+            
+            // Group phases by project
+            $projectPhases = [];
+            foreach ($phases as $phase) {
+                $projectPhases[(int)$phase['project_id']][] = $phase;
+            }
+            
+            // Calculate roll-up
+            foreach ($projects as &$pr) {
+                $pid = (int)$pr['id'];
+                if (($pr['workflow_version'] ?? '') === 'phase_based') {
+                    $phasesList = $projectPhases[$pid] ?? [];
+                    $overallActual = 0.0;
+                    $overallPlanned = 0.0;
+                    
+                    if (!empty($phasesList)) {
+                        foreach ($phasesList as $phase) {
+                            $weight = (float)$phase['weight_percentage'];
+                            $actual = (float)$phase['actual_progress'];
+                            $planned = (float)$phase['planned_progress'];
+                            
+                            $overallActual += $actual * ($weight / 100);
+                            $overallPlanned += $planned * ($weight / 100);
+                        }
+                    }
+                    
+                    $pr['overall_project_actual'] = $overallActual;
+                    $pr['overall_project_planned'] = $overallPlanned;
+                    $pr['progress_pct'] = $overallActual; // Backwards compatibility
+                } else {
+                    $pr['overall_project_actual'] = (float)($pr['progress_pct'] ?? 0.0);
+                    $pr['overall_project_planned'] = (float)($pr['progress_pct'] ?? 0.0);
+                }
+            }
+            unset($pr);
+        } else {
+            foreach ($projects as &$pr) {
+                $pr['overall_project_actual'] = (float)($pr['progress_pct'] ?? 0.0);
+                $pr['overall_project_planned'] = (float)($pr['progress_pct'] ?? 0.0);
+            }
+            unset($pr);
+        }
+
+        return $projects;
     }
 
     private function getBudgetUtilization(): array
@@ -644,6 +708,67 @@ class Con_DashboardController extends Controller
         $result   = $this->db->query($sql);
         $projects = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
+        // Fetch overall project progress roll-up (Actual & Planned) for phase-based projects
+        $phaseBasedProjectIds = [];
+        foreach ($projects as $pr) {
+            if (($pr['workflow_version'] ?? '') === 'phase_based') {
+                $phaseBasedProjectIds[] = (int)$pr['id'];
+            }
+        }
+
+        if (!empty($phaseBasedProjectIds)) {
+            $idsList = implode(',', $phaseBasedProjectIds);
+            
+            // Fetch weight_percentage, actual_progress, and planned_progress for the phases of these projects
+            $phasesRes = $this->db->query("
+                SELECT project_id, weight_percentage, actual_progress, planned_progress
+                FROM project_phases
+                WHERE project_id IN ($idsList)
+            ");
+            $phases = $phasesRes ? $phasesRes->fetch_all(MYSQLI_ASSOC) : [];
+            
+            // Group phases by project
+            $projectPhases = [];
+            foreach ($phases as $phase) {
+                $projectPhases[(int)$phase['project_id']][] = $phase;
+            }
+            
+            // Calculate roll-up
+            foreach ($projects as &$pr) {
+                $pid = (int)$pr['id'];
+                if (($pr['workflow_version'] ?? '') === 'phase_based') {
+                    $phasesList = $projectPhases[$pid] ?? [];
+                    $overallActual = 0.0;
+                    $overallPlanned = 0.0;
+                    
+                    if (!empty($phasesList)) {
+                        foreach ($phasesList as $phase) {
+                            $weight = (float)$phase['weight_percentage'];
+                            $actual = (float)$phase['actual_progress'];
+                            $planned = (float)$phase['planned_progress'];
+                            
+                            $overallActual += $actual * ($weight / 100);
+                            $overallPlanned += $planned * ($weight / 100);
+                        }
+                    }
+                    
+                    $pr['overall_project_actual'] = $overallActual;
+                    $pr['overall_project_planned'] = $overallPlanned;
+                    $pr['progress_pct'] = $overallActual; // Backwards compatibility
+                } else {
+                    $pr['overall_project_actual'] = (float)($pr['progress_pct'] ?? 0.0);
+                    $pr['overall_project_planned'] = (float)($pr['progress_pct'] ?? 0.0);
+                }
+            }
+            unset($pr);
+        } else {
+            foreach ($projects as &$pr) {
+                $pr['overall_project_actual'] = (float)($pr['progress_pct'] ?? 0.0);
+                $pr['overall_project_planned'] = (float)($pr['progress_pct'] ?? 0.0);
+            }
+            unset($pr);
+        }
+
         // Summary counts
         $statusCounts = [];
         foreach ($projects as $p) {
@@ -701,15 +826,44 @@ class Con_DashboardController extends Controller
             $budget = $stmt2b->get_result()->fetch_assoc();
         }
 
-        // Progress % — Migrated to phase-based weighted progress
-        $stmt3 = $this->db->prepare("
-            SELECT SUM((COALESCE(pp.actual_progress,0) / 100) * COALESCE(pp.weight_percentage,0)) AS prog
-            FROM project_phases pp
-            WHERE pp.project_id = ?
-        ");
-        $stmt3->bind_param('i', $id);
-        $stmt3->execute();
-        $progress = round((float)$stmt3->get_result()->fetch_assoc()['prog'], 2);
+        // Progress % — dynamically calculated overall phase progress for phase-based projects
+        $progress = 0.0;
+        $progress_planned = 0.0;
+        if (($project['workflow_version'] ?? '') === 'phase_based') {
+            // Fetch weight_percentage, actual_progress, and planned_progress for the phases of this project
+            $phStmt = $this->db->prepare("
+                SELECT weight_percentage, actual_progress, planned_progress
+                FROM project_phases
+                WHERE project_id = ?
+            ");
+            $phStmt->bind_param('i', $id);
+            $phStmt->execute();
+            $phases = $phStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            
+            if (!empty($phases)) {
+                foreach ($phases as $phase) {
+                    $weight = (float)$phase['weight_percentage'];
+                    $actual = (float)$phase['actual_progress'];
+                    $planned = (float)$phase['planned_progress'];
+                    
+                    $progress += $actual * ($weight / 100);
+                    $progress_planned += $planned * ($weight / 100);
+                }
+            }
+            $progress = round($progress, 2);
+            $progress_planned = round($progress_planned, 2);
+        } else {
+            // Normal fallback
+            $stmt3 = $this->db->prepare("
+                SELECT SUM((COALESCE(pp.actual_progress,0) / 100) * COALESCE(pp.weight_percentage,0)) AS prog
+                FROM project_phases pp
+                WHERE pp.project_id = ?
+            ");
+            $stmt3->bind_param('i', $id);
+            $stmt3->execute();
+            $progress = round((float)$stmt3->get_result()->fetch_assoc()['prog'], 2);
+            $progress_planned = $progress;
+        }
 
         // ── Tab 2: Documents ────────────────────────────────────────────────
         $stmt4 = $this->db->prepare("SELECT * FROM land_visibility_study WHERE project_id = ? LIMIT 1");
@@ -755,6 +909,7 @@ class Con_DashboardController extends Controller
             'project'         => $project,
             'budget'          => $budget,
             'progress'        => $progress,
+            'progress_planned'=> $progress_planned,
             'landStudy'       => $landStudy,
             'soilTests'       => $soilTests,
             'drawings'        => $drawings,

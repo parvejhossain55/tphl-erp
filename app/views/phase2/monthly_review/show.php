@@ -136,14 +136,17 @@ body { font-family:'Inter',sans-serif }
         <div class="rev-kpi-icon" style="background:#dbeafe"><i class="bi bi-bullseye" style="color:#1d4ed8"></i></div>
         <div class="rev-kpi-lbl">Planned Progress (To Date)</div>
         <div class="rev-kpi-val" style="color:#1d4ed8"><?= number_format($totalPlannedProRated,1) ?>%</div>
-        <div class="rev-kpi-sub">Target: <?= number_format($totalPlannedPct,1) ?>% (Month)</div>
+        <div class="rev-kpi-sub" style="margin-bottom:4px">of Overall Project</div>
+        <div style="font-size:9.5px;font-weight:700;background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:6px;align-self:flex-start;display:inline-flex;align-items:center;gap:4px">
+            <i class="bi bi-layers-half"></i>Monthly Phase Scope: <?= number_format($totalPlannedPct,1) ?>%
+        </div>
     </div>
     <!-- Actual Progress -->
     <div class="rev-kpi">
         <div class="rev-kpi-icon" style="background:#d1fae5"><i class="bi bi-check-circle-fill" style="color:#10b981"></i></div>
         <div class="rev-kpi-lbl">Actual Progress</div>
         <div class="rev-kpi-val" style="color:#10b981"><?= number_format($totalActualPct,1) ?>%</div>
-        <div class="rev-kpi-sub">of Total Project</div>
+        <div class="rev-kpi-sub">of Overall Project</div>
     </div>
     <!-- Delay Gap -->
     <div class="rev-kpi">
@@ -340,8 +343,13 @@ body { font-family:'Inter',sans-serif }
                             <?= number_format(array_sum(array_column($workItems,'actual_qty')),0,'.',',') ?>
                         </td>
                         <td style="text-align:center">
-                            <span style="font-weight:900;font-size:14px;color:<?= $totalAchievementPct>=100?'#065f46':'#6d28d9' ?>">
-                                <?= number_format($totalAchievementPct,1) ?>%
+                            <?php
+                            $totalTargetQty = array_sum(array_column($workItems, 'monthly_target_qty'));
+                            $totalActualQty = array_sum(array_column($workItems, 'actual_qty'));
+                            $trueAchievementPct = $totalTargetQty > 0 ? ($totalActualQty / $totalTargetQty * 100) : 0;
+                            ?>
+                            <span style="font-weight:900;font-size:13px;color:<?= $trueAchievementPct>=100?'#065f46':'#6d28d9' ?>">
+                                <?= number_format($trueAchievementPct,1) ?>% Achieved
                             </span>
                         </td>
                         <td colspan="3" style="font-size:10.5px;color:#166534;font-weight:600">
