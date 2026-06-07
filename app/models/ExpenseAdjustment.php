@@ -94,6 +94,11 @@ class ExpenseAdjustment
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
+        if (!$stmt) {
+            error_log("ExpenseAdjustment::create - prepare failed: " . $this->db->error);
+            return false;
+        }
+
         $stmt->bind_param(
             "iisssssssis",
             $data['user_id'],

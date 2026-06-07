@@ -11,7 +11,7 @@
     <div class="mb-4 d-flex gap-2 align-items-center">
         <?php if ($_SESSION['user']['role_id'] == 12): ?>
         <a href="<?= $base_url ?>/con-wastage-create" class="btn btn-success btn-sm fw-bold">
-            <i class="bi bi-plus-circle me-1"></i> Record Wastage
+            <i class="bi bi-plus-circle me-1"></i> Add Wastage
         </a>
         <?php endif; ?>
     </div>
@@ -26,6 +26,7 @@
                         <th>ID #</th>
                         <th>Project</th>
                         <th>Warehouse</th>
+                        <th>Type</th>
                         <th class="text-end">Selling Amount</th>
                         <th>Status</th>
                         <th>Recorded By</th>
@@ -40,6 +41,13 @@
                             <td><span class="fw-bold text-primary">WST-<?= $w['id'] ?></span></td>
                             <td class="fw-bold"><?= htmlspecialchars($w['project_name']) ?></td>
                             <td><?= htmlspecialchars($w['warehouse_name']) ?></td>
+                            <td>
+                                <?php if (($w['wastage_type'] ?? '') === 'storage_damage'): ?>
+                                    <span class="badge bg-secondary">Storage Damage</span>
+                                <?php else: ?>
+                                    <span class="badge bg-dark">Selling Scrap</span>
+                                <?php endif; ?>
+                            </td>
                             <td class="text-end fw-bold text-success">৳ <?= number_format($w['total_selling_amount'], 2) ?></td>
                             <td>
                                 <?php

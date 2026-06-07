@@ -31,13 +31,21 @@
             </div>
             <div class="card-body mt-3">
                 <div class="row mb-3">
-                    <div class="col-md-6 mb-2">
+                    <div class="col-md-4 mb-2">
                         <small class="text-muted d-block">Project</small>
                         <span class="fw-bold"><?= htmlspecialchars($wastage['project_name']) ?></span>
                     </div>
-                    <div class="col-md-6 mb-2">
+                    <div class="col-md-4 mb-2">
                         <small class="text-muted d-block">Warehouse</small>
                         <span class="fw-bold"><?= htmlspecialchars($wastage['warehouse_name']) ?></span>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <small class="text-muted d-block">Type</small>
+                        <?php if (($wastage['wastage_type'] ?? '') === 'storage_damage'): ?>
+                            <span class="badge bg-secondary">Storage Damage</span>
+                        <?php else: ?>
+                            <span class="badge bg-dark">Selling Scrap</span>
+                        <?php endif; ?>
                     </div>
                     <div class="col-md-6 mb-2">
                         <small class="text-muted d-block">Recorded By</small>
