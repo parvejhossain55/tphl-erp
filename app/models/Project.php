@@ -295,25 +295,35 @@ class Project extends Model
         // ======================
         // Image Upload (fallback old)
         // ======================
-        $image = !empty($_FILES['image']['name'])
-            ? uploadImage('image', 'projects', 'fixed')
-            : $old['image'];
+        $image = $old['image'];
+        if (!empty($_FILES['image']['name'])) {
+            $up = uploadImage('image', 'projects', 'fixed');
+            if ($up) $image = $up;
+        }
 
-        $image2 = !empty($_FILES['image2']['name'])
-            ? uploadImage('image2', 'projects', 'fixed')
-            : $old['image2'];
+        $image2 = $old['image2'];
+        if (!empty($_FILES['image2']['name'])) {
+            $up = uploadImage('image2', 'projects', 'fixed');
+            if ($up) $image2 = $up;
+        }
 
-        $image3 = !empty($_FILES['image3']['name'])
-            ? uploadImage('image3', 'projects', 'fixed')
-            : $old['image3'];
+        $image3 = $old['image3'];
+        if (!empty($_FILES['image3']['name'])) {
+            $up = uploadImage('image3', 'projects', 'fixed');
+            if ($up) $image3 = $up;
+        }
 
-        $map_image = !empty($_FILES['map_image']['name'])
-            ? uploadImage('map_image', 'projects', 'fixed')
-            : $old['map_image'];
+        $map_image = $old['map_image'];
+        if (!empty($_FILES['map_image']['name'])) {
+            $up = uploadImage('map_image', 'projects', 'fixed');
+            if ($up) $map_image = $up;
+        }
 
-        $amenities_image = !empty($_FILES['amenities_image']['name'])
-            ? uploadImage('amenities_image', 'projects', 'fixed')
-            : $old['amenities_image'];
+        $amenities_image = $old['amenities_image'];
+        if (!empty($_FILES['amenities_image']['name'])) {
+            $up = uploadImage('amenities_image', 'projects', 'fixed');
+            if ($up) $amenities_image = $up;
+        }
         $plot_size = ($data['plot_size'] === '' || $data['plot_size'] === null)
             ? null
             : (float)$data['plot_size'];

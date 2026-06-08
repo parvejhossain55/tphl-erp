@@ -114,15 +114,15 @@ function uploadImage($input, $module = 'general', $mode = 'original',  $width = 
 function getImage($module, $filename)
 {
     if (!$filename) {
-        return $GLOBALS['base_url'] . '/assets/images/avatar/avatar.png';
+        return $GLOBALS['base_url'] . '/public/assets/images/avatar/avatar.png';
     }
 
     $filePath = dirname(__DIR__, 2) . "/public/uploads/{$module}/{$filename}";
     if (!file_exists($filePath)) {
-        return $GLOBALS['base_url'] . '/assets/images/avatar/avatar.png';
+        return $GLOBALS['base_url'] . '/public/assets/images/avatar/avatar.png';
     }
 
-    return $GLOBALS['base_url'] . "/uploads/{$module}/{$filename}";
+    return $GLOBALS['base_url'] . "/public/uploads/{$module}/{$filename}";
 }
 
 

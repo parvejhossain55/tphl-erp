@@ -517,4 +517,29 @@ if (!empty($project['floor_wise_unit_meta'])) {
             if (row) row.remove();
         }
     });
+
+    // Live Image Preview Logic
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        input.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const objectUrl = URL.createObjectURL(file);
+                // Find or create the image preview container
+                let previewContainer = input.nextElementSibling;
+                if (!previewContainer || !previewContainer.classList.contains('mt-2')) {
+                    previewContainer = document.createElement('div');
+                    previewContainer.className = 'mt-2';
+                    previewContainer.innerHTML = `<a href="${objectUrl}" target="_blank">
+                        <img src="${objectUrl}" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                    </a>`;
+                    input.parentNode.insertBefore(previewContainer, input.nextSibling);
+                } else {
+                    const img = previewContainer.querySelector('img');
+                    const link = previewContainer.querySelector('a');
+                    if (img) img.src = objectUrl;
+                    if (link) link.href = objectUrl;
+                }
+            }
+        });
+    });
 </script>
