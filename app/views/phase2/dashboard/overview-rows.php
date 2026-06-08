@@ -1,5 +1,14 @@
 <?php
 $base = $GLOBALS['base_url'];
+
+if (!function_exists('cpFmtPct')) {
+    function cpFmtPct($n) {
+        $n = (float)$n;
+        if ($n <= 0) return '0.0%';
+        if ($n < 0.1) return number_format($n, 3) . '%';
+        return number_format($n, 1) . '%';
+    }
+}
 if (empty($projects)): ?>
     <tr>
         <td colspan="7" style="text-align:center; padding: 40px; color:#64748b;">
@@ -25,6 +34,54 @@ if (empty($projects)): ?>
             : $base . '/con-project/' . $pr['id'];
 
         $budgetPct = $pr['total_budget'] > 0 ? round(($pr['total_spent'] / $pr['total_budget']) * 100) : 0;
+
+        // Construct Overall Progress Popover Content
+        $plaLines = [];
+        $actLines = [];
+        if (!empty($pr['phases'])) {
+            foreach ($pr['phases'] as $phase) {
+                if ((float)$phase['total_boq'] > 0) {
+                    $phName = $phase['phase_name'];
+                    $phWeight = (float)$phase['phase_weight'];
+                    
+                    // Month name
+                    $targetMonthBn = 'জুনের'; // default
+                    if (!empty($phase['target_month'])) {
+                        $bnMonth = getBengaliMonthName($phase['target_month']);
+                        $targetMonthBn = ($bnMonth === 'জুন') ? 'জুনের' : $bnMonth . ' মাসের';
+                    }
+                    
+                    // Planned
+                    $phPlannedVal = (float)$phase['phase_planned_weighted_pct'];
+                    $phPlannedContrib = $phPlannedVal * ($phWeight / 100);
+                    if ($phPlannedVal > 0) {
+                        $bnWeight = toBengaliNum(round($phWeight, 1));
+                        $bnPlanned = toBengaliNum(round($phPlannedVal, 1));
+                        $bnPlannedContrib = toBengaliNum(round($phPlannedContrib, 1));
+                        $plaLines[] = "{$phName} ফেজের {$targetMonthBn} নিজস্ব প্ল্যান ({$bnPlanned}%) × প্রজেক্টে এই ফেজের গুরুত্ব ({$bnWeight}%) = {$bnPlannedContrib}%";
+                    }
+                    
+                    // Actual
+                    $phActualVal = (float)$phase['phase_actual_weighted_pct'];
+                    $phActualContrib = $phActualVal * ($phWeight / 100);
+                    if ($phActualVal > 0) {
+                        $bnWeight = toBengaliNum(round($phWeight, 1));
+                        $bnActual = toBengaliNum(round($phActualVal, 2));
+                        $bnActualContrib = toBengaliNum(round($phActualContrib, 2));
+                        $actLines[] = "{$phName} ফেজের {$targetMonthBn} নিজস্ব প্রকৃত অগ্রগতি ({$bnActual}%) × প্রজেক্টে এই ফেজের গুরুত্ব ({$bnWeight}%) = {$bnActualContrib}%";
+                    }
+                }
+            }
+        }
+        
+        $formattedPla = ($pr['planned_progress_pct'] > 0 && $pr['planned_progress_pct'] < 0.1) ? number_format($pr['planned_progress_pct'], 3) : number_format($pr['planned_progress_pct'], 1);
+        $formattedAct = ($pr['progress_pct'] > 0 && $pr['progress_pct'] < 0.1) ? number_format($pr['progress_pct'], 3) : number_format($pr['progress_pct'], 1);
+
+        $plaPopoverContent = "<strong>ℹ️ সামগ্রিক পরিকল্পিত অগ্রগতি (Overall Planned):</strong><br/>"
+                           . (empty($plaLines) ? "কোনো পরিকল্পিত অগ্রগতি নেই।" : "হিসাব: " . implode(" + ", $plaLines) . " = " . toBengaliNum($formattedPla) . "% (পুরো প্রজেক্টের সাপেক্ষে)");
+                           
+        $actPopoverContent = "<strong>ℹ️ সামগ্রিক প্রকৃত অগ্রগতি (Overall Actual):</strong><br/>"
+                           . (empty($actLines) ? "কোনো প্রকৃত অগ্রগতি নেই।" : "হিসাব: " . implode(" + ", $actLines) . " = " . toBengaliNum($formattedAct) . "% (পুরো প্রজেক্টের সাপেক্ষে)");
         
         // Find current active phase
         $currentPhaseName = 'N/A';
@@ -106,17 +163,23 @@ if (empty($projects)): ?>
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                         <span style="font-size: 10px; font-weight: 700; color: #94a3b8; min-width: 24px;">Pla</span>
                         <div class="prog-bar-container" style="height: 6px; flex: 1; background: #f1f5f9;">
-                            <div class="prog-bar-fill-planned" style="width: <?= $plPct ?>%; height: 100%; background: #6366f1; opacity: 0.85;"></div>
+                            <div class="prog-bar-fill-planned" style="width: <?= min(100, $pr['planned_progress_pct']) ?>%; height: 100%; background: #6366f1; opacity: 0.85;"></div>
                         </div>
-                        <span style="font-size: 11px; font-weight: 800; color: #6366f1; min-width: 32px; text-align: right;"><?= $plPct ?>%</span>
+                        <span style="font-size: 11px; font-weight: 800; color: #6366f1; min-width: 32px; text-align: right; display: flex; align-items: center; gap: 4px;">
+                            <?= cpFmtPct($pr['planned_progress_pct']) ?>
+                            <span style="font-size: 10px; cursor: pointer; color: #94a3b8;" data-bs-toggle="popover" data-bs-content="<?= htmlspecialchars($plaPopoverContent) ?>">ℹ️</span>
+                        </span>
                     </div>
                     <!-- Actual Bar -->
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                         <span style="font-size: 10px; font-weight: 700; color: #94a3b8; min-width: 24px;">Act</span>
                         <div class="prog-bar-container" style="height: 6px; flex: 1; background: #f1f5f9;">
-                            <div class="prog-bar-fill-actual" style="width: <?= $pct ?>%; height: 100%; background: var(--po-primary, #198754);"></div>
+                            <div class="prog-bar-fill-actual" style="width: <?= min(100, $pr['progress_pct']) ?>%; height: 100%; background: var(--po-primary, #198754);"></div>
                         </div>
-                        <span style="font-size: 11px; font-weight: 800; color: var(--po-primary, #198754); min-width: 32px; text-align: right;"><?= $pct ?>%</span>
+                        <span style="font-size: 11px; font-weight: 800; color: var(--po-primary, #198754); min-width: 32px; text-align: right; display: flex; align-items: center; gap: 4px;">
+                            <?= cpFmtPct($pr['progress_pct']) ?>
+                            <span style="font-size: 10px; cursor: pointer; color: #94a3b8;" data-bs-toggle="popover" data-bs-content="<?= htmlspecialchars($actPopoverContent) ?>">ℹ️</span>
+                        </span>
                     </div>
                 </div>
             </td>
@@ -180,33 +243,53 @@ if (empty($projects)): ?>
                     <div style="display: flex; flex-direction: column; gap: 12px;">
                         <?php foreach ($pr['phases'] as $phase): 
                             $phWeight = (float)$phase['phase_weight'];
-                            $phActual = (float)$phase['phase_actual_pct'];
-                            $actWeightVal = ($phActual / 100) * $phWeight;
+                            $phaseActualProgress = (float)$phase['phase_actual_pct'];
+                            $phaseContribution = (float)$phase['phase_contribution'];
+
+                            // Compute dynamic tooltips for this phase
+                            $totalApprovedVal = (float)$phase['total_approved_qty'];
+                            $totalBOQVal = (float)$phase['total_boq'];
+                            
+                            $phaseProgressTooltip = "<strong>ℹ️ ফেজের নিজস্ব অগ্রগতি (Phase Internal Progress):</strong><br/>"
+                                                  . "সূত্র: (অনুমোদিত কাজের ভলিউম ÷ মোট ফেজ BOQ) × ১০০<br/>"
+                                                  . "হিসাব: (" . toBengaliNum(number_format($totalApprovedVal)) . " CFT ÷ " . toBengaliNum(number_format($totalBOQVal)) . " CFT) × ১০০ = " . toBengaliNum(number_format(round($phaseActualProgress, 1), 1)) . "%";
+
+                            $phaseProgressVal2 = number_format($phaseActualProgress, 2); // 0.42
+                            $phaseWeightVal = number_format($phWeight, 1); // 35.0
+                            $phaseContributionVal = number_format($phaseContribution, 2); // 0.15
+                            
+                            $phaseContributionTooltip = "<strong>ℹ️ প্রজেক্টে এই ফেজের অবদান (Project Contribution):</strong><br/>"
+                                                      . "সূত্র: ফেজের বর্তমান প্রগ্রেস (" . toBengaliNum($phaseProgressVal2) . "%) × (ফেজ ওয়েট " . toBengaliNum($phaseWeightVal) . " ÷ ১০০) = " . toBengaliNum($phaseContributionVal) . "%";
                             ?>
                             <div style="display: grid; grid-template-columns: 200px 1fr; align-items: center; gap: 16px;">
                                 <div style="font-size: 12px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                                    <?php if (!empty($phase['items'])): ?>
+                                     <?php if (!empty($phase['items'])): ?>
                                         <i class="fa-solid fa-chevron-right phase-toggle-icon" 
                                            onclick="togglePhaseItems('subitems-<?= $pr['id'] ?>-<?= $phase['phase_id'] ?>', this)" 
                                            style="cursor: pointer; font-size: 9px; width: 12px; color: var(--po-primary, #198754); transition: transform 0.15s; display: inline-block;"></i>
-                                    <?php else: ?>
+                                     <?php else: ?>
                                         <span style="width: 12px; display: inline-block;"></span>
-                                    <?php endif; ?>
-                                    <span style="<?php if (!empty($phase['items'])): ?>cursor: pointer;<?php endif; ?>" 
-                                          onclick="<?php if (!empty($phase['items'])): ?>togglePhaseItems('subitems-<?= $pr['id'] ?>-<?= $phase['phase_id'] ?>', this.previousElementSibling)<?php endif; ?>">
-                                        <?= htmlspecialchars($phase['phase_name']) ?>
-                                    </span>
+                                     <?php endif; ?>
+                                     <span style="<?php if (!empty($phase['items'])): ?>cursor: pointer;<?php endif; ?>" 
+                                           onclick="<?php if (!empty($phase['items'])): ?>togglePhaseItems('subitems-<?= $pr['id'] ?>-<?= $phase['phase_id'] ?>', this.previousElementSibling)<?php endif; ?>">
+                                         <?= htmlspecialchars($phase['phase_name']) ?>
+                                     </span>
                                 </div>
                                 <div style="width: 100%;">
                                     <div style="font-size: 9px; font-weight: 800; display: flex; justify-content: space-between; margin-bottom: 2px;">
                                         <span style="color:#6366f1">Phase Weight: <?= number_format($phWeight, 1) ?>%</span>
-                                        <span style="color:var(--po-primary, #198754)">Contribution: <?= number_format($actWeightVal, 2) ?>% (<?= number_format($phActual, 1) ?>% complete)</span>
+                                        <span style="color:var(--po-primary, #198754); display: flex; align-items: center; gap: 4px;">
+                                             Contribution: <?= number_format($phaseContribution, 2) ?>% 
+                                             <span style="font-size: 9px; cursor: pointer; color: #94a3b8;" data-bs-toggle="popover" data-bs-content="<?= htmlspecialchars($phaseContributionTooltip) ?>">ℹ️</span>
+                                             (<?= number_format($phaseActualProgress, 1) ?>% complete)
+                                             <span style="font-size: 9px; cursor: pointer; color: #94a3b8;" data-bs-toggle="popover" data-bs-content="<?= htmlspecialchars($phaseProgressTooltip) ?>">ℹ️</span>
+                                        </span>
                                     </div>
                                     <div class="prog-bar-container" style="height: 6px; background: #e2e8f0; position: relative;">
                                         <!-- Planned phase width (representing total phase weight) -->
                                         <div class="prog-bar-fill-planned" style="width: <?= $phWeight ?>%; height: 100%; background: #6366f1; opacity: 0.15; position: absolute; left: 0;"></div>
                                         <!-- Actual phase contribution fill -->
-                                        <div class="prog-bar-fill-actual" style="width: <?= $actWeightVal ?>%; height: 100%; background: <?= $phActual >= 100 ? 'var(--po-primary, #198754)' : '#f59e0b' ?>; position: absolute; left: 0;"></div>
+                                        <div class="prog-bar-fill-actual" style="width: <?= $phaseContribution ?>%; height: 100%; background: <?= $phaseActualProgress >= 100 ? 'var(--po-primary, #198754)' : '#f59e0b' ?>; position: absolute; left: 0;"></div>
                                     </div>
                                 </div>
                             </div>
@@ -227,7 +310,12 @@ if (empty($projects)): ?>
                                             <div style="width: 100%;">
                                                 <div style="font-size: 8px; font-weight: 700; display: flex; justify-content: space-between; margin-bottom: 1px;">
                                                     <span style="color:#6366f1">Item Weight: <?= number_format($itemProjWeight, 2) ?>%</span>
-                                                    <span style="color:var(--po-primary, #198754)">Contribution: <?= number_format($itemActWeightVal, 2) ?>% (<?= number_format($itemActualPct, 1) ?>% complete)</span>
+                                                    <span style="color:var(--po-primary, #198754)">
+                                                        Contribution: <?= number_format($itemActWeightVal, 2) ?>% (<?= number_format($itemActualPct, 1) ?>% complete)
+                                                        <?php if (!empty($item['qty_usage_text'])): ?>
+                                                            &middot; <span style="color: #64748b; font-weight: 500;"><?= htmlspecialchars($item['qty_usage_text']) ?></span>
+                                                        <?php endif; ?>
+                                                    </span>
                                                 </div>
                                                 <div class="prog-bar-container" style="height: 4px; background: #f1f5f9; position: relative;">
                                                     <div class="prog-bar-fill-planned" style="width: <?= $itemProjWeight ?>%; height: 100%; background: #6366f1; opacity: 0.15; position: absolute; left: 0;"></div>

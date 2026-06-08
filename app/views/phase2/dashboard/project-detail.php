@@ -18,6 +18,13 @@ function pdFmt($n) {
     return '৳' . number_format($n, 2);
 }
 
+function pdFmtPct($n) {
+    $n = (float)$n;
+    if ($n <= 0) return '0.0%';
+    if ($n < 0.1) return number_format($n, 3) . '%';
+    return number_format($n, 1) . '%';
+}
+
 $progColor = $progress >= 75 ? '#10b981' : ($progress >= 40 ? '#f59e0b' : '#ef4444');
 $statusMap = [
     'Planning'    => ['bg'=>'rgba(var(--clr-theme-primary-rgb),.12)', 'text'=>'var(--clr-theme-primary)'],
@@ -246,13 +253,13 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
       <div class="pd-prog-ring" style="background:conic-gradient(<?=$progColor?> 0% <?=round($progress*3.6)?>deg,rgba(0,0,0,.07) <?=round($progress*3.6)?>deg 360deg)">
         <div style="width:56px;height:56px;border-radius:50%;position:absolute;background:var(--card-bg,#fff)"></div>
         <div class="pd-prog-inner">
-          <div class="pd-prog-pct" style="color:<?=$progColor?>"><?=$progress?>%</div>
+          <div class="pd-prog-pct" style="color:<?=$progColor?>"><?=pdFmtPct($progress)?></div>
           <div class="pd-prog-lbl" style="color:var(--text-muted)">Done</div>
         </div>
       </div>
       <div>
         <div style="font-size:11px;font-weight:600;color:var(--text-muted)">Overall Progress</div>
-        <div style="font-size:22px;font-weight:800;color:<?=$progColor?>"><?=$progress?>%</div>
+        <div style="font-size:22px;font-weight:800;color:<?=$progColor?>"><?=pdFmtPct($progress)?></div>
       </div>
     </div>
   </div>

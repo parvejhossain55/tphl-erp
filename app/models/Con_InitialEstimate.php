@@ -137,12 +137,17 @@ class Con_InitialEstimate extends Model
                        COALESCE(m.name, CONCAT('Material #', i.material_id)) AS material_name,
                        COALESCE(cat.name, 'Uncategorized') AS category_name,
                        COALESCE(dt.name, CONCAT('Type #', i.design_type_id)) AS design_type_name,
-                       wt.work_type_name
+                       wt.work_type_name,
+                       CONCAT(dt.name, ' (', wt.work_type_name, ')') AS work_type_label,
+                       ppi.item_name AS phase_item_name,
+                       pp.phase_name AS phase_name
                 FROM {$this->itemsTable} i
                 LEFT JOIN work_types    wt  ON wt.id  = i.work_type_id
                 LEFT JOIN design_types  dt  ON dt.id  = COALESCE(i.design_type_id, wt.design_type_id)
                 LEFT JOIN con_materials m   ON m.id   = i.material_id
                 LEFT JOIN con_material_categories cat ON cat.id = m.category_id
+                LEFT JOIN project_phase_items ppi ON ppi.id = i.phase_item_id
+                LEFT JOIN project_phases pp ON pp.id = ppi.phase_id
                 WHERE i.budget_id = ?
                 ORDER BY i.design_type_id ASC, i.work_type_id ASC, i.sl_no ASC, i.id ASC";
         $stmt = $this->db->prepare($sql);
@@ -157,10 +162,14 @@ class Con_InitialEstimate extends Model
         $sql = "SELECT l.*,
                        dt.name AS design_type_name,
                        wt.work_type_name,
-                       CONCAT(dt.name, ' (', wt.work_type_name, ')') AS work_type_label
+                       CONCAT(dt.name, ' (', wt.work_type_name, ')') AS work_type_label,
+                       ppi.item_name AS phase_item_name,
+                       pp.phase_name AS phase_name
                 FROM {$this->laborsTable} l
                 LEFT JOIN work_types    wt ON wt.id = l.work_type_id
                 LEFT JOIN design_types  dt ON dt.id = COALESCE(wt.design_type_id, l.design_type_id)
+                LEFT JOIN project_phase_items ppi ON ppi.id = l.phase_item_id
+                LEFT JOIN project_phases pp ON pp.id = ppi.phase_id
                 WHERE l.budget_id = ?
                 ORDER BY wt.work_type_name, l.labor_type_name";
         $stmt = $this->db->prepare($sql);

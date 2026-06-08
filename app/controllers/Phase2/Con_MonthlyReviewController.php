@@ -355,7 +355,12 @@ class Con_MonthlyReviewController extends Controller {
         $totalPlannedProRated = min($totalPlannedPct, $totalPlannedProRated);
 
         $totalActualPct   = array_sum(array_column($workItems, 'actual_progress_pct'));
-        $delayGap         = $totalActualPct - $totalPlannedProRated;
+        
+        // UI Math Consistency Guardrail: Round to 1 decimal place before calculating Gap
+        $roundedActual    = (float)number_format($totalActualPct, 1, '.', '');
+        $roundedPlanned   = (float)number_format($totalPlannedProRated, 1, '.', '');
+        $delayGap         = $roundedActual - $roundedPlanned;
+        
         $perfScore        = $totalPlannedProRated > 0 ? min(100, round($totalActualPct / $totalPlannedProRated * 100)) : 0;
         $riskStatus       = abs($delayGap) > 15 ? 'High Risk' : (abs($delayGap) > 5 ? 'Medium Risk' : 'Low Risk');
         $riskColor        = abs($delayGap) > 15 ? '#ef4444' : (abs($delayGap) > 5 ? '#f59e0b' : '#10b981');

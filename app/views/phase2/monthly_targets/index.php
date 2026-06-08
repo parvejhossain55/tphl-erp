@@ -281,7 +281,7 @@ $phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a
             </div>
             <div class="mt-stat">
                 <div class="mt-stat-val" style="color:var(--mt-primary)"><?= number_format($actual,1) ?>%</div>
-                <div class="mt-stat-label">Avg Actual</div>
+                <div class="mt-stat-label">Monthly Actual Progress</div>
                 <div class="mt-prog-bar"><div class="mt-prog-fill" style="width:<?= $actual ?>%;background:<?= $actual>=100?'var(--mt-green)':'var(--mt-primary)' ?>"></div></div>
             </div>
             <div class="mt-stat">

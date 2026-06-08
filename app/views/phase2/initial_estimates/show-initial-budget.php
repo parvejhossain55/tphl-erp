@@ -427,6 +427,18 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
               background:rgba(var(--clr-theme-secondary-rgb),.1);color:var(--clr-theme-secondary)">
               <?= htmlspecialchars($item['work_type_label'] ?? $item['design_type_name'] ?? '—') ?>
             </span>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">
+              <strong>Work Type ID:</strong> <?= (!empty($item['work_type_id']) && $item['work_type_id'] != 0) ? htmlspecialchars($item['work_type_id']) : '—' ?>
+              <br>
+              <strong>Work Type Name:</strong> <?= !empty($item['work_type_name']) ? htmlspecialchars($item['work_type_name']) : '—' ?>
+            </div>
+            <?php if (!empty($item['phase_name']) || !empty($item['phase_item_name'])): ?>
+            <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;border-top:1px dashed rgba(0,0,0,0.05);padding-top:4px;">
+              <span title="Phase" class="me-2"><i class="fal fa-sitemap me-1"></i><?= htmlspecialchars($item['phase_name'] ?? '—') ?></span>
+              <br>
+              <span title="Phase Item"><i class="fal fa-list-ol me-1"></i><?= htmlspecialchars($item['phase_item_name'] ?? '—') ?></span>
+            </div>
+            <?php endif; ?>
           </td>
           <td>
             <span style="font-weight:700"><?= htmlspecialchars($item['material_name'] ?? '—') ?></span>
@@ -481,6 +493,18 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
               background:rgba(59,130,246,.1);color:#3b82f6">
               <?= htmlspecialchars($lb['work_type_label'] ?? $lb['design_type_name'] ?? '—') ?>
             </span>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">
+              <strong>Work Type ID:</strong> <?= (!empty($lb['work_type_id']) && $lb['work_type_id'] != 0) ? htmlspecialchars($lb['work_type_id']) : '—' ?>
+              <br>
+              <strong>Work Type Name:</strong> <?= !empty($lb['work_type_name']) ? htmlspecialchars($lb['work_type_name']) : '—' ?>
+            </div>
+            <?php if (!empty($lb['phase_name']) || !empty($lb['phase_item_name'])): ?>
+            <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;border-top:1px dashed rgba(0,0,0,0.05);padding-top:4px;">
+              <span title="Phase" class="me-2"><i class="fal fa-sitemap me-1"></i><?= htmlspecialchars($lb['phase_name'] ?? '—') ?></span>
+              <br>
+              <span title="Phase Item"><i class="fal fa-list-ol me-1"></i><?= htmlspecialchars($lb['phase_item_name'] ?? '—') ?></span>
+            </div>
+            <?php endif; ?>
           </td>
           <td style="font-weight:600"><?= htmlspecialchars($lb['labor_type_name']) ?></td>
           <td style="font-size:11px;color:var(--text-muted)"><?= htmlspecialchars($lb['description'] ?? '—') ?></td>

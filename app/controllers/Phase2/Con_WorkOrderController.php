@@ -658,14 +658,31 @@ class Con_WorkOrderController extends Controller
             }
         }
 
-        // Get all work_types for this design_type
-        $r = $this->db->query(
-            "SELECT id, work_type_name, description
-             FROM work_types
-             WHERE design_type_id = {$designTypeId}
-             ORDER BY id ASC"
-        );
-        $workTypes = $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
+        // Get all work_types matching this phase first, then fall back to design_type_id
+        $escPhaseName = $this->db->real_escape_string($row['phase_name'] ?? '');
+        $workTypes = [];
+
+        if (!empty($escPhaseName) && $escPhaseName !== 'N/A') {
+            $r = $this->db->query(
+                "SELECT id, work_type_name, description
+                 FROM work_types
+                 WHERE default_phase_name = '{$escPhaseName}'
+                    OR default_phase_name LIKE '{$escPhaseName}%'
+                    OR '{$escPhaseName}' LIKE CONCAT(default_phase_name, '%')
+                 ORDER BY id ASC"
+            );
+            $workTypes = $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
+        if (empty($workTypes)) {
+            $r = $this->db->query(
+                "SELECT id, work_type_name, description
+                 FROM work_types
+                 WHERE design_type_id = {$designTypeId}
+                 ORDER BY id ASC"
+            );
+            $workTypes = $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
+        }
         
         echo json_encode([
             'work_types' => $workTypes, 

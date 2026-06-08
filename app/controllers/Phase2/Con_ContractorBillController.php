@@ -7,7 +7,6 @@ use Con_Operator;
 use Con_FinancialTransaction;
 use ApprovalRequest;
 use Con_Contractor;
-use Con_TargetFixed;
 use AccountMailService;
 
 require_once __DIR__ . '/../../views/accounts/AccountMailService.php';
@@ -32,7 +31,6 @@ class Con_ContractorBillController extends Controller
         $this->operatorModel = new Con_Contractor($this->db);
         $this->approvalModel = new ApprovalRequest($this->db);
         $this->txnModel      = new Con_FinancialTransaction($this->db);
-        $this->targetModel   = new Con_TargetFixed($this->db);
         $this->mailService   = new AccountMailService($this->db);
         
         require_once __DIR__ . '/../../models/Con_QCInspection.php';
@@ -96,7 +94,7 @@ class Con_ContractorBillController extends Controller
     {
         $operators = $this->operatorModel->getActiveContractors();
         $projects  = $this->getProjects();
-        $targets   = $this->targetModel->getAll();
+        $targets   = [];
         $workTypes = $this->db->query("SELECT id, work_type_name FROM work_types ORDER BY work_type_name ASC")->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/contractor-bills/create-bill', [
@@ -167,7 +165,7 @@ class Con_ContractorBillController extends Controller
 
         // Validate Target if selected (Strict Financial Limit for Progress Bills)
         if (!empty($data['target_id'])) {
-            $target = $this->targetModel->find($data['target_id']);
+            $target = $this->findTarget($data['target_id']);
             if ($target) {
                 $gainPct = (float)$target['gain_percentage'];
                 $targetPct = (float)$target['target_percentage'];
@@ -646,5 +644,53 @@ class Con_ContractorBillController extends Controller
              ORDER BY p.name ASC"
         );
         return $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    private function findTarget($targetId)
+    {
+        $stmt = $this->db->prepare("
+            SELECT pwp.id,
+                   pwp.overall_progress_pct AS gain_percentage,
+                   100.00 AS target_percentage,
+                   pmt.target_year AS year,
+                   pwp.week_number,
+                   pp.phase_name AS target_title
+            FROM phase_weekly_progress pwp
+            INNER JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
+            INNER JOIN project_phases pp ON pp.id = pwp.phase_id
+            WHERE pwp.id = ?
+        ");
+        $stmt->bind_param('i', $targetId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc();
+    }
+
+    public function ajaxGetTargetsByProject()
+    {
+        header('Content-Type: application/json');
+        $projectId = (int)($_GET['project_id'] ?? 0);
+        if (!$projectId) {
+            echo json_encode(['targets' => []]);
+            exit;
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT pwp.id AS id,
+                   pmt.target_year AS year,
+                   pwp.week_number AS week_number,
+                   pp.phase_name AS target_title,
+                   pwp.overall_progress_pct AS gain_percentage
+            FROM phase_weekly_progress pwp
+            INNER JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
+            INNER JOIN project_phases pp ON pp.id = pwp.phase_id
+            WHERE pwp.project_id = ? AND pwp.entry_status = 'Approved'
+            ORDER BY pmt.target_year DESC, pmt.target_month_number DESC, pwp.week_number DESC
+        ");
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $targets = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        echo json_encode(['targets' => $targets]);
+        exit;
     }
 }
