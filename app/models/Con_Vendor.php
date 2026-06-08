@@ -135,7 +135,9 @@ public function getPaginated($limit, $offset)
     public function getPurchaseHistory($vendorId)
     {
         $sql = "SELECT poi.*, po.id AS po_id, po.order_date, po.status AS po_status,
-                       m.name AS material_name, m.unit, COALESCE(cat.name, 'Uncategorized') AS category_name, p.name AS project_name
+                       m.name AS material_name, m.unit, COALESCE(cat.name, 'Uncategorized') AS category_name, p.name AS project_name,
+                       (SELECT payment_type FROM vendor_payment_requests vpr WHERE vpr.purchase_order_id = po.id ORDER BY vpr.id DESC LIMIT 1) AS payment_type,
+                       (SELECT due_amount FROM vendor_payment_requests vpr WHERE vpr.purchase_order_id = po.id ORDER BY vpr.id DESC LIMIT 1) AS due_amount
                 FROM purchase_order_items poi
                 JOIN purchase_orders po ON po.id = poi.purchase_order_id
                 JOIN purchase_requests pr ON pr.id = po.request_id

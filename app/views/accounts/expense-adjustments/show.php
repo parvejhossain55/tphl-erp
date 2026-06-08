@@ -11,7 +11,7 @@ $isExtra = $adj['adjustment_type'] == 'extra';
         <div class="card__wrapper">
             <div class="card__header d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card__title">Expense Adjustment REQ-<?= $adj['id'] ?></h5>
-                <a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments" class="btn btn-secondary btn-sm">
+                <a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments" class="btn btn-secondary btn-sm goBackBtn" style="flex: none;">
                     <i class="fa-light fa-arrow-left me-1"></i> Back
                 </a>
             </div>
@@ -280,15 +280,15 @@ $isExtra = $adj['adjustment_type'] == 'extra';
                                     <?php endif; ?>
 
                                 <?php elseif ($adj['status'] == 'fully_paid'): ?>
-                                    <div class="alert alert-success text-center mb-0">
-                                        <i class="fa-light fa-check-circle fa-2x d-block mb-2"></i>
-                                        <strong class="d-block mb-1">Settled Successfully</strong>
-                                        <span>Total: TK.<?= number_format($adj['approved_amount'], 2) ?></span>
+                                    <div class="bg-success text-white rounded p-3 text-center mb-0">
+                                        <div class="mb-2"><i class="fa-regular fa-check-circle fa-2x"></i></div>
+                                        <div class="fw-bold fs-6 mb-1">Settled Successfully</div>
+                                        <div class="small">Total: TK.<?= number_format($adj['approved_amount'], 2) ?></div>
                                     </div>
                                 <?php elseif ($adj['status'] == 'rejected'): ?>
-                                    <div class="alert alert-danger text-center mb-0">
-                                        <i class="fa-light fa-times-circle fa-2x d-block mb-2"></i>
-                                        <strong>Request Rejected</strong>
+                                    <div class="bg-danger text-white rounded p-3 text-center mb-0">
+                                        <div class="mb-2"><i class="fa-regular fa-times-circle fa-2x"></i></div>
+                                        <div class="fw-bold fs-6">Request Rejected</div>
                                     </div>
                                 <?php endif; ?>
 

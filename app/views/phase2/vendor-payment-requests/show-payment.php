@@ -29,7 +29,7 @@ $isApproved = in_array($status, ['Approved', 'Partially_Paid']);
 $isRejected = ($status === 'Rejected');
 $isFullyPaid = in_array($status, ['Fully_Paid', 'Paid']);
 $canPayReq = $canProcessPayment && $isApproved && $dueAmount > 0;
-$canReject = ($canApproveQC && $isSubmitted) || ($canApproveReq && $isQCApproved);
+$canReject = ($canApproveReq && $isSubmitted) || ($canApproveReq && $isQCApproved);
 $showPaymentForm = $canPayReq;
 
 // Payment type badge
@@ -524,58 +524,37 @@ $advancePaid = (float) ($advance_paid ?? 0);
                 </div>
             </div>
 
-            <!-- Approval Actions (QC or Management) -->
-            <?php if (($canApproveQC && $isSubmitted) || ($canApproveReq && $isQCApproved)): ?>
+            <!-- Approval Actions (Management) -->
+            <?php if ($canApproveReq && ($isSubmitted || $isQCApproved)): ?>
                 <div class="card custom-card border-warning mb-3">
                     <div class="card-header bg-warning bg-opacity-10">
                         <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Approval Action</h6>
                     </div>
                     <div class="card-body">
-                        <?php if ($canApproveQC && $isSubmitted): ?>
-                            <!-- QC Approval Form -->
-                            <form action="<?= $base_url ?>/con-vendor-payment-approve/<?= $request['id'] ?>" method="POST"
-                                id="approveVprForm" class="mb-3">
-                                <input type="hidden" name="status" value="QC Approved">
-                                <div class="mb-3">
-                                    <label class="form-label fw-semibold">QC Note (Optional)</label>
-                                    <textarea name="approval_note" class="form-control" rows="2" placeholder="Leave a note..."></textarea>
-                                </div>
-                                <button type="submit" class="btn btn-info w-100 fw-bold text-white mb-2">
-                                    <i class="bi bi-check-all me-1"></i> QC Approve
-                                </button>
-                            </form>
-                            <form action="<?= $base_url ?>/con-vendor-payment-reject/<?= $request['id'] ?>" method="POST"
-                                id="rejectVprForm">
-                                <button type="button" id="rejectVprBtn" class="btn btn-outline-danger w-100 btn-sm">
-                                    <i class="bi bi-x-circle me-1"></i> Reject
-                                </button>
-                            </form>
-                        <?php elseif ($canApproveReq && $isQCApproved): ?>
-                            <!-- Management Approval Form -->
-                            <form action="<?= $base_url ?>/con-vendor-payment-approve/<?= $request['id'] ?>" method="POST"
-                                id="approveVprForm" class="mb-3">
-                                <input type="hidden" name="status" value="Approved">
-                                <div class="mb-3">
-                                    <label class="form-label fw-semibold">Approved Amount (৳)</label>
-                                    <input type="number" name="approved_amount" id="approveAmtInput" class="form-control"
-                                        value="<?= number_format($netPayable, 2, '.', '') ?>" step="0.01" min="0.01" required>
-                                    <small class="text-muted">Net payable: ৳ <?= number_format($netPayable, 2) ?></small>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-semibold">Management Note (Optional)</label>
-                                    <textarea name="approval_note" class="form-control" rows="2" placeholder="Leave a note..."></textarea>
-                                </div>
-                                <button type="button" id="approveVprBtn" class="btn btn-success w-100 fw-bold mb-2">
-                                    <i class="bi bi-check-circle me-1"></i> Approve Payment
-                                </button>
-                            </form>
-                            <form action="<?= $base_url ?>/con-vendor-payment-reject/<?= $request['id'] ?>" method="POST"
-                                id="rejectVprForm">
-                                <button type="button" id="rejectVprBtn" class="btn btn-outline-danger w-100 btn-sm">
-                                    <i class="bi bi-x-circle me-1"></i> Reject
-                                </button>
-                            </form>
-                        <?php endif; ?>
+                        <!-- Management Approval Form -->
+                        <form action="<?= $base_url ?>/con-vendor-payment-approve/<?= $request['id'] ?>" method="POST"
+                            id="approveVprForm" class="mb-3">
+                            <input type="hidden" name="status" value="Approved">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Approved Amount (৳)</label>
+                                <input type="number" name="approved_amount" id="approveAmtInput" class="form-control"
+                                    value="<?= number_format($netPayable, 2, '.', '') ?>" step="0.01" min="0.01" required>
+                                <small class="text-muted">Net payable: ৳ <?= number_format($netPayable, 2) ?></small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Management Note (Optional)</label>
+                                <textarea name="approval_note" class="form-control" rows="2" placeholder="Leave a note..."></textarea>
+                            </div>
+                            <button type="button" id="approveVprBtn" class="btn btn-success w-100 fw-bold mb-2">
+                                <i class="bi bi-check-circle me-1"></i> Approve Payment
+                            </button>
+                        </form>
+                        <form action="<?= $base_url ?>/con-vendor-payment-reject/<?= $request['id'] ?>" method="POST"
+                            id="rejectVprForm">
+                            <button type="button" id="rejectVprBtn" class="btn btn-outline-danger w-100 btn-sm">
+                                <i class="bi bi-x-circle me-1"></i> Reject
+                            </button>
+                        </form>
                     </div>
                 </div>
             <?php endif; ?>

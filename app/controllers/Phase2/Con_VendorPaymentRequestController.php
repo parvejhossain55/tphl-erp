@@ -178,8 +178,20 @@ class Con_VendorPaymentRequestController extends Controller
             $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$data['project_id'])->fetch_assoc();
             $vendor  = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)$vendorId)->fetch_assoc();
 
-            // Wait until QC approves before sending to management.
-            // Removed auto-create approval_request here.
+            // Now create the approval_request for management immediately
+            $this->approvalModel->create([
+                'department'     => 'construction',
+                'request_type'   => 'vendor_payment',
+                'title'          => 'Vendor Payment — ' . ($vendor['name'] ?? '') . ' | ' . ($project['name'] ?? ''),
+                'source_table'   => 'vendor_payment_requests',
+                'source_id'      => $id,
+                'requested_days' => 0,
+                'requested_by'   => $userId,
+                'approve_role'   => 'management',
+                'meta_data'      => null,
+                'request_amount' => $netPayable,
+            ]);
+
             // Send email notification to Management + Accounts
             try {
                 $this->mailService->sendVendorPaymentOnSubmission([
@@ -223,11 +235,13 @@ class Con_VendorPaymentRequestController extends Controller
         // Fetch penalties linked to this request
         $penalties = [];
         $pStmt = $this->db->prepare("SELECT * FROM vendor_penalties WHERE payment_request_id = ?");
-        $pStmt->bind_param('i', $id);
-        $pStmt->execute();
-        $res = $pStmt->get_result();
-        if ($res) {
-            $penalties = $res->fetch_all(MYSQLI_ASSOC);
+        if ($pStmt) {
+            $pStmt->bind_param('i', $id);
+            $pStmt->execute();
+            $res = $pStmt->get_result();
+            if ($res) {
+                $penalties = $res->fetch_all(MYSQLI_ASSOC);
+            }
         }
 
         // If Final/Partial: calculate total advance already paid for this PO
@@ -255,10 +269,13 @@ class Con_VendorPaymentRequestController extends Controller
         $banks = $this->db->query("SELECT id, bank_name, branch_name FROM banks WHERE status = 'active' ORDER BY bank_name")->fetch_all(MYSQLI_ASSOC);
 
         // Fetch extra documents/notes added post-approval
+        $documents = [];
         $stmtDoc = $this->db->prepare("SELECT d.*, u.full_name as uploaded_by_name FROM vendor_payment_request_documents d LEFT JOIN users u ON u.id = d.uploaded_by WHERE d.vendor_payment_request_id = ? ORDER BY d.id ASC");
-        $stmtDoc->bind_param('i', $id);
-        $stmtDoc->execute();
-        $documents = $stmtDoc->get_result()->fetch_all(MYSQLI_ASSOC);
+        if ($stmtDoc) {
+            $stmtDoc->bind_param('i', $id);
+            $stmtDoc->execute();
+            $documents = $stmtDoc->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
 
         // Fetch PO related stock for QC verification
         $poStocks = [];
@@ -270,9 +287,11 @@ class Con_VendorPaymentRequestController extends Controller
                 JOIN con_materials m ON m.id = poi.material_id
                 WHERE poi.purchase_order_id = ?
             ");
-            $stmtStock->bind_param('ii', $request['project_id'], $request['purchase_order_id']);
-            $stmtStock->execute();
-            $poStocks = $stmtStock->get_result()->fetch_all(MYSQLI_ASSOC);
+            if ($stmtStock) {
+                $stmtStock->bind_param('ii', $request['project_id'], $request['purchase_order_id']);
+                $stmtStock->execute();
+                $poStocks = $stmtStock->get_result()->fetch_all(MYSQLI_ASSOC);
+            }
         }
 
         $this->view('phase2/vendor-payment-requests/show-payment', [
@@ -360,59 +379,20 @@ class Con_VendorPaymentRequestController extends Controller
         }
 
         $status = $_POST['status'] ?? '';
-        if (!in_array($status, ['QC Approved', 'Approved'])) {
+        if (!in_array($status, ['Approved'])) {
             setError('Invalid status.');
             header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
             exit;
         }
 
-        if ($status === 'QC Approved') {
-            if (!$this->canApproveQC()) {
-                setError('You are not authorized for QC approval.');
-                header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
-                exit;
-            }
-            if ($request['status'] !== 'Submitted') {
-                setError('Payment request must be in Submitted state for QC approval.');
-                header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
-                exit;
-            }
-            $qcNote = trim($_POST['approval_note'] ?? '');
-            
-            $stmt = $this->db->prepare("UPDATE vendor_payment_requests SET status = 'QC Approved', qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ? WHERE id = ?");
-            $stmt->bind_param('isi', $this->userId, $qcNote, $id);
-            if ($stmt->execute()) {
-                // Fetch project and vendor names for approval title
-                $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$request['project_id'])->fetch_assoc();
-                $vendor  = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)$request['vendor_id'])->fetch_assoc();
-
-                // Now create the approval_request for management
-                $this->approvalModel->create([
-                    'department'     => 'construction',
-                    'request_type'   => 'vendor_payment',
-                    'title'          => 'Vendor Payment — ' . ($vendor['name'] ?? '') . ' | ' . ($project['name'] ?? ''),
-                    'source_table'   => 'vendor_payment_requests',
-                    'source_id'      => $id,
-                    'requested_days' => 0,
-                    'requested_by'   => $request['created_by'],
-                    'approve_role'   => 'management',
-                    'meta_data'      => null,
-                    'request_amount' => $request['net_payable'],
-                ]);
-                
-                setSuccess('Payment Request QC Approved successfully and forwarded to Management.');
-            } else {
-                setError('Failed to QC approve.');
-            }
-        } 
-        else if ($status === 'Approved') {
+        if ($status === 'Approved') {
             if (!$this->canApprove()) {
                 setError('You are not authorized to approve payment requests.');
                 header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
                 exit;
             }
-            if ($request['status'] !== 'QC Approved') {
-                setError('Payment request must be QC Approved before management approval.');
+            if ($request['status'] !== 'Submitted' && $request['status'] !== 'QC Approved') {
+                setError('Payment request must be Submitted before management approval.');
                 header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
                 exit;
             }
@@ -482,13 +462,7 @@ class Con_VendorPaymentRequestController extends Controller
         $isQC = ($request['status'] === 'Submitted');
         $isMgmt = ($request['status'] === 'QC Approved');
 
-        if ($isQC && !$this->canApproveQC()) {
-            setError('You are not authorized to reject as QC.');
-            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
-            exit;
-        }
-
-        if ($isMgmt && !$this->canApprove()) {
+        if (($isQC || $isMgmt) && !$this->canApprove()) {
             setError('You are not authorized to reject as Management.');
             header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
             exit;
@@ -496,15 +470,9 @@ class Con_VendorPaymentRequestController extends Controller
 
         if ($this->model->reject($id, $this->userId)) {
             $note = trim($_POST['approval_note'] ?? '');
-            if ($isQC) {
-                $stmt = $this->db->prepare("UPDATE vendor_payment_requests SET qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ? WHERE id = ?");
-                $stmt->bind_param('isi', $this->userId, $note, $id);
-                $stmt->execute();
-            } else {
-                $stmt = $this->db->prepare("UPDATE vendor_payment_requests SET management_note = ? WHERE id = ?");
-                $stmt->bind_param('si', $note, $id);
-                $stmt->execute();
-            }
+            $stmt = $this->db->prepare("UPDATE vendor_payment_requests SET management_note = ? WHERE id = ?");
+            $stmt->bind_param('si', $note, $id);
+            $stmt->execute();
 
             // Sync approval_requests table
             $this->syncApprovalRequest($id, 'rejected');

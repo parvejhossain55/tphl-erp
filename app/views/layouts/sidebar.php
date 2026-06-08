@@ -1763,7 +1763,7 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if (hasPermission('Vendor Manage')): ?>
+                <?php if (hasPermission('Vendor Manage') || in_array($_SESSION['user']['role_id'] ?? 0, [22, 23])): ?>
                     <!-- Module 6: Vendors -->
 
                     <li

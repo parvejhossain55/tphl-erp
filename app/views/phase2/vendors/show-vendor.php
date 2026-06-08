@@ -116,6 +116,8 @@
                                     <th class="text-end">Qty</th>
                                     <th class="text-end">Unit Price</th>
                                     <th class="text-end">Total</th>
+                                    <th>Payment Type</th>
+                                    <th class="text-end">Due Amount</th>
                                     <th>PO Status</th>
                                     <th>Date</th>
                                 </tr>
@@ -134,6 +136,20 @@
                                     <td class="text-end"><?= number_format($ph['quantity'], 3) ?></td>
                                     <td class="text-end">৳ <?= number_format($ph['unit_price'], 2) ?></td>
                                     <td class="text-end fw-bold">৳ <?= number_format($ph['quantity'] * $ph['unit_price'], 2) ?></td>
+                                    <td>
+                                        <?php if (!empty($ph['payment_type'])): ?>
+                                            <span class="badge bg-secondary"><?= $ph['payment_type'] ?></span>
+                                        <?php else: ?>
+                                            <span class="text-muted small">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-end">
+                                        <?php if ($ph['due_amount'] > 0): ?>
+                                            <span class="fw-bold text-danger">৳ <?= number_format($ph['due_amount'], 2) ?></span>
+                                        <?php else: ?>
+                                            <span class="text-muted small">—</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <?php
                                         $poBadge = match($ph['po_status']) {
