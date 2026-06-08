@@ -256,7 +256,7 @@ class ProjectController extends Controller
         // ======================
         // Create slug if missing
         // ======================
-        if (empty($project['slug'])) {
+        if (empty($oldProject['slug'])) {
             $data['slug'] = generateUniqueSlug($this->db, $data['name'], 'projects', 'slug');
         }
 

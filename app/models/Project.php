@@ -295,34 +295,13 @@ class Project extends Model
         // ======================
         // Image Upload (fallback old)
         // ======================
-        $image = $old['image'];
-        if (!empty($_FILES['image']['name'])) {
-            $up = uploadImage('image', 'projects', 'fixed');
-            if ($up) $image = $up;
-        }
-
-        $image2 = $old['image2'];
-        if (!empty($_FILES['image2']['name'])) {
-            $up = uploadImage('image2', 'projects', 'fixed');
-            if ($up) $image2 = $up;
-        }
-
-        $image3 = $old['image3'];
-        if (!empty($_FILES['image3']['name'])) {
-            $up = uploadImage('image3', 'projects', 'fixed');
-            if ($up) $image3 = $up;
-        }
-
-        $map_image = $old['map_image'];
-        if (!empty($_FILES['map_image']['name'])) {
-            $up = uploadImage('map_image', 'projects', 'fixed');
-            if ($up) $map_image = $up;
-        }
-
-        $amenities_image = $old['amenities_image'];
-        if (!empty($_FILES['amenities_image']['name'])) {
-            $up = uploadImage('amenities_image', 'projects', 'fixed');
-            if ($up) $amenities_image = $up;
+        $imageFields = ['image', 'image2', 'image3', 'map_image', 'amenities_image'];
+        foreach ($imageFields as $field) {
+            $$field = $old[$field]; // default: keep old
+            if (!empty($_FILES[$field]['name']) && $_FILES[$field]['error'] === UPLOAD_ERR_OK) {
+                $up = uploadProjectImage($field);
+                if ($up) $$field = $up;
+            }
         }
         $plot_size = ($data['plot_size'] === '' || $data['plot_size'] === null)
             ? null
