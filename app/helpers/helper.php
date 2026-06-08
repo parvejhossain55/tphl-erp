@@ -117,7 +117,7 @@ function getImage($module, $filename)
         return $GLOBALS['base_url'] . '/public/assets/images/avatar/avatar.png';
     }
 
-    return $GLOBALS['base_url'] . "/uploads/{$module}/{$filename}";
+    return $GLOBALS['base_url'] . "/public/uploads/{$module}/{$filename}";
 }
 
 

@@ -232,8 +232,8 @@ if (!empty($project['floor_wise_unit_meta'])) {
                     <input type="file" name="map_image" class="form-control">
                     <?php if (!empty($project['map_image'])): ?>
                         <div class="mt-2">
-                            <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['map_image'] ?>" target="_blank">
-                                <img src="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['map_image'] ?>" alt="Map Image" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                            <a href="<?= getImage('projects', $project['map_image']) ?>" target="_blank">
+                                <img src="<?= getImage('projects', $project['map_image']) ?>" alt="Map Image" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
                             </a>
                         </div>
                     <?php endif; ?>
@@ -248,8 +248,8 @@ if (!empty($project['floor_wise_unit_meta'])) {
                     <input type="file" name="amenities_image" class="form-control">
                     <?php if (!empty($project['amenities_image'])): ?>
                         <div class="mt-2">
-                            <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['amenities_image'] ?>" target="_blank">
-                                <img src="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['amenities_image'] ?>" alt="Amenities Image" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                            <a href="<?= getImage('projects', $project['amenities_image']) ?>" target="_blank">
+                                <img src="<?= getImage('projects', $project['amenities_image']) ?>" alt="Amenities Image" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
                             </a>
                         </div>
                     <?php endif; ?>
@@ -260,8 +260,8 @@ if (!empty($project['floor_wise_unit_meta'])) {
                     <input type="file" name="image" class="form-control">
                     <?php if (!empty($project['image'])): ?>
                         <div class="mt-2">
-                            <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['image'] ?>" target="_blank">
-                                <img src="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['image'] ?>" alt="Main Image" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                            <a href="<?= getImage('projects', $project['image']) ?>" target="_blank">
+                                <img src="<?= getImage('projects', $project['image']) ?>" alt="Main Image" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
                             </a>
                         </div>
                     <?php endif; ?>
@@ -272,8 +272,8 @@ if (!empty($project['floor_wise_unit_meta'])) {
                     <input type="file" name="image2" class="form-control">
                     <?php if (!empty($project['image2'])): ?>
                         <div class="mt-2">
-                            <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['image2'] ?>" target="_blank">
-                                <img src="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['image2'] ?>" alt="Image 2" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                            <a href="<?= getImage('projects', $project['image2']) ?>" target="_blank">
+                                <img src="<?= getImage('projects', $project['image2']) ?>" alt="Image 2" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
                             </a>
                         </div>
                     <?php endif; ?>
@@ -284,8 +284,8 @@ if (!empty($project['floor_wise_unit_meta'])) {
                     <input type="file" name="image3" class="form-control">
                     <?php if (!empty($project['image3'])): ?>
                         <div class="mt-2">
-                            <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['image3'] ?>" target="_blank">
-                                <img src="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['image3'] ?>" alt="Image 3" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                            <a href="<?= getImage('projects', $project['image3']) ?>" target="_blank">
+                                <img src="<?= getImage('projects', $project['image3']) ?>" alt="Image 3" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
                             </a>
                         </div>
                     <?php endif; ?>
