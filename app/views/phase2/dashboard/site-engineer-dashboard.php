@@ -274,6 +274,74 @@ $base_url = $GLOBALS['base_url'];
 </div>
 
 <?php
+$pendingWorkOrders = $pendingWorkOrders ?? [];
+if (!empty($pendingWorkOrders)):
+?>
+<div class="container-fluid mt-2 mb-4">
+    <div class="card custom-card" style="border:2px solid rgba(14,165,233,.35);background:rgba(14,165,233,.02)">
+        <div class="card-header justify-content-between" style="border-bottom:1px solid rgba(14,165,233,.2)">
+            <div class="card-title d-flex align-items-center gap-2" style="color:#0284c7">
+                <span style="width:10px;height:10px;border-radius:50%;background:#0ea5e9;display:inline-block;animation:pulse 1.5s infinite"></span>
+                <i class="bi bi-file-earmark-text-fill text-info"></i>
+                Work Orders Awaiting Your Approval
+                <span class="badge bg-info ms-2" style="font-size:10px"><?= count($pendingWorkOrders) ?> Pending</span>
+            </div>
+            <a href="<?= $base_url ?>/con-work-orders" class="btn btn-sm btn-info-light">
+                View All Work Orders →
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <div class="alert alert-info border-0 rounded-0 mb-0 py-2 px-4" style="font-size:12px">
+                <i class="bi bi-info-circle me-1"></i>
+                নিচের Work Order গুলো আপনার এপ্রুভাল এর জন্য পেন্ডিং রয়েছে। রিভিউ করে এপ্রুভ করুন।
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="font-size:12.5px">
+                    <thead class="table-info bg-opacity-25">
+                        <tr>
+                            <th>#</th>
+                            <th>Project</th>
+                            <th>Work Order Title</th>
+                            <th>Contractor</th>
+                            <th>Total Amount</th>
+                            <th>Created By</th>
+                            <th>Submitted Date</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($pendingWorkOrders as $woIndex => $wo): ?>
+                        <tr>
+                            <td><?= $woIndex + 1 ?></td>
+                            <td><strong><?= htmlspecialchars($wo['project_name'] ?? '—') ?></strong></td>
+                            <td class="fw-semibold text-info"><?= htmlspecialchars($wo['title'] ?? '—') ?></td>
+                            <td><?= htmlspecialchars($wo['contractor_name'] ?? '—') ?></td>
+                            <td class="fw-bold text-success">
+                                ৳<?= number_format((float)$wo['total_amount'], 2) ?>
+                            </td>
+                            <td style="font-size:11px;color:#6b7280">
+                                <?= htmlspecialchars($wo['creator_name'] ?? '—') ?>
+                            </td>
+                            <td style="font-size:11px;color:#6b7280">
+                                <?= !empty($wo['created_at']) ? date('d M Y, h:i A', strtotime($wo['created_at'])) : '—' ?>
+                            </td>
+                            <td class="text-end">
+                                <a href="<?= $base_url ?>/con-work-order/<?= $wo['id'] ?>"
+                                   class="btn btn-sm btn-info" style="font-size:11px;color:#fff">
+                                    <i class="bi bi-check-circle"></i> Review &amp; Approve
+                                </a>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php
 // ── Approved Purchase Orders Notification ─────────────────────────────────
 $approvedPOs = $approvedPOs ?? [];
 if (!empty($approvedPOs)):

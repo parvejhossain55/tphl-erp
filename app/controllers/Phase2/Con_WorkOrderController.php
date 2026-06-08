@@ -36,12 +36,12 @@ class Con_WorkOrderController extends Controller
 
     private function canApprove()
     {
-        return in_array($this->userRole, [1, 3, 20, 22]);
+        return in_array($this->userRole, [1, 3, 12, 15, 20, 22]);
     }
 
     private function canMarkComplete()
     {
-        return in_array($this->userRole, [1, 3, 15, 22]);
+        return in_array($this->userRole, [1, 3, 12, 15, 20, 22]);
     }
 
     private function canQcApprove()
@@ -384,10 +384,10 @@ class Con_WorkOrderController extends Controller
         }
 
         $actingRole = 0;
-        if ($this->userRole === 20) {
-            $actingRole = 20;
-        } elseif ($this->userRole === 22) {
-            $actingRole = 22;
+        if ($this->userRole === 12 || $this->userRole === 20) {
+            $actingRole = ($this->userRole === 20) ? 20 : 12;
+        } elseif ($this->userRole === 15 || $this->userRole === 22) {
+            $actingRole = ($this->userRole === 22) ? 22 : 15;
         } elseif (in_array($this->userRole, [1, 3])) {
             $actingRole = 3;
         }
@@ -417,10 +417,10 @@ class Con_WorkOrderController extends Controller
 
         $reason = trim($_POST['rejection_reason'] ?? '');
         $actingRole = 0;
-        if ($this->userRole === 20) {
-            $actingRole = 20;
-        } elseif ($this->userRole === 22) {
-            $actingRole = 22;
+        if ($this->userRole === 12 || $this->userRole === 20) {
+            $actingRole = ($this->userRole === 20) ? 20 : 12;
+        } elseif ($this->userRole === 15 || $this->userRole === 22) {
+            $actingRole = ($this->userRole === 22) ? 22 : 15;
         } elseif (in_array($this->userRole, [1, 3])) {
             $actingRole = 3;
         }

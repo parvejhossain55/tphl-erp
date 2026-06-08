@@ -446,10 +446,10 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
             <?php
             $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
             $actingRoleId = 0;
-            if ($userRole === 20) {
-                $actingRoleId = 20;
-            } elseif ($userRole === 22) {
-                $actingRoleId = 22;
+            if ($userRole === 12 || $userRole === 20) {
+                $actingRoleId = ($userRole === 20) ? 20 : 12;
+            } elseif ($userRole === 15 || $userRole === 22) {
+                $actingRoleId = ($userRole === 22) ? 22 : 15;
             } elseif (in_array($userRole, [1, 3])) {
                 $actingRoleId = 3;
             }
@@ -464,16 +464,16 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                 foreach ($approvals as $a) {
                     $appMap[(int)$a['role_id']] = $a;
                 }
-                $moStatus   = $appMap[20]['status'] ?? 'pending';
-                $pmStatus   = $appMap[22]['status'] ?? 'pending';
+                $moStatus   = $appMap[12]['status'] ?? ($appMap[20]['status'] ?? 'pending');
+                $pmStatus   = $appMap[15]['status'] ?? ($appMap[22]['status'] ?? 'pending');
                 $mgmtStatus = $appMap[3]['status']  ?? 'pending';
 
                 if ($status === 'draft' && $actingRoleId > 0) {
-                    if ($actingRoleId === 20) {
+                    if ($actingRoleId === 12 || $actingRoleId === 20) {
                         if ($moStatus === 'pending') {
                             $canUserAct = true;
                         }
-                    } elseif ($actingRoleId === 22) {
+                    } elseif ($actingRoleId === 15 || $actingRoleId === 22) {
                         if ($pmStatus === 'pending' && $moStatus !== 'pending') {
                             $canUserAct = true;
                         }
@@ -496,8 +496,13 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                 <div class="card-body p-3">
                     <div class="d-flex flex-column gap-3">
                         <?php
+                        $step1RoleId = isset($appMap[12]) ? 12 : (isset($appMap[20]) ? 20 : 12);
+                        $step2RoleId = isset($appMap[15]) ? 15 : (isset($appMap[22]) ? 22 : 15);
+
                         $roleLabels = [
+                            12 => '1. Site Engineer (MOperation)',
                             20 => '1. Site Operator (MOperation)',
+                            15 => '2. Project Manager (PM)',
                             22 => '2. Project Manager (PM)',
                             3  => '3. Management (Director)',
                         ];
@@ -507,10 +512,10 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                             'rejected' => 'bg-danger-transparent text-danger',
                         ];
 
-                        foreach ([20, 22, 3] as $rId):
+                        foreach ([$step1RoleId, $step2RoleId, 3] as $rId):
                             $app = $appMap[$rId] ?? ['status' => 'pending', 'remarks' => '', 'action_at' => null, 'user_name' => ''];
                             $appStatus = $app['status'];
-                            $lbl = $roleLabels[$rId];
+                            $lbl = $roleLabels[$rId] ?? 'Approval Step';
                             $badge = $badgeClasses[$appStatus] ?? 'bg-secondary-transparent';
                         ?>
                             <div class="p-3 rounded border" style="background: #fdfdfd;">

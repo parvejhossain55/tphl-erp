@@ -450,13 +450,12 @@ class Con_WorkOrder extends Model
     // WORK ORDER ITEMS — database-driven rate schedule rows
     // =========================================================================
 
-    /** Fetch all rate schedule items for a WO, ordered by sort_order */
     public function getItemsByWorkOrder($woId)
     {
         $stmt = $this->db->prepare(
             "SELECT i.*, pi.item_name AS phase_item_name 
              FROM {$this->itemsTable} i
-             LEFT JOIN con_phase_items pi ON i.phase_item_id = pi.id
+             LEFT JOIN project_phase_items pi ON i.phase_item_id = pi.id
              WHERE i.work_order_id = ?
              ORDER BY i.sort_order ASC, i.id ASC"
         );
@@ -607,7 +606,7 @@ class Con_WorkOrder extends Model
         $stmtDel->execute();
 
         $stmtIns = $this->db->prepare("INSERT INTO con_work_order_approvals (work_order_id, role_id, status) VALUES (?, ?, 'pending')");
-        $roles = [20, 22, 3];
+        $roles = [12, 15, 3];
         foreach ($roles as $roleId) {
             $stmtIns->bind_param('ii', $woId, $roleId);
             $stmtIns->execute();
@@ -625,7 +624,7 @@ class Con_WorkOrder extends Model
              LEFT JOIN users u ON u.id = a.action_by
              LEFT JOIN roles r ON r.id = a.role_id
              WHERE a.work_order_id = ?
-             ORDER BY FIELD(a.role_id, 20, 22, 3)"
+             ORDER BY FIELD(a.role_id, 12, 15, 3)"
         );
         $stmt->bind_param('i', $woId);
         $stmt->execute();

@@ -1495,7 +1495,7 @@ $statusColor = [
             <div class="sec-title" style="margin-bottom:0">
               <div class="sec-title-dot" style="background:#0ea5e9"></div>
               <i class="fal fa-file-signature me-2" style="color:#0ea5e9"></i>
-              Pending Work Orders &mdash; Management Approval Required
+              Pending Work Orders &mdash; Awaiting Your Approval
               <span
                 style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(14,165,233,.12);color:#0ea5e9">
                 <?= count($pendingWorkOrders) ?> Awaiting

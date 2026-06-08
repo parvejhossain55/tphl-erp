@@ -258,16 +258,35 @@ class Con_DashboardController extends Controller
         $pendingReturns = $rPendingReturns ? $rPendingReturns->fetch_all(MYSQLI_ASSOC) : [];
 
         $pendingWorkOrders = [];
-        if (in_array($userRole, [1, 3, 22])) {
-            if ($userRole == 22) {
+        if (in_array($userRole, [1, 3, 12, 15, 20, 22])) {
+            if ($userRole == 12 || $userRole == 20) {
+                $moRoleId = ($userRole == 20) ? 20 : 12;
                 $rWO = $this->db->query("
                     SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
                            p.name AS project_name,
                            c.name AS contractor_name,
                            u.full_name AS creator_name
                     FROM con_work_orders wo
-                    JOIN con_work_order_approvals wa_pm ON wa_pm.work_order_id = wo.id AND wa_pm.role_id = 22
-                    JOIN con_work_order_approvals wa_mo ON wa_mo.work_order_id = wo.id AND wa_mo.role_id = 20
+                    JOIN con_work_order_approvals wa_mo ON wa_mo.work_order_id = wo.id AND wa_mo.role_id = {$moRoleId}
+                    LEFT JOIN projects p ON p.id = wo.project_id
+                    LEFT JOIN contractors c ON c.id = wo.contractor_id
+                    LEFT JOIN users u ON u.id = wo.created_by
+                    WHERE wo.status = 'draft'
+                      AND wa_mo.status = 'pending'
+                    ORDER BY wo.created_at DESC
+                    LIMIT 10
+                ");
+            } elseif ($userRole == 15 || $userRole == 22) {
+                $pmRoleId = ($userRole == 22) ? 22 : 15;
+                $moRoleId = ($userRole == 22) ? 20 : 12;
+                $rWO = $this->db->query("
+                    SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
+                           p.name AS project_name,
+                           c.name AS contractor_name,
+                           u.full_name AS creator_name
+                    FROM con_work_orders wo
+                    JOIN con_work_order_approvals wa_pm ON wa_pm.work_order_id = wo.id AND wa_pm.role_id = {$pmRoleId}
+                    JOIN con_work_order_approvals wa_mo ON wa_mo.work_order_id = wo.id AND wa_mo.role_id = {$moRoleId}
                     LEFT JOIN projects p ON p.id = wo.project_id
                     LEFT JOIN contractors c ON c.id = wo.contractor_id
                     LEFT JOIN users u ON u.id = wo.created_by
@@ -285,7 +304,7 @@ class Con_DashboardController extends Controller
                            u.full_name AS creator_name
                     FROM con_work_orders wo
                     JOIN con_work_order_approvals wa_mgmt ON wa_mgmt.work_order_id = wo.id AND wa_mgmt.role_id = 3
-                    JOIN con_work_order_approvals wa_pm ON wa_pm.work_order_id = wo.id AND wa_pm.role_id = 22
+                    JOIN con_work_order_approvals wa_pm ON wa_pm.work_order_id = wo.id AND wa_pm.role_id IN (15, 22)
                     LEFT JOIN projects p ON p.id = wo.project_id
                     LEFT JOIN contractors c ON c.id = wo.contractor_id
                     LEFT JOIN users u ON u.id = wo.created_by
@@ -1287,6 +1306,26 @@ $project = $stmt->get_result()->fetch_assoc();
         ");
         $approvedPOs = $rApprovedPOs ? $rApprovedPOs->fetch_all(MYSQLI_ASSOC) : [];
 
+        // Pending Work Orders awaiting Site Engineer's approval
+        $pendingWorkOrders = [];
+        $moRoleId = ($roleId == 20) ? 20 : 12;
+        $rWO = $this->db->query("
+            SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
+                   p.name AS project_name,
+                   c.name AS contractor_name,
+                   u.full_name AS creator_name
+            FROM con_work_orders wo
+            JOIN con_work_order_approvals wa_mo ON wa_mo.work_order_id = wo.id AND wa_mo.role_id = {$moRoleId}
+            LEFT JOIN projects p ON p.id = wo.project_id
+            LEFT JOIN contractors c ON c.id = wo.contractor_id
+            LEFT JOIN users u ON u.id = wo.created_by
+            WHERE wo.status = 'draft'
+              AND wa_mo.status = 'pending'
+            ORDER BY wo.created_at DESC
+            LIMIT 10
+        ");
+        $pendingWorkOrders = $rWO ? $rWO->fetch_all(MYSQLI_ASSOC) : [];
+
         return $this->view('phase2/dashboard/site-engineer-dashboard', [
             'current_route'   => 'con-site-engineer-dashboard',
             'myProjectsCount' => $myProjectsCount,
@@ -1298,6 +1337,7 @@ $project = $stmt->get_result()->fetch_assoc();
             'recentIssues'    => $recentIssues,
             'recentReports'   => $recentReports,
             'approvedPOs'     => $approvedPOs,
+            'pendingWorkOrders' => $pendingWorkOrders,
         ]);
     }
 
@@ -1342,14 +1382,15 @@ $project = $stmt->get_result()->fetch_assoc();
         $recentVendorPayments = $rVP ? $rVP->fetch_all(MYSQLI_ASSOC) : [];
 
         $pendingWorkOrders = [];
-        if ($roleId === 20 || $isAdmin) {
+        if ($roleId === 20 || $roleId === 12 || $isAdmin) {
+            $moRoleId = ($roleId == 20) ? 20 : 12;
             $rWO = $this->db->query("
                 SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
                        p.name AS project_name,
                        c.name AS contractor_name,
                        u.full_name AS creator_name
                 FROM con_work_orders wo
-                JOIN con_work_order_approvals wa ON wa.work_order_id = wo.id AND wa.role_id = 20
+                JOIN con_work_order_approvals wa ON wa.work_order_id = wo.id AND wa.role_id = {$moRoleId}
                 LEFT JOIN projects p ON p.id = wo.project_id
                 LEFT JOIN contractors c ON c.id = wo.contractor_id
                 LEFT JOIN users u ON u.id = wo.created_by
