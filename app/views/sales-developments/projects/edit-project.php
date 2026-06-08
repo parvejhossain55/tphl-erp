@@ -230,11 +230,17 @@ if (!empty($project['floor_wise_unit_meta'])) {
                 <div class="col-xl-6">
                     <label>Map Image <span>(Optional)</span></label>
                     <input type="file" name="map_image" class="form-control">
-                    <?php if (!empty($project['map_image'])): ?>
-                        <div class="mt-2">
-                            <a href="<?= getImage('projects', $project['map_image']) ?>" target="_blank">
-                                <img src="<?= getImage('projects', $project['map_image']) ?>" alt="Map Image" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
-                            </a>
+                    <?php if (!empty($project['map_image'])):
+                        $prevMapImg = getProjectImage($project['map_image']); ?>
+                        <div class="mt-2 d-flex align-items-center gap-2">
+                            <?php if (!$prevMapImg['missing']): ?>
+                                <a href="<?= $prevMapImg['url'] ?>" target="_blank">
+                                    <img src="<?= $prevMapImg['url'] ?>" alt="Map Image" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                                </a>
+                            <?php else: ?>
+                                <img src="<?= $prevMapImg['url'] ?>" alt="Map Placeholder" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px; opacity: 0.4;">
+                                <span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>File Missing &ndash; Re-upload</span>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -246,11 +252,17 @@ if (!empty($project['floor_wise_unit_meta'])) {
                 </div>                <div class="col-xl-3 col-12">
                     <label>Amenities Image  <span>(Optional)</span></label>
                     <input type="file" name="amenities_image" class="form-control">
-                    <?php if (!empty($project['amenities_image'])): ?>
-                        <div class="mt-2">
-                            <a href="<?= getImage('projects', $project['amenities_image']) ?>" target="_blank">
-                                <img src="<?= getImage('projects', $project['amenities_image']) ?>" alt="Amenities Image" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
-                            </a>
+                    <?php if (!empty($project['amenities_image'])):
+                        $prevAmImg = getProjectImage($project['amenities_image']); ?>
+                        <div class="mt-2 d-flex align-items-center gap-2">
+                            <?php if (!$prevAmImg['missing']): ?>
+                                <a href="<?= $prevAmImg['url'] ?>" target="_blank">
+                                    <img src="<?= $prevAmImg['url'] ?>" alt="Amenities Image" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                                </a>
+                            <?php else: ?>
+                                <img src="<?= $prevAmImg['url'] ?>" alt="Amenities Placeholder" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px; opacity: 0.4;">
+                                <span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>File Missing &ndash; Re-upload</span>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -258,11 +270,17 @@ if (!empty($project['floor_wise_unit_meta'])) {
                 <div class="col-xl-3 col-12">
                     <label>Main Image</label>
                     <input type="file" name="image" class="form-control">
-                    <?php if (!empty($project['image'])): ?>
-                        <div class="mt-2">
-                            <a href="<?= getImage('projects', $project['image']) ?>" target="_blank">
-                                <img src="<?= getImage('projects', $project['image']) ?>" alt="Main Image" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
-                            </a>
+                    <?php if (!empty($project['image'])):
+                        $prevImg1 = getProjectImage($project['image']); ?>
+                        <div class="mt-2 d-flex align-items-center gap-2">
+                            <?php if (!$prevImg1['missing']): ?>
+                                <a href="<?= $prevImg1['url'] ?>" target="_blank">
+                                    <img src="<?= $prevImg1['url'] ?>" alt="Main Image" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                                </a>
+                            <?php else: ?>
+                                <img src="<?= $prevImg1['url'] ?>" alt="Placeholder" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px; opacity: 0.4;">
+                                <span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>File Missing &ndash; Re-upload</span>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -270,11 +288,17 @@ if (!empty($project['floor_wise_unit_meta'])) {
                 <div class="col-xl-3 col-12">
                     <label>Image 2 <span>(Optional)</span></label>
                     <input type="file" name="image2" class="form-control">
-                    <?php if (!empty($project['image2'])): ?>
-                        <div class="mt-2">
-                            <a href="<?= getImage('projects', $project['image2']) ?>" target="_blank">
-                                <img src="<?= getImage('projects', $project['image2']) ?>" alt="Image 2" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
-                            </a>
+                    <?php if (!empty($project['image2'])):
+                        $prevImg2 = getProjectImage($project['image2']); ?>
+                        <div class="mt-2 d-flex align-items-center gap-2">
+                            <?php if (!$prevImg2['missing']): ?>
+                                <a href="<?= $prevImg2['url'] ?>" target="_blank">
+                                    <img src="<?= $prevImg2['url'] ?>" alt="Image 2" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                                </a>
+                            <?php else: ?>
+                                <img src="<?= $prevImg2['url'] ?>" alt="Placeholder" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px; opacity: 0.4;">
+                                <span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>File Missing &ndash; Re-upload</span>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -282,11 +306,17 @@ if (!empty($project['floor_wise_unit_meta'])) {
                 <div class="col-xl-3 col-12">
                     <label>Image 3 <span>(Optional)</span></label>
                     <input type="file" name="image3" class="form-control">
-                    <?php if (!empty($project['image3'])): ?>
-                        <div class="mt-2">
-                            <a href="<?= getImage('projects', $project['image3']) ?>" target="_blank">
-                                <img src="<?= getImage('projects', $project['image3']) ?>" alt="Image 3" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
-                            </a>
+                    <?php if (!empty($project['image3'])):
+                        $prevImg3 = getProjectImage($project['image3']); ?>
+                        <div class="mt-2 d-flex align-items-center gap-2">
+                            <?php if (!$prevImg3['missing']): ?>
+                                <a href="<?= $prevImg3['url'] ?>" target="_blank">
+                                    <img src="<?= $prevImg3['url'] ?>" alt="Image 3" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                                </a>
+                            <?php else: ?>
+                                <img src="<?= $prevImg3['url'] ?>" alt="Placeholder" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px; opacity: 0.4;">
+                                <span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>File Missing &ndash; Re-upload</span>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                 </div>

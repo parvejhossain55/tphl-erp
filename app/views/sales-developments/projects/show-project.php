@@ -35,37 +35,55 @@ $show_breadcrumb = true;
                     <div class="col-12">
                         <h5 class="mb-3">Project Images</h5>
                     </div>
-                    <?php if (!empty($project['image'])): ?>
+                    <?php if (!empty($project['image'])):
+                        $img1 = getProjectImage($project['image']); ?>
                         <div class="col-md-4 mb-3">
-                            <div class="project-image">
-                                <img src="<?= getImage('projects', $project['image']) ?>"
+                            <div class="project-image position-relative">
+                                <img src="<?= $img1['url'] ?>"
                                     alt="Main Image"
                                     class="img-fluid rounded"
-                                    style="width: 100%; height: 250px; object-fit: cover;">
+                                    style="width: 100%; height: 250px; object-fit: cover; <?= $img1['missing'] ? 'opacity:0.5;' : '' ?>">
+                                <?php if ($img1['missing']): ?>
+                                    <div class="position-absolute top-50 start-50 translate-middle text-center">
+                                        <span class="badge bg-danger px-3 py-2"><i class="bi bi-exclamation-triangle me-1"></i>File Missing – Re-upload</span>
+                                    </div>
+                                <?php endif; ?>
                                 <p class="text-center mt-2 mb-0"><small class="text-muted">Main Image</small></p>
                             </div>
                         </div>
                     <?php endif; ?>
 
-                    <?php if (!empty($project['image2'])): ?>
+                    <?php if (!empty($project['image2'])):
+                        $img2 = getProjectImage($project['image2']); ?>
                         <div class="col-md-4 mb-3">
-                            <div class="project-image">
-                                <img src="<?= getImage('projects', $project['image2']) ?>"
+                            <div class="project-image position-relative">
+                                <img src="<?= $img2['url'] ?>"
                                     alt="Image 2"
                                     class="img-fluid rounded"
-                                    style="width: 100%; height: 250px; object-fit: cover;">
+                                    style="width: 100%; height: 250px; object-fit: cover; <?= $img2['missing'] ? 'opacity:0.5;' : '' ?>">
+                                <?php if ($img2['missing']): ?>
+                                    <div class="position-absolute top-50 start-50 translate-middle text-center">
+                                        <span class="badge bg-danger px-3 py-2"><i class="bi bi-exclamation-triangle me-1"></i>File Missing – Re-upload</span>
+                                    </div>
+                                <?php endif; ?>
                                 <p class="text-center mt-2 mb-0"><small class="text-muted">Image 2</small></p>
                             </div>
                         </div>
                     <?php endif; ?>
 
-                    <?php if (!empty($project['image3'])): ?>
+                    <?php if (!empty($project['image3'])):
+                        $img3 = getProjectImage($project['image3']); ?>
                         <div class="col-md-4 mb-3">
-                            <div class="project-image">
-                                <img src="<?= getImage('projects', $project['image3']) ?>"
+                            <div class="project-image position-relative">
+                                <img src="<?= $img3['url'] ?>"
                                     alt="Image 3"
                                     class="img-fluid rounded"
-                                    style="width: 100%; height: 250px; object-fit: cover;">
+                                    style="width: 100%; height: 250px; object-fit: cover; <?= $img3['missing'] ? 'opacity:0.5;' : '' ?>">
+                                <?php if ($img3['missing']): ?>
+                                    <div class="position-absolute top-50 start-50 translate-middle text-center">
+                                        <span class="badge bg-danger px-3 py-2"><i class="bi bi-exclamation-triangle me-1"></i>File Missing – Re-upload</span>
+                                    </div>
+                                <?php endif; ?>
                                 <p class="text-center mt-2 mb-0"><small class="text-muted">Image 3</small></p>
                             </div>
                         </div>
@@ -313,30 +331,46 @@ $show_breadcrumb = true;
                     </div>
                 <?php endif; ?>
 
-                <?php if (!empty($project['amenities_image'])): ?>
+                <?php if (!empty($project['amenities_image'])):
+                    $amImg = getProjectImage($project['amenities_image']); ?>
                     <div class="col-md-4 mb-3">
                         <div class="info-box p-3 border rounded text-center">
                             <label class="text-muted mb-2 d-block"><small>Amenities Image</small></label>
-                            <img src="<?= getImage('projects', $project['amenities_image']) ?>" alt="Amenities Image" class="img-fluid rounded mb-2" style="max-height: 100px; object-fit: cover;">
-                            <a href="<?= getImage('projects', $project['amenities_image']) ?>"
-                                target="_blank"
-                                class="btn btn-outline-info btn-sm w-100">
+                            <div class="position-relative d-inline-block w-100">
+                                <img src="<?= $amImg['url'] ?>" alt="Amenities Image" class="img-fluid rounded mb-2" style="max-height: 100px; object-fit: cover; <?= $amImg['missing'] ? 'opacity:0.4;' : '' ?>">
+                                <?php if ($amImg['missing']): ?>
+                                    <span class="badge bg-danger position-absolute top-0 start-50 translate-middle-x mt-1">File Missing</span>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!$amImg['missing']): ?>
+                            <a href="<?= $amImg['url'] ?>" target="_blank" class="btn btn-outline-info btn-sm w-100">
                                 <i class="fa-solid fa-image me-1"></i> View Image
                             </a>
+                            <?php else: ?>
+                            <span class="btn btn-outline-secondary btn-sm w-100 disabled">Re-upload in Edit</span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endif; ?>
 
-                <?php if (!empty($project['map_image'])): ?>
+                <?php if (!empty($project['map_image'])):
+                    $mapImg = getProjectImage($project['map_image']); ?>
                     <div class="col-md-4 mb-3">
                         <div class="info-box p-3 border rounded text-center">
                             <label class="text-muted mb-2 d-block"><small>Map Image</small></label>
-                            <img src="<?= getImage('projects', $project['map_image']) ?>" alt="Map Image" class="img-fluid rounded mb-2" style="max-height: 100px; object-fit: cover;">
-                            <a href="<?= getImage('projects', $project['map_image']) ?>"
-                                target="_blank"
-                                class="btn btn-outline-warning btn-sm w-100">
+                            <div class="position-relative d-inline-block w-100">
+                                <img src="<?= $mapImg['url'] ?>" alt="Map Image" class="img-fluid rounded mb-2" style="max-height: 100px; object-fit: cover; <?= $mapImg['missing'] ? 'opacity:0.4;' : '' ?>">
+                                <?php if ($mapImg['missing']): ?>
+                                    <span class="badge bg-danger position-absolute top-0 start-50 translate-middle-x mt-1">File Missing</span>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!$mapImg['missing']): ?>
+                            <a href="<?= $mapImg['url'] ?>" target="_blank" class="btn btn-outline-warning btn-sm w-100">
                                 <i class="fa-solid fa-image me-1"></i> View Map Image
                             </a>
+                            <?php else: ?>
+                            <span class="btn btn-outline-secondary btn-sm w-100 disabled">Re-upload in Edit</span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endif; ?>

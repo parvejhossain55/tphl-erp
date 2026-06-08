@@ -125,6 +125,29 @@ function getImage($module, $filename)
     return $GLOBALS['base_url'] . "/public/uploads/{$module}/{$filename}";
 }
 
+/**
+ * Return a project image URL with a proper project placeholder fallback.
+ * Use this instead of getImage() for project images.
+ *
+ * @param string|null $filename  Stored filename from projects table
+ * @return array ['url' => string, 'missing' => bool]
+ */
+function getProjectImage($filename)
+{
+    $placeholder = $GLOBALS['base_url'] . '/public/assets/images/project-placeholder.png';
+
+    if (!$filename) {
+        return ['url' => $placeholder, 'missing' => true];
+    }
+
+    $filePath = dirname(__DIR__, 2) . "/public/uploads/projects/{$filename}";
+    if (!file_exists($filePath)) {
+        return ['url' => $placeholder, 'missing' => true];
+    }
+
+    return ['url' => $GLOBALS['base_url'] . "/public/uploads/projects/{$filename}", 'missing' => false];
+}
+
 
 /**
  * Upload a document/file (PDF, images) without resizing.
