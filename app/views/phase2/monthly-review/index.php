@@ -151,13 +151,13 @@ foreach ($targets as $t) {
             </div>
             <div class="mr-stat">
                 <div class="mr-stat-val" style="color:#6d28d9"><?= number_format($planPct,1) ?>%</div>
-                <div class="mr-stat-lbl">Avg Planned %</div>
+                <div class="mr-stat-lbl">Planned Progress</div>
             </div>
             <div class="mr-stat">
                 <div class="mr-stat-val" style="color:<?= $actPct >= $planPct ? '#065f46' : '#dc2626' ?>">
                     <?= number_format($actPct,1) ?>%
                 </div>
-                <div class="mr-stat-lbl">Avg Actual %</div>
+                <div class="mr-stat-lbl">Actual Progress</div>
             </div>
             <div style="flex:1;min-width:120px;display:flex;flex-direction:column;justify-content:center">
                 <div style="font-size:9px;color:var(--slate);font-weight:700;margin-bottom:3px">Overall Progress</div>

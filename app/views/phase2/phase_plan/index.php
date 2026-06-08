@@ -5,6 +5,7 @@ $base            = $GLOBALS['base_url'];
 
 $project     = $project     ?? [];
 $phases      = $phases      ?? [];
+$drawings    = $drawings    ?? [];
 $totalWeight = $totalWeight ?? 0;
 $timeline    = $timeline    ?? [];
 $project_id  = $project['id'] ?? 0;
@@ -318,6 +319,7 @@ $phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a
                 <th>Duration</th>
                 <th>Weight %</th>
                 <th>Status</th>
+                <th>Drawing</th>
                 <th style="width:30px"></th>
             </tr>
         </thead>
@@ -378,6 +380,16 @@ $phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a
                         <?php foreach ($statusMeta as $sv => $svm): ?>
                         <option value="<?= $sv ?>" <?= ($ph['status']===$sv)?'selected':'' ?>
                                 style="color:<?= $svm['color'] ?>"><?= $sv ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </td>
+                <td>
+                    <select name="phases[<?= $idx ?>][drawing_id]" class="pp-status-sel" style="max-width:150px; font-size:11px;">
+                        <option value="">None</option>
+                        <?php foreach ($drawings as $dr): ?>
+                            <option value="<?= $dr['id'] ?>" <?= ($dr['phase_id'] == $ph['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($dr['design_name'] . ' (v' . $dr['version'] . ')') ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </td>
@@ -538,6 +550,17 @@ $phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a
                             <input type="number" name="planned_end_date" id="newPhaseEnd" class="form-control form-control-sm" min="1" max="<?= $total_months ?>" placeholder="e.g. 4">
                         </div>
                     </div>
+                    <div class="mb-3 mt-3">
+                        <label class="form-label fw-semibold" style="font-size:13px">Project Drawing</label>
+                        <select name="drawing_id" id="newPhaseDrawing" class="form-select form-select-sm">
+                            <option value="">None / Select Drawing</option>
+                            <?php foreach ($drawings as $dr): ?>
+                                <option value="<?= $dr['id'] ?>">
+                                    <?= htmlspecialchars($dr['design_name'] . ' (v' . $dr['version'] . ')') ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -649,6 +672,7 @@ function submitAddPhase() {
     data.append('phase_name',          nameEl.value.trim());
     data.append('planned_start_date',  addMonths(PROJ_START, startM - 1));
     data.append('planned_end_date',    addMonths(PROJ_START, endM - 1));
+    data.append('drawing_id',          document.getElementById('newPhaseDrawing').value);
 
     btn.disabled = true;
     btn.innerHTML = '<i class="fal fa-spinner fa-spin me-1"></i>Adding…';

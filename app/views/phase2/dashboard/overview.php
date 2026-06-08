@@ -1,6 +1,35 @@
 <?php
 $base = $GLOBALS['base_url'];
 
+if (!function_exists('toBengaliNum')) {
+    function toBengaliNum($number) {
+        return (string)$number;
+    }
+}
+
+if (!function_exists('cpFmtPct')) {
+    function cpFmtPct($n) {
+        $n = (float)$n;
+        if ($n <= 0) return '0.0%';
+        if ($n < 0.1) return number_format($n, 3) . '%';
+        return number_format($n, 1) . '%';
+    }
+}
+
+if (!function_exists('getBengaliMonthName')) {
+    function getBengaliMonthName($dateStr) {
+        if (empty($dateStr)) return '';
+        $bengaliMonths = [
+            'January' => 'জানুয়ারি', 'February' => 'ফেব্রুয়ারি', 'March' => 'মার্চ',
+            'April' => 'এপ্রিল', 'May' => 'মে', 'June' => 'জুন',
+            'July' => 'জুলাই', 'August' => 'আগস্ট', 'September' => 'সেপ্টেম্বর',
+            'October' => 'অক্টোবর', 'November' => 'নভেম্বর', 'December' => 'ডিসেম্বর'
+        ];
+        $engMonth = date('F', strtotime($dateStr));
+        return $bengaliMonths[$engMonth] ?? '';
+    }
+}
+
 // Calculate percentages for KPI cards
 $pctOnTrack = $totalProjects > 0 ? round(($onTrackCount / $totalProjects) * 100) : 0;
 $pctAtRisk  = $totalProjects > 0 ? round(($atRiskCount / $totalProjects) * 100) : 0;
@@ -598,20 +627,15 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                     </div>
                 </div>
 
-                <!-- Card 5: Overall Progress Gauge (Radial Progress) -->
-                <div class="po-radial-kpi-card">
-                    <div class="po-radial-gauge-container">
-                        <svg viewBox="0 0 36 36" style="width: 54px; height: 54px; transform: rotate(-90deg);">
-                            <circle cx="18" cy="18" r="15.5" fill="none" stroke="#e2e8f0" stroke-width="3" />
-                            <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--po-primary)" stroke-width="3"
-                                    stroke-dasharray="<?= $overallProgressPct ?>, 100" stroke-linecap="round" />
-                        </svg>
-                        <div class="po-radial-gauge-text"><?= $overallProgressPct ?>%</div>
+                <!-- Card 5: Construction Status (Active Operations) -->
+                <div class="po-kpi-card">
+                    <div class="po-kpi-icon-wrap" style="background: rgba(6, 182, 212, 0.08); color: #06b6d4;">
+                        <i class="fa-solid fa-helmet-safety"></i>
                     </div>
                     <div class="po-kpi-info">
-                        <span class="po-kpi-title">Overall Progress</span>
-                        <span class="po-kpi-val" style="font-size: 16px; margin: 0;"><?= $overallProgressPct ?>%</span>
-                        <span class="po-kpi-desc">Actual vs Plan</span>
+                        <span class="po-kpi-title">In Construction</span>
+                        <span class="po-kpi-val"><?= ($onTrackCount + $atRiskCount + $delayedCount) ?></span>
+                        <span class="po-kpi-desc"><?= $planningCount ?> in Planning / Pre-con</span>
                     </div>
                 </div>
 
@@ -763,11 +787,11 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                             <!-- Side metrics values -->
                             <div class="po-trend-side-metrics">
                                 <div>
-                                    <div style="font-size: 26px; font-weight: 900; color: var(--po-primary); line-height: 1;" id="chartActualMetric"><?= $overallProgressPct ?>%</div>
+                                    <div style="font-size: 26px; font-weight: 900; color: var(--po-primary); line-height: 1;" id="chartActualMetric"><?= cpFmtPct($overallProgressPct) ?></div>
                                     <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--po-text-muted); margin-top: 4px;">Actual</div>
                                 </div>
                                 <div>
-                                    <div style="font-size: 26px; font-weight: 900; color: #6366f1; line-height: 1;" id="chartPlannedMetric"><?= $overallPlannedProgressPct ?>%</div>
+                                    <div style="font-size: 26px; font-weight: 900; color: #6366f1; line-height: 1;" id="chartPlannedMetric"><?= cpFmtPct($overallPlannedProgressPct) ?></div>
                                     <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--po-text-muted); margin-top: 4px;">Planned</div>
                                 </div>
                             </div>
@@ -786,7 +810,7 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                             <div style="width: 140px; height: 140px; position: relative; flex-shrink: 0; margin: 0 auto;">
                                 <canvas id="budgetBreakdownChart" style="height: 100%; width: 100%;"></canvas>
                                 <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;">
-                                    <span style="font-size: 13px; font-weight: 800; color: #0f172a; line-height: 1;"><?= cpFmt($totalBudgetUsed) ?></span>
+                                    <span id="budgetBreakdownTotalUsed" style="font-size: 13px; font-weight: 800; color: #0f172a; line-height: 1;"><?= cpFmt($totalBudgetUsed) ?></span>
                                     <span style="font-size: 8px; font-weight: 600; color: var(--po-text-muted); text-transform: uppercase; margin-top: 4px;">Total Used</span>
                                 </div>
                             </div>
@@ -954,6 +978,29 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
 let progressTrendChartInstance = null;
 let budgetBreakdownChartInstance = null;
 
+// Javascript equivalent of toBengaliNum
+function toBengaliNum(number) {
+    if (number === null || number === undefined) return '';
+    return String(number);
+}
+
+function formatMetricVal(val) {
+    if (val === null || val === undefined) return '';
+    val = Number(val);
+    if (val === 0) return '0';
+    let formatted;
+    if (val < 0.1) {
+        formatted = val.toFixed(3);
+    } else if (val < 1.0) {
+        formatted = val.toFixed(2);
+    } else if (val % 1 === 0) {
+        formatted = val.toFixed(0);
+    } else {
+        formatted = val.toFixed(1);
+    }
+    return toBengaliNum(formatted);
+}
+
 // Initialize charts on load
 document.addEventListener('DOMContentLoaded', function () {
     // 1. Initialize Trend Chart
@@ -998,7 +1045,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return context.dataset.label + ': ' + Number(context.raw).toFixed(2) + '%';
+                            return context.dataset.label + ': ' + formatMetricVal(context.raw) + '%';
                         }
                     }
                 }
@@ -1008,7 +1055,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     min: 0,
                     max: 100,
                     ticks: {
-                        callback: function(value) { return value + '%'; },
+                        callback: function(value) { return toBengaliNum(value) + '%'; },
                         font: { family: "'Inter', sans-serif" }
                     },
                     grid: { color: 'rgba(0,0,0,0.03)' }
@@ -1026,13 +1073,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const rawCategoryData = <?= $budgetCategoryData ?>;
     const categoryColors = ['#198754', '#1abc9c', '#2563eb', '#f59e0b', '#64748b'];
 
+    const totalValOnLoad = rawCategoryData.reduce((acc, curr) => acc + curr.value, 0);
+    const initialChartLabels = totalValOnLoad === 0 ? ['No Budget'] : rawCategoryData.map(d => d.label);
+    const initialChartData = totalValOnLoad === 0 ? [1] : rawCategoryData.map(d => d.value);
+    const initialChartColors = totalValOnLoad === 0 ? ['#cbd5e1'] : rawCategoryData.map((d, idx) => categoryColors[idx % categoryColors.length]);
+
     budgetBreakdownChartInstance = new Chart(budgetCtx, {
         type: 'doughnut',
         data: {
-            labels: rawCategoryData.map(d => d.label),
+            labels: initialChartLabels,
             datasets: [{
-                data: rawCategoryData.map(d => d.value),
-                backgroundColor: categoryColors,
+                data: initialChartData,
+                backgroundColor: initialChartColors,
                 borderWidth: 2,
                 borderColor: '#ffffff'
             }]
@@ -1073,6 +1125,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Set default selected option styling and trigger data load
     onTrendModeChange('all_time');
+    initPopovers();
 });
 
 // Javascript budget currency legends builder
@@ -1081,8 +1134,16 @@ function renderBudgetCategoryLegends(data) {
     const legendContainer = document.getElementById('budgetCategoryLegend');
     legendContainer.innerHTML = '';
     
-    const totalVal = data.reduce((acc, curr) => acc + curr.value, 0);
-    
+    const phaseBengaliNames = {
+        'Structure': 'স্ট্রাকচার',
+        'Masonry': 'ম্যাসনরি',
+        'Finishes': 'ফিনিশেস',
+        'MEP': 'এমইপি',
+        'Others': 'অন্যান্য',
+        'Brick Work': 'ব্রিক ওয়ার্ক',
+        'Wood Work': 'উড ওয়ার্ক'
+    };
+
     data.forEach((d, idx) => {
         const item = document.createElement('div');
         item.style.display = 'flex';
@@ -1091,19 +1152,61 @@ function renderBudgetCategoryLegends(data) {
         item.style.fontSize = '12px';
         
         const formattedVal = cpFmtVal(d.value);
-        const pctVal = totalVal > 0 ? ((d.value / totalVal) * 100).toFixed(0) : 0;
+        const weightVal = d.weight !== undefined ? d.weight : 0;
+        const bengaliName = phaseBengaliNames[d.label] || d.label;
         
+        // Custom Bengali tooltip description
+        const tooltipTitle = `ℹ️ ${bengaliName} ফেজের মোট বাজেট`;
+        const tooltipContent = `হিসাব: এই ফেজের সব আইটেমের মোট এস্টিমেটেড সাবটোটাল = ${formattedVal} (পুরো প্রজেক্টের ${weightVal}% ওয়েটের জন্য নির্ধারিত)।`;
+
         item.innerHTML = `
             <div style="display:flex; align-items:center; gap:6px; font-weight:600; color:#475569;">
                 <span style="width:8px; height:8px; border-radius:50%; background:${categoryColors[idx % categoryColors.length]}; display:inline-block;"></span>
-                ${d.label}
+                <span>${d.label}</span>
+                <a href="javascript:void(0)" class="text-secondary ms-1" style="font-size: 11px;" 
+                   data-bs-toggle="popover" 
+                   data-bs-trigger="hover" 
+                   data-bs-html="true" 
+                   data-bs-title="${tooltipTitle}" 
+                   data-bs-content="${tooltipContent}">
+                    <i class="fa-solid fa-circle-info"></i>
+                </a>
             </div>
             <div style="font-weight:700; color:#0f172a;">
-                ${formattedVal} <span style="font-size:10px; color:#94a3b8; font-weight:500;">(${pctVal}%)</span>
+                ${formattedVal} <span style="font-size:10px; color:#94a3b8; font-weight:500;">(${weightVal}%)</span>
             </div>
         `;
         legendContainer.appendChild(item);
     });
+    
+    // Initialize bootstrap popovers
+    initPopovers();
+}
+
+function updateBudgetBreakdownChart(data, totalBudgetUsed) {
+    const categoryColors = ['#198754', '#1abc9c', '#2563eb', '#f59e0b', '#64748b'];
+    
+    // Update central Total Used text
+    document.getElementById('budgetBreakdownTotalUsed').textContent = cpFmtVal(totalBudgetUsed);
+
+    if (!budgetBreakdownChartInstance) return;
+
+    const totalVal = data.reduce((acc, curr) => acc + curr.value, 0);
+
+    if (totalVal === 0) {
+        // Fallback gray track if all budgets are 0
+        budgetBreakdownChartInstance.data.labels = ['No Budget'];
+        budgetBreakdownChartInstance.data.datasets[0].data = [1];
+        budgetBreakdownChartInstance.data.datasets[0].backgroundColor = ['#cbd5e1'];
+    } else {
+        budgetBreakdownChartInstance.data.labels = data.map(d => d.label);
+        budgetBreakdownChartInstance.data.datasets[0].data = data.map(d => d.value);
+        budgetBreakdownChartInstance.data.datasets[0].backgroundColor = data.map((d, idx) => categoryColors[idx % categoryColors.length]);
+    }
+    budgetBreakdownChartInstance.update();
+
+    // Re-render legends
+    renderBudgetCategoryLegends(data);
 }
 
 function cpFmtVal(n) {
@@ -1127,62 +1230,56 @@ function onTrendProjectChange(projectId) {
         }
         modeSelect.querySelector("option[value='monthly']").disabled = true;
         targetSelect.style.display = 'none';
-        
-        // Restore default globalYears in year dropdown
-        const globalYears = <?= json_encode($globalYears) ?>;
-        yearSelect.innerHTML = '';
-        globalYears.forEach(yr => {
-            const opt = document.createElement('option');
-            opt.value = yr;
-            opt.textContent = yr;
-            if (yr == new Date().getFullYear()) opt.selected = true;
-            yearSelect.appendChild(opt);
-        });
-        
-        onTrendModeChange(modeSelect.value);
     } else {
-        // Specific project: enable monthly, fetch project timelines range and targets
+        // Specific project: enable monthly
         modeSelect.querySelector("option[value='monthly']").disabled = false;
-        
-        fetch(`<?= $base ?>/all-projects-overview?ajax_get_targets=1&project_id=${projectId}`)
-            .then(res => res.json())
-            .then(data => {
-                // Populate targets
-                targetSelect.innerHTML = '';
-                if (data.targets && data.targets.length > 0) {
-                    data.targets.forEach(t => {
-                        const opt = document.createElement('option');
-                        opt.value = t.id;
-                        opt.textContent = t.label;
-                        targetSelect.appendChild(opt);
-                    });
-                } else {
-                    const opt = document.createElement('option');
-                    opt.value = '0';
-                    opt.textContent = 'No Targets Set';
-                    targetSelect.appendChild(opt);
-                }
-
-                // Populate dynamic years from project timeline
-                yearSelect.innerHTML = '';
-                if (data.years && data.years.length > 0) {
-                    data.years.forEach(yr => {
-                        const opt = document.createElement('option');
-                        opt.value = yr;
-                        opt.textContent = yr;
-                        if (yr == new Date().getFullYear()) opt.selected = true;
-                        yearSelect.appendChild(opt);
-                    });
-                } else {
-                    const opt = document.createElement('option');
-                    opt.value = new Date().getFullYear();
-                    opt.textContent = new Date().getFullYear();
-                    yearSelect.appendChild(opt);
-                }
-
-                loadTrendData();
-            });
     }
+
+    fetch(`<?= $base ?>/all-projects-overview?ajax_get_targets=1&project_id=${projectId}`)
+        .then(res => res.json())
+        .then(data => {
+            // Populate targets
+            targetSelect.innerHTML = '';
+            if (data.targets && data.targets.length > 0) {
+                data.targets.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.textContent = t.label;
+                    targetSelect.appendChild(opt);
+                });
+            } else {
+                const opt = document.createElement('option');
+                opt.value = '0';
+                opt.textContent = 'No Targets Set';
+                targetSelect.appendChild(opt);
+            }
+
+            // Populate dynamic years from project timeline
+            yearSelect.innerHTML = '';
+            if (data.years && data.years.length > 0) {
+                data.years.forEach(yr => {
+                    const opt = document.createElement('option');
+                    opt.value = yr;
+                    opt.textContent = yr;
+                    if (yr == new Date().getFullYear()) opt.selected = true;
+                    yearSelect.appendChild(opt);
+                });
+            } else {
+                const opt = document.createElement('option');
+                opt.value = new Date().getFullYear();
+                opt.textContent = new Date().getFullYear();
+                yearSelect.appendChild(opt);
+            }
+
+            // Update Budget Utilization Chart and Legends
+            updateBudgetBreakdownChart(data.budgetCategoryData, data.totalBudgetUsed);
+
+            if (projectId == "0") {
+                onTrendModeChange(modeSelect.value);
+            } else {
+                loadTrendData();
+            }
+        });
 }
 
 function onTrendModeChange(mode) {
@@ -1237,13 +1334,12 @@ function loadTrendData() {
                 
                 progressTrendChartInstance.update();
 
-                // Compute overall planned and actual metrics from data array to show on sidebar metrics
-                const cleanActual = data.actual.filter(x => x !== null);
-                const latestActualVal = cleanActual.length > 0 ? cleanActual[cleanActual.length - 1] : 0;
-                const latestPlannedVal = data.planned.length > 0 ? data.planned[data.planned.length - 1] : 0;
+                // Sum actual and planned values to get cumulative total progress for the displayed period
+                const totalActual = data.actual.reduce((acc, curr) => acc + (curr || 0), 0);
+                const totalPlanned = data.planned.reduce((acc, curr) => acc + (curr || 0), 0);
 
-                document.getElementById('chartActualMetric').textContent = Number(latestActualVal).toFixed(0) + '%';
-                document.getElementById('chartPlannedMetric').textContent = Number(latestPlannedVal).toFixed(0) + '%';
+                document.getElementById('chartActualMetric').textContent = formatMetricVal(totalActual) + '%';
+                document.getElementById('chartPlannedMetric').textContent = formatMetricVal(totalPlanned) + '%';
             }
         });
 }
@@ -1278,6 +1374,9 @@ function fetchPaginatedProjects(page) {
                 bar.style.width = '0';
                 setTimeout(() => { bar.style.width = w; }, 100);
             });
+
+            // Re-initialize popovers
+            initPopovers();
         })
         .catch(err => {
             tbody.style.opacity = '1.0';
@@ -1313,5 +1412,25 @@ function togglePhaseItems(containerId, toggleIcon) {
             }
         }
     }
+}
+
+// Initialize Popovers using Bootstrap 5 Popover API
+function initPopovers() {
+    if (window.popoverInstances) {
+        window.popoverInstances.forEach(function(p) {
+            p.dispose();
+        });
+    }
+    window.popoverInstances = [];
+
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    window.popoverInstances = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl, {
+            html: true,
+            trigger: 'hover',
+            placement: 'top',
+            container: 'body'
+        });
+    });
 }
 </script>

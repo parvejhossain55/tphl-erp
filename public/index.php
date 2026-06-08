@@ -962,6 +962,7 @@ $routes['con-contractor-bill-verify/(\d+)']  = ['controller' => 'Phase2\Con_Cont
 $routes['con-contractor-bill-approve/(\d+)'] = ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'approve'];
 $routes['con-contractor-bill-reject/(\d+)']  = ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'reject'];
 $routes['con-contractor-bill-payment/(\d+)'] = ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'addPayment'];
+$routes['con-ajax-project-targets']           = ['controller' => 'Phase2\Con_ContractorBillController', 'method' => 'ajaxGetTargetsByProject'];
 
 // ── Operational Fund Requests ──────────────────────────────────────────────
 $routes['con-fund-requests']           = ['controller' => 'Phase2\Con_FundRequestController', 'method' => 'index'];

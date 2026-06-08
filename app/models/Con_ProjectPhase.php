@@ -84,9 +84,16 @@ class Con_ProjectPhase {
     /**
      * Batch save all phases for a project (replace rows by ID).
      */
-    public function batchUpdate($phases) {
+    public function batchUpdate($phases, $project_id) {
         $this->db->begin_transaction();
         try {
+            // Reset drawings phase links for this project
+            $clearStmt = $this->db->prepare("UPDATE project_drawings SET phase_id = NULL WHERE project_id = ?");
+            $clearStmt->bind_param('i', $project_id);
+            $clearStmt->execute();
+
+            $drawStmt = $this->db->prepare("UPDATE project_drawings SET phase_id = ? WHERE id = ? AND project_id = ?");
+
             $stmt = $this->db->prepare("
                 UPDATE project_phases SET
                     phase_name          = ?,
@@ -107,6 +114,12 @@ class Con_ProjectPhase {
                 $status = $p['status']             ?? 'Not Started';
                 $stmt->bind_param('sidsssi', $name, $order, $weight, $start, $end, $status, $id);
                 $stmt->execute();
+
+                if (!empty($p['drawing_id'])) {
+                    $drawingId = (int)$p['drawing_id'];
+                    $drawStmt->bind_param('iii', $id, $drawingId, $project_id);
+                    $drawStmt->execute();
+                }
             }
             $this->db->commit();
             return true;

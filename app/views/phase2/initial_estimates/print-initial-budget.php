@@ -718,6 +718,18 @@ $grandTotal = $budget['total_estimated_cost'] ?? 0;
                                     <td style="color:#9ca3af;font-size:11px;"><?= $si + 1 ?></td>
                                     <td><span
                                             class="badge-pill bp-purple"><?= htmlspecialchars($item['work_type_label'] ?? $item['design_type_name'] ?? '—') ?></span>
+                                         <div style="font-size:10px;color:#6b7280;margin-top:4px;line-height:1.2;">
+                                             <strong>Work Type ID:</strong> <?= (!empty($item['work_type_id']) && $item['work_type_id'] != 0) ? htmlspecialchars($item['work_type_id']) : '—' ?>
+                                             <br>
+                                             <strong>Work Type Name:</strong> <?= !empty($item['work_type_name']) ? htmlspecialchars($item['work_type_name']) : '—' ?>
+                                         </div>
+                                         <?php if (!empty($item['phase_name']) || !empty($item['phase_item_name'])): ?>
+                                         <div style="font-size:10px;color:#6b7280;margin-top:4px;line-height:1.2;border-top:1px dashed #e5e7eb;padding-top:4px;">
+                                             <strong>Phase:</strong> <?= htmlspecialchars($item['phase_name'] ?? '—') ?>
+                                             <br>
+                                             <strong>Item:</strong> <?= htmlspecialchars($item['phase_item_name'] ?? '—') ?>
+                                         </div>
+                                         <?php endif; ?>
                                     </td>
                                     <td>
                                         <span style="font-weight:700;"><?= htmlspecialchars($item['material_name'] ?? '—') ?></span>
@@ -768,8 +780,20 @@ $grandTotal = $budget['total_estimated_cost'] ?? 0;
                                 <tr>
                                     <td style="color:#9ca3af;font-size:11px;"><?= $li + 1 ?></td>
                                     <td><span
-                                            class="badge-pill bp-blue"><?= htmlspecialchars($lb['work_type_label'] ?? $lb['design_type_name'] ?? '—') ?></span>
-                                    </td>
+                                             class="badge-pill bp-blue"><?= htmlspecialchars($lb['work_type_label'] ?? $lb['design_type_name'] ?? '—') ?></span>
+                                         <div style="font-size:10px;color:#6b7280;margin-top:4px;line-height:1.2;">
+                                             <strong>Work Type ID:</strong> <?= (!empty($lb['work_type_id']) && $lb['work_type_id'] != 0) ? htmlspecialchars($lb['work_type_id']) : '—' ?>
+                                             <br>
+                                             <strong>Work Type Name:</strong> <?= !empty($lb['work_type_name']) ? htmlspecialchars($lb['work_type_name']) : '—' ?>
+                                         </div>
+                                         <?php if (!empty($lb['phase_name']) || !empty($lb['phase_item_name'])): ?>
+                                         <div style="font-size:10px;color:#6b7280;margin-top:4px;line-height:1.2;border-top:1px dashed #e5e7eb;padding-top:4px;">
+                                             <strong>Phase:</strong> <?= htmlspecialchars($lb['phase_name'] ?? '—') ?>
+                                             <br>
+                                             <strong>Item:</strong> <?= htmlspecialchars($lb['phase_item_name'] ?? '—') ?>
+                                         </div>
+                                         <?php endif; ?>
+                                     </td>
                                     <td style="font-weight:600;"><?= htmlspecialchars($lb['labor_type_name']) ?></td>
                                     <td style="font-size:11px;color:#6b7280;"><?= htmlspecialchars($lb['description'] ?? '—') ?>
                                     </td>

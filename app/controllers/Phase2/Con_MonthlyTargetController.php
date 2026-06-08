@@ -373,9 +373,36 @@ class Con_MonthlyTargetController extends Controller {
                        p.name  AS project_name,
                        pp.phase_name,
                        pp.weight_percentage AS phase_weight,
-                       COUNT(mti.id)                   AS item_count,
-                       COALESCE(AVG(mti.actual_progress_pct), 0) AS avg_actual_pct,
-                       (SELECT COUNT(*) FROM boq_master bm  WHERE bm.target_id  = mt.id) AS has_boq,
+                        COUNT(mti.id)                   AS item_count,
+                        COALESCE(
+                            SUM(
+                                COALESCE(
+                                    (
+                                        (
+                                            COALESCE((
+                                                SELECT SUM(pwpi.achieved_qty)
+                                                FROM phase_weekly_progress_items pwpi
+                                                INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+                                                WHERE pwpi.target_item_id = mti.id
+                                                  AND pwp.qc_status = 'Approved'
+                                                  AND pwp.pm_status = 'Approved'
+                                            ), 0) +
+                                            COALESCE((
+                                                SELECT SUM(dwil.qty_done_today)
+                                                FROM daily_work_item_logs dwil
+                                                INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+                                                INNER JOIN phase_weekly_progress pwp ON pwp.id = dpl.weekly_progress_id
+                                                WHERE dwil.target_item_id = mti.id
+                                                  AND dpl.qc_status = 'Approved'
+                                                  AND dpl.pm_status = 'Approved'
+                                                  AND NOT (pwp.qc_status = 'Approved' AND pwp.pm_status = 'Approved')
+                                            ), 0)
+                                        ) / NULLIF(mti.monthly_target_qty, 0)
+                                    ) * 100, 0
+                                )
+                            ), 0
+                        ) AS avg_actual_pct,
+                        (SELECT COUNT(*) FROM boq_master bm  WHERE bm.target_id  = mt.id) AS has_boq,
                        (SELECT bm2.id   FROM boq_master bm2 WHERE bm2.target_id = mt.id ORDER BY bm2.id DESC LIMIT 1) AS boq_id
                 FROM phase_monthly_targets mt
                 LEFT JOIN projects p              ON p.id  = mt.project_id

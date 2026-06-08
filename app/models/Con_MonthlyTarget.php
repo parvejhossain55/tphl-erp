@@ -18,7 +18,34 @@ class Con_MonthlyTarget {
                    pp.phase_name,
                    pp.weight_percentage AS phase_weight,
                    COUNT(pmti.id)       AS item_count,
-                   COALESCE(AVG(pmti.actual_progress_pct),0) AS avg_actual_pct
+                   COALESCE(
+                       SUM(
+                           COALESCE(
+                               (
+                                   (
+                                       COALESCE((
+                                           SELECT SUM(pwpi.achieved_qty)
+                                           FROM phase_weekly_progress_items pwpi
+                                           INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+                                           WHERE pwpi.target_item_id = pmti.id
+                                             AND pwp.qc_status = 'Approved'
+                                             AND pwp.pm_status = 'Approved'
+                                       ), 0) +
+                                       COALESCE((
+                                           SELECT SUM(dwil.qty_done_today)
+                                           FROM daily_work_item_logs dwil
+                                           INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+                                           INNER JOIN phase_weekly_progress pwp ON pwp.id = dpl.weekly_progress_id
+                                           WHERE dwil.target_item_id = pmti.id
+                                             AND dpl.qc_status = 'Approved'
+                                             AND dpl.pm_status = 'Approved'
+                                             AND NOT (pwp.qc_status = 'Approved' AND pwp.pm_status = 'Approved')
+                                       ), 0)
+                                   ) / NULLIF(pmti.monthly_target_qty, 0)
+                               ) * 100, 0
+                           )
+                       ), 0
+                   ) AS avg_actual_pct
             FROM phase_monthly_targets pmt
             INNER JOIN project_phases pp ON pp.id = pmt.phase_id
             LEFT JOIN  phase_monthly_target_items pmti ON pmti.target_id = pmt.id
@@ -36,8 +63,56 @@ class Con_MonthlyTarget {
         $stmt = $this->db->prepare("
             SELECT pmt.*,
                    COUNT(pmti.id) AS item_count,
-                   COALESCE(SUM(pmti.actual_qty),0) AS total_actual_qty,
-                   COALESCE(AVG(pmti.actual_progress_pct),0) AS avg_actual_pct
+                   COALESCE(
+                       SUM(
+                           COALESCE((
+                               SELECT SUM(pwpi.achieved_qty)
+                               FROM phase_weekly_progress_items pwpi
+                               INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+                               WHERE pwpi.target_item_id = pmti.id
+                                 AND pwp.qc_status = 'Approved'
+                                 AND pwp.pm_status = 'Approved'
+                           ), 0) +
+                           COALESCE((
+                               SELECT SUM(dwil.qty_done_today)
+                               FROM daily_work_item_logs dwil
+                               INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+                               INNER JOIN phase_weekly_progress pwp ON pwp.id = dpl.weekly_progress_id
+                               WHERE dwil.target_item_id = pmti.id
+                                 AND dpl.qc_status = 'Approved'
+                                 AND dpl.pm_status = 'Approved'
+                                 AND NOT (pwp.qc_status = 'Approved' AND pwp.pm_status = 'Approved')
+                           ), 0)
+                       ), 0
+                   ) AS total_actual_qty,
+                   COALESCE(
+                       SUM(
+                           COALESCE(
+                               (
+                                   (
+                                       COALESCE((
+                                           SELECT SUM(pwpi.achieved_qty)
+                                           FROM phase_weekly_progress_items pwpi
+                                           INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+                                           WHERE pwpi.target_item_id = pmti.id
+                                             AND pwp.qc_status = 'Approved'
+                                             AND pwp.pm_status = 'Approved'
+                                       ), 0) +
+                                       COALESCE((
+                                           SELECT SUM(dwil.qty_done_today)
+                                           FROM daily_work_item_logs dwil
+                                           INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+                                           INNER JOIN phase_weekly_progress pwp ON pwp.id = dpl.weekly_progress_id
+                                           WHERE dwil.target_item_id = pmti.id
+                                             AND dpl.qc_status = 'Approved'
+                                             AND dpl.pm_status = 'Approved'
+                                             AND NOT (pwp.qc_status = 'Approved' AND pwp.pm_status = 'Approved')
+                                       ), 0)
+                                   ) / NULLIF(pmti.monthly_target_qty, 0)
+                               ) * 100, 0
+                           )
+                       ), 0
+                   ) AS avg_actual_pct
             FROM phase_monthly_targets pmt
             LEFT JOIN phase_monthly_target_items pmti ON pmti.target_id = pmt.id
             WHERE pmt.phase_id = ?
@@ -134,6 +209,56 @@ class Con_MonthlyTarget {
     public function getItems(int $target_id): array {
         $stmt = $this->db->prepare("
             SELECT pmti.*,
+                   (
+                       COALESCE((
+                           SELECT SUM(pwpi.achieved_qty)
+                           FROM phase_weekly_progress_items pwpi
+                           INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+                           WHERE pwpi.target_item_id = pmti.id
+                             AND pwp.qc_status = 'Approved'
+                             AND pwp.pm_status = 'Approved'
+                       ), 0) +
+                       COALESCE((
+                           SELECT SUM(dwil.qty_done_today)
+                           FROM daily_work_item_logs dwil
+                           INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+                           INNER JOIN phase_weekly_progress pwp ON pwp.id = dpl.weekly_progress_id
+                           WHERE dwil.target_item_id = pmti.id
+                             AND dpl.qc_status = 'Approved'
+                             AND dpl.pm_status = 'Approved'
+                             AND NOT (pwp.qc_status = 'Approved' AND pwp.pm_status = 'Approved')
+                       ), 0)
+                   ) AS actual_qty,
+                   COALESCE((
+                       SELECT (pmti.monthly_target_qty / NULLIF(ppid.total_boq_qty, 0)) * ppid.weight_pct
+                       FROM project_phase_item_details ppid
+                       WHERE ppid.phase_item_id = pmti.phase_item_id
+                         AND ppid.work_type_id = pmti.work_type_id
+                   ), 0) AS planned_progress_pct,
+                   COALESCE(
+                       (
+                           (
+                               COALESCE((
+                                   SELECT SUM(pwpi.achieved_qty)
+                                   FROM phase_weekly_progress_items pwpi
+                                   INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+                                   WHERE pwpi.target_item_id = pmti.id
+                                     AND pwp.qc_status = 'Approved'
+                                     AND pwp.pm_status = 'Approved'
+                               ), 0) +
+                               COALESCE((
+                                   SELECT SUM(dwil.qty_done_today)
+                                   FROM daily_work_item_logs dwil
+                                   INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+                                   INNER JOIN phase_weekly_progress pwp ON pwp.id = dpl.weekly_progress_id
+                                   WHERE dwil.target_item_id = pmti.id
+                                     AND dpl.qc_status = 'Approved'
+                                     AND dpl.pm_status = 'Approved'
+                                     AND NOT (pwp.qc_status = 'Approved' AND pwp.pm_status = 'Approved')
+                               ), 0)
+                           ) / NULLIF(pmti.monthly_target_qty, 0)
+                       ) * 100, 0
+                   ) AS actual_progress_pct,
                    wt.work_type_name,
                    dt.name AS design_type_name,
                    ppi.weight_pct AS sub_item_weight,
@@ -365,9 +490,66 @@ class Con_MonthlyTarget {
             SELECT
                 COUNT(*)                              AS total_items,
                 COALESCE(SUM(monthly_target_qty),0)   AS total_planned_qty,
-                COALESCE(SUM(actual_qty),0)           AS total_actual_qty,
-                COALESCE(AVG(planned_progress_pct),0) AS avg_planned_pct,
-                COALESCE(AVG(actual_progress_pct),0)  AS avg_actual_pct,
+                COALESCE(
+                    SUM(
+                        COALESCE((
+                            SELECT SUM(pwpi.achieved_qty)
+                            FROM phase_weekly_progress_items pwpi
+                            INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+                            WHERE pwpi.target_item_id = phase_monthly_target_items.id
+                              AND pwp.qc_status = 'Approved'
+                              AND pwp.pm_status = 'Approved'
+                        ), 0) +
+                        COALESCE((
+                            SELECT SUM(dwil.qty_done_today)
+                            FROM daily_work_item_logs dwil
+                            INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+                            INNER JOIN phase_weekly_progress pwp ON pwp.id = dpl.weekly_progress_id
+                            WHERE dwil.target_item_id = phase_monthly_target_items.id
+                              AND dpl.qc_status = 'Approved'
+                              AND dpl.pm_status = 'Approved'
+                              AND NOT (pwp.qc_status = 'Approved' AND pwp.pm_status = 'Approved')
+                        ), 0)
+                    ), 0
+                ) AS total_actual_qty,
+                COALESCE(
+                    SUM(
+                        COALESCE((
+                            SELECT (monthly_target_qty / NULLIF(ppid.total_boq_qty, 0)) * ppid.weight_pct
+                            FROM project_phase_item_details ppid
+                            WHERE ppid.phase_item_id = phase_monthly_target_items.phase_item_id
+                              AND ppid.work_type_id = phase_monthly_target_items.work_type_id
+                        ), 0)
+                    ), 0
+                ) AS avg_planned_pct,
+                COALESCE(
+                    SUM(
+                        COALESCE(
+                            (
+                                (
+                                    COALESCE((
+                                        SELECT SUM(pwpi.achieved_qty)
+                                        FROM phase_weekly_progress_items pwpi
+                                        INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+                                        WHERE pwpi.target_item_id = phase_monthly_target_items.id
+                                          AND pwp.qc_status = 'Approved'
+                                          AND pwp.pm_status = 'Approved'
+                                    ), 0) +
+                                    COALESCE((
+                                        SELECT SUM(dwil.qty_done_today)
+                                        FROM daily_work_item_logs dwil
+                                        INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+                                        INNER JOIN phase_weekly_progress pwp ON pwp.id = dpl.weekly_progress_id
+                                        WHERE dwil.target_item_id = phase_monthly_target_items.id
+                                          AND dpl.qc_status = 'Approved'
+                                          AND dpl.pm_status = 'Approved'
+                                          AND NOT (pwp.qc_status = 'Approved' AND pwp.pm_status = 'Approved')
+                                    ), 0)
+                                ) / NULLIF(monthly_target_qty, 0)
+                            ) * 100, 0
+                        )
+                    ), 0
+                ) AS avg_actual_pct,
                 SUM(CASE WHEN status='Draft'     THEN 1 ELSE 0 END) AS cnt_draft,
                 SUM(CASE WHEN status='Ready'     THEN 1 ELSE 0 END) AS cnt_ready,
                 SUM(CASE WHEN status='Approved'  THEN 1 ELSE 0 END) AS cnt_approved,

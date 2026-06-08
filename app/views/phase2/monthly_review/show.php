@@ -346,7 +346,13 @@ body { font-family:'Inter',sans-serif }
                             <?php
                             $totalTargetQty = array_sum(array_column($workItems, 'monthly_target_qty'));
                             $totalActualQty = array_sum(array_column($workItems, 'actual_qty'));
-                            $trueAchievementPct = $totalTargetQty > 0 ? ($totalActualQty / $totalTargetQty * 100) : 0;
+                            
+                            $trueAchievementPct = 0;
+                            foreach ($workItems as $wi) {
+                                $targetQty = (float)$wi['monthly_target_qty'];
+                                $achQty    = (float)($wi['actual_qty'] ?? 0);
+                                $trueAchievementPct += $targetQty > 0 ? min(100, $achQty / $targetQty * 100) : 0;
+                            }
                             ?>
                             <span style="font-weight:900;font-size:13px;color:<?= $trueAchievementPct>=100?'#065f46':'#6d28d9' ?>">
                                 <?= number_format($trueAchievementPct,1) ?>% Achieved
@@ -449,8 +455,8 @@ body { font-family:'Inter',sans-serif }
                 </thead>
                 <tbody>
                 <?php $ti=1; foreach ($teamPerf as $team => $tp):
-                    $tPlan = $tp['item_count'] > 0 ? $tp['planned_sum'] / $tp['item_count'] : 0;
-                    $tAct  = $tp['item_count'] > 0 ? $tp['achieved_sum'] / $tp['item_count'] : 0;
+                    $tPlan = (float)$tp['planned_sum'];
+                    $tAct  = (float)$tp['achieved_sum'];
                     $tScore = $tPlan > 0 ? min(100, round($tAct / $tPlan * 100)) : 0;
                     $tScoreCol = $tScore >= 80 ? '#10b981' : ($tScore >= 60 ? '#f59e0b' : '#ef4444');
                     $tTrend = $tAct >= $tPlan ? '↑' : '↓';

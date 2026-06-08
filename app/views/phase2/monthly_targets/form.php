@@ -151,12 +151,12 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
     </div>
     <div class="mf-stat-card">
         <div class="mf-stat-val" style="color:var(--pri)"><?= number_format($avgPlanned, 1) ?>%</div>
-        <div class="mf-stat-lbl">Avg Planned</div>
+        <div class="mf-stat-lbl">Planned Progress</div>
         <div class="mf-prog-bar"><div class="mf-prog-fill" style="width:<?= min(100,$avgPlanned) ?>%;background:var(--pri)"></div></div>
     </div>
     <div class="mf-stat-card">
         <div class="mf-stat-val" style="color:var(--green)"><?= number_format($avgActual, 1) ?>%</div>
-        <div class="mf-stat-lbl">Avg Actual</div>
+        <div class="mf-stat-lbl">Actual Progress</div>
         <div class="mf-prog-bar"><div class="mf-prog-fill" style="width:<?= min(100,$avgActual) ?>%;background:var(--green)"></div></div>
     </div>
     <div class="mf-stat-card">
@@ -261,10 +261,7 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                 <label>Sub Weight</label>
                 <input type="text" id="wi_sub_weight" class="mf-inp" readonly value="0.00%">
             </div>
-            <div class="mf-ctrl" style="flex:0 0 107px;min-width:90px">
-                <label>Target Planned %</label>
-                <input type="number" id="wi_planned_progress_pct" class="mf-inp" min="0" max="100" step="0.1" value="0">
-            </div>
+            <input type="hidden" id="wi_planned_progress_pct" value="0">
             <div class="mf-ctrl" style="flex:2;min-width:140px">
                 <label>Work Type <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
                 <select id="wi_work_type" class="mf-sel">
@@ -481,10 +478,8 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
             <input type="hidden" id="sub_w_<?= $i ?>" value="<?= $subWeight ?>">
         </td>
         <td style="text-align:center">
-            <input type="number" name="items[<?= $i ?>][planned_progress_pct]"
-                   id="plan_pct_<?= $i ?>"
-                   value="<?= (float)($item['planned_progress_pct'] ?? 0) ?>"
-                   step="0.1" min="0" max="100" style="width:65px">
+            <span class="pct-badge"><?= number_format((float)($item['planned_progress_pct'] ?? 0), 2) ?>%</span>
+            <input type="hidden" name="items[<?= $i ?>][planned_progress_pct]" id="plan_pct_<?= $i ?>" value="<?= (float)($item['planned_progress_pct'] ?? 0) ?>">
         </td>
         <td style="text-align:center">
             <span class="pct-badge <?= $actualPct>=100?'green':($actualPct>0?'amber':'') ?>">
