@@ -62,7 +62,7 @@ $show_breadcrumb = true;
                     <?php if (!empty($project['image3'])): ?>
                         <div class="col-md-4 mb-3">
                             <div class="project-image">
-                                <img src="<?= getImage('projects', $project['image']) ?>"
+                                <img src="<?= getImage('projects', $project['image3']) ?>"
                                     alt="Image 3"
                                     class="img-fluid rounded"
                                     style="width: 100%; height: 250px; object-fit: cover;">
@@ -315,8 +315,9 @@ $show_breadcrumb = true;
 
                 <?php if (!empty($project['amenities_image'])): ?>
                     <div class="col-md-4 mb-3">
-                        <div class="info-box p-3 border rounded">
-                            <label class="text-muted mb-2"><small>Amenities Image</small></label>
+                        <div class="info-box p-3 border rounded text-center">
+                            <label class="text-muted mb-2 d-block"><small>Amenities Image</small></label>
+                            <img src="<?= getImage('projects', $project['amenities_image']) ?>" alt="Amenities Image" class="img-fluid rounded mb-2" style="max-height: 100px; object-fit: cover;">
                             <a href="<?= getImage('projects', $project['amenities_image']) ?>"
                                 target="_blank"
                                 class="btn btn-outline-info btn-sm w-100">
@@ -328,8 +329,9 @@ $show_breadcrumb = true;
 
                 <?php if (!empty($project['map_image'])): ?>
                     <div class="col-md-4 mb-3">
-                        <div class="info-box p-3 border rounded">
-                            <label class="text-muted mb-2"><small>Map Image</small></label>
+                        <div class="info-box p-3 border rounded text-center">
+                            <label class="text-muted mb-2 d-block"><small>Map Image</small></label>
+                            <img src="<?= getImage('projects', $project['map_image']) ?>" alt="Map Image" class="img-fluid rounded mb-2" style="max-height: 100px; object-fit: cover;">
                             <a href="<?= getImage('projects', $project['map_image']) ?>"
                                 target="_blank"
                                 class="btn btn-outline-warning btn-sm w-100">

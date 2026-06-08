@@ -230,32 +230,66 @@ if (!empty($project['floor_wise_unit_meta'])) {
                 <div class="col-xl-6">
                     <label>Map Image <span>(Optional)</span></label>
                     <input type="file" name="map_image" class="form-control">
+                    <?php if (!empty($project['map_image'])): ?>
+                        <div class="mt-2">
+                            <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['map_image'] ?>" target="_blank">
+                                <img src="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['map_image'] ?>" alt="Map Image" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                            </a>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Map Link -->
                 <div class="col-xl-6">
                     <label>Map Link</label>
                     <input type="text" name="map_link" class="form-control" value="<?= $project['map_link'] ?? '' ?>">
-                </div>
-                <div class="col-xl-3 col-12">
+                </div>                <div class="col-xl-3 col-12">
                     <label>Amenities Image  <span>(Optional)</span></label>
                     <input type="file" name="amenities_image" class="form-control">
+                    <?php if (!empty($project['amenities_image'])): ?>
+                        <div class="mt-2">
+                            <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['amenities_image'] ?>" target="_blank">
+                                <img src="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['amenities_image'] ?>" alt="Amenities Image" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                            </a>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <!-- Project Images -->
                 <div class="col-xl-3 col-12">
                     <label>Main Image</label>
                     <input type="file" name="image" class="form-control">
+                    <?php if (!empty($project['image'])): ?>
+                        <div class="mt-2">
+                            <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['image'] ?>" target="_blank">
+                                <img src="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['image'] ?>" alt="Main Image" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                            </a>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="col-xl-3 col-12">
                     <label>Image 2 <span>(Optional)</span></label>
                     <input type="file" name="image2" class="form-control">
+                    <?php if (!empty($project['image2'])): ?>
+                        <div class="mt-2">
+                            <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['image2'] ?>" target="_blank">
+                                <img src="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['image2'] ?>" alt="Image 2" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                            </a>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="col-xl-3 col-12">
                     <label>Image 3 <span>(Optional)</span></label>
                     <input type="file" name="image3" class="form-control">
-                </div
+                    <?php if (!empty($project['image3'])): ?>
+                        <div class="mt-2">
+                            <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['image3'] ?>" target="_blank">
+                                <img src="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= $project['image3'] ?>" alt="Image 3" style="max-height: 80px; border-radius: 4px; border: 1px solid #ddd; padding: 2px;">
+                            </a>
+                        </div>
+                    <?php endif; ?>
+                </div>
 
                     <!-- Facilities -->
                 <div class="col-12">
