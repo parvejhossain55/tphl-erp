@@ -43,11 +43,13 @@ class Con_InitialEstimateController extends Controller
         // PM (15,22) and Management (3) see all including drafts
         // Others see only their own drafts + all non-draft records
         $budgets = $this->model->getAll($userId, $roleId);
+        $spentMap = $this->model->getSpentTotalsGroupedByProject();
 
         $this->view('phase2/initial_estimates/initial-estimate-lists', [
             'current_route' => 'con-estimates',
             'page_title'    => 'Initial Estimate Budgets',
             'budgets'       => $budgets,
+            'spentMap'      => $spentMap,
         ]);
     }
 
@@ -262,10 +264,31 @@ class Con_InitialEstimateController extends Controller
         $labors    = $this->model->getLaborsByBudget($id);
         $breakdown = $this->model->getFullBreakdownByDesignType($id);
 
-        // Load working plans linked to this budget (with approved_status)
-        $wpModel          = new \Con_WorkingPlan($this->db);
-        $workingPlans     = $wpModel->getByBudget($id);
-        $monthlyPlanSummary = $wpModel->getMonthlyPlanSummary($id);
+        // Load phase monthly targets linked to this project as working plans
+        $projectId = (int)($budget['project_id'] ?? 0);
+        $workingPlans = [];
+        if ($projectId > 0) {
+            $stmt = $this->db->prepare("
+                SELECT pmt.id,
+                       pmt.target_month_number AS month,
+                       pmt.target_year AS year,
+                       pp.phase_name AS design_type_name,
+                       pmt.responsible_team AS work_description,
+                       pmt.total_target_weight_pct AS planned_quantity,
+                       0.00 AS estimated_cost,
+                       pmt.planning_status AS approved_status,
+                       u.full_name AS created_by_name
+                FROM phase_monthly_targets pmt
+                INNER JOIN project_phases pp ON pp.id = pmt.phase_id
+                LEFT JOIN users u ON u.id = pmt.created_by
+                WHERE pmt.project_id = ?
+                ORDER BY pmt.target_year DESC, pmt.target_month_number DESC
+            ");
+            $stmt->bind_param('i', $projectId);
+            $stmt->execute();
+            $workingPlans = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+        $monthlyPlanSummary = [];
 
         $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
         $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
@@ -291,6 +314,20 @@ class Con_InitialEstimateController extends Controller
             $creatorInfo = $stmt->get_result()->fetch_assoc() ?? [];
         }
 
+        $spentTotals = $this->model->getSpentTotals($projectId);
+        $spentDetails = $this->model->getSpentDetails($projectId);
+        // Calculate totals for tabs in modal
+        $materialsTotal = 0.0;
+        foreach ($spentDetails['materials'] as $m) {
+            $materialsTotal += (float)$m['total_cost'];
+        }
+        $contractorsTotal = 0.0;
+        foreach ($spentDetails['contractors'] as $c) {
+            $contractorsTotal += (float)$c['amount_paid'];
+        }
+        $spentDetails['materials_total'] = $materialsTotal;
+        $spentDetails['contractors_total'] = $contractorsTotal;
+
         $this->view('phase2/initial_estimates/show-initial-budget', [
             'current_route'      => 'con-estimates',
             'page_title'         => 'Estimate Detail — ' . $budget['project_name'],
@@ -304,6 +341,8 @@ class Con_InitialEstimateController extends Controller
             'currentUserId'      => $currentUserId,
             'canApprove'         => $canApprove,
             'creatorInfo'        => $creatorInfo,
+            'spentTotal'         => $spentTotals['total_spent'],
+            'spentDetails'       => $spentDetails,
         ]);
     }
 
@@ -681,8 +720,31 @@ class Con_InitialEstimateController extends Controller
         $items     = $this->model->getItemsByBudget($id);
         $labors    = $this->model->getLaborsByBudget($id);
         $breakdown = $this->model->getFullBreakdownByDesignType($id);
-        $wpModel   = new \Con_WorkingPlan($this->db);
-        $workingPlans = $wpModel->getByBudget($id);
+
+        // Load phase monthly targets linked to this project as working plans
+        $projectId = (int)($budget['project_id'] ?? 0);
+        $workingPlans = [];
+        if ($projectId > 0) {
+            $stmt = $this->db->prepare("
+                SELECT pmt.id,
+                       pmt.target_month_number AS month,
+                       pmt.target_year AS year,
+                       pp.phase_name AS design_type_name,
+                       pmt.responsible_team AS work_description,
+                       pmt.total_target_weight_pct AS planned_quantity,
+                       0.00 AS estimated_cost,
+                       pmt.planning_status AS approved_status,
+                       u.full_name AS created_by_name
+                FROM phase_monthly_targets pmt
+                INNER JOIN project_phases pp ON pp.id = pmt.phase_id
+                LEFT JOIN users u ON u.id = pmt.created_by
+                WHERE pmt.project_id = ?
+                ORDER BY pmt.target_year DESC, pmt.target_month_number DESC
+            ");
+            $stmt->bind_param('i', $projectId);
+            $stmt->execute();
+            $workingPlans = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
 
         $base_url   = $GLOBALS['base_url'];
         $page_title = 'Initial Estimate — ' . ($budget['project_name'] ?? 'Print');

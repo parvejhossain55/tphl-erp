@@ -139,7 +139,8 @@ class Con_WorkOrder extends Model
                        tf.total_target_weight_pct AS target_percentage,
                        tf.target_year         AS target_year,
                        tf.target_month_number AS target_month,
-                       NULL            AS target_week
+                       NULL            AS target_week,
+                       pp_draw.phase_name     AS drawing_phase_name
                 FROM {$this->table} wo
                 LEFT JOIN projects p                ON p.id  = wo.project_id
                 LEFT JOIN contractors c             ON c.id  = wo.contractor_id
@@ -152,6 +153,7 @@ class Con_WorkOrder extends Model
                 LEFT JOIN users cm                  ON cm.id = wo.completed_by
                 LEFT JOIN phase_monthly_targets tf  ON tf.id = wo.target_id
                 LEFT JOIN project_phases pp         ON pp.id = tf.phase_id
+                LEFT JOIN project_phases pp_draw    ON pp_draw.id = pd.phase_id
                 WHERE wo.id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -450,13 +452,13 @@ class Con_WorkOrder extends Model
     // WORK ORDER ITEMS — database-driven rate schedule rows
     // =========================================================================
 
-    /** Fetch all rate schedule items for a WO, ordered by sort_order */
     public function getItemsByWorkOrder($woId)
     {
         $stmt = $this->db->prepare(
-            "SELECT i.*, pi.item_name AS phase_item_name 
+            "SELECT i.*, pi.item_name AS phase_item_name, wt.work_type_name AS work_type_name 
              FROM {$this->itemsTable} i
-             LEFT JOIN con_phase_items pi ON i.phase_item_id = pi.id
+             LEFT JOIN project_phase_items pi ON i.phase_item_id = pi.id
+             LEFT JOIN work_types wt ON i.work_type_id = wt.id
              WHERE i.work_order_id = ?
              ORDER BY i.sort_order ASC, i.id ASC"
         );
@@ -471,8 +473,8 @@ class Con_WorkOrder extends Model
         if (empty($items)) return true;
 
         $sql  = "INSERT INTO {$this->itemsTable}
-                     (work_order_id, phase_item_id, sl_no, description, location, unit, quantity, rate, sort_order)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                     (work_order_id, phase_item_id, work_type_id, sl_no, description, location, unit, quantity, rate, sort_order)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             error_log('WO addItems prepare failed: ' . $this->db->error);
@@ -481,10 +483,12 @@ class Con_WorkOrder extends Model
         foreach ($items as $i => $item) {
             $sortOrder = $item['sort_order'] ?? $i;
             $phaseItemId = !empty($item['phase_item_id']) ? (int)$item['phase_item_id'] : null;
+            $workTypeId = !empty($item['work_type_id']) ? (int)$item['work_type_id'] : null;
             $stmt->bind_param(
-                'iissssddi',
+                'iiissssddi',
                 $woId,
                 $phaseItemId,
+                $workTypeId,
                 $item['sl_no'],
                 $item['description'],
                 $item['location'],
@@ -607,7 +611,7 @@ class Con_WorkOrder extends Model
         $stmtDel->execute();
 
         $stmtIns = $this->db->prepare("INSERT INTO con_work_order_approvals (work_order_id, role_id, status) VALUES (?, ?, 'pending')");
-        $roles = [20, 22, 3];
+        $roles = [12, 15, 3];
         foreach ($roles as $roleId) {
             $stmtIns->bind_param('ii', $woId, $roleId);
             $stmtIns->execute();
@@ -625,7 +629,7 @@ class Con_WorkOrder extends Model
              LEFT JOIN users u ON u.id = a.action_by
              LEFT JOIN roles r ON r.id = a.role_id
              WHERE a.work_order_id = ?
-             ORDER BY FIELD(a.role_id, 20, 22, 3)"
+             ORDER BY FIELD(a.role_id, 12, 15, 3)"
         );
         $stmt->bind_param('i', $woId);
         $stmt->execute();

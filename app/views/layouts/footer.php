@@ -7,83 +7,6 @@
                 <path d="M50,1 a49,49 0 0,1 0,98 a49,49 0 0,1 0,-98" />
             </svg>
         </div>
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                $('.selectpicker').selectpicker();
-
-            });
-
-            function startCountdown() {
-                document.querySelectorAll("[id^='timer-']").forEach(function(el) {
-
-                    const deadline = el.getAttribute("data-deadline");
-                    if (!deadline) {
-                        el.innerHTML = "No Deadline";
-                        return;
-                    }
-
-                    const targetTime = new Date(deadline).getTime();
-
-                    const timer = setInterval(function() {
-                        const now = new Date().getTime();
-                        const distance = targetTime - now;
-
-                        if (distance <= 0) {
-                            el.innerHTML = "Expired";
-                            el.classList.remove("bg-danger");
-                            el.classList.add("bg-secondary");
-                            clearInterval(timer);
-                            return;
-                        }
-
-                        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-                        el.innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
-                    }, 1000);
-                });
-            }
-            startCountdown();
-            $(document).ready(function() {
-                // Date of Birth picker
-                flatpickr("#dateofBirth", {
-                    altInput: true,
-                    altFormat: "F j, Y",
-                    dateFormat: "Y-m-d",
-                    defaultDate: "<?= !empty($employee['dob']) ? $employee['dob'] : '' ?>"
-                });
-
-                // Month picker for filter
-                $("#attendanceMonth").flatpickr({
-                    plugins: [
-                        new monthSelectPlugin({
-                            shorthand: true, // Jan, Feb
-                            dateFormat: "Y-m", // backend format
-                            altFormat: "F Y" // display format
-                        })
-                    ]
-                });
-
-                // Punch In / Out time
-                $("#clockInTime").flatpickr({
-                    enableTime: true,
-                    noCalendar: true,
-                    dateFormat: "H:i",
-                    defaultDate: "09:00",
-                    time_24hr: true
-                });
-
-                $("#clockOutTime").flatpickr({
-                    enableTime: true,
-                    noCalendar: true,
-                    dateFormat: "H:i",
-                    defaultDate: "18:00",
-                    time_24hr: true
-                });
-            });
-        </script>
 
 
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -201,6 +124,93 @@
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/rating-script.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/main.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/sidebar.js"></script>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                if (typeof $ !== 'undefined' && $.fn.selectpicker) {
+                    $('.selectpicker').selectpicker();
+                }
+            });
+
+            function startCountdown() {
+                document.querySelectorAll("[id^='timer-']").forEach(function(el) {
+
+                    const deadline = el.getAttribute("data-deadline");
+                    if (!deadline) {
+                        el.innerHTML = "No Deadline";
+                        return;
+                    }
+
+                    const targetTime = new Date(deadline).getTime();
+
+                    const timer = setInterval(function() {
+                        const now = new Date().getTime();
+                        const distance = targetTime - now;
+
+                        if (distance <= 0) {
+                            el.innerHTML = "Expired";
+                            el.classList.remove("bg-danger");
+                            el.classList.add("bg-secondary");
+                            clearInterval(timer);
+                            return;
+                        }
+
+                        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                        el.innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
+                    }, 1000);
+                });
+            }
+            startCountdown();
+            $(document).ready(function() {
+                // Date of Birth picker
+                if (document.querySelector("#dateofBirth")) {
+                    flatpickr("#dateofBirth", {
+                        altInput: true,
+                        altFormat: "F j, Y",
+                        dateFormat: "Y-m-d",
+                        defaultDate: "<?= !empty($employee['dob']) ? $employee['dob'] : '' ?>"
+                    });
+                }
+
+                // Month picker for filter
+                if (document.querySelector("#attendanceMonth")) {
+                    $("#attendanceMonth").flatpickr({
+                        plugins: [
+                            new monthSelectPlugin({
+                                shorthand: true, // Jan, Feb
+                                dateFormat: "Y-m", // backend format
+                                altFormat: "F Y" // display format
+                            })
+                        ]
+                    });
+                }
+
+                // Punch In / Out time
+                if (document.querySelector("#clockInTime")) {
+                    $("#clockInTime").flatpickr({
+                        enableTime: true,
+                        noCalendar: true,
+                        dateFormat: "H:i",
+                        defaultDate: "09:00",
+                        time_24hr: true
+                    });
+                }
+
+                if (document.querySelector("#clockOutTime")) {
+                    $("#clockOutTime").flatpickr({
+                        enableTime: true,
+                        noCalendar: true,
+                        dateFormat: "H:i",
+                        defaultDate: "18:00",
+                        time_24hr: true
+                    });
+                }
+            });
+        </script>
 
         <!-- ✅ Select2 Init -->
         <script>
@@ -407,7 +417,10 @@ $(document).on('select2:open', function () {
 
                 };
 
-                new ApexCharts(document.querySelector("#pieChart"), options).render();
+                const pieChartEl = document.querySelector("#pieChart");
+                if (pieChartEl) {
+                    new ApexCharts(pieChartEl, options).render();
+                }
             });
         </script>
 
@@ -501,33 +514,36 @@ $(document).on('select2:open', function () {
                     }
                 };
 
-                const chart = new ApexCharts(document.querySelector("#salesChart"), options);
-                chart.render();
+                const salesChartEl = document.querySelector("#salesChart");
+                if (salesChartEl) {
+                    const chart = new ApexCharts(salesChartEl, options);
+                    chart.render();
 
-                // Tabs click
-                document.querySelectorAll('.nav-link').forEach(button => {
-                    button.addEventListener('click', function() {
+                    // Tabs click
+                    document.querySelectorAll('.nav-link').forEach(button => {
+                        button.addEventListener('click', function() {
 
-                        document.querySelectorAll('.nav-link')
-                            .forEach(btn => btn.classList.remove('active'));
-                        this.classList.add('active');
+                            document.querySelectorAll('.nav-link')
+                                .forEach(btn => btn.classList.remove('active'));
+                            this.classList.add('active');
 
-                        const period = this.dataset.period;
+                            const period = this.dataset.period;
 
-                        chart.updateOptions({
-                            series: [{
-                                data: salesData[period].totals
-                            }],
-                            xaxis: {
-                                categories: salesData[period].labels
-                            },
-                            colors: getAlternatingColors(salesData[period].totals.length),
-                            dataLabels: {
-                                enabled: period !== 'month'
-                            }
+                            chart.updateOptions({
+                                series: [{
+                                    data: salesData[period].totals
+                                }],
+                                xaxis: {
+                                    categories: salesData[period].labels
+                                },
+                                colors: getAlternatingColors(salesData[period].totals.length),
+                                dataLabels: {
+                                    enabled: period !== 'month'
+                                }
+                            });
                         });
                     });
-                });
+                }
 
             });
         </script>

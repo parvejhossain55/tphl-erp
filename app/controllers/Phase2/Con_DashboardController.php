@@ -193,7 +193,7 @@ class Con_DashboardController extends Controller
             LEFT JOIN users u ON u.id = pwp.submitted_by
             LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
             LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
-            WHERE pwp.entry_status = 'Submitted' AND pwp.pm_approved_id IS NULL
+            WHERE pwp.entry_status = 'Submitted' AND pwp.qc_status = 'Approved' AND pwp.pm_approved_id IS NULL
             ORDER BY pwp.submitted_at DESC, pwp.id DESC LIMIT 10");
         $pendingWeeklyReportsPM = $rPendingWeeklyPM ? $rPendingWeeklyPM->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -258,16 +258,35 @@ class Con_DashboardController extends Controller
         $pendingReturns = $rPendingReturns ? $rPendingReturns->fetch_all(MYSQLI_ASSOC) : [];
 
         $pendingWorkOrders = [];
-        if (in_array($userRole, [1, 3, 22])) {
-            if ($userRole == 22) {
+        if (in_array($userRole, [1, 3, 12, 15, 20, 22])) {
+            if ($userRole == 12 || $userRole == 20) {
+                $moRoleId = ($userRole == 20) ? 20 : 12;
                 $rWO = $this->db->query("
                     SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
                            p.name AS project_name,
                            c.name AS contractor_name,
                            u.full_name AS creator_name
                     FROM con_work_orders wo
-                    JOIN con_work_order_approvals wa_pm ON wa_pm.work_order_id = wo.id AND wa_pm.role_id = 22
-                    JOIN con_work_order_approvals wa_mo ON wa_mo.work_order_id = wo.id AND wa_mo.role_id = 20
+                    JOIN con_work_order_approvals wa_mo ON wa_mo.work_order_id = wo.id AND wa_mo.role_id = {$moRoleId}
+                    LEFT JOIN projects p ON p.id = wo.project_id
+                    LEFT JOIN contractors c ON c.id = wo.contractor_id
+                    LEFT JOIN users u ON u.id = wo.created_by
+                    WHERE wo.status = 'draft'
+                      AND wa_mo.status = 'pending'
+                    ORDER BY wo.created_at DESC
+                    LIMIT 10
+                ");
+            } elseif ($userRole == 15 || $userRole == 22) {
+                $pmRoleId = ($userRole == 22) ? 22 : 15;
+                $moRoleId = ($userRole == 22) ? 20 : 12;
+                $rWO = $this->db->query("
+                    SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
+                           p.name AS project_name,
+                           c.name AS contractor_name,
+                           u.full_name AS creator_name
+                    FROM con_work_orders wo
+                    JOIN con_work_order_approvals wa_pm ON wa_pm.work_order_id = wo.id AND wa_pm.role_id = {$pmRoleId}
+                    JOIN con_work_order_approvals wa_mo ON wa_mo.work_order_id = wo.id AND wa_mo.role_id = {$moRoleId}
                     LEFT JOIN projects p ON p.id = wo.project_id
                     LEFT JOIN contractors c ON c.id = wo.contractor_id
                     LEFT JOIN users u ON u.id = wo.created_by
@@ -285,7 +304,7 @@ class Con_DashboardController extends Controller
                            u.full_name AS creator_name
                     FROM con_work_orders wo
                     JOIN con_work_order_approvals wa_mgmt ON wa_mgmt.work_order_id = wo.id AND wa_mgmt.role_id = 3
-                    JOIN con_work_order_approvals wa_pm ON wa_pm.work_order_id = wo.id AND wa_pm.role_id = 22
+                    JOIN con_work_order_approvals wa_pm ON wa_pm.work_order_id = wo.id AND wa_pm.role_id IN (15, 22)
                     LEFT JOIN projects p ON p.id = wo.project_id
                     LEFT JOIN contractors c ON c.id = wo.contractor_id
                     LEFT JOIN users u ON u.id = wo.created_by
@@ -371,10 +390,26 @@ class Con_DashboardController extends Controller
             $pendingPettyCash = $rFundReq ? $rFundReq->fetch_all(MYSQLI_ASSOC) : [];
         }
 
+        $pendingContractorBills = [];
+        if (in_array($userRole, [1, 3, 22])) {
+            $rCB = $this->db->query("
+                SELECT cbr.*, p.name AS project_name, oo.name AS contractor_name, u.full_name AS creator_name
+                FROM contractor_bill_requests cbr
+                LEFT JOIN projects p ON p.id = cbr.project_id
+                LEFT JOIN contractors oo ON oo.id = cbr.operator_id
+                LEFT JOIN users u ON u.id = cbr.created_by
+                WHERE cbr.status = 'submitted'
+                ORDER BY cbr.created_at DESC
+                LIMIT 10
+            ");
+            $pendingContractorBills = $rCB ? $rCB->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
         $this->view('phase2/dashboard/cons-dashboard', [
             'current_route'           => 'con-dashboard',
             'pendingLandRequisitions' => $pendingLandRequisitions,
             'pendingPettyCash'        => $pendingPettyCash,
+            'pendingContractorBills'  => $pendingContractorBills,
             'stats'                   => $stats,
             'projects'                => $projects,
             'budgetUtil'              => $budgetUtil,
@@ -483,6 +518,8 @@ class Con_DashboardController extends Controller
             SELECT  p.id,
                     p.name,
                     p.project_status,
+                    p.expected_handover_date,
+                    p.image,
                     p.total_share        AS total_floors,
                     p.plot_size,
                     p.building_type,
@@ -514,6 +551,9 @@ class Con_DashboardController extends Controller
         $result = $this->db->query($sql);
         $projects = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
+        $projectIds = array_column($projects, 'id');
+        $budgetsAndSpentMap = $this->calculateProjectBudgetsAndSpent($projectIds);
+
         // Fetch overall project progress roll-up (Actual & Planned) for phase-based projects
         $phaseBasedProjectIds = [];
         foreach ($projects as $pr) {
@@ -522,69 +562,57 @@ class Con_DashboardController extends Controller
             }
         }
 
-        if (!empty($phaseBasedProjectIds)) {
-            $idsList = implode(',', $phaseBasedProjectIds);
-            
-            // Fetch weight_percentage, actual_progress, and planned_progress for the phases of these projects
-            $phasesRes = $this->db->query("
-                SELECT project_id, weight_percentage, actual_progress, planned_progress
-                FROM project_phases
-                WHERE project_id IN ($idsList)
-            ");
-            $phases = $phasesRes ? $phasesRes->fetch_all(MYSQLI_ASSOC) : [];
-            
-            // Group phases by project
-            $projectPhases = [];
-            foreach ($phases as $phase) {
-                $projectPhases[(int)$phase['project_id']][] = $phase;
-            }
-            
-            // Calculate roll-up
-            foreach ($projects as &$pr) {
-                $pid = (int)$pr['id'];
-                if (($pr['workflow_version'] ?? '') === 'phase_based') {
-                    $phasesList = $projectPhases[$pid] ?? [];
-                    $overallActual = 0.0;
-                    $overallPlanned = 0.0;
-                    
-                    if (!empty($phasesList)) {
-                        foreach ($phasesList as $phase) {
-                            $weight = (float)$phase['weight_percentage'];
-                            $actual = (float)$phase['actual_progress'];
-                            $planned = (float)$phase['planned_progress'];
-                            
-                            $overallActual += $actual * ($weight / 100);
-                            $overallPlanned += $planned * ($weight / 100);
-                        }
-                    }
-                    
-                    $pr['overall_project_actual'] = $overallActual;
-                    $pr['overall_project_planned'] = $overallPlanned;
-                    $pr['progress_pct'] = $overallActual; // Backwards compatibility
-                } else {
-                    $pr['overall_project_actual'] = (float)($pr['progress_pct'] ?? 0.0);
-                    $pr['overall_project_planned'] = (float)($pr['progress_pct'] ?? 0.0);
-                }
-            }
-            unset($pr);
-        } else {
-            foreach ($projects as &$pr) {
+        $dynamicProgress = $this->calculatePhaseBasedProgress($phaseBasedProjectIds);
+
+        foreach ($projects as &$pr) {
+            $pid = (int)$pr['id'];
+            $pr['total_budget'] = $budgetsAndSpentMap[$pid]['total_budget'] ?? 0.0;
+            $pr['total_spent'] = $budgetsAndSpentMap[$pid]['total_spent'] ?? 0.0;
+
+            if (($pr['workflow_version'] ?? '') === 'phase_based' && isset($dynamicProgress[$pid])) {
+                $pr['overall_project_actual'] = $dynamicProgress[$pid]['actual'];
+                $pr['overall_project_planned'] = $dynamicProgress[$pid]['planned'];
+                $pr['progress_pct'] = $dynamicProgress[$pid]['actual']; // Backwards compatibility
+                $pr['planned_progress_pct'] = $dynamicProgress[$pid]['planned']; // AJAX overview compatibility
+                $pr['phases'] = $dynamicProgress[$pid]['phases'] ?? [];
+            } else {
                 $pr['overall_project_actual'] = (float)($pr['progress_pct'] ?? 0.0);
                 $pr['overall_project_planned'] = (float)($pr['progress_pct'] ?? 0.0);
+                $pr['planned_progress_pct'] = (float)($pr['progress_pct'] ?? 0.0);
+                $pr['phases'] = [];
             }
-            unset($pr);
         }
+        unset($pr);
 
         return $projects;
     }
 
     private function getBudgetUtilization(): array
     {
-        $r1 = $this->db->query("SELECT COALESCE(SUM(total_estimated_cost),0) AS total FROM initial_estimate_budgets WHERE status='approved'");
+        $r1 = $this->db->query("SELECT COALESCE(SUM(total_estimated_cost),0) AS total FROM initial_estimate_budgets WHERE status IN ('approved', 'pm_approved')");
         $total = $r1 ? (float)$r1->fetch_assoc()['total'] : 0.0;
 
-        $r2 = $this->db->query("SELECT COALESCE(SUM(amount_paid),0) AS spent FROM con_financial_transactions");
-        $spent = $r2 ? (float)$r2->fetch_assoc()['spent'] : 0.0;
+        // Material spent
+        $matSpentRes = $this->db->query("
+            SELECT COALESCE(SUM(mri.received_quantity * poi.unit_price), 0) AS total
+            FROM material_receiving_items mri
+            INNER JOIN material_receiving mr ON mr.id = mri.receiving_id
+            INNER JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+            INNER JOIN purchase_orders po ON po.id = mr.purchase_order_id
+            INNER JOIN purchase_requests pr ON pr.id = po.request_id
+            WHERE mr.overall_status = 'Accepted'
+        ");
+        $matSpentTotal = $matSpentRes ? (float)$matSpentRes->fetch_assoc()['total'] : 0.0;
+
+        // Contractor spent
+        $conSpentRes = $this->db->query("
+            SELECT COALESCE(SUM(approved_amount), 0) AS total
+            FROM contractor_bill_requests
+            WHERE status IN ('approved', 'paid')
+        ");
+        $conSpentTotal = $conSpentRes ? (float)$conSpentRes->fetch_assoc()['total'] : 0.0;
+
+        $spent = $matSpentTotal + $conSpentTotal;
 
         $pct = $total > 0 ? round(($spent / $total) * 100, 1) : 0.0;
         return ['total' => $total, 'spent' => $spent, 'pct' => $pct, 'remaining' => max(0, $total - $spent)];
@@ -708,6 +736,9 @@ class Con_DashboardController extends Controller
         $result   = $this->db->query($sql);
         $projects = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
+        $projectIds = array_column($projects, 'id');
+        $budgetsAndSpentMap = $this->calculateProjectBudgetsAndSpent($projectIds);
+
         // Fetch overall project progress roll-up (Actual & Planned) for phase-based projects
         $phaseBasedProjectIds = [];
         foreach ($projects as $pr) {
@@ -716,58 +747,27 @@ class Con_DashboardController extends Controller
             }
         }
 
-        if (!empty($phaseBasedProjectIds)) {
-            $idsList = implode(',', $phaseBasedProjectIds);
-            
-            // Fetch weight_percentage, actual_progress, and planned_progress for the phases of these projects
-            $phasesRes = $this->db->query("
-                SELECT project_id, weight_percentage, actual_progress, planned_progress
-                FROM project_phases
-                WHERE project_id IN ($idsList)
-            ");
-            $phases = $phasesRes ? $phasesRes->fetch_all(MYSQLI_ASSOC) : [];
-            
-            // Group phases by project
-            $projectPhases = [];
-            foreach ($phases as $phase) {
-                $projectPhases[(int)$phase['project_id']][] = $phase;
-            }
-            
-            // Calculate roll-up
-            foreach ($projects as &$pr) {
-                $pid = (int)$pr['id'];
-                if (($pr['workflow_version'] ?? '') === 'phase_based') {
-                    $phasesList = $projectPhases[$pid] ?? [];
-                    $overallActual = 0.0;
-                    $overallPlanned = 0.0;
-                    
-                    if (!empty($phasesList)) {
-                        foreach ($phasesList as $phase) {
-                            $weight = (float)$phase['weight_percentage'];
-                            $actual = (float)$phase['actual_progress'];
-                            $planned = (float)$phase['planned_progress'];
-                            
-                            $overallActual += $actual * ($weight / 100);
-                            $overallPlanned += $planned * ($weight / 100);
-                        }
-                    }
-                    
-                    $pr['overall_project_actual'] = $overallActual;
-                    $pr['overall_project_planned'] = $overallPlanned;
-                    $pr['progress_pct'] = $overallActual; // Backwards compatibility
-                } else {
-                    $pr['overall_project_actual'] = (float)($pr['progress_pct'] ?? 0.0);
-                    $pr['overall_project_planned'] = (float)($pr['progress_pct'] ?? 0.0);
-                }
-            }
-            unset($pr);
-        } else {
-            foreach ($projects as &$pr) {
+        $dynamicProgress = $this->calculatePhaseBasedProgress($phaseBasedProjectIds);
+
+        foreach ($projects as &$pr) {
+            $pid = (int)$pr['id'];
+            $pr['total_budget'] = $budgetsAndSpentMap[$pid]['total_budget'] ?? 0.0;
+            $pr['total_spent'] = $budgetsAndSpentMap[$pid]['total_spent'] ?? 0.0;
+
+            if (($pr['workflow_version'] ?? '') === 'phase_based' && isset($dynamicProgress[$pid])) {
+                $pr['overall_project_actual'] = $dynamicProgress[$pid]['actual'];
+                $pr['overall_project_planned'] = $dynamicProgress[$pid]['planned'];
+                $pr['progress_pct'] = $dynamicProgress[$pid]['actual']; // Backwards compatibility
+                $pr['planned_progress_pct'] = $dynamicProgress[$pid]['planned']; // AJAX overview compatibility
+                $pr['phases'] = $dynamicProgress[$pid]['phases'] ?? [];
+            } else {
                 $pr['overall_project_actual'] = (float)($pr['progress_pct'] ?? 0.0);
                 $pr['overall_project_planned'] = (float)($pr['progress_pct'] ?? 0.0);
+                $pr['planned_progress_pct'] = (float)($pr['progress_pct'] ?? 0.0);
+                $pr['phases'] = [];
             }
-            unset($pr);
         }
+        unset($pr);
 
         // Summary counts
         $statusCounts = [];
@@ -801,7 +801,7 @@ class Con_DashboardController extends Controller
             WHERE  p.id = ? AND p.deleted_at IS NULL");
         $stmt->bind_param('i', $id);
         $stmt->execute();
-        $project = $stmt->get_result()->fetch_assoc();
+$project = $stmt->get_result()->fetch_assoc();
 
         if (!$project) { die("Project not found."); }
 
@@ -830,28 +830,11 @@ class Con_DashboardController extends Controller
         $progress = 0.0;
         $progress_planned = 0.0;
         if (($project['workflow_version'] ?? '') === 'phase_based') {
-            // Fetch weight_percentage, actual_progress, and planned_progress for the phases of this project
-            $phStmt = $this->db->prepare("
-                SELECT weight_percentage, actual_progress, planned_progress
-                FROM project_phases
-                WHERE project_id = ?
-            ");
-            $phStmt->bind_param('i', $id);
-            $phStmt->execute();
-            $phases = $phStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-            
-            if (!empty($phases)) {
-                foreach ($phases as $phase) {
-                    $weight = (float)$phase['weight_percentage'];
-                    $actual = (float)$phase['actual_progress'];
-                    $planned = (float)$phase['planned_progress'];
-                    
-                    $progress += $actual * ($weight / 100);
-                    $progress_planned += $planned * ($weight / 100);
-                }
+            $dynamicProgress = $this->calculatePhaseBasedProgress([$id]);
+            if (isset($dynamicProgress[$id])) {
+                $progress = $dynamicProgress[$id]['actual'];
+                $progress_planned = $dynamicProgress[$id]['planned'];
             }
-            $progress = round($progress, 2);
-            $progress_planned = round($progress_planned, 2);
         } else {
             // Normal fallback
             $stmt3 = $this->db->prepare("
@@ -1254,21 +1237,54 @@ class Con_DashboardController extends Controller
 
         // My Assigned Projects List
         $rProjs = $this->db->query("
-            SELECT p.id, p.name, p.project_status, COALESCE(l.name,'') AS location_name,
-                   COALESCE(prog.progress_pct,0) AS progress_pct
+            SELECT p.id, p.name, p.image, p.project_status, p.building_type, p.total_share AS total_floors,
+                   p.plot_size, p.plot_no, p.block_no, p.workflow_version,
+                   COALESCE(l.name,'') AS location_name,
+                   timeline.expected_handover_date
             FROM projects p
-            LEFT JOIN locations l ON l.id=p.location_id
-            LEFT JOIN (
-                -- Migrated: phase-based weighted progress
-                SELECT pp.project_id,
-                       SUM((COALESCE(pp.actual_progress,0) / 100) * COALESCE(pp.weight_percentage,0)) AS progress_pct
-                FROM project_phases pp
-                GROUP BY pp.project_id
-            ) prog ON prog.project_id=p.id
+            LEFT JOIN locations l ON l.id = p.location_id
+            LEFT JOIN project_timelines timeline ON timeline.project_id = p.id
             WHERE p.deleted_at IS NULL AND p.site_engineer_id = {$userId}
             ORDER BY p.id DESC
         ");
         $myProjects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
+
+        $projectIds = array_column($myProjects, 'id');
+        if (!empty($projectIds)) {
+            $dynamicProgressMap = $this->calculatePhaseBasedProgress($projectIds);
+            $budgetsAndSpentMap = $this->calculateProjectBudgetsAndSpent($projectIds);
+
+            foreach ($myProjects as &$pr) {
+                $pid = (int)$pr['id'];
+                $actual = isset($dynamicProgressMap[$pid]) ? (float)$dynamicProgressMap[$pid]['actual'] : 0.0;
+                $planned = isset($dynamicProgressMap[$pid]) ? (float)$dynamicProgressMap[$pid]['planned'] : 0.0;
+
+                $pr['progress_pct'] = $actual;
+                $pr['planned_progress_pct'] = $planned;
+                $pr['total_budget'] = $budgetsAndSpentMap[$pid]['total_budget'] ?? 0.0;
+                $pr['total_spent'] = $budgetsAndSpentMap[$pid]['total_spent'] ?? 0.0;
+                
+                // Determine status dynamically based on gap
+                if ($pr['project_status'] === 'Completed') {
+                    $calcStatus = 'Completed';
+                } elseif ($pr['project_status'] === 'Planning' || ($actual == 0 && $planned == 0)) {
+                    $calcStatus = 'Planning';
+                } else {
+                    $gap = $planned - $actual;
+                    if ($gap <= 5) {
+                        $calcStatus = 'On Track';
+                    } elseif ($gap <= 15) {
+                        $calcStatus = 'At Risk';
+                    } else {
+                        $calcStatus = 'Delayed';
+                    }
+                }
+                $pr['calculated_status'] = $calcStatus;
+                $pr['phases'] = $dynamicProgressMap[$pid]['phases'] ?? [];
+            }
+            unset($pr);
+        }
+
 
         // Recent Material Receiving (GRN)
         $rMR = $this->db->query("
@@ -1296,8 +1312,9 @@ class Con_DashboardController extends Controller
 
         // Recent Weekly Reports (phase_weekly_progress)
         $rWPR = $this->db->query("
-            SELECT pwp.id, pwp.week_number, pwp.week_start_date AS report_date,
+            SELECT pwp.id, pwp.week_number AS week_no, pwp.week_start_date AS report_date,
                    pwp.entry_status AS status, pwp.overall_progress_pct,
+                   pwp.pm_approved_id AS approved_by_pm,
                    p.name AS project_name,
                    pmt.target_month,
                    pp.phase_name
@@ -1339,6 +1356,26 @@ class Con_DashboardController extends Controller
         ");
         $approvedPOs = $rApprovedPOs ? $rApprovedPOs->fetch_all(MYSQLI_ASSOC) : [];
 
+        // Pending Work Orders awaiting Site Engineer's approval
+        $pendingWorkOrders = [];
+        $moRoleId = ($roleId == 20) ? 20 : 12;
+        $rWO = $this->db->query("
+            SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
+                   p.name AS project_name,
+                   c.name AS contractor_name,
+                   u.full_name AS creator_name
+            FROM con_work_orders wo
+            JOIN con_work_order_approvals wa_mo ON wa_mo.work_order_id = wo.id AND wa_mo.role_id = {$moRoleId}
+            LEFT JOIN projects p ON p.id = wo.project_id
+            LEFT JOIN contractors c ON c.id = wo.contractor_id
+            LEFT JOIN users u ON u.id = wo.created_by
+            WHERE wo.status = 'draft'
+              AND wa_mo.status = 'pending'
+            ORDER BY wo.created_at DESC
+            LIMIT 10
+        ");
+        $pendingWorkOrders = $rWO ? $rWO->fetch_all(MYSQLI_ASSOC) : [];
+
         return $this->view('phase2/dashboard/site-engineer-dashboard', [
             'current_route'   => 'con-site-engineer-dashboard',
             'myProjectsCount' => $myProjectsCount,
@@ -1350,6 +1387,7 @@ class Con_DashboardController extends Controller
             'recentIssues'    => $recentIssues,
             'recentReports'   => $recentReports,
             'approvedPOs'     => $approvedPOs,
+            'pendingWorkOrders' => $pendingWorkOrders,
         ]);
     }
 
@@ -1394,14 +1432,15 @@ class Con_DashboardController extends Controller
         $recentVendorPayments = $rVP ? $rVP->fetch_all(MYSQLI_ASSOC) : [];
 
         $pendingWorkOrders = [];
-        if ($roleId === 20 || $isAdmin) {
+        if ($roleId === 20 || $roleId === 12 || $isAdmin) {
+            $moRoleId = ($roleId == 20) ? 20 : 12;
             $rWO = $this->db->query("
                 SELECT wo.id, wo.title, wo.total_amount, wo.created_at,
                        p.name AS project_name,
                        c.name AS contractor_name,
                        u.full_name AS creator_name
                 FROM con_work_orders wo
-                JOIN con_work_order_approvals wa ON wa.work_order_id = wo.id AND wa.role_id = 20
+                JOIN con_work_order_approvals wa ON wa.work_order_id = wo.id AND wa.role_id = {$moRoleId}
                 LEFT JOIN projects p ON p.id = wo.project_id
                 LEFT JOIN contractors c ON c.id = wo.contractor_id
                 LEFT JOIN users u ON u.id = wo.created_by
@@ -2483,5 +2522,366 @@ class Con_DashboardController extends Controller
             'phases'               => $phases,
             'totalProjectProgress' => $totalProjectProgress,
         ]);
+    }
+
+    private function calculatePhaseBasedProgress(array $projectIds): array
+    {
+        if (empty($projectIds)) {
+            return [];
+        }
+
+        $idsList = implode(',', array_map('intval', $projectIds));
+
+        // Fetch received quantities by unit for these projects to display physical quantity usage
+        $receivedQtyMap = [];
+        $receivedQtyRes = $this->db->query("
+            SELECT pr.project_id, m.unit, COALESCE(SUM(mri.received_quantity), 0) AS total_received
+            FROM material_receiving_items mri
+            INNER JOIN material_receiving mr ON mr.id = mri.receiving_id
+            INNER JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+            INNER JOIN con_materials m ON m.id = poi.material_id
+            INNER JOIN purchase_orders po ON po.id = mr.purchase_order_id
+            INNER JOIN purchase_requests pr ON pr.id = po.request_id
+            WHERE mr.overall_status = 'Accepted' AND pr.project_id IN ($idsList)
+            GROUP BY pr.project_id, m.unit
+        ");
+        if ($receivedQtyRes) {
+            while ($row = $receivedQtyRes->fetch_assoc()) {
+                $pid = (int)$row['project_id'];
+                $u = strtolower(trim($row['unit'] ?? ''));
+                $receivedQtyMap[$pid][$u] = (float)$row['total_received'];
+            }
+        }
+
+        // 1. Fetch weight_percentage for the phases of these projects
+        $phasesRes = $this->db->query("
+            SELECT id, project_id, phase_name, weight_percentage, phase_order
+            FROM project_phases
+            WHERE project_id IN ($idsList)
+            ORDER BY project_id, phase_order ASC
+        ");
+        $phases = $phasesRes ? $phasesRes->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Group phases by project
+        $projectPhases = [];
+        foreach ($phases as $phase) {
+            $projectPhases[(int)$phase['project_id']][] = $phase;
+        }
+
+        // 2. Fetch all phase items (work items)
+        $itemsRes = $this->db->query("
+            SELECT ppi.id AS item_id, ppi.phase_id, ppi.item_name, ppi.item_order, ppi.weight_pct AS item_weight,
+                   pp.project_id
+            FROM project_phase_items ppi
+            INNER JOIN project_phases pp ON pp.id = ppi.phase_id
+            WHERE pp.project_id IN ($idsList)
+            ORDER BY ppi.phase_id, ppi.item_order ASC
+        ");
+        $items = $itemsRes ? $itemsRes->fetch_all(MYSQLI_ASSOC) : [];
+
+        $phaseItems = [];
+        foreach ($items as $item) {
+            $phaseItems[(int)$item['phase_id']][] = $item;
+        }
+
+        // 3. Fetch all BOQ details for these projects' phases
+        $dtRes = $this->db->query("
+            SELECT ppi.phase_id, ppi.id AS phase_item_id, ppid.id AS detail_id,
+                   ppid.work_type_id, ppid.total_boq_qty, ppid.weight_pct AS detail_weight,
+                   pp.project_id, ppid.unit
+            FROM project_phase_items ppi
+            INNER JOIN project_phase_item_details ppid ON ppid.phase_item_id = ppi.id
+            INNER JOIN project_phases pp ON pp.id = ppi.phase_id
+            WHERE pp.project_id IN ($idsList)
+        ");
+        $details = $dtRes ? $dtRes->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Group details by project_id and phase_id
+        $projectPhaseDetails = [];
+        $itemDetails = [];
+        foreach ($details as $d) {
+            $pid = (int)$d['project_id'];
+            $phaseId = (int)$d['phase_id'];
+            $itemId = (int)$d['phase_item_id'];
+            $projectPhaseDetails[$pid][$phaseId][] = $d;
+            $itemDetails[$itemId][] = $d;
+        }
+
+        // 4. Fetch target months for phases
+        $targetMonthsRes = $this->db->query("
+            SELECT DISTINCT phase_id, target_month
+            FROM phase_monthly_targets
+            WHERE project_id IN ($idsList)
+        ");
+        $phaseTargetMonths = [];
+        if ($targetMonthsRes) {
+            while ($row = $targetMonthsRes->fetch_assoc()) {
+                $phaseTargetMonths[(int)$row['phase_id']] = $row['target_month'];
+            }
+        }
+
+        // 5. Fetch planned quantities from monthly targets
+        $planRes = $this->db->query("
+            SELECT pmti.phase_item_id, pmti.work_type_id, SUM(pmti.monthly_target_qty) AS total_target_qty,
+                   pmt.project_id
+            FROM phase_monthly_target_items pmti
+            INNER JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
+            WHERE pmt.project_id IN ($idsList)
+            GROUP BY pmt.project_id, pmti.phase_item_id, pmti.work_type_id
+        ");
+        $plannedQuantities = $planRes ? $planRes->fetch_all(MYSQLI_ASSOC) : [];
+
+        // 6. Fetch actual completed quantities
+        // 6a. Approved weekly progress items
+        $weeklyActRes = $this->db->query("
+            SELECT pmti.phase_item_id, pmti.work_type_id, pmt.project_id,
+                   SUM(pwpi.achieved_qty) AS total_actual_qty
+            FROM phase_weekly_progress_items pwpi
+            INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+            INNER JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
+            INNER JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
+            WHERE pmt.project_id IN ($idsList)
+              AND pwp.qc_status = 'Approved'
+              AND pwp.pm_status = 'Approved'
+            GROUP BY pmt.project_id, pmti.phase_item_id, pmti.work_type_id
+        ");
+        $weeklyActuals = $weeklyActRes ? $weeklyActRes->fetch_all(MYSQLI_ASSOC) : [];
+
+        // 6b. Approved daily logs for pending/draft weeks (to avoid double counting, but capture intermediate work)
+        $dailyActRes = $this->db->query("
+            SELECT pmti.phase_item_id, pmti.work_type_id, dpl.project_id,
+                   SUM(dwil.qty_done_today) AS total_actual_qty
+            FROM daily_work_item_logs dwil
+            JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+            INNER JOIN phase_weekly_progress pwp ON pwp.id = dpl.weekly_progress_id
+            LEFT JOIN phase_monthly_target_items pmti ON pmti.id = dwil.target_item_id
+            WHERE dpl.project_id IN ($idsList)
+              AND dpl.qc_status = 'Approved'
+              AND dpl.pm_status = 'Approved'
+              AND NOT (pwp.qc_status = 'Approved' AND pwp.pm_status = 'Approved')
+            GROUP BY dpl.project_id, pmti.phase_item_id, pmti.work_type_id
+        ");
+        $dailyActuals = $dailyActRes ? $dailyActRes->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Map data in PHP
+        $targetsMap = [];
+        foreach ($plannedQuantities as $q) {
+            $pid = (int)$q['project_id'];
+            $key = $q['phase_item_id'] . '_' . $q['work_type_id'];
+            $targetsMap[$pid][$key] = (float)$q['total_target_qty'];
+        }
+
+        $actualsMap = [];
+        foreach ($weeklyActuals as $q) {
+            $pid = (int)$q['project_id'];
+            $key = $q['phase_item_id'] . '_' . $q['work_type_id'];
+            $actualsMap[$pid][$key] = ($actualsMap[$pid][$key] ?? 0.0) + (float)$q['total_actual_qty'];
+        }
+        foreach ($dailyActuals as $q) {
+            $pid = (int)$q['project_id'];
+            if ($q['phase_item_id'] !== null) {
+                $key = $q['phase_item_id'] . '_' . $q['work_type_id'];
+                $actualsMap[$pid][$key] = ($actualsMap[$pid][$key] ?? 0.0) + (float)$q['total_actual_qty'];
+            }
+        }
+
+        $projectProgress = [];
+        foreach ($projectIds as $pid) {
+            $phasesList = $projectPhases[$pid] ?? [];
+            $overallActual = 0.0;
+            $overallPlanned = 0.0;
+            $phasesData = [];
+
+            foreach ($phasesList as $phase) {
+                $phaseId = (int)$phase['id'];
+                $phaseWeight = (float)$phase['weight_percentage'];
+
+                $phaseDetails = $projectPhaseDetails[$pid][$phaseId] ?? [];
+                $phasePlannedProgressWeighted = 0.0;
+                $phaseActualProgressWeighted = 0.0;
+
+                $totalBOQInPhase = 0.0;
+                $totalApprovedInPhase = 0.0;
+                $totalTargetInPhase = 0.0;
+
+                foreach ($phaseDetails as $d) {
+                    $boqQty  = (float)$d['total_boq_qty'];
+                    $weight  = (float)$d['detail_weight'];
+                    $key = $d['phase_item_id'] . '_' . $d['work_type_id'];
+
+                    $targetQty = $targetsMap[$pid][$key] ?? 0.0;
+                    $actualQty = $actualsMap[$pid][$key] ?? 0.0;
+
+                    if ($boqQty > 0) {
+                        // Planned
+                        $plannedRatio = min(1.0, $targetQty / $boqQty);
+                        $phasePlannedProgressWeighted += $plannedRatio * $weight;
+
+                        // Actual
+                        $actualRatio = min(1.0, $actualQty / $boqQty);
+                        $phaseActualProgressWeighted += $actualRatio * $weight;
+                    }
+
+                    $totalBOQInPhase += $boqQty;
+                    $totalApprovedInPhase += $actualQty;
+                    $totalTargetInPhase += $targetQty;
+                }
+
+                // Volume-based Phase internal progress (e.g. 0.4% complete)
+                $phaseActualVolumePct = $totalBOQInPhase > 0 ? ($totalApprovedInPhase / $totalBOQInPhase) * 100 : 0.0;
+                $phasePlannedVolumePct = $totalBOQInPhase > 0 ? ($totalTargetInPhase / $totalBOQInPhase) * 100 : 0.0;
+
+                // Project contribution (volume-based)
+                $phaseContribution = $phaseActualVolumePct * ($phaseWeight / 100);
+
+                // Add phase items
+                $itemsData = [];
+                $itemsInPhase = $phaseItems[$phaseId] ?? [];
+                foreach ($itemsInPhase as $item) {
+                    $itemId = (int)$item['item_id'];
+                    $itemWeight = (float)$item['item_weight'];
+
+                    $detailsOfItem = $itemDetails[$itemId] ?? [];
+                    $itemPlannedProgressWeighted = 0.0;
+                    $itemActualProgressWeighted = 0.0;
+
+                    $qtyTexts = [];
+                    foreach ($detailsOfItem as $d) {
+                        $boqQty  = (float)$d['total_boq_qty'];
+                        $weight  = (float)$d['detail_weight'];
+                        $key = $d['phase_item_id'] . '_' . $d['work_type_id'];
+
+                        $targetQty = $targetsMap[$pid][$key] ?? 0.0;
+                        $actualQty = $actualsMap[$pid][$key] ?? 0.0;
+
+                        if ($boqQty > 0) {
+                            $plannedRatio = min(1.0, $targetQty / $boqQty);
+                            $itemPlannedProgressWeighted += $plannedRatio * $weight;
+
+                            $actualRatio = min(1.0, $actualQty / $boqQty);
+                            $itemActualProgressWeighted += $actualRatio * $weight;
+                        }
+
+                        $u = trim($d['unit'] ?? '');
+                        if ($boqQty > 0 && $u !== '') {
+                            $uLower = strtolower($u);
+                            $recQty = $receivedQtyMap[$pid][$uLower] ?? 0.0;
+                            $qtyPct = round(($recQty / $boqQty) * 100, 1);
+                            $qtyTexts[] = "(" . number_format($recQty) . " {$u} / " . number_format($boqQty) . " {$u} used) - {$qtyPct}% Qty Used";
+                        }
+                    }
+                    $qtyUsageText = implode(', ', $qtyTexts);
+
+                    $itemPlannedPct = $itemWeight > 0 ? ($itemPlannedProgressWeighted / $itemWeight) * 100 : 0.0;
+                    $itemActualPct = $itemWeight > 0 ? ($itemActualProgressWeighted / $itemWeight) * 100 : 0.0;
+
+                    $itemsData[] = [
+                        'item_id' => $itemId,
+                        'item_name' => $item['item_name'],
+                        'item_order' => $item['item_order'],
+                        'item_weight' => $itemWeight,
+                        'item_planned_pct' => $itemPlannedPct,
+                        'item_actual_pct' => $itemActualPct,
+                        'qty_usage_text' => $qtyUsageText,
+                    ];
+                }
+
+                $overallActual += $phaseActualProgressWeighted * ($phaseWeight / 100);
+                $overallPlanned += $phasePlannedProgressWeighted * ($phaseWeight / 100);
+
+                $phasesData[] = [
+                    'phase_id' => $phaseId,
+                    'phase_name' => $phase['phase_name'],
+                    'phase_order' => $phase['phase_order'],
+                    'phase_weight' => $phaseWeight,
+                    'phase_actual_pct' => $phaseActualVolumePct,
+                    'phase_planned_pct' => $phasePlannedVolumePct,
+                    'phase_actual_weighted_pct' => $phaseActualProgressWeighted,
+                    'phase_planned_weighted_pct' => $phasePlannedProgressWeighted,
+                    'phase_contribution' => $phaseContribution,
+                    'total_approved_qty' => $totalApprovedInPhase,
+                    'total_boq' => $totalBOQInPhase,
+                    'target_month' => $phaseTargetMonths[$phaseId] ?? null,
+                    'items' => $itemsData,
+                ];
+            }
+
+            $projectProgress[$pid] = [
+                'actual'  => round($overallActual, 4),
+                'planned' => round($overallPlanned, 4),
+                'phases'  => $phasesData,
+            ];
+        }
+
+        return $projectProgress;
+    }
+
+    private function calculateProjectBudgetsAndSpent(array $projectIds): array
+    {
+        if (empty($projectIds)) {
+            return [];
+        }
+
+        $idsList = implode(',', array_map('intval', $projectIds));
+
+        // 1. Fetch approved budget for these projects
+        $budgetRes = $this->db->query("
+            SELECT project_id, COALESCE(SUM(total_estimated_cost), 0) AS total_budget
+            FROM initial_estimate_budgets
+            WHERE status IN ('approved', 'pm_approved') AND project_id IN ($idsList)
+            GROUP BY project_id
+        ");
+        $budgets = [];
+        if ($budgetRes) {
+            while ($row = $budgetRes->fetch_assoc()) {
+                $budgets[(int)$row['project_id']] = (float)$row['total_budget'];
+            }
+        }
+
+        // 2. Fetch material spent for these projects
+        $materialRes = $this->db->query("
+            SELECT pr.project_id, COALESCE(SUM(mri.received_quantity * poi.unit_price), 0) AS material_spent
+            FROM material_receiving_items mri
+            INNER JOIN material_receiving mr ON mr.id = mri.receiving_id
+            INNER JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+            INNER JOIN purchase_orders po ON po.id = mr.purchase_order_id
+            INNER JOIN purchase_requests pr ON pr.id = po.request_id
+            WHERE mr.overall_status = 'Accepted' AND pr.project_id IN ($idsList)
+            GROUP BY pr.project_id
+        ");
+        $materialSpent = [];
+        if ($materialRes) {
+            while ($row = $materialRes->fetch_assoc()) {
+                $materialSpent[(int)$row['project_id']] = (float)$row['material_spent'];
+            }
+        }
+
+        // 3. Fetch contractor spent for these projects
+        $contractorRes = $this->db->query("
+            SELECT project_id, COALESCE(SUM(approved_amount), 0) AS contractor_spent
+            FROM contractor_bill_requests
+            WHERE status IN ('approved', 'paid') AND project_id IN ($idsList)
+            GROUP BY project_id
+        ");
+        $contractorSpent = [];
+        if ($contractorRes) {
+            while ($row = $contractorRes->fetch_assoc()) {
+                $contractorSpent[(int)$row['project_id']] = (float)$row['contractor_spent'];
+            }
+        }
+
+        $result = [];
+        foreach ($projectIds as $pid) {
+            $budget = $budgets[$pid] ?? 0.0;
+            $matCost = $materialSpent[$pid] ?? 0.0;
+            $conCost = $contractorSpent[$pid] ?? 0.0;
+            $spent = $matCost + $conCost;
+            $result[$pid] = [
+                'total_budget' => $budget,
+                'total_spent' => $spent
+            ];
+        }
+
+        return $result;
     }
 }

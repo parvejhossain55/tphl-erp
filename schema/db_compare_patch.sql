@@ -100,4 +100,10 @@ ALTER TABLE `weekly_progress_report` ADD COLUMN `qc_photo` varchar(255) COLLATE 
 ALTER TABLE `weekly_progress_report` ADD COLUMN `qc_field_test_details` text COLLATE utf8mb4_general_ci;
 ALTER TABLE `weekly_progress_report` ADD COLUMN `qc_lab_test_result` text COLLATE utf8mb4_general_ci;
 
+-- Table: purchase_orders
+ALTER TABLE `purchase_orders` ADD COLUMN `qc_approved_by_id` int DEFAULT NULL;
+ALTER TABLE `purchase_orders` ADD COLUMN `qc_approved_at` datetime DEFAULT NULL;
+ALTER TABLE `purchase_orders` ADD COLUMN `qc_note` text DEFAULT NULL;
+ALTER TABLE `purchase_orders` MODIFY COLUMN `status` enum('Draft','Issued','Partially Received','Fully Received','Cancelled','PM Approved','Approved') NOT NULL DEFAULT 'Draft';
+
 SET FOREIGN_KEY_CHECKS = 1;

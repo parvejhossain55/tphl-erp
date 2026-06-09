@@ -78,17 +78,7 @@ $page_title = $page_title ?? 'New Contractor Bill';
                                 </div>
                             </div>
 
-                            <!-- Work Type -->
-                            <div class="col-md-6 mt-3">
-                                <label class="form-label fw-semibold">Work Type <span class="text-danger">*</span></label>
-                                <select name="work_type_id" id="work_type_id" class="form-select" required>
-                                    <option value="">-- Select Work Type --</option>
-                                    <?php foreach ($workTypes as $wt): ?>
-                                        <option value="<?= $wt['id'] ?>"><?= htmlspecialchars($wt['work_type_name']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <small class="text-muted">A Passed QC Inspection is required for this work type.</small>
-                            </div>
+                            <!-- Work Type is dynamically fetched from Work Order in controller, no selector needed -->
 
                             <!-- Bill Type -->
                             <div class="col-md-6 mt-3">
@@ -258,36 +248,70 @@ document.getElementById('work_order_id').addEventListener('change', function () 
         return;
     }
     
-    const wo = currentWorkOrders.find(w => w.id == woid);
-    if (wo) {
-        const total = parseFloat(wo.total_amount) || 0;
-        const billed = parseFloat(wo.billed_amount) || 0;
-        const advPct = parseFloat(wo.advance_percent) || 0;
-        const advAmt = parseFloat(wo.advance_amount) || 0;
-        const paidAmt = parseFloat(wo.paid_amount) || 0;
-        
-        let advText = `No advance specified (0%).`;
-        if (advPct > 0) {
-            let statusText = `<span class="text-danger fw-bold">Not Paid</span>`;
-            if (paidAmt >= advAmt) {
-                statusText = `<span class="text-success fw-bold">Paid</span>`;
-            } else if (paidAmt > 0) {
-                statusText = `<span class="text-warning fw-bold">Partially Paid (৳${paidAmt.toFixed(2)})</span>`;
+    woContent.innerHTML = '<div><span class="spinner-border spinner-border-sm text-primary me-2"></span>Loading details...</div>';
+    woBox.classList.remove('d-none');
+
+    fetch(BASE_URL + '/con-ajax-wo-details?id=' + woid)
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                const wo = res.wo;
+                const items = res.items || [];
+                
+                // Get unique phase items and work types from items
+                let phaseItems = [];
+                let workTypes = [];
+                let workTypeIdsMap = new Map();
+                
+                items.forEach(it => {
+                    if (it.phase_item_name && !phaseItems.includes(it.phase_item_name)) {
+                        phaseItems.push(it.phase_item_name);
+                    }
+                    if (it.work_type_id && it.work_type_name && !workTypeIdsMap.has(it.work_type_id)) {
+                        workTypeIdsMap.set(it.work_type_id, it.work_type_name);
+                        workTypes.push(it.work_type_name);
+                    }
+                });
+                
+                const total = parseFloat(wo.total_amount) || 0;
+                const billed = parseFloat(wo.billed_amount) || 0;
+                const advPct = parseFloat(wo.advance_percent) || 0;
+                const advAmt = parseFloat(wo.advance_amount) || 0;
+                const paidAmt = parseFloat(wo.paid_amount) || 0;
+                
+                let advText = `No advance specified (0%).`;
+                if (advPct > 0) {
+                    let statusText = `<span class="text-danger fw-bold">Not Paid</span>`;
+                    if (paidAmt >= advAmt) {
+                        statusText = `<span class="text-success fw-bold">Paid</span>`;
+                    } else if (paidAmt > 0) {
+                        statusText = `<span class="text-warning fw-bold">Partially Paid (৳${paidAmt.toFixed(2)})</span>`;
+                    }
+                    advText = `Advance: <strong>${advPct}%</strong> (৳${advAmt.toFixed(2)}) — Status: ${statusText}`;
+                }
+                
+                let paymentText = paidAmt > 0 ? `<br>Total amount paid by Accounts (includes advance): <strong>৳${paidAmt.toFixed(2)}</strong>` : '';
+                
+                let phaseText = wo.drawing_phase_name ? `<div>Construction Phase: <strong class="text-primary">${wo.drawing_phase_name}</strong></div>` : '';
+                let piText = phaseItems.length ? `<div>Phase Items: <strong>${phaseItems.join(', ')}</strong></div>` : '';
+                let wtText = workTypes.length ? `<div>Work Types: <strong>${workTypes.join(', ')}</strong></div>` : '';
+
+                woContent.innerHTML = `
+                    <div>Total WO Amount: <strong>৳${total.toFixed(2)}</strong></div>
+                    <div>Already Billed: <strong>৳${billed.toFixed(2)}</strong></div>
+                    <div>${advText}</div>
+                    ${paymentText}
+                    ${phaseText}
+                    ${piText}
+                    ${wtText}
+                `;
+            } else {
+                woContent.innerHTML = `<div class="text-danger">Failed to load Work Order details: ${res.message || 'Unknown error'}</div>`;
             }
-            advText = `Advance: <strong>${advPct}%</strong> (৳${advAmt.toFixed(2)}) — Status: ${statusText}`;
-        }
-        
-        let paymentText = paidAmt > 0 ? `<br>Total amount paid by Accounts (includes advance): <strong>৳${paidAmt.toFixed(2)}</strong>` : '';
-        
-        woContent.innerHTML = `
-            <div>Total WO Amount: <strong>৳${total.toFixed(2)}</strong></div>
-            <div>Already Billed: <strong>৳${billed.toFixed(2)}</strong></div>
-            <div>${advText}</div>
-            ${paymentText}
-        `;
-        woBox.classList.remove('d-none');
-    } else {
-        woBox.classList.add('d-none');
-    }
+        })
+        .catch(err => {
+            console.error('Error loading WO details:', err);
+            woContent.innerHTML = '<div class="text-danger">Error loading Work Order details.</div>';
+        });
 });
 </script>

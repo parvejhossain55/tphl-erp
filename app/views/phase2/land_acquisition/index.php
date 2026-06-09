@@ -3,6 +3,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 $canModify = in_array($roleId, [1, 3, 14]);
 ?>
 
+
 <div class="mb-3 pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
         <h4 class="mb-2">Land Acquisitions Portfolio</h4>
@@ -146,82 +147,140 @@ $canModify = in_array($roleId, [1, 3, 14]);
 </div>
 
 <!-- Add Land Modal -->
-<div class="modal fade" id="addLandModal" tabindex="-1" aria-labelledby="addLandModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="addLandModalLabel">Record Land Acquisition</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+<div id="addLandModal" class="modal custom-modal fade" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Record Land Acquisition</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
             </div>
-            <form action="<?= $base_url ?>/con-land-acquisitions/store" method="POST">
-                <div class="modal-body p-4">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Assign to Project <span class="text-danger">*</span></label>
-                            <select class="form-select" name="project_id" required>
-                                <option value="" disabled selected>Select Project...</option>
-                                <?php foreach ($projects as $p): ?>
-                                    <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Location / Address</label>
-                            <input type="text" class="form-control" name="location" placeholder="Mouza, Dag, Khatian numbers etc.">
-                        </div>
-                    </div>
+            <div class="modal-body">
+                <form action="<?= $base_url ?>/con-land-acquisitions/store" method="POST">
+                    <div class="row gy-10">
+                        <div class="col-xl-12">
+                            <div class="card__wrapper">
+                                <div class="row gy-20">
+                                    <div class="col-md-6">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Assign to Project <span class="text-danger">*</span></label>
+                                            </div>
+                                            <div class="form__input">
+                                                <select class="form-control" name="project_id" required>
+                                                    <option value="" disabled selected>Select Project...</option>
+                                                    <?php foreach ($projects as $p): ?>
+                                                        <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Location / Address</label>
+                                            </div>
+                                            <div class="form__input">
+                                                <input type="text" class="form-control" name="location" placeholder="Mouza, Dag, Khatian numbers etc.">
+                                            </div>
+                                        </div>
+                                    </div>
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Landowner Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="land_owner_name" required placeholder="Owner's full name">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Landowner Phone</label>
-                            <input type="text" class="form-control" name="land_owner_phone" placeholder="Phone number">
-                        </div>
-                    </div>
+                                    <div class="col-md-6">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Landowner Name <span class="text-danger">*</span></label>
+                                            </div>
+                                            <div class="form__input">
+                                                <input type="text" class="form-control" name="land_owner_name" required placeholder="Owner's full name">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Landowner Phone</label>
+                                            </div>
+                                            <div class="form__input">
+                                                <input type="text" class="form-control" name="land_owner_phone" placeholder="Phone number">
+                                            </div>
+                                        </div>
+                                    </div>
 
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Total Area <span class="text-danger">*</span></label>
-                            <input type="number" step="0.0001" class="form-control" name="total_area" required placeholder="e.g. 15.5">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Area Unit <span class="text-danger">*</span></label>
-                            <select class="form-select" name="area_unit" required>
-                                <option value="decimal" selected>Decimal</option>
-                                <option value="katha">Katha</option>
-                                <option value="bigha">Bigha</option>
-                                <option value="sft">Square Feet</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Price per Unit (BDT) <span class="text-danger">*</span></label>
-                            <input type="number" step="0.01" class="form-control" name="price_per_unit" required placeholder="Price per decimal/katha">
-                        </div>
-                    </div>
+                                    <div class="col-md-4">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Total Area <span class="text-danger">*</span></label>
+                                            </div>
+                                            <div class="form__input">
+                                                <input type="number" step="0.0001" class="form-control" name="total_area" required placeholder="e.g. 15.5">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Area Unit <span class="text-danger">*</span></label>
+                                            </div>
+                                            <div class="form__input">
+                                                <select class="form-control" name="area_unit" required>
+                                                    <option value="decimal" selected>Decimal</option>
+                                                    <option value="katha">Katha</option>
+                                                    <option value="bigha">Bigha</option>
+                                                    <option value="sft">Square Feet</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Price per Unit (BDT) <span class="text-danger">*</span></label>
+                                            </div>
+                                            <div class="form__input">
+                                                <input type="number" step="0.01" class="form-control" name="price_per_unit" required placeholder="Price per decimal/katha">
+                                            </div>
+                                        </div>
+                                    </div>
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Initial Status</label>
-                            <select class="form-select" name="status">
-                                <option value="selected" selected>Selected (Under negotiation)</option>
-                                <option value="bayana">Bayana (Advance paid)</option>
-                                <option value="registered">Registered (Purchased)</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Remarks</label>
-                            <textarea class="form-control" name="remarks" rows="2" placeholder="Negotiation details, agreements etc."></textarea>
+                                    <div class="col-md-6">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Initial Status</label>
+                                            </div>
+                                            <div class="form__input">
+                                                <select class="form-control" name="status">
+                                                    <option value="selected" selected>Selected (Under negotiation)</option>
+                                                    <option value="bayana">Bayana (Advance paid)</option>
+                                                    <option value="registered">Registered (Purchased)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Remarks</label>
+                                            </div>
+                                            <div class="form__input">
+                                                <textarea class="form-control" name="remarks" rows="2" placeholder="Negotiation details, agreements etc."></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="modal-footer ">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save Land Record</button>
-                </div>
-            </form>
+                    <div class="submit__btn text-center mt-3">
+                        <button class="btn btn-primary" type="submit">Save Land Record</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
+
+
+

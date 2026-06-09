@@ -922,14 +922,21 @@ class Con_VendorPaymentRequestController extends Controller
         $result = [];
 
         foreach ($poIds as $poId) {
-            // PO header
+            // PO header + vendor details
             $hStmt = $this->db->prepare("
                 SELECT po.id, po.status, po.created_at,
-                       pr.project_id, p.name AS project_name
+                       pr.project_id, p.name AS project_name,
+                       v.id AS vendor_id,
+                       COALESCE(v.name, 'N/A') AS vendor_name,
+                       COALESCE(v.address, '') AS vendor_address,
+                       COALESCE(v.company_name, '') AS vendor_company
                 FROM purchase_orders po
                 JOIN purchase_requests pr ON pr.id = po.request_id
                 LEFT JOIN projects p ON p.id = pr.project_id
-                WHERE po.id = ?");
+                LEFT JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
+                LEFT JOIN vendors v ON v.id = poi.selected_vendor_id
+                WHERE po.id = ?
+                LIMIT 1");
             $hStmt->bind_param('i', $poId);
             $hStmt->execute();
             $po = $hStmt->get_result()->fetch_assoc();
@@ -1006,6 +1013,10 @@ class Con_VendorPaymentRequestController extends Controller
                 'total_paid'        => round($totalPaid,       2),
                 'due_amount'        => round($due,             2),
                 'payments'          => $payments,
+                'vendor_id'         => (int)($po['vendor_id'] ?? 0),
+                'vendor_name'       => $po['vendor_name'] ?? 'N/A',
+                'vendor_company'    => $po['vendor_company'] ?? '',
+                'vendor_address'    => $po['vendor_address'] ?? '',
             ];
         }
 

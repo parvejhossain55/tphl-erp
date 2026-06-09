@@ -24,6 +24,16 @@ if (!function_exists('cpFmt')) {
   }
 }
 
+if (!function_exists('cpFmtPct')) {
+  function cpFmtPct($n)
+  {
+    $n = (float)$n;
+    if ($n <= 0) return '0.0%';
+    if ($n < 0.1) return number_format($n, 3) . '%';
+    return number_format($n, 1) . '%';
+  }
+}
+
 $statusMeta = [
   'Planning' => ['color' => 'var(--clr-theme-primary)', 'bg' => 'rgba(var(--clr-theme-primary-rgb),.12)', 'icon' => '<i class="fal fa-clipboard-list"></i>', 'dot' => 'var(--clr-theme-primary)'],
   'In Progress' => ['color' => '#f59e0b', 'bg' => 'rgba(245,158,11,.12)', 'icon' => '<i class="fal fa-cog"></i>', 'dot' => '#f59e0b'],
@@ -470,9 +480,9 @@ $statusMeta = [
       <?php else: ?>
         <?php foreach ($projects as $pr):
           $isPhaseBased = ($pr['workflow_version'] ?? '') === 'phase_based';
-          $actual_pct = round((float) ($pr['overall_project_actual'] ?? $pr['progress_pct'] ?? 0.0), 1);
-          $planned_pct = round((float) ($pr['overall_project_planned'] ?? $pr['progress_pct'] ?? 0.0), 1);
-          $pct = $actual_pct;
+          $actual_pct = (float) ($pr['overall_project_actual'] ?? $pr['progress_pct'] ?? 0.0);
+          $planned_pct = (float) ($pr['overall_project_planned'] ?? $pr['progress_pct'] ?? 0.0);
+          $pct = round($actual_pct, 1);
           $status = $pr['project_status'] ?? 'Planning';
           $meta = $statusMeta[$status] ?? ['color' => '#888', 'bg' => 'rgba(0,0,0,.07)', 'icon' => '🏗️', 'dot' => '#888'];
           $grad = $actual_pct >= 75 ? 'linear-gradient(90deg,#059669,#10b981)'
@@ -546,13 +556,13 @@ $statusMeta = [
                     <?= $isPhaseBased ? 'Overall Progress (Actual / Planned)' : 'Construction Progress' ?>
                   </span>
                   <span class="cp-prog-pct" style="font-weight: 800; font-size: 13px; color:<?= $pctColor ?>;">
-                    <?= $isPhaseBased ? number_format($actual_pct, 1) . '% / ' . number_format($planned_pct, 1) . '%' : number_format($actual_pct, 1) . '%' ?>
+                    <?= $isPhaseBased ? cpFmtPct($actual_pct) . ' / ' . cpFmtPct($planned_pct) : cpFmtPct($actual_pct) ?>
                   </span>
                 </div>
                 <div class="cp-prog-track" style="position: relative; height: 7px; border-radius: 6px; background: rgba(0, 0, 0, .07); overflow: hidden;">
                   <?php if ($isPhaseBased): ?>
                     <!-- Planned progress bar (light semi-transparent blue) -->
-                    <div class="cp-prog-fill-planned" style="position: absolute; left: 0; top: 0; height: 100%; border-radius: 6px; background: rgba(59, 130, 246, 0.35); width: <?= $planned_pct ?>%; transition: width .6s cubic-bezier(.4, 0, .2, 1);"></div>
+                    <div class="cp-prog-fill-planned" style="position: absolute; left: 0; top: 0; height: 100%; border-radius: 6px; background: rgba(59, 130, 246, 0.3); width: <?= $planned_pct ?>%; transition: width .6s cubic-bezier(.4, 0, .2, 1);"></div>
                   <?php endif; ?>
                   <!-- Actual progress bar -->
                   <div class="cp-prog-fill" style="position: absolute; left: 0; top: 0; height: 100%; border-radius: 6px; background: <?= $grad ?>; width: <?= $actual_pct ?>%; transition: width .6s cubic-bezier(.4, 0, .2, 1);"></div>

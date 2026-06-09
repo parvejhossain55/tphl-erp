@@ -284,26 +284,6 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                 </div>
             </div>
 
-            <!-- Verify Action (submitted status only) -->
-            <?php if ($status === 'submitted'): ?>
-            <div class="card custom-card border-info mb-3">
-                <div class="card-header bg-info bg-opacity-10">
-                    <h6 class="card-title mb-0"><i class="bi bi-check2-circle me-2"></i>Verify Bill</h6>
-                </div>
-                <div class="card-body">
-                    <form action="<?= $base_url ?>/con-contractor-bill-verify/<?= $bill['id'] ?>" method="POST">
-                        <div class="mb-3">
-                            <label class="form-label">Verification Note</label>
-                            <textarea name="verification_note" class="form-control form-control-sm" rows="3"
-                                placeholder="Add verification remarks..."></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-info btn-sm w-100">
-                            <i class="bi bi-patch-check me-1"></i> Mark as Verified
-                        </button>
-                    </form>
-                </div>
-            </div>
-            <?php endif; ?>
 
             <!-- QC Approval Actions -->
             <?php if ($canApproveQCReq && ($status === 'verified' || $status === 'submitted')): ?>
@@ -334,7 +314,7 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
             <?php endif; ?>
 
             <!-- Management Approval Actions -->
-            <?php if ($canApproveReq && $isQCApproved): ?>
+            <?php if ($canApproveReq && ($isQCApproved || $status === 'submitted' || $status === 'verified')): ?>
             <div class="card custom-card border-success mb-3">
                 <div class="card-header bg-success bg-opacity-10">
                     <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Management Approval</h6>

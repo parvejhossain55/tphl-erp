@@ -54,6 +54,13 @@
                                 <td class="text-end"><?= number_format($b['other_costs'], 2) ?></td>
                                 <td class="text-end fw-bold text-primary">
                                     <?= number_format($b['total_estimated_cost'], 2) ?>
+                                    <?php 
+                                    $projId = (int)($b['project_id'] ?? 0);
+                                    $spentTotal = $spentMap[$projId]['total_spent'] ?? 0.0;
+                                    ?>
+                                    <div class="text-muted" style="font-size: 11px; font-weight: normal; margin-top: 4px;">
+                                        Spent: <span class="text-danger fw-semibold">৳<?= number_format($spentTotal, 2) ?></span>
+                                    </div>
                                 </td>
                                 <td>
                                     <?php

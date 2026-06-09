@@ -61,12 +61,12 @@ $canModify = ($roleId === 16);
                                                 data-status="<?= $row['status'] ?>">
                                                 <i class="fa-sharp fa-light fa-pen"></i>
                                             </button>
-                                            <button class="table__icon delete removeBtnCust"
-                                                data-id="<?= $row['id'] ?>"
-                                                data-name="<?= htmlspecialchars($row['name']) ?>"
-                                                data-action="delete-design-type">
-                                                <i class="fa-regular fa-trash"></i>
-                                            </button>
+                                             <button class="removeBtnCust table__icon delete"
+                                                 data-id="<?= $row['id'] ?>"
+                                                 data-name="<?= htmlspecialchars($row['name']) ?>"
+                                                 data-action="delete-design-type">
+                                                 <i class="fa-regular fa-trash"></i>
+                                             </button>
                                         </div>
                                         <?php else: ?>
                                             <span class="text-muted">—</span>
@@ -268,15 +268,17 @@ function downloadDesignTypeSampleCsv() {
 </script>
 
 <script>
-    const base_url = "<?= $GLOBALS['base_url'] ?>";
-
     document.addEventListener("DOMContentLoaded", function () {
         const editModal = document.getElementById('editDesignTypeModal');
-        editModal.addEventListener('show.bs.modal', function (event) {
-            const btn = event.relatedTarget;
-            document.getElementById('edit_design_type_id').value      = btn.getAttribute('data-id');
-            document.getElementById('edit_design_type_name').value    = btn.getAttribute('data-name');
-            document.getElementById('edit_design_type_status').value  = btn.getAttribute('data-status');
-        });
+        if (editModal) {
+            editModal.addEventListener('show.bs.modal', function (event) {
+                const btn = event.relatedTarget;
+                document.getElementById('edit_design_type_id').value      = btn.getAttribute('data-id');
+                document.getElementById('edit_design_type_name').value    = btn.getAttribute('data-name');
+                document.getElementById('edit_design_type_status').value  = btn.getAttribute('data-status');
+            });
+        }
+
+        // Delete functionality is handled by global .removeBtnCust handler in main.js
     });
 </script>

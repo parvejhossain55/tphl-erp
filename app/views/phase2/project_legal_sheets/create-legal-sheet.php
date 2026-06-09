@@ -31,11 +31,11 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-md-8 mb-3">
+                            <div class="col-md-12 mb-3">
                                 <label class="form-label font-weight-bold">Sheet Title <span class="text-danger">*</span></label>
                                 <input type="text" name="title" class="form-control" required placeholder="Title of the sheet" style="border-radius:8px">
                             </div>
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-4 mb-3 d-none">
                                 <label class="form-label font-weight-bold">Version</label>
                                 <input type="text" name="version" class="form-control" value="V1" placeholder="e.g. V1, V2" style="border-radius:8px">
                             </div>

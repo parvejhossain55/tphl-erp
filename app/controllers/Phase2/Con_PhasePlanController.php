@@ -143,11 +143,24 @@ class Con_PhasePlanController extends Controller {
 
         $totalWeight = $this->phaseModel->totalWeight($project_id);
 
+        // Fetch drawings uploaded for this project with design type names
+        $drawingsStmt = $this->db->prepare("
+            SELECT pd.id, pd.phase_id, dt.name AS design_name, pd.version
+            FROM project_drawings pd
+            LEFT JOIN design_types dt ON dt.id = pd.design_type_id
+            WHERE pd.project_id = ?
+            ORDER BY dt.name ASC, pd.version ASC
+        ");
+        $drawingsStmt->bind_param('i', $project_id);
+        $drawingsStmt->execute();
+        $drawings = $drawingsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
         $this->view('phase2/phase_plan/index', [
             'current_route' => 'con-phase-plan',
             'project'       => $project,
             'timeline'      => $timeline,
             'phases'        => $phases,
+            'drawings'      => $drawings,
             'totalWeight'   => round($totalWeight, 2),
         ]);
     }
@@ -209,10 +222,11 @@ class Con_PhasePlanController extends Controller {
                 'planned_start_date'=> $startDate->format('Y-m-d'),
                 'planned_end_date'  => $endDate->format('Y-m-d'),
                 'status'            => $p['status']                 ?? 'Not Started',
+                'drawing_id'        => !empty($p['drawing_id'])     ? (int)$p['drawing_id'] : null,
             ];
         }
 
-        if ($this->phaseModel->batchUpdate($phases)) {
+        if ($this->phaseModel->batchUpdate($phases, $project_id)) {
             setSuccess("Phase plan saved successfully.");
         } else {
             setError("Failed to save phase plan. Please try again.");
@@ -247,6 +261,14 @@ class Con_PhasePlanController extends Controller {
         ];
 
         if ($this->phaseModel->create($data)) {
+            $newPhaseId = $this->db->insert_id;
+            $drawing_id = (int)($_POST['drawing_id'] ?? 0);
+            if ($drawing_id > 0) {
+                $drawStmt = $this->db->prepare("UPDATE project_drawings SET phase_id = ? WHERE id = ? AND project_id = ?");
+                $drawStmt->bind_param('iii', $newPhaseId, $drawing_id, $project_id);
+                $drawStmt->execute();
+            }
+
             // Return updated phases JSON
             $phases = $this->phaseModel->getByProject($project_id);
             header('Content-Type: application/json');

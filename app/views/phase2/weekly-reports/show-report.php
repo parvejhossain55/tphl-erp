@@ -35,10 +35,18 @@ $statusBadge = function(string $s): string {
             <li class="breadcrumb-item active"><?= htmlspecialchars($project['name'] ?? '') ?></li>
         </ol></nav>
     </div>
-    <?php if ($phaseTarget): ?>
+    <?php if ($phaseTarget): 
+        $wNo = (int)$activeWeek;
+        $wSession = $weekData[$wNo]['session'] ?? null;
+        $isApprover = in_array($roleId, [1, 13, 15, 22]);
+        $isApproved = ($wSession['entry_status'] ?? '') === 'Approved';
+        $btnText = $isApprover && !$isApproved ? 'Review & Approve' : 'Entry / Edit';
+        $btnIcon = $isApprover && !$isApproved ? 'bi-shield-check' : 'bi-pencil-square';
+        $btnClass = $isApprover && !$isApproved ? 'btn-primary' : 'btn-outline-primary';
+    ?>
     <a href="<?= $base_url ?>/con-weekly-progress/<?= $target_id ?>?week=<?= $activeWeek ?>"
-       class="btn btn-sm btn-outline-primary" style="font-size:11.5px;border-radius:8px;">
-        <i class="bi bi-pencil-square me-1"></i>Entry / Edit
+       class="btn btn-sm <?= $btnClass ?>" style="font-size:11.5px;border-radius:8px;font-weight:700;">
+        <i class="bi <?= $btnIcon ?> me-1"></i><?= $btnText ?>
     </a>
     <?php endif; ?>
 </div>
@@ -535,7 +543,15 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
                         </div>
                         <?php endif; ?>
                         <?php else: ?>
-                        <div style="font-size:11px;color:#94a3b8;font-style:italic;">QC review pending</div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span style="font-size:11px;color:#94a3b8;font-style:italic;">QC review pending</span>
+                            <?php if (in_array($roleId, [1, 13])): ?>
+                            <a href="<?= $base_url ?>/con-weekly-progress/<?= $target_id ?>?week=<?= $activeWeek ?>&log_date=<?= $logDate ?>" 
+                               class="btn btn-xs btn-outline-success py-0 px-2" style="font-size:10px;font-weight:700;">
+                                Approve Now →
+                            </a>
+                            <?php endif; ?>
+                        </div>
                         <?php endif; ?>
                     </div>
 
@@ -570,7 +586,15 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
                         </div>
                         <?php endif; ?>
                         <?php else: ?>
-                        <div style="font-size:11px;color:#94a3b8;font-style:italic;">PM review pending</div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span style="font-size:11px;color:#94a3b8;font-style:italic;">PM review pending</span>
+                            <?php if (in_array($roleId, [1, 15, 22]) && !empty($log['qc_approved_id'])): ?>
+                            <a href="<?= $base_url ?>/con-weekly-progress/<?= $target_id ?>?week=<?= $activeWeek ?>&log_date=<?= $logDate ?>" 
+                               class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size:10px;font-weight:700;">
+                                Approve Now →
+                            </a>
+                            <?php endif; ?>
+                        </div>
                         <?php endif; ?>
                     </div>
 

@@ -245,7 +245,7 @@ $phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a
                 </div>
                 <div class="pt-stat">
                     <div class="pt-stat-val" style="color:var(--pt-primary);"><?= number_format($actual, 1) ?>%</div>
-                    <div class="pt-stat-label">Avg Progress</div>
+                    <div class="pt-stat-label">Actual Progress</div>
                     <div class="pt-prog-bar">
                         <div class="pt-prog-fill" style="width:<?= min($actual, 100) ?>%; background:<?= $actual >= 100 ? 'var(--pt-green)' : 'var(--pt-primary)' ?>"></div>
                     </div>

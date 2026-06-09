@@ -36,12 +36,12 @@ class Con_WorkOrderController extends Controller
 
     private function canApprove()
     {
-        return in_array($this->userRole, [1, 3, 20, 22]);
+        return in_array($this->userRole, [1, 3, 12, 15, 20, 22]);
     }
 
     private function canMarkComplete()
     {
-        return in_array($this->userRole, [1, 3, 15, 22]);
+        return in_array($this->userRole, [1, 3, 12, 15, 20, 22]);
     }
 
     private function canQcApprove()
@@ -175,6 +175,7 @@ class Con_WorkOrderController extends Controller
                     $items[] = [
                         'sl_no'       => trim($it['sl_no']      ?? ($i + 1)),
                         'phase_item_id' => !empty($it['phase_item_id']) ? (int)$it['phase_item_id'] : null,
+                        'work_type_id' => !empty($it['work_type_id']) ? (int)$it['work_type_id'] : null,
                         'description' => $desc,
                         'location'    => trim($it['location']   ?? ''),
                         'unit'        => trim($it['unit']       ?? 'sqft'),
@@ -346,6 +347,7 @@ class Con_WorkOrderController extends Controller
                     $items[] = [
                         'sl_no'       => trim($it['sl_no']      ?? ($i + 1)),
                         'phase_item_id' => !empty($it['phase_item_id']) ? (int)$it['phase_item_id'] : null,
+                        'work_type_id' => !empty($it['work_type_id']) ? (int)$it['work_type_id'] : null,
                         'description' => $desc,
                         'location'    => trim($it['location']   ?? ''),
                         'unit'        => trim($it['unit']       ?? 'sqft'),
@@ -384,10 +386,10 @@ class Con_WorkOrderController extends Controller
         }
 
         $actingRole = 0;
-        if ($this->userRole === 20) {
-            $actingRole = 20;
-        } elseif ($this->userRole === 22) {
-            $actingRole = 22;
+        if ($this->userRole === 12 || $this->userRole === 20) {
+            $actingRole = ($this->userRole === 20) ? 20 : 12;
+        } elseif ($this->userRole === 15 || $this->userRole === 22) {
+            $actingRole = ($this->userRole === 22) ? 22 : 15;
         } elseif (in_array($this->userRole, [1, 3])) {
             $actingRole = 3;
         }
@@ -417,10 +419,10 @@ class Con_WorkOrderController extends Controller
 
         $reason = trim($_POST['rejection_reason'] ?? '');
         $actingRole = 0;
-        if ($this->userRole === 20) {
-            $actingRole = 20;
-        } elseif ($this->userRole === 22) {
-            $actingRole = 22;
+        if ($this->userRole === 12 || $this->userRole === 20) {
+            $actingRole = ($this->userRole === 20) ? 20 : 12;
+        } elseif ($this->userRole === 15 || $this->userRole === 22) {
+            $actingRole = ($this->userRole === 22) ? 22 : 15;
         } elseif (in_array($this->userRole, [1, 3])) {
             $actingRole = 3;
         }
@@ -548,6 +550,34 @@ class Con_WorkOrderController extends Controller
     }
 
     // =========================================================================
+    // AJAX — Get Work Order details and items
+    // GET /con-ajax-wo-details?id=N
+    // =========================================================================
+    public function ajaxGetDetails()
+    {
+        header('Content-Type: application/json');
+        $id = (int)($_GET['id'] ?? 0);
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'Invalid ID']);
+            exit;
+        }
+
+        $wo = $this->model->findWithRelations($id);
+        if (!$wo) {
+            echo json_encode(['success' => false, 'message' => 'Work Order not found']);
+            exit;
+        }
+
+        $items = $this->model->getItemsByWorkOrder($id);
+        echo json_encode([
+            'success' => true,
+            'wo'    => $wo,
+            'items' => $items,
+        ]);
+        exit;
+    }
+
+    // =========================================================================
     // AJAX — Check if existing WO exists for project + design_id
     // GET /con-ajax-wo-check?project_id=N&design_id=M
     // Returns JSON { found, wo, items }
@@ -658,14 +688,31 @@ class Con_WorkOrderController extends Controller
             }
         }
 
-        // Get all work_types for this design_type
-        $r = $this->db->query(
-            "SELECT id, work_type_name, description
-             FROM work_types
-             WHERE design_type_id = {$designTypeId}
-             ORDER BY id ASC"
-        );
-        $workTypes = $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
+        // Get all work_types matching this phase first, then fall back to design_type_id
+        $escPhaseName = $this->db->real_escape_string($row['phase_name'] ?? '');
+        $workTypes = [];
+
+        if (!empty($escPhaseName) && $escPhaseName !== 'N/A') {
+            $r = $this->db->query(
+                "SELECT id, work_type_name, description
+                 FROM work_types
+                 WHERE default_phase_name = '{$escPhaseName}'
+                    OR default_phase_name LIKE '{$escPhaseName}%'
+                    OR '{$escPhaseName}' LIKE CONCAT(default_phase_name, '%')
+                 ORDER BY id ASC"
+            );
+            $workTypes = $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
+        if (empty($workTypes)) {
+            $r = $this->db->query(
+                "SELECT id, work_type_name, description
+                 FROM work_types
+                 WHERE design_type_id = {$designTypeId}
+                 ORDER BY id ASC"
+            );
+            $workTypes = $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
+        }
         
         echo json_encode([
             'work_types' => $workTypes, 

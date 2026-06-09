@@ -362,9 +362,13 @@ function redirectByRole()
         case 23: //  purchase executive
             $url = "{$GLOBALS['base_url']}/purchase-executive-dashboard";
             break;
-       case 25: //  qc and internal audit head
+       case 24: //  qc and internal audit head
             $url = "{$GLOBALS['base_url']}/qc-audit-dashboard";
             break;
+ 
+    //    case 25: //  qc and internal audit head
+    //         $url = "{$GLOBALS['base_url']}/qc-audit-dashboard";
+    //         break;
  
 
         default:
