@@ -175,6 +175,7 @@ class Con_WorkOrderController extends Controller
                     $items[] = [
                         'sl_no'       => trim($it['sl_no']      ?? ($i + 1)),
                         'phase_item_id' => !empty($it['phase_item_id']) ? (int)$it['phase_item_id'] : null,
+                        'work_type_id' => !empty($it['work_type_id']) ? (int)$it['work_type_id'] : null,
                         'description' => $desc,
                         'location'    => trim($it['location']   ?? ''),
                         'unit'        => trim($it['unit']       ?? 'sqft'),
@@ -346,6 +347,7 @@ class Con_WorkOrderController extends Controller
                     $items[] = [
                         'sl_no'       => trim($it['sl_no']      ?? ($i + 1)),
                         'phase_item_id' => !empty($it['phase_item_id']) ? (int)$it['phase_item_id'] : null,
+                        'work_type_id' => !empty($it['work_type_id']) ? (int)$it['work_type_id'] : null,
                         'description' => $desc,
                         'location'    => trim($it['location']   ?? ''),
                         'unit'        => trim($it['unit']       ?? 'sqft'),
@@ -544,6 +546,34 @@ class Con_WorkOrderController extends Controller
 
         $wos = $this->model->getByProject($projectId);
         echo json_encode(['work_orders' => $wos]);
+        exit;
+    }
+
+    // =========================================================================
+    // AJAX — Get Work Order details and items
+    // GET /con-ajax-wo-details?id=N
+    // =========================================================================
+    public function ajaxGetDetails()
+    {
+        header('Content-Type: application/json');
+        $id = (int)($_GET['id'] ?? 0);
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'Invalid ID']);
+            exit;
+        }
+
+        $wo = $this->model->findWithRelations($id);
+        if (!$wo) {
+            echo json_encode(['success' => false, 'message' => 'Work Order not found']);
+            exit;
+        }
+
+        $items = $this->model->getItemsByWorkOrder($id);
+        echo json_encode([
+            'success' => true,
+            'wo'    => $wo,
+            'items' => $items,
+        ]);
         exit;
     }
 

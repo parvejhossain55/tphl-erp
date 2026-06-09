@@ -35,6 +35,19 @@ if ($retAmt == 0 && ($wo['retention_percent'] ?? 0) > 0) {
     $retAmt = round($totalAmt * (float)$wo['retention_percent'] / 100, 2);
 }
 $runAmt     = $totalAmt - $advAmt - $retAmt;
+$uniqueWorkTypes = [];
+if (!empty($wo['work_type_name'])) {
+    $uniqueWorkTypes[] = $wo['work_type_name'];
+}
+if (!empty($woItems)) {
+    foreach ($woItems as $item) {
+        if (!empty($item['work_type_name'])) {
+            $uniqueWorkTypes[] = $item['work_type_name'];
+        }
+    }
+}
+$uniqueWorkTypes = array_unique($uniqueWorkTypes);
+$workTypesStr = !empty($uniqueWorkTypes) ? implode(', ', $uniqueWorkTypes) : '-';
 ?>
 
 <div class="container-fluid">
@@ -90,7 +103,7 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                     <h6 class="card-title mb-0"><i class="bi bi-file-earmark-ruled me-2 text-primary"></i>Work Order Details</h6>
                 </div>
                 <div class="card-body">
-                    <div class="row ">
+                    <div class="row g-3">
                         <div class="col-md-6">
                             <div class="text-muted fs-12">WO Number</div>
                             <div class="fw-semibold text-muted"><?= htmlspecialchars($wo['wo_number'] ?? '-') ?></div>
@@ -104,12 +117,16 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                             <div class="fw-semibold text-muted"><?= htmlspecialchars($wo['project_name'] ?? '-') ?></div>
                         </div>
                         <div class="col-md-6">
-                            <div class="text-muted fs-12">Work Design Type</div>
-                            <div class="text-muted"><?= htmlspecialchars($wo['design_type_name'] ?? '-') ?></div>
+                            <div class="text-muted fs-12">Construction Phase</div>
+                            <div class="fw-semibold text-primary"><?= htmlspecialchars($wo['drawing_phase_name'] ?? '-') ?></div>
                         </div>
                         <div class="col-md-6">
-                            <div class="text-muted fs-12">Work Type</div>
-                            <div class="text-muted"><?= htmlspecialchars($wo['work_type_name'] ?? '-') ?></div>
+                            <div class="text-muted fs-12">Work Design Type (Drawing)</div>
+                            <div class="text-muted fw-semibold"><?= htmlspecialchars($wo['design_type_name'] ?? '-') ?></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted fs-12">Work Types</div>
+                            <div class="text-muted fw-semibold"><?= htmlspecialchars($workTypesStr) ?></div>
                         </div>
                         <div class="col-12">
                             <div class="text-muted fs-12">Title</div>
@@ -171,9 +188,14 @@ $runAmt     = $totalAmt - $advAmt - $retAmt;
                                 <tr>
                                     <td class="text-center fw-semibold text-primary"><?= htmlspecialchars($item['sl_no']) ?></td>
                                     <td>
-                                        <?php if (!empty($item['phase_item_name'])): ?>
-                                            <div class="mb-1"><span class="badge bg-secondary-transparent text-secondary border border-secondary">Phase Item: <?= htmlspecialchars($item['phase_item_name']) ?></span></div>
-                                        <?php endif; ?>
+                                        <div class="d-flex flex-wrap gap-1 mb-1">
+                                            <?php if (!empty($item['phase_item_name'])): ?>
+                                                <span class="badge bg-secondary-transparent text-secondary border border-secondary">Phase Item: <?= htmlspecialchars($item['phase_item_name']) ?></span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($item['work_type_name'])): ?>
+                                                <span class="badge bg-info-transparent text-info border border-info">Work Type: <?= htmlspecialchars($item['work_type_name']) ?></span>
+                                            <?php endif; ?>
+                                        </div>
                                         <div style="white-space:pre-wrap;max-width:280px"><?= nl2br(htmlspecialchars($item['description'])) ?></div>
                                     </td>
                                     <td class="text-muted"><?= htmlspecialchars($item['location'] ?? '') ?></td>

@@ -10,6 +10,8 @@ $locked       = $locked            ?? false;
 $currentUserId= $currentUserId     ?? 0;
 $canApprove   = $canApprove        ?? false;
 $creatorInfo  = $creatorInfo       ?? [];
+$spentTotal   = $spentTotal        ?? 0.0;
+$spentDetails = $spentDetails      ?? ['materials' => [], 'contractors' => [], 'materials_total' => 0.0, 'contractors_total' => 0.0];
 
 $monthNames = ['','January','February','March','April','May','June',
                'July','August','September','October','November','December'];
@@ -117,6 +119,22 @@ function sib_fmt($n) {
 
 .empty-state{text-align:center;padding:32px 0;color:var(--text-muted);}
 .empty-state i{font-size:32px;opacity:.25;display:block;margin-bottom:8px;}
+
+/* Spent Modal Tabs custom styling */
+.spent-nav-tabs .nav-link {
+  color: var(--text-muted) !important;
+  border: none !important;
+  border-bottom: 3px solid transparent !important;
+  background: none !important;
+  transition: all 0.2s;
+}
+.spent-nav-tabs .nav-link:hover {
+  border-bottom-color: rgba(0,0,0,0.1) !important;
+}
+.spent-nav-tabs .nav-link.active {
+  color: currentColor !important;
+  border-bottom: 3px solid currentColor !important;
+}
 </style>
 
 <!-- ═══════════════ HERO ═══════════════ -->
@@ -235,6 +253,36 @@ function sib_fmt($n) {
     <div class="sib-kpi-icon" style="background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--sib-purple)"><i class="fal fa-coins"></i></div>
     <div class="sib-kpi-lbl">Grand Total</div>
     <div class="sib-kpi-val" style="color:var(--sib-purple)"><?= sib_fmt($budget['total_estimated_cost'] ?? 0) ?></div>
+  </div>
+</div>
+
+<!-- Spent & Remaining cost tracking -->
+<div class="row mb-4">
+  <div class="col-md-6 mb-3 mb-md-0">
+    <div class="sib-kpi" style="border-left: 5px solid var(--sib-red); height: 100%;">
+      <div class="sib-kpi-icon" style="background:rgba(239,68,68,.12);color:var(--sib-red)"><i class="fal fa-file-invoice-dollar"></i></div>
+      <div class="sib-kpi-lbl">Total Spent / Cost Usage</div>
+      <div class="sib-kpi-val" style="color:var(--sib-red)"><?= sib_fmt($spentTotal) ?></div>
+      <button type="button" class="btn btn-sm btn-outline-danger mt-2" data-bs-toggle="modal" data-bs-target="#spentDetailsModal" style="font-size:11px; padding:3px 10px; border-radius:8px;">
+        <i class="fal fa-list me-1"></i> View Details / Purpose
+      </button>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <?php 
+    $remaining = ($budget['total_estimated_cost'] ?? 0) - $spentTotal;
+    $remColor = $remaining >= 0 ? 'var(--sib-green)' : 'var(--sib-red)';
+    $remBg = $remaining >= 0 ? 'rgba(16,185,129,.12)' : 'rgba(239,68,68,.12)';
+    $pct = ($budget['total_estimated_cost'] ?? 0) > 0 ? min(100, round(($spentTotal / $budget['total_estimated_cost']) * 100, 1)) : 0;
+    ?>
+    <div class="sib-kpi" style="border-left: 5px solid <?= $remColor ?>; height: 100%;">
+      <div class="sib-kpi-icon" style="background:<?= $remBg ?>;color:<?= $remColor ?>"><i class="fal fa-wallet"></i></div>
+      <div class="sib-kpi-lbl">Remaining Budget</div>
+      <div class="sib-kpi-val" style="color:<?= $remColor ?>"><?= sib_fmt($remaining) ?></div>
+      <div class="text-muted mt-2" style="font-size:11.5px; padding-top:2px;">
+        Usage Ratio: <span class="fw-bold text-dark"><?= $pct ?>%</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -681,6 +729,142 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
     </table>
   </div>
   <?php endif; ?>
+</div>
+
+<!-- Spent Details Modal -->
+<div class="modal fade" id="spentDetailsModal" tabindex="-1" aria-labelledby="spentDetailsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content" style="border-radius: 16px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+      <div class="modal-header" style="background: linear-gradient(135deg, #0f5132 0%, #198754 100%); color: #fff; border-top-left-radius: 16px; border-top-right-radius: 16px; border-bottom: none; padding: 18px 24px;">
+        <h5 class="modal-title id-title" id="spentDetailsModalLabel" style="font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+          <i class="fal fa-file-invoice-dollar"></i> Cost Usage &amp; Spent Details
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" style="opacity: 0.8;"></button>
+      </div>
+      <div class="modal-body" style="padding: 24px;">
+        
+        <!-- Modal Tabs -->
+        <ul class="nav nav-tabs spent-nav-tabs mb-4" id="spentModalTabs" role="tablist" style="border-bottom: 2px solid rgba(0,0,0,0.07);">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold text-success" id="mat-tab" data-bs-toggle="tab" data-bs-target="#mat-pane" type="button" role="tab" aria-controls="mat-pane" aria-selected="true" style="border: none; border-bottom: 3px solid transparent; padding: 10px 20px; font-size: 13px;">
+              <i class="fal fa-boxes-stacked me-1"></i> Received Materials (৳ <?= number_format($spentDetails['materials_total'] ?? 0, 2) ?>)
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold text-primary" id="con-tab" data-bs-toggle="tab" data-bs-target="#con-pane" type="button" role="tab" aria-controls="con-pane" aria-selected="false" style="border: none; border-bottom: 3px solid transparent; padding: 10px 20px; font-size: 13px;">
+              <i class="fal fa-hard-hat me-1"></i> Contractor Payments (৳ <?= number_format($spentDetails['contractors_total'] ?? 0, 2) ?>)
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content" id="spentModalTabsContent">
+          <!-- Received Materials Tab Pane -->
+          <div class="tab-pane fade show active" id="mat-pane" role="tabpanel" aria-labelledby="mat-tab">
+            <?php if (empty($spentDetails['materials'])): ?>
+              <div class="empty-state py-5 text-center text-muted">
+                <i class="fal fa-boxes-stacked" style="font-size: 48px; opacity: 0.3; display: block; margin-bottom: 12px;"></i>
+                No materials received for this project yet.
+              </div>
+            <?php else: ?>
+              <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-hover align-middle custom-table">
+                  <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
+                    <tr>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;">GRN ID</th>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;">Material Name</th>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;" class="text-end">Qty Received</th>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;" class="text-end">Unit Price</th>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;" class="text-end">Total Value</th>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;">Receiving Date</th>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;">Received By</th>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php foreach ($spentDetails['materials'] as $m): ?>
+                      <tr>
+                        <td class="fw-bold text-muted" style="font-size: 12px;">GRN-<?= (int)$m['grn_id'] ?></td>
+                        <td class="fw-bold" style="font-size: 13px;"><?= htmlspecialchars($m['material_name']) ?></td>
+                        <td class="text-end" style="font-size: 13px;"><?= number_format($m['received_quantity'], 3) ?> <small class="text-muted"><?= htmlspecialchars($m['material_unit']) ?></small></td>
+                        <td class="text-end" style="font-size: 13px;">৳<?= number_format($m['unit_price'], 2) ?></td>
+                        <td class="text-end fw-bold text-success" style="font-size: 13px;">৳<?= number_format($m['total_cost'], 2) ?></td>
+                        <td style="font-size: 12px;"><?= date('d M Y', strtotime($m['receiving_date'])) ?></td>
+                        <td style="font-size: 12px;"><?= htmlspecialchars($m['receiver_name'] ?? '—') ?></td>
+                        <td class="text-muted" style="font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= htmlspecialchars($m['receiving_notes'] ?? '') ?>">
+                          <?= htmlspecialchars($m['receiving_notes'] ?? '—') ?>
+                        </td>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+            <?php endif; ?>
+          </div>
+
+          <!-- Contractor Payments Tab Pane -->
+          <div class="tab-pane fade" id="con-pane" role="tabpanel" aria-labelledby="con-tab">
+            <?php if (empty($spentDetails['contractors'])): ?>
+              <div class="empty-state py-5 text-center text-muted">
+                <i class="fal fa-hard-hat" style="font-size: 48px; opacity: 0.3; display: block; margin-bottom: 12px;"></i>
+                No contractor payments found for this project yet.
+              </div>
+            <?php else: ?>
+              <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-hover align-middle custom-table">
+                  <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
+                    <tr>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;">Contractor Name</th>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;">Payment Purpose (Type)</th>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;">Stage</th>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;">Payment Method</th>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;" class="text-end">Amount Paid</th>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;">Transaction Date</th>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;">Processed By</th>
+                      <th style="font-size: 11px; font-weight: 700; text-transform: uppercase;">Reference / Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php foreach ($spentDetails['contractors'] as $c): ?>
+                      <?php 
+                      // Map bill_type enum: Advance, Progress (After Work), Retention (Remite)
+                      $purpose = match(trim($c['bill_type'])) {
+                          'Advance' => '<span class="badge bg-warning text-dark"><i class="fal fa-forward me-1"></i>Advance</span>',
+                          'Progress' => '<span class="badge bg-primary"><i class="fal fa-tasks me-1"></i>After Work</span>',
+                          'Retention' => '<span class="badge bg-info text-dark"><i class="fal fa-shield-check me-1"></i>Retention / Remite</span>',
+                          default => '<span class="badge bg-secondary">' . htmlspecialchars($c['bill_type']) . '</span>'
+                      };
+                      ?>
+                      <tr>
+                        <td class="fw-bold" style="font-size: 13px;"><?= htmlspecialchars($c['contractor_name']) ?></td>
+                        <td><?= $purpose ?></td>
+                        <td style="font-size: 12px;"><?= htmlspecialchars($c['payment_type'] ?? '—') ?></td>
+                        <td style="font-size: 12px;"><i class="fal fa-credit-card me-1"></i><?= htmlspecialchars($c['payment_method']) ?></td>
+                        <td class="text-end fw-bold text-primary" style="font-size: 13px;">৳<?= number_format($c['amount_paid'], 2) ?></td>
+                        <td style="font-size: 12px;"><?= date('d M Y', strtotime($c['transaction_date'])) ?></td>
+                        <td style="font-size: 12px;"><?= htmlspecialchars($c['processed_by_name'] ?? '—') ?></td>
+                        <td style="font-size: 12px;">
+                          <?php if (!empty($c['reference_number'])): ?>
+                            <span class="badge bg-light text-dark border">Ref: <?= htmlspecialchars($c['reference_number']) ?></span>
+                          <?php endif; ?>
+                          <div class="text-muted small text-truncate" style="max-width: 150px;" title="<?= htmlspecialchars($c['txn_notes'] ?? '') ?>">
+                            <?= htmlspecialchars($c['txn_notes'] ?? '—') ?>
+                          </div>
+                        </td>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+            <?php endif; ?>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid rgba(0,0,0,0.07); padding: 16px 24px;">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" style="border-radius: 8px;">Close</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div style="height:30px"></div>

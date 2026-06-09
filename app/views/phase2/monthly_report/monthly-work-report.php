@@ -2,7 +2,7 @@
 $show_breadcrumb = false;
 $userFullName = $_SESSION['user']['full_name'] ?? 'N/A';
 $roleNameText = htmlspecialchars($roleName);
-$selectedMonthName = date('F Y', strtotime($selectedMonth . '-01'));
+$selectedMonthName = htmlspecialchars($reportingPeriodText ?? '');
 ?>
 
 <!-- Premium styling for the screen and print layout -->
@@ -150,21 +150,65 @@ $selectedMonthName = date('F Y', strtotime($selectedMonth . '-01'));
 
 <!-- Filter Section -->
 <div class="card__wrapper mb-4 noprint">
-    <form method="GET" action="" class="row  align-items-center">
-        <div class="col-auto">
-            <label for="month" class="col-form-label fw-semibold">Select Month:</label>
+    <form method="GET" action="" class="row g-3 align-items-end">
+        <div class="col-md-2 col-sm-6">
+            <label for="filter_type" class="form-label fw-semibold">Period Type:</label>
+            <select name="filter_type" id="filter_type" class="form-control" onchange="togglePeriodFields()">
+                <option value="monthly" <?= ($filterType ?? 'monthly') === 'monthly' ? 'selected' : '' ?>>Monthly</option>
+                <option value="yearly" <?= ($filterType ?? 'monthly') === 'yearly' ? 'selected' : '' ?>>Yearly</option>
+            </select>
         </div>
-        <div class="col-auto">
-            <input type="month" name="month" id="month" class="form-control" value="<?= htmlspecialchars($selectedMonth) ?>">
+        
+        <div class="col-md-2 col-sm-6" id="month_container">
+            <label for="month" class="form-label fw-semibold">Select Month:</label>
+            <input type="month" name="month" id="month" class="form-control" value="<?= htmlspecialchars($selectedMonth ?? date('Y-m')) ?>">
         </div>
-        <div class="col-auto">
-            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-filter me-1"></i>Filter</button>
+        
+        <div class="col-md-2 col-sm-6" id="year_container" style="display: none;">
+            <label for="year" class="form-label fw-semibold">Select Year:</label>
+            <select name="year" id="year" class="form-control">
+                <?php for ($y = (int)date('Y') + 1; $y >= 2024; $y--): ?>
+                    <option value="<?= $y ?>" <?= ($selectedYear ?? date('Y')) == $y ? 'selected' : '' ?>><?= $y ?></option>
+                <?php endfor; ?>
+            </select>
         </div>
-        <div class="col-auto ms-auto">
-            <button type="button" class="btn btn-success" onclick="window.print()"><i class="fa-solid fa-print me-1"></i>Print Report</button>
+
+        <div class="col-md-5 col-sm-12">
+            <label for="project_id" class="form-label fw-semibold">Select Project:</label>
+            <select name="project_id" id="project_id" class="form-control">
+                <option value="0">All Assigned Projects</option>
+                <?php if (!empty($assignedProjects)): ?>
+                    <?php foreach ($assignedProjects as $p): ?>
+                        <option value="<?= $p['id'] ?>" <?= ($selectedProjectId ?? 0) == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </select>
+        </div>
+
+        <div class="col-md-3 col-sm-12 d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1"><i class="fa-solid fa-filter me-1"></i>Filter</button>
+            <button type="button" class="btn btn-success flex-grow-1" onclick="window.print()"><i class="fa-solid fa-print me-1"></i>Print</button>
         </div>
     </form>
 </div>
+
+<script>
+function togglePeriodFields() {
+    const filterType = document.getElementById('filter_type').value;
+    const monthContainer = document.getElementById('month_container');
+    const yearContainer = document.getElementById('year_container');
+    
+    if (filterType === 'yearly') {
+        monthContainer.style.display = 'none';
+        yearContainer.style.display = 'block';
+    } else {
+        monthContainer.style.display = 'block';
+        yearContainer.style.display = 'none';
+    }
+}
+// Run on load
+document.addEventListener('DOMContentLoaded', togglePeriodFields);
+</script>
 
 <!-- Print & View Area -->
 <div class="print-area">

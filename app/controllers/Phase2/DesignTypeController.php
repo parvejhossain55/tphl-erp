@@ -95,11 +95,22 @@ class DesignTypeController extends Controller {
     }
 
     public function delete() {
-        $id = $_POST['id'] ?? 0;
-        if ($this->model->delete($id)) {
-            setSuccess("Deleted successfully.");
-        } else {
-            setError("Failed to delete.");
+        $id = (int)($_POST['id'] ?? 0);
+        $logFile = dirname(__DIR__, 2) . '/scratch/delete_debug.log';
+        $logMsg = date('[Y-m-d H:i:s] ') . "DesignTypeController::delete called with ID: " . $id . "\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+        try {
+            if ($this->model->delete($id)) {
+                setSuccess("Deleted successfully.");
+                file_put_contents($logFile, "SUCCESS\n", FILE_APPEND);
+            } else {
+                setError("Failed to delete.");
+                file_put_contents($logFile, "FAILED: model delete returned false\n", FILE_APPEND);
+            }
+        } catch (\Exception $e) {
+            error_log("DesignTypeController::delete exception: " . $e->getMessage());
+            setError("Failed to delete: " . $e->getMessage());
+            file_put_contents($logFile, "EXCEPTION: " . $e->getMessage() . "\n", FILE_APPEND);
         }
         header("Location: " . $GLOBALS['base_url'] . "/con-design-types");
         exit;

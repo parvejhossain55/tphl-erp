@@ -53,7 +53,7 @@ unset($_SESSION['csv_legal_sheet_skipped']); // clear after reading
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                 <h4 class="mb-0 text-dark font-weight-bold">
                     <i class="fal fa-file-contract me-2" style="color:var(--tphl-blue)"></i>
-                    Project Legal Sheets
+                    Project Approval Sheets
                 </h4>
                 <div class="d-flex gap-2 flex-wrap">
                     <?php if ($canModify): ?>
@@ -98,7 +98,7 @@ unset($_SESSION['csv_legal_sheet_skipped']); // clear after reading
                                             </td>
                                             <td style="padding:15px">
                                                 <div class="font-weight-bold text-dark"><?= htmlspecialchars($s['title']) ?></div>
-                                                <div style="font-size:12px; color:#6c757d">
+                                                <div class=" d-none" style="font-size:12px; color:#6c757d">
                                                     Version: <span class="badge badge-primary border text-muted"><?= htmlspecialchars($s['version']) ?></span>
                                                 </div>
                                             </td>

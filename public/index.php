@@ -886,7 +886,6 @@ $routes['con-ajax-workorders/(\d+)']= ['controller' => 'Phase2\Con_DashboardCont
 // ── Role-Specific Dashboards ───────────────────────────────────────────────
 $routes['operations-dashboard']           = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'operationsDashboard'];
 $routes['con-site-engineer-dashboard']    = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'siteEngineerDashboard'];
-$routes['qc-dashboard']                   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'qcDashboard'];
 $routes['purchase-team-lead-dashboard']   = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'purchaseTeamLeadDashboard'];
 $routes['draft-dashboard']                = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'draftDashboard'];
 $routes['land-dashboard']                 = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'landDashboard'];
@@ -1185,6 +1184,7 @@ $routes['con-work-order-qc-approve/(\d+)'] = ['controller' => 'Phase2\\Con_WorkO
 $routes['con-work-order-delete']           = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'delete'];
 $routes['con-work-order-print/(\d+)']      = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'printView'];
 $routes['con-ajax-wo-by-project']          = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetByProject'];
+$routes['con-ajax-wo-details']             = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetDetails'];
 $routes['con-ajax-wo-work-plans']          = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetWorkPlans'];
 $routes['con-ajax-wo-targets']             = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetTargets'];
 $routes['con-ajax-wo-drawings']            = ['controller' => 'Phase2\\Con_WorkOrderController', 'method' => 'ajaxGetDrawings'];

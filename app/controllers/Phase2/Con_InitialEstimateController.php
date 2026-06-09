@@ -43,11 +43,13 @@ class Con_InitialEstimateController extends Controller
         // PM (15,22) and Management (3) see all including drafts
         // Others see only their own drafts + all non-draft records
         $budgets = $this->model->getAll($userId, $roleId);
+        $spentMap = $this->model->getSpentTotalsGroupedByProject();
 
         $this->view('phase2/initial_estimates/initial-estimate-lists', [
             'current_route' => 'con-estimates',
             'page_title'    => 'Initial Estimate Budgets',
             'budgets'       => $budgets,
+            'spentMap'      => $spentMap,
         ]);
     }
 
@@ -312,6 +314,20 @@ class Con_InitialEstimateController extends Controller
             $creatorInfo = $stmt->get_result()->fetch_assoc() ?? [];
         }
 
+        $spentTotals = $this->model->getSpentTotals($projectId);
+        $spentDetails = $this->model->getSpentDetails($projectId);
+        // Calculate totals for tabs in modal
+        $materialsTotal = 0.0;
+        foreach ($spentDetails['materials'] as $m) {
+            $materialsTotal += (float)$m['total_cost'];
+        }
+        $contractorsTotal = 0.0;
+        foreach ($spentDetails['contractors'] as $c) {
+            $contractorsTotal += (float)$c['amount_paid'];
+        }
+        $spentDetails['materials_total'] = $materialsTotal;
+        $spentDetails['contractors_total'] = $contractorsTotal;
+
         $this->view('phase2/initial_estimates/show-initial-budget', [
             'current_route'      => 'con-estimates',
             'page_title'         => 'Estimate Detail — ' . $budget['project_name'],
@@ -325,6 +341,8 @@ class Con_InitialEstimateController extends Controller
             'currentUserId'      => $currentUserId,
             'canApprove'         => $canApprove,
             'creatorInfo'        => $creatorInfo,
+            'spentTotal'         => $spentTotals['total_spent'],
+            'spentDetails'       => $spentDetails,
         ]);
     }
 

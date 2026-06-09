@@ -3,6 +3,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 $canRequest = in_array($roleId, [1, 3, 14, 15, 22]);
 ?>
 
+
 <div class="mb-3 pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
         <h4 class="mb-2">Land Fund Requisitions</h4>
@@ -163,170 +164,288 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 22]);
 </div>
 
 <!-- Request Fund Modal -->
-<div class="modal fade" id="requestFundModal" tabindex="-1" aria-labelledby="requestFundModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="requestFundModalLabel">Create Fund Requisition</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+<div id="requestFundModal" class="modal custom-modal fade" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Fund Requisition</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
             </div>
-            <form action="<?= $base_url ?>/con-land-requisitions/store" method="POST" enctype="multipart/form-data">
-                <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Select Land Acquisition Portfolio <span class="text-danger">*</span></label>
-                        <select class="form-select" name="land_acquisition_id" required>
-                            <option value="" disabled selected>Select Portfolio...</option>
-                            <?php foreach ($acquisitions as $la): ?>
-                                <option value="<?= $la['id'] ?>"><?= htmlspecialchars($la['project_name']) ?> — Owner: <?= htmlspecialchars($la['land_owner_name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
+            <div class="modal-body">
+                <form action="<?= $base_url ?>/con-land-requisitions/store" method="POST" enctype="multipart/form-data">
+                    <div class="row gy-10">
+                        <div class="col-xl-12">
+                            <div class="card__wrapper">
+                                <div class="row gy-20">
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Select Land Acquisition Portfolio <span class="text-danger">*</span></label>
+                                            </div>
+                                            <div class="form__input">
+                                                <select class="form-control" name="land_acquisition_id" required>
+                                                    <option value="" disabled selected>Select Portfolio...</option>
+                                                    <?php foreach ($acquisitions as $la): ?>
+                                                        <option value="<?= $la['id'] ?>"><?= htmlspecialchars($la['project_name']) ?> — Owner: <?= htmlspecialchars($la['land_owner_name']) ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Requisition Type <span class="text-danger">*</span></label>
-                        <select class="form-select" name="requisition_type" required>
-                            <option value="Bayana">Bayana (Advance Payment)</option>
-                            <option value="Registration">Deed Registration Fee</option>
-                            <option value="Extra Cost">Extra Cost (Mutation/Legal/Brokerage)</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Requisition Type <span class="text-danger">*</span></label>
+                                            </div>
+                                            <div class="form__input">
+                                                <select class="form-control" name="requisition_type" required>
+                                                    <option value="Bayana">Bayana (Advance Payment)</option>
+                                                    <option value="Registration">Deed Registration Fee</option>
+                                                    <option value="Extra Cost">Extra Cost (Mutation/Legal/Brokerage)</option>
+                                                    <option value="Other">Other</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Requested Amount (BDT) <span class="text-danger">*</span></label>
-                        <input type="number" step="0.01" class="form-control" name="requested_amount" required placeholder="0.00">
-                    </div>
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Requested Amount (BDT) <span class="text-danger">*</span></label>
+                                            </div>
+                                            <div class="form__input">
+                                                <input type="number" step="0.01" class="form-control" name="requested_amount" required placeholder="0.00">
+                                            </div>
+                                        </div>
+                                    </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Detailed Purpose <span class="text-danger">*</span></label>
-                        <textarea class="form-control" name="purpose" rows="3" required placeholder="Describe the reason/purpose for requesting this amount"></textarea>
-                    </div>
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Detailed Purpose <span class="text-danger">*</span></label>
+                                            </div>
+                                            <div class="form__input">
+                                                <textarea class="form-control" name="purpose" rows="3" required placeholder="Describe the reason/purpose for requesting this amount"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Requisition Attachment (Receipt / Estimation / Document)</label>
-                        <input type="file" class="form-control" name="req_attachment">
-                        <small class="text-muted">Max file size: 2MB. Format: JPG, PNG, PDF, DOCX</small>
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Requisition Attachment (Receipt / Estimation / Document)</label>
+                                            </div>
+                                            <div class="form__input">
+                                                <input type="file" class="form-control" name="req_attachment">
+                                                <small class="text-muted">Max file size: 2MB. Format: JPG, PNG, PDF, DOCX</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Submit Request</button>
-                </div>
-            </form>
+                    <div class="submit__btn text-center mt-3">
+                        <button class="btn btn-primary" type="submit">Submit Request</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- Management Approval Modal -->
-<div class="modal fade" id="mgmtApproveModal" tabindex="-1" aria-labelledby="mgmtApproveModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="mgmtApproveModalLabel">Management Approval Option</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+<div id="mgmtApproveModal" class="modal custom-modal fade" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Management Approval Option</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
             </div>
-            <form action="<?= $base_url ?>/con-land-requisitions/approve" method="POST">
-                <input type="hidden" name="id" id="mgmt_req_id">
-                <div class="modal-body p-4">
-                    <h5 class="mb-3">Amount: <strong class="text-success">BDT <span id="mgmt_req_amount"></span></strong></h5>
-                    
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Approval Decision</label>
-                        <select class="form-select" name="status" required>
-                            <option value="Approved" selected>Approve Request</option>
-                            <option value="Rejected">Reject Request</option>
-                        </select>
-                    </div>
+            <div class="modal-body">
+                <form action="<?= $base_url ?>/con-land-requisitions/approve" method="POST">
+                    <input type="hidden" name="id" id="mgmt_req_id">
+                    <div class="row gy-10">
+                        <div class="col-xl-12">
+                            <div class="card__wrapper">
+                                <div class="row gy-20">
+                                    <div class="col-lg-12">
+                                        <h5 class="mb-3">Amount: <strong class="text-success">BDT <span id="mgmt_req_amount"></span></strong></h5>
+                                    </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Remarks / Notes</label>
-                        <textarea class="form-control" name="mgmt_note" rows="3" placeholder="Provide reason or comments"></textarea>
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Approval Decision</label>
+                                            </div>
+                                            <div class="form__input">
+                                                <select class="form-control" name="status" required>
+                                                    <option value="Approved" selected>Approve Request</option>
+                                                    <option value="Rejected">Reject Request</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Remarks / Notes</label>
+                                            </div>
+                                            <div class="form__input">
+                                                <textarea class="form-control" name="mgmt_note" rows="3" placeholder="Provide reason or comments"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-success">Save Decision</button>
-                </div>
-            </form>
+                    <div class="submit__btn text-center mt-3">
+                        <button class="btn btn-primary" type="submit">Save Decision</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- Accounts Payment Modal -->
-<div class="modal fade" id="accountsPayModal" tabindex="-1" aria-labelledby="accountsPayModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title" id="accountsPayModalLabel">Record Payment Detail</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+<div id="accountsPayModal" class="modal custom-modal fade" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Record Payment Detail</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
             </div>
-            <form action="<?= $base_url ?>/con-land-requisitions/pay" method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="id" id="accounts_req_id">
-                <div class="modal-body p-4">
-                    <h5 class="mb-3">Pay Amount: <strong class="text-success">BDT <span id="accounts_req_amount"></span></strong></h5>
+            <div class="modal-body">
+                <form action="<?= $base_url ?>/con-land-requisitions/pay" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="id" id="accounts_req_id">
+                    <div class="row gy-10">
+                        <div class="col-xl-12">
+                            <div class="card__wrapper">
+                                <div class="row gy-20">
+                                    <div class="col-lg-12">
+                                        <h5 class="mb-3">Pay Amount: <strong class="text-success">BDT <span id="accounts_req_amount"></span></strong></h5>
+                                    </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Payment Decision</label>
-                        <select class="form-select" name="status" required>
-                            <option value="Paid" selected>Mark as Paid</option>
-                            <option value="Rejected">Reject Payment</option>
-                        </select>
-                    </div>
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Payment Decision</label>
+                                            </div>
+                                            <div class="form__input">
+                                                <select class="form-control" name="status" required>
+                                                    <option value="Paid" selected>Mark as Paid</option>
+                                                    <option value="Rejected">Reject Payment</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Payment Method</label>
-                        <select class="form-select" name="payment_method" required>
-                            <option value="Bank" selected>Bank Transfer / Cheque</option>
-                            <option value="Cash">Cash</option>
-                            <option value="Mobile Banking">Mobile Banking (bKash/Nagad/Rocket)</option>
-                        </select>
-                    </div>
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Payment Method</label>
+                                            </div>
+                                            <div class="form__input">
+                                                <select class="form-control" name="payment_method" required>
+                                                    <option value="Bank" selected>Bank Transfer / Cheque</option>
+                                                    <option value="Cash">Cash</option>
+                                                    <option value="Mobile Banking">Mobile Banking (bKash/Nagad/Rocket)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Transaction / Reference / Cheque No.</label>
-                        <input type="text" class="form-control" name="transaction_no" placeholder="Txn ID, Cheque Number etc.">
-                    </div>
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Transaction / Reference / Cheque No.</label>
+                                            </div>
+                                            <div class="form__input">
+                                                <input type="text" class="form-control" name="transaction_no" placeholder="Txn ID, Cheque Number etc.">
+                                            </div>
+                                        </div>
+                                    </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Payment Attachment (Receipt / Document)</label>
-                        <input type="file" class="form-control" name="attachment">
-                        <small class="text-muted">Max file size: 2MB. Format: JPG, PNG, PDF, DOCX</small>
-                    </div>
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Payment Attachment (Receipt / Document)</label>
+                                            </div>
+                                            <div class="form__input">
+                                                <input type="file" class="form-control" name="attachment">
+                                                <small class="text-muted">Max file size: 2MB. Format: JPG, PNG, PDF, DOCX</small>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Accounts Note</label>
-                        <textarea class="form-control" name="accounts_note" rows="3" placeholder="Provide payment details or note"></textarea>
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Accounts Note</label>
+                                            </div>
+                                            <div class="form__input">
+                                                <textarea class="form-control" name="accounts_note" rows="3" placeholder="Provide payment details or note"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-dark">Record Payment</button>
-                </div>
-            </form>
+                    <div class="submit__btn text-center mt-3">
+                        <button class="btn btn-primary" type="submit">Record Payment</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var mgmtApproveModal = document.getElementById('mgmtApproveModal');
-    mgmtApproveModal.addEventListener('show.bs.modal', function (event) {
-        var button = event.relatedTarget;
-        var id = button.getAttribute('data-id');
-        var amount = button.getAttribute('data-amount');
-        
-        document.getElementById('mgmt_req_id').value = id;
-        document.getElementById('mgmt_req_amount').textContent = parseFloat(amount).toLocaleString('en-US', {minimumFractionDigits: 2});
-    });
 
-    var accountsPayModal = document.getElementById('accountsPayModal');
-    accountsPayModal.addEventListener('show.bs.modal', function (event) {
-        var button = event.relatedTarget;
-        var id = button.getAttribute('data-id');
-        var amount = button.getAttribute('data-amount');
-        
-        document.getElementById('accounts_req_id').value = id;
-        document.getElementById('accounts_req_amount').textContent = parseFloat(amount).toLocaleString('en-US', {minimumFractionDigits: 2});
-    });
-});
-</script>
+<?php
+$page_script = "(function() {
+    function init() {
+        // Set up event listeners for modal data binding
+        const mgmtApproveModal = document.getElementById('mgmtApproveModal');
+        if (mgmtApproveModal) {
+            mgmtApproveModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const id = button.getAttribute('data-id');
+                const amount = button.getAttribute('data-amount');
+                
+                document.getElementById('mgmt_req_id').value = id;
+                document.getElementById('mgmt_req_amount').textContent = parseFloat(amount).toLocaleString('en-US', {minimumFractionDigits: 2});
+            });
+        }
+
+        const accountsPayModal = document.getElementById('accountsPayModal');
+        if (accountsPayModal) {
+            accountsPayModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const id = button.getAttribute('data-id');
+                const amount = button.getAttribute('data-amount');
+                
+                document.getElementById('accounts_req_id').value = id;
+                document.getElementById('accounts_req_amount').textContent = parseFloat(amount).toLocaleString('en-US', {minimumFractionDigits: 2});
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+";
+?>

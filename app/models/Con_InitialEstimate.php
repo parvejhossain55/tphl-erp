@@ -575,4 +575,186 @@ class Con_InitialEstimate extends Model
         $stmt->bind_param('i', $budgetId);
         return $stmt->execute();
     }
+
+    // =========================================================================
+    // BUDGET COST USAGE / SPENT CALCULATIONS
+    // =========================================================================
+
+    /**
+     * Get spent summary for a single project
+     */
+    public function getSpentTotals($projectId)
+    {
+        $projectId = (int)$projectId;
+        if ($projectId <= 0) {
+            return ['material_spent' => 0.0, 'contractor_spent' => 0.0, 'total_spent' => 0.0];
+        }
+
+        // 1. Material receiving spent
+        $matSql = "
+            SELECT COALESCE(SUM(mri.received_quantity * poi.unit_price), 0) AS material_spent
+            FROM material_receiving_items mri
+            INNER JOIN material_receiving mr ON mr.id = mri.receiving_id
+            INNER JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+            INNER JOIN purchase_orders po ON po.id = mr.purchase_order_id
+            INNER JOIN purchase_requests pr ON pr.id = po.request_id
+            WHERE mr.overall_status IN ('Accepted', 'Partially Accepted')
+              AND mri.status = 'Accepted'
+              AND pr.project_id = ?
+        ";
+        $stmtMat = $this->db->prepare($matSql);
+        $stmtMat->bind_param('i', $projectId);
+        $stmtMat->execute();
+        $matRow = $stmtMat->get_result()->fetch_assoc();
+        $matSpent = (float)($matRow['material_spent'] ?? 0.0);
+
+        // 2. Contractor payments spent
+        $conSql = "
+            SELECT COALESCE(SUM(amount_paid), 0) AS contractor_spent
+            FROM con_financial_transactions
+            WHERE ref_type = 'contractor_bill'
+              AND update_status = 'Completed'
+              AND project_id = ?
+        ";
+        $stmtCon = $this->db->prepare($conSql);
+        $stmtCon->bind_param('i', $projectId);
+        $stmtCon->execute();
+        $conRow = $stmtCon->get_result()->fetch_assoc();
+        $conSpent = (float)($conRow['contractor_spent'] ?? 0.0);
+
+        return [
+            'material_spent' => $matSpent,
+            'contractor_spent' => $conSpent,
+            'total_spent' => $matSpent + $conSpent
+        ];
+    }
+
+    /**
+     * Get itemized spent details for a project (materials received & contractor payments)
+     */
+    public function getSpentDetails($projectId)
+    {
+        $projectId = (int)$projectId;
+        if ($projectId <= 0) {
+            return ['materials' => [], 'contractors' => []];
+        }
+
+        // 1. Materials itemized details
+        $matSql = "
+            SELECT 
+                mr.id AS grn_id,
+                m.name AS material_name,
+                m.unit AS material_unit,
+                mri.received_quantity,
+                poi.unit_price,
+                (mri.received_quantity * poi.unit_price) AS total_cost,
+                mr.receiving_date,
+                u.full_name AS receiver_name,
+                mr.notes AS receiving_notes
+            FROM material_receiving_items mri
+            INNER JOIN material_receiving mr ON mr.id = mri.receiving_id
+            INNER JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+            INNER JOIN con_materials m ON m.id = poi.material_id
+            INNER JOIN purchase_orders po ON po.id = mr.purchase_order_id
+            INNER JOIN purchase_requests pr ON pr.id = po.request_id
+            LEFT JOIN users u ON u.id = mr.received_by
+            WHERE mr.overall_status IN ('Accepted', 'Partially Accepted')
+              AND mri.status = 'Accepted'
+              AND pr.project_id = ?
+            ORDER BY mr.receiving_date DESC, mr.id DESC
+        ";
+        $stmtMat = $this->db->prepare($matSql);
+        $stmtMat->bind_param('i', $projectId);
+        $stmtMat->execute();
+        $materials = $stmtMat->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 2. Contractor payments details
+        $conSql = "
+            SELECT 
+                c.name AS contractor_name,
+                cbr.bill_type,
+                txn.payment_type,
+                txn.amount_paid,
+                txn.transaction_date,
+                txn.payment_method,
+                txn.reference_number,
+                txn.notes AS txn_notes,
+                u.full_name AS processed_by_name
+            FROM con_financial_transactions txn
+            INNER JOIN contractor_bill_requests cbr ON cbr.id = txn.ref_id
+            INNER JOIN contractors c ON c.id = cbr.operator_id
+            LEFT JOIN users u ON u.id = txn.processed_by
+            WHERE txn.ref_type = 'contractor_bill'
+              AND txn.update_status = 'Completed'
+              AND txn.project_id = ?
+            ORDER BY txn.transaction_date DESC, txn.id DESC
+        ";
+        $stmtCon = $this->db->prepare($conSql);
+        $stmtCon->bind_param('i', $projectId);
+        $stmtCon->execute();
+        $contractors = $stmtCon->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        return [
+            'materials' => $materials,
+            'contractors' => $contractors
+        ];
+    }
+
+    /**
+     * Get spent totals grouped by project (for list view)
+     */
+    public function getSpentTotalsGroupedByProject()
+    {
+        $spent = [];
+
+        // 1. Material receiving totals
+        $matSql = "
+            SELECT pr.project_id, COALESCE(SUM(mri.received_quantity * poi.unit_price), 0) AS material_spent
+            FROM material_receiving_items mri
+            INNER JOIN material_receiving mr ON mr.id = mri.receiving_id
+            INNER JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+            INNER JOIN purchase_orders po ON po.id = mr.purchase_order_id
+            INNER JOIN purchase_requests pr ON pr.id = po.request_id
+            WHERE mr.overall_status IN ('Accepted', 'Partially Accepted')
+              AND mri.status = 'Accepted'
+            GROUP BY pr.project_id
+        ";
+        $matRes = $this->db->query($matSql);
+        if ($matRes) {
+            while ($row = $matRes->fetch_assoc()) {
+                $pid = (int)$row['project_id'];
+                $spent[$pid] = [
+                    'material_spent' => (float)$row['material_spent'],
+                    'contractor_spent' => 0.0,
+                    'total_spent' => (float)$row['material_spent']
+                ];
+            }
+        }
+
+        // 2. Contractor payment totals
+        $conSql = "
+            SELECT project_id, COALESCE(SUM(amount_paid), 0) AS contractor_spent
+            FROM con_financial_transactions
+            WHERE ref_type = 'contractor_bill'
+              AND update_status = 'Completed'
+            GROUP BY project_id
+        ";
+        $conRes = $this->db->query($conSql);
+        if ($conRes) {
+            while ($row = $conRes->fetch_assoc()) {
+                $pid = (int)$row['project_id'];
+                if (!isset($spent[$pid])) {
+                    $spent[$pid] = [
+                        'material_spent' => 0.0,
+                        'contractor_spent' => 0.0,
+                        'total_spent' => 0.0
+                    ];
+                }
+                $spent[$pid]['contractor_spent'] = (float)$row['contractor_spent'];
+                $spent[$pid]['total_spent'] += (float)$row['contractor_spent'];
+            }
+        }
+
+        return $spent;
+    }
 }

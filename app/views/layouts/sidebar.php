@@ -800,7 +800,7 @@
                             <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
                             <span class="sidebar__menu-label">My Leaves </span>
                         </a>
-                  
+
                     </li>
 
                 <?php endif; ?>
@@ -1228,7 +1228,7 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if ($hasConPerms): ?>
+                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [3, 15, 22, 12, 20])): ?>
                     <li class="slide">
                         <a href="<?= $base_url ?>/all-projects-overview"
                             class="sidebar__menu-item <?= isActive('all-projects-overview', $current_route) ?>">
@@ -1313,20 +1313,7 @@
                             <span class="sidebar__menu-label">site engineer Dashboard</span>
                         </a>
                     </li>
-                    <li class="slide <?= isActive('con-project-plan-targets', $current_route) ?>">
-                        <a href="<?= $base_url ?>/con-project-plan-targets"
-                            class="sidebar__menu-item <?= isActive('con-project-plan-targets', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-bullseye-arrow"></i></div>
-                            <span class="sidebar__menu-label">Project Plan Targets</span>
-                        </a>
-                    </li>
-                    <li class="slide <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">
-                        <a href="<?= $base_url ?>/con-weekly-reports"
-                            class="sidebar__menu-item <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">
-                            <div class="side-menu__icon"><i class="bi bi-calendar-week"></i></div>
-                            <span class="sidebar__menu-label">Weekly Reports</span>
-                        </a>
-                    </li>
+
                 <?php endif; ?>
 
 
@@ -1385,13 +1372,7 @@
                             <span class="sidebar__menu-label">Draft Dashboard</span>
                         </a>
                     </li>
-                    <li class="slide <?= isActive('con-monthly-work-report', $current_route) ?>">
-                        <a href="<?= $base_url ?>/con-monthly-work-report"
-                            class="sidebar__menu-item <?= isActive('con-monthly-work-report', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-file-contract"></i></div>
-                            <span class="sidebar__menu-label">Monthly Report</span>
-                        </a>
-                    </li>
+
                 <?php endif; ?>
 
                 <!-- ══ Land Manager Dashboard ═════════════════════════════════════
@@ -1419,13 +1400,7 @@
                             <span class="sidebar__menu-label">Architect Dashboard</span>
                         </a>
                     </li>
-                    <li class="slide <?= isActive('con-monthly-work-report', $current_route) ?>">
-                        <a href="<?= $base_url ?>/con-monthly-work-report"
-                            class="sidebar__menu-item <?= isActive('con-monthly-work-report', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-file-contract"></i></div>
-                            <span class="sidebar__menu-label">Monthly Report</span>
-                        </a>
-                    </li>
+
                 <?php endif; ?>
 
                 <!-- ══ Estimator Dashboard ════════════════════════════════════════
@@ -1452,13 +1427,7 @@
                             <span class="sidebar__menu-label">Structure Dashboard</span>
                         </a>
                     </li>
-                    <li class="slide <?= isActive('con-monthly-work-report', $current_route) ?>">
-                        <a href="<?= $base_url ?>/con-monthly-work-report"
-                            class="sidebar__menu-item <?= isActive('con-monthly-work-report', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-file-contract"></i></div>
-                            <span class="sidebar__menu-label">Monthly Report</span>
-                        </a>
-                    </li>
+
                 <?php endif; ?>
                 <!-- ====== QC MODULE ====== -->
                 <?php if (hasPermission('QC Dashboard')): ?>
@@ -1540,7 +1509,7 @@
                                     <a class="sidebar__menu-item <?= isActive(['con-land-requisitions', 'con-land-requisitions/create'], $current_route) ? 'active' : '' ?>"
                                         href="<?= $base_url ?>/con-land-requisitions">Land Requisitions</a>
                                 </li>
-                                <li class="slide <?= isActive('con-land-monthly-reports', $current_route) ?>">
+                                <li class="d-none slide <?= isActive('con-land-monthly-reports', $current_route) ?>">
                                     <a class="sidebar__menu-item <?= isActive('con-land-monthly-reports', $current_route) ?>"
                                         href="<?= $base_url ?>/con-land-monthly-reports">Land Monthly Report</a>
                                 </li>
@@ -1763,7 +1732,7 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if (hasPermission('Vendor Manage') || in_array($_SESSION['user']['role_id'] ?? 0, [22, 23])): ?>
+                <?php if (hasPermission('Vendor Manage') || in_array($_SESSION['user']['role_id'] ?? 0, [22])): ?>
                     <!-- Module 6: Vendors -->
 
                     <li
@@ -1866,7 +1835,22 @@
                         </ul>
                     </li>
                 <?php endif; ?>
-
+                <?php if (hasPermission('site engineer dashboard')): ?>
+                    <li class="slide <?= isActive('con-project-plan-targets', $current_route) ?>">
+                        <a href="<?= $base_url ?>/con-project-plan-targets"
+                            class="sidebar__menu-item <?= isActive('con-project-plan-targets', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-bullseye-arrow"></i></div>
+                            <span class="sidebar__menu-label">Project Plan & BOQ</span>
+                        </a>
+                    </li>
+                    <li class="slide <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">
+                        <a href="<?= $base_url ?>/con-weekly-reports"
+                            class="sidebar__menu-item <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">
+                            <div class="side-menu__icon"><i class="bi bi-calendar-week"></i></div>
+                            <span class="sidebar__menu-label">Weekly Reports</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
 
                 <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
                 <?php if (hasPermission('Operation manage')): ?>
@@ -2224,6 +2208,15 @@
                                     href="<?= $base_url ?>/asset-extra-purchases">Extra Purchases</a>
                             </li>
                         </ul>
+                    </li>
+                <?php endif; ?>
+                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [18, 16, 21])): ?>
+                    <li class="slide <?= isActive('con-monthly-work-report', $current_route) ?>">
+                        <a href="<?= $base_url ?>/con-monthly-work-report"
+                            class="sidebar__menu-item <?= isActive('con-monthly-work-report', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-file-contract"></i></div>
+                            <span class="sidebar__menu-label">Monthly Report</span>
+                        </a>
                     </li>
                 <?php endif; ?>
 

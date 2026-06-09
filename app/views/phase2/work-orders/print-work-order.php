@@ -33,6 +33,20 @@ $runAmt    = $totalAmt - $advAmt - $retAmt;
 
 $printDate = date('d M Y, h:i A');
 $isOverdue = $wo['end_date'] && strtotime($wo['end_date']) < time() && !in_array($status, ['closed','qc_approved','work_completed']);
+
+$uniqueWorkTypes = [];
+if (!empty($wo['work_type_name'])) {
+    $uniqueWorkTypes[] = $wo['work_type_name'];
+}
+if (!empty($woItems)) {
+    foreach ($woItems as $item) {
+        if (!empty($item['work_type_name'])) {
+            $uniqueWorkTypes[] = $item['work_type_name'];
+        }
+    }
+}
+$uniqueWorkTypes = array_unique($uniqueWorkTypes);
+$workTypesStr = !empty($uniqueWorkTypes) ? implode(', ', $uniqueWorkTypes) : '-';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -229,12 +243,22 @@ $isOverdue = $wo['end_date'] && strtotime($wo['end_date']) < time() && !in_array
                             <div class="iv"><?= htmlspecialchars($wo['project_name'] ?? '—') ?></div>
                         </div>
                         <div class="info-item">
-                            <div class="il">Work Type</div>
-                            <div class="iv"><?= htmlspecialchars($wo['work_type_name'] ?? '—') ?></div>
+                            <div class="il">Construction Phase</div>
+                            <div class="iv" style="color:#1d4ed8;font-weight:700;"><?= htmlspecialchars($wo['drawing_phase_name'] ?? '—') ?></div>
                         </div>
                         <div class="info-item">
-                            <div class="il">Design Type</div>
+                            <div class="il">Design Type (Drawing)</div>
                             <div class="iv"><?= htmlspecialchars($wo['design_type_name'] ?? '—') ?></div>
+                        </div>
+                    </div>
+                    <div class="two-col" style="margin-bottom:14px; grid-template-columns: 1fr 2fr;">
+                        <div class="info-item">
+                            <div class="il">WO Number</div>
+                            <div class="iv" style="font-weight:700;"><?= htmlspecialchars($wo['wo_number'] ?? '—') ?></div>
+                        </div>
+                        <div class="info-item">
+                            <div class="il">Work Types</div>
+                            <div class="iv"><?= htmlspecialchars($workTypesStr) ?></div>
                         </div>
                     </div>
                     <div class="three-col" style="margin-bottom:14px;">
@@ -352,7 +376,17 @@ $isOverdue = $wo['end_date'] && strtotime($wo['end_date']) < time() && !in_array
                     ?>
                     <tr>
                         <td style="text-align:center;font-weight:700;color:#1d4ed8"><?= htmlspecialchars($wItem['sl_no']) ?></td>
-                        <td style="white-space:pre-wrap;font-size:11px"><?= nl2br(htmlspecialchars($wItem['description'])) ?></td>
+                        <td>
+                            <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:4px;">
+                                <?php if (!empty($wItem['phase_item_name'])): ?>
+                                    <span class="badge-pill bp-gray" style="font-size:9px; font-weight:600; padding:1px 6px;">Phase Item: <?= htmlspecialchars($wItem['phase_item_name']) ?></span>
+                                <?php endif; ?>
+                                <?php if (!empty($wItem['work_type_name'])): ?>
+                                    <span class="badge-pill bp-blue" style="font-size:9px; font-weight:600; padding:1px 6px;">Work Type: <?= htmlspecialchars($wItem['work_type_name']) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <div style="white-space:pre-wrap;font-size:11px"><?= nl2br(htmlspecialchars($wItem['description'])) ?></div>
+                        </td>
                         <td style="color:#6b7280;font-size:11px"><?= htmlspecialchars($wItem['location'] ?? '') ?></td>
                         <td style="text-align:center"><?= strtoupper(htmlspecialchars($wItem['unit'])) ?></td>
                         <td class="right"><?= number_format((float)$wItem['quantity'], 2) ?></td>

@@ -15,6 +15,12 @@ class Con_ProjectOverviewDashboardController extends Controller
             header("Location: " . $GLOBALS['base_url'] . "/login");
             exit;
         }
+
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        if (!in_array($roleId, [3, 15, 22, 12, 20])) {
+            header("Location: " . $GLOBALS['base_url'] . "/home");
+            exit;
+        }
     }
 
     private function getProjectRoleFilter($alias = 'p')
@@ -113,9 +119,9 @@ class Con_ProjectOverviewDashboardController extends Controller
                 $matCost = $matRes ? (float)$matRes->fetch_assoc()['total'] : 0.0;
 
                 $conRes = $this->db->query("
-                    SELECT COALESCE(SUM(cbr.approved_amount), 0) AS total
-                    FROM contractor_bill_requests cbr
-                    WHERE cbr.status IN ('approved', 'paid') AND cbr.project_id = $pid
+                    SELECT COALESCE(SUM(amount_paid), 0) AS total
+                    FROM con_financial_transactions
+                    WHERE ref_type = 'contractor_bill' AND update_status = 'Completed' AND project_id = $pid
                 ");
                 $conCost = $conRes ? (float)$conRes->fetch_assoc()['total'] : 0.0;
 
@@ -138,10 +144,10 @@ class Con_ProjectOverviewDashboardController extends Controller
                 $matCost = $matRes ? (float)$matRes->fetch_assoc()['total'] : 0.0;
 
                 $conRes = $this->db->query("
-                    SELECT COALESCE(SUM(cbr.approved_amount), 0) AS total
-                    FROM contractor_bill_requests cbr
-                    INNER JOIN projects p ON p.id = cbr.project_id
-                    WHERE cbr.status IN ('approved', 'paid') AND p.deleted_at IS NULL AND {$roleFilter}
+                    SELECT COALESCE(SUM(txn.amount_paid), 0) AS total
+                    FROM con_financial_transactions txn
+                    INNER JOIN projects p ON p.id = txn.project_id
+                    WHERE txn.ref_type = 'contractor_bill' AND txn.update_status = 'Completed' AND p.deleted_at IS NULL AND {$roleFilter}
                 ");
                 $conCost = $conRes ? (float)$conRes->fetch_assoc()['total'] : 0.0;
 
@@ -584,6 +590,7 @@ class Con_ProjectOverviewDashboardController extends Controller
             $pr['progress_pct'] = $actual;
             $pr['planned_progress_pct'] = $planned;
             $pr['total_budget'] = $budgetsAndSpentMap[$pid]['total_budget'] ?? 0.0;
+            $pr['budget_id'] = $budgetsAndSpentMap[$pid]['budget_id'] ?? null;
             $pr['total_spent'] = $budgetsAndSpentMap[$pid]['total_spent'] ?? 0.0;
 
             $totalActualProg += $actual;
@@ -727,10 +734,10 @@ class Con_ProjectOverviewDashboardController extends Controller
         $matSpentTotal = $matSpentRes ? (float)$matSpentRes->fetch_assoc()['total'] : 0.0;
 
         $conSpentRes = $this->db->query("
-            SELECT COALESCE(SUM(cbr.approved_amount), 0) AS total
-            FROM contractor_bill_requests cbr
-            INNER JOIN projects p ON p.id = cbr.project_id
-            WHERE cbr.status IN ('approved', 'paid') AND p.deleted_at IS NULL AND {$roleFilter}
+            SELECT COALESCE(SUM(txn.amount_paid), 0) AS total
+            FROM con_financial_transactions txn
+            INNER JOIN projects p ON p.id = txn.project_id
+            WHERE txn.ref_type = 'contractor_bill' AND txn.update_status = 'Completed' AND p.deleted_at IS NULL AND {$roleFilter}
         ");
         $conSpentTotal = $conSpentRes ? (float)$conSpentRes->fetch_assoc()['total'] : 0.0;
 
@@ -1455,15 +1462,17 @@ class Con_ProjectOverviewDashboardController extends Controller
 
         // 1. Fetch approved budget for these projects
         $budgetRes = $this->db->query("
-            SELECT project_id, COALESCE(SUM(total_estimated_cost), 0) AS total_budget
+            SELECT project_id, MAX(id) AS budget_id, COALESCE(SUM(total_estimated_cost), 0) AS total_budget
             FROM initial_estimate_budgets
             WHERE status IN ('approved', 'pm_approved') AND project_id IN ($idsList)
             GROUP BY project_id
         ");
         $budgets = [];
+        $budgetIds = [];
         if ($budgetRes) {
             while ($row = $budgetRes->fetch_assoc()) {
                 $budgets[(int)$row['project_id']] = (float)$row['total_budget'];
+                $budgetIds[(int)$row['project_id']] = (int)$row['budget_id'];
             }
         }
 
@@ -1487,9 +1496,9 @@ class Con_ProjectOverviewDashboardController extends Controller
 
         // 3. Fetch contractor spent for these projects
         $contractorRes = $this->db->query("
-            SELECT project_id, COALESCE(SUM(approved_amount), 0) AS contractor_spent
-            FROM contractor_bill_requests
-            WHERE status IN ('approved', 'paid') AND project_id IN ($idsList)
+            SELECT project_id, COALESCE(SUM(amount_paid), 0) AS contractor_spent
+            FROM con_financial_transactions
+            WHERE ref_type = 'contractor_bill' AND update_status = 'Completed' AND project_id IN ($idsList)
             GROUP BY project_id
         ");
         $contractorSpent = [];
@@ -1502,11 +1511,13 @@ class Con_ProjectOverviewDashboardController extends Controller
         $result = [];
         foreach ($projectIds as $pid) {
             $budget = $budgets[$pid] ?? 0.0;
+            $budgetId = $budgetIds[$pid] ?? null;
             $matCost = $materialSpent[$pid] ?? 0.0;
             $conCost = $contractorSpent[$pid] ?? 0.0;
             $spent = $matCost + $conCost;
             $result[$pid] = [
                 'total_budget' => $budget,
+                'budget_id' => $budgetId,
                 'total_spent' => $spent
             ];
         }

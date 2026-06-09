@@ -28,8 +28,7 @@ class Con_PurchaseOrder extends Model
 
     public function find($id)
     {
-        $stmt = $this->db->prepare(
-            "SELECT po.*, pr.project_id, pr.notes AS pr_notes, p.name AS project_name,
+        $sql = "SELECT po.*, pr.project_id, pr.notes AS pr_notes, p.name AS project_name,
                     u.full_name AS created_by_name,
                     apv.full_name AS pm_approver_name,
                     apv_r.name    AS pm_approver_role,
@@ -41,8 +40,11 @@ class Con_PurchaseOrder extends Model
              LEFT JOIN users apv ON apv.id = po.approved_by_pm
              LEFT JOIN roles apv_r ON apv_r.id = apv.role_id
              LEFT JOIN users qc_u ON qc_u.id = po.qc_approved_by_id
-             WHERE po.id = ?"
-        );
+             WHERE po.id = ?";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            throw new Exception("SQL Prepare failed: " . $this->db->error . " | SQL: " . $sql);
+        }
         $stmt->bind_param('i', $id);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc();

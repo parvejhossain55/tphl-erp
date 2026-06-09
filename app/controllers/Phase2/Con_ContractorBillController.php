@@ -45,18 +45,19 @@ class Con_ContractorBillController extends Controller
     // ROLE HELPERS
     // =========================================================================
 
-    /** Roles 1 (Admin), 3 (Super Admin) can approve */
+    /** Roles 1 (Admin), 3 (Super Admin), 22 (PM Head) can approve */
     private function canApprove()
     {
-        return in_array($this->userRole, [1, 3]);
+        return in_array($this->userRole, [1, 3, 22]);
     }
 
     /** QC & Internal Audit role or specific permission check */
     private function canApproveQC()
     {
-        if (in_array($this->userRole, [1, 3])) return true;
+        if (in_array($this->userRole, [3, 22])) return false;
+        if ($this->userRole === 1) return true;
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        return ($roleName === 'qc & internal audit' || hasPermission('QC & Internal Audit') || $this->canApprove());
+        return ($roleName === 'qc & internal audit' || hasPermission('QC & Internal Audit'));
     }
 
     /** Roles 1, 3, 6 (Accounts) can process payments */
@@ -197,15 +198,6 @@ class Con_ContractorBillController extends Controller
             }
         }
 
-        $workTypeId = $_POST['work_type_id'] ?? null;
-        if ($workTypeId) {
-            $isBlocked = $this->qcInspectionModel->checkBlocker($data['project_id'], $workTypeId);
-            if ($isBlocked) {
-                setError('Cannot submit bill: QC Inspection failed or rework needed for this work type.');
-                header("Location: {$GLOBALS['base_url']}/con-contractor-bill-create");
-                exit;
-            }
-        }
 
         $billId = $this->billModel->create($data);
 

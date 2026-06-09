@@ -95,7 +95,7 @@
                             <div class="col-3">
                                 <div class="p-2 border rounded bg-white">
                                     <div class="text-muted" style="font-size:10px">PO Value</div>
-                                    <div class="fw-bold text-dark" id="poTotalValue">৳ 0</div>
+                                    <div class="fw-bold " id="poTotalValue">৳ 0</div>
                                 </div>
                             </div>
                             <div class="col-3">
@@ -328,16 +328,21 @@ function renderProjectPoList(pos) {
         return `<span class="badge bg-${m[s]||'secondary'}" style="font-size:9px">${s}</span>`;
     };
     let html = '<table class="table table-sm table-hover mb-0" style="font-size:12px">';
-    html += '<thead class="table-light"><tr><th>PO#</th><th>PO Value</th><th>Paid</th><th>Due</th><th>Status</th></tr></thead><tbody>';
+    html += '<thead class="table-light"><tr><th>PO#</th><th>Vendor &amp; Address</th><th>PO Value</th><th>Paid</th><th>Due</th><th>Status</th></tr></thead><tbody>';
     pos.forEach(po => {
         const paid = po.total_paid || 0;
         const due  = po.due_amount || 0;
         html += `<tr style="cursor:pointer" onclick="selectPO(${po.id})">
-            <td class="fw-bold text-primary">PO-${po.id}</td>
-            <td>${fmt(po.total_order_value)}</td>
-            <td class="text-success">${fmt(paid)}</td>
-            <td class="fw-bold ${due > 0 ? 'text-danger' : 'text-muted'}">${fmt(due)}</td>
-            <td>${statusBadge(po.status)}</td>
+            <td class="fw-bold text-primary" style="vertical-align: middle;">PO-${po.id}</td>
+            <td style="vertical-align: middle; white-space: normal;">
+                <strong class="">${po.vendor_name}</strong>
+                ${po.vendor_company ? `<br><span class="text-muted small" style="font-size:10.5px">${po.vendor_company}</span>` : ''}
+                ${po.vendor_address ? `<br><span class="text-muted" style="font-size:10px;"><i class="bi bi-geo-alt"></i> ${po.vendor_address}</span>` : ''}
+            </td>
+            <td style="vertical-align: middle;">${fmt(po.total_order_value)}</td>
+            <td class="text-success" style="vertical-align: middle;">${fmt(paid)}</td>
+            <td class="fw-bold ${due > 0 ? 'text-danger' : 'text-muted'}" style="vertical-align: middle;">${fmt(due)}</td>
+            <td style="vertical-align: middle;">${statusBadge(po.status)}</td>
         </tr>`;
     });
     html += '</tbody></table>';

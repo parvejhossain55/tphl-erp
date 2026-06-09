@@ -643,6 +643,73 @@ $statusColor = [
 
     </div>
 
+    <!-- ══════════════════════ PENDING CONTRACTOR BILLS ══════════════════════ -->
+    <?php if (!empty($pendingContractorBills)): ?>
+      <div class="con-panel card__wrapper mb-4" style="border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.03)">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="sec-title" style="margin-bottom:0">
+            <div class="sec-title-dot" style="background:var(--cd-blue)"></div>
+            <i class="fal fa-file-invoice-dollar me-2" style="color:var(--cd-blue)"></i>
+            Pending Contractor Bill Approvals
+            <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
+        background:rgba(59,130,246,.12);color:var(--cd-blue)">
+              <?= count($pendingContractorBills) ?> Awaiting
+            </span>
+          </div>
+          <a href="<?= $base ?>/con-contractor-bills" style="font-size:11px;color:var(--cd-blue);text-decoration:none">View All
+            <i class="fal fa-arrow-right ms-1"></i></a>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="proj-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Project</th>
+                <th>Contractor</th>
+                <th>Bill Type</th>
+                <th>Bill Amount</th>
+                <th>Submitted By</th>
+                <th>Submitted On</th>
+                <th style="text-align:right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($pendingContractorBills as $bi => $pb): ?>
+                <tr>
+                  <td style="font-size:11px;color:var(--text-muted)"><?= $bi + 1 ?></td>
+                  <td>
+                    <div style="font-weight:700;font-size:13px"><?= htmlspecialchars($pb['project_name'] ?? 'N/A') ?></div>
+                  </td>
+                  <td>
+                    <div style="font-weight:600;font-size:12.5px"><?= htmlspecialchars($pb['contractor_name'] ?? '—') ?></div>
+                  </td>
+                  <td>
+                    <span class="badge bg-<?= ($pb['bill_type'] === 'Advance') ? 'warning' : (($pb['bill_type'] === 'Retention') ? 'info' : 'primary') ?>-transparent">
+                      <?= htmlspecialchars($pb['bill_type'] ?? 'Progress') ?>
+                    </span>
+                  </td>
+                  <td style="font-weight:800;color:var(--cd-primary,#198754)">
+                    ৳<?= number_format($pb['bill_amount'], 2) ?>
+                  </td>
+                  <td>
+                    <span style="font-size:12.5px;font-weight:600"><?= htmlspecialchars($pb['creator_name'] ?? '—') ?></span>
+                  </td>
+                  <td style="font-size:12px;color:var(--text-muted)">
+                    <?= date('d M Y h:i A', strtotime($pb['created_at'])) ?>
+                  </td>
+                  <td style="text-align:right">
+                    <a href="<?= $base ?>/con-contractor-bill/<?= $pb['id'] ?>" class="btn btn-sm btn-primary" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px">
+                      <i class="fal fa-eye me-1"></i> View & Approve
+                    </a>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <?php endif; ?>
+
     <!-- ══════════════════════ PENDING INITIAL BUDGET APPROVALS ══════════════════════ -->
     <?php if (!empty($pendingInitialBudgets)): ?>
       <div class="con-panel card__wrapper mb-4" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03)">

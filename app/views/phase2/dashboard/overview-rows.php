@@ -33,6 +33,10 @@ if (empty($projects)): ?>
             ? $base . '/con-project-timeline/' . $pr['id'] 
             : $base . '/con-project/' . $pr['id'];
 
+        $budgetDetailUrl = !empty($pr['budget_id'])
+            ? $base . '/con-estimate-show/' . $pr['budget_id']
+            : $detailUrl;
+
         $budgetPct = $pr['total_budget'] > 0 ? round(($pr['total_spent'] / $pr['total_budget']) * 100) : 0;
 
         // Construct Overall Progress Popover Content
@@ -226,7 +230,7 @@ if (empty($projects)): ?>
             <!-- Column 7: Actions Menu -->
             <td style="padding: 16px; vertical-align: middle; text-align: center;">
                 <button style="border: none; background: transparent; color: #94a3b8; cursor: pointer; padding: 4px; font-size: 14px; outline: none;" 
-                        onclick="event.stopPropagation(); window.location.href='<?= $detailUrl ?>'">
+                        onclick="event.stopPropagation(); window.location.href='<?= $budgetDetailUrl ?>'">
                     <i class="fa-solid fa-ellipsis-vertical"></i>
                 </button>
             </td>

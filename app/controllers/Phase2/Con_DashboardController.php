@@ -193,7 +193,7 @@ class Con_DashboardController extends Controller
             LEFT JOIN users u ON u.id = pwp.submitted_by
             LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
             LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
-            WHERE pwp.entry_status = 'Submitted' AND pwp.pm_approved_id IS NULL
+            WHERE pwp.entry_status = 'Submitted' AND pwp.qc_status = 'Approved' AND pwp.pm_approved_id IS NULL
             ORDER BY pwp.submitted_at DESC, pwp.id DESC LIMIT 10");
         $pendingWeeklyReportsPM = $rPendingWeeklyPM ? $rPendingWeeklyPM->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -390,10 +390,26 @@ class Con_DashboardController extends Controller
             $pendingPettyCash = $rFundReq ? $rFundReq->fetch_all(MYSQLI_ASSOC) : [];
         }
 
+        $pendingContractorBills = [];
+        if (in_array($userRole, [1, 3, 22])) {
+            $rCB = $this->db->query("
+                SELECT cbr.*, p.name AS project_name, oo.name AS contractor_name, u.full_name AS creator_name
+                FROM contractor_bill_requests cbr
+                LEFT JOIN projects p ON p.id = cbr.project_id
+                LEFT JOIN contractors oo ON oo.id = cbr.operator_id
+                LEFT JOIN users u ON u.id = cbr.created_by
+                WHERE cbr.status = 'submitted'
+                ORDER BY cbr.created_at DESC
+                LIMIT 10
+            ");
+            $pendingContractorBills = $rCB ? $rCB->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
         $this->view('phase2/dashboard/cons-dashboard', [
             'current_route'           => 'con-dashboard',
             'pendingLandRequisitions' => $pendingLandRequisitions,
             'pendingPettyCash'        => $pendingPettyCash,
+            'pendingContractorBills'  => $pendingContractorBills,
             'stats'                   => $stats,
             'projects'                => $projects,
             'budgetUtil'              => $budgetUtil,
@@ -1221,21 +1237,54 @@ $project = $stmt->get_result()->fetch_assoc();
 
         // My Assigned Projects List
         $rProjs = $this->db->query("
-            SELECT p.id, p.name, p.project_status, COALESCE(l.name,'') AS location_name,
-                   COALESCE(prog.progress_pct,0) AS progress_pct
+            SELECT p.id, p.name, p.image, p.project_status, p.building_type, p.total_share AS total_floors,
+                   p.plot_size, p.plot_no, p.block_no, p.workflow_version,
+                   COALESCE(l.name,'') AS location_name,
+                   timeline.expected_handover_date
             FROM projects p
-            LEFT JOIN locations l ON l.id=p.location_id
-            LEFT JOIN (
-                -- Migrated: phase-based weighted progress
-                SELECT pp.project_id,
-                       SUM((COALESCE(pp.actual_progress,0) / 100) * COALESCE(pp.weight_percentage,0)) AS progress_pct
-                FROM project_phases pp
-                GROUP BY pp.project_id
-            ) prog ON prog.project_id=p.id
+            LEFT JOIN locations l ON l.id = p.location_id
+            LEFT JOIN project_timelines timeline ON timeline.project_id = p.id
             WHERE p.deleted_at IS NULL AND p.site_engineer_id = {$userId}
             ORDER BY p.id DESC
         ");
         $myProjects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
+
+        $projectIds = array_column($myProjects, 'id');
+        if (!empty($projectIds)) {
+            $dynamicProgressMap = $this->calculatePhaseBasedProgress($projectIds);
+            $budgetsAndSpentMap = $this->calculateProjectBudgetsAndSpent($projectIds);
+
+            foreach ($myProjects as &$pr) {
+                $pid = (int)$pr['id'];
+                $actual = isset($dynamicProgressMap[$pid]) ? (float)$dynamicProgressMap[$pid]['actual'] : 0.0;
+                $planned = isset($dynamicProgressMap[$pid]) ? (float)$dynamicProgressMap[$pid]['planned'] : 0.0;
+
+                $pr['progress_pct'] = $actual;
+                $pr['planned_progress_pct'] = $planned;
+                $pr['total_budget'] = $budgetsAndSpentMap[$pid]['total_budget'] ?? 0.0;
+                $pr['total_spent'] = $budgetsAndSpentMap[$pid]['total_spent'] ?? 0.0;
+                
+                // Determine status dynamically based on gap
+                if ($pr['project_status'] === 'Completed') {
+                    $calcStatus = 'Completed';
+                } elseif ($pr['project_status'] === 'Planning' || ($actual == 0 && $planned == 0)) {
+                    $calcStatus = 'Planning';
+                } else {
+                    $gap = $planned - $actual;
+                    if ($gap <= 5) {
+                        $calcStatus = 'On Track';
+                    } elseif ($gap <= 15) {
+                        $calcStatus = 'At Risk';
+                    } else {
+                        $calcStatus = 'Delayed';
+                    }
+                }
+                $pr['calculated_status'] = $calcStatus;
+                $pr['phases'] = $dynamicProgressMap[$pid]['phases'] ?? [];
+            }
+            unset($pr);
+        }
+
 
         // Recent Material Receiving (GRN)
         $rMR = $this->db->query("
@@ -1263,8 +1312,9 @@ $project = $stmt->get_result()->fetch_assoc();
 
         // Recent Weekly Reports (phase_weekly_progress)
         $rWPR = $this->db->query("
-            SELECT pwp.id, pwp.week_number, pwp.week_start_date AS report_date,
+            SELECT pwp.id, pwp.week_number AS week_no, pwp.week_start_date AS report_date,
                    pwp.entry_status AS status, pwp.overall_progress_pct,
+                   pwp.pm_approved_id AS approved_by_pm,
                    p.name AS project_name,
                    pmt.target_month,
                    pp.phase_name
