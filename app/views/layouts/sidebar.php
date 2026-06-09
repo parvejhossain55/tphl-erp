@@ -1737,15 +1737,14 @@
 
                     <li
                         class="slide has-sub <?= isActive(['con-vendors', 'con-vendor-create', 'con-vendor-penalties', 'con-vendor-penalty-create', 'con-vendor-payment-requests', 'con-vendor-payment-create'], $current_route) ? 'active' : '' ?>">
-                    </li>
-                    <a href="javascript:void(0);"
-                        class="sidebar__menu-item <?= isActive(['con-vendors', 'con-vendor-create', 'con-vendor-penalties', 'con-vendor-penalty-create', 'con-vendor-payment-requests', 'con-vendor-payment-create'], $current_route) ? 'menu-open active' : '' ?>">
-                        <div class="side-menu__icon"><i class="fa-solid fa-user-tie"></i></div>
-                        <span class="sidebar__menu-label">Vendors</span>
-                        <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                    </a>
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['con-vendors', 'con-vendor-create', 'con-vendor-penalties', 'con-vendor-penalty-create', 'con-vendor-payment-requests', 'con-vendor-payment-create'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-user-tie"></i></div>
+                            <span class="sidebar__menu-label">Vendors</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
 
-                    <ul class="sidebar-menu child2" style="display:block;">
+                        <ul class="sidebar-menu child2" style="display:block;">
 
                         <li class="slide <?= isActive('con-vendors', $current_route) ? 'active' : '' ?>">
                             <a href="<?= $base_url ?>/con-vendors"

@@ -1,6 +1,7 @@
 <?php
 namespace Phase2;
 
+use Con_Contractor;
 use Controller;
 use Con_FundRequest;
 use Con_Operator;
@@ -22,7 +23,7 @@ class Con_FundRequestController extends Controller
     {
         $this->db            = $db;
         $this->fundModel     = new Con_FundRequest($this->db);
-        $this->operatorModel = new Con_Operator($this->db);
+        $this->operatorModel = new Con_Contractor($this->db);
         $this->approvalModel = new ApprovalRequest($this->db);
         $this->txnModel      = new Con_FinancialTransaction($this->db);
 

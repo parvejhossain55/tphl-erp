@@ -384,7 +384,7 @@ class Con_DashboardController extends Controller
                 SELECT r.id, r.amount, r.title, r.reason, r.created_at,
                        p.name AS project_name,
                        u.full_name AS requester_name
-                FROM project_budget_requests r
+                FROM budget_extend_requests r
                 LEFT JOIN projects p ON p.id = r.project_id
                 LEFT JOIN users u ON u.id = r.requested_by
                 WHERE r.status = 'Pending'
@@ -2161,11 +2161,9 @@ $project = $stmt->get_result()->fetch_assoc();
         $projectsNeedingAE = $rNoAE ? $rNoAE->fetch_all(MYSQLI_ASSOC) : [];
 
         // ── Internal vs External architect breakdown ───────────────────────────
-        $rInt = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering WHERE architect_type = 'internal'");
-        $internalArchitects = $rInt ? (int)$rInt->fetch_assoc()['c'] : 0;
-
-        $rExt = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering WHERE architect_type = 'external'");
-        $externalArchitects = $rExt ? (int)$rExt->fetch_assoc()['c'] : 0;
+        // Since architect_engineering table does not have an architect_type column, all recorded architects are internal users.
+        $internalArchitects = $totalAE;
+        $externalArchitects = 0;
 
         // ── Workflow Notifications: Land Visibility Completed ─────────────────
         $rLandDone = $this->db->query("

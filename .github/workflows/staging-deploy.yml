@@ -54,11 +54,9 @@ jobs:
             sudo find $PROJECT_DIR -type d -exec chmod 755 {} \;
             sudo find $PROJECT_DIR -type f -exec chmod 644 {} \;
 
-            # Project upload in Main From Staging
-            # echo "Copying files to production..."
-            # rm -rf /var/www/html/TPHL-ERP/*
-            # cp -r /var/www/staging/TPHL-ERP/* /var/www/html/TPHL-ERP/
-            # cp -r /var/www/staging/TPHL-ERP/.htaccess /var/www/html/TPHL-ERP/
+            # Project sync to production while excluding uploads folder
+            echo "Syncing files to production (excluding uploads)..."
+            rsync -av --delete --exclude='public/uploads' /var/www/staging/TPHL-ERP/ /var/www/html/TPHL-ERP/
 
             echo "Deployment completed successfully"
 

@@ -24,8 +24,8 @@ if (!function_exists('cpFmt')) {
   }
 }
 
-if (!function_exists('cpFmtPct')) {
-  function cpFmtPct($n)
+if (!function_exists('cpFmtPctDetailed')) {
+  function cpFmtPctDetailed($n)
   {
     $n = (float)$n;
     if ($n <= 0) return '0.0%';
@@ -556,7 +556,7 @@ $statusMeta = [
                     <?= $isPhaseBased ? 'Overall Progress (Actual / Planned)' : 'Construction Progress' ?>
                   </span>
                   <span class="cp-prog-pct" style="font-weight: 800; font-size: 13px; color:<?= $pctColor ?>;">
-                    <?= $isPhaseBased ? cpFmtPct($actual_pct) . ' / ' . cpFmtPct($planned_pct) : cpFmtPct($actual_pct) ?>
+                    <?= $isPhaseBased ? cpFmtPctDetailed($actual_pct) . ' / ' . cpFmtPctDetailed($planned_pct) : cpFmtPctDetailed($actual_pct) ?>
                   </span>
                 </div>
                 <div class="cp-prog-track" style="position: relative; height: 7px; border-radius: 6px; background: rgba(0, 0, 0, .07); overflow: hidden;">

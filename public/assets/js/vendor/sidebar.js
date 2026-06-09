@@ -199,66 +199,55 @@ innerLevelItems.forEach((element) => {
 });
 
 const setNavActive = () => {
-  let currentPath = window.location.pathname.split("/")[0];
-  currentPath = location.pathname === "/" ? "index.html" : location.pathname.substring(1);
-  currentPath = currentPath.substring(currentPath.lastIndexOf("/") + 1);
-  let sidemenuItems = document.querySelectorAll(".sidebar__menu-item");
-
-  sidemenuItems.forEach((e) => {
-    if (currentPath === "/") {
-      currentPath = "index.html";
-    }
-    if (e.getAttribute("href") === currentPath) {
-      e.classList.add("active");
-      e.parentElement.classList.add("active");
-      let parent = e.closest("ul");
-      let hasParent = true;
-
-      if (parent) {
-        parent.classList.add("active");
-        parent.previousElementSibling.classList.add("active");
-        parent.parentElement.classList.add("active");
-
-        if (parent.parentElement.classList.contains("has-sub")) {
-          let elementRef = parent.parentElement.parentElement.parentElement;
-          elementRef.classList.add("open", "active");
-          elementRef.firstElementChild.classList.add("active");
-
-          if (elementRef.children[1]) {
-            elementRef.children[1].style.display = "block";
-            Array.from(elementRef.children[1].children).forEach((child) => {
-              if (child.classList.contains("active") && child.children[1]) {
-                child.children[1].style.display = "block";
-              }
-            });
-          }
-        }
-
-        parent = parent.parentElement.closest("ul");
-        if (!parent) hasParent = false;
-      } else {
-        hasParent = false;
-      }
+  // Expand all submenus by default on page load
+  const slideHasSub = document.querySelectorAll(".slide.has-sub");
+  slideHasSub.forEach((element) => {
+    const submenu = element.lastElementChild;
+    if (!submenu) return;
+    element.classList.add("open");
+    submenu.style.display = "block";
+    
+    const subLink = element.querySelector(":scope > a");
+    if (subLink) {
+      subLink.classList.add("menu-open");
     }
   });
+
+  // Find the sidebar menu item that has been marked active by PHP
+  const activeItem = document.querySelector(".sidebar__menu-item.active");
+  if (activeItem) {
+    // Traverse up to find parent submenus and highlight them as active
+    let parent = activeItem.parentElement;
+    while (parent && parent !== sidebar) {
+      if (parent.classList.contains("slide") && parent.classList.contains("has-sub")) {
+        parent.classList.add("active");
+        const triggerLink = parent.querySelector(":scope > a");
+        if (triggerLink) {
+          triggerLink.classList.add("active");
+        }
+      }
+      parent = parent.parentElement;
+    }
+  }
 };
 
 setNavActive();
 
 /* for menu scroll to top active page */
-let customScrollTop = () => {
-  document.querySelectorAll(".sidebar__menu-item").forEach((ele) => {
-    if (ele.classList.contains("active")) {
-      let elemRect = ele.getBoundingClientRect();
-      if (
-        ele.children[0] && 
-        ele.parentElement.classList.contains("slide") &&
-        elemRect.top > 450
-      ) {
-        ele.scrollIntoView({ behavior: "smooth" });
+const customScrollTop = () => {
+  const activeItem = document.querySelector(".sidebar__menu-item.active");
+  if (activeItem) {
+    const container = document.getElementById("sidebar-scroll");
+    if (container) {
+      const activeRect = activeItem.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+
+      // If active item is outside visible bounds of scroll container, scroll it in
+      if (activeRect.bottom > containerRect.bottom || activeRect.top < containerRect.top) {
+        activeItem.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
-    } 0
-  });
+    }
+  }
 };
 setTimeout(() => {
   customScrollTop();

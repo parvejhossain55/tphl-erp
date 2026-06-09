@@ -1,8 +1,8 @@
 <?php
 $base = $GLOBALS['base_url'];
 
-if (!function_exists('cpFmtPct')) {
-    function cpFmtPct($n) {
+if (!function_exists('cpFmtPctDetailed')) {
+    function cpFmtPctDetailed($n) {
         $n = (float)$n;
         if ($n <= 0) return '0.0%';
         if ($n < 0.1) return number_format($n, 3) . '%';
@@ -170,7 +170,7 @@ if (empty($projects)): ?>
                             <div class="prog-bar-fill-planned" style="width: <?= min(100, $pr['planned_progress_pct']) ?>%; height: 100%; background: #6366f1; opacity: 0.85;"></div>
                         </div>
                         <span style="font-size: 11px; font-weight: 800; color: #6366f1; min-width: 32px; text-align: right; display: flex; align-items: center; gap: 4px;">
-                            <?= cpFmtPct($pr['planned_progress_pct']) ?>
+                            <?= cpFmtPctDetailed($pr['planned_progress_pct']) ?>
                             <span style="font-size: 10px; cursor: pointer; color: #94a3b8;" data-bs-toggle="popover" data-bs-content="<?= htmlspecialchars($plaPopoverContent) ?>">ℹ️</span>
                         </span>
                     </div>
@@ -181,7 +181,7 @@ if (empty($projects)): ?>
                             <div class="prog-bar-fill-actual" style="width: <?= min(100, $pr['progress_pct']) ?>%; height: 100%; background: var(--po-primary, #198754);"></div>
                         </div>
                         <span style="font-size: 11px; font-weight: 800; color: var(--po-primary, #198754); min-width: 32px; text-align: right; display: flex; align-items: center; gap: 4px;">
-                            <?= cpFmtPct($pr['progress_pct']) ?>
+                            <?= cpFmtPctDetailed($pr['progress_pct']) ?>
                             <span style="font-size: 10px; cursor: pointer; color: #94a3b8;" data-bs-toggle="popover" data-bs-content="<?= htmlspecialchars($actPopoverContent) ?>">ℹ️</span>
                         </span>
                     </div>
