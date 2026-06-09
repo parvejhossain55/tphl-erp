@@ -7,8 +7,8 @@ if (!function_exists('toBengaliNum')) {
     }
 }
 
-if (!function_exists('cpFmtPct')) {
-    function cpFmtPct($n) {
+if (!function_exists('cpFmtPctDetailed')) {
+    function cpFmtPctDetailed($n) {
         $n = (float)$n;
         if ($n <= 0) return '0.0%';
         if ($n < 0.1) return number_format($n, 3) . '%';
@@ -787,11 +787,11 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                             <!-- Side metrics values -->
                             <div class="po-trend-side-metrics">
                                 <div>
-                                    <div style="font-size: 26px; font-weight: 900; color: var(--po-primary); line-height: 1;" id="chartActualMetric"><?= cpFmtPct($overallProgressPct) ?></div>
+                                    <div style="font-size: 26px; font-weight: 900; color: var(--po-primary); line-height: 1;" id="chartActualMetric"><?= cpFmtPctDetailed($overallProgressPct) ?></div>
                                     <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--po-text-muted); margin-top: 4px;">Actual</div>
                                 </div>
                                 <div>
-                                    <div style="font-size: 26px; font-weight: 900; color: #6366f1; line-height: 1;" id="chartPlannedMetric"><?= cpFmtPct($overallPlannedProgressPct) ?></div>
+                                    <div style="font-size: 26px; font-weight: 900; color: #6366f1; line-height: 1;" id="chartPlannedMetric"><?= cpFmtPctDetailed($overallPlannedProgressPct) ?></div>
                                     <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--po-text-muted); margin-top: 4px;">Planned</div>
                                 </div>
                             </div>

@@ -48,6 +48,13 @@ if (!function_exists('getBengaliMonthName')) {
 
 $stats = $stats ?? [];
 $projects = $projects ?? [];
+$selectedProjId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+$filteredProjects = [];
+foreach ($projects as $pr) {
+  if (!$selectedProjId || $pr['id'] == $selectedProjId) {
+    $filteredProjects[] = $pr;
+  }
+}
 $budgetUtil = $budgetUtil ?? ['total' => 0, 'spent' => 0, 'pct' => 0, 'remaining' => 0];
 $stockAlerts = $stockAlerts ?? [];
 $pendingAlerts = $pendingAlerts ?? [];
@@ -524,6 +531,17 @@ $statusColor = [
           </p>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <!-- Project Filter Dropdown -->
+          <form method="GET" action="" id="projectFilterForm" style="margin:0">
+            <select name="project_id" class="form-select form-select-sm" onchange="this.form.submit()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:10px;padding:7px 30px 7px 15px;font-size:12px;font-weight:700;height:auto;cursor:pointer;outline:none;-webkit-appearance:none;-moz-appearance:none;appearance:none;background-image:url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23ffffff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 10px top 50%;background-size:10px auto;">
+              <option value="" style="color:#333;">All Projects</option>
+              <?php foreach ($projects as $proj): ?>
+                <option value="<?= $proj['id'] ?>" <?= ($selectedProjId == $proj['id']) ? 'selected' : '' ?> style="color:#333;">
+                  <?= htmlspecialchars($proj['name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </form>
           <a href="<?= $base ?>/con-estimates" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
         color:#fff;border-radius:10px;padding:7px 18px;font-size:12px;font-weight:700;
         text-decoration:none;display:inline-flex;align-items:center;gap:6px">
@@ -2135,7 +2153,7 @@ $statusColor = [
             <div class="sec-title-dot" style="background:var(--cd-blue)"></div>
             Project Progress Overview
           </div>
-          <?php if (empty($projects)): ?>
+          <?php if (empty($filteredProjects)): ?>
               <div class="empty-state">
                 <div class="empty-state-icon"><i class="fal fa-chart-bar"></i></div>
                 <div class="empty-state-text" style="color:var(--text-muted)">No projects found</div>
@@ -2155,7 +2173,7 @@ $statusColor = [
                           </tr>
                       </thead>
                       <tbody>
-                          <?php foreach ($projects as $pr):
+                          <?php foreach ($filteredProjects as $pr):
                               $actual_pct = (float)($pr['overall_project_actual'] ?? $pr['progress_pct'] ?? 0.0);
                               $planned_pct = (float)($pr['overall_project_planned'] ?? $pr['planned_progress_pct'] ?? 0.0);
                               $pct = round($actual_pct, 1);
@@ -2550,7 +2568,7 @@ $statusColor = [
           </tr>
         </thead>
         <tbody>
-          <?php if (empty($projects)): ?>
+          <?php if (empty($filteredProjects)): ?>
               <tr>
                 <td colspan="6" class="empty-state">
                   <div class="empty-state-icon"><i class="fal fa-hard-hat"></i></div>
@@ -2558,7 +2576,7 @@ $statusColor = [
                 </td>
               </tr>
           <?php else: ?>
-              <?php foreach ($projects as $pr):
+              <?php foreach ($filteredProjects as $pr):
                 $pct = round((float) ($pr['progress_pct'] ?? 0), 1);
                 $clr = $pct >= 75 ? 'var(--cd-green)' : ($pct >= 40 ? 'var(--cd-amber)' : 'var(--cd-red)');
                 $pclr = $pct >= 75 ? 'var(--cd-green)' : ($pct >= 40 ? 'var(--cd-amber)' : 'var(--cd-red)');

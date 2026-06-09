@@ -547,7 +547,7 @@ class Con_ProjectOverviewDashboardController extends Controller
             LEFT JOIN (
                 SELECT project_id,
                        SUM(total_estimated_cost) AS total_budget
-                FROM initial_estimate_budgets WHERE status = 'approved' GROUP BY project_id
+                FROM initial_estimate_budgets WHERE status IN ('approved', 'pm_approved') GROUP BY project_id
             ) bud ON bud.project_id = p.id
             LEFT JOIN (
                 SELECT project_id, SUM(amount_paid) AS total_spent
@@ -1707,6 +1707,7 @@ class Con_ProjectOverviewDashboardController extends Controller
 
     private function getPortfolioBudgetCategoryData($roleFilter)
     {
+        $innerFilter = str_replace('p.', 'p2.', $roleFilter);
         $sql = "
             SELECT 
                 pp.phase_name AS label,
@@ -1719,7 +1720,7 @@ class Con_ProjectOverviewDashboardController extends Controller
                         INNER JOIN project_phase_items ppi ON ppi.id = iei.phase_item_id
                         INNER JOIN projects p2 ON p2.id = ieb.project_id
                         WHERE ieb.status IN ('approved', 'pm_approved') 
-                          AND p2.deleted_at IS NULL AND {$roleFilter}
+                          AND p2.deleted_at IS NULL AND {$innerFilter}
                           AND ppi.phase_id IN (
                               SELECT subpp.id FROM project_phases subpp WHERE subpp.phase_name = pp.phase_name
                           )
@@ -1732,7 +1733,7 @@ class Con_ProjectOverviewDashboardController extends Controller
                         INNER JOIN project_phase_items ppi ON ppi.id = iel.phase_item_id
                         INNER JOIN projects p2 ON p2.id = ieb.project_id
                         WHERE ieb.status IN ('approved', 'pm_approved')
-                          AND p2.deleted_at IS NULL AND {$roleFilter}
+                          AND p2.deleted_at IS NULL AND {$innerFilter}
                           AND ppi.phase_id IN (
                               SELECT subpp.id FROM project_phases subpp WHERE subpp.phase_name = pp.phase_name
                           )

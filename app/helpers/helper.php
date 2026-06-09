@@ -17,7 +17,9 @@ function uploadImage($input, $module = 'general', $mode = 'original',  $width = 
     // 3. Upload path
     $uploadPath = dirname(__DIR__, 2) . "/public/uploads/{$module}/";
     if (!is_dir($uploadPath)) {
-        mkdir($uploadPath, 0777, true);
+        if (!mkdir($uploadPath, 0777, true)) {
+            error_log("[uploadImage] Failed to create upload directory: " . $uploadPath);
+        }
     }
 
     // 4. File name
@@ -34,7 +36,7 @@ function uploadImage($input, $module = 'general', $mode = 'original',  $width = 
     }
 
     // ======================
-    // FIXED MODE (Safe)
+    // FIXED MODE (Safe with fallbacks)
     // ======================
     // GD not available → fallback
     if (!extension_loaded('gd')) {
@@ -44,20 +46,21 @@ function uploadImage($input, $module = 'general', $mode = 'original',  $width = 
     }
 
     // Create source image
+    $src = null;
     switch ($ext) {
         case 'jpg':
         case 'jpeg':
-            $src = imagecreatefromjpeg($_FILES[$input]['tmp_name']);
+            $src = @imagecreatefromjpeg($_FILES[$input]['tmp_name']);
             break;
         case 'png':
-            $src = imagecreatefrompng($_FILES[$input]['tmp_name']);
+            $src = @imagecreatefrompng($_FILES[$input]['tmp_name']);
             break;
         case 'gif':
-            $src = imagecreatefromgif($_FILES[$input]['tmp_name']);
+            $src = @imagecreatefromgif($_FILES[$input]['tmp_name']);
             break;
         case 'webp':
             if (function_exists('imagecreatefromwebp')) {
-                $src = imagecreatefromwebp($_FILES[$input]['tmp_name']);
+                $src = @imagecreatefromwebp($_FILES[$input]['tmp_name']);
             } else {
                 return move_uploaded_file($_FILES[$input]['tmp_name'], $target)
                     ? $fileName
@@ -69,43 +72,74 @@ function uploadImage($input, $module = 'general', $mode = 'original',  $width = 
     }
 
     if (!$src) {
-        return null;
+        error_log("[uploadImage] Failed to create source image using GD for input '{$input}'. Falling back to original move_uploaded_file.");
+        return move_uploaded_file($_FILES[$input]['tmp_name'], $target)
+            ? $fileName
+            : null;
     }
 
     // Destination canvas
     $dst = imagecreatetruecolor($width, $height);
+    if (!$dst) {
+        imagedestroy($src);
+        return move_uploaded_file($_FILES[$input]['tmp_name'], $target)
+            ? $fileName
+            : null;
+    }
 
     // Transparency support
     if (in_array($ext, ['png', 'gif', 'webp'])) {
         imagealphablending($dst, false);
         imagesavealpha($dst, true);
         $transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
-        imagefilledrectangle($dst, 0, 0, $width, $height, $transparent);
+        if ($transparent !== false) {
+            imagefilledrectangle($dst, 0, 0, $width, $height, $transparent);
+        }
     }
 
     // Resize
-    [$w, $h] = getimagesize($_FILES[$input]['tmp_name']);
-    imagecopyresampled($dst, $src, 0, 0, 0, 0, $width, $height, $w, $h);
+    $imgSize = getimagesize($_FILES[$input]['tmp_name']);
+    if ($imgSize) {
+        [$w, $h] = $imgSize;
+        imagecopyresampled($dst, $src, 0, 0, 0, 0, $width, $height, $w, $h);
+    } else {
+        imagedestroy($src);
+        imagedestroy($dst);
+        return move_uploaded_file($_FILES[$input]['tmp_name'], $target)
+            ? $fileName
+            : null;
+    }
 
-    // Save image
+    // Save image and check status
+    $saved = false;
     switch ($ext) {
         case 'jpg':
         case 'jpeg':
-            imagejpeg($dst, $target, 90);
+            $saved = @imagejpeg($dst, $target, 90);
             break;
         case 'png':
-            imagepng($dst, $target);
+            $saved = @imagepng($dst, $target);
             break;
         case 'gif':
-            imagegif($dst, $target);
+            $saved = @imagegif($dst, $target);
             break;
         case 'webp':
-            imagewebp($dst, $target, 90);
+            if (function_exists('imagewebp')) {
+                $saved = @imagewebp($dst, $target, 90);
+            }
             break;
     }
 
     imagedestroy($src);
     imagedestroy($dst);
+
+    // If saving via GD failed, fallback to original move_uploaded_file
+    if (!$saved) {
+        error_log("[uploadImage] GD saving failed for target '{$target}'. Falling back to original move_uploaded_file.");
+        return move_uploaded_file($_FILES[$input]['tmp_name'], $target)
+            ? $fileName
+            : null;
+    }
 
     return $fileName;
 }

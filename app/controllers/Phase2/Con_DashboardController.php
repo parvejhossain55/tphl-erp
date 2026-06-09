@@ -31,47 +31,55 @@ class Con_DashboardController extends Controller
             return $this->purchaseExecutiveDashboard();
         }
 
-        $stats      = $this->getDashboardStats();
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+
+        $stats      = $this->getDashboardStats($selectedProjectId);
         $projects   = $this->getProjectsWithProgress();
-        $budgetUtil = $this->getBudgetUtilization();
-        $stockAlerts   = $this->getLowStockItems();
-        $pendingAlerts = $this->getPendingApprovalsList();
-        $soilAlerts    = $this->getRecentSoilTests();
+        $budgetUtil = $this->getBudgetUtilization($selectedProjectId);
+        $stockAlerts   = $this->getLowStockItems($selectedProjectId);
+        $pendingAlerts = $this->getPendingApprovalsList($selectedProjectId);
+        $soilAlerts    = $this->getRecentSoilTests($selectedProjectId);
 
         $stats['total_contractors'] = $this->db
             ->query("SELECT COUNT(*) AS cnt FROM contractors WHERE status='active'")->fetch_assoc()['cnt'] ?? 0;
 
         $stats['pending_bills'] = $this->db
-            ->query("SELECT COUNT(*) AS cnt FROM contractor_bill_requests WHERE status IN ('submitted','verified')")->fetch_assoc()['cnt'] ?? 0;
+            ->query("SELECT COUNT(*) AS cnt FROM contractor_bill_requests WHERE status IN ('submitted','verified')" . ($selectedProjectId ? " AND project_id = $selectedProjectId" : ""))->fetch_assoc()['cnt'] ?? 0;
 
         $stats['pending_funds'] = $this->db
-            ->query("SELECT COUNT(*) AS cnt FROM operational_fund_requests WHERE status='pending'")->fetch_assoc()['cnt'] ?? 0;
+            ->query("SELECT COUNT(*) AS cnt FROM operational_fund_requests WHERE status='pending'" . ($selectedProjectId ? " AND project_id = $selectedProjectId" : ""))->fetch_assoc()['cnt'] ?? 0;
 
         $stats['total_vendors'] = $this->db
             ->query("SELECT COUNT(*) AS cnt FROM vendors WHERE status='active'")->fetch_assoc()['cnt'] ?? 0;
 
         // Recent contractor bills (last 5)
-        $recentBills = $this->db->query("
+        $recentBillsQuery = "
             SELECT cbr.*, oo.name AS operator_name, p.name AS project_name
             FROM contractor_bill_requests cbr
             LEFT JOIN contractors oo ON oo.id = cbr.operator_id
             LEFT JOIN projects p ON p.id = cbr.project_id
-            ORDER BY cbr.created_at DESC
-            LIMIT 5
-        ")->fetch_all(MYSQLI_ASSOC);
+        ";
+        if ($selectedProjectId) {
+            $recentBillsQuery .= " WHERE cbr.project_id = $selectedProjectId ";
+        }
+        $recentBillsQuery .= " ORDER BY cbr.created_at DESC LIMIT 5 ";
+        $recentBills = $this->db->query($recentBillsQuery)->fetch_all(MYSQLI_ASSOC);
 
         // Recent fund requests (last 5)
-        $recentFunds = $this->db->query("
+        $recentFundsQuery = "
             SELECT ofr.*, p.name AS project_name, u.full_name AS requester_name
             FROM operational_fund_requests ofr
             LEFT JOIN projects p ON p.id = ofr.project_id
             LEFT JOIN users u ON u.id = ofr.requester_id
-            ORDER BY ofr.created_at DESC
-            LIMIT 5
-        ")->fetch_all(MYSQLI_ASSOC);
+        ";
+        if ($selectedProjectId) {
+            $recentFundsQuery .= " WHERE ofr.project_id = $selectedProjectId ";
+        }
+        $recentFundsQuery .= " ORDER BY ofr.created_at DESC LIMIT 5 ";
+        $recentFunds = $this->db->query($recentFundsQuery)->fetch_all(MYSQLI_ASSOC);
 
         // Pending Initial Estimate Budgets (for PM/SE approval panel)
-        $rPendingBudgets = $this->db->query("
+        $pendingInitialBudgetsQuery = "
             SELECT b.id, b.total_estimated_cost, b.created_at,
                    p.name AS project_name,
                    u.full_name AS creator_name,
@@ -82,12 +90,16 @@ class Con_DashboardController extends Controller
             LEFT JOIN employees emp   ON emp.user_id = u.id
             LEFT JOIN designations des ON des.id = emp.designation_id
             WHERE b.status = 'pending'
-            ORDER BY b.created_at DESC
-            LIMIT 10");
+        ";
+        if ($selectedProjectId) {
+            $pendingInitialBudgetsQuery .= " AND b.project_id = $selectedProjectId ";
+        }
+        $pendingInitialBudgetsQuery .= " ORDER BY b.created_at DESC LIMIT 10 ";
+        $rPendingBudgets = $this->db->query($pendingInitialBudgetsQuery);
         $pendingInitialBudgets = $rPendingBudgets ? $rPendingBudgets->fetch_all(MYSQLI_ASSOC) : [];
 
         // Pending BOQs (Draft + Submitted) — for PM approval panel
-        $rPendingBoqs = $this->db->query("
+        $pendingBoqsQuery = "
             SELECT m.id, m.version, m.status, m.created_at,
                    p.name AS project_name,
                    u.full_name AS creator_name,
@@ -102,18 +114,22 @@ class Con_DashboardController extends Controller
             LEFT JOIN designations des ON des.id = emp.designation_id
             LEFT JOIN boq_items    bi  ON bi.boq_id = m.id
             WHERE m.status IN ('Draft','Submitted')
-            GROUP BY m.id, m.version, m.status, m.created_at,
+        ";
+        if ($selectedProjectId) {
+            $pendingBoqsQuery .= " AND m.project_id = $selectedProjectId ";
+        }
+        $pendingBoqsQuery .= " GROUP BY m.id, m.version, m.status, m.created_at,
                      p.name, u.full_name, des.name
             ORDER BY m.created_at DESC
-            LIMIT 10");
+            LIMIT 10";
+        $rPendingBoqs = $this->db->query($pendingBoqsQuery);
         $pendingBoqs = $rPendingBoqs ? $rPendingBoqs->fetch_all(MYSQLI_ASSOC) : [];
 
         // Pending Targets (legacy target_fixed system) — removed.
-        // PM approval for daily/weekly progress is handled via phase_weekly_progress above.
         $pendingTargetsPM = [];
 
         // ── Pending POs awaiting PM approval ──────────────────────────────
-        $rPendingPOsPM = $this->db->query("
+        $pendingPOsPMQuery = "
             SELECT po.id, po.status, po.order_date,
                    po.approved_by_se,
                    p.name AS project_name,
@@ -128,11 +144,16 @@ class Con_DashboardController extends Controller
             LEFT JOIN users u   ON u.id = po.created_by
             WHERE po.approved_by_pm = 0
               AND po.status NOT IN ('Cancelled','Fully Received','Approved')
-            ORDER BY po.id DESC LIMIT 10");
+        ";
+        if ($selectedProjectId) {
+            $pendingPOsPMQuery .= " AND pr.project_id = $selectedProjectId ";
+        }
+        $pendingPOsPMQuery .= " ORDER BY po.id DESC LIMIT 10";
+        $rPendingPOsPM = $this->db->query($pendingPOsPMQuery);
         $pendingPOsForPM = $rPendingPOsPM ? $rPendingPOsPM->fetch_all(MYSQLI_ASSOC) : [];
 
         // ── Pending POs awaiting SE approval ──────────────────────────────
-        $rPendingPOsSE = $this->db->query("
+        $pendingPOsSEQuery = "
             SELECT po.id, po.status, po.order_date,
                    po.approved_by_pm,
                    p.name AS project_name,
@@ -147,11 +168,16 @@ class Con_DashboardController extends Controller
             LEFT JOIN users u   ON u.id = po.created_by
             WHERE po.approved_by_se = 0
               AND po.status NOT IN ('Cancelled','Fully Received','Approved')
-            ORDER BY po.id DESC LIMIT 10");
+        ";
+        if ($selectedProjectId) {
+            $pendingPOsSEQuery .= " AND pr.project_id = $selectedProjectId ";
+        }
+        $pendingPOsSEQuery .= " ORDER BY po.id DESC LIMIT 10";
+        $rPendingPOsSE = $this->db->query($pendingPOsSEQuery);
         $pendingPOsForSE = $rPendingPOsSE ? $rPendingPOsSE->fetch_all(MYSQLI_ASSOC) : [];
 
         // ── Pending GRNs awaiting QC ──────────────────────────────
-        $rPendingGRNs = $this->db->query("
+        $pendingGRNsQuery = "
             SELECT mr.id, mr.receiving_date,
                    p.name AS project_name,
                    u.full_name AS received_by_name
@@ -161,11 +187,16 @@ class Con_DashboardController extends Controller
             LEFT JOIN projects p ON p.id = pr.project_id
             LEFT JOIN users u ON u.id = mr.received_by
             WHERE mr.overall_status = 'Pending QC'
-            ORDER BY mr.id DESC LIMIT 10");
+        ";
+        if ($selectedProjectId) {
+            $pendingGRNsQuery .= " AND pr.project_id = $selectedProjectId ";
+        }
+        $pendingGRNsQuery .= " ORDER BY mr.id DESC LIMIT 10";
+        $rPendingGRNs = $this->db->query($pendingGRNsQuery);
         $pendingGRNs = $rPendingGRNs ? $rPendingGRNs->fetch_all(MYSQLI_ASSOC) : [];
 
         // ── Pending GRNs awaiting PM ──────────────────────────────
-        $rPendingGRNsPM = $this->db->query("
+        $pendingGRNsPMQuery = "
             SELECT mr.id, mr.receiving_date,
                    p.name AS project_name,
                    u.full_name AS received_by_name
@@ -175,11 +206,16 @@ class Con_DashboardController extends Controller
             LEFT JOIN projects p ON p.id = pr.project_id
             LEFT JOIN users u ON u.id = mr.received_by
             WHERE mr.overall_status = 'Pending PM'
-            ORDER BY mr.id DESC LIMIT 10");
+        ";
+        if ($selectedProjectId) {
+            $pendingGRNsPMQuery .= " AND pr.project_id = $selectedProjectId ";
+        }
+        $pendingGRNsPMQuery .= " ORDER BY mr.id DESC LIMIT 10";
+        $rPendingGRNsPM = $this->db->query($pendingGRNsPMQuery);
         $pendingGRNsPM = $rPendingGRNsPM ? $rPendingGRNsPM->fetch_all(MYSQLI_ASSOC) : [];
 
         // ── Pending Weekly Reports awaiting PM ────────────────────────────
-        $rPendingWeeklyPM = $this->db->query("
+        $pendingWeeklyQuery = "
             SELECT pwp.id, 
                    COALESCE(pwp.submitted_at, pwp.week_end_date) AS report_date, 
                    pwp.week_number AS week_no,
@@ -194,28 +230,42 @@ class Con_DashboardController extends Controller
             LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
             LEFT JOIN project_phases pp ON pp.id = pmt.phase_id
             WHERE pwp.entry_status = 'Submitted' AND pwp.qc_status = 'Approved' AND pwp.pm_approved_id IS NULL
-            ORDER BY pwp.submitted_at DESC, pwp.id DESC LIMIT 10");
+        ";
+        if ($selectedProjectId) {
+            $pendingWeeklyQuery .= " AND pwp.project_id = $selectedProjectId ";
+        }
+        $pendingWeeklyQuery .= " ORDER BY pwp.submitted_at DESC, pwp.id DESC LIMIT 10";
+        $rPendingWeeklyPM = $this->db->query($pendingWeeklyQuery);
         $pendingWeeklyReportsPM = $rPendingWeeklyPM ? $rPendingWeeklyPM->fetch_all(MYSQLI_ASSOC) : [];
 
         // ── Pending Security Issues ──────────────────────────────
-        $rPendingIncidents = $this->db->query("
+        $pendingIncidentsQuery = "
             SELECT i.id, i.issue_title, i.priority, i.reported_at, p.name AS project_name
             FROM con_security_incidents i
             LEFT JOIN projects p ON p.id = i.project_id
             WHERE i.status != 'Resolved'
-            ORDER BY i.id DESC LIMIT 5");
+        ";
+        if ($selectedProjectId) {
+            $pendingIncidentsQuery .= " AND i.project_id = $selectedProjectId ";
+        }
+        $pendingIncidentsQuery .= " ORDER BY i.id DESC LIMIT 5";
+        $rPendingIncidents = $this->db->query($pendingIncidentsQuery);
         $pendingIncidents = $rPendingIncidents ? $rPendingIncidents->fetch_all(MYSQLI_ASSOC) : [];
 
-        $rPendingLogs = $this->db->query("
+        $pendingLogsQuery = "
             SELECT l.id, l.log_date, l.remarks, p.name AS project_name
             FROM con_security_daily_logs l
             LEFT JOIN projects p ON p.id = l.project_id
             WHERE l.condition_status = 'Issue Found' AND l.status != 'Resolved'
-            ORDER BY l.id DESC LIMIT 5");
+        ";
+        if ($selectedProjectId) {
+            $pendingLogsQuery .= " AND l.project_id = $selectedProjectId ";
+        }
+        $pendingLogsQuery .= " ORDER BY l.id DESC LIMIT 5";
+        $rPendingLogs = $this->db->query($pendingLogsQuery);
         $pendingLogs = $rPendingLogs ? $rPendingLogs->fetch_all(MYSQLI_ASSOC) : [];
 
-        // Week-based target notifications — migrated to phase_weekly_progress pending items.
-        // Legacy target_fixed week-target notifications removed.
+        // Week-based target notifications
         $weekTargetNotifications = [];
         $labDueNotifications = [];
 
@@ -225,10 +275,8 @@ class Con_DashboardController extends Controller
         $curWeek  = (int)ceil(date('j') / 7);
         $curWeek  = min($curWeek, 4);
 
-
-
         // ── Recent Material Issues (Stock OUT) ────────────────────────────
-        $rRecentIssues = $this->db->query("
+        $recentIssuesQuery = "
             SELECT mi.id, mi.quantity, mi.issue_date, mi.purpose,
                    p.name AS project_name,
                    m.name AS material_name, m.unit,
@@ -239,26 +287,33 @@ class Con_DashboardController extends Controller
             LEFT JOIN con_materials m ON m.id = mi.material_id
             LEFT JOIN con_warehouses w ON w.id = mi.warehouse_id
             LEFT JOIN users u ON u.id = mi.issued_by
-            ORDER BY mi.issue_date DESC, mi.id DESC
-            LIMIT 10
-        ");
+        ";
+        if ($selectedProjectId) {
+            $recentIssuesQuery .= " WHERE mi.project_id = $selectedProjectId ";
+        }
+        $recentIssuesQuery .= " ORDER BY mi.issue_date DESC, mi.id DESC LIMIT 10 ";
+        $rRecentIssues = $this->db->query($recentIssuesQuery);
         $recentMaterialIssues = $rRecentIssues ? $rRecentIssues->fetch_all(MYSQLI_ASSOC) : [];
 
         // ── Pending Material Returns ────────────────────────────
-        $rPendingReturns = $this->db->query("
+        $pendingReturnsQuery = "
             SELECT mr.*, p.name AS project_name, v.name AS vendor_name, u.full_name AS created_by_name
             FROM material_returns mr
             LEFT JOIN projects p ON p.id = mr.project_id
             LEFT JOIN vendors v ON v.id = mr.vendor_id
             LEFT JOIN users u ON u.id = mr.created_by
             WHERE mr.status = 'pending'
-            ORDER BY mr.id DESC
-            LIMIT 10
-        ");
+        ";
+        if ($selectedProjectId) {
+            $pendingReturnsQuery .= " AND mr.project_id = $selectedProjectId ";
+        }
+        $pendingReturnsQuery .= " ORDER BY mr.id DESC LIMIT 10 ";
+        $rPendingReturns = $this->db->query($pendingReturnsQuery);
         $pendingReturns = $rPendingReturns ? $rPendingReturns->fetch_all(MYSQLI_ASSOC) : [];
 
         $pendingWorkOrders = [];
         if (in_array($userRole, [1, 3, 12, 15, 20, 22])) {
+            $projFilterPart = $selectedProjectId ? " AND wo.project_id = $selectedProjectId " : "";
             if ($userRole == 12 || $userRole == 20) {
                 $moRoleId = ($userRole == 20) ? 20 : 12;
                 $rWO = $this->db->query("
@@ -273,6 +328,7 @@ class Con_DashboardController extends Controller
                     LEFT JOIN users u ON u.id = wo.created_by
                     WHERE wo.status = 'draft'
                       AND wa_mo.status = 'pending'
+                      {$projFilterPart}
                     ORDER BY wo.created_at DESC
                     LIMIT 10
                 ");
@@ -293,6 +349,7 @@ class Con_DashboardController extends Controller
                     WHERE wo.status = 'draft'
                       AND wa_pm.status = 'pending'
                       AND wa_mo.status != 'pending'
+                      {$projFilterPart}
                     ORDER BY wo.created_at DESC
                     LIMIT 10
                 ");
@@ -311,6 +368,7 @@ class Con_DashboardController extends Controller
                     WHERE wo.status = 'draft'
                       AND wa_mgmt.status = 'pending'
                       AND wa_pm.status != 'pending'
+                      {$projFilterPart}
                     ORDER BY wo.created_at DESC
                     LIMIT 10
                 ");
@@ -321,14 +379,16 @@ class Con_DashboardController extends Controller
         // ── Pending Budget Extensions ──────────────────────────────
         $pendingBudgetExtends = [];
         if (in_array($userRole, [1, 3, 15, 22])) {
+            $projFilterPart = $selectedProjectId ? " AND r.project_id = $selectedProjectId " : "";
             $rBE = $this->db->query("
                 SELECT r.id, r.amount, r.title, r.reason, r.created_at,
                        p.name AS project_name,
                        u.full_name AS requester_name
-                FROM project_budget_requests r
+                FROM budget_extend_requests r
                 LEFT JOIN projects p ON p.id = r.project_id
                 LEFT JOIN users u ON u.id = r.requested_by
                 WHERE r.status = 'Pending'
+                {$projFilterPart}
                 ORDER BY r.created_at DESC
                 LIMIT 10
             ");
@@ -338,6 +398,7 @@ class Con_DashboardController extends Controller
         // ── PRs awaiting approval — for roles 3, 15, 22 ─────────────────────
         $prsForApproval = [];
         if (in_array($userRole, [3, 15, 22])) {
+            $projFilterPart = $selectedProjectId ? " AND pr.project_id = $selectedProjectId " : "";
             $rPRApproval = $this->db->query("
                 SELECT pr.id, pr.status, pr.created_at, pr.notes,
                        p.name  AS project_name,
@@ -354,6 +415,7 @@ class Con_DashboardController extends Controller
                 LEFT JOIN roles r       ON r.id  = u.role_id
                 LEFT JOIN purchase_request_items pri ON pri.request_id = pr.id
                 WHERE pr.status IN ('Draft', 'Submitted')
+                {$projFilterPart}
                 GROUP BY pr.id, pr.status, pr.created_at, pr.notes,
                          p.name, u.full_name, r.name
                 ORDER BY
@@ -367,6 +429,7 @@ class Con_DashboardController extends Controller
         $pendingLandRequisitions = [];
         $pendingPettyCash = [];
         if (in_array($userRole, [1, 3])) {
+            $landProjFilter = $selectedProjectId ? " AND la.project_id = $selectedProjectId " : "";
             $rLandReq = $this->db->query("
                 SELECT lfr.*, la.land_owner_name, p.name as project_name, u.full_name as requester_name
                 FROM land_fund_requisitions lfr
@@ -374,10 +437,12 @@ class Con_DashboardController extends Controller
                 LEFT JOIN projects p ON la.project_id = p.id
                 LEFT JOIN users u ON lfr.requested_by = u.id
                 WHERE lfr.mgmt_status = 'Pending'
+                {$landProjFilter}
                 ORDER BY lfr.id DESC LIMIT 10
             ");
             $pendingLandRequisitions = $rLandReq ? $rLandReq->fetch_all(MYSQLI_ASSOC) : [];
 
+            $pettyProjFilter = $selectedProjectId ? " AND fr.project_id = $selectedProjectId " : "";
             $rFundReq = $this->db->query("
                 SELECT fr.*, p.name AS project_name, d.name AS department_name, u.full_name AS requester_name
                 FROM fund_requisitions fr
@@ -385,6 +450,7 @@ class Con_DashboardController extends Controller
                 LEFT JOIN departments d ON fr.department_id = d.id
                 LEFT JOIN users u ON fr.requested_by = u.id
                 WHERE fr.status = 'pending'
+                {$pettyProjFilter}
                 ORDER BY fr.id DESC LIMIT 10
             ");
             $pendingPettyCash = $rFundReq ? $rFundReq->fetch_all(MYSQLI_ASSOC) : [];
@@ -392,6 +458,7 @@ class Con_DashboardController extends Controller
 
         $pendingContractorBills = [];
         if (in_array($userRole, [1, 3, 22])) {
+            $cbProjFilter = $selectedProjectId ? " AND cbr.project_id = $selectedProjectId " : "";
             $rCB = $this->db->query("
                 SELECT cbr.*, p.name AS project_name, oo.name AS contractor_name, u.full_name AS creator_name
                 FROM contractor_bill_requests cbr
@@ -399,6 +466,7 @@ class Con_DashboardController extends Controller
                 LEFT JOIN contractors oo ON oo.id = cbr.operator_id
                 LEFT JOIN users u ON u.id = cbr.created_by
                 WHERE cbr.status = 'submitted'
+                {$cbProjFilter}
                 ORDER BY cbr.created_at DESC
                 LIMIT 10
             ");
@@ -452,21 +520,29 @@ class Con_DashboardController extends Controller
         return "({$alias}.pm_id = {$userId} OR {$alias}.site_engineer_id = {$userId} OR {$alias}.landman_id = {$userId} OR {$alias}.struct_engineer_id = {$userId} OR {$alias}.operation_head_id = {$userId} OR {$alias}.draftsman_id = {$userId} OR {$alias}.architect_id = {$userId} OR {$alias}.estimator_id = {$userId} OR {$alias}.qc_id = {$userId} OR {$alias}.operator_id = {$userId} OR {$alias}.created_by = {$userId})";
     }
 
-    private function getDashboardStats(): array
+    private function getDashboardStats($projectId = null): array
     {
         $s = [];
 
         // 1. Total Projects
-        $r = $this->db->query("SELECT COUNT(*) AS c FROM projects p WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . " AND " . $this->getProjectRoleFilter('p') . "");
+        $projQuery = "SELECT COUNT(*) AS c FROM projects p WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p');
+        if ($projectId) {
+            $projQuery .= " AND p.id = $projectId";
+        }
+        $r = $this->db->query($projQuery);
         $s['total_projects'] = $r ? (int)$r->fetch_assoc()['c'] : 0;
 
         // 2-4. Budget totals (approved estimates only)
-        $r2 = $this->db->query("
+        $budQuery = "
             SELECT COALESCE(SUM(total_estimated_cost),0) AS total_budget,
                    COALESCE(SUM(material_cost_total),0)  AS total_material,
                    COALESCE(SUM(labor_cost_total),0)     AS total_labour
             FROM initial_estimate_budgets
-            WHERE status = 'approved'");
+            WHERE status IN ('approved', 'pm_approved')";
+        if ($projectId) {
+            $budQuery .= " AND project_id = $projectId";
+        }
+        $r2 = $this->db->query($budQuery);
         if ($r2 && $row = $r2->fetch_assoc()) {
             $s['total_budget']   = (float)$row['total_budget'];
             $s['total_material'] = (float)$row['total_material'];
@@ -476,37 +552,71 @@ class Con_DashboardController extends Controller
         }
 
         // 5. Stock Alerts
-        $r3 = $this->db->query("
-            SELECT COUNT(*) AS c
-            FROM con_stocks s
-            JOIN con_materials m ON m.id = s.material_id
-            WHERE s.current_quantity < m.min_stock_level"
-        );
+        if ($projectId) {
+            $stockQuery = "
+                SELECT COUNT(*) AS c
+                FROM con_stocks s
+                JOIN con_materials m ON m.id = s.material_id
+                JOIN con_warehouses w ON w.id = s.warehouse_id
+                WHERE s.current_quantity < m.min_stock_level AND w.project_id = $projectId";
+        } else {
+            $stockQuery = "
+                SELECT COUNT(*) AS c
+                FROM con_stocks s
+                JOIN con_materials m ON m.id = s.material_id
+                WHERE s.current_quantity < m.min_stock_level";
+        }
+        $r3 = $this->db->query($stockQuery);
         $s['stock_alerts'] = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
 
         // 6. Pending Approvals (all approval queues combined)
-        $r4 = $this->db->query("
-            SELECT COUNT(*) AS c FROM (
-                SELECT id FROM contractor_bill_requests    WHERE status = 'submitted'
-                UNION ALL
-                SELECT id FROM con_work_orders             WHERE status = 'draft'
-                UNION ALL
-                SELECT id FROM operational_fund_requests   WHERE status = 'pending'
-                UNION ALL
-                SELECT id FROM vendor_payment_requests     WHERE status = 'Submitted'
-                UNION ALL
-                SELECT id FROM fund_requisitions           WHERE status = 'pending'
-                UNION ALL
-                SELECT id FROM land_fund_requisitions      WHERE mgmt_status = 'Pending'
-            ) t");
+        if ($projectId) {
+            $r4 = $this->db->query("
+                SELECT COUNT(*) AS c FROM (
+                    SELECT id FROM contractor_bill_requests    WHERE status = 'submitted' AND project_id = $projectId
+                    UNION ALL
+                    SELECT id FROM con_work_orders             WHERE status = 'draft' AND project_id = $projectId
+                    UNION ALL
+                    SELECT id FROM operational_fund_requests   WHERE status = 'pending' AND project_id = $projectId
+                    UNION ALL
+                    SELECT id FROM vendor_payment_requests     WHERE status = 'Submitted' AND project_id = $projectId
+                    UNION ALL
+                    SELECT id FROM fund_requisitions           WHERE status = 'pending' AND project_id = $projectId
+                    UNION ALL
+                    SELECT lfr.id FROM land_fund_requisitions lfr JOIN land_acquisitions la ON la.id = lfr.land_acquisition_id WHERE lfr.mgmt_status = 'Pending' AND la.project_id = $projectId
+                ) t");
+        } else {
+            $r4 = $this->db->query("
+                SELECT COUNT(*) AS c FROM (
+                    SELECT id FROM contractor_bill_requests    WHERE status = 'submitted'
+                    UNION ALL
+                    SELECT id FROM con_work_orders             WHERE status = 'draft'
+                    UNION ALL
+                    SELECT id FROM operational_fund_requests   WHERE status = 'pending'
+                    UNION ALL
+                    SELECT id FROM vendor_payment_requests     WHERE status = 'Submitted'
+                    UNION ALL
+                    SELECT id FROM fund_requisitions           WHERE status = 'pending'
+                    UNION ALL
+                    SELECT id FROM land_fund_requisitions      WHERE mgmt_status = 'Pending'
+                ) t");
+        }
         $s['pending_approvals'] = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
 
         // 7. Budget Extension Requests
-        $r5 = $this->db->query("SELECT COUNT(*) AS c FROM budget_extend_requests WHERE status = 'Pending'");
+        $budExtQuery = "SELECT COUNT(*) AS c FROM budget_extend_requests WHERE status = 'Pending'";
+        if ($projectId) {
+            $budExtQuery = "SELECT COUNT(*) AS c FROM budget_extend_requests WHERE status = 'Pending' AND project_id = $projectId";
+        }
+        $r5 = $this->db->query($budExtQuery);
         $s['budget_requests'] = $r5 ? (int)$r5->fetch_assoc()['c'] : 0;
 
         // 8. Lab / Soil Test Alerts
-        $r6 = $this->db->query("SELECT COUNT(*) AS c FROM soil_tests");
+        $soilQuery = "SELECT COUNT(*) AS c FROM soil_tests";
+        if ($projectId) {
+            $soilQuery = "SELECT COUNT(*) AS c FROM soil_tests WHERE project_id = $projectId";
+        }
+        $r6 = $this->db->query($soilQuery);
         $s['lab_alerts'] = $r6 ? (int)$r6->fetch_assoc()['c'] : 0;
 
         return $s;
@@ -518,7 +628,7 @@ class Con_DashboardController extends Controller
             SELECT  p.id,
                     p.name,
                     p.project_status,
-                    p.expected_handover_date,
+                    timeline.expected_handover_date,
                     p.image,
                     p.total_share        AS total_floors,
                     p.plot_size,
@@ -530,6 +640,7 @@ class Con_DashboardController extends Controller
                     COALESCE(spent.total_spent, 0)     AS total_spent
             FROM projects p
             LEFT JOIN locations l ON l.id = p.location_id
+            LEFT JOIN project_timelines timeline ON timeline.project_id = p.id
             LEFT JOIN (
                 -- Migrated: phase-based weighted progress
                 SELECT pp.project_id,
@@ -539,7 +650,7 @@ class Con_DashboardController extends Controller
             ) prog ON prog.project_id = p.id
             LEFT JOIN (
                 SELECT project_id, SUM(total_estimated_cost) AS total_budget
-                FROM initial_estimate_budgets WHERE status = 'approved' GROUP BY project_id
+                FROM initial_estimate_budgets WHERE status IN ('approved', 'pm_approved') GROUP BY project_id
             ) bud ON bud.project_id = p.id
             LEFT JOIN (
                 SELECT project_id, SUM(amount_paid) AS total_spent
@@ -587,29 +698,46 @@ class Con_DashboardController extends Controller
         return $projects;
     }
 
-    private function getBudgetUtilization(): array
+    private function getBudgetUtilization($projectId = null): array
     {
-        $r1 = $this->db->query("SELECT COALESCE(SUM(total_estimated_cost),0) AS total FROM initial_estimate_budgets WHERE status IN ('approved', 'pm_approved')");
+        $totalQuery = "SELECT COALESCE(SUM(total_estimated_cost),0) AS total FROM initial_estimate_budgets WHERE status IN ('approved', 'pm_approved')";
+        if ($projectId) {
+            $totalQuery .= " AND project_id = $projectId";
+        }
+        $r1 = $this->db->query($totalQuery);
         $total = $r1 ? (float)$r1->fetch_assoc()['total'] : 0.0;
 
         // Material spent
-        $matSpentRes = $this->db->query("
-            SELECT COALESCE(SUM(mri.received_quantity * poi.unit_price), 0) AS total
-            FROM material_receiving_items mri
-            INNER JOIN material_receiving mr ON mr.id = mri.receiving_id
-            INNER JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
-            INNER JOIN purchase_orders po ON po.id = mr.purchase_order_id
-            INNER JOIN purchase_requests pr ON pr.id = po.request_id
-            WHERE mr.overall_status = 'Accepted'
-        ");
+        if ($projectId) {
+            $matSpentQuery = "
+                SELECT COALESCE(SUM(mri.received_quantity * poi.unit_price), 0) AS total
+                FROM material_receiving_items mri
+                INNER JOIN material_receiving mr ON mr.id = mri.receiving_id
+                INNER JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+                INNER JOIN purchase_orders po ON po.id = mr.purchase_order_id
+                INNER JOIN purchase_requests pr ON pr.id = po.request_id
+                WHERE mr.overall_status = 'Accepted' AND pr.project_id = $projectId
+            ";
+        } else {
+            $matSpentQuery = "
+                SELECT COALESCE(SUM(mri.received_quantity * poi.unit_price), 0) AS total
+                FROM material_receiving_items mri
+                INNER JOIN material_receiving mr ON mr.id = mri.receiving_id
+                INNER JOIN purchase_order_items poi ON poi.id = mri.purchase_order_item_id
+                INNER JOIN purchase_orders po ON po.id = mr.purchase_order_id
+                INNER JOIN purchase_requests pr ON pr.id = po.request_id
+                WHERE mr.overall_status = 'Accepted'
+            ";
+        }
+        $matSpentRes = $this->db->query($matSpentQuery);
         $matSpentTotal = $matSpentRes ? (float)$matSpentRes->fetch_assoc()['total'] : 0.0;
 
         // Contractor spent
-        $conSpentRes = $this->db->query("
-            SELECT COALESCE(SUM(approved_amount), 0) AS total
-            FROM contractor_bill_requests
-            WHERE status IN ('approved', 'paid')
-        ");
+        $conSpentQuery = "SELECT COALESCE(SUM(approved_amount), 0) AS total FROM contractor_bill_requests WHERE status IN ('approved', 'paid')";
+        if ($projectId) {
+            $conSpentQuery .= " AND project_id = $projectId";
+        }
+        $conSpentRes = $this->db->query($conSpentQuery);
         $conSpentTotal = $conSpentRes ? (float)$conSpentRes->fetch_assoc()['total'] : 0.0;
 
         $spent = $matSpentTotal + $conSpentTotal;
@@ -618,64 +746,107 @@ class Con_DashboardController extends Controller
         return ['total' => $total, 'spent' => $spent, 'pct' => $pct, 'remaining' => max(0, $total - $spent)];
     }
 
-    private function getLowStockItems(): array
+    private function getLowStockItems($projectId = null): array
     {
+        $projPart = "";
+        if ($projectId) {
+            $projPart = " AND w.project_id = $projectId ";
+        }
         $sql = "
             SELECT s.current_quantity, m.name AS material_name, m.unit, m.min_stock_level,
                    w.name AS warehouse_name
             FROM con_stocks s
             JOIN con_materials  m ON m.id = s.material_id
             JOIN con_warehouses w ON w.id = s.warehouse_id
-            WHERE s.current_quantity < m.min_stock_level
+            WHERE s.current_quantity < m.min_stock_level {$projPart}
             ORDER BY (m.min_stock_level - s.current_quantity) DESC
             LIMIT 5";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
-    private function getPendingApprovalsList(): array
+    private function getPendingApprovalsList($projectId = null): array
     {
-        $sql = "
-            SELECT 'Contractor Bill'   AS type,
-                   CONCAT('Bill #', id) AS description,
-                   bill_amount          AS amount,
-                   project_id,
-                   created_at,
-                   CONCAT('/con-contractor-bill/', id) AS url
-            FROM contractor_bill_requests WHERE status = 'submitted'
-            UNION ALL
-            SELECT 'Work Order',
-                   CONCAT('Work Order: ', title),
-                   total_amount,
-                   project_id,
-                   created_at,
-                   CONCAT('/con-work-order/', id) AS url
-            FROM con_work_orders WHERE status = 'draft'
-            UNION ALL
-            SELECT 'Fund Request',
-                   CONCAT('Fund: ', purpose),
-                   COALESCE(approved_amount, amount),
-                   project_id, created_at,
-                   CONCAT('/con-fund-request/', id) AS url
-            FROM operational_fund_requests WHERE status = 'pending'
-            UNION ALL
-            SELECT 'Vendor Payment',
-                   CONCAT(payment_type, ' Payment'),
-                   COALESCE(net_payable, 0),
-                   project_id, created_at,
-                   CONCAT('/con-vendor-payment/', id) AS url
-            FROM vendor_payment_requests WHERE status = 'Submitted'
-            ORDER BY created_at DESC LIMIT 5";
+        if ($projectId) {
+            $sql = "
+                SELECT 'Contractor Bill'   AS type,
+                       CONCAT('Bill #', id) AS description,
+                       bill_amount          AS amount,
+                       project_id,
+                       created_at,
+                       CONCAT('/con-contractor-bill/', id) AS url
+                FROM contractor_bill_requests WHERE status = 'submitted' AND project_id = $projectId
+                UNION ALL
+                SELECT 'Work Order',
+                       CONCAT('Work Order: ', title),
+                       total_amount,
+                       project_id,
+                       created_at,
+                       CONCAT('/con-work-order/', id) AS url
+                FROM con_work_orders WHERE status = 'draft' AND project_id = $projectId
+                UNION ALL
+                SELECT 'Fund Request',
+                       CONCAT('Fund: ', purpose),
+                       COALESCE(approved_amount, amount),
+                       project_id, created_at,
+                       CONCAT('/con-fund-request/', id) AS url
+                FROM operational_fund_requests WHERE status = 'pending' AND project_id = $projectId
+                UNION ALL
+                SELECT 'Vendor Payment',
+                       CONCAT(payment_type, ' Payment'),
+                       COALESCE(net_payable, 0),
+                       project_id, created_at,
+                       CONCAT('/con-vendor-payment/', id) AS url
+                FROM vendor_payment_requests WHERE status = 'Submitted' AND project_id = $projectId
+                ORDER BY created_at DESC LIMIT 5";
+        } else {
+            $sql = "
+                SELECT 'Contractor Bill'   AS type,
+                       CONCAT('Bill #', id) AS description,
+                       bill_amount          AS amount,
+                       project_id,
+                       created_at,
+                       CONCAT('/con-contractor-bill/', id) AS url
+                FROM contractor_bill_requests WHERE status = 'submitted'
+                UNION ALL
+                SELECT 'Work Order',
+                       CONCAT('Work Order: ', title),
+                       total_amount,
+                       project_id,
+                       created_at,
+                       CONCAT('/con-work-order/', id) AS url
+                FROM con_work_orders WHERE status = 'draft'
+                UNION ALL
+                SELECT 'Fund Request',
+                       CONCAT('Fund: ', purpose),
+                       COALESCE(approved_amount, amount),
+                       project_id, created_at,
+                       CONCAT('/con-fund-request/', id) AS url
+                FROM operational_fund_requests WHERE status = 'pending'
+                UNION ALL
+                SELECT 'Vendor Payment',
+                       CONCAT(payment_type, ' Payment'),
+                       COALESCE(net_payable, 0),
+                       project_id, created_at,
+                       CONCAT('/con-vendor-payment/', id) AS url
+                FROM vendor_payment_requests WHERE status = 'Submitted'
+                ORDER BY created_at DESC LIMIT 5";
+        }
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
-    private function getRecentSoilTests(): array
+    private function getRecentSoilTests($projectId = null): array
     {
+        $projPart = "";
+        if ($projectId) {
+            $projPart = " WHERE st.project_id = $projectId ";
+        }
         $sql = "
             SELECT st.*, p.name AS project_name
             FROM soil_tests st
             LEFT JOIN projects p ON p.id = st.project_id
+            {$projPart}
             ORDER BY st.id DESC LIMIT 5";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
@@ -724,7 +895,7 @@ class Con_DashboardController extends Controller
                        SUM(total_estimated_cost) AS total_budget,
                        MAX(start_date)           AS start_date,
                        MAX(end_date)             AS end_date
-                FROM initial_estimate_budgets WHERE status = 'approved' GROUP BY project_id
+                FROM initial_estimate_budgets WHERE status IN ('approved', 'pm_approved') GROUP BY project_id
             ) bud ON bud.project_id = p.id
             LEFT JOIN (
                 SELECT project_id, SUM(amount_paid) AS total_spent
@@ -1510,7 +1681,7 @@ $project = $stmt->get_result()->fetch_assoc();
                 FROM project_phases pp
                 GROUP BY pp.project_id
             ) prog ON prog.project_id=p.id
-            LEFT JOIN (SELECT project_id, SUM(total_estimated_cost) AS total_budget FROM initial_estimate_budgets WHERE status='approved' GROUP BY project_id) bud ON bud.project_id=p.id
+            LEFT JOIN (SELECT project_id, SUM(total_estimated_cost) AS total_budget FROM initial_estimate_budgets WHERE status IN ('approved', 'pm_approved') GROUP BY project_id) bud ON bud.project_id=p.id
             WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . " ORDER BY p.id DESC LIMIT 6");
         $projects = $rProj ? $rProj->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -1990,11 +2161,9 @@ $project = $stmt->get_result()->fetch_assoc();
         $projectsNeedingAE = $rNoAE ? $rNoAE->fetch_all(MYSQLI_ASSOC) : [];
 
         // ── Internal vs External architect breakdown ───────────────────────────
-        $rInt = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering WHERE architect_type = 'internal'");
-        $internalArchitects = $rInt ? (int)$rInt->fetch_assoc()['c'] : 0;
-
-        $rExt = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering WHERE architect_type = 'external'");
-        $externalArchitects = $rExt ? (int)$rExt->fetch_assoc()['c'] : 0;
+        // Since architect_engineering table does not have an architect_type column, all recorded architects are internal users.
+        $internalArchitects = $totalAE;
+        $externalArchitects = 0;
 
         // ── Workflow Notifications: Land Visibility Completed ─────────────────
         $rLandDone = $this->db->query("
@@ -2048,11 +2217,11 @@ $project = $stmt->get_result()->fetch_assoc();
         $pendingEstimates = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
 
         // KPI 4: Approved Estimates
-        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM initial_estimate_budgets WHERE status = 'approved'");
+        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM initial_estimate_budgets WHERE status IN ('approved', 'pm_approved')");
         $approvedEstimates = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
 
         // KPI 5: Total Approved Budget Value
-        $r5 = $this->db->query("SELECT COALESCE(SUM(total_estimated_cost),0) AS total FROM initial_estimate_budgets WHERE status='approved'");
+        $r5 = $this->db->query("SELECT COALESCE(SUM(total_estimated_cost),0) AS total FROM initial_estimate_budgets WHERE status IN ('approved', 'pm_approved')");
         $totalBudgetValue = $r5 ? (float)$r5->fetch_assoc()['total'] : 0.0;
 
         // Project Drawings by Design Type (for chart/breakdown)
