@@ -547,7 +547,7 @@ class Con_ProjectOverviewDashboardController extends Controller
             LEFT JOIN (
                 SELECT project_id,
                        SUM(total_estimated_cost) AS total_budget
-                FROM initial_estimate_budgets WHERE status = 'approved' GROUP BY project_id
+                FROM initial_estimate_budgets WHERE status IN ('approved', 'pm_approved') GROUP BY project_id
             ) bud ON bud.project_id = p.id
             LEFT JOIN (
                 SELECT project_id, SUM(amount_paid) AS total_spent
