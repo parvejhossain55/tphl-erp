@@ -1,0 +1,345 @@
+
+<html xmlns:o="urn:schemas-microsoft-com:office:office" 
+      xmlns:w="urn:schemas-microsoft-com:office:word" 
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+    <meta charset="utf-8">
+    <title>TPHL-ERP System Documentation</title>
+    <!--[if gte mso 9]>
+    <xml>
+        <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+    </xml>
+    <![endif]-->
+    <style>
+        body {
+            font-family: "Segoe UI", Calibri, Arial, sans-serif;
+            color: #333333;
+            line-height: 1.6;
+            margin: 1in;
+        }
+        h1, h2, h3, h4 {
+            color: #1a365d;
+            font-family: "Segoe UI Semibold", Calibri, Arial, sans-serif;
+            margin-top: 24pt;
+            margin-bottom: 6pt;
+        }
+        h1 {
+            font-size: 24pt;
+            border-bottom: 2px solid #2b6cb0;
+            padding-bottom: 6pt;
+            margin-top: 0;
+        }
+        h2 {
+            font-size: 18pt;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 4pt;
+        }
+        h3 {
+            font-size: 14pt;
+            color: #2b6cb0;
+        }
+        h4 {
+            font-size: 12pt;
+            color: #4a5568;
+        }
+        p {
+            margin-top: 0;
+            margin-bottom: 10pt;
+            font-size: 11pt;
+            text-align: justify;
+        }
+        ul, ol {
+            margin-top: 0;
+            margin-bottom: 10pt;
+            padding-left: 20pt;
+        }
+        li {
+            font-size: 11pt;
+            margin-bottom: 4pt;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 12pt;
+            margin-bottom: 12pt;
+        }
+        th, td {
+            border: 1px solid #cbd5e0;
+            padding: 8pt;
+            font-size: 10pt;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background-color: #f7fafc;
+            color: #2d3748;
+            font-weight: bold;
+        }
+        .cover-page {
+            text-align: center;
+            padding-top: 2in;
+            page-break-after: always;
+        }
+        .cover-title {
+            font-size: 32pt;
+            color: #1a365d;
+            font-weight: bold;
+            margin-bottom: 12pt;
+        }
+        .cover-subtitle {
+            font-size: 18pt;
+            color: #4a5568;
+            margin-bottom: 48pt;
+        }
+        .cover-meta {
+            font-size: 12pt;
+            color: #718096;
+            margin-top: 2in;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+        .highlight {
+            background-color: #ebf8ff;
+            border-left: 4px solid #3182ce;
+            padding: 10pt;
+            margin-bottom: 12pt;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- COVER PAGE -->
+    <div class="cover-page">
+        <div class="cover-title">TPHL-ERP System</div>
+        <div class="cover-subtitle">Complete Module & Feature Specification Documentation</div>
+        <div class="cover-meta">
+            <strong>Prepared For:</strong> TPHL Management Team<br>
+            <strong>System Version:</strong> Phase 2 Enterprise Edition<br>
+            <strong>Date:</strong> June 10, 2026<br>
+            <strong>Status:</strong> Approved Specification
+        </div>
+    </div>
+
+    <!-- INTRODUCTION -->
+    <h2>1. Executive Overview & Management Panel</h2>
+    <p>
+        The TPHL-ERP is a comprehensive, multi-module Enterprise Resource Planning application custom-built to streamline construction project management, financial accounting, human resource operations, lead sales pipelines, and digital marketing tracking. Designed with robust multi-role access controls, it ensures secure data segregation and streamlined executive oversight.
+    </p>
+    
+    <h3>1.1 All-Over Management Panel (Super Admin & Admin)</h3>
+    <p>
+        The Management Panel is designed for company directors, managing partners, and super admins who require absolute operational control and visibility across all business segments.
+    </p>
+    <div class="highlight">
+        <strong>Key Management Operations:</strong> Super Admins possess unrestricted permission levels, enabling them to override transactions, view central financial ledgers, and manage user credentials.
+    </div>
+    <ul>
+        <li><strong>Global System Settings:</strong> Manage system configurations, base URLs, SMTP details, API keys, and maintenance toggles.</li>
+        <li><strong>Role & Permission Configurator:</strong> Create, modify, and delete user roles (e.g., Accounts, HR, PM, SE, Land Officer). Assign fine-grained permission matrices (create, read, edit, delete, approve) to specific roles.</li>
+        <li><strong>User Registry Management:</strong> Creation, editing, and status monitoring of all employee and client credentials. Force password resets and manage active session controls.</li>
+        <li><strong>Central Bank Registry:</strong> Monitor and configure institutional bank accounts, initial opening balances, and real-time ledger statements.</li>
+        <li><strong>Central Financial Audit:</strong> View the company-wide central cash-in/cash-out statements. Override/audit transaction flags.</li>
+    </ul>
+
+    <!-- SALES MODULE -->
+    <div class="page-break"></div>
+    <h2>2. Sales & Customer Engagement Module</h2>
+    <p>
+        The Sales Module manages the client lifecycle, starting from lead acquisition and continuous nurturing, up to flat booking allocations and dynamic installment collection tracking.
+    </p>
+
+    <h3>2.1 Panel Roles</h3>
+    <ul>
+        <li><strong>Sales Head Panel:</strong> High-level dashboard showing team performance, KPI targets, lead allocation logs, and booking summaries.</li>
+        <li><strong>Sales Executive Panel:</strong> Focused view containing assigned leads, daily follow-up lists, customer booking applications, and personal achievement progress bars.</li>
+    </ul>
+
+    <h3>2.2 Key Features & Processing Workflows</h3>
+    <ul>
+        <li>
+            <strong>Lead Lifecycle Tracking:</strong>
+            <ul>
+                <li><strong>Lead Sources:</strong> Organize incoming leads by source (e.g., Facebook, Google Ads, Referrals, Walk-ins).</li>
+                <li><strong>Status Pipelines:</strong> Track leads through standard pipelines (New, Contacted, Visited, Negotiation, Booked, Lost).</li>
+                <li><strong>Follow-Up Logs:</strong> Record detailed discussion notes for each interaction and schedule the next follow-up date (which automatically feeds into the Executive's dashboard calendar).</li>
+            </ul>
+        </li>
+        <li>
+            <strong>Flat Booking Management:</strong>
+            <ul>
+                <li><strong>Inventory Selection:</strong> Interactively view flat statuses (Available, Booked, Sold, Blocked) grouped by Project and Floor.</li>
+                <li><strong>Booking Form:</strong> Process client personal details, nominee info, agreed price, booking money, downpayment agreements, and total installment count.</li>
+                <li><strong>Dynamic Payment Scheduling:</strong> Automatically generate customized installment plans (EMI schedules) with unique installment codes, due dates, and amounts.</li>
+            </ul>
+        </li>
+        <li>
+            <strong>Onboard Client Portal:</strong> Convert successfully negotiated leads into active clients. Link personal contact info, flat ownership registers, and custom discount/car-parking values to the client profile.
+        </li>
+    </ul>
+
+    <!-- CED MODULE -->
+    <div class="page-break"></div>
+    <h2>3. Client Engagement Department (CED) & Collection Panel</h2>
+    <p>
+        The Client Engagement Department (CED) functions as the specialized collection and client-relation panel. It acts as the bridge between Sales Bookings and Accounts Ledger entry.
+    </p>
+    <h3>3.1 Key Features & Workflows</h3>
+    <ul>
+        <li><strong>CED Dashboard:</strong> Real-time overview of monthly cash collection targets, collections-to-date, due installments, and upcoming collections grouped by project.</li>
+        <li><strong>Money Receipt Generation:</strong> Upon receiving client payments (via Cash, Cheque, Bank Transfer, or Pay Order), CED officers generate a serialized Money Receipt containing payment details, bank logs, and the specific installment linked to the invoice.</li>
+        <li><strong>Cheque Tracking:</strong> Specialized ledger for client cheque collections. Tracks cheque status (Received, Deposited, Cleared, Dishonored) and alerts officers on due clearance dates.</li>
+        <li><strong>Pending Receipt Verification:</strong> CED-entered receipts remain in a "Pending Verification" status until reviewed. Once verified, the data automatically feeds into the Accounts module for reconciliation.</li>
+    </ul>
+
+    <!-- ACCOUNTS MODULE -->
+    <div class="page-break"></div>
+    <h2>4. Financial Management & Accounts Module</h2>
+    <p>
+        The Accounts Module is the financial core of TPHL-ERP, managing cash flows, operational expenses, contractor bills, vendor payouts, and bank reconciliations.
+    </p>
+    <h3>4.1 Key Features & Workflows</h3>
+    <ul>
+        <li><strong>Accounts Dashboard:</strong> Aggregated view of cash-in hand, total bank deposits, pending vendor bills, contractor bills, operational fund requests, and department budget balances.</li>
+        <li><strong>Expense Management & Approvals:</strong>
+            <ul>
+                <li><strong>Operational Fund Requests:</strong> Field/site engineers submit fund requests for daily expenses. Accounts reviews, adjusts, and approves them for payout.</li>
+                <li><strong>Cashout Requests:</strong> Process payment vouchers for vendor procurement bills and administrative expenses. Supports double-entry ledger bookkeeping.</li>
+            </ul>
+        </li>
+        <li><strong>Contractor Bill Settlements:</strong> Receives measurement-sheet-validated bill requests from Construction Phase 2. Accounts verifies budget head availability, deducts security deposits/taxes, and processes bank transfers.</li>
+        <li><strong>Central Statement Ledger:</strong> Double-entry bookkeeping ledger containing details of every financial transaction. Generates ledger exports, profit & loss projections, and project-wise budget vs. actual cost analyses.</li>
+    </ul>
+
+    <!-- HR & EMPLOYEE MODULE -->
+    <div class="page-break"></div>
+    <h2>5. Human Resource Management (HRM) & Employee Module</h2>
+    <p>
+        The HRM Module controls employee records, dynamic attendance logs, leave management, holiday setups, and monthly payroll processing.
+    </p>
+    <h3>5.1 HRM Panel Features</h3>
+    <ul>
+        <li><strong>Employee Directory:</strong> Full digital profiles of employees, including designation, department, basic salary, allowance brackets, NID, and contact details.</li>
+        <li><strong>Attendance Processing:</strong>
+            <ul>
+                <li><strong>Biometric Integration:</strong> Integrates with office finger-print machines for daily clock-in/out registers.</li>
+                <li><strong>Mobile Geofence Punch:</strong> Field engineers can punch attendance via mobile, validating their location via geofencing constraints.</li>
+                <li><strong>Job Card & Late Reports:</strong> Automatically calculates late entries, early departures, and generates daily/monthly late and absent reports.</li>
+            </ul>
+        </li>
+        <li><strong>Leave Management:</strong> Set up annual leave categories (Casual, Sick, Earned). Approve or reject employee-submitted leave requests with automatic balance updates.</li>
+        <li><strong>Payroll & Payslip Generation:</strong>
+            <ul>
+                <li><strong>Monthly Payroll Processing:</strong> With a single click, calculate monthly payouts. Automatically factors in basic salary, custom allowances, late-entry deductions, absent deductions, and loan repayments.</li>
+                <li><strong>Payslip Items:</strong> Add custom bonuses or one-off deductions per employee before finalizing the monthly bank payroll file.</li>
+            </ul>
+        </li>
+        <li><strong>Manpower Requisitions:</strong> Handles requests for new hires or replacement requisitions from department heads.</li>
+    </ul>
+    <h3>5.2 Employee Self-Service Panel</h3>
+    <ul>
+        <li><strong>Employee Dashboard:</strong> Personal calendar showing attendance logs, late flags, active holidays, and company announcements.</li>
+        <li><strong>Leave Applications:</strong> Digital leave requests submitted directly to HR. Tracks approval status.</li>
+        <li><strong>Monthly Payslip Downloads:</strong> Secure access to view and print detailed monthly payslip receipts showing earnings and deductions.</li>
+        <li><strong>Task Manager:</strong> View assigned office/site tasks, update progress status, and log remarks.</li>
+    </ul>
+
+    <!-- DIGITAL MARKETING MODULE -->
+    <div class="page-break"></div>
+    <h2>6. Digital Marketing Panel</h2>
+    <p>
+        The Digital Marketing Panel is a specialized module for lead-acquisition campaign management and advertisement ROI tracking.
+    </p>
+    <h3>6.1 Key Features & Workflows</h3>
+    <ul>
+        <li><strong>Campaign Budget Tracking:</strong> Track monthly advertising spends on Facebook Ads, Google Ads, and other social media portals.</li>
+        <li><strong>Lead Sync & Allocation:</strong> Sync leads captured through Facebook Lead Forms directly into the ERP. Automatically allocates leads to sales executives based on round-robin or manual assignments.</li>
+        <li><strong>ROI Analytics:</strong> Analyzes the Cost-Per-Lead (CPL) and lead-to-booking conversion rate for each campaign to optimize marketing budgets.</li>
+    </ul>
+
+    <!-- CONSTRUCTION PHASE 2 -->
+    <div class="page-break"></div>
+    <h2>7. Construction Project Management (Phase 2)</h2>
+    <p>
+        Construction Phase 2 is the most complex module in the ERP. It coordinates engineering designs, BOQ budgets, material supply chains, execution targets, quality inspections, and risk-management pipelines.
+    </p>
+    <h3>7.1 Role-Based Construction Panels</h3>
+    <table>
+        <tr>
+            <th>Role</th>
+            <th>Primary Access & Core Features</th>
+        </tr>
+        <tr>
+            <td><strong>Project Manager Head / Operations Head</strong></td>
+            <td>Portfolio overview, approval of BOQ budgets, work orders, contractor bills, monthly review finalizations, and project risk mitigations.</td>
+        </tr>
+        <tr>
+            <td><strong>Project Manager (PM)</strong></td>
+            <td>Project timeline setups, monthly target planning, weekly calendar approvals, vendor quotation reviews, purchase order finalizations, and site progress audits.</td>
+        </tr>
+        <tr>
+            <td><strong>Site Engineer (SE)</strong></td>
+            <td>Daily progress logging, material receiving (GRN) verification, material issue vouchers, labor logs, and weekly progress submissions.</td>
+        </tr>
+        <tr>
+            <td><strong>QC Auditor / QC Specialist</strong></td>
+            <td>Master checklist setup, site inspections (Passed, Failed, Rework Needed), and material lab test logs.</td>
+        </tr>
+        <tr>
+            <td><strong>Architect / Structural Designer</strong></td>
+            <td>Project drawing registry (Civil, Architectural, Electrical, Plumbing), soil test documentation, and revision control tracking.</td>
+        </tr>
+        <tr>
+            <td><strong>Estimator</strong></td>
+            <td>Initial budget estimates, Bill of Quantities (BOQ) planning, and material specification setups.</td>
+        </tr>
+    </table>
+
+    <h3>7.2 Key Modules & Operational Workflows</h3>
+    <ul>
+        <li>
+            <strong>Pre-Construction & Engineering Design:</strong>
+            <ul>
+                <li><strong>Land Acquisition & Study:</strong> Handles feasibility checks, legal sheets, and land requisitions.</li>
+                <li><strong>Soil Test Documentation:</strong> Log reports, core sample details, and bearing capacity values.</li>
+                <li><strong>Drawing Control System:</strong> Upload and track architectural and structural engineering files with revision histories.</li>
+                <li><strong>Initial Estimate & BOQ:</strong> Define base material/labor budget estimates for the project. Approved estimates serve as budget limits for procurement.</li>
+            </ul>
+        </li>
+        <li>
+            <strong>Procurement & Supply Chain Management:</strong>
+            <ul>
+                <li><strong>Purchase Requisition (PR):</strong> Site staff request materials. PM checks and approves within estimate limits.</li>
+                <li><strong>Quotation Comparative Statements:</strong> Upload vendor quotations, compile comparative sheets, and select the optimal vendor.</li>
+                <li><strong>Purchase Order (PO):</strong> Generate POs linked to approved requisitions and quotes. Accounts issues payment codes.</li>
+                <li><strong>Material Receiving (GRN):</strong> Site Engineers verify delivered items, log received quantities, upload delivery slips, and flag discrepancies.</li>
+                <li><strong>Material Issue Voucher:</strong> Tracks materials issued from site warehouses to specific contractors and floors. Keeps live stock balances.</li>
+            </ul>
+        </li>
+        <li>
+            <strong>Execution, Progress & Targets:</strong>
+            <ul>
+                <li><strong>Monthly Target Planning:</strong> Set work item targets for Month 1 to N, including start/end dates and week-wise planned distributions.</li>
+                <li><strong>Weekly Progress Logging:</strong> Site Engineers enter daily quantities for Day 1 to Day 7. Approved entries feed into the phase-based project progress bar.</li>
+                <li><strong>Contractor Work Orders & Bills:</strong> Issue work orders with custom schedules. Contractors submit bills based on executed quantities, which are verified by site measurement sheets.</li>
+            </ul>
+        </li>
+        <li>
+            <strong>Quality Control & Lab Tests:</strong> QC specialists perform checklist audits on active phases, log inspection remarks with photos, and verify concrete strength and material tests.
+        </li>
+        <li>
+            <strong>Advanced Risk Sync & Recovery:</strong>
+            <ul>
+                <li><strong>Auto Risk Detection:</strong> Live engine dynamically scans weekly targets and daily logs, auto-syncing risks for missed deadlines, slow progress (burn-rate), and missing logs.</li>
+                <li><strong>Recovery Action Items:</strong> Tracks project recovery plans, extra labor allocation, and action items to bring delayed projects back on schedule.</li>
+            </ul>
+        </li>
+    </ul>
+
+</body>
+</html>

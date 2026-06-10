@@ -824,7 +824,7 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
             </div>
 
             <!-- Bottom Row: Status Distribution, Delay Summary, Upcoming Approvals, Alerts -->
-            <div class="po-bottom-grid">
+            <div class="po-bottom-grid d-none">
                 <!-- Card 1: Project Status Distribution -->
                 <div class="po-bottom-card">
                     <div class="po-bottom-card-header">

@@ -91,6 +91,11 @@ class Con_RecoveryPlanController extends Controller {
         }
         $completionPct = $totalActions > 0 ? round($completedActions / $totalActions * 100) : 0;
 
+        // ── Auto-sync risks to get the latest count ─────────────────────────
+        require_once __DIR__ . '/Con_RiskDashboardController.php';
+        $riskCtrl = new Con_RiskDashboardController($this->db);
+        $riskCtrl->syncRisksForProject($projectId);
+
         // Open risks count (from project_risks)
         $rStmt = $this->db->prepare("SELECT COUNT(*) AS cnt FROM project_risks WHERE project_id=? AND status='Open'");
         $rStmt->bind_param('i', $projectId);

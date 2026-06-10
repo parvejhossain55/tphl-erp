@@ -168,11 +168,12 @@ class Con_RiskDashboardController extends Controller {
     }
 
     // =========================================================================
-    // PRIVATE — get missed weekly targets
+    // PUBLIC — sync risks for a project (idempotent, supports run-rate & daily log checks)
     // =========================================================================
-    private function getMissedWeeklyTargets($projectId) {
-        // For each target item, check each week: if planned qty > 0 and a
-        // weekly progress session exists but achieved < planned → missed.
+    public function syncRisksForProject($projectId) {
+        $projectId = (int)$projectId;
+        
+        // 1. Fetch all target items
         $stmt = $this->db->prepare("
             SELECT
                 pmti.id                  AS target_item_id,
@@ -190,67 +191,489 @@ class Con_RiskDashboardController extends Controller {
                 pmt.target_month,
                 pmt.id                   AS target_id,
                 pmt.phase_id,
-                pp.phase_name,
-                pwp.week_number,
-                pwp.week_start_date,
-                pwp.week_end_date,
-                COALESCE(pwpi.achieved_qty, 0) AS achieved_qty
+                pp.phase_name
             FROM phase_monthly_target_items pmti
             JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
             JOIN project_phases pp ON pp.id = pmt.phase_id
             LEFT JOIN work_types wt ON wt.id = pmti.work_type_id
-            JOIN phase_weekly_progress pwp
-                ON pwp.target_id = pmt.id AND pwp.project_id = pmt.project_id
-            LEFT JOIN phase_weekly_progress_items pwpi
-                ON pwpi.weekly_progress_id = pwp.id AND pwpi.target_item_id = pmti.id
             WHERE pmt.project_id = ?
-            ORDER BY pmt.target_month ASC, pmti.id ASC, pwp.week_number ASC
+            ORDER BY pmt.target_month ASC, pmti.id ASC
         ");
         $stmt->bind_param('i', $projectId);
         $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $targetItems = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        $missed = [];
-        foreach ($rows as $row) {
-            $wk = (int)$row['week_number'];
-            $plannedQty = (float)($row['week_' . $wk . '_qty'] ?? 0);
-            $achievedQty = (float)$row['achieved_qty'];
+        // 2. Fetch existing weekly progress achievements and daily quantities
+        $wpStmt = $this->db->prepare("
+            SELECT 
+                pwp.week_number, 
+                pwp.week_start_date,
+                pwpi.target_item_id, 
+                pwpi.achieved_qty,
+                pwpi.`1st_day_qty`,
+                pwpi.`2nd_day_qty`,
+                pwpi.`3rd_day_qty`,
+                pwpi.`4th_day_qty`,
+                pwpi.`5th_day_qty`,
+                pwpi.`6_th_day_qty`,
+                pwpi.`7th_day_qty`
+            FROM phase_weekly_progress pwp
+            INNER JOIN phase_weekly_progress_items pwpi ON pwpi.weekly_progress_id = pwp.id
+            WHERE pwp.project_id = ?
+        ");
+        $wpStmt->bind_param('i', $projectId);
+        $wpStmt->execute();
+        $weeklyAchievements = $wpStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        
+        $achievedMap = [];
+        $weeklyDailyProgress = [];
+        foreach ($weeklyAchievements as $wa) {
+            $itemId = (int)$wa['target_item_id'];
+            $wk = (int)$wa['week_number'];
+            $achievedMap[$itemId][$wk] = (float)$wa['achieved_qty'];
 
-            // Calculate sub-item deadline
-            $itemEndDate = $row['end_date'] ?? null;
-            if (empty($itemEndDate) || $itemEndDate === '0000-00-00') {
-                $targetMonth = $row['target_month'] ?? '';
-                if (strlen($targetMonth) === 7) {
-                    $deadlineDate = date('Y-m-t', strtotime($targetMonth . '-01'));
-                } else {
-                    $deadlineDate = date('Y-m-t', strtotime($targetMonth));
+            // Map Day 1 to Day 7 column values to dates
+            $weekStart = $wa['week_start_date'];
+            if ($weekStart && $weekStart !== '0000-00-00') {
+                $daysMapping = [
+                    1 => '1st_day_qty',
+                    2 => '2nd_day_qty',
+                    3 => '3rd_day_qty',
+                    4 => '4th_day_qty',
+                    5 => '5th_day_qty',
+                    6 => '6_th_day_qty',
+                    7 => '7th_day_qty'
+                ];
+                foreach ($daysMapping as $dIdx => $colName) {
+                    $dQty = (float)($wa[$colName] ?? 0.00);
+                    if ($dQty > 0) {
+                        $dDate = date('Y-m-d', strtotime($weekStart . " + " . ($dIdx - 1) . " days"));
+                        $weeklyDailyProgress[$itemId][$dDate] = $dQty;
+                    }
                 }
-            } else {
-                $deadlineDate = $itemEndDate;
+            }
+        }
+
+        // 3. Fetch all daily work logs for run-time date checking
+        $dpStmt = $this->db->prepare("
+            SELECT dwil.target_item_id, dpl.log_date, SUM(dwil.qty_done_today) AS total_qty
+            FROM daily_work_item_logs dwil
+            INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+            WHERE dpl.project_id = ?
+            GROUP BY dwil.target_item_id, dpl.log_date
+        ");
+        $dpStmt->bind_param('i', $projectId);
+        $dpStmt->execute();
+        $dailyLogs = $dpStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        
+        $dailyProgressMap = [];
+        foreach ($dailyLogs as $dl) {
+            $itemId = (int)$dl['target_item_id'];
+            $dDate = $dl['log_date'];
+            $dailyProgressMap[$itemId][$dDate] = (float)$dl['total_qty'];
+        }
+
+        // Merge/Overlay quantities from phase_weekly_progress_items columns
+        foreach ($weeklyDailyProgress as $itemId => $dates) {
+            foreach ($dates as $dDate => $qty) {
+                if (!isset($dailyProgressMap[$itemId][$dDate]) || $dailyProgressMap[$itemId][$dDate] < $qty) {
+                    $dailyProgressMap[$itemId][$dDate] = $qty;
+                }
+            }
+        }
+
+        $today = date('Y-m-d');
+        $validRiskCodes = [];
+        $risksToSync = [];
+
+        foreach ($targetItems as $item) {
+            $itemId = (int)$item['target_item_id'];
+            $targetMonthStr = $item['target_month'];
+            
+            // Calculate week boundaries
+            $monthStart = new \DateTime(substr($targetMonthStr, 0, 7) . '-01');
+            $monthEnd = new \DateTime($monthStart->format('Y-m-t'));
+            
+            $weeks = [];
+            for ($w = 1; $w <= 4; $w++) {
+                $baseDate = clone $monthStart;
+                if ($w === 1) {
+                    $start = $baseDate->format('Y-m-d');
+                    $end   = (clone $baseDate)->modify('+6 days')->format('Y-m-d');
+                } elseif ($w === 2) {
+                    $start = (clone $baseDate)->modify('+7 days')->format('Y-m-d');
+                    $end   = (clone $baseDate)->modify('+13 days')->format('Y-m-d');
+                } elseif ($w === 3) {
+                    $start = (clone $baseDate)->modify('+14 days')->format('Y-m-d');
+                    $end   = (clone $baseDate)->modify('+20 days')->format('Y-m-d');
+                } else {
+                    $start = (clone $baseDate)->modify('+21 days')->format('Y-m-d');
+                    $end   = $monthEnd->format('Y-m-d');
+                    if ($end < $start) {
+                        $end = (clone $baseDate)->modify('+27 days')->format('Y-m-d');
+                    }
+                }
+                $weeks[$w] = ['start' => $start, 'end' => $end];
             }
 
-            $today = date('Y-m-d');
-            // Only flag as missed risk if:
-            // 1. Planned qty was > 0
-            // 2. Achieved < planned
-            // 3. The overall sub-item deadline has passed (deadlineDate < today)
-            if ($plannedQty > 0 && $achievedQty < $plannedQty && $deadlineDate < $today) {
-                $missed[] = [
-                    'target_item_id' => $row['target_item_id'],
-                    'item_name'      => $row['item_name'],
-                    'work_type_name' => $row['work_type_name'],
-                    'unit'           => $row['unit'],
-                    'phase_id'       => $row['phase_id'],
-                    'phase_name'     => $row['phase_name'],
-                    'target_id'      => $row['target_id'],
-                    'target_month'   => $row['target_month'],
-                    'week_number'    => $wk,
-                    'week_start'     => $row['week_start_date'],
-                    'week_end'       => $row['week_end_date'],
-                    'planned_qty'    => $plannedQty,
-                    'achieved_qty'   => $achievedQty,
-                    'missed_qty'     => $plannedQty - $achievedQty,
-                ];
+            // Loop weeks
+            for ($w = 1; $w <= 4; $w++) {
+                $plannedQty = (float)($item['week_' . $w . '_qty'] ?? 0);
+                if ($plannedQty <= 0) continue;
+
+                $achievedQty = $achievedMap[$itemId][$w] ?? 0.00;
+                $weekStart = $weeks[$w]['start'];
+                $weekEnd   = $weeks[$w]['end'];
+                
+                // Rule 1: Week Target Missed (deadline has passed)
+                if ($today > $weekEnd) {
+                    if ($achievedQty < $plannedQty) {
+                        $code = "AUTO-MISSED-W{$w}-{$itemId}";
+                        $validRiskCodes[] = $code;
+                        
+                        $missRatio = ($plannedQty - $achievedQty) / $plannedQty;
+                        $severity = $missRatio >= 0.50 ? 'High' : ($missRatio >= 0.25 ? 'Medium' : 'Low');
+                        
+                        $desc = "Week {$w} target missed for '{$item['item_name']}' in " . $monthStart->format('F Y') . ". ";
+                        if (!empty($item['work_type_name'])) $desc .= "Category: {$item['work_type_name']}. ";
+                        $desc .= "Planned: {$plannedQty} {$item['unit']}, Achieved: {$achievedQty} {$item['unit']}, Shortfall: " . ($plannedQty - $achievedQty) . " {$item['unit']}.";
+                        
+                        $risksToSync[$code] = [
+                            'phase_id' => $item['phase_id'],
+                            'category' => 'Progress',
+                            'description' => $desc,
+                            'impact' => $severity,
+                            'likelihood' => 'High',
+                            'severity' => $severity,
+                            'missed_week' => $w,
+                            'target_item_id' => $itemId,
+                            'missed_qty' => $plannedQty - $achievedQty,
+                            'planned_qty' => $plannedQty,
+                            'achieved_qty' => $achievedQty
+                        ];
+                    }
+                } else {
+                    // Week is active or has started
+                    if ($today >= $weekStart) {
+                        // Rule 2: Not Started Target
+                        if ($achievedQty == 0) {
+                            $code = "AUTO-NOTSTARTED-W{$w}-{$itemId}";
+                            $validRiskCodes[] = $code;
+                            
+                            $desc = "Week {$w} target has started but no work has been initiated for '{$item['item_name']}' in " . $monthStart->format('F Y') . ". ";
+                            if (!empty($item['work_type_name'])) $desc .= "Category: {$item['work_type_name']}. ";
+                            $desc .= "Planned: {$plannedQty} {$item['unit']}, Achieved: 0 {$item['unit']}.";
+                            
+                            $risksToSync[$code] = [
+                                'phase_id' => $item['phase_id'],
+                                'category' => 'Progress',
+                                'description' => $desc,
+                                'impact' => 'High',
+                                'likelihood' => 'High',
+                                'severity' => 'High',
+                                'missed_week' => $w,
+                                'target_item_id' => $itemId,
+                                'missed_qty' => $plannedQty,
+                                'planned_qty' => $plannedQty,
+                                'achieved_qty' => 0.00
+                            ];
+                        }
+                        
+                        // Rule 3: Slow Progress / Burn-rate
+                        if ($achievedQty > 0 && $achievedQty < $plannedQty) {
+                            $tDays = (strtotime($weekEnd) - strtotime($weekStart)) / 86400 + 1;
+                            $pDays = (strtotime($today) - strtotime($weekStart)) / 86400 + 1;
+                            if ($pDays >= 2) {
+                                $expectedRatio = min(1.0, $pDays / $tDays);
+                                $expectedQty = $plannedQty * $expectedRatio;
+                                if ($achievedQty < 0.75 * $expectedQty) {
+                                    $code = "AUTO-BURNRATE-W{$w}-{$itemId}";
+                                    $validRiskCodes[] = $code;
+                                    
+                                    $severity = ($achievedQty < 0.40 * $expectedQty) ? 'High' : 'Medium';
+                                    
+                                    $desc = "Week {$w} progress is slower than expected (low burn-rate) for '{$item['item_name']}' in " . $monthStart->format('F Y') . ". ";
+                                    $desc .= "Expected: " . round($expectedQty, 1) . " {$item['unit']} (for {$pDays} days passed), Achieved: {$achievedQty} {$item['unit']}.";
+                                    
+                                    $risksToSync[$code] = [
+                                        'phase_id' => $item['phase_id'],
+                                        'category' => 'Progress',
+                                        'description' => $desc,
+                                        'impact' => $severity,
+                                        'likelihood' => 'High',
+                                        'severity' => $severity,
+                                        'missed_week' => $w,
+                                        'target_item_id' => $itemId,
+                                        'missed_qty' => $plannedQty - $achievedQty,
+                                        'planned_qty' => $plannedQty,
+                                        'achieved_qty' => $achievedQty
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Rule 4: Missing Daily Log on Passed Days
+                $endCheckDate = min($today, $weekEnd);
+                $startCheckDate = $weekStart;
+                
+                // Adjust if item has custom start/end dates
+                if (!empty($item['start_date']) && $item['start_date'] !== '0000-00-00') {
+                    $startCheckDate = max($startCheckDate, $item['start_date']);
+                }
+                if (!empty($item['end_date']) && $item['end_date'] !== '0000-00-00') {
+                    $endCheckDate = min($endCheckDate, $item['end_date']);
+                }
+
+                $curr = new \DateTime($startCheckDate);
+                $checkLimit = new \DateTime($endCheckDate);
+                
+                // We check days that are strictly less than today (passed days)
+                $todayDt = new \DateTime($today);
+
+                while ($curr < $todayDt && $curr <= $checkLimit) {
+                    $dStr = $curr->format('Y-m-d');
+                    $loggedQty = $dailyProgressMap[$itemId][$dStr] ?? 0.00;
+                    
+                    if ($loggedQty <= 0) {
+                        $code = "AUTO-NOLOG-D{$dStr}-{$itemId}";
+                        $validRiskCodes[] = $code;
+                        
+                        $desc = "No daily progress logged for '{$item['item_name']}' on " . date('d M Y', strtotime($dStr)) . " (scheduled day in Week {$w}).";
+                        
+                        $risksToSync[$code] = [
+                            'phase_id' => $item['phase_id'],
+                            'category' => 'Progress',
+                            'description' => $desc,
+                            'impact' => 'Medium',
+                            'likelihood' => 'High',
+                            'severity' => 'Medium',
+                            'missed_week' => $w,
+                            'target_item_id' => $itemId,
+                            'missed_qty' => 0.00,
+                            'planned_qty' => 0.00,
+                            'achieved_qty' => 0.00
+                        ];
+                    }
+                    $curr->modify('+1 day');
+                }
+            }
+        }
+
+        // 4. Database Sync
+        // Clean up resolved auto risks (is_auto=1 and risk_code NOT IN the current run's valid codes)
+        if (!empty($validRiskCodes)) {
+            $placeholders = implode(',', array_fill(0, count($validRiskCodes), '?'));
+            $delSql = "DELETE FROM project_risks WHERE project_id = ? AND is_auto = 1 AND risk_code NOT IN ($placeholders)";
+            $delParams = array_merge([$projectId], $validRiskCodes);
+            $types = 'i' . str_repeat('s', count($validRiskCodes));
+            
+            $delStmt = $this->db->prepare($delSql);
+            $delStmt->bind_param($types, ...$delParams);
+            $delStmt->execute();
+        } else {
+            // Delete all auto risks for this project
+            $delStmt = $this->db->prepare("DELETE FROM project_risks WHERE project_id = ? AND is_auto = 1");
+            $delStmt->bind_param('i', $projectId);
+            $delStmt->execute();
+        }
+
+        // Insert or update active risks
+        foreach ($risksToSync as $code => $r) {
+            // Check if exists
+            $chk = $this->db->prepare("SELECT id FROM project_risks WHERE project_id = ? AND risk_code = ?");
+            $chk->bind_param('is', $projectId, $code);
+            $chk->execute();
+            $exist = $chk->get_result()->fetch_assoc();
+
+            if ($exist) {
+                // Update description, severity, impact, quantities
+                $upd = $this->db->prepare("
+                    UPDATE project_risks SET
+                        description = ?,
+                        impact = ?,
+                        severity = ?,
+                        missed_qty = ?,
+                        planned_qty = ?,
+                        achieved_qty = ?,
+                        updated_at = NOW()
+                    WHERE id = ?
+                ");
+                $upd->bind_param('sssdddi', 
+                    $r['description'], 
+                    $r['impact'], 
+                    $r['severity'], 
+                    $r['missed_qty'], 
+                    $r['planned_qty'], 
+                    $r['achieved_qty'], 
+                    $exist['id']
+                );
+                $upd->execute();
+            } else {
+                // Insert new
+                $ins = $this->db->prepare("
+                    INSERT INTO project_risks (
+                        project_id, phase_id, risk_code, category, description, impact, likelihood, severity,
+                        missed_week, target_item_id, missed_qty, planned_qty, achieved_qty, is_auto, status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'Open')
+                ");
+                $ins->bind_param('iissssssiiddd',
+                    $projectId,
+                    $r['phase_id'],
+                    $code,
+                    $r['category'],
+                    $r['description'],
+                    $r['impact'],
+                    $r['likelihood'],
+                    $r['severity'],
+                    $r['missed_week'],
+                    $r['target_item_id'],
+                    $r['missed_qty'],
+                    $r['planned_qty'],
+                    $r['achieved_qty']
+                );
+                $ins->execute();
+            }
+        }
+    }
+
+    // =========================================================================
+    // PRIVATE — get missed weekly targets
+    // =========================================================================
+    private function getMissedWeeklyTargets($projectId) {
+        $projectId = (int)$projectId;
+        
+        // 1. Fetch all target items
+        $stmt = $this->db->prepare("
+            SELECT
+                pmti.id                  AS target_item_id,
+                pmti.work_item_name      AS item_name,
+                pmti.work_type_id,
+                pmti.start_date,
+                pmti.end_date,
+                wt.work_type_name,
+                pmti.unit,
+                pmti.monthly_target_qty,
+                pmti.week_1_qty,
+                pmti.week_2_qty,
+                pmti.week_3_qty,
+                pmti.week_4_qty,
+                pmt.target_month,
+                pmt.id                   AS target_id,
+                pmt.phase_id,
+                pp.phase_name
+            FROM phase_monthly_target_items pmti
+            JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
+            JOIN project_phases pp ON pp.id = pmt.phase_id
+            LEFT JOIN work_types wt ON wt.id = pmti.work_type_id
+            WHERE pmt.project_id = ?
+            ORDER BY pmt.target_month ASC, pmti.id ASC
+        ");
+        $stmt->bind_param('i', $projectId);
+        $stmt->execute();
+        $targetItems = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 2. Fetch existing weekly progress achievements
+        $wpStmt = $this->db->prepare("
+            SELECT pwp.week_number, pwpi.target_item_id, pwpi.achieved_qty
+            FROM phase_weekly_progress pwp
+            INNER JOIN phase_weekly_progress_items pwpi ON pwpi.weekly_progress_id = pwp.id
+            WHERE pwp.project_id = ?
+        ");
+        $wpStmt->bind_param('i', $projectId);
+        $wpStmt->execute();
+        $weeklyAchievements = $wpStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        
+        $achievedMap = [];
+        foreach ($weeklyAchievements as $wa) {
+            $itemId = (int)$wa['target_item_id'];
+            $wk = (int)$wa['week_number'];
+            $achievedMap[$itemId][$wk] = (float)$wa['achieved_qty'];
+        }
+
+        $today = date('Y-m-d');
+        $missed = [];
+
+        foreach ($targetItems as $item) {
+            $itemId = (int)$item['target_item_id'];
+            $targetMonthStr = $item['target_month'];
+            
+            // Calculate week boundaries
+            $monthStart = new \DateTime(substr($targetMonthStr, 0, 7) . '-01');
+            $monthEnd = new \DateTime($monthStart->format('Y-m-t'));
+            
+            $weeks = [];
+            for ($w = 1; $w <= 4; $w++) {
+                $baseDate = clone $monthStart;
+                if ($w === 1) {
+                    $start = $baseDate->format('Y-m-d');
+                    $end   = (clone $baseDate)->modify('+6 days')->format('Y-m-d');
+                } elseif ($w === 2) {
+                    $start = (clone $baseDate)->modify('+7 days')->format('Y-m-d');
+                    $end   = (clone $baseDate)->modify('+13 days')->format('Y-m-d');
+                } elseif ($w === 3) {
+                    $start = (clone $baseDate)->modify('+14 days')->format('Y-m-d');
+                    $end   = (clone $baseDate)->modify('+20 days')->format('Y-m-d');
+                } else {
+                    $start = (clone $baseDate)->modify('+21 days')->format('Y-m-d');
+                    $end   = $monthEnd->format('Y-m-d');
+                    if ($end < $start) {
+                        $end = (clone $baseDate)->modify('+27 days')->format('Y-m-d');
+                    }
+                }
+                $weeks[$w] = ['start' => $start, 'end' => $end];
+            }
+
+            // Loop weeks
+            for ($w = 1; $w <= 4; $w++) {
+                $plannedQty = (float)($item['week_' . $w . '_qty'] ?? 0);
+                if ($plannedQty <= 0) continue;
+
+                $achievedQty = $achievedMap[$itemId][$w] ?? 0.00;
+                $weekStart = $weeks[$w]['start'];
+                $weekEnd   = $weeks[$w]['end'];
+
+                $isMissed = false;
+                
+                // Missed Target: deadline passed, achieved < planned
+                if ($today > $weekEnd && $achievedQty < $plannedQty) {
+                    $isMissed = true;
+                }
+                // Not Started Target: week started, achieved = 0
+                elseif ($today >= $weekStart && $achievedQty == 0) {
+                    $isMissed = true;
+                }
+                // Slow progress: week active, achieved > 0 but slow
+                elseif ($today >= $weekStart && $today <= $weekEnd && $achievedQty > 0) {
+                    $tDays = (strtotime($weekEnd) - strtotime($weekStart)) / 86400 + 1;
+                    $pDays = (strtotime($today) - strtotime($weekStart)) / 86400 + 1;
+                    if ($pDays >= 2) {
+                        $expectedQty = $plannedQty * min(1.0, $pDays / $tDays);
+                        if ($achievedQty < 0.75 * $expectedQty) {
+                            $isMissed = true;
+                        }
+                    }
+                }
+
+                if ($isMissed) {
+                    $missed[] = [
+                        'target_item_id' => $itemId,
+                        'item_name'      => $item['item_name'],
+                        'work_type_name' => $item['work_type_name'],
+                        'unit'           => $item['unit'],
+                        'phase_id'       => $item['phase_id'],
+                        'phase_name'     => $item['phase_name'],
+                        'target_id'      => $item['target_id'],
+                        'target_month'   => $item['target_month'],
+                        'week_number'    => $w,
+                        'week_start'     => $weekStart,
+                        'week_end'       => $weekEnd,
+                        'planned_qty'    => $plannedQty,
+                        'achieved_qty'   => $achievedQty,
+                        'missed_qty'     => $plannedQty - $achievedQty,
+                    ];
+                }
             }
         }
         return $missed;
@@ -260,88 +683,6 @@ class Con_RiskDashboardController extends Controller {
     // PRIVATE — auto-generate risk records for missed targets (idempotent)
     // =========================================================================
     private function autoGenerateRisks($projectId, array $missedTargets) {
-        // Clean up any auto-generated risks that are no longer flagged as missed (e.g., deadline is in the future)
-        $stmt = $this->db->prepare("SELECT id, target_item_id, missed_week FROM project_risks WHERE project_id = ? AND is_auto = 1");
-        $stmt->bind_param('i', $projectId);
-        $stmt->execute();
-        $existingAuto = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-        $validKeys = [];
-        foreach ($missedTargets as $m) {
-            $validKeys[] = $m['target_item_id'] . '-' . $m['week_number'];
-        }
-
-        foreach ($existingAuto as $r) {
-            $key = $r['target_item_id'] . '-' . $r['missed_week'];
-            if (!in_array($key, $validKeys)) {
-                $del = $this->db->prepare("DELETE FROM project_risks WHERE id = ?");
-                $del->bind_param('i', $r['id']);
-                $del->execute();
-            }
-        }
-
-        if (empty($missedTargets)) return;
-
-        foreach ($missedTargets as $m) {
-            // Check if an auto-risk already exists for this item+week
-            $chk = $this->db->prepare("
-                SELECT id FROM project_risks
-                WHERE project_id=? AND target_item_id=? AND missed_week=? AND is_auto=1
-                LIMIT 1
-            ");
-            $chk->bind_param('iii', $projectId, $m['target_item_id'], $m['week_number']);
-            $chk->execute();
-            $exists = $chk->get_result()->fetch_assoc();
-            if ($exists) {
-                // Update missed_qty and achieved_qty in case values changed
-                $upd = $this->db->prepare("
-                    UPDATE project_risks
-                    SET missed_qty=?, achieved_qty=?, planned_qty=?, updated_at=NOW()
-                    WHERE id=?
-                ");
-                $upd->bind_param('dddi', $m['missed_qty'], $m['achieved_qty'], $m['planned_qty'], $exists['id']);
-                $upd->execute();
-                continue;
-            }
-
-            // Determine severity based on miss ratio
-            $missRatio = $m['planned_qty'] > 0 ? ($m['missed_qty'] / $m['planned_qty']) : 0;
-            $severity  = $missRatio >= 0.5 ? 'High' : ($missRatio >= 0.25 ? 'Medium' : 'Low');
-            $riskCode  = 'AUTO-W' . $m['week_number'] . '-' . $m['target_item_id'];
-            $monthLabel = date('M Y', strtotime($m['target_month']));
-            $description = "Week {$m['week_number']} target missed for '{$m['item_name']}'";
-            if (!empty($m['work_type_name'])) {
-                $description .= " ({$m['work_type_name']})";
-            }
-            $description .= " in $monthLabel. Planned: {$m['planned_qty']} {$m['unit']}, Achieved: {$m['achieved_qty']} {$m['unit']}, Shortfall: {$m['missed_qty']} {$m['unit']}.";
-
-            $category = 'Progress';
-
-            $ins = $this->db->prepare("
-                INSERT INTO project_risks
-                  (project_id, phase_id, risk_code, category, description, impact, likelihood, severity,
-                   missed_week, target_item_id, missed_qty, planned_qty, achieved_qty, is_auto, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'Open')
-            ");
-            $impact = $severity;
-            $likelihood = 'High';
-            $ins->bind_param(
-                'iissssssiiddd',
-                $projectId,
-                $m['phase_id'],
-                $riskCode,
-                $category,
-                $description,
-                $impact,
-                $likelihood,
-                $severity,
-                $m['week_number'],
-                $m['target_item_id'],
-                $m['missed_qty'],
-                $m['planned_qty'],
-                $m['achieved_qty']
-            );
-            $ins->execute();
-        }
+        $this->syncRisksForProject($projectId);
     }
 }
