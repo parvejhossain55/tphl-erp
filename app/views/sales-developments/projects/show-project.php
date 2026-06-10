@@ -269,9 +269,17 @@ $show_breadcrumb = true;
                             </div>
                         <?php endif; ?>
 
+                        <?php if (!empty($project['under_construction'])): ?>
+                            <div class="facility-badge p-3 border rounded">
+                                <i class="fa-solid fa-person-digging text-info me-2"></i>
+                                <span>Under Construction</span>
+                            </div>
+                        <?php endif; ?>
+
                         <?php if (
                             empty($project['rooftop_gardening']) && empty($project['car_parking']) &&
-                            empty($project['convention']) && empty($project['electricity_backup'])
+                            empty($project['convention']) && empty($project['electricity_backup']) &&
+                            empty($project['under_construction'])
                         ): ?>
                             <p class="text-muted">No facilities available</p>
                         <?php endif; ?>

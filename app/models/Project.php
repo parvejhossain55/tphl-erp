@@ -90,6 +90,7 @@ class Project extends Model
         $swimming_pool      = isset($data['swimming_pool']) ? (int)$data['swimming_pool'] : 0;
         $convention         = isset($data['convention']) ? (int)$data['convention'] : 0;
         $electricity_backup = isset($data['electricity_backup']) ? (int)$data['electricity_backup'] : 0;
+        $under_construction = isset($data['under_construction']) ? (int)$data['under_construction'] : 0;
         $price_range = !empty($data['price_range']) ? $data['price_range'] : null;
         // plot_size: float column — empty string causes "Data truncated" error
         $plot_size = (isset($data['plot_size']) && $data['plot_size'] !== '' && $data['plot_size'] !== null)
@@ -109,8 +110,8 @@ class Project extends Model
                 service_charge_per_emi,
                 pm_id, site_engineer_id, landman_id, struct_engineer_id,
                 draftsman_id, architect_id, estimator_id, qc_id, operator_id,
-                purchase_user_id
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                purchase_user_id, under_construction
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         $stmt = $this->db->prepare($sql);
 
@@ -120,8 +121,8 @@ class Project extends Model
             return false;
         }
 
-        // bindTypes: 46 total (36 main + 10 team fields incl. purchase_user_id)
-        $bindTypes = "ssiisiissssssssd" . "ssssisssssiiiiiiiisd" . "iiiiiiiiii";
+        // bindTypes: 47 total
+        $bindTypes = "ssiisiissssssssd" . "ssssisssssiiiiiiiisd" . "iiiiiiiiiii";
 
         $pm_id             = !empty($data['pm_id']) ? (int)$data['pm_id'] : null;
         $site_engineer_id  = !empty($data['site_engineer_id']) ? (int)$data['site_engineer_id'] : null;
@@ -181,7 +182,8 @@ class Project extends Model
             $estimator_id,                  // 44 (i)
             $qc_id,                         // 45 (i)
             $operator_id,                   // 46 (i)
-            $purchase_user_id               // 47 (i)
+            $purchase_user_id,              // 47 (i)
+            $under_construction             // 48 (i)
         );
 
         $result = $stmt->execute();
@@ -357,7 +359,8 @@ class Project extends Model
         estimator_id = ?,
         qc_id = ?,
         operator_id = ?,
-        purchase_user_id = ?
+        purchase_user_id = ?,
+        under_construction = ?
     WHERE id = ?
 ");
 
@@ -378,7 +381,7 @@ class Project extends Model
         $purchase_user_id  = !empty($data['purchase_user_id']) ? (int)$data['purchase_user_id'] : null;
 
         $stmt->bind_param(
-            "ssiisssiissssdssissssssiiiisssiisssd" . "iiiiiiiiiii",
+            "ssiisssiissssdssissssssiiiisssiisssd" . "iiiiiiiiiiii",
             $data['name'],
             $data['slug'],
             $data['location_id'],
@@ -425,6 +428,7 @@ class Project extends Model
             $qc_id,
             $operator_id,
             $purchase_user_id,
+            $under_construction,
             $id
         );
 

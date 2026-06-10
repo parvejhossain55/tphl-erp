@@ -326,23 +326,45 @@ if (!empty($project['floor_wise_unit_meta'])) {
                     <h5>Facilities</h5>
                 </div>
 
-                <?php
-                $facilities = [
-                    'rooftop_gardening' => 'Rooftop Gardening',
-                    'car_parking' => 'Car Parking',
-                    'convention' => 'Convention Hall',
-                    'electricity_backup' => 'Electricity Backup'
-                ];
-                foreach ($facilities as $key => $label):
-                ?>
-                    <div class="col-xl-3 col-md-6">
-                        <label class="facility-box">
-                            <input type="checkbox" name="<?= $key ?>" value="1"
-                                <?= !empty($project[$key]) ? 'checked' : '' ?>>
-                            <span><?= $label ?></span>
-                        </label>
-                    </div>
-                <?php endforeach; ?>
+                <div class="col-xl-3 col-md-6">
+                    <label class="facility-box">
+                        <input type="checkbox" name="rooftop_gardening" value="1" <?= !empty($project['rooftop_gardening']) ? 'checked' : '' ?>>
+                        <i class="fa-solid fa-seedling text-success"></i>
+                        <span class="facility-label">Rooftop Gardening</span>
+                    </label>
+                </div>
+
+                <div class="col-xl-3 col-md-6">
+                    <label class="facility-box">
+                        <input type="checkbox" name="car_parking" value="1" <?= !empty($project['car_parking']) ? 'checked' : '' ?>>
+                        <i class="fa-solid fa-person-car text-primary"></i>
+                        <span class="facility-label">Car Parking</span>
+                    </label>
+                </div>
+
+                <div class="col-xl-3 col-md-6">
+                    <label class="facility-box">
+                        <input type="checkbox" name="convention" value="1" <?= !empty($project['convention']) ? 'checked' : '' ?>>
+                        <i class="fa-solid fa-building-columns text-warning"></i>
+                        <span class="facility-label">Convention Hall</span>
+                    </label>
+                </div>
+
+                <div class="col-xl-3 col-md-6">
+                    <label class="facility-box">
+                        <input type="checkbox" name="electricity_backup" value="1" <?= !empty($project['electricity_backup']) ? 'checked' : '' ?>>
+                        <i class="fa-solid fa-bolt text-danger"></i>
+                        <span class="facility-label">Electricity Backup</span>
+                    </label>
+                </div>
+
+                <div class="col-xl-3 col-md-6">
+                    <label class="facility-box">
+                        <input type="checkbox" name="under_construction" value="1" <?= !empty($project['under_construction']) ? 'checked' : '' ?>>
+                        <i class="fa-solid fa-person-digging text-info"></i>
+                        <span class="facility-label">Under Construction</span>
+                    </label>
+                </div>
 
                 <!-- Amenities -->
                 <div class="col-12">
