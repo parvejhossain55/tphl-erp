@@ -71,6 +71,15 @@
                         </a>
                     </li>
 
+                    <!-- Amenities -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/amenities"
+                            class="sidebar__menu-item <?= isActive(['amenities', 'create-amenity', 'edit-amenity'], $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-spa"></i></div>
+                            <span class="sidebar__menu-label">Amenities Manage</span>
+                        </a>
+                    </li>
+
                     <!-- Community -->
                     <li class="slide">
                         <a href="<?= $base_url ?>/community-lists"

@@ -68,7 +68,7 @@ class Project extends Model
 
         foreach ($fields as $field) {
             $$field = !empty($_FILES[$field]['name'])
-                ? uploadProjectImage($field)
+                ? uploadImage($field, 'projects', 'original')
                 : null;
         }
 
@@ -299,7 +299,7 @@ class Project extends Model
         foreach ($imageFields as $field) {
             $$field = $old[$field]; // default: keep old
             if (!empty($_FILES[$field]['name']) && $_FILES[$field]['error'] === UPLOAD_ERR_OK) {
-                $up = uploadProjectImage($field);
+                $up = uploadImage($field, 'projects', 'original');
                 if ($up) $$field = $up;
             }
         }
