@@ -156,6 +156,9 @@ $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
                     <i class="fa-light fa-info-circle me-2"></i>Request Information
                 </h6>
                 <?php
+                if ($request['status'] !== 'rejected' && $request['status'] !== 'pending' && isset($request['due_amount']) && $request['due_amount'] <= 0) {
+                    $request['status'] = 'fully_paid';
+                }
                 $statusClass = 'status-pending';
                 switch($request['status']) {
                     case 'approved_by_HR':

@@ -6,6 +6,11 @@ $show_breadcrumb = true;
 // Use the display_status from synced data
 $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
 
+if ($displayStatus !== 'rejected' && $displayStatus !== 'pending' && isset($request['due_amount']) && $request['due_amount'] <= 0) {
+    $displayStatus = 'fully_paid';
+}
+
+
 // Check if already approved from homepage approval system
 $isAlreadyApproved = !empty($request['approval_status']) && in_array($request['approval_status'], ['approved', 'partial']);
 $isApprovalPending = !empty($request['approval_status']) && $request['approval_status'] === 'pending';
