@@ -25,6 +25,9 @@ DROP TABLE IF EXISTS emp_attendances;
 DROP TABLE IF EXISTS emp_weekly_day_off;
 DROP TABLE IF EXISTS expense_adjustments;
 DROP TABLE IF EXISTS flats;
+
+
+
 DROP TABLE IF EXISTS flat_purchase_rules;
 DROP TABLE IF EXISTS fund_requisitions;
 DROP TABLE IF EXISTS head_notifications;
@@ -159,3 +162,5 @@ DROP TABLE IF EXISTS con_wastage;
 DROP TABLE IF EXISTS con_wastage_items;
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+
