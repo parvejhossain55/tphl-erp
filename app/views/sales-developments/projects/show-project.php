@@ -39,10 +39,12 @@ $show_breadcrumb = true;
                         $img1 = getProjectImage($project['image']); ?>
                         <div class="col-md-4 mb-3">
                             <div class="project-image position-relative">
-                                <img src="<?= $img1['url'] ?>"
-                                    alt="Main Image"
-                                    class="img-fluid rounded"
-                                    style="width: 100%; height: 250px; object-fit: cover; <?= $img1['missing'] ? 'opacity:0.5;' : '' ?>">
+                                <a href="<?= $img1['url'] ?>" target="_blank">
+                                    <img src="<?= $img1['url'] ?>"
+                                        alt="Main Image"
+                                        class="img-fluid rounded"
+                                        style="width: 100%; height: 250px; object-fit: cover; <?= $img1['missing'] ? 'opacity:0.5;' : '' ?>">
+                                </a>
                                 <?php if ($img1['missing']): ?>
                                     <div class="position-absolute top-50 start-50 translate-middle text-center">
                                         <span class="badge bg-danger px-3 py-2"><i class="bi bi-exclamation-triangle me-1"></i>File Missing – Re-upload</span>
@@ -57,10 +59,12 @@ $show_breadcrumb = true;
                         $img2 = getProjectImage($project['image2']); ?>
                         <div class="col-md-4 mb-3">
                             <div class="project-image position-relative">
-                                <img src="<?= $img2['url'] ?>"
-                                    alt="Image 2"
-                                    class="img-fluid rounded"
-                                    style="width: 100%; height: 250px; object-fit: cover; <?= $img2['missing'] ? 'opacity:0.5;' : '' ?>">
+                                <a href="<?= $img2['url'] ?>" target="_blank">
+                                    <img src="<?= $img2['url'] ?>"
+                                        alt="Image 2"
+                                        class="img-fluid rounded"
+                                        style="width: 100%; height: 250px; object-fit: cover; <?= $img2['missing'] ? 'opacity:0.5;' : '' ?>">
+                                </a>
                                 <?php if ($img2['missing']): ?>
                                     <div class="position-absolute top-50 start-50 translate-middle text-center">
                                         <span class="badge bg-danger px-3 py-2"><i class="bi bi-exclamation-triangle me-1"></i>File Missing – Re-upload</span>
@@ -75,10 +79,12 @@ $show_breadcrumb = true;
                         $img3 = getProjectImage($project['image3']); ?>
                         <div class="col-md-4 mb-3">
                             <div class="project-image position-relative">
-                                <img src="<?= $img3['url'] ?>"
-                                    alt="Image 3"
-                                    class="img-fluid rounded"
-                                    style="width: 100%; height: 250px; object-fit: cover; <?= $img3['missing'] ? 'opacity:0.5;' : '' ?>">
+                                <a href="<?= $img3['url'] ?>" target="_blank">
+                                    <img src="<?= $img3['url'] ?>"
+                                        alt="Image 3"
+                                        class="img-fluid rounded"
+                                        style="width: 100%; height: 250px; object-fit: cover; <?= $img3['missing'] ? 'opacity:0.5;' : '' ?>">
+                                </a>
                                 <?php if ($img3['missing']): ?>
                                     <div class="position-absolute top-50 start-50 translate-middle text-center">
                                         <span class="badge bg-danger px-3 py-2"><i class="bi bi-exclamation-triangle me-1"></i>File Missing – Re-upload</span>
@@ -263,9 +269,17 @@ $show_breadcrumb = true;
                             </div>
                         <?php endif; ?>
 
+                        <?php if (!empty($project['under_construction'])): ?>
+                            <div class="facility-badge p-3 border rounded">
+                                <i class="fa-solid fa-person-digging text-info me-2"></i>
+                                <span>Under Construction</span>
+                            </div>
+                        <?php endif; ?>
+
                         <?php if (
                             empty($project['rooftop_gardening']) && empty($project['car_parking']) &&
-                            empty($project['convention']) && empty($project['electricity_backup'])
+                            empty($project['convention']) && empty($project['electricity_backup']) &&
+                            empty($project['under_construction'])
                         ): ?>
                             <p class="text-muted">No facilities available</p>
                         <?php endif; ?>

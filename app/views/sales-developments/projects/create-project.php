@@ -269,6 +269,14 @@ $show_breadcrumb = true;
                     </label>
                 </div>
 
+                <div class="col-xl-3 col-md-6">
+                    <label class="facility-box">
+                        <input type="checkbox" name="under_construction" value="1">
+                        <i class="fa-solid fa-person-digging text-info"></i>
+                        <span class="facility-label">Under Construction</span>
+                    </label>
+                </div>
+
 
 
 

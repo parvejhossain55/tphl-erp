@@ -254,6 +254,10 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
                                             // Fix: Ensure we always have a status value
                                             $displayStatus = $request['display_status'] ?? $request['status'] ?? 'pending';
 
+                                            if ($displayStatus !== 'rejected' && $displayStatus !== 'pending' && isset($request['due_amount']) && $request['due_amount'] <= 0) {
+                                                $displayStatus = 'fully_paid';
+                                            }
+
                                             // If displayStatus is empty or null, set a default
                                             if (empty($displayStatus)) {
                                                 // Determine based on other fields
