@@ -249,6 +249,10 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
 
                                     // Determine status for display
                                     $displayStatus = !empty($request['display_status']) ? $request['display_status'] : (!empty($request['status']) ? $request['status'] : 'pending');
+
+                                    if ($displayStatus !== 'rejected' && $displayStatus !== 'pending' && isset($request['due_amount']) && $request['due_amount'] <= 0) {
+                                        $displayStatus = 'fully_paid';
+                                    }
                                     ?>
 
                                     <tr>

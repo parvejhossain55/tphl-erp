@@ -364,6 +364,15 @@ $routes = [
     "store-location" => ["controller" => "LocationController", "method" => "store"],
     "update-location" => ["controller" => "LocationController", "method" => "update"],
     "delete-location" => ["controller" => "LocationController", "method" => "delete"],
+
+    // Amenities
+    "amenities" => ["controller" => "AmenityController", "method" => "index"],
+    "create-amenity" => ["controller" => "AmenityController", "method" => "create"],
+    "store-amenity" => ["controller" => "AmenityController", "method" => "store"],
+    "view-amenity/(\d+)" => ["controller" => "AmenityController", "method" => "show"],
+    "edit-amenity/(\d+)" => ["controller" => "AmenityController", "method" => "edit"],
+    "update-amenity/(\d+)" => ["controller" => "AmenityController", "method" => "update"],
+    "delete-amenity" => ["controller" => "AmenityController", "method" => "delete"],
     //Units
     "unit-lists" => ["controller" => "UnitController", "method" => "index"],
     "store-unit" => ["controller" => "UnitController", "method" => "store"],
