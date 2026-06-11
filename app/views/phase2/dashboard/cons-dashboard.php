@@ -483,7 +483,7 @@ $statusColor = [
 
       .proj-title {
           font-weight: 700;
-          color: #0f172a;
+          /* color: #0f172a; */
           text-decoration: none;
           font-size: 13.5px;
           transition: color 0.15s;
@@ -2308,8 +2308,8 @@ $statusColor = [
                                           <?php endif; ?>
 
                                           <div>
-                                              <a href="<?= $detailUrl ?>" class="proj-title" style="font-size: 13px; font-weight: 700; color: #0f172a; text-decoration: none; display: block;"><?= htmlspecialchars($pr['name']) ?></a>
-                                              <div class="proj-loc" style="font-size: 11px; color: #64748b; margin-top: 2px; display: flex; align-items: center; gap: 4px;">
+                                              <a href="<?= $detailUrl ?>" class="proj-title" style="font-size: 13px; font-weight: 700; text-decoration: none; display: block;"><?= htmlspecialchars($pr['name']) ?></a>
+                                              <div class="proj-loc" style="font-size: 11px;  margin-top: 2px; display: flex; align-items: center; gap: 4px;">
                                                   <i class="fa-solid fa-location-dot" style="font-size: 10px;"></i>
                                                   <?= htmlspecialchars($pr['location_name'] ?: 'N/A') ?>
                                               </div>
@@ -2577,10 +2577,11 @@ $statusColor = [
               </tr>
           <?php else: ?>
               <?php foreach ($filteredProjects as $pr):
-                $pct = round((float) ($pr['progress_pct'] ?? 0), 1);
-                $clr = $pct >= 75 ? 'var(--cd-green)' : ($pct >= 40 ? 'var(--cd-amber)' : 'var(--cd-red)');
-                $pclr = $pct >= 75 ? 'var(--cd-green)' : ($pct >= 40 ? 'var(--cd-amber)' : 'var(--cd-red)');
-                $grad = $pct >= 75 ? 'linear-gradient(90deg,#059669,#10b981)' : ($pct >= 40 ? 'linear-gradient(90deg,#d97706,#f59e0b)' : 'linear-gradient(90deg,#dc2626,#ef4444)');
+                $raw_pct = (float) ($pr['progress_pct'] ?? 0);
+                $pct = round($raw_pct, 1);
+                $clr = $raw_pct >= 75 ? 'var(--cd-green)' : ($raw_pct >= 40 ? 'var(--cd-amber)' : 'var(--cd-red)');
+                $pclr = $raw_pct >= 75 ? 'var(--cd-green)' : ($raw_pct >= 40 ? 'var(--cd-amber)' : 'var(--cd-red)');
+                $grad = $raw_pct >= 75 ? 'linear-gradient(90deg,#059669,#10b981)' : ($raw_pct >= 40 ? 'linear-gradient(90deg,#d97706,#f59e0b)' : 'linear-gradient(90deg,#dc2626,#ef4444)');
                 $sc = $statusColor[$pr['project_status'] ?? ''] ?? ['bg' => 'rgba(0,0,0,.06)', 'text' => 'var(--text-muted)'];
                 $budgetUsedPct = ($pr['total_budget'] > 0) ? round($pr['total_spent'] / $pr['total_budget'] * 100, 1) : 0;
                 ?>
@@ -2594,9 +2595,9 @@ $statusColor = [
                     <td>
                       <div style="display:flex;align-items:center;gap:8px;min-width:130px">
                         <div class="prog-track" style="flex:1">
-                          <div class="prog-fill" style="width:<?= $pct ?>%;background:<?= $grad ?>"></div>
+                          <div class="prog-fill" style="width:<?= min(100, $raw_pct) ?>%;background:<?= $grad ?>"></div>
                         </div>
-                        <span style="font-weight:700;font-size:12px;color:<?= $pclr ?>"><?= $pct ?>%</span>
+                        <span style="font-weight:700;font-size:12px;color:<?= $pclr ?>"><?= cpFmtPct($raw_pct) ?></span>
                       </div>
                     </td>
                     <td>

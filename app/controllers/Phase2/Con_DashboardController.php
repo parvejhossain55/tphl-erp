@@ -733,7 +733,7 @@ class Con_DashboardController extends Controller
         $matSpentTotal = $matSpentRes ? (float)$matSpentRes->fetch_assoc()['total'] : 0.0;
 
         // Contractor spent
-        $conSpentQuery = "SELECT COALESCE(SUM(approved_amount), 0) AS total FROM contractor_bill_requests WHERE status IN ('approved', 'paid')";
+        $conSpentQuery = "SELECT COALESCE(SUM(approved_amount), 0) AS total FROM contractor_bill_requests WHERE status IN ('approved', 'paid', 'partially_paid', 'fully_paid')";
         if ($projectId) {
             $conSpentQuery .= " AND project_id = $projectId";
         }
@@ -3059,7 +3059,7 @@ $project = $stmt->get_result()->fetch_assoc();
         $contractorRes = $this->db->query("
             SELECT project_id, COALESCE(SUM(approved_amount), 0) AS contractor_spent
             FROM contractor_bill_requests
-            WHERE status IN ('approved', 'paid') AND project_id IN ($idsList)
+            WHERE status IN ('approved', 'paid', 'partially_paid', 'fully_paid') AND project_id IN ($idsList)
             GROUP BY project_id
         ");
         $contractorSpent = [];
