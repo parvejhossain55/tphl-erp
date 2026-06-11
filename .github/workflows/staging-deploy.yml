@@ -73,6 +73,11 @@ jobs:
                 mkdir -p /var/www/html/TPHL-ERP/public/uploads
             fi
 
+            echo "Setting correct permissions for production..."
+            sudo chown -R www-data:www-data /var/www/html/TPHL-ERP
+            sudo find /var/www/html/TPHL-ERP -type d -exec chmod 755 {} \;
+            sudo find /var/www/html/TPHL-ERP -type f -exec chmod 644 {} \;
+
             echo "Deployment completed successfully"
 
             # echo ">>> Dropping all tables (old common_ecom_db - NOT USED)"

@@ -433,7 +433,12 @@ class Project extends Model
         );
 
 
-        return $stmt->execute();
+        $res = $stmt->execute();
+        if (!$res) {
+            error_log('[Project::update] Execute FAILED: ' . $stmt->error);
+            setError('Project update failed. SQL Error: ' . $stmt->error);
+        }
+        return $res;
     }
 
     public function softDelete($projectId)
