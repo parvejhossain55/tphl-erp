@@ -57,7 +57,7 @@ class SalesDashboardController extends Controller
         $followUpsDue = $followUpsResult->fetch_assoc()['due'] ?? 0;
 
         //  Onboarded Clients
-        $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings lb JOIN leads l ON lb.lead_id = l.id WHERE lb.booking_status = 'completed' AND lb.deleted_at IS NULL";
+        $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings lb JOIN leads l ON lb.lead_id = l.id WHERE lb.booking_status IN ('completed', 'booked') AND lb.deleted_at IS NULL";
         if (!empty($teamId)) {
             $onboardedQuery .= " AND l.team_id = " . (int)$teamId;
         }
@@ -167,7 +167,7 @@ class SalesDashboardController extends Controller
                             FROM lead_bookings lb
                             JOIN projects p ON p.id = lb.project_id
                             JOIN leads l ON lb.lead_id = l.id
-                            WHERE lb.booking_status = 'completed'
+                            WHERE lb.booking_status IN ('completed', 'booked')
                             AND lb.deleted_at IS NULL
                         ";
         if (!empty($teamId)) {
@@ -194,10 +194,27 @@ class SalesDashboardController extends Controller
         $fullData = $this->salesTargetModel->getExecutiveBookingStats('fullData');
         // $userTeamId = $_SESSION['user']['team_id'] ?? null;
 
+        // Team Booking Performance Filter
+        $teamFilterType = $_GET['team_filter_type'] ?? 'monthly';
+        $teamYear       = isset($_GET['team_year']) ? (int)$_GET['team_year'] : (int)date('Y');
+        $teamStartMonth = isset($_GET['team_start_month']) ? (int)$_GET['team_start_month'] : (int)date('n');
+        $teamEndMonth   = isset($_GET['team_end_month']) ? (int)$_GET['team_end_month'] : (int)date('n');
+        $defaultTeamTab = 'month1';
+
+        if (isset($_GET['team_filter_type'])) {
+            if ($teamFilterType === 'yearly') {
+                $yearlyData = $this->salesTargetModel->getSalesTeamsBookingStatsByRange($teamYear, 1, 12);
+                $defaultTeamTab = 'year1';
+            } else {
+                $monthlyData = $this->salesTargetModel->getSalesTeamsBookingStatsByRange($teamYear, $teamStartMonth, $teamEndMonth);
+                $defaultTeamTab = 'month1';
+            }
+        }
 
         $allSalesTeams = $this->userModel->getSalesTeams($roleId, $teamId);
         $executiveId = $_GET['executive'] ?? null;
-        $month       = $_GET['month'] ?? null;
+        $startMonth  = $_GET['start_month'] ?? null;
+        $endMonth    = $_GET['end_month'] ?? null;
         $year        = $_GET['year'] ?? null;
 
         $singleData = [
@@ -219,7 +236,7 @@ class SalesDashboardController extends Controller
                 $errorMessage = "Please select a Year first!";
             } else {
                 // Employee + Year selected → fetch data
-                $data = $this->salesTargetModel->getExecutiveFullStats($executiveId, $month, $year);
+                $data = $this->salesTargetModel->getExecutiveFullStats($executiveId, $startMonth, $endMonth, $year);
 
                 if (!empty($data)) {
                     $singleData = $data[0];
@@ -309,7 +326,13 @@ class SalesDashboardController extends Controller
             "errorMessage"  => $errorMessage,
             "executiveId"  => $executiveId,
             "year"  => $year,
-            "month"  => $month,
+            "start_month"  => $startMonth,
+            "end_month"    => $endMonth,
+            "teamFilterType" => $teamFilterType,
+            "teamYear"       => $teamYear,
+            "teamStartMonth" => $teamStartMonth,
+            "teamEndMonth"   => $teamEndMonth,
+            "defaultTeamTab" => $defaultTeamTab,
         ]);
     }
 

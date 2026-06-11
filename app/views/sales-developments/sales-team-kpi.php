@@ -482,8 +482,8 @@
 <!-- ── Page Header ── -->
 
 <?php
-$periodMonth = $selectedMonth ?? date('n');
-$periodYear = $selectedYear ?? date('Y');
+$periodMonth = $selectedMonth ?? null;
+$periodYear = $selectedYear ?? null;
 $months = [
     1 => 'January',
     2 => 'February',
@@ -498,6 +498,18 @@ $months = [
     11 => 'November',
     12 => 'December'
 ];
+
+$periodText = '';
+if (!empty($periodMonth)) {
+    $periodText .= $months[$periodMonth] . ' ';
+} else {
+    $periodText .= 'All Months ';
+}
+if (!empty($periodYear)) {
+    $periodText .= $periodYear;
+} else {
+    $periodText .= 'All Years';
+}
 ?>
 <div class="app__slide-wrapper">
 
@@ -509,7 +521,7 @@ $months = [
 
 <!-- ── Filter Bar ── -->
 <div class="filter-bar">
-    <span class="period-badge"><?= htmlspecialchars($months[$periodMonth] . ' ' . $periodYear) ?></span>
+    <span class="period-badge"><?= htmlspecialchars($periodText) ?></span>
     <form method="GET" action="" class="d-flex flex-wrap gap-10 align-items-center w-100">
         <input type="text" name="q" class="form-control" placeholder="Search executive name, email or phone"
             value="<?= htmlspecialchars($searchTerm ?? '') ?>">
@@ -524,34 +536,19 @@ $months = [
         </select>
 
         <select name="month">
-            <?php
-            $months = [
-                1 => 'January',
-                2 => 'February',
-                3 => 'March',
-                4 => 'April',
-                5 => 'May',
-                6 => 'June',
-                7 => 'July',
-                8 => 'August',
-                9 => 'September',
-                10 => 'October',
-                11 => 'November',
-                12 => 'December'
-            ];
-            $selectedMonthValue = $selectedMonth ?? date('n');
-            ?>
+            <option value="">All Months</option>
             <?php foreach ($months as $num => $label): ?>
-                <option value="<?= $num ?>" <?= $selectedMonthValue == $num ? 'selected' : '' ?>><?= $label ?></option>
+                <option value="<?= $num ?>" <?= ($selectedMonth !== null && $selectedMonth !== '' && $selectedMonth == $num) ? 'selected' : '' ?>><?= $label ?></option>
             <?php endforeach; ?>
         </select>
 
         <select name="year">
+            <option value="">All Years</option>
             <?php
             $yearOptions = [2026, 2025, 2024];
             ?>
-            <?php foreach ($yearOptions as $year): ?>
-                <option value="<?= $year ?>" <?= isset($selectedYear) && $selectedYear == $year ? 'selected' : '' ?>><?= $year ?></option>
+            <?php foreach ($yearOptions as $y): ?>
+                <option value="<?= $y ?>" <?= ($selectedYear !== null && $selectedYear !== '' && $selectedYear == $y) ? 'selected' : '' ?>><?= $y ?></option>
             <?php endforeach; ?>
         </select>
 
@@ -667,8 +664,8 @@ $months = [
             SELECT f.flat_name, lb.booking_date, lp.amount
             FROM lead_bookings lb
             JOIN flats f ON lb.flat_id = f.id
-            JOIN lead_payments lp ON lp.booking_id = lb.id AND lp.payment_status = 'paid'
-            WHERE lb.project_id = ? AND lb.deleted_at IS NULL AND lb.sales_by_id = ?
+            JOIN lead_payments lp ON lp.booking_id = lb.id AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified'
+            WHERE lb.project_id = ? AND lb.deleted_at IS NULL AND lb.booking_status IN ('completed', 'booked') AND lb.sales_by_id = ?
         ";
                         $stmtFlats = $this->db->prepare($flatsSql);
                         $stmtFlats->bind_param("ii", $projectId, $userId);
@@ -679,27 +676,21 @@ $months = [
                             continue; // Skip this project if no paid flats
                         }
                         ?>
-                        <div class="kpi-grid mb-3">
-                            <!-- Project Name -->
-                            <div class="kpi-cell">
-                                <div class="kc-label">Project Name</div>
-                                <div class="kc-val"><?= htmlspecialchars($project['project_name'] ?? '') ?></div>
-                            </div>
-
-                            <!-- Flats Details -->
-                            <div class="kpi-cell">
-                                <div class="kc-label">Flats Details</div>
-                                <div class="kc-val">
-                                    <ul>
-                                        <?php while ($flat = $flatsResult->fetch_assoc()): ?>
-                                            <li>
-                                                <?= htmlspecialchars($flat['flat_name'] ?? '') ?> -
-                                                Booked on: <?= date('d M, Y', strtotime($flat['booking_date'])) ?> -
-                                                Paid: <?= $flat['amount'] ?>
-                                            </li>
-                                        <?php endwhile; ?>
-                                    </ul>
-                                </div>
+                        <div class="project-section border-bottom">
+                            <div class="ps-title text-primary"><i class="fa-solid fa-building me-1"></i> Project: <?= htmlspecialchars($project['project_name'] ?? '') ?></div>
+                            <div class="d-flex flex-wrap gap-2 my-2">
+                                <?php while ($flat = $flatsResult->fetch_assoc()): ?>
+                                    <div class="p-2 border rounded d-flex align-items-center gap-2  shadow-sm" style="min-width: 235px; border-radius: 8px;">
+                                        <div class="avatar d-flex align-items-center justify-content-center" style="width: 34px; height: 34px; border-radius: 50%; font-size: 13px; background: #EEF2FF; color: #4F46E5; flex-shrink: 0;">
+                                            <i class="fa-solid fa-house-chimney"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark" style="font-size: 13px;"><?= htmlspecialchars($flat['flat_name'] ?? '') ?></div>
+                                            <div class="text-muted" style="font-size: 10px;">Booked: <?= date('d M, Y', strtotime($flat['booking_date'])) ?></div>
+                                            <div class="text-success fw-bold" style="font-size: 11px;">Paid: ৳<?= number_format($flat['amount'], 0) ?></div>
+                                        </div>
+                                    </div>
+                                <?php endwhile; ?>
                             </div>
                         </div>
                     <?php endforeach; ?>

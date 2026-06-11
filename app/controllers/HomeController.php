@@ -171,7 +171,7 @@ class HomeController extends Controller
         $weeklySalesQuery = "
             SELECT DATE(payment_date) AS date, SUM(amount) AS total
             FROM lead_payments
-            WHERE payment_status='paid' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            WHERE payment_status IN ('paid','partially_paid') AND verification_status = 'verified' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
             GROUP BY DATE(payment_date)
             ORDER BY DATE(payment_date)
         ";
@@ -188,7 +188,7 @@ class HomeController extends Controller
         $monthlySalesQuery = "
             SELECT DATE(payment_date) AS date, SUM(amount) AS total
             FROM lead_payments
-            WHERE payment_status='paid' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            WHERE payment_status IN ('paid','partially_paid') AND verification_status = 'verified' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
             GROUP BY DATE(payment_date)
             ORDER BY DATE(payment_date)
         ";
@@ -205,7 +205,7 @@ class HomeController extends Controller
         $yearlySalesQuery = "
     SELECT DATE_FORMAT(payment_date, '%Y-%m') AS month, SUM(amount) AS total
     FROM lead_payments
-    WHERE payment_status='paid' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+    WHERE payment_status IN ('paid','partially_paid') AND verification_status = 'verified' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
     GROUP BY DATE_FORMAT(payment_date, '%Y-%m')
     ORDER BY DATE_FORMAT(payment_date, '%Y-%m')
 ";

@@ -271,11 +271,11 @@ public function getExecutiveBookingStats($type = 'monthly')
 {
     //
     if ($type === 'weekly') {
-        $dateCondition   = "YEARWEEK(booking_date, 1) = YEARWEEK(CURDATE(), 1)";
+        $dateCondition   = "YEARWEEK(lb.booking_date, 1) = YEARWEEK(CURDATE(), 1)";
         $targetCondition = "YEARWEEK(month, 1) = YEARWEEK(CURDATE(), 1)";
     } elseif ($type === 'yearly') {
         $currentYear     = date('Y');
-        $dateCondition   = "YEAR(booking_date) = $currentYear";
+        $dateCondition   = "YEAR(lb.booking_date) = $currentYear";
         $targetCondition = "YEAR(month) = $currentYear";
     } elseif ($type === 'fullData') {
         // Full data → ignore date filter
@@ -283,38 +283,60 @@ public function getExecutiveBookingStats($type = 'monthly')
         $targetCondition = "1"; // always true
     } else {
         // Default → monthly
-        $dateCondition   = "DATE_FORMAT(booking_date, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')";
+        $dateCondition   = "DATE_FORMAT(lb.booking_date, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')";
         $targetCondition = "DATE_FORMAT(month, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')";
     }
 
     //  Build SQL
- if ($type === 'yearly' || $type === 'fullData') {
-    $sql = "SELECT 
-            u.id,
-            u.full_name AS name,
-            IFNULL(st.total_target,0) AS booking_target,
-            IFNULL(b.completed,0) AS booking_completed
-        FROM users u
-        LEFT JOIN (
-            SELECT sales_user_id, SUM(booking_target) AS total_target
-            FROM sales_targets
-            GROUP BY sales_user_id
-        ) st ON st.sales_user_id = u.id
-        LEFT JOIN (
-            SELECT sales_by_id, COUNT(*) AS completed
-            FROM lead_bookings
-            WHERE booking_status='completed'
-            GROUP BY sales_by_id
-        ) b ON b.sales_by_id = u.id
-        WHERE u.role_id IN (5,8)
-          AND EXISTS (
-              SELECT 1 FROM lead_bookings lb 
-              WHERE lb.sales_by_id = u.id AND lb.booking_status='completed'
-          )
-        ORDER BY u.full_name ASC
-    ";
-}
-
+    if ($type === 'yearly' || $type === 'fullData') {
+        $sql = "SELECT 
+                u.id,
+                u.full_name AS name,
+                IFNULL(st.total_target,0) AS booking_target,
+                IFNULL(b.completed,0) AS booking_completed,
+                IFNULL(b.total_flat_value, 0) AS total_flat_value,
+                IFNULL(b.total_booking_money, 0) AS total_booking_money,
+                IFNULL(b.total_registration_money, 0) AS total_registration_money
+            FROM users u
+            LEFT JOIN (
+                SELECT sales_user_id, SUM(booking_target) AS total_target
+                FROM sales_targets
+                GROUP BY sales_user_id
+            ) st ON st.sales_user_id = u.id
+            INNER JOIN (
+                SELECT 
+                    lb.sales_by_id, 
+                    COUNT(DISTINCT lb.id) AS completed,
+                    SUM(f.price_value) AS total_flat_value,
+                    SUM(IFNULL(pay_b.booking_amount, 0)) AS total_booking_money,
+                    SUM(IFNULL(pay_r.registration_amount, 0)) AS total_registration_money
+                FROM lead_bookings lb
+                LEFT JOIN flats f ON f.id = lb.flat_id
+                LEFT JOIN (
+                    SELECT booking_id, SUM(amount) AS booking_amount
+                    FROM lead_payments
+                    WHERE payment_type = 'booking_money'
+                      AND payment_status IN ('paid', 'partially_paid')
+                      AND verification_status = 'verified'
+                    GROUP BY booking_id
+                ) pay_b ON pay_b.booking_id = lb.id
+                LEFT JOIN (
+                    SELECT booking_id, SUM(amount) AS registration_amount
+                    FROM lead_payments
+                    WHERE payment_type = 'registration'
+                      AND payment_status IN ('paid', 'partially_paid')
+                      AND verification_status = 'verified'
+                    GROUP BY booking_id
+                ) pay_r ON pay_r.booking_id = lb.id
+                WHERE lb.booking_status IN ('completed', 'booked')
+                  AND lb.deleted_at IS NULL
+                  " . ($type === 'yearly' ? "AND YEAR(lb.booking_date) = YEAR(CURDATE())" : "") . "
+                GROUP BY lb.sales_by_id
+            ) b ON b.sales_by_id = u.id
+            WHERE u.role_id IN (5,8)
+            ORDER BY u.full_name ASC
+        ";
+    }
     else {
         // Weekly / Monthly → per executive
         $sql = "
@@ -322,18 +344,44 @@ public function getExecutiveBookingStats($type = 'monthly')
                 u.id,
                 u.full_name AS name,
                 IFNULL(st.booking_target,0) AS booking_target,
-                IFNULL(b.completed,0) AS booking_completed
+                IFNULL(b.completed,0) AS booking_completed,
+                IFNULL(b.total_flat_value, 0) AS total_flat_value,
+                IFNULL(b.total_booking_money, 0) AS total_booking_money,
+                IFNULL(b.total_registration_money, 0) AS total_registration_money
             FROM users u
             LEFT JOIN sales_targets st 
                 ON st.sales_user_id = u.id
                 AND $targetCondition
-            LEFT JOIN (
-                SELECT sales_by_id, COUNT(*) AS completed
-                FROM lead_bookings
-                WHERE booking_status='completed'
+            INNER JOIN (
+                SELECT 
+                    lb.sales_by_id, 
+                    COUNT(DISTINCT lb.id) AS completed,
+                    SUM(f.price_value) AS total_flat_value,
+                    SUM(IFNULL(pay_b.booking_amount, 0)) AS total_booking_money,
+                    SUM(IFNULL(pay_r.registration_amount, 0)) AS total_registration_money
+                FROM lead_bookings lb
+                LEFT JOIN flats f ON f.id = lb.flat_id
+                LEFT JOIN (
+                    SELECT booking_id, SUM(amount) AS booking_amount
+                    FROM lead_payments
+                    WHERE payment_type = 'booking_money'
+                      AND payment_status IN ('paid', 'partially_paid')
+                      AND verification_status = 'verified'
+                    GROUP BY booking_id
+                ) pay_b ON pay_b.booking_id = lb.id
+                LEFT JOIN (
+                    SELECT booking_id, SUM(amount) AS registration_amount
+                    FROM lead_payments
+                    WHERE payment_type = 'registration'
+                      AND payment_status IN ('paid', 'partially_paid')
+                      AND verification_status = 'verified'
+                    GROUP BY booking_id
+                ) pay_r ON pay_r.booking_id = lb.id
+                WHERE lb.booking_status IN ('completed', 'booked')
+                  AND lb.deleted_at IS NULL
                   AND $dateCondition
-                  AND sales_by_id IS NOT NULL
-                GROUP BY sales_by_id
+                  AND lb.sales_by_id IS NOT NULL
+                GROUP BY lb.sales_by_id
             ) b ON b.sales_by_id = u.id
             WHERE u.role_id IN (5,8)
             ORDER BY u.full_name ASC
@@ -347,11 +395,11 @@ public function getExecutiveBookingStats($type = 'monthly')
 
 
 //for searching by sales team
-public function getExecutiveFullStats($executiveId = null, $month = null, $year = null)
+public function getExecutiveFullStats($executiveId = null, $startMonth = null, $endMonth = null, $year = null)
 {
     if (empty($executiveId) || empty($year)) return [];
 
-    $bookingWhere = ["lb.booking_status = 'completed'", "lb.sales_by_id = " . (int)$executiveId];
+    $bookingWhere = ["lb.booking_status IN ('completed', 'booked')", "lb.sales_by_id = " . (int)$executiveId];
     $visitWhere   = ["lf.follow_up_type = 'visit'", "lf.status = 'completed'", "lf.assigned_with = " . (int)$executiveId];
     $targetWhere  = ["st.sales_user_id = " . (int)$executiveId];
 
@@ -360,11 +408,16 @@ public function getExecutiveFullStats($executiveId = null, $month = null, $year 
     $visitWhere[]   = "YEAR(lf.follow_up_date) = " . (int)$year;
     $targetWhere[]  = "YEAR(st.month) = " . (int)$year;
 
-    // Month filter (optional)
-    if (!empty($month)) {
-        $bookingWhere[] = "MONTH(lb.booking_date) = " . (int)$month;
-        $visitWhere[]   = "MONTH(lf.follow_up_date) = " . (int)$month;
-        $targetWhere[]  = "MONTH(st.month) = " . (int)$month;
+    // Month range filter (optional)
+    if (!empty($startMonth)) {
+        $bookingWhere[] = "MONTH(lb.booking_date) >= " . (int)$startMonth;
+        $visitWhere[]   = "MONTH(lf.follow_up_date) >= " . (int)$startMonth;
+        $targetWhere[]  = "MONTH(st.month) >= " . (int)$startMonth;
+    }
+    if (!empty($endMonth)) {
+        $bookingWhere[] = "MONTH(lb.booking_date) <= " . (int)$endMonth;
+        $visitWhere[]   = "MONTH(lf.follow_up_date) <= " . (int)$endMonth;
+        $targetWhere[]  = "MONTH(st.month) <= " . (int)$endMonth;
     }
 
     $bookingCondition = implode(" AND ", $bookingWhere);
@@ -414,8 +467,175 @@ public function getExecutiveFullStats($executiveId = null, $month = null, $year 
     return $result->fetch_all(MYSQLI_ASSOC);
 }
 
+    public function getRangeStats($userId, $year, $startMonth, $endMonth)
+    {
+        // 1. Targets
+        $sql = "SELECT 
+                    SUM(site_visit_target) AS site_visit_target,
+                    SUM(booking_target) AS booking_target,
+                    SUM(booking_value_target) AS booking_value_target
+                FROM sales_targets
+                WHERE sales_user_id = ?
+                  AND YEAR(month) = ?
+                  AND MONTH(month) >= ?
+                  AND MONTH(month) <= ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("iiii", $userId, $year, $startMonth, $endMonth);
+        $stmt->execute();
+        $target = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
 
+        // 2. Visits Completed
+        $sql = "SELECT COUNT(*) as completed 
+                FROM lead_follow_ups
+                WHERE assigned_with = ? 
+                  AND follow_up_type = 'visit' 
+                  AND status = 'completed'
+                  AND YEAR(follow_up_date) = ?
+                  AND MONTH(follow_up_date) >= ?
+                  AND MONTH(follow_up_date) <= ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("iiii", $userId, $year, $startMonth, $endMonth);
+        $stmt->execute();
+        $visits = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
 
+        // 3. Bookings Completed
+        $sql = "SELECT COUNT(*) AS total
+                FROM lead_bookings
+                WHERE sales_by_id = ?
+                  AND booking_status IN ('completed','booked')
+                  AND YEAR(booking_date) = ?
+                  AND MONTH(booking_date) >= ?
+                  AND MONTH(booking_date) <= ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("iiii", $userId, $year, $startMonth, $endMonth);
+        $stmt->execute();
+        $bookings = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
 
+        // 4. Deals Closed
+        $sql = "SELECT COUNT(DISTINCT lf.lead_id) AS total
+                FROM lead_follow_ups lf
+                JOIN leads l ON l.id = lf.lead_id
+                WHERE lf.assigned_with = ?
+                  AND lf.follow_up_type = 'visit'
+                  AND lf.status != 'canceled'
+                  AND YEAR(lf.follow_up_date) = ?
+                  AND MONTH(lf.follow_up_date) >= ?
+                  AND MONTH(lf.follow_up_date) <= ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("iiii", $userId, $year, $startMonth, $endMonth);
+        $stmt->execute();
+        $dealsClosed = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
 
+        // 5. Deals Won
+        $sql = "SELECT COUNT(*) AS total
+                FROM leads
+                WHERE last_lead_action = 'booked'
+                  AND assigned_id = ?
+                  AND YEAR(updated_at) = ?
+                  AND MONTH(updated_at) >= ?
+                  AND MONTH(updated_at) <= ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("iiii", $userId, $year, $startMonth, $endMonth);
+        $stmt->execute();
+        $dealsWon = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        // 6. Deals Lost
+        $sql = "SELECT COUNT(*) AS total
+                FROM leads l
+                LEFT JOIN lead_follow_ups lf ON lf.lead_id = l.id
+                WHERE l.assigned_id = ?
+                  AND YEAR(l.updated_at) = ?
+                  AND MONTH(l.updated_at) >= ?
+                  AND MONTH(l.updated_at) <= ?
+                  AND (
+                       l.last_lead_action = 'canceled'
+                       OR (lf.follow_up_type = 'visit' AND lf.status = 'canceled')
+                  )";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("iiii", $userId, $year, $startMonth, $endMonth);
+        $stmt->execute();
+        $dealsLost = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        return [
+            'site_visit_target'    => (int)($target['site_visit_target'] ?? 0),
+            'booking_target'       => (int)($target['booking_target'] ?? 0),
+            'booking_value_target' => (float)($target['booking_value_target'] ?? 0.00),
+            'visit_completed'      => (int)($visits['completed'] ?? 0),
+            'booking_completed'    => (int)($bookings['total'] ?? 0),
+            'deals_closed'         => (int)($dealsClosed['total'] ?? 0),
+            'deals_won'            => (int)($dealsWon['total'] ?? 0),
+            'deals_lost'           => (int)($dealsLost['total'] ?? 0),
+        ];
+    }
+
+    public function getSalesTeamsBookingStatsByRange($year, $startMonth, $endMonth)
+    {
+        $sql = "
+            SELECT 
+                u.id,
+                u.full_name AS name,
+                IFNULL(st.total_target, 0) AS booking_target,
+                IFNULL(b.completed, 0) AS booking_completed,
+                IFNULL(b.total_flat_value, 0) AS total_flat_value,
+                IFNULL(b.total_booking_money, 0) AS total_booking_money,
+                IFNULL(b.total_registration_money, 0) AS total_registration_money
+            FROM users u
+            LEFT JOIN (
+                SELECT sales_user_id, SUM(booking_target) AS total_target
+                FROM sales_targets
+                WHERE YEAR(month) = ?
+                  AND MONTH(month) >= ?
+                  AND MONTH(month) <= ?
+                GROUP BY sales_user_id
+            ) st ON st.sales_user_id = u.id
+            INNER JOIN (
+                SELECT 
+                    lb.sales_by_id, 
+                    COUNT(DISTINCT lb.id) AS completed,
+                    SUM(f.price_value) AS total_flat_value,
+                    SUM(IFNULL(pay_b.booking_amount, 0)) AS total_booking_money,
+                    SUM(IFNULL(pay_r.registration_amount, 0)) AS total_registration_money
+                FROM lead_bookings lb
+                LEFT JOIN flats f ON f.id = lb.flat_id
+                LEFT JOIN (
+                    SELECT booking_id, SUM(amount) AS booking_amount
+                    FROM lead_payments
+                    WHERE payment_type = 'booking_money'
+                      AND payment_status IN ('paid', 'partially_paid')
+                      AND verification_status = 'verified'
+                    GROUP BY booking_id
+                ) pay_b ON pay_b.booking_id = lb.id
+                LEFT JOIN (
+                    SELECT booking_id, SUM(amount) AS registration_amount
+                    FROM lead_payments
+                    WHERE payment_type = 'registration'
+                      AND payment_status IN ('paid', 'partially_paid')
+                      AND verification_status = 'verified'
+                    GROUP BY booking_id
+                ) pay_r ON pay_r.booking_id = lb.id
+                WHERE lb.booking_status IN ('completed', 'booked')
+                  AND lb.deleted_at IS NULL
+                  AND YEAR(lb.booking_date) = ?
+                  AND MONTH(lb.booking_date) >= ?
+                  AND MONTH(lb.booking_date) <= ?
+                  AND lb.sales_by_id IS NOT NULL
+                GROUP BY lb.sales_by_id
+            ) b ON b.sales_by_id = u.id
+            WHERE u.role_id IN (5,8)
+            ORDER BY u.full_name ASC
+        ";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("iiiiii", $year, $startMonth, $endMonth, $year, $startMonth, $endMonth);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $data;
+    }
 }

@@ -108,7 +108,9 @@ $show_breadcrumb = true;
                             <th>Project</th>
                             <th>Unit/ Share</th>
                             <th>Share Price</th>
-                            <th>Booking amount pay</th>
+                            <th>Booking Money</th>
+                            <th>Registration Money</th>
+                            <th>Total Paid</th>
 
                             <th class="text-center ">Action</th>
                         </tr>
@@ -131,10 +133,16 @@ $show_breadcrumb = true;
                                     <?= $lead['flat_name'] ?> - <span><?= $lead['sqft'] ?></span>
                                 </td>
                                 <td>
-                                    <?= $lead['price_value'] ?>
+                                    <?= !empty($lead['price_value']) ? format_bdt($lead['price_value']) : '-' ?>
                                 </td>
-                                <td>
-                                    <?= format_bdt($lead['amount']) ?>
+                                <td class="fw-semibold text-primary">
+                                    <?= !empty($lead['booking_money']) ? format_bdt($lead['booking_money']) : '-' ?>
+                                </td>
+                                <td class="fw-semibold text-info">
+                                    <?= !empty($lead['registration_money']) ? format_bdt($lead['registration_money']) : '-' ?>
+                                </td>
+                                <td class="fw-semibold text-success">
+                                    <?= !empty($lead['amount']) ? format_bdt($lead['amount']) : '-' ?>
                                 </td>
 
                                 <td class="">
@@ -230,8 +238,10 @@ $show_breadcrumb = true;
 
             <!-- Flat Value & Booking Amount -->
             <div class="d-flex flex-wrap gap-2 mb-1">
-                <span class="project-badge ">Flat Value: <?= format_bdt($lead['amount']) ?></span>
-                <span class="project-badge ">Booking Amount: <?= format_bdt($lead['amount']) ?></span>
+                <span class="project-badge ">Flat Value: <?= !empty($lead['price_value']) ? format_bdt($lead['price_value']) : '-' ?></span>
+                <span class="project-badge text-primary">Booking Money: <?= !empty($lead['booking_money']) ? format_bdt($lead['booking_money']) : '-' ?></span>
+                <span class="project-badge text-info">Registration: <?= !empty($lead['registration_money']) ? format_bdt($lead['registration_money']) : '-' ?></span>
+                <span class="project-badge text-success">Total Paid: <?= !empty($lead['amount']) ? format_bdt($lead['amount']) : '-' ?></span>
             </div>
         </div>
     <?php endforeach; ?>

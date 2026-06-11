@@ -219,7 +219,7 @@ $hasTransactions = !empty($recentTransactions);
                     <span><i class="fa-light fa-hand-holding-usd"></i></span>
                 </div>
                 <div class="ms-2 card__title-wrap flex-grow-1 overflow-hidden">
-                    <h6 class="card__sub-title mb-2 text-muted">Total Land Share</h6>
+                    <h6 class="card__sub-title mb-2 text-muted">Total Booking Money</h6>
                     <h4 class="card__title mb-0 text-break">৳<?= format_bdt($statistics['booking_money']) ?></h4>
                 </div>
             </div>
@@ -265,13 +265,13 @@ $hasTransactions = !empty($recentTransactions);
                 <div class="card__tab">
                     <ul class="nav nav-pills" id="pills-tab" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="pills-bar-year-tab" data-period="year" type="button">1Y</button>
+                            <button class="nav-link active" id="pills-bar-year-tab" data-period="year" type="button">1Y</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="pills-bar-month-tab" data-period="month" type="button">1M</button>
+                            <button class="nav-link" id="pills-bar-month-tab" data-period="month" type="button">1M</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link " id="pills-bar-week-tab" data-period="week" type="button">1W</button>
+                            <button class="nav-link" id="pills-bar-week-tab" data-period="week" type="button">1W</button>
                         </li>
                     </ul>
                 </div>
@@ -305,12 +305,12 @@ $hasTransactions = !empty($recentTransactions);
                                 aria-controls="pills-bar-year" aria-selected="true">1Y</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="pills-bar-month-tab" data-bs-toggle="pill"
+                            <button class="nav-link active" id="pills-bar-month-tab" data-bs-toggle="pill"
                                 data-bs-target="#pills-bar-month" type="button" role="tab"
-                                aria-controls="pills-bar-month" aria-selected="false">1M</button>
+                                aria-controls="pills-bar-month" aria-selected="true">1M</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="pills-bar-week-tab"
+                            <button class="nav-link" id="pills-bar-week-tab"
                                 data-bs-toggle="pill" data-bs-target="#pills-bar-week" type="button"
                                 role="tab" aria-controls="pills-bar-week"
                                 aria-selected="false">1W</button>
@@ -333,7 +333,7 @@ $hasTransactions = !empty($recentTransactions);
                             <?php endif; ?>
                         </div>
                     </div>
-                    <div class="tab-pane fade" id="pills-bar-month" role="tabpanel"
+                    <div class="tab-pane fade show active" id="pills-bar-month" role="tabpanel"
                         aria-labelledby="pills-bar-month-tab">
                         <div class="chart-container">
                             <?php if (!empty($chartLabels)): ?>
@@ -346,7 +346,7 @@ $hasTransactions = !empty($recentTransactions);
                             <?php endif; ?>
                         </div>
                     </div>
-                    <div class="tab-pane fade show active" id="pills-bar-week" role="tabpanel"
+                    <div class="tab-pane fade" id="pills-bar-week" role="tabpanel"
                         aria-labelledby="pills-bar-week-tab">
                         <div class="chart-container">
                             <canvas id="transactionChartWeek" class="card__title"></canvas>
@@ -850,33 +850,28 @@ $hasTransactions = !empty($recentTransactions);
             const yearlyColor = '<?= $viewType === "cashin" ? "#6366f1" : "#ef4444" ?>';
 
             const transactionChartYearly = new Chart(ctxYear.getContext('2d'), {
-                type: 'line',
+                type: 'bar',
                 data: {
                     labels: yearlyLabels,
                     datasets: [{
                         label: '<?= ucfirst($viewType) ?>',
                         data: yearlyData,
-                        borderColor: yearlyColor,
-                        backgroundColor: yearlyColor + '15',
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 3,
-                        pointRadius: 6,
-                        pointBackgroundColor: yearlyColor,
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 3,
-                        pointHoverRadius: 8,
-                        pointHoverBackgroundColor: yearlyColor,
-                        pointHoverBorderColor: '#fff',
-                        pointHoverBorderWidth: 3
+                        backgroundColor: yearlyColor,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                        barThickness: 35,
+                        maxBarThickness: 40
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: {
-                        duration: 2000,
-                        easing: 'easeOutQuart'
+                    animations: {
+                        y: {
+                            duration: 1500,
+                            from: 0,
+                            easing: 'easeOutBounce'
+                        }
                     },
                     plugins: {
                         legend: {

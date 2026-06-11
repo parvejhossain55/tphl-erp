@@ -54,10 +54,7 @@ $show_breadcrumb = false;
                                     </td>
                                 </tr>
                             <?php endforeach ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="5" class="text-center">No amenities found.</td>
-                            </tr>
+                       
                         <?php endif; ?>
                     </tbody>
                 </table>

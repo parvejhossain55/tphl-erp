@@ -445,8 +445,9 @@ $(document).on('select2:open', function () {
                     }
                 };
 
-                // 🔥 THIS PART YOU MISSED
-                const activeBtn = document.querySelector('.nav-link.active');
+                // 🔥 THIS PART YOU MISSED (Restricted to Booking Overview tab wrapper)
+                const salesChartElForInit = document.querySelector("#salesChart");
+                const activeBtn = salesChartElForInit ? salesChartElForInit.closest('.card__wrapper').querySelector('.nav-link.active') : null;
                 const defaultPeriod = activeBtn ? activeBtn.dataset.period : 'week';
 
                 const colors = ['#1a6e40ff', '#23bb95ff'];
@@ -519,28 +520,30 @@ $(document).on('select2:open', function () {
                     const chart = new ApexCharts(salesChartEl, options);
                     chart.render();
 
-                    // Tabs click
-                    document.querySelectorAll('.nav-link').forEach(button => {
+                    // Tabs click (Restricted to Booking Overview tabs)
+                    const bookingTabs = salesChartEl.closest('.card__wrapper').querySelectorAll('.nav-link');
+                    bookingTabs.forEach(button => {
                         button.addEventListener('click', function() {
 
-                            document.querySelectorAll('.nav-link')
-                                .forEach(btn => btn.classList.remove('active'));
+                            bookingTabs.forEach(btn => btn.classList.remove('active'));
                             this.classList.add('active');
 
                             const period = this.dataset.period;
 
-                            chart.updateOptions({
-                                series: [{
-                                    data: salesData[period].totals
-                                }],
-                                xaxis: {
-                                    categories: salesData[period].labels
-                                },
-                                colors: getAlternatingColors(salesData[period].totals.length),
-                                dataLabels: {
-                                    enabled: period !== 'month'
-                                }
-                            });
+                            if (salesData[period]) {
+                                chart.updateOptions({
+                                    series: [{
+                                        data: salesData[period].totals
+                                    }],
+                                    xaxis: {
+                                        categories: salesData[period].labels
+                                    },
+                                    colors: getAlternatingColors(salesData[period].totals.length),
+                                    dataLabels: {
+                                        enabled: period !== 'month'
+                                    }
+                                });
+                            }
                         });
                     });
                 }

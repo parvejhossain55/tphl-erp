@@ -78,7 +78,7 @@ class Dashboard extends Model
                 SUM(lp.amount) as total
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-            WHERE lp.payment_status = 'paid'
+            WHERE lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'
             AND lp.payment_date BETWEEN ? AND ?
         ";
 
@@ -659,12 +659,12 @@ class Dashboard extends Model
         // Get all payment types from lead_payments with project filter
         $sqlClient = "
             SELECT 
-                COALESCE(SUM(CASE WHEN lp.payment_status = 'paid' THEN lp.amount ELSE 0 END), 0) as all_paid,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'land_share' AND lp.payment_status = 'paid' THEN lp.land_share_amount ELSE 0 END), 0) as land_share_paid,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'booking_money' AND lp.payment_status = 'paid' THEN lp.amount ELSE 0 END), 0) as booking_money,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' AND lp.payment_status = 'paid' THEN lp.amount ELSE 0 END), 0) as registration_money,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND lp.payment_status = 'paid' THEN lp.amount ELSE 0 END), 0) as emi_payments,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' AND lp.payment_status = 'paid' THEN lp.amount ELSE 0 END), 0) as development_charges,
+                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) as all_paid,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'land_share' AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' THEN lp.land_share_amount ELSE 0 END), 0) as land_share_paid,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'booking_money' AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) as booking_money,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) as registration_money,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) as emi_payments,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) as development_charges,
                 COALESCE(SUM(CASE WHEN lp.payment_status = 'pending' THEN lp.amount ELSE 0 END), 0) as pending,
                 COUNT(*) as total_count
             FROM lead_payments lp
@@ -701,7 +701,7 @@ class Dashboard extends Model
             SELECT COALESCE(SUM(lp.land_share_amount), 0) as total_landshare
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-            WHERE lp.payment_status = 'paid' AND lp.payment_type = 'land_share'
+            WHERE lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.payment_type = 'land_share'
             AND lp.payment_date BETWEEN ? AND ?
         ";
 
@@ -726,7 +726,7 @@ class Dashboard extends Model
             SELECT COALESCE(SUM(lp.amount), 0) as total_registration
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-            WHERE lp.payment_status = 'paid' AND lp.payment_type = 'registration'
+            WHERE lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified' AND lp.payment_type = 'registration'
             AND lp.payment_date BETWEEN ? AND ?
         ";
 
@@ -870,7 +870,7 @@ class Dashboard extends Model
                 SELECT lp.amount, lp.payment_date as date 
                 FROM lead_payments lp
                 INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-                WHERE lp.payment_status = 'paid'
+                WHERE lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'
                 " . ($projectId ? " AND lb.project_id = ?" : "") . "
                 UNION ALL
                 SELECT mci.amount, mci.transaction_date as date 
@@ -1444,7 +1444,7 @@ LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id
 LEFT JOIN leads l ON lb.lead_id = l.id
 LEFT JOIN projects p ON lb.project_id = p.id
 WHERE lp.payment_date BETWEEN ? AND ?
-AND lp.payment_status = 'paid'
+AND lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'
 ";
 
         if ($projectId) {
@@ -1654,7 +1654,7 @@ LIMIT ?
                 SELECT lp.payment_date as date, lp.amount 
                 FROM lead_payments lp
                 INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-                WHERE lp.payment_status = 'paid'
+                WHERE lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'
                 " . ($projectId ? " AND lb.project_id = ?" : "") . "
                 UNION ALL
                 SELECT mci.transaction_date as date, mci.amount 
@@ -1681,7 +1681,7 @@ LIMIT ?
                 SELECT lp.payment_date as date, lp.amount 
                 FROM lead_payments lp
                 INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-                WHERE lp.payment_status = 'paid'
+                WHERE lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'
                 " . ($projectId ? " AND lb.project_id = ?" : "") . "
                 UNION ALL
                 SELECT mci.transaction_date as date, mci.amount 
@@ -1862,7 +1862,7 @@ LIMIT ?
                     SELECT lp.payment_date as date, lp.amount 
                     FROM lead_payments lp
                     INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-                    WHERE lp.payment_status = 'paid'
+                    WHERE lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'
                     " . ($projectId ? " AND lb.project_id = ?" : "") . "
                     UNION ALL
                     SELECT mci.transaction_date as date, mci.amount 
@@ -1966,7 +1966,7 @@ LIMIT ?
                         SELECT lp.payment_date as date, lp.amount 
                         FROM lead_payments lp
                         INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-                        WHERE lp.payment_status = 'paid'
+                        WHERE lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'
                         " . ($projectId ? " AND lb.project_id = ?" : "") . "
                         UNION ALL
                         SELECT mci.transaction_date as date, mci.amount 
@@ -2041,7 +2041,7 @@ LIMIT ?
                         SELECT lp.payment_date as date, lp.amount 
                         FROM lead_payments lp
                         INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-                        WHERE lp.payment_status = 'paid'
+                        WHERE lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'
                         " . ($projectId ? " AND lb.project_id = ?" : "") . "
                         UNION ALL
                         SELECT mci.transaction_date as date, mci.amount 
