@@ -42,23 +42,36 @@ jobs:
             echo "drop_table.sql lines: $(wc -l < $DATABASE_DIR/drop_table.sql)"
 
             # Drop all tables first
-            echo "Dropping all tables..."
-            mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/drop_table.sql
+            # echo "Dropping all tables..."
+            # mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/drop_table.sql
 
             # Import fresh database
-            echo "Importing fresh database..."
-            mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/tphl_db.sql
+            # echo "Importing fresh database..."
+            # mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/tphl_db.sql
 
             echo "Setting correct permissions"
             sudo chown -R www-data:www-data $PROJECT_DIR
             sudo find $PROJECT_DIR -type d -exec chmod 755 {} \;
             sudo find $PROJECT_DIR -type f -exec chmod 644 {} \;
 
-            # Project upload in Main From Staging
+            # Project upload in Main From Staging (Safeguarding public/uploads)
+            echo "Backing up live uploads folder..."
+            if [ -d "/var/www/html/TPHL-ERP/public/uploads" ]; then
+                mv /var/www/html/TPHL-ERP/public/uploads /var/www/html/uploads_backup_temp
+            fi
+
             echo "Copying files to production..."
             rm -rf /var/www/html/TPHL-ERP/*
             cp -r /var/www/staging/TPHL-ERP/* /var/www/html/TPHL-ERP/
             cp -r /var/www/staging/TPHL-ERP/.htaccess /var/www/html/TPHL-ERP/
+
+            echo "Restoring live uploads folder..."
+            if [ -d "/var/www/html/uploads_backup_temp" ]; then
+                rm -rf /var/www/html/TPHL-ERP/public/uploads
+                mv /var/www/html/uploads_backup_temp /var/www/html/TPHL-ERP/public/uploads
+            else
+                mkdir -p /var/www/html/TPHL-ERP/public/uploads
+            fi
 
             echo "Deployment completed successfully"
 

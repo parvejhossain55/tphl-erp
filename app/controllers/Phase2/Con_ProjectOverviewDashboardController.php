@@ -582,6 +582,28 @@ class Con_ProjectOverviewDashboardController extends Controller
         $totalActualProg = 0;
         $totalPlannedProg = 0;
 
+        // Fetch open risks stats for all projects to determine status downgrades
+        $projectRisksStats = [];
+        if (!empty($projectIds)) {
+            $riskIdsStr = implode(',', $projectIds);
+            $riskQuery = $this->db->query("
+                SELECT project_id, 
+                       COUNT(*) AS total_open_risks,
+                       SUM(CASE WHEN severity IN ('High', 'Critical') THEN 1 ELSE 0 END) AS critical_high_count
+                FROM project_risks
+                WHERE status = 'Open' AND project_id IN ($riskIdsStr)
+                GROUP BY project_id
+            ");
+            if ($riskQuery) {
+                while ($row = $riskQuery->fetch_assoc()) {
+                    $projectRisksStats[(int)$row['project_id']] = [
+                        'total_open' => (int)$row['total_open_risks'],
+                        'critical_high' => (int)$row['critical_high_count']
+                    ];
+                }
+            }
+        }
+
         foreach ($projects as $pr) {
             $pid = (int)$pr['id'];
             $actual = isset($dynamicProgressMap[$pid]) ? (float)$dynamicProgressMap[$pid]['actual'] : 0.0;
@@ -596,7 +618,7 @@ class Con_ProjectOverviewDashboardController extends Controller
             $totalActualProg += $actual;
             $totalPlannedProg += $planned;
 
-            // Determine status dynamically based on gap
+            // Determine status dynamically based on gap and active risks
             if ($pr['project_status'] === 'Completed') {
                 $calcStatus = 'Completed';
                 $completedCount++;
@@ -607,12 +629,28 @@ class Con_ProjectOverviewDashboardController extends Controller
                 $gap = $planned - $actual;
                 if ($gap <= 5) {
                     $calcStatus = 'On Track';
-                    $onTrackCount++;
                 } elseif ($gap <= 15) {
                     $calcStatus = 'At Risk';
-                    $atRiskCount++;
                 } else {
                     $calcStatus = 'Delayed';
+                }
+
+                // Downgrade status based on active risks
+                $openRisks = $projectRisksStats[$pid] ?? ['total_open' => 0, 'critical_high' => 0];
+                if ($openRisks['critical_high'] > 0) {
+                    $calcStatus = 'Delayed';
+                } elseif ($openRisks['total_open'] > 0) {
+                    if ($calcStatus === 'On Track') {
+                        $calcStatus = 'At Risk';
+                    }
+                }
+
+                if ($calcStatus === 'On Track') {
+                    $onTrackCount++;
+                } elseif ($calcStatus === 'At Risk') {
+                    $atRiskCount++;
+                } else {
+                    $calcStatus = 'Delayed'; // fallback/safeguard
                     $delayedCount++;
                 }
             }
@@ -786,6 +824,14 @@ class Con_ProjectOverviewDashboardController extends Controller
         $budgetCategoryData = $this->getPortfolioBudgetCategoryData($roleFilter);
 
         // 8. Top Delay / Risk Summary
+        if (!empty($projectIds)) {
+            require_once __DIR__ . '/Con_RiskDashboardController.php';
+            $riskCtrl = new Con_RiskDashboardController($this->db);
+            foreach ($projectIds as $pid) {
+                $riskCtrl->syncRisksForProject($pid);
+            }
+        }
+
         $rSql = "
             SELECT pr.*, p.name AS project_name
             FROM project_risks pr

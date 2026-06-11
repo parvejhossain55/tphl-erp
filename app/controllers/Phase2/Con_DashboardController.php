@@ -733,7 +733,7 @@ class Con_DashboardController extends Controller
         $matSpentTotal = $matSpentRes ? (float)$matSpentRes->fetch_assoc()['total'] : 0.0;
 
         // Contractor spent
-        $conSpentQuery = "SELECT COALESCE(SUM(approved_amount), 0) AS total FROM contractor_bill_requests WHERE status IN ('approved', 'paid')";
+        $conSpentQuery = "SELECT COALESCE(SUM(approved_amount), 0) AS total FROM contractor_bill_requests WHERE status IN ('approved', 'paid', 'partially_paid', 'fully_paid')";
         if ($projectId) {
             $conSpentQuery .= " AND project_id = $projectId";
         }
@@ -1425,6 +1425,26 @@ $project = $stmt->get_result()->fetch_assoc();
             $dynamicProgressMap = $this->calculatePhaseBasedProgress($projectIds);
             $budgetsAndSpentMap = $this->calculateProjectBudgetsAndSpent($projectIds);
 
+            // Fetch open risks stats for SE projects to determine status downgrades
+            $projectRisksStats = [];
+            $riskIdsStr = implode(',', $projectIds);
+            $riskQuery = $this->db->query("
+                SELECT project_id, 
+                       COUNT(*) AS total_open_risks,
+                       SUM(CASE WHEN severity IN ('High', 'Critical') THEN 1 ELSE 0 END) AS critical_high_count
+                FROM project_risks
+                WHERE status = 'Open' AND project_id IN ($riskIdsStr)
+                GROUP BY project_id
+            ");
+            if ($riskQuery) {
+                while ($row = $riskQuery->fetch_assoc()) {
+                    $projectRisksStats[(int)$row['project_id']] = [
+                        'total_open' => (int)$row['total_open_risks'],
+                        'critical_high' => (int)$row['critical_high_count']
+                    ];
+                }
+            }
+
             foreach ($myProjects as &$pr) {
                 $pid = (int)$pr['id'];
                 $actual = isset($dynamicProgressMap[$pid]) ? (float)$dynamicProgressMap[$pid]['actual'] : 0.0;
@@ -1435,7 +1455,7 @@ $project = $stmt->get_result()->fetch_assoc();
                 $pr['total_budget'] = $budgetsAndSpentMap[$pid]['total_budget'] ?? 0.0;
                 $pr['total_spent'] = $budgetsAndSpentMap[$pid]['total_spent'] ?? 0.0;
                 
-                // Determine status dynamically based on gap
+                // Determine status dynamically based on gap and active risks
                 if ($pr['project_status'] === 'Completed') {
                     $calcStatus = 'Completed';
                 } elseif ($pr['project_status'] === 'Planning' || ($actual == 0 && $planned == 0)) {
@@ -1448,6 +1468,16 @@ $project = $stmt->get_result()->fetch_assoc();
                         $calcStatus = 'At Risk';
                     } else {
                         $calcStatus = 'Delayed';
+                    }
+
+                    // Downgrade status based on active risks
+                    $openRisks = $projectRisksStats[$pid] ?? ['total_open' => 0, 'critical_high' => 0];
+                    if ($openRisks['critical_high'] > 0) {
+                        $calcStatus = 'Delayed';
+                    } elseif ($openRisks['total_open'] > 0) {
+                        if ($calcStatus === 'On Track') {
+                            $calcStatus = 'At Risk';
+                        }
                     }
                 }
                 $pr['calculated_status'] = $calcStatus;
@@ -3029,7 +3059,7 @@ $project = $stmt->get_result()->fetch_assoc();
         $contractorRes = $this->db->query("
             SELECT project_id, COALESCE(SUM(approved_amount), 0) AS contractor_spent
             FROM contractor_bill_requests
-            WHERE status IN ('approved', 'paid') AND project_id IN ($idsList)
+            WHERE status IN ('approved', 'paid', 'partially_paid', 'fully_paid') AND project_id IN ($idsList)
             GROUP BY project_id
         ");
         $contractorSpent = [];

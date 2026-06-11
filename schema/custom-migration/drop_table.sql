@@ -7,7 +7,6 @@ DROP TABLE IF EXISTS banks;
 DROP TABLE IF EXISTS blogs;
 DROP TABLE IF EXISTS cache;
 DROP TABLE IF EXISTS cameras;
-DROP TABLE IF EXISTS camera_logs;
 DROP TABLE IF EXISTS cashout_payments;
 DROP TABLE IF EXISTS cashout_requests;
 DROP TABLE IF EXISTS chat_messages;
@@ -25,9 +24,6 @@ DROP TABLE IF EXISTS emp_attendances;
 DROP TABLE IF EXISTS emp_weekly_day_off;
 DROP TABLE IF EXISTS expense_adjustments;
 DROP TABLE IF EXISTS flats;
-
-
-
 DROP TABLE IF EXISTS flat_purchase_rules;
 DROP TABLE IF EXISTS fund_requisitions;
 DROP TABLE IF EXISTS head_notifications;
@@ -60,7 +56,6 @@ DROP TABLE IF EXISTS roles;
 DROP TABLE IF EXISTS role_permissions;
 DROP TABLE IF EXISTS sales_targets;
 DROP TABLE IF EXISTS site_settings;
-DROP TABLE IF EXISTS site_visits;
 DROP TABLE IF EXISTS sliders;
 DROP TABLE IF EXISTS tasks;
 DROP TABLE IF EXISTS teams;
@@ -68,9 +63,11 @@ DROP TABLE IF EXISTS units;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS whatsapp_campaigns;
 DROP TABLE IF EXISTS whatsapp_messages;
-DROP TABLE IF EXISTS work_types;
+
+
 
 -- ====== Construction Module Tables ======
+DROP TABLE IF EXISTS work_types;
 DROP TABLE IF EXISTS architect_engineering;
 DROP TABLE IF EXISTS boq_items;
 DROP TABLE IF EXISTS boq_master;
@@ -161,6 +158,12 @@ DROP TABLE IF EXISTS office_assets;
 DROP TABLE IF EXISTS con_wastage;
 DROP TABLE IF EXISTS con_wastage_items;
 
+-- ====== Extra / Unused Tables ======
+DROP TABLE IF EXISTS amenities;
+DROP TABLE IF EXISTS camera_logs;
+DROP TABLE IF EXISTS site_visits;
+
 SET FOREIGN_KEY_CHECKS = 1;
+
 
 
