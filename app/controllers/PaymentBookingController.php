@@ -312,8 +312,8 @@ class PaymentBookingController extends Controller
                         if (isset($leadsCache[$leadPhone])) {
                             $leadId = $leadsCache[$leadPhone];
                         } else {
-                            $stmt = $this->db->prepare("SELECT id FROM leads WHERE phone = ? LIMIT 1");
-                            $stmt->bind_param("s", $leadPhone);
+                            $stmt = $this->db->prepare("SELECT id FROM leads WHERE (phone = ? OR phone_number = ?) LIMIT 1");
+                            $stmt->bind_param("ss", $leadPhone, $leadPhone);
                             $stmt->execute();
                             $res = $stmt->get_result()->fetch_assoc();
                             if ($res) {

@@ -229,8 +229,8 @@ class BookingController extends Controller
                     if (isset($leadsCache[$leadPhone])) {
                         $leadId = $leadsCache[$leadPhone]['id'];
                     } else {
-                        $stmt = $this->db->prepare("SELECT id, assigned_id FROM leads WHERE phone = ? AND deleted_at IS NULL LIMIT 1");
-                        $stmt->bind_param("s", $leadPhone);
+                        $stmt = $this->db->prepare("SELECT id, assigned_id FROM leads WHERE (phone = ? OR phone_number = ?) AND deleted_at IS NULL LIMIT 1");
+                        $stmt->bind_param("ss", $leadPhone, $leadPhone);
                         $stmt->execute();
                         $res = $stmt->get_result()->fetch_assoc();
                         if ($res) {
@@ -367,9 +367,9 @@ class BookingController extends Controller
                         $stmtLead->execute();
                     }
 
-                    // ── After successful insert: set flat is_booked = 1 ──
+                    // ── After successful insert: set flat is_booked = 1 and status = 'booked' ──
                     if ($flatId) {
-                        $stmtFlat = $this->db->prepare("UPDATE flats SET is_booked = 1 WHERE id = ?");
+                        $stmtFlat = $this->db->prepare("UPDATE flats SET is_booked = 1, status = 'booked' WHERE id = ?");
                         $stmtFlat->bind_param("i", $flatId);
                         $stmtFlat->execute();
                     }

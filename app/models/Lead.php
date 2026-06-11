@@ -584,20 +584,10 @@ class Lead extends Model
         foreach ($salesUsers as $user) {
             $userId = $user['id'];
 
-            // Total leads
+            // Total leads (overall all-time assigned leads)
             $leadWhere = ["assigned_id = ?", "deleted_at IS NULL"];
             $leadParams = [$userId];
             $leadTypes = "i";
-            if ($year) {
-                $leadWhere[] = "YEAR(created_at) = ?";
-                $leadParams[] = $year;
-                $leadTypes .= "i";
-            }
-            if ($month) {
-                $leadWhere[] = "MONTH(created_at) = ?";
-                $leadParams[] = $month;
-                $leadTypes .= "i";
-            }
             $leadsSql = "SELECT COUNT(*) AS count FROM leads WHERE " . implode(" AND ", $leadWhere);
             $leadsStmt = $this->db->prepare($leadsSql);
             $leadsStmt->bind_param($leadTypes, ...$leadParams);
@@ -605,7 +595,7 @@ class Lead extends Model
             $totalLeads = $leadsStmt->get_result()->fetch_assoc()['count'] ?? 0;
 
             // Completed visits
-            $visitWhere = ["assigned_with = ?", "follow_up_type = 'visit'", "status = 'complete'", "deleted_at IS NULL"];
+            $visitWhere = ["assigned_with = ?", "follow_up_type = 'visit'", "status = 'completed'", "deleted_at IS NULL"];
             $visitParams = [$userId];
             $visitTypes = "i";
             if ($year) {
@@ -624,8 +614,8 @@ class Lead extends Model
             $visitsStmt->execute();
             $totalVisits = $visitsStmt->get_result()->fetch_assoc()['count'] ?? 0;
 
-            // Total bookings (paid only, filtered by sales_by_id)
-            $bookingWhere = ["lb.sales_by_id = ?", "lb.deleted_at IS NULL", "lp.payment_status = 'paid'"];
+            // Total bookings (paid/partially_paid, verified, filtered by sales_by_id)
+            $bookingWhere = ["lb.sales_by_id = ?", "lb.deleted_at IS NULL", "lb.booking_status IN ('completed', 'booked')", "lp.payment_status IN ('paid', 'partially_paid')", "lp.verification_status = 'verified'"];
             $bookingParams = [$userId];
             $bookingTypes = "i";
             if ($year) {
@@ -650,8 +640,8 @@ class Lead extends Model
             // Total money collected
             $moneySql = "SELECT SUM(lp.amount) AS total_money 
                      FROM lead_bookings lb
-                     JOIN lead_payments lp ON lp.booking_id = lb.id AND lp.payment_status = 'paid'
-                     WHERE lb.sales_by_id = ?" .
+                     JOIN lead_payments lp ON lp.booking_id = lb.id AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified'
+                     WHERE lb.sales_by_id = ? AND lb.booking_status IN ('completed', 'booked') AND lb.deleted_at IS NULL" .
                 ($year ? " AND YEAR(lb.booking_date) = ?" : "") .
                 ($month ? " AND MONTH(lb.booking_date) = ?" : "");
             $moneyStmt = $this->db->prepare($moneySql);
@@ -683,9 +673,9 @@ class Lead extends Model
                        COUNT(DISTINCT lb.id) AS total_bookings,
                        SUM(lp.amount) AS total_money
                        FROM lead_bookings lb
-                       JOIN lead_payments lp ON lp.booking_id = lb.id AND lp.payment_status = 'paid'
+                       JOIN lead_payments lp ON lp.booking_id = lb.id AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified'
                        JOIN projects p ON lb.project_id = p.id
-                       WHERE lb.deleted_at IS NULL AND lb.sales_by_id = ?";
+                       WHERE lb.deleted_at IS NULL AND lb.booking_status IN ('completed', 'booked') AND lb.sales_by_id = ?";
             $projectParams = [$userId];
             $projectTypes = "i";
             if ($year) {

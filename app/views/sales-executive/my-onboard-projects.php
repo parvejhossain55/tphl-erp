@@ -98,7 +98,9 @@ $show_breadcrumb = true;
                                 <th>Project</th>
                                 <th>Unit / Share</th>
                                 <th>Share Price</th>
-                                <th>Paid Amount</th>
+                                <th>Booking Money</th>
+                                <th>Registration Money</th>
+                                <th>Total Paid</th>
                             </tr>
                         </thead>
 
@@ -138,13 +140,23 @@ $show_breadcrumb = true;
                                                 : '-' ?>
                                         </td>
 
+                                        <td class="fw-semibold text-primary">
+                                            <?= !empty($lead['booking_money'])
+                                                ? format_bdt($lead['booking_money'])
+                                                : '-' ?>
+                                        </td>
+
+                                        <td class="fw-semibold text-info">
+                                            <?= !empty($lead['registration_money'])
+                                                ? format_bdt($lead['registration_money'])
+                                                : '-' ?>
+                                        </td>
+
                                         <td class="fw-semibold text-success">
                                             <?= !empty($lead['amount'])
                                                 ? format_bdt($lead['amount'])
                                                 : '-' ?>
                                         </td>
-
-
                                     </tr>
                                 <?php endforeach; ?>
                            
@@ -276,15 +288,35 @@ $show_breadcrumb = true;
                     <div class="d-flex justify-content-between mt-2 pt-2 border-top">
                         <div>
                             <div class="small text-muted">Share Price</div>
-                            <div>
+                            <div class="fw-semibold">
                                 <?= !empty($lead['price_value'])
                                     ? format_bdt($lead['price_value'])
                                     : '-' ?>
                             </div>
                         </div>
 
+                        <div>
+                            <div class="small text-muted">Booking Money</div>
+                            <div class="fw-semibold text-primary">
+                                <?= !empty($lead['booking_money'])
+                                    ? format_bdt($lead['booking_money'])
+                                    : '-' ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-2 pt-2 border-top">
+                        <div>
+                            <div class="small text-muted">Registration</div>
+                            <div class="fw-semibold text-info">
+                                <?= !empty($lead['registration_money'])
+                                    ? format_bdt($lead['registration_money'])
+                                    : '-' ?>
+                            </div>
+                        </div>
+
                         <div class="text-end">
-                            <div class="small text-muted">Paid</div>
+                            <div class="small text-muted">Total Paid</div>
                             <div class="fw-semibold text-success">
                                 <?= !empty($lead['amount'])
                                     ? format_bdt($lead['amount'])

@@ -20,14 +20,23 @@
     </div>
 
     <form method="GET" action="">
+        <?php if (!empty($teamFilterType)): ?>
+            <input type="hidden" name="team_filter_type" value="<?= htmlspecialchars($teamFilterType) ?>">
+        <?php endif; ?>
+        <?php if (!empty($teamYear)): ?>
+            <input type="hidden" name="team_year" value="<?= htmlspecialchars($teamYear) ?>">
+        <?php endif; ?>
+        <?php if (!empty($teamStartMonth)): ?>
+            <input type="hidden" name="team_start_month" value="<?= htmlspecialchars($teamStartMonth) ?>">
+        <?php endif; ?>
+        <?php if (!empty($teamEndMonth)): ?>
+            <input type="hidden" name="team_end_month" value="<?= htmlspecialchars($teamEndMonth) ?>">
+        <?php endif; ?>
         <div class="row g-2 mb-3 align-items-end">
 
             <!-- Employee Select -->
-            <div class="col-6 col-sm-6 col-md-3">
+            <div class="col-12 col-md-3">
                 <label for="executiveSelect" class="form-label">Select Sales Executive</label>
-
-
-
                 <select id="executiveSelect" name="executive" class="form-select select2">
                     <option value="">-- Select Sales Executive --</option>
                     <?php foreach ($allSalesTeams as $team): ?>
@@ -38,15 +47,30 @@
                 </select>
             </div>
 
-            <!-- Month Select -->
-            <div class="col-6 col-sm-6 col-md-3">
-                <label for="periodSelect" class="form-label">Select Month</label>
-                <select class="form-select" name="month" id="periodSelect">
-                    <option value="">Month Select</option>
+            <!-- Start Month Select -->
+            <div class="col-6 col-md-2">
+                <label for="startMonthSelect" class="form-label">Start Month</label>
+                <select class="form-select" name="start_month" id="startMonthSelect">
+                    <option value="">Select Month</option>
                     <?php foreach (range(1, 12) as $m):
                         $monthName = date('F', mktime(0, 0, 0, $m, 1));
                     ?>
-                        <option value="<?= $m ?>" <?= ($month == $m) ? 'selected' : '' ?>>
+                        <option value="<?= $m ?>" <?= ($start_month == $m) ? 'selected' : '' ?>>
+                            <?= $monthName ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <!-- End Month Select -->
+            <div class="col-6 col-md-2">
+                <label for="endMonthSelect" class="form-label">End Month</label>
+                <select class="form-select" name="end_month" id="endMonthSelect">
+                    <option value="">Select Month</option>
+                    <?php foreach (range(1, 12) as $m):
+                        $monthName = date('F', mktime(0, 0, 0, $m, 1));
+                    ?>
+                        <option value="<?= $m ?>" <?= ($end_month == $m) ? 'selected' : '' ?>>
                             <?= $monthName ?>
                         </option>
                     <?php endforeach; ?>
@@ -54,11 +78,11 @@
             </div>
 
             <!-- Year Select -->
-            <div class="col-6 col-sm-6 col-md-2">
+            <div class="col-6 col-md-2">
                 <label for="yearSelect" class="form-label">Select Year</label>
                 <select class="form-select" name="year" id="yearSelect">
-                    <option value="">Year Select</option>
-                    <?php for ($y = date('Y'); $y >= date('Y') - 10; $y--): ?>
+                    <option value="">Select Year</option>
+                    <?php for ($y = 2025; $y <= 2035; $y++): ?>
                         <option value="<?= $y ?>" <?= ($year == $y) ? 'selected' : '' ?>>
                             <?= $y ?>
                         </option>
@@ -66,18 +90,16 @@
                 </select>
             </div>
 
-            <!-- Filter Button -->
-            <div class="col-6 col-sm-6 col-md-2">
-                <button type="submit" class="btn btn-primary w-100">
-                    Filter
-                </button>
-            </div>
-
-            <!-- Reset Button -->
-            <div class="col-6 col-sm-6 col-md-2">
-                <a href="<?= $GLOBALS['base_url'] ?>/sales-dashboard" class="btn btn-secondary w-100">
-                    Reset
-                </a>
+            <!-- Action Buttons -->
+            <div class="col-6 col-md-3">
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fa-solid fa-magnifying-glass me-1"></i> Filter
+                    </button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/sales-dashboard" class="btn btn-secondary w-100 d-flex align-items-center justify-content-center">
+                        <i class="fa-solid fa-rotate-left me-1"></i> Reset
+                    </a>
+                </div>
             </div>
 
         </div>
@@ -349,10 +371,10 @@
                     <div class="card__tab">
                         <ul class="nav nav-pills" id="pills-tab" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="pills-bar-year-tab" data-period="year" type="button">1Y</button>
+                                <button class="nav-link active" id="pills-bar-year-tab" data-period="year" type="button">1Y</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="pills-bar-month-tab" data-period="month" type="button">1M</button>
+                                <button class="nav-link" id="pills-bar-month-tab" data-period="month" type="button">1M</button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link " id="pills-bar-week-tab" data-period="week" type="button">1W</button>
@@ -400,24 +422,145 @@
             <h5 class="text-center ">Sales Teams Booking Performance</h5>
         </div>
 
+        <!-- Search Filter for Sales Teams Booking Performance -->
+        <?php
+        $teamStartFilterYear = 2025;
+        $teamEndFilterYear = 2035;
+        $teamMonthsList = [
+            1 => 'January',
+            2 => 'February',
+            3 => 'March',
+            4 => 'April',
+            5 => 'May',
+            6 => 'June',
+            7 => 'July',
+            8 => 'August',
+            9 => 'September',
+            10 => 'October',
+            11 => 'November',
+            12 => 'December'
+        ];
+        ?>
+        <form action="" method="get" class="mb-4">
+            <?php if (!empty($executiveId)): ?>
+                <input type="hidden" name="executive" value="<?= htmlspecialchars($executiveId) ?>">
+            <?php endif; ?>
+            <?php if (!empty($year)): ?>
+                <input type="hidden" name="year" value="<?= htmlspecialchars($year) ?>">
+            <?php endif; ?>
+            <?php if (!empty($start_month)): ?>
+                <input type="hidden" name="start_month" value="<?= htmlspecialchars($start_month) ?>">
+            <?php endif; ?>
+            <?php if (!empty($end_month)): ?>
+                <input type="hidden" name="end_month" value="<?= htmlspecialchars($end_month) ?>">
+            <?php endif; ?>
+
+            <div class="row align-items-end g-2">
+                <!-- Filter Type -->
+                <div class="col-12 col-md-2" id="teamFilterTypeCol">
+                    <div class="from__input-box">
+                        <label class="form-label small fw-bold text-muted mb-2"><i class="fa-solid fa-filter me-1"></i> Filter Type</label>
+                        <select class="form-control form-select" name="team_filter_type" id="teamFilterTypeSelect">
+                            <option value="monthly" <?= ($teamFilterType === 'monthly') ? 'selected' : '' ?>>Monthly</option>
+                            <option value="yearly" <?= ($teamFilterType === 'yearly') ? 'selected' : '' ?>>Yearly</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Year Select -->
+                <div class="col-12 col-md-2" id="teamYearCol">
+                    <div class="from__input-box">
+                        <label class="form-label small fw-bold text-muted mb-2"><i class="fa-solid fa-calendar me-1"></i> Year</label>
+                        <select class="form-control form-select" name="team_year">
+                            <?php for ($y = $teamStartFilterYear; $y <= $teamEndFilterYear; $y++): ?>
+                                <option value="<?= $y ?>" <?= ($teamYear == $y) ? 'selected' : '' ?>><?= $y ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Start Month -->
+                <div class="col-12 col-md-2" id="teamStartMonthCol">
+                    <div class="from__input-box">
+                        <label class="form-label small fw-bold text-muted mb-2"><i class="fa-solid fa-calendar-day me-1"></i> Start Month</label>
+                        <select class="form-control form-select" name="team_start_month">
+                            <?php foreach ($teamMonthsList as $num => $name): ?>
+                                <option value="<?= $num ?>" <?= ($teamStartMonth == $num) ? 'selected' : '' ?>><?= $name ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- End Month -->
+                <div class="col-12 col-md-2" id="teamEndMonthCol">
+                    <div class="from__input-box">
+                        <label class="form-label small fw-bold text-muted mb-2"><i class="fa-solid fa-calendar-day me-1"></i> End Month</label>
+                        <select class="form-control form-select" name="team_end_month">
+                            <?php foreach ($teamMonthsList as $num => $name): ?>
+                                <option value="<?= $num ?>" <?= ($teamEndMonth == $num) ? 'selected' : '' ?>><?= $name ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="col-12 col-md-4" id="teamActionButtonsCol">
+                    <div class="from__input-box">
+                        <label class="form-label small fw-bold text-muted mb-2 d-none d-md-block" style="visibility: hidden;">&nbsp;</label>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fa-solid fa-magnifying-glass me-1"></i> Search
+                            </button>
+                            <a href="<?= $GLOBALS['base_url'] ?>/sales-dashboard" class="btn btn-secondary w-100 d-flex align-items-center justify-content-center">
+                                <i class="fa-solid fa-rotate-left me-1"></i> Reset
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+
         <!-- Tabs -->
         <ul class="nav nav-pills mb-3" id="bookingTabs">
             <li class="nav-item">
-                <button class="nav-link" data-period="year1">Year</button>
+                <button class="nav-link <?= ($defaultTeamTab === 'year1') ? 'active' : '' ?>" data-period="year1">Year</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link active" data-period="month1">Month</button>
+                <button class="nav-link <?= ($defaultTeamTab === 'month1') ? 'active' : '' ?>" data-period="month1">Month</button>
             </li>
             <li class="nav-item d-none">
                 <button class="nav-link" data-period="week1">Week</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link" data-period="fullData">Full Data</button>
+                <button class="nav-link <?= ($defaultTeamTab === 'fullData') ? 'active' : '' ?>" data-period="fullData">Full Data</button>
             </li>
         </ul>
 
         <!-- Chart -->
         <div id="monthlyPerformanceChart"></div>
+
+        <!-- Summary Table -->
+        <div class="mt-4 border-top pt-4">
+            <h6 class="mb-3 fw-bold text-primary"><i class="fa-solid fa-list-check me-1"></i> Sales Teams Booking Summary List</h6>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped align-middle mb-0">
+                    <thead class="table-light">
+                        <tr style="font-size: 13px;">
+                            <th>S/L</th>
+                            <th>Sales Executive</th>
+                            <th>Target Bookings</th>
+                            <th>Completed Bookings</th>
+                            <th>Total Flat Value</th>
+                            <th>Total Booking Money</th>
+                            <th>Total Registration Money</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teamPerformanceTableBody" style="font-size: 13px;">
+                        <!-- Populated dynamically via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
 
@@ -499,6 +642,32 @@
 <script>
     document.addEventListener("DOMContentLoaded", function() {
 
+        // Toggle Month dropdowns based on Filter Type for Team
+        const teamFilterTypeSelect = document.getElementById('teamFilterTypeSelect');
+        const teamStartMonthCol = document.getElementById('teamStartMonthCol');
+        const teamEndMonthCol = document.getElementById('teamEndMonthCol');
+        const teamFilterTypeCol = document.getElementById('teamFilterTypeCol');
+        const teamYearCol = document.getElementById('teamYearCol');
+
+        if (teamFilterTypeSelect && teamStartMonthCol && teamEndMonthCol && teamFilterTypeCol && teamYearCol) {
+            function updateTeamFilterUI() {
+                if (teamFilterTypeSelect.value === 'yearly') {
+                    teamStartMonthCol.style.setProperty('display', 'none', 'important');
+                    teamEndMonthCol.style.setProperty('display', 'none', 'important');
+                    teamFilterTypeCol.className = 'col-12 col-md-4';
+                    teamYearCol.className = 'col-12 col-md-4';
+                } else {
+                    teamStartMonthCol.style.setProperty('display', 'block', 'important');
+                    teamEndMonthCol.style.setProperty('display', 'block', 'important');
+                    teamFilterTypeCol.className = 'col-12 col-md-2';
+                    teamYearCol.className = 'col-12 col-md-2';
+                }
+            }
+
+            teamFilterTypeSelect.addEventListener('change', updateTeamFilterUI);
+            updateTeamFilterUI();
+        }
+
         const weeklyData = <?= json_encode($weeklyData) ?>;
         const monthlyData = <?= json_encode($monthlyData) ?>;
         const yearlyData = <?= json_encode($yearlyData) ?>;
@@ -518,6 +687,35 @@
                 targets: data.map(item => parseInt(item.booking_target)),
                 completed: data.map(item => parseInt(item.booking_completed))
             };
+        }
+
+        function updateTable(period) {
+            const data = dataMap[period] || [];
+            const tbody = document.getElementById('teamPerformanceTableBody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">No bookings found for the selected period.</td></tr>';
+                return;
+            }
+            
+            const formatBDT = (val) => {
+                return new Intl.NumberFormat('en-BD', { style: 'currency', currency: 'BDT', minimumFractionDigits: 0 }).format(val);
+            };
+
+            data.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td>' + (index + 1) + '</td>' +
+                    '<td class="fw-semibold">' + item.name + '</td>' +
+                    '<td>' + item.booking_target + '</td>' +
+                    '<td><span class="badge bg-success">' + item.booking_completed + '</span></td>' +
+                    '<td class="fw-bold">' + formatBDT(item.total_flat_value) + '</td>' +
+                    '<td class="text-primary fw-bold">' + formatBDT(item.total_booking_money) + '</td>' +
+                    '<td class="text-info fw-bold">' + formatBDT(item.total_registration_money) + '</td>';
+                tbody.appendChild(tr);
+            });
         }
 
         // Default period
@@ -572,8 +770,23 @@
                 position: 'top'
             },
             tooltip: {
-                y: {
-                    formatter: val => val + " bookings"
+                custom: function({series, seriesIndex, dataPointIndex, w}) {
+                    const data = dataMap[currentPeriod][dataPointIndex];
+                    if (!data) return '';
+                    
+                    const formatBDT = (val) => {
+                        return new Intl.NumberFormat('en-BD', { style: 'currency', currency: 'BDT', minimumFractionDigits: 0 }).format(val);
+                    };
+
+                    return '<div class="p-3 bg-white border rounded shadow-sm" style="font-family: inherit; font-size: 13px;">' +
+                        '<div class="fw-bold text-dark mb-2">' + data.name + '</div>' +
+                        '<div class="mb-1"><span class="text-primary">•</span> Target: <strong>' + data.booking_target + '</strong></div>' +
+                        '<div class="mb-2"><span class="text-success">•</span> Completed: <strong>' + data.booking_completed + '</strong></div>' +
+                        '<div class="border-top my-2"></div>' +
+                        '<div class="mb-1">Flat Value: <strong class="text-dark">' + formatBDT(data.total_flat_value) + '</strong></div>' +
+                        '<div class="mb-1">Booking Money: <strong class="text-primary">' + formatBDT(data.total_booking_money) + '</strong></div>' +
+                        '<div>Registration Money: <strong class="text-info">' + formatBDT(data.total_registration_money) + '</strong></div>' +
+                        '</div>';
                 }
             }
         };
@@ -604,8 +817,14 @@
                         categories: newData.names
                     }
                 });
+
+                // Update summary table
+                updateTable(currentPeriod);
             });
         });
+
+        // Initialize table
+        updateTable(currentPeriod);
 
     });
 </script>

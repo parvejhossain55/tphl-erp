@@ -42,13 +42,15 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 lb.*, 
                 l.full_name, 
                 l.id as lead_id,
-                l.phone,
+                COALESCE(NULLIF(l.phone, ''), l.phone_number) AS phone,
                 l.email,
                 p.name AS project_name, 
                 f.flat_name AS flat_name, 
-                lp.payment_method ,
-                lp.amount,
-                lp.created_at As booking_pay_date,
+                MAX(lp.payment_method) AS payment_method,
+                SUM(CASE WHEN lp.payment_type = 'booking_money' THEN IFNULL(lp.amount, 0) ELSE 0 END) AS booking_money,
+                SUM(CASE WHEN lp.payment_type = 'registration' THEN IFNULL(lp.amount, 0) ELSE 0 END) AS registration_money,
+                SUM(IFNULL(lp.amount, 0)) AS amount,
+                COALESCE(lb.booking_date, lp.created_at) As booking_pay_date,
                 u1.full_name AS created_by_name,
                 f.flat_name ,f.sqft,
                 f.price_value
@@ -59,23 +61,25 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             LEFT JOIN users u1 ON lb.created_by = u1.id
             LEFT JOIN  lead_payments AS lp ON lp.booking_id = lb.id
             WHERE lb.deleted_at IS NULL
-             AND lb.booking_status = 'completed'
+             AND lb.booking_status IN ('booked', 'completed')
              ";
 
         $params = [];
         $types  = "";
         // 
         if (!empty($year)) {
-            $sql .= " AND YEAR(l.created_at) = ?";
+            $sql .= " AND YEAR(lb.booking_date) = ?";
             $params[] = (int)$year;
             $types   .= "i";
         }
 
         if (!empty($month)) {
-            $sql .= " AND MONTH(l.created_at) = ?";
+            $sql .= " AND MONTH(lb.booking_date) = ?";
             $params[] = (int)$month;
             $types   .= "i";
         }
+
+        $sql .= " GROUP BY lb.id ORDER BY lb.booking_date DESC, lb.id DESC";
 
         //  single ORDER BY at the end
 
@@ -104,20 +108,20 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             LEFT JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN onboard_clients oc ON oc.lead_id = lb.lead_id
             WHERE lb.deleted_at IS NULL
-              AND lb.booking_status = 'completed'
+              AND lb.booking_status IN ('booked', 'completed')
               AND oc.id IS NULL";
 
         $params = [];
         $types = "";
 
         if (!empty($year)) {
-            $sql .= " AND YEAR(l.created_at) = ?";
+            $sql .= " AND YEAR(lb.booking_date) = ?";
             $params[] = (int)$year;
             $types .= "i";
         }
 
         if (!empty($month)) {
-            $sql .= " AND MONTH(l.created_at) = ?";
+            $sql .= " AND MONTH(lb.booking_date) = ?";
             $params[] = (int)$month;
             $types .= "i";
         }
@@ -144,13 +148,15 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             lb.*, 
             l.full_name, 
             l.id AS lead_id,
-            l.phone,
+            COALESCE(NULLIF(l.phone, ''), l.phone_number) AS phone,
             l.email,
             p.name AS project_name, 
             f.flat_name AS flat_name, 
-            lp.payment_method,
-            lp.amount,
-            lp.created_at AS booking_pay_date,
+            MAX(lp.payment_method) AS payment_method,
+            SUM(CASE WHEN lp.payment_type = 'booking_money' THEN IFNULL(lp.amount, 0) ELSE 0 END) AS booking_money,
+            SUM(CASE WHEN lp.payment_type = 'registration' THEN IFNULL(lp.amount, 0) ELSE 0 END) AS registration_money,
+            SUM(IFNULL(lp.amount, 0)) AS amount,
+            COALESCE(lb.booking_date, lp.created_at) AS booking_pay_date,
             u1.full_name AS created_by_name,
             f.flat_name,
             f.sqft,
@@ -162,25 +168,25 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         LEFT JOIN users u1 ON lb.created_by = u1.id
         LEFT JOIN lead_payments lp ON lp.booking_id = lb.id
         WHERE lb.deleted_at IS NULL
-          AND lb.booking_status = 'completed'
+          AND lb.booking_status IN ('booked', 'completed')
           AND lb.sales_by_id = ?";
 
         $params = [$userId];
         $types  = "i";
 
         if (!empty($year)) {
-            $sql .= " AND YEAR(l.created_at) = ?";
+            $sql .= " AND YEAR(lb.booking_date) = ?";
             $params[] = (int)$year;
             $types   .= "i";
         }
 
         if (!empty($month)) {
-            $sql .= " AND MONTH(l.created_at) = ?";
+            $sql .= " AND MONTH(lb.booking_date) = ?";
             $params[] = (int)$month;
             $types   .= "i";
         }
 
-        $sql .= " ORDER BY lb.id DESC";
+        $sql .= " GROUP BY lb.id ORDER BY lb.booking_date DESC, lb.id DESC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param($types, ...$params);
@@ -198,12 +204,14 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 lb.*, 
                 l.full_name, 
                 l.id AS lead_id,
-                l.phone,
+                COALESCE(NULLIF(l.phone, ''), l.phone_number) AS phone,
                 l.email,
                 p.name AS project_name, 
-                lp.payment_method,
-                lp.amount,
-                lp.created_at AS booking_pay_date,
+                MAX(lp.payment_method) AS payment_method,
+                SUM(CASE WHEN lp.payment_type = 'booking_money' THEN IFNULL(lp.amount, 0) ELSE 0 END) AS booking_money,
+                SUM(CASE WHEN lp.payment_type = 'registration' THEN IFNULL(lp.amount, 0) ELSE 0 END) AS registration_money,
+                SUM(IFNULL(lp.amount, 0)) AS amount,
+                COALESCE(lb.booking_date, lp.created_at) AS booking_pay_date,
                 u1.full_name AS created_by_name,
                 f.flat_name,
                 f.sqft,
@@ -222,19 +230,19 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
         // Year filter (booking date based)
         if (!empty($year)) {
-            $sql .= " AND YEAR(lb.created_at) = ?";
+            $sql .= " AND YEAR(lb.booking_date) = ?";
             $params[] = (int)$year;
             $types .= "i";
         }
 
         // Month filter (booking date based)
         if (!empty($month)) {
-            $sql .= " AND MONTH(lb.created_at) = ?";
+            $sql .= " AND MONTH(lb.booking_date) = ?";
             $params[] = (int)$month;
             $types .= "i";
         }
 
-        $sql .= " ORDER BY lb.id DESC";
+        $sql .= " GROUP BY lb.id ORDER BY lb.booking_date DESC, lb.id DESC";
 
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {

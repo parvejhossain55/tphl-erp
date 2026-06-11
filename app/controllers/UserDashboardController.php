@@ -84,24 +84,36 @@ class UserDashboardController extends Controller
         $todayFollowUpComplete = $this->followUpModel->getTodayFollowUpCompleteCount($loggedUserId);
         // executive target from user model
         // Get targets
-        $month = date('Y-m'); // current month e.g. 2026-02
-        $target = $this->salesTargetModel->getTarget($loggedUserId, $month);
-        $monthlySiteVisitTarget = $target['site_visit_target'] ?? 0;
-        $monthlyBookingTarget = $target['booking_target'] ?? 0;
-        $monthlyBookingValueTarget = $target['booking_value_target'] ?? 0.00;
+        $filterType = $_GET['filter_type'] ?? 'monthly';
+        $selectedYear = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+        $selectedStartMonth = isset($_GET['start_month']) ? (int)$_GET['start_month'] : (int)date('m');
+        $selectedEndMonth = isset($_GET['end_month']) ? (int)$_GET['end_month'] : (int)date('m');
 
-        // Get completions
-        $monthlyVisitComplete = $this->salesTargetModel->getMonthlyVisitCompleted($loggedUserId, $month);
-        $monthlyBookingComplete = $this->salesTargetModel->getMonthlyBookingCompleted($loggedUserId, $month);
+        if ($filterType === 'yearly') {
+            $startMonth = 1;
+            $endMonth = 12;
+        } else {
+            $startMonth = $selectedStartMonth;
+            $endMonth = $selectedEndMonth;
+        }
+
+        // Fetch range stats
+        $stats = $this->salesTargetModel->getRangeStats($loggedUserId, $selectedYear, $startMonth, $endMonth);
+
+        $monthlySiteVisitTarget = $stats['site_visit_target'];
+        $monthlyBookingTarget = $stats['booking_target'];
+        $monthlyBookingValueTarget = $stats['booking_value_target'];
+        $monthlyVisitComplete = $stats['visit_completed'];
+        $monthlyBookingComplete = $stats['booking_completed'];
 
         // Calculate achievement %
         $visitAchievement = $monthlySiteVisitTarget > 0 ? round(($monthlyVisitComplete / $monthlySiteVisitTarget) * 100, 2) : 0;
         $bookingAchievement = $monthlyBookingTarget > 0 ? round(($monthlyBookingComplete / $monthlyBookingTarget) * 100, 2) : 0;
 
         // Deals Closed & Won
-        $dealsClosed = $this->salesTargetModel->getDealsClosed($loggedUserId, $month);
+        $dealsClosed = $stats['deals_closed'];
         $dealsClosedAll = $this->salesTargetModel->getDealsClosedAllTime($loggedUserId);
-        $dealsWin = $this->salesTargetModel->getDealsWon($loggedUserId, $month);
+        $dealsWin = $stats['deals_won'];
         $dealsWinAll = $this->salesTargetModel->getDealsClosedAllTime($loggedUserId);
         $dealsLostAll = $this->salesTargetModel->getAllDealsLost($loggedUserId);
 
@@ -130,7 +142,10 @@ class UserDashboardController extends Controller
             "dealsWinAll"    => $dealsWinAll,
             "dealsLostAll"    => $dealsLostAll,
             "monthlyVisitComplete"    => $monthlyVisitComplete,
-
+            "selectedYear"            => $selectedYear,
+            "selectedStartMonth"      => $selectedStartMonth,
+            "selectedEndMonth"        => $selectedEndMonth,
+            "filterType"              => $filterType,
         ]);
     }
     // today follow up kpi

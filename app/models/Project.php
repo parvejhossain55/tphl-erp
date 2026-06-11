@@ -482,8 +482,8 @@ class Project extends Model
             p.id AS project_id,
             p.name AS project_name,
             COUNT(f.id) AS total_flats,
-            SUM(f.is_booked = 0) AS available_flats,
-            SUM(f.is_booked = 1 AND f.status = 'booked') AS booked_flats,
+            SUM(f.is_booked = 0 AND f.status != 'booked' AND f.status != 'sold') AS available_flats,
+            SUM((f.is_booked = 1 OR f.status = 'booked') AND f.status != 'sold') AS booked_flats,
             SUM(f.status = 'sold') AS sold_flats,
             SUM(f.status = 'cancelled') AS cancelled_flats,
             SUM(f.price_value) AS total_flat_value

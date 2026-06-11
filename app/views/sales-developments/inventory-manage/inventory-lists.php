@@ -138,6 +138,37 @@ $show_breadcrumb = false;
         <h4 class="fw-bold m-0">Project Inventory Dashboard</h4>
     </div>
 
+    <!-- Filters Panel -->
+    <div class="card__wrapper p-4 mb-4" style="border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
+        <div class="row">
+            <!-- Project Filter -->
+            <div class="col-md-4">
+                <label class="form-label fw-semibold fs-13 text-muted"><i class="fa-solid fa-building me-1"></i> Filter by Project</label>
+                <select id="filterProject" class="form-control rounded-pill">
+                    <option value="all">All Projects</option>
+                    <?php foreach ($inventoryProjects as $projRow): ?>
+                        <option value="<?= htmlspecialchars($projRow['project_name']) ?>"><?= htmlspecialchars($projRow['project_name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <!-- Status Filter -->
+            <div class="col-md-4">
+                <label class="form-label fw-semibold fs-13 text-muted"><i class="fa-solid fa-circle-info me-1"></i> Filter by Status</label>
+                <select id="filterStatus" class="form-control rounded-pill">
+                    <option value="all">All Statuses (Booked & Available)</option>
+                    <option value="available">Available Only</option>
+                    <option value="booked">Booked Only</option>
+                    <option value="sold">Sold Only</option>
+                </select>
+            </div>
+            <!-- Search Text -->
+            <div class="col-md-4">
+                <label class="form-label fw-semibold fs-13 text-muted"><i class="fa-solid fa-magnifying-glass me-1"></i> Search Flat/Shop</label>
+                <input type="text" id="searchFlat" class="form-control rounded-pill" placeholder="Type Flat name (e.g. 3A, Shop-1)...">
+            </div>
+        </div>
+    </div>
+
     <!-- KPI Cards -->
     <div class="row g-4 mb-4">
         <div class="col-xl-3 col-lg-6 col-md-6">
@@ -181,13 +212,14 @@ $show_breadcrumb = false;
     <!-- Project Accordion -->
     <div class="accordion project-accordion" id="inventoryAccordion">
         <?php foreach ($inventoryProjects as $index => $row): ?>
-            <div class="accordion-item">
+            <div class="accordion-item" data-project-name="<?= htmlspecialchars($row['project_name']) ?>">
                 <h2 class="accordion-header" id="heading<?= $index ?>">
                     <button class="accordion-button <?= $index === 0 ? '' : 'collapsed' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<?= $index ?>" aria-expanded="<?= $index === 0 ? 'true' : 'false' ?>" aria-controls="collapse<?= $index ?>">
                         <div class="d-flex w-100 align-items-center justify-content-between pe-3">
                             <div class="d-flex align-items-center gap-3">
                                 <h5 class="mb-0 fw-bold"><i class="fa-solid fa-building me-2"></i> <?= htmlspecialchars($row['project_name']) ?></h5>
                                 <span class="badge bg-secondary rounded-pill">Total Flats: <?= $row['total_flats'] ?></span>
+                                <span class="badge bg-info rounded-pill matching-count-badge ms-2" style="display:none;"></span>
                             </div>
                             <div class="d-flex flex-wrap gap-2">
                                 <span class="project-badge bg-success bg-opacity-10 text-light border border-success border-opacity-25">
@@ -210,17 +242,22 @@ $show_breadcrumb = false;
                         <?php if (!empty($row['flats'])): ?>
                             <div class="row g-4">
                                 <?php foreach ($row['flats'] as $flat): 
+                                    $flatStatus = $flat['status'];
+                                    if ($flat['is_booked'] == 1 && $flatStatus !== 'sold') {
+                                        $flatStatus = 'booked';
+                                    }
+                                    
                                     $statusClass = 'flat-available';
                                     $statusBadge = '<span class="badge bg-success px-3 py-2 rounded-pill">Available</span>';
-                                    if ($flat['status'] == 'booked') {
+                                    if ($flatStatus == 'booked') {
                                         $statusClass = 'flat-booked';
                                         $statusBadge = '<span class="badge bg-danger px-3 py-2 rounded-pill">Booked</span>';
-                                    } elseif ($flat['status'] == 'sold') {
+                                    } elseif ($flatStatus == 'sold') {
                                         $statusClass = 'flat-sold';
                                         $statusBadge = '<span class="badge bg-dark px-3 py-2 rounded-pill">Sold</span>';
                                     }
                                 ?>
-                                    <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12">
+                                    <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12 flat-container" data-status="<?= htmlspecialchars($flatStatus) ?>" data-flat-name="<?= htmlspecialchars($flat['flat_name']) ?>">
                                         <div class="flat-card <?= $statusClass ?>">
                                             <div class="flat-header">
                                                 <h4 class="flat-title">Flat: <?= htmlspecialchars($flat['flat_name']) ?></h4>
@@ -271,4 +308,86 @@ $show_breadcrumb = false;
             </div>
         <?php endforeach; ?>
     </div>
+
+    <!-- No matching results message -->
+    <div id="noInventoryMessage" class="text-center py-5 bg-white rounded-3 border mt-4" style="display: none;">
+        <div class="text-muted mb-3"><i class="fa-solid fa-circle-exclamation display-4 text-warning"></i></div>
+        <h5 class="text-muted fw-semibold">No matching inventory found</h5>
+        <p class="text-muted fs-13 mb-0">Try adjusting your filters or search query.</p>
+    </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterProject = document.getElementById('filterProject');
+    const filterStatus = document.getElementById('filterStatus');
+    const searchFlat = document.getElementById('searchFlat');
+    const accordionItems = document.querySelectorAll('#inventoryAccordion .accordion-item');
+    const noInventoryMessage = document.getElementById('noInventoryMessage');
+
+    function applyFilters() {
+        const selectedProject = filterProject.value;
+        const selectedStatus = filterStatus.value;
+        const searchText = searchFlat.value.toLowerCase().trim();
+
+        let visibleProjectsCount = 0;
+
+        accordionItems.forEach(item => {
+            const projectName = item.getAttribute('data-project-name');
+            const flats = item.querySelectorAll('.flat-container');
+            let visibleFlatsCount = 0;
+            const totalFlatsCount = flats.length;
+
+            // Check if project matches selected project
+            const projectMatches = (selectedProject === 'all' || selectedProject === projectName);
+
+            flats.forEach(flat => {
+                const status = flat.getAttribute('data-status');
+                const flatName = flat.getAttribute('data-flat-name').toLowerCase();
+
+                // Check if status matches
+                const statusMatches = (selectedStatus === 'all' || selectedStatus === status);
+
+                // Check if search text matches (search in flat name)
+                const searchMatches = (searchText === '' || flatName.includes(searchText));
+
+                if (projectMatches && statusMatches && searchMatches) {
+                    flat.style.display = 'block';
+                    visibleFlatsCount++;
+                } else {
+                    flat.style.display = 'none';
+                }
+            });
+
+            const matchingBadge = item.querySelector('.matching-count-badge');
+
+            if (projectMatches && visibleFlatsCount > 0) {
+                item.style.display = 'block';
+                visibleProjectsCount++;
+                
+                // Show matching flats count badge
+                if (matchingBadge) {
+                    matchingBadge.textContent = `Showing: ${visibleFlatsCount} of ${totalFlatsCount}`;
+                    matchingBadge.style.display = 'inline-block';
+                }
+            } else {
+                item.style.display = 'none';
+                if (matchingBadge) {
+                    matchingBadge.style.display = 'none';
+                }
+            }
+        });
+
+        // Show/hide no results message
+        if (visibleProjectsCount === 0) {
+            noInventoryMessage.style.display = 'block';
+        } else {
+            noInventoryMessage.style.display = 'none';
+        }
+    }
+
+    filterProject.addEventListener('change', applyFilters);
+    filterStatus.addEventListener('change', applyFilters);
+    searchFlat.addEventListener('input', applyFilters);
+});
+</script>
