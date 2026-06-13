@@ -160,14 +160,7 @@ $show_breadcrumb = true;
                                     </tr>
                                 <?php endforeach; ?>
                            
-                            <?php else: ?>
-                                <tr>
-                                     <?php for ($i = 0; $i < 9; $i++): ?>
-                                    <td  class="text-center text-muted py-4">
-                                           <?php if ($i === 0): ?>No onboard projects found.<?php endif; ?>
-                                    </td>
-                                    <?php endfor; ?>
-                                </tr>
+                           
                             <?php endif; ?>
                         </tbody>
                     </table>
