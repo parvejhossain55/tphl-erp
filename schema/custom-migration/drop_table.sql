@@ -162,6 +162,7 @@ DROP TABLE IF EXISTS con_wastage_items;
 DROP TABLE IF EXISTS amenities;
 DROP TABLE IF EXISTS camera_logs;
 DROP TABLE IF EXISTS site_visits;
+DROP TABLE IF EXISTS project_floors;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

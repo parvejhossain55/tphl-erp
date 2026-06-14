@@ -252,9 +252,22 @@ class HomeController extends Controller
 
         $roles = $roleMap[strtolower($sessionRole)] ?? [strtolower($sessionRole)];
 
+        $constructionProjectsCount = 0;
+        $res = $this->db->query("
+            SELECT COUNT(DISTINCT p.id) AS c 
+            FROM projects p
+            LEFT JOIN project_phases pp ON pp.project_id = p.id
+            WHERE p.deleted_at IS NULL 
+            AND (p.under_construction = 1 OR pp.status = 'In Progress')
+        ");
+        if ($res) {
+            $constructionProjectsCount = (int)$res->fetch_assoc()['c'];
+        }
+
         $pendingRequests = $this->approvalModel->getPendingForRole($roles, 10);
 
         $this->view("home", [
+            "constructionProjectsCount" => $constructionProjectsCount,
             "current_route" => "home",
             "page_title"   => "Dashboard",
             "show_breadcrumb" => false,

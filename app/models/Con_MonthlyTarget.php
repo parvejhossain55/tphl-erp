@@ -135,7 +135,8 @@ class Con_MonthlyTarget {
                    pp.status AS phase_status,
                    p.name AS project_name,
                    p.block_no AS project_block,
-                   p.plot_no AS project_plot
+                   p.plot_no AS project_plot,
+                   p.building_type AS building_type
             FROM phase_monthly_targets pmt
             INNER JOIN project_phases pp ON pp.id = pmt.phase_id
             INNER JOIN projects p ON p.id = pmt.project_id
@@ -287,14 +288,14 @@ class Con_MonthlyTarget {
     public function createItem(array $d): int {
         $stmt = $this->db->prepare("
             INSERT INTO phase_monthly_target_items
-                (target_id, work_type_id, work_item_name, phase_item_id, unit,
+                (target_id, work_type_id, work_item_name, phase_item_id, floor_type, floor_no, unit,
                  monthly_target_qty, actual_qty,
                  planned_progress_pct, actual_progress_pct,
                  start_date, end_date, responsible_team, contractor_id,
                  priority, status,
                  week_1_qty, week_2_qty, week_3_qty, week_4_qty,
                  recovery_notes, sort_order)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $nextSort = $this->nextSort((int)$d['target_id']);
 
@@ -323,6 +324,8 @@ class Con_MonthlyTarget {
             }
         }
 
+        $floorType          = $d['floor_type']           ?? 'Typical_Floor';
+        $floorNo            = isset($d['floor_no']) && $d['floor_no'] !== '' ? (int)$d['floor_no'] : null;
         $unit               = $d['unit']                 ?? null;
         $monthlyTargetQty   = $d['monthly_target_qty']   ?? 0;
         $actualQty          = $d['actual_qty']           ?? 0;
@@ -340,11 +343,13 @@ class Con_MonthlyTarget {
         $week4Qty           = $d['week_4_qty']           ?? 0;
         $recoveryNotes      = $d['recovery_notes']       ?? null;
 
-        $stmt->bind_param('iisisddddsssisdddddsi',
+        $stmt->bind_param('iisiisdsddddsssisdddddsi',
             $d['target_id'],
             $workTypeId,
             $workItemName,
             $phaseItemId,
+            $floorType,
+            $floorNo,
             $unit,
             $monthlyTargetQty,
             $actualQty,
@@ -375,6 +380,8 @@ class Con_MonthlyTarget {
                     work_type_id        = ?,
                     work_item_name      = ?,
                     phase_item_id       = ?,
+                    floor_type          = ?,
+                    floor_no            = ?,
                     unit                = ?,
                     monthly_target_qty  = ?,
                     actual_qty          = ?,
@@ -411,6 +418,8 @@ class Con_MonthlyTarget {
                 $prio         = $i['priority'] ?? 'Medium';
                 $stat         = $i['status'] ?? 'Draft';
                 $recNotes     = !empty($i['recovery_notes']) ? trim($i['recovery_notes']) : null;
+                $floorType    = $i['floor_type'] ?? 'Typical_Floor';
+                $floorNo      = isset($i['floor_no']) && $i['floor_no'] !== '' ? (int)$i['floor_no'] : null;
 
                 // Fetch existing actual values (read-only, do not overwrite from form)
                 $existStmt = $this->db->prepare("SELECT target_id, actual_qty, actual_progress_pct FROM phase_monthly_target_items WHERE id=?");
@@ -446,10 +455,12 @@ class Con_MonthlyTarget {
                     }
                 }
 
-                $stmt->bind_param('isisddddssddddsiissi',
+                $stmt->bind_param('isisdsddddssddddsiissi',
                     $wid,
                     $name,
                     $phaseItemId,
+                    $floorType,
+                    $floorNo,
                     $unit,
                     $qty,
                     $actQty,

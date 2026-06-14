@@ -257,8 +257,9 @@ $hasTransactions = !empty($recentTransactions);
 </div>
 
 <!-- script in footer  -->
-<div class="row">
-    <div class="col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3 ">
+<div class="row equal-height-row">
+    <!-- Booking Overview -->
+    <div class="col-xxl-4 col-xl-12 col-lg-12 col-12 mb-3 ">
         <div class="card__wrapper height-equal">
             <div class="card__title-wrap d-flex flex-wrap gap-10 align-items-center justify-content-between mb-25">
                 <h5 class="card__heading-title">Booking Overview</h5>
@@ -284,16 +285,8 @@ $hasTransactions = !empty($recentTransactions);
         </div>
     </div>
 
-    <!--Accounts Charts Section -->
-
-<div class="d-none align-items-center gap-2">
-                        <label class="mb-0 fw-bold">View:</label>
-                        <select id="viewTypeSelector" class="form-select" style="width: auto; min-width: 150px;">
-                            <option value="cashin" <?= $viewType === 'cashin' ? 'selected' : '' ?>>Cash In</option>
-                            <option value="cashout" <?= $viewType === 'cashout' ? 'selected' : '' ?>>Cash Out</option>
-                        </select>
-                    </div>
-    <div class="col-xxl-6 col-xl-12 col-lg-12 mb-3">
+    <!-- Transaction Overview -->
+    <div class="col-xxl-4 col-xl-12 col-lg-12 mb-3">
         <div class="card__wrapper height-equal">
             <div class="card__title-wrap d-flex flex-wrap gap-10 align-items-center justify-content-between mb-50">
                 <h5 class="card__heading-title">Transaction Overview</h5>
@@ -357,6 +350,128 @@ $hasTransactions = !empty($recentTransactions);
         </div>
     </div>
 
+    <!-- AI Assistant Widget -->
+    <div class="col-xxl-4 col-xl-12 col-lg-12 mb-3">
+        <div class="card__wrapper height-equal d-flex flex-column justify-content-between" style="padding: 24px;">
+            <!-- Card Header -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="d-inline-flex align-items-center justify-content-center" style="color: var(--clr-theme-primary); font-size: 16px;">
+                        <i class="fa-light fa-sparkles" style="color: var(--clr-theme-primary);"></i>
+                    </span>
+                    <h6 class="mb-0 fw-bold" style="font-size: 14.5px;">AI Assistant</h6>
+                    <span class="badge fw-bold" style="font-size: 9px; padding: 3px 6px; border-radius: 6px; letter-spacing: 0.5px; text-transform: uppercase; background: rgba(var(--clr-theme-primary-rgb), 0.1); color: var(--clr-theme-primary); border: 1px solid rgba(var(--clr-theme-primary-rgb), 0.2);">Beta</span>
+                </div>
+                <a href="javascript:void(0)" class="text-muted" style="font-size: 14px;"><i class="fa-light fa-chevron-right"></i></a>
+            </div>
+
+            <!-- Container for switching views -->
+            <div class="flex-grow-1 d-flex flex-column overflow-hidden" style="min-height: 290px;">
+                
+                <!-- 1. Default View (Insights list) -->
+                <div id="ai-default-view" class="d-flex flex-column justify-content-between h-100">
+                    <!-- AI Banner with cute robot avatar -->
+                    <div class="p-3 mb-3 d-flex align-items-center justify-content-between position-relative overflow-hidden" style="background: linear-gradient(135deg, rgba(var(--clr-theme-primary-rgb), 0.08) 0%, rgba(var(--clr-theme-primary-rgb), 0.02) 100%); border-radius: 12px; border: 1px solid rgba(var(--clr-theme-primary-rgb), 0.12);">
+                        <div style="flex: 1; z-index: 1;">
+                            <h6 class="fw-bold mb-1" style="font-size: 14px;">Hi Management! 👋</h6>
+                            <p class="mb-0 text-muted" style="font-size: 11px; line-height: 1.4; opacity: 0.8;">I've analyzed your business data and found some key insights.</p>
+                        </div>
+                        <div style="width: 70px; height: 70px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; z-index: 1;">
+                            <img src="<?= $GLOBALS['base_url'] ?>/public/assets/images/ai_robot_avatar.png" alt="AI Robot" style="width: 100%; height: 100%; object-fit: contain;">
+                        </div>
+                    </div>
+
+                    <!-- Key Insights section -->
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2 mb-3" style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <i class="fa-light fa-lightbulb-on" style="color: var(--clr-theme-primary);"></i> Key Insights
+                        </div>
+                        
+                        <!-- Insight List -->
+                        <div class="d-flex flex-column gap-2">
+                            <!-- Insight 1: Total Booked Flats -->
+                            <div class="d-flex align-items-center justify-content-between p-2 rounded-3 hover-bg-light ai-insight-item" data-question="সিস্টেমে মোট কতটি ফ্ল্যাট বুকিং করা হয়েছে?" style="border: 1px solid rgba(0,0,0,0.03); cursor: pointer; transition: all 0.2s;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background: rgba(99, 102, 241, 0.1); color: #6366f1; flex-shrink: 0;">
+                                        <i class="fa-light fa-building"></i>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 11.5px; font-weight: 600; line-height: 1.3;">
+                                            Total flats booked: <span class="text-indigo fw-bold" style="color: #6366f1;"><?= $totalFlatsBooking ?? 0 ?></span>
+                                        </div>
+                                        <div style="font-size: 9.5px; color: #64748b; margin-top: 1px;">Based on overall sales inventory data.</div>
+                                    </div>
+                                </div>
+                                <div class="text-muted ps-2" style="font-size: 12px;"><i class="fa-light fa-chevron-right"></i></div>
+                            </div>
+
+                            <!-- Insight 2: Construction in Progress -->
+                            <div class="d-flex align-items-center justify-content-between p-2 rounded-3 hover-bg-light ai-insight-item" data-question="বর্তমানে কোন কোন প্রজেক্টে কনস্ট্রাকশনের কাজ চলছে?" style="border: 1px solid rgba(0,0,0,0.03); cursor: pointer; transition: all 0.2s;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; flex-shrink: 0;">
+                                        <i class="fa-light fa-helmet-safety"></i>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 11.5px; font-weight: 600; line-height: 1.3;">
+                                            Construction in progress: <span class="text-warning fw-bold"><?= $constructionProjectsCount ?? 0 ?></span> projects
+                                        </div>
+                                        <div style="font-size: 9.5px; color: #64748b; margin-top: 1px;">Active phases currently under development.</div>
+                                    </div>
+                                </div>
+                                <div class="text-muted ps-2" style="font-size: 12px;"><i class="fa-light fa-chevron-right"></i></div>
+                            </div>
+
+                            <!-- Insight 3: Net Cashflow -->
+                            <div class="d-flex align-items-center justify-content-between p-2 rounded-3 hover-bg-light ai-insight-item" data-question="আমাদের টোটাল ক্যাশফ্লো এবং ক্যাশ ইন ও ক্যাশ আউট এর হিসাব দেখাও" style="border: 1px solid rgba(0,0,0,0.03); cursor: pointer; transition: all 0.2s;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background: rgba(16, 185, 129, 0.1); color: #10b981; flex-shrink: 0;">
+                                        <i class="fa-light fa-wallet"></i>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 11.5px; font-weight: 600; line-height: 1.3;">
+                                            Net Cashflow: <span class="text-success fw-bold">৳<?= format_bdt(($overviewStats['total_cashin'] ?? 0) - ($overviewStats['total_cashout'] ?? 0)) ?></span>
+                                        </div>
+                                        <div style="font-size: 9.5px; color: #64748b; margin-top: 1px;">Cash In: ৳<?= format_bdt($overviewStats['total_cashin'] ?? 0) ?> | Cash Out: ৳<?= format_bdt($overviewStats['total_cashout'] ?? 0) ?></div>
+                                    </div>
+                                </div>
+                                <div class="text-muted ps-2" style="font-size: 12px;"><i class="fa-light fa-chevron-right"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Chat View (Conversation log) -->
+                <div id="ai-chat-view" class="d-none d-flex flex-column h-100 justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                        <button id="ai-back-btn" class="btn btn-sm p-0 text-muted" style="font-size: 11px; font-weight: 600; background: transparent; border: none; box-shadow: none;">
+                            <i class="fa-light fa-arrow-left"></i> Back to Insights
+                        </button>
+                        <button id="ai-clear-btn" class="btn btn-sm p-0 text-muted" style="font-size: 11px; background: transparent; border: none; box-shadow: none;" title="Clear conversation">
+                            <i class="fa-light fa-trash"></i>
+                        </button>
+                    </div>
+                    <!-- Messages Log -->
+                    <div id="ai-messages-list" class="flex-grow-1 overflow-auto pe-1" style="max-height: 235px; font-size: 11.5px; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin;">
+                        <!-- Messages dynamically added here -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Ask anything search input -->
+            <div class="mt-3">
+                <div class="d-flex align-items-center p-1 w-100 flex-nowrap" style="border: 1.5px solid rgba(var(--clr-theme-primary-rgb), 0.15); border-radius: 24px; background: var(--clr-bg-body); box-shadow: 0 2px 8px rgba(var(--clr-theme-primary-rgb), 0.03); gap: 8px;">
+                    <input type="text" id="ai-input" class="form-control border-0 bg-transparent flex-grow-1" placeholder="Ask me anything..." style="font-size: 12px; box-shadow: none; padding-left: 14px; min-width: 0;">
+                    <button id="ai-send-btn" class="btn btn-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 32px; height: 32px; min-width: 32px; min-height: 32px; border-radius: 50% !important; padding: 0; background: var(--clr-theme-primary); border: none;">
+                        <i class="fa-light fa-arrow-right" style="font-size: 12px; color: #fff;"></i>
+                    </button>
+                </div>
+                <div class="text-center mt-2" style="font-size: 9.5px; color: #94a3b8;">
+                    AI insights are based on your data. <a href="javascript:void(0)" class="text-decoration-underline text-muted" style="color: inherit;">Learn more <i class="fa-light fa-info-circle" style="font-size: 10px;"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 
@@ -610,11 +725,13 @@ $hasTransactions = !empty($recentTransactions);
         const periodButtons = document.querySelectorAll('.btn__group .btn');
 
         // View type change handler
-        viewTypeSelector.addEventListener('change', function() {
-            const url = new URL(window.location.href);
-            url.searchParams.set('view', this.value);
-            window.location.href = url.toString();
-        });
+        if (viewTypeSelector) {
+            viewTypeSelector.addEventListener('change', function() {
+                const url = new URL(window.location.href);
+                url.searchParams.set('view', this.value);
+                window.location.href = url.toString();
+            });
+        }
 
         // Period button active state
         periodButtons.forEach(button => {
@@ -976,6 +1093,131 @@ $hasTransactions = !empty($recentTransactions);
                 }
             });
         }
+
+        // ==========================================
+        // AI Assistant JavaScript Handlers
+        // ==========================================
+        const aiInput = document.getElementById('ai-input');
+        const aiSendBtn = document.getElementById('ai-send-btn');
+        const aiDefaultView = document.getElementById('ai-default-view');
+        const aiChatView = document.getElementById('ai-chat-view');
+        const aiMessagesList = document.getElementById('ai-messages-list');
+        const aiBackBtn = document.getElementById('ai-back-btn');
+        const aiClearBtn = document.getElementById('ai-clear-btn');
+        const insightItems = document.querySelectorAll('.ai-insight-item');
+        const baseUrl = '<?= $GLOBALS['base_url'] ?>';
+
+        function addMessage(sender, text, isHtml = false) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'd-flex flex-column mb-2';
+            
+            const contentSpan = document.createElement('div');
+            contentSpan.style.maxWidth = '85%';
+            contentSpan.style.padding = '8px 12px';
+            contentSpan.style.borderRadius = '12px';
+            contentSpan.style.lineHeight = '1.4';
+            contentSpan.style.wordBreak = 'break-word';
+
+            if (sender === 'user') {
+                msgDiv.className += ' align-items-end';
+                contentSpan.style.background = 'var(--clr-theme-primary)';
+                contentSpan.style.color = '#fff';
+                contentSpan.style.borderRadius = '12px 12px 0 12px';
+                contentSpan.innerText = text;
+            } else {
+                msgDiv.className += ' align-items-start';
+                contentSpan.style.borderRadius = '12px 12px 12px 0';
+                contentSpan.style.border = '1px solid rgba(var(--clr-theme-primary-rgb), 0.2)';
+                if (isHtml) {
+                    contentSpan.innerHTML = text;
+                } else {
+                    contentSpan.innerText = text;
+                }
+            }
+
+            msgDiv.appendChild(contentSpan);
+            aiMessagesList.appendChild(msgDiv);
+            aiMessagesList.scrollTop = aiMessagesList.scrollHeight;
+        }
+
+        function sendMessage(text) {
+            if (!text || text.trim() === '') return;
+            
+            // Switch view
+            aiDefaultView.classList.add('d-none');
+            aiChatView.classList.remove('d-none');
+
+            // Add user message
+            addMessage('user', text);
+            aiInput.value = '';
+
+            // Add loading indicator
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = 'ai-loading-indicator';
+            loadingDiv.className = 'd-flex align-items-start mb-2';
+            loadingDiv.innerHTML = `
+                <div style="max-width: 85%; padding: 8px 12px; border-radius: 12px 12px 12px 0; border: 1px solid rgba(var(--clr-theme-primary-rgb), 0.1);">
+                    <i class="fa-light fa-spinner fa-spin me-2"></i> এআই প্রসেস করছে...
+                </div>
+            `;
+            aiMessagesList.appendChild(loadingDiv);
+            aiMessagesList.scrollTop = aiMessagesList.scrollHeight;
+
+            // Fetch query from ChatController
+            fetch(baseUrl + '/ai-chatbox', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: text })
+            })
+            .then(res => res.json())
+            .then(data => {
+                const loader = document.getElementById('ai-loading-indicator');
+                if (loader) loader.remove();
+
+                const reply = data.reply || 'দুঃখিত, কোনো উত্তর পাওয়া যায়নি।';
+                const formattedReply = reply.replace(/\n/g, '<br>');
+                addMessage('ai', formattedReply, true);
+            })
+            .catch(err => {
+                const loader = document.getElementById('ai-loading-indicator');
+                if (loader) loader.remove();
+                addMessage('ai', 'দুঃখিত, সার্ভারের সাথে সংযোগ করা সম্ভব হয়নি।');
+                console.error(err);
+            });
+        }
+
+        if (aiSendBtn && aiInput) {
+            aiSendBtn.addEventListener('click', () => sendMessage(aiInput.value));
+            aiInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') sendMessage(aiInput.value);
+            });
+        }
+
+        if (aiBackBtn) {
+            aiBackBtn.addEventListener('click', () => {
+                aiChatView.classList.add('d-none');
+                aiDefaultView.classList.remove('d-none');
+            });
+        }
+
+        if (aiClearBtn) {
+            aiClearBtn.addEventListener('click', () => {
+                aiMessagesList.innerHTML = '';
+                addMessage('ai', 'আসসালামু আলাইকুম! 👋 আমি আপনার AI Assistant। আপনার বিজনেস এবং প্রজেক্টের যেকোনো প্রশ্ন আমাকে জিজ্ঞাসা করতে পারেন।');
+            });
+        }
+
+        insightItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const ques = item.getAttribute('data-question');
+                if (ques) sendMessage(ques);
+            });
+        });
+
+        // Initialize greeting message
+        addMessage('ai', 'আসসালামু আলাইকুম! 👋 আমি আপনার AI Assistant। আপনার বিজনেস এবং প্রজেক্টের যেকোনো প্রশ্ন আমাকে জিজ্ঞাসা করতে পারেন।');
     });
 </script>
 
@@ -1054,6 +1296,56 @@ $hasTransactions = !empty($recentTransactions);
 
         .btn__group::-webkit-scrollbar {
             display: none;
+        }
+    }
+
+    /* AI Assistant Hover effect */
+    .hover-bg-light:hover {
+        background-color: rgba(var(--clr-theme-primary-rgb), 0.05) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    }
+
+    /* ==========================================
+       AI Assistant Responsive Styles
+       ========================================== */
+    #ai-default-view {
+        flex-direction: column !important; /* Stack vertically on mobile by default */
+    }
+
+    #ai-default-view > div:first-child {
+        width: 100%;
+        margin-bottom: 16px !important;
+    }
+
+    #ai-default-view > div:last-child {
+        width: 100%;
+    }
+
+    /* Force column layout on mobile for specific AI assistant containers to override style.css row force */
+    @media (max-width: 767px) {
+        #ai-default-view,
+        #ai-default-view .flex-column,
+        #ai-chat-view,
+        #ai-chat-view .flex-column,
+        #ai-messages-list {
+            flex-direction: column !important;
+        }
+    }
+
+    @media (min-width: 768px) {
+        #ai-default-view {
+            flex-direction: row !important; /* Side-by-side on desktop/tablet */
+            gap: 20px;
+        }
+        #ai-default-view > div:first-child {
+            flex: 1 1 45%;
+            margin-bottom: 0 !important;
+            min-width: 0;
+        }
+        #ai-default-view > div:last-child {
+            flex: 1 1 55%;
+            min-width: 0;
         }
     }
 </style>

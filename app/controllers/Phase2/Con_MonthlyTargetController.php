@@ -113,6 +113,12 @@ class Con_MonthlyTargetController extends Controller {
         $viewerRole = (int)($_SESSION['user']['role_id'] ?? 0);
         $isSiteEngineer = !in_array($viewerRole, [1, 3, 15, 22]);
 
+        // Get project floors
+        $stmtFl = $this->db->prepare("SELECT id, floor_no, floor_type, slab_area_sqft FROM project_floors WHERE project_id = ? ORDER BY floor_no ASC");
+        $stmtFl->bind_param('i', $target['project_id']);
+        $stmtFl->execute();
+        $projectFloors = $stmtFl->get_result()->fetch_all(MYSQLI_ASSOC);
+
         $this->view('phase2/monthly_targets/form', [
             'current_route' => 'con-monthly-targets',
             'target'        => $target,
@@ -123,6 +129,7 @@ class Con_MonthlyTargetController extends Controller {
             'phaseSubItems' => $phaseSubItems,
             'contractors'   => $contractors,
             'is_readonly'   => $isSiteEngineer,
+            'projectFloors' => $projectFloors,
         ]);
     }
 
@@ -216,6 +223,17 @@ class Con_MonthlyTargetController extends Controller {
 
         $raw = $_POST['items'] ?? [];
         if (!empty($raw)) {
+            foreach ($raw as $k => $i) {
+                $floorTag = trim($i['floor_tag'] ?? '');
+                $floorType = 'Typical_Floor';
+                $floorNo = null;
+                if ($floorTag && strpos($floorTag, '|') !== false) {
+                    list($floorType, $floorNoStr) = explode('|', $floorTag);
+                    $floorNo = ($floorNoStr !== '') ? (int)$floorNoStr : null;
+                }
+                $raw[$k]['floor_type'] = $floorType;
+                $raw[$k]['floor_no'] = $floorNo;
+            }
             if ($this->model->batchUpdateItems($raw)) {
                 setSuccess("Items saved successfully.");
             } else {
@@ -243,11 +261,21 @@ class Con_MonthlyTargetController extends Controller {
         $startDate = !empty($_POST['start_date']) ? trim($_POST['start_date']) : null;
         $endDate   = !empty($_POST['end_date'])   ? trim($_POST['end_date'])   : null;
 
+        $floorTag = trim($_POST['floor_tag'] ?? '');
+        $floorType = 'Typical_Floor';
+        $floorNo = null;
+        if ($floorTag && strpos($floorTag, '|') !== false) {
+            list($floorType, $floorNoStr) = explode('|', $floorTag);
+            $floorNo = ($floorNoStr !== '') ? (int)$floorNoStr : null;
+        }
+
         $id = $this->model->createItem([
             'target_id'           => $target_id,
             'work_type_id'        => $wid,
             'work_item_name'      => $name,
             'phase_item_id'       => !empty($_POST['phase_item_id']) ? (int)$_POST['phase_item_id'] : null,
+            'floor_type'          => $floorType,
+            'floor_no'            => $floorNo,
             'unit'                => trim($_POST['unit']               ?? ''),
             'monthly_target_qty'  => (float)($_POST['monthly_target_qty'] ?? 0),
             'planned_progress_pct'=> (float)($_POST['planned_progress_pct'] ?? 0),

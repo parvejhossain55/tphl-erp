@@ -264,8 +264,13 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
                 <input type="date" name="end_date" class="form-control">
             </div>
             <div class="col-md-2">
-                <label class="form-label fw-semibold text-muted">Total Area (sqft)</label>
-                <input type="number" step="0.01" name="total_area_sqft" class="form-control" placeholder="0.00">
+                <label class="form-label fw-semibold text-muted d-flex justify-content-between align-items-center">
+                    <span>Total Area (sqft)</span>
+                    <button type="button" class="btn btn-link p-0 text-decoration-none" style="font-size:11px" onclick="syncTotalArea()" title="Sync from Floor Setup">
+                        <i class="bi bi-arrow-repeat"></i> Sync
+                    </button>
+                </label>
+                <input type="number" step="0.01" name="total_area_sqft" id="totalAreaSqft" class="form-control" placeholder="0.00">
             </div>
             <div class="col-md-4">
                 <label class="form-label fw-semibold text-muted">Budget Link <small class="text-secondary">(Optional)</small></label>
@@ -282,6 +287,8 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
             
             <!-- Project Timeline Section -->
             <div class="col-md-12 mt-3" id="projectTimelineSection" style="display:none;"></div>
+            <!-- Project Floors Section -->
+            <div class="col-md-12 mt-3" id="projectFloorsSection" style="display:none;"></div>
         </div>
     </div>
 </div>
@@ -386,8 +393,36 @@ MATERIALS.forEach(m => { matMap[m.id] = m; });
 let dtBlockCount    = 0;   // total dt blocks added
 let projectDrawings = [];  // [{id, design_type_id, design_type, design_link, version, status}]
 let projectPhaseItems = []; // all phase items for the project
+let projectFloors   = [];  // configured project floors
 let dtColors        = ['dt-color-1','dt-color-2','dt-color-3','dt-color-4',
                         'dt-color-5','dt-color-6','dt-color-7','dt-color-8'];
+
+function getOrdinal(n) {
+    let s = ["th", "st", "nd", "rd"],
+        v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function buildFloorOptions(floors, selectedType = 'Typical_Floor', selectedNo = null) {
+    let html = `<option value="Typical_Floor|" ${selectedType === 'Typical_Floor' && (selectedNo === null || selectedNo === '') ? 'selected' : ''}>General/Unassigned</option>`;
+    if (floors && floors.length) {
+        floors.forEach(f => {
+            let label = '';
+            if (f.floor_type === 'Roof') {
+                label = `Roof (Lvl ${f.floor_no})`;
+            } else if (f.floor_type === 'Ground_Floor') {
+                label = `Ground Floor`;
+            } else if (f.floor_type === 'Basement') {
+                label = `Basement ${Math.abs(f.floor_no)}`;
+            } else {
+                label = `${getOrdinal(f.floor_no)} Floor`;
+            }
+            const isSel = (String(f.floor_type) === String(selectedType) && (selectedNo !== null && selectedNo !== '' && String(f.floor_no) === String(selectedNo))) ? 'selected' : '';
+            html += `<option value="${f.floor_type}|${f.floor_no}" ${isSel}>${label}</option>`;
+        });
+    }
+    return html;
+}
 
 // ── Format number ─────────────────────────────────────────────────────
 function fmt(n) {
@@ -512,12 +547,13 @@ function buildDtBlock(blockIdx) {
                     <table class="labor-table" id="labor-table-${blockIdx}">
                         <thead>
                             <tr>
-                                <th style="width:30%">Labor Type / Phase Item</th>
+                                <th style="width:25%">Labor Type / Phase Item</th>
+                                <th style="width:15%">Floor</th>
                                 <th style="width:15%">Description</th>
                                 <th style="width:15%">Rate/sqft (৳)</th>
                                 <th style="width:15%">Area (sqft)</th>
-                                <th style="width:15%">Subtotal</th>
-                                <th style="width:10%">Del</th>
+                                <th style="width:10%">Subtotal</th>
+                                <th style="width:5%">Del</th>
                             </tr>
                         </thead>
                         <tbody id="labor-body-${blockIdx}">
@@ -525,7 +561,7 @@ function buildDtBlock(blockIdx) {
                         </tbody>
                         <tfoot>
                             <tr style="background:#f0fdf4">
-                                <td colspan="4" class="text-end fw-bold py-2 pe-3 text-success">
+                                <td colspan="5" class="text-end fw-bold py-2 pe-3 text-success">
                                     Labor Total:
                                 </td>
                                 <td class="fw-bold text-success" id="labor-total-${blockIdx}">0.00</td>
@@ -751,15 +787,16 @@ function addWtBlock(dtBlockIdx) {
                 <thead>
                     <tr>
                         <th style="width:35px">SL</th>
-                        <th style="width:22%">Location / Description</th>
-                        <th style="width:8%">Unit</th>
+                        <th style="width:18%">Location / Description</th>
+                        <th style="width:12%">Floor</th>
+                        <th style="width:6%">Unit</th>
                         <th style="width:6%">Nos</th>
-                        <th style="width:7%">L (ft)</th>
-                        <th style="width:7%">W (ft)</th>
-                        <th style="width:7%">H (ft)</th>
-                        <th style="width:9%">Volume/Qty</th>
+                        <th style="width:6%">L (ft)</th>
+                        <th style="width:6%">W (ft)</th>
+                        <th style="width:6%">H (ft)</th>
+                        <th style="width:8%">Volume/Qty</th>
                         <th style="width:12%">Material</th>
-                        <th style="width:9%">Rate (৳)</th>
+                        <th style="width:8%">Rate (৳)</th>
                         <th style="width:9%">Subtotal</th>
                         <th style="width:28px">Del</th>
                     </tr>
@@ -768,7 +805,7 @@ function addWtBlock(dtBlockIdx) {
                 </tbody>
                 <tfoot>
                     <tr class="wt-subtotal-row">
-                        <td colspan="10" class="text-end pe-3">Work Type Subtotal:</td>
+                        <td colspan="11" class="text-end pe-3">Work Type Subtotal:</td>
                         <td id="wt-subtotal-${blockKey}">0.000</td>
                         <td></td>
                     </tr>
@@ -843,10 +880,17 @@ function addQsRow(blockKey, dtBlockIdx) {
     tr.dataset.blockKey  = blockKey;
     tr.dataset.dtBlockIdx = dtBlockIdx;
 
+    const floorOptions = buildFloorOptions(projectFloors);
+
     tr.innerHTML = `
         <td class="text-center text-muted sl-cell">${sl}</td>
         <td><input type="text" name="item_location[]" class="form-control form-control-sm qs-location"
                    placeholder="e.g., Pile cap-08 [10 Nos]"></td>
+        <td>
+            <select name="item_floor_tag[]" class="form-select form-select-sm" style="min-width:110px">
+                ${floorOptions}
+            </select>
+        </td>
         <td><input type="text" name="item_unit[]" class="form-control form-control-sm qs-unit"
                    placeholder="Cft" style="width:55px"></td>
         <td><input type="number" name="item_nos[]" step="0.001" min="0"
@@ -1090,6 +1134,8 @@ function addLaborRow(dtBlockIdx, existingLabor) {
         }).join('');
     }
 
+    const floorOptions = buildFloorOptions(projectFloors, ex.floor_type, ex.floor_no);
+
     const tr = document.createElement('tr');
     tr.className = 'labor-row';
     tr.dataset.dtBlockIdx = dtBlockIdx;
@@ -1103,6 +1149,11 @@ function addLaborRow(dtBlockIdx, existingLabor) {
             </select>
             <input type="hidden" name="labor_design_type_id[]" value="${dtId}">
             <input type="hidden" name="labor_work_type_id[]" value="${ex.work_type_id || ''}">
+        </td>
+        <td>
+            <select name="labor_floor_tag[]" class="form-select form-select-sm" style="min-width:110px">
+                ${floorOptions}
+            </select>
         </td>
         <td><input type="text" name="labor_description[]" class="form-control form-control-sm"
                    value="${ex.description || ''}" placeholder="Note..."></td>
@@ -1310,6 +1361,62 @@ document.getElementById('estimateProjectId').addEventListener('change', function
         });
         projectDrawings = Object.values(seen);
         projectPhaseItems = drawData.phase_items || [];
+        projectFloors = drawData.floors || [];
+
+        // Auto-calculate and set Total Area (sqft) & display project floors
+        const floorsSec = document.getElementById('projectFloorsSection');
+        if (floorsSec) {
+            if (projectFloors && projectFloors.length > 0) {
+                let totalSlabArea = 0;
+                let floorsHtml = '';
+                projectFloors.forEach(f => {
+                    let label = '';
+                    if (f.floor_type === 'Roof') {
+                        label = `Roof (Lvl ${f.floor_no})`;
+                    } else if (f.floor_type === 'Ground_Floor') {
+                        label = `Ground Floor`;
+                    } else if (f.floor_type === 'Basement') {
+                        label = `Basement ${Math.abs(f.floor_no)}`;
+                    } else {
+                        label = `${getOrdinal(f.floor_no)} Floor`;
+                    }
+                    totalSlabArea += parseFloat(f.slab_area_sqft || 0);
+                    floorsHtml += `
+                        <span class="badge bg-light text-dark border p-2 me-2 mb-2" style="font-size:0.85rem">
+                            <i class="bi bi-building"></i> ${label}: <strong>${parseFloat(f.slab_area_sqft).toLocaleString('en-BD')} sqft</strong>
+                        </span>`;
+                });
+
+                floorsSec.innerHTML = `
+                    <div class="p-3 rounded border mt-2" style="background:#f0fdf4; border-color:#bbf7d0;">
+                        <div class="d-flex align-items-center justify-content-between mb-2 text-success fw-bold" style="font-size:0.9rem">
+                            <span><i class="bi bi-layers-half"></i> Project Floor Setup Details</span>
+                            <span class="badge bg-success">Total: ${totalSlabArea.toLocaleString('en-BD')} sqft</span>
+                        </div>
+                        <div class="d-flex flex-wrap">
+                            ${floorsHtml}
+                        </div>
+                    </div>`;
+                floorsSec.style.display = '';
+
+                // Auto-populate Total Area (sqft)
+                const totalAreaInput = document.getElementById('totalAreaSqft');
+                if (totalAreaInput) {
+                    totalAreaInput.value = totalSlabArea.toFixed(2);
+                }
+            } else {
+                floorsSec.innerHTML = `
+                    <div class="alert alert-warning py-2 mb-0 d-flex align-items-center gap-2 mt-2" style="font-size:0.85rem">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <span>This project has no Floor Setup configured. <a href="${BASE_URL}/con-floor-setup/${pid}" target="_blank" class="fw-bold text-decoration-underline">Set up floors now →</a></span>
+                    </div>`;
+                floorsSec.style.display = '';
+                const totalAreaInput = document.getElementById('totalAreaSqft');
+                if (totalAreaInput) {
+                    totalAreaInput.value = '';
+                }
+            }
+        }
 
         // ── Project Timeline ──────────────────────────────────────────
         const timeline = drawData.timeline || null;
@@ -1430,6 +1537,34 @@ window.refreshPhaseItemOptions = refreshPhaseItemOptions;
 window.refreshLaborPhaseItemOptions = refreshLaborPhaseItemOptions;
 window.onPhaseItemChange  = onPhaseItemChange;
 window.onLaborPhaseItemChange = onLaborPhaseItemChange;
+
+function syncTotalArea() {
+    let totalSlabArea = 0;
+    if (projectFloors && projectFloors.length > 0) {
+        projectFloors.forEach(f => {
+            totalSlabArea += parseFloat(f.slab_area_sqft || 0);
+        });
+    }
+    const totalAreaInput = document.getElementById('totalAreaSqft');
+    if (totalAreaInput) {
+        totalAreaInput.value = totalSlabArea.toFixed(2);
+        Swal.fire({
+            icon: 'success',
+            title: 'Synced!',
+            text: 'Total area synced from project floor setup (' + totalSlabArea.toFixed(2) + ' sqft).',
+            timer: 1500,
+            showConfirmButton: false
+        });
+    } else {
+        Swal.fire({
+            icon: 'warning',
+            title: 'No Floor Config',
+            text: 'No floor setup configurations found for this project.',
+            confirmButtonColor: 'var(--clr-theme-primary)'
+        });
+    }
+}
+window.syncTotalArea = syncTotalArea;
 
 // ── Initial state message (wait for project select) ─────────────────────
 document.getElementById('dtBlocksContainer').innerHTML =

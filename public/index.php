@@ -41,7 +41,8 @@ spl_autoload_register(function ($class) use ($root) {
         $root . "/app/controllers/Phase2/$class.php",   // Phase 2 controllers
         $root . "/app/services/$class.php",
         $root . "/app/helpers/$class.php",
-        $root . "/app/ai/$class.php"
+        $root . "/app/ai/$class.php",
+        $root . "/app/$class.php"                       // Direct namespace-to-folder matching under app/
     ];
 
     foreach ($paths as $file) {
@@ -836,6 +837,8 @@ $routes['con-project-timeline/(\d+)']        = ['controller' => 'Phase2\Con_Proj
 $routes['con-project-timeline-store']         = ['controller' => 'Phase2\Con_ProjectTimelineController', 'method' => 'store'];
 $routes['con-project-timeline-edit/(\d+)']    = ['controller' => 'Phase2\Con_ProjectTimelineController', 'method' => 'edit'];
 $routes['con-project-timeline-update/(\d+)']  = ['controller' => 'Phase2\Con_ProjectTimelineController', 'method' => 'update'];
+$routes['con-floor-setup/(\d+)']             = ['controller' => 'Phase2\Con_ProjectTimelineController', 'method' => 'floorSetup'];
+$routes['con-floor-setup-save/(\d+)']        = ['controller' => 'Phase2\Con_ProjectTimelineController', 'method' => 'floorSetupSave'];
 
 // Phase-wise Construction - Module 2: Phase Plan
 $routes['con-phase-plan/(\d+)']         = ['controller' => 'Phase2\Con_PhasePlanController', 'method' => 'index'];
@@ -1081,6 +1084,7 @@ $routes['con-boq-approve/(\d+)']       = ['controller' => 'Phase2\Con_BOQControl
 $routes['con-boq-delete']              = ['controller' => 'Phase2\Con_BOQController', 'method' => 'delete'];
 $routes['con-ajax-boq-targets']        = ['controller' => 'Phase2\Con_BOQController', 'method' => 'ajaxGetTargetsByProject'];
 $routes['con-ajax-material-stock']     = ['controller' => 'Phase2\Con_BOQController', 'method' => 'ajaxGetMaterialStock'];
+$routes['con-ajax-check-boq-limits']     = ['controller' => 'Phase2\Con_BOQController', 'method' => 'ajaxCheckBOQLimits'];
 
 
 // (Working Plan + Budget routes moved below to avoid duplicates — see lines 839+)

@@ -369,16 +369,20 @@ public function getRemainingBOQ($projectId, $boqId = null) {
         $del->execute();
 
         $stmt = $this->db->prepare(
-            "INSERT INTO {$this->itemTable} (boq_id, material_id, quantity, unit_cost, required_date)
-             VALUES (?, ?, ?, ?, ?)"
+            "INSERT INTO {$this->itemTable} (boq_id, material_id, floor_type, floor_no, quantity, unit_cost, required_date)
+             VALUES (?, ?, ?, ?, ?, ?, ?)"
         );
 
         foreach ($items as $item) {
             $reqDate = !empty($item['required_date']) ? $item['required_date'] : null;
+            $floorType = $item['floor_type'] ?? 'Typical_Floor';
+            $floorNo = isset($item['floor_no']) && $item['floor_no'] !== '' ? (int)$item['floor_no'] : null;
             $stmt->bind_param(
-                'iidds',
+                'iisiidd',
                 $boqId,
                 $item['material_id'],
+                $floorType,
+                $floorNo,
                 $item['quantity'],
                 $item['unit_cost'],
                 $reqDate

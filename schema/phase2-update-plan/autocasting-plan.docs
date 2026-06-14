@@ -1,0 +1,135 @@
+প্রজেক্ট ফ্লোর-ভিত্তিক ট্র্যাকিং ও অটো-কস্টিং ইঞ্জিন ইমপ্লিমেন্টেশন প্ল্যান
+এই প্ল্যানটি টিপিএইচএল ইআরপি (TPHL-ERP) সিস্টেমে ফ্লোর ও ফেইজ ভিত্তিক মালামাল ট্র্যাকিং এবং স্কয়ারফিট-ভিত্তিক অটো-কস্টিং ইঞ্জিন যুক্ত করার সম্পূর্ণ ডিজাইন ও গাইডলাইন বর্ণনা করে।
+
+User Review Required
+IMPORTANT
+
+রেশিও এবং ডেটাবেস মাইগ্রেশন: এই পরিবর্তনগুলো রান করার পূর্বে ডেটাবেসের ব্যাকআপ নিয়ে রাখা আবশ্যক। project_floors টেবিলটি যুক্ত করার পর প্রজেক্ট ক্রিয়েশন স্ক্রিনে ফ্লোর সেটিংস পেজ যোগ করতে হবে।
+
+Proposed Changes
+১. ডেটাবেস স্তরের পরিবর্তন (Database Changes - SQL Patch)
+নতুন টেবিল সৃষ্টি এবং বিদ্যমান টেবিলগুলোতে নতুন ট্র্যাকিং কলাম যুক্ত করতে নিচের SQL স্ক্রিপ্টটি রান করতে হবে:
+
+sql
+
+SET FOREIGN_KEY_CHECKS = 0;
+-- A. ফ্লোর কনফিগারেশন টেবিল তৈরি (১টি নতুন টেবিল)
+CREATE TABLE IF NOT EXISTS `project_floors` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `project_id` INT NOT NULL,
+  `floor_no` INT NOT NULL COMMENT 'e.g., -1 = Basement, 0 = Ground, 1 = 1st floor',
+  `floor_type` ENUM('Basement', 'Ground_Floor', 'Typical_Floor', 'Roof') NOT NULL DEFAULT 'Typical_Floor',
+  `slab_area_sqft` DECIMAL(10,2) NOT NULL COMMENT 'প্রকৃত স্ল্যাব কন্সট্রাকশন এরিয়া',
+  `height_ft` DECIMAL(5,2) DEFAULT 10.00 COMMENT 'ফ্লোর হাইট',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_project_floor` (`project_id`, `floor_no`),
+  CONSTRAINT `fk_pf_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- B. অটো-কস্টিং রেশিও কনফিগারেশন টেবিল তৈরি (১টি নতুন টেবিল)
+CREATE TABLE IF NOT EXISTS `material_estimation_ratios` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `floor_type` ENUM('Basement', 'Ground_Floor', 'Typical_Floor', 'Roof') NOT NULL,
+  `material_id` INT UNSIGNED NOT NULL,
+  `ratio_per_sqft` DECIMAL(8,4) NOT NULL COMMENT 'প্রতি SFT তে প্রয়োজনীয় মালামালের পরিমাণ',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_floor_material` (`floor_type`, `material_id`),
+  CONSTRAINT `fk_mer_material` FOREIGN KEY (`material_id`) REFERENCES `con_materials` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- C. বিদ্যমান টেবিলসমূহে কলাম এবং রিলেশন যুক্তকরণ
+-- ১. এস্টিমেট আইটেম টেবিল
+ALTER TABLE `initial_estimate_items` 
+  ADD COLUMN `floor_type` ENUM('Basement', 'Ground_Floor', 'Typical_Floor', 'Roof') NOT NULL DEFAULT 'Typical_Floor' AFTER `phase_item_id`,
+  ADD COLUMN `floor_no` INT(11) DEFAULT NULL AFTER `floor_type`,
+  ADD INDEX `idx_iei_floor` (`floor_no`);
+-- ২. এস্টিমেট লেবার টেবিল
+ALTER TABLE `initial_estimate_labors` 
+  ADD COLUMN `floor_type` ENUM('Basement', 'Ground_Floor', 'Typical_Floor', 'Roof') NOT NULL DEFAULT 'Typical_Floor' AFTER `phase_item_id`,
+  ADD COLUMN `floor_no` INT(11) DEFAULT NULL AFTER `floor_type`,
+  ADD INDEX `idx_iel_floor` (`floor_no`);
+-- ৩. BOQ বা BOM আইটেম টেবিল
+ALTER TABLE `boq_items` 
+  ADD COLUMN `floor_type` ENUM('Basement', 'Ground_Floor', 'Typical_Floor', 'Roof') NOT NULL DEFAULT 'Typical_Floor' AFTER `material_id`,
+  ADD COLUMN `floor_no` INT(11) DEFAULT NULL AFTER `floor_type`,
+  ADD INDEX `idx_boqi_floor` (`floor_no`);
+-- ৪. মেটেরিয়াল ইস্যু (সাইট ডেলিভারি) টেবিল
+ALTER TABLE `con_material_issues`
+  ADD COLUMN `floor_type` ENUM('Basement', 'Ground_Floor', 'Typical_Floor', 'Roof') NOT NULL DEFAULT 'Typical_Floor' AFTER `target_id`,
+  ADD COLUMN `floor_no` INT(11) DEFAULT NULL AFTER `floor_type`,
+  ADD INDEX `idx_cmi_floor` (`floor_no`);
+SET FOREIGN_KEY_CHECKS = 1;
+২. অ্যাপ্লিকেশন স্ক্রিন ও ফর্মে পরিবর্তন (Page & Form Changes)
+[MODIFY] 
+create-initial-budget.php
+ & 
+edit-initial-budget.php
+ম্যানুয়াল বাজেট এন্ট্রি: মেটেরিয়াল গ্রিডে প্রতিটি রো-তে একটি ড্রপডাউন (Basement, Ground Floor, Typical, Roof) এবং ফ্লোর নম্বর এন্ট্রি করার ইনপুট ফিল্ড যোগ হবে।
+অটো-কস্টিং জেনারেশন বাটন: পেজের ওপরে একটি নতুন অপশন থাকবে: "SFT-Based Auto Costing"। এতে ক্লিক করলে প্রজেক্টের এরিয়া ও প্রিসেট রেশিও অনুযায়ী সম্পূর্ণ বাজেট টেবিলটি ১-ক্লিকে লোড হবে।
+[MODIFY] 
+create-boq.php
+ফ্লোর সিলেকশন: সাইট ইঞ্জিনিয়ার যখন মালামালের রিকোয়েস্ট তৈরি করবেন, তখন প্রতিটি আইটেমের পাশে নির্দিষ্ট ফ্লোর নম্বর সিলেক্ট করার অপশন দেওয়া হবে।
+ক্রস-চেকিং লজিক: এন্ট্রি করার সময় ব্যাকএন্ড এপিআই চেক করবে যে এই ফ্লোরের বাজেট লিমিট ক্রস হচ্ছে কি না।
+[MODIFY] 
+create-issue.php
+ইউসেজ ট্র্যাকিং: স্টোর কিপার সিমেন্ট/রড ইস্যু করার সময় কোন ফ্লোরের জন্য ইস্যু করছেন তা ড্রপডাউন থেকে সিলেক্ট করে দেবেন।
+Verification Plan
+Automated Tests
+আমরা পিএইচপি টেস্ট স্ক্রিপ্ট লিখে পরীক্ষা করব যে ডাটাবেস কোয়েরিগুলো সচল আছে কি না।
+test_queries.php এর মতো টেস্ট স্ক্রিপ্ট ব্যবহার করে নতুন জয়েন কুয়েরির সঠিকতা পরীক্ষা করা হবে।
+Manual Verification
+ডাটাবেস মাইগ্রেশন কুয়েরিটি রান করার পর পেজে গিয়ে টেস্ট প্রজেক্টে ক্লিক করে অটো-কস্টিং জেনারেট করে দেখা হবে।
+বাজেট ডাটা সেভ হওয়ার পর BOQ ক্রিয়েশন ফর্মে ফ্লোর ভিত্তিক ট্র্যাকিং ঠিকভাবে সেভ হচ্ছে কি না তা নিশ্চিত করা হবে।
+
+আপনার কাজের সুবিধার জন্য কোন মডিউলের কাজ আগে হবে এবং কোন কোন পেজে হাত দিতে হবে—সেটির একটি সিকোয়েন্স-ভিত্তিক Batch Action Plan (Checklist) তৈরি করা হয়েছে।
+
+চেকলিস্টটি আপনি এখানে দেখতে পাবেন: 👉 
+task.md
+
+নিচে প্রতিটি ব্যাচের কাজের বিবরণ ও ফাইলগুলোর তালিকা সিকোয়েন্স অনুযায়ী দেওয়া হলো:
+
+📅 Batch 1: ডেটাবেস মাইগ্রেশন ও কোর সেটিংস (Core Setup)
+এটি আমাদের প্রথম ধাপ, যেখানে ডেটাবেসের ভিত্তি তৈরি হবে এবং প্রজেক্টের শুরুতেই ফ্লোর নম্বর কনফিগার করার ব্যবস্থা করা হবে।
+
+SQL মাইগ্রেশন: project_floors এবং material_estimation_ratios টেবিল তৈরি করা এবং বিদ্যমান এস্টিমেট ও BOQ টেবিলে ফ্লোর কলামগুলো যোগ করা।
+প্রজেক্ট টাইমলাইন পেজ: প্রজেক্ট সেটআপ বা টাইমলাইন পেজে 
+
+create-timeline.php
+ ফ্লোরের গ্রিড ইনপুট যুক্ত করা।
+টাইমলাইন কন্ট্রোলার: 
+
+Con_ProjectTimelineController.php
+ ফাইলে ফ্লোর ডেটা রিসিভ ও সেভ করার লজিক লেখা।
+📊 Batch 2: অটো-কস্টিং ইঞ্জিন ও ইনিশিয়াল বাজেট (Budget & Costing)
+এই ধাপে অটো-কস্টিং ক্যালকুলেশন ইঞ্জিন তৈরি হবে এবং বাজেটের ভেতরের আইটেমে ফ্লোর নম্বর ট্র্যাক করা হবে।
+
+ক্যালকুলেশন লজিক: প্রতি SFT-তে কত কেজি রড ও কত বস্তা সিমেন্ট লাগবে তার গাণিতিক কোড (Engine) তৈরি করা।
+ইনিশিয়াল বাজেট ফর্ম: 
+
+create-initial-budget.php
+ ফর্মে ফ্লোর নম্বর সিলেক্ট করার অপশন দেওয়া এবং ওপরে "SFT-Based Auto Costing" বাটন যুক্ত করা।
+এস্টিমেট কন্ট্রোলার: 
+
+Con_InitialEstimateController.php
+ এ ফ্লোরের ডেটা সংরক্ষণের লজিক লেখা।
+📝 Batch 3: মান্থলি টার্গেট ও BOQ ফ্লোর ম্যাপিং (BOM/BOQ & Targets)
+এই ধাপে ফ্লোর-ভিত্তিক মাসিক লক্ষ্যমাত্রা নির্ধারণ এবং সাইট ইঞ্জিনিয়ারের মালামাল চাহিদাপত্র লিঙ্ক করা হবে।
+
+মান্থলি টার্গেট পেজ: 
+
+create-monthly-target.php
+ ফর্মে ফ্লোর সিলেকশন যুক্ত করা।
+BOQ ফর্ম: 
+
+create-boq.php
+ ফর্মে ম্যাটেরিয়ালের পাশে ফ্লোর সিলেক্ট করার ড্রপডাউন দেওয়া।
+BOQ কন্ট্রোলার: 
+
+Con_BOQController.php
+ এ ফ্লোর-ভিত্তিক বাজেট ক্রস-চেক ও ভ্যালিডেশন লজিক লেখা।
+🏗️ Batch 4: সাইট অপারেশন ও ভেরিফিকেশন (Operations & Audit)
+সাইট থেকে মালামাল ছাড়করণ এবং ফ্লোর-ভিত্তিক সম্পূর্ণ কস্ট অডিট রিপোর্ট তৈরি করা।
+
+মেটেরিয়াল ইস্যু ফর্ম: সাইট থেকে মালামাল বের করার ফর্মে 
+
+create-issue.php
+ ফ্লোর নম্বর সিলেক্ট করার অপশন দেওয়া।
+অডিট রিপোর্ট: একটি নতুন কাস্টম ফ্লোর-ভিত্তিক অডিট লেজার রিপোর্ট ভিউ তৈরি করা, যেখানে দেখাবে: "বাজেট বনাম ক্রয়কৃত বনাম সাইটে ব্যবহৃত মালামাল"।

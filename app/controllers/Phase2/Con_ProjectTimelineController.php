@@ -253,4 +253,131 @@ class Con_ProjectTimelineController extends Controller {
         header("Location: " . $GLOBALS['base_url'] . "/con-project-timeline/" . $project_id);
         exit;
     }
+
+    /**
+     * Show floor setup page.
+     */
+    public function floorSetup($project_id) {
+        $project_id = (int)$project_id;
+        $project = $this->projectModel->find($project_id);
+
+        if (!$project) {
+            setError("Project not found.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
+        // Set session variables for project-specific sidebar context
+        $_SESSION['active_project_id'] = $project['id'];
+        $_SESSION['active_project_name'] = $project['name'];
+        $_SESSION['active_project_workflow_version'] = $project['workflow_version'];
+
+        $timeline = $this->model->getByProject($project_id);
+
+        // Fetch existing floors
+        $floors = [];
+        $stmt = $this->db->prepare("SELECT * FROM project_floors WHERE project_id = ? ORDER BY floor_no ASC");
+        $stmt->bind_param('i', $project_id);
+        if ($stmt->execute()) {
+            $res = $stmt->get_result();
+            while ($row = $res->fetch_assoc()) {
+                $floors[] = $row;
+            }
+        }
+
+        $this->view('phase2/project_timeline/floor-setup', [
+            'current_route' => 'con-floor-setup',
+            'page_title' => 'Project Floor Setup',
+            'project' => $project,
+            'timeline' => $timeline,
+            'floors' => $floors
+        ]);
+    }
+
+    /**
+     * Save floor setup config.
+     */
+    public function floorSetupSave($project_id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
+        $project_id = (int)$project_id;
+        $project = $this->projectModel->find($project_id);
+
+        if (!$project) {
+            setError("Project not found.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
+        // Permissions check
+        if (!hasPermission('Construction Management') && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
+            setError("You do not have permission to manage project floors.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-floor-setup/" . $project_id);
+            exit;
+        }
+
+        $floor_nos = $_POST['floor_no'] ?? [];
+        $floor_types = $_POST['floor_type'] ?? [];
+        $unit_areas = $_POST['unit_area_sqft'] ?? [];
+        $extra_sqfts = $_POST['extra_sqft'] ?? [];
+        $slab_areas = $_POST['slab_area_sqft'] ?? [];
+        $heights = $_POST['height_ft'] ?? [];
+
+        // Validate floor unique floor_no
+        $seen = [];
+        foreach ($floor_nos as $k => $fno) {
+            if ($fno === '') continue;
+            $fval = (int)$fno;
+            if (in_array($fval, $seen)) {
+                setError("Duplicate Floor Number: " . $fval);
+                header("Location: " . $GLOBALS['base_url'] . "/con-floor-setup/" . $project_id);
+                exit;
+            }
+            $seen[] = $fval;
+
+            $area = (float)($slab_areas[$k] ?? 0);
+            if ($area <= 0) {
+                setError("Slab Area must be greater than 0.");
+                header("Location: " . $GLOBALS['base_url'] . "/con-floor-setup/" . $project_id);
+                exit;
+            }
+        }
+
+        $this->db->begin_transaction();
+
+        try {
+            // Delete existing
+            $del_stmt = $this->db->prepare("DELETE FROM project_floors WHERE project_id = ?");
+            $del_stmt->bind_param('i', $project_id);
+            $del_stmt->execute();
+
+            // Insert new ones
+            $ins_stmt = $this->db->prepare("INSERT INTO project_floors (project_id, floor_no, floor_type, unit_area_sqft, extra_sqft, slab_area_sqft, height_ft) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            
+            foreach ($floor_nos as $k => $fno) {
+                if ($fno === '') continue;
+                $floor_no = (int)$fno;
+                $floor_type = $floor_types[$k] ?? 'Typical_Floor';
+                $unit_area = (float)($unit_areas[$k] ?? 0);
+                $extra_sqft = (float)($extra_sqfts[$k] ?? 0);
+                $slab_area = (float)($slab_areas[$k] ?? 0);
+                $height = (float)($heights[$k] ?? 10.0);
+
+                $ins_stmt->bind_param('iisdddd', $project_id, $floor_no, $floor_type, $unit_area, $extra_sqft, $slab_area, $height);
+                $ins_stmt->execute();
+            }
+
+            $this->db->commit();
+            setSuccess("Project floors updated successfully.");
+        } catch (\Exception $e) {
+            $this->db->rollback();
+            setError("Failed to update project floors: " . $e->getMessage());
+        }
+
+        header("Location: " . $GLOBALS['base_url'] . "/con-floor-setup/" . $project_id);
+        exit;
+    }
 }

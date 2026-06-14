@@ -47,6 +47,34 @@ $priorityColors = [
     'Medium' => '#f59e0b',
     'Low'    => '#10b981',
 ];
+
+$projectFloors = $projectFloors ?? [];
+
+function buildFloorOptionsPhp($floors, $selectedType = 'Typical_Floor', $selectedNo = null) {
+    $isSelectedGeneral = ($selectedType === 'Typical_Floor' && ($selectedNo === null || $selectedNo === '')) ? 'selected' : '';
+    $html = '<option value="Typical_Floor|" ' . $isSelectedGeneral . '>General/Unassigned</option>';
+    if (!empty($floors)) {
+        foreach ($floors as $f) {
+            $label = '';
+            if ($f['floor_type'] === 'Roof') {
+                $label = 'Roof (Lvl ' . $f['floor_no'] . ')';
+            } elseif ($f['floor_type'] === 'Ground_Floor') {
+                $label = 'Ground Floor';
+            } elseif ($f['floor_type'] === 'Basement') {
+                $label = 'Basement ' . abs($f['floor_no']);
+            } else {
+                $n = $f['floor_no'];
+                $s = ["th", "st", "nd", "rd"];
+                $v = $n % 100;
+                $ord = $n . ($s[($v - 20) % 10] ?? $s[$v] ?? $s[0]);
+                $label = $ord . ' Floor';
+            }
+            $isSel = (string)$f['floor_type'] === (string)$selectedType && ($selectedNo !== null && $selectedNo !== '' && (string)$f['floor_no'] === (string)$selectedNo) ? 'selected' : '';
+            $html .= '<option value="' . $f['floor_type'] . '|' . $f['floor_no'] . '" ' . $isSel . '>' . htmlspecialchars($label) . '</option>';
+        }
+    }
+    return $html;
+}
 ?>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -177,6 +205,12 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
     <?php if (!empty($target['planned_start_date'])): ?>
     <div class="mf-info-item"><i class="fal fa-calendar-check"></i>Phase: <strong><?= $target['planned_start_date'] ?></strong> → <strong><?= $target['planned_end_date'] ?></strong></div>
     <?php endif; ?>
+    <?php if (!empty($target['building_type'])): ?>
+    <div class="mf-info-item"><i class="fal fa-building"></i>Building Type: <strong><?= htmlspecialchars($target['building_type']) ?></strong></div>
+    <?php endif; ?>
+    <?php if (!empty($projectFloors)): ?>
+    <div class="mf-info-item"><i class="fal fa-list-ol"></i>Floors Configured: <strong><?= count($projectFloors) ?> Floors</strong></div>
+    <?php endif; ?>
 </div>
 
 <!-- Status Update — hidden for site engineers -->
@@ -282,6 +316,12 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                     <?php endforeach; ?>
                 </select>
             </div>
+            <div class="mf-ctrl" style="flex:2;min-width:140px">
+                <label>Floor / Segment</label>
+                <select id="wi_floor_tag" class="mf-sel">
+                    <?= buildFloorOptionsPhp($projectFloors) ?>
+                </select>
+            </div>
             <div class="mf-ctrl" style="flex:0 0 80px;min-width:70px">
                 <label>Unit</label>
                 <input type="text" id="wi_unit" class="mf-inp" placeholder="RFT / NO">
@@ -338,6 +378,7 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
         <tr>
             <th>#</th>
             <th>Work Item</th>
+            <th>Floor</th>
             <th>Unit</th>
             <th>Target Qty</th>
             <th>Start Date</th>
@@ -360,6 +401,27 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
     <tr>
         <td style="color:var(--text-muted);font-weight:600"><?= $i+1 ?></td>
         <td><span style="font-weight:600;font-size:12.5px"><?= htmlspecialchars($item['work_item_name']) ?></span></td>
+        <td>
+            <?php
+            if ($item['floor_type'] === 'Roof') {
+                echo 'Roof (Lvl ' . $item['floor_no'] . ')';
+            } elseif ($item['floor_type'] === 'Ground_Floor') {
+                echo 'Ground Floor';
+            } elseif ($item['floor_type'] === 'Basement') {
+                echo 'Basement ' . abs($item['floor_no']);
+            } else {
+                if ($item['floor_no'] !== null && $item['floor_no'] !== '') {
+                    $n = $item['floor_no'];
+                    $s = ["th", "st", "nd", "rd"];
+                    $v = $n % 100;
+                    $ord = $n . ($s[($v - 20) % 10] ?? $s[$v] ?? $s[0]);
+                    echo $ord . ' Floor';
+                } else {
+                    echo 'General';
+                }
+            }
+            ?>
+        </td>
         <td><?= htmlspecialchars($item['unit'] ?? '') ?></td>
         <td style="font-weight:600"><?= number_format((float)($item['monthly_target_qty'] ?? 0), 2) ?></td>
         <td><?= htmlspecialchars($item['start_date'] ?? '') ?></td>
@@ -410,6 +472,7 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
         <tr>
             <th>#</th>
             <th>Work Item</th>
+            <th>Floor</th>
             <th>Work Type <small style="font-weight:400;opacity:.7">(optional)</small></th>
             <th>Contractor</th>
             <th>Unit</th>
@@ -444,6 +507,11 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
             <input type="hidden" name="items[<?= $i ?>][work_item_name]" value="<?= htmlspecialchars($item['work_item_name']) ?>">
             <input type="hidden" name="items[<?= $i ?>][phase_item_id]" value="<?= htmlspecialchars($item['phase_item_id'] ?? '') ?>">
             <input type="hidden" name="items[<?= $i ?>][id]" value="<?= $item['id'] ?>">
+        </td>
+        <td>
+            <select name="items[<?= $i ?>][floor_tag]" style="min-width:120px">
+                <?= buildFloorOptionsPhp($projectFloors, $item['floor_type'] ?? 'Typical_Floor', $item['floor_no'] ?? null) ?>
+            </select>
         </td>
         <td>
             <select name="items[<?= $i ?>][work_type_id]" style="min-width:120px">
@@ -564,6 +632,7 @@ function addItem() {
     data.append('work_item_name', name);
     data.append('phase_item_id', phaseItemId);
     data.append('work_type_id', document.getElementById('wi_work_type').value);
+    data.append('floor_tag', document.getElementById('wi_floor_tag').value);
     data.append('unit', document.getElementById('wi_unit').value);
     data.append('monthly_target_qty', document.getElementById('wi_qty').value);
     data.append('start_date', document.getElementById('wi_start_date').value);

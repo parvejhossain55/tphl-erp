@@ -1260,7 +1260,7 @@
                 <?php
                 $showAllPhases = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22]);
                 if (!empty($_SESSION['active_project_id']) && $showAllPhases):
-                    $projectSubRoutes = ['con-project', 'con-project-timeline', 'con-phase-plan', 'con-monthly-targets', 'con-monthly-target', 'con-monthly-review', 'con-risk-dashboard'];
+                    $projectSubRoutes = ['con-project', 'con-project-timeline', 'con-phase-plan', 'con-floor-setup', 'con-monthly-targets', 'con-monthly-target', 'con-monthly-review', 'con-risk-dashboard'];
                     $isProjectActive = isActive($projectSubRoutes, $current_route);
                     ?>
                     <li class="slide has-sub <?= $isProjectActive ? 'active' : '' ?>">
@@ -1290,6 +1290,12 @@
                                 <a class="sidebar__menu-item <?= isActive('con-phase-plan', $current_route) ?>"
                                     href="<?= $base_url ?>/con-phase-plan/<?= $_SESSION['active_project_id'] ?>">
                                     Phase Plan
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-floor-setup', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('con-floor-setup', $current_route) ?>"
+                                    href="<?= $base_url ?>/con-floor-setup/<?= $_SESSION['active_project_id'] ?>">
+                                    Floor Setup
                                 </a>
                             </li>
                             <li

@@ -253,11 +253,13 @@ class ProjectController extends Controller
             'purchase_user_id'    => !empty($_POST['purchase_user_id']) ? (int)$_POST['purchase_user_id'] : null,
         ];
 
-        // ======================
-        // Create slug if missing
-        // ======================
-        if (empty($oldProject['slug'])) {
+        // ===================================
+        // Update slug if name changed or slug is empty
+        // ===================================
+        if (empty($oldProject['slug']) || trim($data['name']) !== trim($oldProject['name'] ?? '')) {
             $data['slug'] = generateUniqueSlug($this->db, $data['name'], 'projects', 'slug');
+        } else {
+            $data['slug'] = $oldProject['slug'] ?? null;
         }
 
         // ======================

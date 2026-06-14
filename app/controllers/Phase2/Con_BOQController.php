@@ -121,6 +121,14 @@ class Con_BOQController extends Controller
         $projects  = $this->projectModel->getAll();
         $materials = $this->materialModel->getAll();
 
+        $projectFloors = [];
+        if ($target_id && $phaseTarget && !empty($phaseTarget['project_id'])) {
+            $stmtFl = $this->db->prepare("SELECT id, floor_no, floor_type, slab_area_sqft FROM project_floors WHERE project_id = ? ORDER BY floor_no ASC");
+            $stmtFl->bind_param('i', $phaseTarget['project_id']);
+            $stmtFl->execute();
+            $projectFloors = $stmtFl->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
         $this->view('phase2/boq/create-boq', [
             'current_route'     => 'con-boq-create',
             'page_title'        => 'New Bill of Quantities',
@@ -131,6 +139,7 @@ class Con_BOQController extends Controller
             'targetPhaseItems'  => $targetPhaseItems,
             'weeklyProgress'    => $weeklyProgress,
             'existingBoqCount'  => $existingBoqCount,
+            'projectFloors'     => $projectFloors,
         ]);
     }
 
@@ -169,12 +178,22 @@ class Con_BOQController extends Controller
             $materialIds   = $_POST['material_id'] ?? [];
             $quantities    = $_POST['quantity']    ?? [];
             $requiredDates = $_POST['required_date'] ?? [];
+            $floorTags     = $_POST['floor_tag'] ?? [];
 
             $items = [];
             foreach ($materialIds as $index => $mid) {
                 if (!empty($mid) && ($quantities[$index] ?? 0) > 0) {
+                    $floorTag = trim($floorTags[$index] ?? '');
+                    $floorType = 'Typical_Floor';
+                    $floorNo = null;
+                    if ($floorTag && strpos($floorTag, '|') !== false) {
+                        list($floorType, $floorNoStr) = explode('|', $floorTag);
+                        $floorNo = ($floorNoStr !== '') ? (int)$floorNoStr : null;
+                    }
                     $items[] = [
                         'material_id'   => (int)$mid,
+                        'floor_type'    => $floorType,
+                        'floor_no'      => $floorNo,
                         'quantity'      => (float)$quantities[$index],
                         'unit_cost'     => 0.00,
                         'required_date' => !empty($requiredDates[$index]) ? $requiredDates[$index] : null,
@@ -469,6 +488,11 @@ class Con_BOQController extends Controller
         $projects  = $this->projectModel->getAll();
         $materials = $this->materialModel->getAll();
 
+        $stmtFl = $this->db->prepare("SELECT id, floor_no, floor_type, slab_area_sqft FROM project_floors WHERE project_id = ? ORDER BY floor_no ASC");
+        $stmtFl->bind_param('i', $boq['project_id']);
+        $stmtFl->execute();
+        $projectFloors = $stmtFl->get_result()->fetch_all(MYSQLI_ASSOC);
+
         $this->view('phase2/boq/edit-boq', [
             'current_route' => 'con-boq',
             'page_title'    => 'Edit BOQ — ' . $boq['project_name'],
@@ -476,6 +500,7 @@ class Con_BOQController extends Controller
             'items'         => $items,
             'projects'      => $projects,
             'materials'     => $materials,
+            'projectFloors' => $projectFloors,
         ]);
     }
 
@@ -502,12 +527,22 @@ class Con_BOQController extends Controller
         $materialIds   = $_POST['material_id'] ?? [];
         $quantities    = $_POST['quantity']    ?? [];
         $requiredDates = $_POST['required_date'] ?? [];
+        $floorTags     = $_POST['floor_tag'] ?? [];
 
         $items = [];
         foreach ($materialIds as $index => $mid) {
             if (!empty($mid) && ($quantities[$index] ?? 0) > 0) {
+                $floorTag = trim($floorTags[$index] ?? '');
+                $floorType = 'Typical_Floor';
+                $floorNo = null;
+                if ($floorTag && strpos($floorTag, '|') !== false) {
+                    list($floorType, $floorNoStr) = explode('|', $floorTag);
+                    $floorNo = ($floorNoStr !== '') ? (int)$floorNoStr : null;
+                }
                 $items[] = [
                     'material_id'   => (int)$mid,
+                    'floor_type'    => $floorType,
+                    'floor_no'      => $floorNo,
                     'quantity'      => (float)$quantities[$index],
                     'unit_cost'     => 0.00,
                     'required_date' => !empty($requiredDates[$index]) ? $requiredDates[$index] : null,
@@ -644,7 +679,13 @@ class Con_BOQController extends Controller
         $stmt->execute();
         $targets = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        echo json_encode(['targets' => $targets]);
+        // Fetch project floors
+        $stmtFl = $this->db->prepare("SELECT id, floor_no, floor_type, slab_area_sqft FROM project_floors WHERE project_id = ? ORDER BY floor_no ASC");
+        $stmtFl->bind_param('i', $projectId);
+        $stmtFl->execute();
+        $floors = $stmtFl->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        echo json_encode(['targets' => $targets, 'floors' => $floors]);
         exit;
     }
 
@@ -722,6 +763,178 @@ class Con_BOQController extends Controller
             'total_stock'   => $totalStock,
             'unit'          => $unit,
             'warehouses'    => $warehouses
+        ]);
+        exit;
+    }
+
+    // =========================================================================
+    // AJAX — Check BOQ requested quantities against Initial Estimate floor budgets
+    // POST: project_id, boq_id (optional), material_id[], quantity[], floor_tag[]
+    // Returns JSON: { success: true, exceeded: bool, items: [...] }
+    // =========================================================================
+    public function ajaxCheckBOQLimits()
+    {
+        header('Content-Type: application/json');
+        $projectId = (int)($_POST['project_id'] ?? 0);
+        $boqId     = (int)($_POST['boq_id'] ?? 0);
+        
+        $materialIds = $_POST['material_id'] ?? [];
+        $floorTags   = $_POST['floor_tag'] ?? [];
+        $quantities  = $_POST['quantity'] ?? [];
+
+        if (!$projectId) {
+            echo json_encode(['success' => true, 'exceeded' => false, 'items' => []]);
+            exit;
+        }
+
+        // Find the active budget (prefer approved, fallback to latest)
+        $stmtB = $this->db->prepare("
+            SELECT id FROM initial_estimate_budgets 
+            WHERE project_id = ? 
+            ORDER BY CASE WHEN status = 'approved' THEN 1 ELSE 2 END ASC, id DESC 
+            LIMIT 1
+        ");
+        $stmtB->bind_param('i', $projectId);
+        $stmtB->execute();
+        $budgetRow = $stmtB->get_result()->fetch_assoc();
+        $budgetId = $budgetRow ? (int)$budgetRow['id'] : 0;
+
+        $exceededItems = [];
+        $hasExceeded = false;
+
+        // Group requests by material_id + floor to handle duplicate rows
+        $groupedRequests = [];
+        foreach ($materialIds as $index => $mid) {
+            if (empty($mid)) continue;
+            $qty = (float)($quantities[$index] ?? 0);
+            if ($qty <= 0) continue;
+
+            $floorTag = trim($floorTags[$index] ?? '');
+            $floorType = 'Typical_Floor';
+            $floorNo = null;
+            if ($floorTag && strpos($floorTag, '|') !== false) {
+                list($floorType, $floorNoStr) = explode('|', $floorTag);
+                $floorNo = ($floorNoStr !== '') ? (int)$floorNoStr : null;
+            }
+
+            $key = $mid . '_' . $floorType . '_' . ($floorNo !== null ? $floorNo : 'null');
+            if (!isset($groupedRequests[$key])) {
+                $groupedRequests[$key] = [
+                    'material_id' => (int)$mid,
+                    'floor_type'  => $floorType,
+                    'floor_no'    => $floorNo,
+                    'quantity'    => 0.0
+                ];
+            }
+            $groupedRequests[$key]['quantity'] += $qty;
+        }
+
+        foreach ($groupedRequests as $req) {
+            $mid = $req['material_id'];
+            $floorType = $req['floor_type'];
+            $floorNo = $req['floor_no'];
+            $reqQty = $req['quantity'];
+
+            // Fetch material name and unit
+            $stmtMat = $this->db->prepare("SELECT name, unit FROM con_materials WHERE id = ?");
+            $stmtMat->bind_param('i', $mid);
+            $stmtMat->execute();
+            $mat = $stmtMat->get_result()->fetch_assoc();
+            $matName = $mat ? $mat['name'] : 'Unknown';
+            $unitName = $mat ? $mat['unit'] : '';
+
+            // Fetch budget limit for this specific floor and material
+            $budgetLimit = 0.0;
+            if ($budgetId > 0) {
+                if ($floorNo === null) {
+                    $stmtLimit = $this->db->prepare("
+                        SELECT SUM(estimated_qty) AS lim 
+                        FROM initial_estimate_items 
+                        WHERE budget_id = ? AND material_id = ? AND floor_type = ? AND floor_no IS NULL
+                    ");
+                    $stmtLimit->bind_param('iis', $budgetId, $mid, $floorType);
+                } else {
+                    $stmtLimit = $this->db->prepare("
+                        SELECT SUM(estimated_qty) AS lim 
+                        FROM initial_estimate_items 
+                        WHERE budget_id = ? AND material_id = ? AND floor_type = ? AND floor_no = ?
+                    ");
+                    $stmtLimit->bind_param('iisi', $budgetId, $mid, $floorType, $floorNo);
+                }
+                $stmtLimit->execute();
+                $limitRow = $stmtLimit->get_result()->fetch_assoc();
+                $budgetLimit = $limitRow ? (float)$limitRow['lim'] : 0.0;
+            }
+
+            // Fetch quantity already requested in other non-rejected BOQs
+            if ($floorNo === null) {
+                $stmtPast = $this->db->prepare("
+                    SELECT SUM(bi.quantity) AS past 
+                    FROM boq_items bi
+                    JOIN boq_master bm ON bm.id = bi.boq_id
+                    WHERE bm.project_id = ? 
+                      AND bm.id != ? 
+                      AND bm.status != 'Rejected' 
+                      AND bi.material_id = ? 
+                      AND bi.floor_type = ? 
+                      AND bi.floor_no IS NULL
+                ");
+                $stmtPast->bind_param('iiis', $projectId, $boqId, $mid, $floorType);
+            } else {
+                $stmtPast = $this->db->prepare("
+                    SELECT SUM(bi.quantity) AS past 
+                    FROM boq_items bi
+                    JOIN boq_master bm ON bm.id = bi.boq_id
+                    WHERE bm.project_id = ? 
+                      AND bm.id != ? 
+                      AND bm.status != 'Rejected' 
+                      AND bi.material_id = ? 
+                      AND bi.floor_type = ? 
+                      AND bi.floor_no = ?
+                ");
+                $stmtPast->bind_param('iiiisi', $projectId, $boqId, $mid, $floorType, $floorNo);
+            }
+            $stmtPast->execute();
+            $pastRow = $stmtPast->get_result()->fetch_assoc();
+            $pastQty = $pastRow ? (float)$pastRow['past'] : 0.0;
+
+            // Check if limit exceeded
+            if (($reqQty + $pastQty) > $budgetLimit) {
+                $hasExceeded = true;
+                
+                // Construct Floor Label
+                $floorLabel = 'General';
+                if ($floorType === 'Roof') {
+                    $floorLabel = 'Roof (Lvl ' . $floorNo . ')';
+                } elseif ($floorType === 'Ground_Floor') {
+                    $floorLabel = 'Ground Floor';
+                } elseif ($floorType === 'Basement') {
+                    $floorLabel = 'Basement ' . abs($floorNo);
+                } elseif ($floorNo !== null && $floorNo !== '') {
+                    $n = $floorNo;
+                    $s = ["th", "st", "nd", "rd"];
+                    $v = $n % 100;
+                    $ord = $n . ($s[($v - 20) % 10] ?? $s[$v] ?? $s[0]);
+                    $floorLabel = $ord . ' Floor';
+                }
+
+                $exceededItems[] = [
+                    'material_name' => $matName,
+                    'unit'          => $unitName,
+                    'floor_label'   => $floorLabel,
+                    'budget_limit'  => $budgetLimit,
+                    'past_qty'      => $pastQty,
+                    'requested_qty' => $reqQty,
+                    'total_qty'     => $reqQty + $pastQty,
+                    'excess_qty'    => ($reqQty + $pastQty) - $budgetLimit
+                ];
+            }
+        }
+
+        echo json_encode([
+            'success'  => true,
+            'exceeded' => $hasExceeded,
+            'items'    => $exceededItems
         ]);
         exit;
     }

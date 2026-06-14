@@ -229,7 +229,12 @@ class Project extends Model
 
         $createdBy = $data['created_by'] ?? null;
         
-        $v_name = $v('name'); $v_slug = $v('slug'); $v_location_id = $v('location_id'); $v_community_id = $v('community_id'); $v_building_type = $v('building_type');
+        $v_name = $v('name');
+        $v_slug = $v('slug');
+        if (empty($v_slug) && !empty($v_name)) {
+            $v_slug = generateUniqueSlug($this->db, $v_name, 'projects', 'slug');
+        }
+        $v_location_id = $v('location_id'); $v_community_id = $v('community_id'); $v_building_type = $v('building_type');
         $v_total_share = $v('total_share'); $v_unit_per_floor = $v('unit_per_floor'); $v_floor_wise_unit_meta = $v('floor_wise_unit_meta'); $v_types = $v('types'); $v_image = $v('image');
         $v_image2 = $v('image2'); $v_image3 = $v('image3'); $v_front_road = $v('front_road'); $v_price_range = $v('price_range'); $v_hover_text = $v('hover_text'); $v_tag = $v('tag');
         $v_plot_size = $v('plot_size'); $v_plot_no = $v('plot_no'); $v_block_no = $v('block_no'); $v_brochure_link = $v('brochure_link'); $v_description = $v('description');

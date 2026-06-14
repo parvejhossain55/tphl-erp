@@ -46,27 +46,37 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 l.email,
                 p.name AS project_name, 
                 f.flat_name AS flat_name, 
-                MAX(lp.payment_method) AS payment_method,
-                SUM(CASE WHEN lp.payment_type = 'booking_money' THEN IFNULL(lp.amount, 0) ELSE 0 END) AS booking_money,
-                SUM(CASE WHEN lp.payment_type = 'registration' THEN IFNULL(lp.amount, 0) ELSE 0 END) AS registration_money,
-                SUM(IFNULL(lp.amount, 0)) AS amount,
-                COALESCE(lb.booking_date, lp.created_at) As booking_pay_date,
+                f.sqft,
+                f.price_value,
                 u1.full_name AS created_by_name,
-                f.flat_name ,f.sqft,
-                f.price_value
+                COALESCE(lb.booking_date, lp_sum.min_created_at) As booking_pay_date,
+                IFNULL(lp_sum.payment_method, '') AS payment_method,
+                IFNULL(lp_sum.booking_money, 0) AS booking_money,
+                IFNULL(lp_sum.registration_money, 0) AS registration_money,
+                IFNULL(lp_sum.amount, 0) AS amount
             FROM lead_bookings lb
             LEFT JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN flats f ON lb.flat_id = f.id
             LEFT JOIN projects p ON f.project_id = p.id
             LEFT JOIN users u1 ON lb.created_by = u1.id
-            LEFT JOIN  lead_payments AS lp ON lp.booking_id = lb.id
+            LEFT JOIN (
+                SELECT 
+                    booking_id,
+                    MAX(payment_method) AS payment_method,
+                    MIN(created_at) AS min_created_at,
+                    SUM(CASE WHEN payment_type = 'booking_money' THEN IFNULL(amount, 0) ELSE 0 END) AS booking_money,
+                    SUM(CASE WHEN payment_type = 'registration' THEN IFNULL(amount, 0) ELSE 0 END) AS registration_money,
+                    SUM(IFNULL(amount, 0)) AS amount
+                FROM lead_payments
+                GROUP BY booking_id
+            ) AS lp_sum ON lp_sum.booking_id = lb.id
             WHERE lb.deleted_at IS NULL
              AND lb.booking_status IN ('booked', 'completed')
              ";
 
         $params = [];
         $types  = "";
-        // 
+
         if (!empty($year)) {
             $sql .= " AND YEAR(lb.booking_date) = ?";
             $params[] = (int)$year;
@@ -79,11 +89,13 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $types   .= "i";
         }
 
-        $sql .= " GROUP BY lb.id ORDER BY lb.booking_date DESC, lb.id DESC";
-
-        //  single ORDER BY at the end
+        $sql .= " ORDER BY lb.booking_date DESC, lb.id DESC";
 
         $stmt = $this->db->prepare($sql);
+
+        if (!$stmt) {
+            return [];
+        }
 
         if (!empty($params)) {
             $stmt->bind_param($types, ...$params);
@@ -152,21 +164,30 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             l.email,
             p.name AS project_name, 
             f.flat_name AS flat_name, 
-            MAX(lp.payment_method) AS payment_method,
-            SUM(CASE WHEN lp.payment_type = 'booking_money' THEN IFNULL(lp.amount, 0) ELSE 0 END) AS booking_money,
-            SUM(CASE WHEN lp.payment_type = 'registration' THEN IFNULL(lp.amount, 0) ELSE 0 END) AS registration_money,
-            SUM(IFNULL(lp.amount, 0)) AS amount,
-            COALESCE(lb.booking_date, lp.created_at) AS booking_pay_date,
-            u1.full_name AS created_by_name,
-            f.flat_name,
             f.sqft,
-            f.price_value
+            f.price_value,
+            u1.full_name AS created_by_name,
+            COALESCE(lb.booking_date, lp_sum.min_created_at) AS booking_pay_date,
+            IFNULL(lp_sum.payment_method, '') AS payment_method,
+            IFNULL(lp_sum.booking_money, 0) AS booking_money,
+            IFNULL(lp_sum.registration_money, 0) AS registration_money,
+            IFNULL(lp_sum.amount, 0) AS amount
         FROM lead_bookings lb
         LEFT JOIN leads l ON lb.lead_id = l.id
         LEFT JOIN flats f ON lb.flat_id = f.id
         LEFT JOIN projects p ON f.project_id = p.id
         LEFT JOIN users u1 ON lb.created_by = u1.id
-        LEFT JOIN lead_payments lp ON lp.booking_id = lb.id
+        LEFT JOIN (
+            SELECT 
+                booking_id,
+                MAX(payment_method) AS payment_method,
+                MIN(created_at) AS min_created_at,
+                SUM(CASE WHEN payment_type = 'booking_money' THEN IFNULL(amount, 0) ELSE 0 END) AS booking_money,
+                SUM(CASE WHEN payment_type = 'registration' THEN IFNULL(amount, 0) ELSE 0 END) AS registration_money,
+                SUM(IFNULL(amount, 0)) AS amount
+            FROM lead_payments
+            GROUP BY booking_id
+        ) AS lp_sum ON lp_sum.booking_id = lb.id
         WHERE lb.deleted_at IS NULL
           AND lb.booking_status IN ('booked', 'completed')
           AND lb.sales_by_id = ?";
@@ -186,9 +207,13 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $types   .= "i";
         }
 
-        $sql .= " GROUP BY lb.id ORDER BY lb.booking_date DESC, lb.id DESC";
+        $sql .= " ORDER BY lb.booking_date DESC, lb.id DESC";
 
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+
         $stmt->bind_param($types, ...$params);
 
         if (!$stmt->execute()) {
@@ -207,21 +232,31 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 COALESCE(NULLIF(l.phone, ''), l.phone_number) AS phone,
                 l.email,
                 p.name AS project_name, 
-                MAX(lp.payment_method) AS payment_method,
-                SUM(CASE WHEN lp.payment_type = 'booking_money' THEN IFNULL(lp.amount, 0) ELSE 0 END) AS booking_money,
-                SUM(CASE WHEN lp.payment_type = 'registration' THEN IFNULL(lp.amount, 0) ELSE 0 END) AS registration_money,
-                SUM(IFNULL(lp.amount, 0)) AS amount,
-                COALESCE(lb.booking_date, lp.created_at) AS booking_pay_date,
-                u1.full_name AS created_by_name,
                 f.flat_name,
                 f.sqft,
-                f.price_value
+                f.price_value,
+                u1.full_name AS created_by_name,
+                COALESCE(lb.booking_date, lp_sum.min_created_at) AS booking_pay_date,
+                IFNULL(lp_sum.payment_method, '') AS payment_method,
+                IFNULL(lp_sum.booking_money, 0) AS booking_money,
+                IFNULL(lp_sum.registration_money, 0) AS registration_money,
+                IFNULL(lp_sum.amount, 0) AS amount
             FROM lead_bookings lb
             LEFT JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN flats f ON lb.flat_id = f.id
             LEFT JOIN projects p ON f.project_id = p.id
             LEFT JOIN users u1 ON lb.created_by = u1.id
-            LEFT JOIN lead_payments lp ON lp.booking_id = lb.id
+            LEFT JOIN (
+                SELECT 
+                    booking_id,
+                    MAX(payment_method) AS payment_method,
+                    MIN(created_at) AS min_created_at,
+                    SUM(CASE WHEN payment_type = 'booking_money' THEN IFNULL(amount, 0) ELSE 0 END) AS booking_money,
+                    SUM(CASE WHEN payment_type = 'registration' THEN IFNULL(amount, 0) ELSE 0 END) AS registration_money,
+                    SUM(IFNULL(amount, 0)) AS amount
+                FROM lead_payments
+                GROUP BY booking_id
+            ) AS lp_sum ON lp_sum.booking_id = lb.id
             WHERE lb.deleted_at IS NULL
               AND lb.sales_by_id = ?";
 
@@ -242,7 +277,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $types .= "i";
         }
 
-        $sql .= " GROUP BY lb.id ORDER BY lb.booking_date DESC, lb.id DESC";
+        $sql .= " ORDER BY lb.booking_date DESC, lb.id DESC";
 
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {

@@ -15,6 +15,30 @@ function pib_fmt($n)
     return '৳' . number_format($n, 2);
 }
 
+function pib_format_floor($floorType, $floorNo) {
+    if ($floorNo === null || $floorNo === '') {
+        return 'General/Unassigned';
+    }
+    if ($floorType === 'Roof') {
+        return 'Roof (Lvl ' . $floorNo . ')';
+    }
+    if ($floorType === 'Ground_Floor') {
+        return 'Ground Floor';
+    }
+    if ($floorType === 'Basement') {
+        return 'Basement ' . abs($floorNo);
+    }
+    
+    $n = (int)$floorNo;
+    $ends = array('th','st','nd','rd','th','th','th','th','th','th');
+    if ((($n % 100) >= 11) && (($n % 100) <= 13)) {
+        $ordinal = $n . 'th';
+    } else {
+        $ordinal = $n . $ends[$n % 10];
+    }
+    return $ordinal . ' Floor';
+}
+
 $monthNames = [
     '',
     'January',
@@ -590,6 +614,28 @@ $grandTotal = $budget['total_estimated_cost'] ?? 0;
                 </div>
             </div>
 
+            <?php if (!empty($projectFloors)): ?>
+                <?php 
+                $totalSlabArea = 0; 
+                foreach ($projectFloors as $f) {
+                    $totalSlabArea += (float)($f['slab_area_sqft'] ?? 0);
+                }
+                ?>
+                <div style="margin-top: 15px; margin-bottom: 15px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 11px;">
+                    <div style="font-weight: bold; color: #1e293b; margin-bottom: 8px; font-size: 12px; display: flex; justify-content: space-between;">
+                        <span>Project Floor Setup Details:</span>
+                        <span>Total Floor Area: <?= number_format($totalSlabArea, 2) ?> sqft</span>
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <?php foreach ($projectFloors as $f): ?>
+                            <span style="background: #ffffff; border: 1px solid #cbd5e1; padding: 4px 8px; border-radius: 4px;">
+                                <?= htmlspecialchars(pib_format_floor($f['floor_type'], $f['floor_no'])) ?>: <strong><?= number_format($f['slab_area_sqft'], 2) ?> sqft</strong>
+                            </span>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <!-- KPI Row -->
             <div class="kpi-row">
                 <div class="kpi-cell">
@@ -718,6 +764,8 @@ $grandTotal = $budget['total_estimated_cost'] ?? 0;
                                     <td style="color:#9ca3af;font-size:11px;"><?= $si + 1 ?></td>
                                     <td><span
                                             class="badge-pill bp-purple"><?= htmlspecialchars($item['work_type_label'] ?? $item['design_type_name'] ?? '—') ?></span>
+                                         <span
+                                            class="badge-pill" style="background:rgba(0,0,0,.05);color:#333;margin-left:4px;"><?= htmlspecialchars(pib_format_floor($item['floor_type'] ?? 'Typical_Floor', $item['floor_no'] ?? null)) ?></span>
                                          <div style="font-size:10px;color:#6b7280;margin-top:4px;line-height:1.2;">
                                              <strong>Work Type ID:</strong> <?= (!empty($item['work_type_id']) && $item['work_type_id'] != 0) ? htmlspecialchars($item['work_type_id']) : '—' ?>
                                              <br>
@@ -781,6 +829,8 @@ $grandTotal = $budget['total_estimated_cost'] ?? 0;
                                     <td style="color:#9ca3af;font-size:11px;"><?= $li + 1 ?></td>
                                     <td><span
                                              class="badge-pill bp-blue"><?= htmlspecialchars($lb['work_type_label'] ?? $lb['design_type_name'] ?? '—') ?></span>
+                                         <span
+                                             class="badge-pill" style="background:rgba(0,0,0,.05);color:#333;margin-left:4px;"><?= htmlspecialchars(pib_format_floor($lb['floor_type'] ?? 'Typical_Floor', $lb['floor_no'] ?? null)) ?></span>
                                          <div style="font-size:10px;color:#6b7280;margin-top:4px;line-height:1.2;">
                                              <strong>Work Type ID:</strong> <?= (!empty($lb['work_type_id']) && $lb['work_type_id'] != 0) ? htmlspecialchars($lb['work_type_id']) : '—' ?>
                                              <br>

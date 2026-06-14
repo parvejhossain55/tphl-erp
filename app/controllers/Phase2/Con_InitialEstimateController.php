@@ -148,13 +148,14 @@ class Con_InitialEstimateController extends Controller
         // ── QS Material Items (Design-type-wise blocks) ───────────────────────
         // Posted as flat arrays indexed per item row:
         // item_design_type_id[], item_work_type_id[], item_sl_no[],
-        // item_location[], item_nos[], item_length[], item_width[], item_height[],
+        // item_location[], item_floor_tag[], item_nos[], item_length[], item_width[], item_height[],
         // item_volume[], item_material_id[], item_unit[], item_unit_cost[], item_remarks[]
         $dtIds       = $_POST['item_design_type_id'] ?? [];
         $wtIds       = $_POST['item_work_type_id']   ?? [];
         $phaseItemIds= $_POST['item_phase_item_id']  ?? [];
         $slNos       = $_POST['item_sl_no']          ?? [];
         $locations   = $_POST['item_location']        ?? [];
+        $floorTags   = $_POST['item_floor_tag']      ?? [];
         $nosArr      = $_POST['item_nos']             ?? [];
         $lengths     = $_POST['item_length']          ?? [];
         $widths      = $_POST['item_width']           ?? [];
@@ -168,6 +169,12 @@ class Con_InitialEstimateController extends Controller
         $items = [];
         foreach ($dtIds as $i => $dtId) {
             if (empty($dtId) && empty($matIds[$i])) continue;
+            
+            $floorTag = $floorTags[$i] ?? 'Typical_Floor|';
+            $parts = explode('|', $floorTag);
+            $floorType = !empty($parts[0]) ? $parts[0] : 'Typical_Floor';
+            $floorNo = (isset($parts[1]) && $parts[1] !== '') ? (int)$parts[1] : null;
+
             $volQty = (float)($volumes[$i] ?? 0);
             if (!$volQty) {
                 $nos = (float)($nosArr[$i] ?? 1) ?: 1;
@@ -182,6 +189,8 @@ class Con_InitialEstimateController extends Controller
                 'phase_item_id'   => (int)  ($phaseItemIds[$i] ?? 0) ?: null,
                 'sl_no'           => (int)  ($slNos[$i]     ?? 0),
                 'location_desc'   =>         $locations[$i] ?? '',
+                'floor_type'      =>         $floorType,
+                'floor_no'        =>         $floorNo,
                 'nos'             => (float)($nosArr[$i]    ?? null),
                 'length_ft'       => (float)($lengths[$i]   ?? null),
                 'width_ft'        => (float)($widths[$i]    ?? null),
@@ -203,6 +212,7 @@ class Con_InitialEstimateController extends Controller
         $labWtIds        = $_POST['labor_work_type_id']   ?? [];
         $labPhaseItemIds = $_POST['labor_phase_item_id']   ?? [];
         $labTypeNames    = $_POST['labor_type_name']       ?? [];
+        $labFloorTags    = $_POST['labor_floor_tag']       ?? [];
         $labRates        = $_POST['labor_rate_per_sqft']   ?? [];
         $labAreas        = $_POST['labor_area_sqft']       ?? [];
         $labDescriptions = $_POST['labor_description']     ?? [];
@@ -210,11 +220,19 @@ class Con_InitialEstimateController extends Controller
         $labors = [];
         foreach ($labTypeNames as $i => $name) {
             if (empty($name)) continue;
+            
+            $floorTag = $labFloorTags[$i] ?? 'Typical_Floor|';
+            $parts = explode('|', $floorTag);
+            $floorType = !empty($parts[0]) ? $parts[0] : 'Typical_Floor';
+            $floorNo = (isset($parts[1]) && $parts[1] !== '') ? (int)$parts[1] : null;
+
             $labors[] = [
                 'design_type_id'  => (int)  ($labDtIds[$i]       ?? 0),
                 'work_type_id'    => (int)  ($labWtIds[$i]       ?? 0),
                 'phase_item_id'   => (int)  ($labPhaseItemIds[$i]  ?? 0) ?: null,
                 'labor_type_name' =>          $name,
+                'floor_type'      =>          $floorType,
+                'floor_no'        =>          $floorNo,
                 'rate_per_sqft'   => (float)($labRates[$i]       ?? 0),
                 'area_sqft'       => (float)($labAreas[$i]       ?? 0),
                 'description'     =>          $labDescriptions[$i] ?? '',
@@ -328,6 +346,12 @@ class Con_InitialEstimateController extends Controller
         $spentDetails['materials_total'] = $materialsTotal;
         $spentDetails['contractors_total'] = $contractorsTotal;
 
+        // Load project floors
+        $stmtFl = $this->db->prepare("SELECT id, floor_no, floor_type, slab_area_sqft FROM project_floors WHERE project_id = ? ORDER BY floor_no ASC");
+        $stmtFl->bind_param('i', $projectId);
+        $stmtFl->execute();
+        $projectFloors = $stmtFl->get_result()->fetch_all(MYSQLI_ASSOC);
+
         $this->view('phase2/initial_estimates/show-initial-budget', [
             'current_route'      => 'con-estimates',
             'page_title'         => 'Estimate Detail — ' . $budget['project_name'],
@@ -343,6 +367,7 @@ class Con_InitialEstimateController extends Controller
             'creatorInfo'        => $creatorInfo,
             'spentTotal'         => $spentTotals['total_spent'],
             'spentDetails'       => $spentDetails,
+            'projectFloors'      => $projectFloors,
         ]);
     }
 
@@ -419,6 +444,12 @@ class Con_InitialEstimateController extends Controller
         $stmtTl->execute();
         $projectTimeline = $stmtTl->get_result()->fetch_assoc() ?: null;
 
+        // Load project floors
+        $stmtFl = $this->db->prepare("SELECT id, floor_no, floor_type, slab_area_sqft FROM project_floors WHERE project_id = ? ORDER BY floor_no ASC");
+        $stmtFl->bind_param('i', $pid);
+        $stmtFl->execute();
+        $projectFloors = $stmtFl->get_result()->fetch_all(MYSQLI_ASSOC);
+
         // Group existing items by design_type_id then composite phaseItemId_wtId key
         $itemsByDt = [];
         foreach ($items as $item) {
@@ -451,6 +482,7 @@ class Con_InitialEstimateController extends Controller
             'projectDrawings' => $projectDrawings,
             'projectPhaseItems' => $projectPhaseItems,
             'projectTimeline' => $projectTimeline,
+            'projectFloors'   => $projectFloors,
             'itemsByDt'       => $itemsByDt,
             'laborsByDt'      => $laborsByDt,
         ]);
@@ -513,6 +545,7 @@ class Con_InitialEstimateController extends Controller
         $phaseItemIds = $_POST['item_phase_item_id']  ?? [];
         $slNos        = $_POST['item_sl_no']          ?? [];
         $locations    = $_POST['item_location_desc']  ?? [];
+        $floorTags    = $_POST['item_floor_tag']      ?? [];
         $nosArr       = $_POST['item_nos']            ?? [];
         $lengths      = $_POST['item_length_ft']      ?? [];
         $widths       = $_POST['item_width_ft']       ?? [];
@@ -526,6 +559,12 @@ class Con_InitialEstimateController extends Controller
         $items = [];
         foreach ($matIds as $i => $mid) {
             if (empty($mid)) continue;
+            
+            $floorTag = $floorTags[$i] ?? 'Typical_Floor|';
+            $parts = explode('|', $floorTag);
+            $floorType = !empty($parts[0]) ? $parts[0] : 'Typical_Floor';
+            $floorNo = (isset($parts[1]) && $parts[1] !== '') ? (int)$parts[1] : null;
+
             $nos = (float)($nosArr[$i] ?? 0);
             $l   = (float)($lengths[$i] ?? 0);
             $w   = (float)($widths[$i]  ?? 0);
@@ -537,6 +576,8 @@ class Con_InitialEstimateController extends Controller
                 'phase_item_id'   => (int)($phaseItemIds[$i] ?? 0) ?: null,
                 'sl_no'           => (int)($slNos[$i]  ?? 0) ?: null,
                 'location_desc'   => $locations[$i] ?? null,
+                'floor_type'      => $floorType,
+                'floor_no'        => $floorNo,
                 'nos'             => $nos ?: null,
                 'length_ft'       => $l   ?: null,
                 'width_ft'        => $w   ?: null,
@@ -558,6 +599,7 @@ class Con_InitialEstimateController extends Controller
         $labWtIds       = $_POST['labor_work_type_id']   ?? [];
         $labPhaseItemIds = $_POST['labor_phase_item_id'] ?? [];
         $labNames       = $_POST['labor_type_name']      ?? [];
+        $labFloorTags   = $_POST['labor_floor_tag']      ?? [];
         $labRates       = $_POST['labor_rate_per_sqft']  ?? [];
         $labAreas       = $_POST['labor_area_sqft']      ?? [];
         $labDescs       = $_POST['labor_description']    ?? [];
@@ -565,11 +607,19 @@ class Con_InitialEstimateController extends Controller
         $labors = [];
         foreach ($labNames as $i => $name) {
             if (empty($name)) continue;
+            
+            $floorTag = $labFloorTags[$i] ?? 'Typical_Floor|';
+            $parts = explode('|', $floorTag);
+            $floorType = !empty($parts[0]) ? $parts[0] : 'Typical_Floor';
+            $floorNo = (isset($parts[1]) && $parts[1] !== '') ? (int)$parts[1] : null;
+
             $labors[] = [
                 'design_type_id'  => (int)($labDtIds[$i] ?? 0),
                 'work_type_id'    => (int)($labWtIds[$i] ?? 0),
                 'phase_item_id'   => (int)($labPhaseItemIds[$i] ?? 0) ?: null,
                 'labor_type_name' =>       $name,
+                'floor_type'      =>       $floorType,
+                'floor_no'        =>       $floorNo,
                 'rate_per_sqft'   => (float)($labRates[$i] ?? 0),
                 'area_sqft'       => (float)($labAreas[$i] ?? 0),
                 'description'     =>       $labDescs[$i] ?? '',
@@ -749,6 +799,15 @@ class Con_InitialEstimateController extends Controller
         $base_url   = $GLOBALS['base_url'];
         $page_title = 'Initial Estimate — ' . ($budget['project_name'] ?? 'Print');
 
+        // Load project floors
+        $projectFloors = [];
+        if ($projectId > 0) {
+            $stmtFl = $this->db->prepare("SELECT id, floor_no, floor_type, slab_area_sqft FROM project_floors WHERE project_id = ? ORDER BY floor_no ASC");
+            $stmtFl->bind_param('i', $projectId);
+            $stmtFl->execute();
+            $projectFloors = $stmtFl->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
         require_once dirname(__DIR__, 2) . '/views/phase2/initial_estimates/print-initial-budget.php';
         exit;
     }
@@ -884,7 +943,129 @@ class Con_InitialEstimateController extends Controller
         $stmtTl->execute();
         $timeline = $stmtTl->get_result()->fetch_assoc() ?: null;
 
-        echo json_encode(['archs' => $archs, 'drawings' => $drawings, 'phase_items' => $phaseItems, 'timeline' => $timeline]);
+        // Load project floors
+        $stmtFl = $this->db->prepare("SELECT id, floor_no, floor_type, slab_area_sqft FROM project_floors WHERE project_id = ? ORDER BY floor_no ASC");
+        $stmtFl->bind_param('i', $projectId);
+        $stmtFl->execute();
+        $floors = $stmtFl->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Fetch project metadata to parse building type if floors are empty
+        if (empty($floors)) {
+            $stmtProj = $this->db->prepare("SELECT building_type, floor_wise_unit_meta FROM projects WHERE id = ? LIMIT 1");
+            $stmtProj->bind_param('i', $projectId);
+            $stmtProj->execute();
+            $project = $stmtProj->get_result()->fetch_assoc();
+
+            if ($project && !empty($project['building_type'])) {
+                // Calculate typical units sum from floor_wise_unit_meta
+                $unitMetaSum = 0;
+                if (!empty($project['floor_wise_unit_meta'])) {
+                    $meta = json_decode($project['floor_wise_unit_meta'], true);
+                    $typicalUnits = $meta['typical_floor'] ?? [];
+                    foreach ($typicalUnits as $u) {
+                        $unitMetaSum += (float)($u['sqft'] ?? 0);
+                    }
+                }
+                if ($unitMetaSum <= 0) {
+                    $unitMetaSum = 1500.00; // default fallback
+                }
+
+                // Parse building type string (e.g. B+G+9, B2+B1+G+14)
+                $str = strtoupper(str_replace(' ', '', $project['building_type']));
+                $parts = explode('+', $str);
+
+                $basements = [];
+                $ground = false;
+                $typicalCount = 0;
+
+                foreach ($parts as $part) {
+                    if (preg_match('/^B(\d*)$/', $part, $matches)) {
+                        $num = !empty($matches[1]) ? (int)$matches[1] : 1;
+                        if (!in_array(-$num, $basements)) {
+                            $basements[] = -$num;
+                        }
+                    } elseif (preg_match('/^(\d+)B$/', $part, $matches)) {
+                        $count = (int)$matches[1];
+                        for ($i = 1; $i <= $count; $i++) {
+                            if (!in_array(-$i, $basements)) {
+                                $basements[] = -$i;
+                            }
+                        }
+                    } elseif ($part === 'G') {
+                        $ground = true;
+                    } else {
+                        $num = (int)$part;
+                        if ($num > 0) {
+                            $typicalCount = $num;
+                        }
+                    }
+                }
+
+                // Ensure lower basements exist
+                if (!empty($basements)) {
+                    $minB = min($basements);
+                    for ($i = -1; $i >= $minB; $i--) {
+                        if (!in_array($i, $basements)) {
+                            $basements[] = $i;
+                        }
+                    }
+                }
+                sort($basements);
+
+                // Insert generated floors into database
+                $this->db->begin_transaction();
+                try {
+                    $ins_stmt = $this->db->prepare("INSERT INTO project_floors (project_id, floor_no, floor_type, unit_area_sqft, extra_sqft, slab_area_sqft, height_ft) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                    
+                    // 1. Basements
+                    foreach ($basements as $bNo) {
+                        $floor_type = 'Basement';
+                        $unit_area = 0.00;
+                        $extra_sqft = $unitMetaSum;
+                        $slab_area = $unitMetaSum;
+                        $height = 11.0;
+                        $ins_stmt->bind_param('iisdddd', $projectId, $bNo, $floor_type, $unit_area, $extra_sqft, $slab_area, $height);
+                        $ins_stmt->execute();
+                    }
+
+                    // 2. Ground Floor
+                    if ($ground) {
+                        $bNo = 0;
+                        $floor_type = 'Ground_Floor';
+                        $unit_area = $unitMetaSum;
+                        $extra_sqft = 0.00;
+                        $slab_area = $unitMetaSum;
+                        $height = 10.0;
+                        $ins_stmt->bind_param('iisdddd', $projectId, $bNo, $floor_type, $unit_area, $extra_sqft, $slab_area, $height);
+                        $ins_stmt->execute();
+                    }
+
+                    // 3. Typical Floors
+                    if ($typicalCount > 0) {
+                        for ($i = 1; $i <= $typicalCount; $i++) {
+                            $floor_type = 'Typical_Floor';
+                            $unit_area = $unitMetaSum;
+                            $extra_sqft = 0.00;
+                            $slab_area = $unitMetaSum;
+                            $height = 10.0;
+                            $ins_stmt->bind_param('iisdddd', $projectId, $i, $floor_type, $unit_area, $extra_sqft, $slab_area, $height);
+                            $ins_stmt->execute();
+                        }
+                    }
+
+                    $this->db->commit();
+
+                    // Re-fetch floors from database
+                    $stmtFl->execute();
+                    $floors = $stmtFl->get_result()->fetch_all(MYSQLI_ASSOC);
+
+                } catch (\Exception $e) {
+                    $this->db->rollback();
+                }
+            }
+        }
+
+        echo json_encode(['archs' => $archs, 'drawings' => $drawings, 'phase_items' => $phaseItems, 'timeline' => $timeline, 'floors' => $floors]);
         exit;
     }
 
