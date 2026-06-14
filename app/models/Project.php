@@ -384,7 +384,8 @@ class Project extends Model
         $qc_id             = !empty($data['qc_id']) ? (int)$data['qc_id'] : null;
         $operator_id       = !empty($data['operator_id']) ? (int)$data['operator_id'] : null;
         $purchase_user_id  = !empty($data['purchase_user_id']) ? (int)$data['purchase_user_id'] : null;
-
+        $under_construction = isset($data['under_construction']) ? (int)$data['under_construction'] : 0;
+// updated undercons
         $stmt->bind_param(
             "ssiisssiissssdssissssssiiiisssiisssd" . "iiiiiiiiiiii",
             $data['name'],
