@@ -20,6 +20,7 @@ $designTypesJson = json_encode($designTypes, JSON_UNESCAPED_UNICODE);
 $projectDrawingsJson = json_encode($projectDrawings, JSON_UNESCAPED_UNICODE);
 
 $projectPhaseItemsJson = json_encode($projectPhaseItems ?? [], JSON_UNESCAPED_UNICODE);
+$projectFloorsJson = json_encode($projectFloors ?? [], JSON_UNESCAPED_UNICODE);
 
 // Pre-build existing blocks for PHP→JS
 // itemsByDt: {dtId: {wtId: [rows]}}
@@ -383,8 +384,13 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                             value="<?= (!empty($budget['end_date']) && $budget['end_date'] !== '0000-00-00') ? $budget['end_date'] : '' ?>">
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label fw-semibold text-muted">Total Area (sqft)</label>
-                        <input type="number" step="0.01" name="total_area_sqft" class="form-control"
+                        <label class="form-label fw-semibold text-muted d-flex justify-content-between align-items-center">
+                            <span>Total Area (sqft)</span>
+                            <button type="button" class="btn btn-link p-0 text-decoration-none" style="font-size:11px" onclick="syncTotalArea()" title="Sync from Floor Setup">
+                                <i class="bi bi-arrow-repeat"></i> Sync
+                            </button>
+                        </label>
+                        <input type="number" step="0.01" name="total_area_sqft" id="totalAreaSqft" class="form-control"
                             value="<?= $budget['total_area_sqft'] ?? '' ?>" placeholder="0.00">
                     </div>
                     <div class="col-md-3">
@@ -423,6 +429,54 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                                 <?php endif; ?>
                             </span>
                         </div>
+                    </div>
+                    <!-- Project Floor Setup Details Display -->
+                    <div class="col-12 mt-3">
+                        <?php if (!empty($projectFloors)): ?>
+                            <?php 
+                            $totalSlabArea = 0; 
+                            foreach ($projectFloors as $f) {
+                                $totalSlabArea += (float)($f['slab_area_sqft'] ?? 0);
+                            }
+                            ?>
+                            <div class="p-3 rounded border" style="background:#f0fdf4; border-color:#bbf7d0;">
+                                <div class="d-flex align-items-center justify-content-between mb-2 text-success fw-bold" style="font-size:0.9rem">
+                                    <span><i class="bi bi-layers-half"></i> Project Floor Setup Details</span>
+                                    <span class="badge bg-success">Total: <?= number_format($totalSlabArea, 2) ?> sqft</span>
+                                </div>
+                                <div class="d-flex flex-wrap">
+                                    <?php foreach ($projectFloors as $f): ?>
+                                        <?php 
+                                        $label = '';
+                                        if ($f['floor_type'] === 'Roof') {
+                                            $label = 'Roof (Lvl ' . $f['floor_no'] . ')';
+                                        } else if ($f['floor_type'] === 'Ground_Floor') {
+                                            $label = 'Ground Floor';
+                                        } else if ($f['floor_type'] === 'Basement') {
+                                            $label = 'Basement ' . abs($f['floor_no']);
+                                        } else {
+                                            $n = (int)$f['floor_no'];
+                                            $ends = array('th','st','nd','rd','th','th','th','th','th','th');
+                                            if ((($n % 100) >= 11) && (($n % 100) <= 13)) {
+                                                $ordinal = $n . 'th';
+                                            } else {
+                                                $ordinal = $n . $ends[$n % 10];
+                                            }
+                                            $label = $ordinal . ' Floor';
+                                        }
+                                        ?>
+                                        <span class="badge bg-light text-dark border p-2 me-2 mb-2" style="font-size:0.85rem">
+                                            <i class="bi bi-building"></i> <?= htmlspecialchars($label) ?>: <strong><?= number_format($f['slab_area_sqft'], 2) ?> sqft</strong>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-warning py-2 mb-0 d-flex align-items-center gap-2" style="font-size:0.85rem">
+                                <i class="bi bi-exclamation-triangle text-warning"></i>
+                                <span>This project has no Floor Setup configured. <a href="<?= $base_url ?>/con-floor-setup/<?= $budget['project_id'] ?>" target="_blank" class="fw-bold text-decoration-underline">Set up floors now →</a></span>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -505,6 +559,7 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
         const EXISTING_LABORS = <?= $existingLaborsJson ?>;   // {dtId: [labors]}
         const BUDGET_PROJECT = <?= (int) ($budget['project_id'] ?? 0) ?>;
         const PROJECT_PHASE_ITEMS = <?= $projectPhaseItemsJson ?>;
+        const PROJECT_FLOORS = <?= $projectFloorsJson ?>;
 
         const dtNameMap = {};
         DESIGN_TYPES.forEach(dt => { dtNameMap[dt.id] = dt.name; });
@@ -514,8 +569,36 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
         let dtBlockCount = 0;
         let projectDrawings = <?= $projectDrawingsJson ?>;
         let projectPhaseItems = PROJECT_PHASE_ITEMS;
+        let projectFloors = PROJECT_FLOORS;
         let dtColors = ['dt-color-1', 'dt-color-2', 'dt-color-3', 'dt-color-4',
             'dt-color-5', 'dt-color-6', 'dt-color-7', 'dt-color-8'];
+
+        function getOrdinal(n) {
+            let s = ["th", "st", "nd", "rd"],
+                v = n % 100;
+            return n + (s[(v - 20) % 10] || s[v] || s[0]);
+        }
+
+        function buildFloorOptions(floors, selectedType = 'Typical_Floor', selectedNo = null) {
+            let html = `<option value="Typical_Floor|" ${selectedType === 'Typical_Floor' && (selectedNo === null || selectedNo === '') ? 'selected' : ''}>General/Unassigned</option>`;
+            if (floors && floors.length) {
+                floors.forEach(f => {
+                    let label = '';
+                    if (f.floor_type === 'Roof') {
+                        label = `Roof (Lvl ${f.floor_no})`;
+                    } else if (f.floor_type === 'Ground_Floor') {
+                        label = `Ground Floor`;
+                    } else if (f.floor_type === 'Basement') {
+                        label = `Basement ${Math.abs(f.floor_no)}`;
+                    } else {
+                        label = `${getOrdinal(f.floor_no)} Floor`;
+                    }
+                    const isSel = (String(f.floor_type) === String(selectedType) && (selectedNo !== null && selectedNo !== '' && String(f.floor_no) === String(selectedNo))) ? 'selected' : '';
+                    html += `<option value="${f.floor_type}|${f.floor_no}" ${isSel}>${label}</option>`;
+                });
+            }
+            return html;
+        }
 
         function fmt(n) { return parseFloat(n || 0).toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
         function fmtQty(n) { return parseFloat(n || 0).toLocaleString('en-BD', { minimumFractionDigits: 3, maximumFractionDigits: 3 }); }
@@ -598,12 +681,13 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                 <div class="table-responsive">
                     <table class="labor-table" id="labor-table-${blockIdx}">
                         <thead><tr>
-                            <th style="width:25%">Labor Type</th>
-                            <th style="width:20%">Description</th>
+                            <th style="width:25%">Labor Type / Phase Item</th>
+                            <th style="width:15%">Floor</th>
+                            <th style="width:15%">Description</th>
                             <th style="width:15%">Rate/sqft (৳)</th>
                             <th style="width:15%">Area (sqft)</th>
-                            <th style="width:15%">Subtotal</th>
-                            <th style="width:10%">Del</th>
+                            <th style="width:10%">Subtotal</th>
+                            <th style="width:5%">Del</th>
                         </tr></thead>
                         <tbody id="labor-body-${blockIdx}"></tbody>
                     </table>
@@ -753,18 +837,19 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
             <div class="table-responsive">
                 <table class="qs-table">
                     <thead><tr>
-                        <th style="width:40px">SL</th>
-                        <th style="width:22%">Location / Description</th>
-                        <th style="width:8%">Unit</th>
+                        <th style="width:35px">SL</th>
+                        <th style="width:18%">Location / Description</th>
+                        <th style="width:12%">Floor</th>
+                        <th style="width:6%">Unit</th>
                         <th style="width:6%">Nos</th>
-                        <th style="width:7%">L (ft)</th>
-                        <th style="width:7%">W (ft)</th>
-                        <th style="width:7%">H (ft)</th>
-                        <th style="width:8%" class="vol-cell">Vol/Qty</th>
-                        <th style="width:15%">Material</th>
+                        <th style="width:6%">L (ft)</th>
+                        <th style="width:6%">W (ft)</th>
+                        <th style="width:6%">H (ft)</th>
+                        <th style="width:8%">Volume/Qty</th>
+                        <th style="width:12%">Material</th>
                         <th style="width:8%">Rate (৳)</th>
                         <th style="width:9%">Subtotal</th>
-                        <th style="width:40px">Del</th>
+                        <th style="width:28px">Del</th>
                     </tr></thead>
                     <tbody id="qs-body-${wtIdx}"></tbody>
                 </table>
@@ -836,6 +921,11 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                    value="${ex.sl_no || rowIdx}" min="1"></td>
         <td><input type="text" name="item_location_desc[]" class="form-control-sm form-control"
                    value="${ex.location_desc || ''}" placeholder="Location..."></td>
+        <td>
+            <select name="item_floor_tag[]" class="form-select form-select-sm" style="min-width:110px">
+                ${floorOptions}
+            </select>
+        </td>
         <td><input type="text" name="item_material_unit[]" class="form-control-sm form-control unit-display"
                    readonly value="${unit}" placeholder="-"></td>
         <td><input type="number" step="0.001" name="item_nos[]"
@@ -1017,6 +1107,8 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                 }).join('');
             }
 
+            const floorOptions = buildFloorOptions(projectFloors, ex.floor_type, ex.floor_no);
+
             const tr = document.createElement('tr');
             tr.className = 'labor-row';
             tr.innerHTML = `
@@ -1026,6 +1118,11 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                    value="${ex.labor_type_name || ''}" placeholder="Mason, Painter...">
             <select name="labor_phase_item_id[]" class="form-select form-select-sm labor-phase-item-select" onchange="onLaborPhaseItemChange(this)">
                 ${phaseItemOpts}
+            </select>
+        </td>
+        <td>
+            <select name="labor_floor_tag[]" class="form-select form-select-sm" style="min-width:110px">
+                ${floorOptions}
             </select>
         </td>
         <td><input type="text" name="labor_description[]" class="form-control form-control-sm"
@@ -1209,6 +1306,7 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                 });
                 projectDrawings = Object.values(seen);
                 projectPhaseItems = drawData.phase_items || [];
+                projectFloors = drawData.floors || [];
 
                 // ── Timeline Data ──────────────────────────────────────────────
                 const tl = drawData.timeline;
@@ -1300,6 +1398,34 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
         window.refreshLaborPhaseItemOptions = refreshLaborPhaseItemOptions;
         window.onPhaseItemChange = onPhaseItemChange;
         window.onLaborPhaseItemChange = onLaborPhaseItemChange;
+
+        function syncTotalArea() {
+            let totalSlabArea = 0;
+            if (projectFloors && projectFloors.length > 0) {
+                projectFloors.forEach(f => {
+                    totalSlabArea += parseFloat(f.slab_area_sqft || 0);
+                });
+            }
+            const totalAreaInput = document.getElementById('totalAreaSqft');
+            if (totalAreaInput) {
+                totalAreaInput.value = totalSlabArea.toFixed(2);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Synced!',
+                    text: 'Total area synced from project floor setup (' + totalSlabArea.toFixed(2) + ' sqft).',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No Floor Config',
+                    text: 'No floor setup configurations found for this project.',
+                    confirmButtonColor: 'var(--clr-theme-primary)'
+                });
+            }
+        }
+        window.syncTotalArea = syncTotalArea;
 
         // Init on load
         initExistingBlocks();

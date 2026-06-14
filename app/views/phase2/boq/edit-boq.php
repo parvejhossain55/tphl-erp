@@ -1,3 +1,32 @@
+<?php
+if (!function_exists('buildFloorOptionsPhp')) {
+    function buildFloorOptionsPhp($floors, $selectedType = 'Typical_Floor', $selectedNo = null) {
+        $isSelectedGeneral = ($selectedType === 'Typical_Floor' && ($selectedNo === null || $selectedNo === '')) ? 'selected' : '';
+        $html = '<option value="Typical_Floor|" ' . $isSelectedGeneral . '>General/Unassigned</option>';
+        if (!empty($floors)) {
+            foreach ($floors as $f) {
+                $label = '';
+                if ($f['floor_type'] === 'Roof') {
+                    $label = 'Roof (Lvl ' . $f['floor_no'] . ')';
+                } elseif ($f['floor_type'] === 'Ground_Floor') {
+                    $label = 'Ground Floor';
+                } elseif ($f['floor_type'] === 'Basement') {
+                    $label = 'Basement ' . abs($f['floor_no']);
+                } else {
+                    $n = $f['floor_no'];
+                    $s = ["th", "st", "nd", "rd"];
+                    $v = $n % 100;
+                    $ord = $n . ($s[($v - 20) % 10] ?? $s[$v] ?? $s[0]);
+                    $label = $ord . ' Floor';
+                }
+                $isSel = (string)$f['floor_type'] === (string)$selectedType && ($selectedNo !== null && $selectedNo !== '' && (string)$f['floor_no'] === (string)$selectedNo) ? 'selected' : '';
+                $html .= '<option value="' . $f['floor_type'] . '|' . $f['floor_no'] . '" ' . $isSel . '>' . htmlspecialchars($label) . '</option>';
+            }
+        }
+        return $html;
+    }
+}
+?>
 <div class="pagetitle d-flex justify-content-between align-items-center">
     <div class="mb-4">
         <h4><?= htmlspecialchars($page_title) ?></h4>
@@ -25,6 +54,7 @@
                 </div>
                 <div class="card__body p-4">
                     <form action="<?= $base_url ?>/con-boq-update/<?= $boq['id'] ?>" method="POST" id="editBoqForm">
+                        <input type="hidden" name="boq_id" value="<?= $boq['id'] ?>">
 
                         <!-- Header Fields -->
                         <div class="row g-3 mb-4">
@@ -57,10 +87,11 @@
                             <table class="table table-bordered align-middle" id="editBoqTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width:40%;">Material <span class="text-danger">*</span></th>
-                                        <th style="width:12%;" class="text-center">Stock</th>
+                                        <th style="width:25%;">Material <span class="text-danger">*</span></th>
+                                        <th style="width:20%;">Floor / Segment <span class="text-danger">*</span></th>
+                                        <th style="width:10%;" class="text-center">Stock</th>
                                         <th style="width:18%;">Quantity <span class="text-danger">*</span></th>
-                                        <th style="width:22%;">Required Date <span class="text-danger">*</span></th>
+                                        <th style="width:19%;">Required Date <span class="text-danger">*</span></th>
                                         <th style="width:8%;" class="text-center">Action</th>
                                     </tr>
                                 </thead>
@@ -74,9 +105,14 @@
                                                      <?php foreach ($materials as $m): ?>
                                                          <option value="<?= $m['id'] ?>" data-unit="<?= $m['unit'] ?>"
                                                              <?= ($m['id'] == $item['material_id']) ? 'selected' : '' ?>>
-                                                             <?= htmlspecialchars($m['name']) ?> [<?= htmlspecialchars($m['category_name'] ?? 'Uncategorized') ?>] (<?= htmlspecialchars($m['unit']) ?>)
+                                                              <?= htmlspecialchars($m['name']) ?> [<?= htmlspecialchars($m['category_name'] ?? 'Uncategorized') ?>] (<?= htmlspecialchars($m['unit']) ?>)
                                                          </option>
                                                      <?php endforeach; ?>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <select name="floor_tag[]" class="form-select boq-floor" required>
+                                                    <?= buildFloorOptionsPhp($projectFloors, $item['floor_type'] ?? 'Typical_Floor', $item['floor_no'] ?? null) ?>
                                                 </select>
                                             </td>
                                             <td class="text-center">
@@ -109,14 +145,18 @@
                                         <?php endforeach; ?>
                                     <?php else: ?>
                                         <tr>
-                                            <td>
-                                                <select name="material_id[]" class="form-select boq-material" required>
+                                            <td>                                                <select name="material_id[]" class="form-select boq-material" required>
                                                     <option value="">-- Select --</option>
                                                      <?php foreach ($materials as $m): ?>
                                                          <option value="<?= $m['id'] ?>" data-unit="<?= $m['unit'] ?>">
-                                                             <?= htmlspecialchars($m['name']) ?> [<?= htmlspecialchars($m['category_name'] ?? 'Uncategorized') ?>] (<?= htmlspecialchars($m['unit']) ?>)
+                                                              <?= htmlspecialchars($m['name']) ?> [<?= htmlspecialchars($m['category_name'] ?? 'Uncategorized') ?>] (<?= htmlspecialchars($m['unit']) ?>)
                                                          </option>
                                                      <?php endforeach; ?>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <select name="floor_tag[]" class="form-select boq-floor" required>
+                                                    <?= buildFloorOptionsPhp($projectFloors) ?>
                                                 </select>
                                             </td>
                                             <td class="text-center">
@@ -189,6 +229,10 @@ document.addEventListener('DOMContentLoaded', function () {
         var newRow = firstRow.cloneNode(true);
         newRow.querySelectorAll('input').forEach(function (inp) { inp.value = ''; });
         newRow.querySelector('.boq-material').selectedIndex = 0;
+        var floorSel = newRow.querySelector('.boq-floor');
+        if (floorSel) {
+            floorSel.value = 'Typical_Floor|';
+        }
         newRow.querySelector('.boq-unit').textContent = '-';
         newRow.querySelector('.boq-remove-row').style.display = '';
         tbody.appendChild(newRow);
@@ -329,4 +373,144 @@ function checkStock(btn) {
             });
         });
 }
+
+// Project Selection Listener to dynamically reload Floors
+document.getElementById('project_id').addEventListener('change', function () {
+    const pid  = this.value;
+    if (!pid) return;
+    
+    fetch(BASE_URL + '/con-ajax-boq-targets?project_id=' + pid)
+        .then(r => r.json())
+        .then(data => {
+            if (data.floors) {
+                rebuildFloorDropdowns(data.floors);
+            }
+        });
+});
+
+// Floor dropdown rebuilding
+function formatFloorLabel(floorType, floorNo) {
+    if (floorType === 'Roof') {
+        return 'Roof (Lvl ' + floorNo + ')';
+    } else if (floorType === 'Ground_Floor') {
+        return 'Ground Floor';
+    } else if (floorType === 'Basement') {
+        return 'Basement ' + Math.abs(floorNo);
+    } else if (floorNo !== null && floorNo !== undefined && floorNo !== '') {
+        const n = parseInt(floorNo);
+        const s = ["th", "st", "nd", "rd"];
+        const v = n % 100;
+        const ord = n + (s[(v - 20) % 10] || s[v] || s[0]);
+        return ord + ' Floor';
+    }
+    return 'General';
+}
+
+function rebuildFloorDropdowns(floors) {
+    let optionsHtml = '<option value="Typical_Floor|">General/Unassigned</option>';
+    if (floors && floors.length > 0) {
+        floors.forEach(f => {
+            const label = formatFloorLabel(f.floor_type, f.floor_no);
+            optionsHtml += `<option value="${f.floor_type}|${f.floor_no}">${label}</option>`;
+        });
+    }
+    
+    document.querySelectorAll('.boq-floor').forEach(select => {
+        const currentVal = select.value;
+        select.innerHTML = optionsHtml;
+        if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
+            select.value = currentVal;
+        } else {
+            select.value = 'Typical_Floor|';
+        }
+    });
+}
+
+// Submission limits validation warning
+document.getElementById('editBoqForm').addEventListener('submit', function (e) {
+    const form = this;
+    if (form.dataset.validated === 'true') {
+        return;
+    }
+    
+    e.preventDefault();
+    
+    const projectIdField = document.getElementById('project_id');
+    const projectId = projectIdField ? projectIdField.value : '';
+    if (!projectId) {
+        Swal.fire({ icon: 'warning', title: 'Project Required', text: 'Please select a project.' });
+        return;
+    }
+    
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const origBtnHtml = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Validating...';
+    
+    fetch(BASE_URL + '/con-ajax-check-boq-limits', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(res => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = origBtnHtml;
+        
+        if (res.success) {
+            if (res.exceeded) {
+                let itemsListHtml = '<div class="table-responsive text-start mt-2" style="max-height: 250px; overflow-y: auto;"><table class="table table-sm table-striped table-bordered" style="font-size: 12px;"><thead><tr class="table-warning"><th>Material</th><th>Floor</th><th>Limit</th><th>Requested</th><th>Excess</th></tr></thead><tbody>';
+                res.items.forEach(item => {
+                    itemsListHtml += `<tr>
+                        <td><strong>${item.material_name}</strong></td>
+                        <td>${item.floor_label}</td>
+                        <td class="text-end">${parseFloat(item.budget_limit).toFixed(2)} ${item.unit}</td>
+                        <td class="text-end text-danger fw-bold">${parseFloat(item.total_qty).toFixed(2)} ${item.unit}</td>
+                        <td class="text-end text-danger fw-bold">${parseFloat(item.excess_qty).toFixed(2)} ${item.unit}</td>
+                    </tr>`;
+                });
+                itemsListHtml += '</tbody></table></div>';
+                
+                Swal.fire({
+                    title: '<span class="text-warning"><i class="bi bi-exclamation-triangle-fill me-2"></i>Quantity Exceeds Budget</span>',
+                    html: `<p class="text-muted text-start" style="font-size: 13.5px;">The following requested quantities exceed the approved floor budget limits (including previous BOQs):</p>
+                           ${itemsListHtml}
+                           <p class="mt-3 text-start fw-bold" style="font-size: 14px; color: #374151;">Are you sure you want to proceed anyway?</p>`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Update Anyway',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#e11d48',
+                    cancelButtonColor: '#6b7280',
+                    customClass: { popup: 'shadow-lg border-0' }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.dataset.validated = 'true';
+                        form.submit();
+                    }
+                });
+            } else {
+                form.dataset.validated = 'true';
+                form.submit();
+            }
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Validation Failed',
+                text: res.message || 'Could not verify budget limits. Please try again.',
+                confirmButtonColor: 'var(--clr-theme-primary)'
+            });
+        }
+    })
+    .catch(err => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = origBtnHtml;
+        Swal.fire({
+            icon: 'error',
+            title: 'Network Error',
+            text: 'Could not connect to server for budget verification.',
+            confirmButtonColor: 'var(--clr-theme-primary)'
+        });
+    });
+});
 </script>

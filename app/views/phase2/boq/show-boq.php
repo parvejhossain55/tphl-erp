@@ -668,6 +668,7 @@ if ($viewerRole === 12 && $status === 'Draft'):
           <tr>
             <th>#</th>
             <th>Material</th>
+            <th>Floor</th>
             <th>Unit</th>
             <th style="text-align:right">BOQ Qty</th>
             <th>Required Date</th>
@@ -693,6 +694,27 @@ if ($viewerRole === 12 && $status === 'Draft'):
                 <br><small class="text-muted">[Category:
                   <?= htmlspecialchars($item['category_name'] ?? 'Uncategorized') ?>]</small>
               </td>
+              <td>
+                <?php
+                if ($item['floor_type'] === 'Roof') {
+                    echo 'Roof (Lvl ' . $item['floor_no'] . ')';
+                } elseif ($item['floor_type'] === 'Ground_Floor') {
+                    echo 'Ground Floor';
+                } elseif ($item['floor_type'] === 'Basement') {
+                    echo 'Basement ' . abs($item['floor_no']);
+                } else {
+                    if ($item['floor_no'] !== null && $item['floor_no'] !== '') {
+                        $n = $item['floor_no'];
+                        $s = ["th", "st", "nd", "rd"];
+                        $v = $n % 100;
+                        $ord = $n . ($s[($v - 20) % 10] ?? $s[$v] ?? $s[0]);
+                        echo $ord . ' Floor';
+                    } else {
+                        echo 'General';
+                    }
+                }
+                ?>
+              </td>
               <td style="font-size:11.5px;color:var(--text-muted)"><?= htmlspecialchars($item['unit']) ?></td>
               <td style="text-align:right;font-weight:700;color:#2563eb"><?= number_format($boqQty, 3) ?></td>
               <td><?= !empty($item['required_date']) ? date('d M Y', strtotime($item['required_date'])) : '—' ?></td>
@@ -714,7 +736,7 @@ if ($viewerRole === 12 && $status === 'Draft'):
         </tbody>
         <tfoot>
           <tr style="background:rgba(0,0,0,.03)">
-            <td colspan="3" style="text-align:right;font-weight:800;padding:14px 12px;font-size:12px">
+            <td colspan="4" style="text-align:right;font-weight:800;padding:14px 12px;font-size:12px">
               TOTALS:
             </td>
             <td style="text-align:right;font-weight:900;font-size:14px;color:#2563eb;padding:14px 12px">

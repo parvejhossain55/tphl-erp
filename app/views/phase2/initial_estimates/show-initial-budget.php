@@ -22,6 +22,30 @@ function sib_fmt($n) {
     if ($n >= 100000)   return '৳' . number_format($n/100000,2).' L';
     return '৳' . number_format($n, 2);
 }
+
+function sib_format_floor($floorType, $floorNo) {
+    if ($floorNo === null || $floorNo === '') {
+        return 'General/Unassigned';
+    }
+    if ($floorType === 'Roof') {
+        return 'Roof (Lvl ' . $floorNo . ')';
+    }
+    if ($floorType === 'Ground_Floor') {
+        return 'Ground Floor';
+    }
+    if ($floorType === 'Basement') {
+        return 'Basement ' . abs($floorNo);
+    }
+    
+    $n = (int)$floorNo;
+    $ends = array('th','st','nd','rd','th','th','th','th','th','th');
+    if ((($n % 100) >= 11) && (($n % 100) <= 13)) {
+        $ordinal = $n . 'th';
+    } else {
+        $ordinal = $n . $ends[$n % 10];
+    }
+    return $ordinal . ' Floor';
+}
 ?>
 <style>
 /* ═══════════════════════ DESIGN TOKENS ═══════════════════════ */
@@ -286,6 +310,33 @@ function sib_fmt($n) {
   </div>
 </div>
 
+<!-- Project Floor Setup Details Display -->
+<div class="row mb-4">
+  <div class="col-12">
+    <?php if (!empty($projectFloors)): ?>
+      <?php 
+      $totalSlabArea = 0; 
+      foreach ($projectFloors as $f) {
+          $totalSlabArea += (float)($f['slab_area_sqft'] ?? 0);
+      }
+      ?>
+      <div class="p-3 rounded border shadow-sm" style="background:#f0fdf4; border-color:#bbf7d0;">
+          <div class="d-flex align-items-center justify-content-between mb-2 text-success fw-bold" style="font-size:0.9rem">
+              <span><i class="fal fa-layer-group"></i> Project Floor Setup Details</span>
+              <span class="badge bg-success" style="font-size:0.85rem; padding: 5px 10px;">Total: <?= number_format($totalSlabArea, 2) ?> sqft</span>
+          </div>
+          <div class="d-flex flex-wrap">
+              <?php foreach ($projectFloors as $f): ?>
+                  <span class="badge bg-light text-dark border p-2 me-2 mb-2" style="font-size:0.85rem; font-weight:normal">
+                      <i class="fal fa-building text-success"></i> <strong><?= htmlspecialchars(sib_format_floor($f['floor_type'], $f['floor_no'])) ?></strong>: <?= number_format($f['slab_area_sqft'], 2) ?> sqft
+                  </span>
+              <?php endforeach; ?>
+          </div>
+      </div>
+    <?php endif; ?>
+  </div>
+</div>
+
 <!-- ═══════════════ APPROVAL ACTION ═══════════════ -->
 <?php
 $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
@@ -475,6 +526,10 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
               background:rgba(var(--clr-theme-secondary-rgb),.1);color:var(--clr-theme-secondary)">
               <?= htmlspecialchars($item['work_type_label'] ?? $item['design_type_name'] ?? '—') ?>
             </span>
+            <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
+              background:rgba(0,0,0,.06);color:#333;margin-left:4px;" title="Floor">
+              <i class="fal fa-building me-1"></i><?= htmlspecialchars(sib_format_floor($item['floor_type'] ?? 'Typical_Floor', $item['floor_no'] ?? null)) ?>
+            </span>
             <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">
               <strong>Work Type ID:</strong> <?= (!empty($item['work_type_id']) && $item['work_type_id'] != 0) ? htmlspecialchars($item['work_type_id']) : '—' ?>
               <br>
@@ -540,6 +595,10 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
             <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
               background:rgba(59,130,246,.1);color:#3b82f6">
               <?= htmlspecialchars($lb['work_type_label'] ?? $lb['design_type_name'] ?? '—') ?>
+            </span>
+            <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
+              background:rgba(0,0,0,.06);color:#333;margin-left:4px;" title="Floor">
+              <i class="fal fa-building me-1"></i><?= htmlspecialchars(sib_format_floor($lb['floor_type'] ?? 'Typical_Floor', $lb['floor_no'] ?? null)) ?>
             </span>
             <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">
               <strong>Work Type ID:</strong> <?= (!empty($lb['work_type_id']) && $lb['work_type_id'] != 0) ? htmlspecialchars($lb['work_type_id']) : '—' ?>

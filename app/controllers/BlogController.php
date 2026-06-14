@@ -119,8 +119,13 @@ class BlogController extends Controller
         ];
 
 
-        if (empty($blog['slug'])) {
-            $data['slug'] = generateUniqueSlug($this->db, $_POST['title'], 'blogs', 'slug');
+        // ===================================
+        // Update slug if title changed or slug is empty
+        // ===================================
+        if (empty($blog['slug']) || trim($data['title']) !== trim($blog['title'] ?? '')) {
+            $data['slug'] = generateUniqueSlug($this->db, $data['title'], 'blogs', 'slug');
+        } else {
+            $data['slug'] = $blog['slug'] ?? null;
         }
 
         $photoInputName = 'image';
