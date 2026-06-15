@@ -610,7 +610,7 @@ $workTypesStr = !empty($uniqueWorkTypes) ? implode(', ', $uniqueWorkTypes) : '-'
                     <?php endif; ?>
 
                     <!-- Closed — Can now create bill -->
-                    <?php if ($status === 'closed'): ?>
+                    <?php if ($status === 'closed' && (hasPermission('Contractor Bill') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3]))): ?>
                         <a href="<?= $base_url ?>/con-contractor-bill-create" class="btn btn-outline-success w-100">
                             <i class="bi bi-receipt me-1"></i> Create Contractor Bill
                         </a>

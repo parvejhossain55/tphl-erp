@@ -13,20 +13,14 @@ $roleId       = (int)($_SESSION['user']['role_id'] ?? 0);
             <i class="bi bi-calendar-week me-2" style="color:var(--clr-theme-primary);"></i>
             সাপ্তাহিক Progress Report
         </h1>
-        <nav><ol class="breadcrumb" style="font-size:11.5px;margin:2px 0 0;">
-            <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
-            <li class="breadcrumb-item active">Weekly Reports</li>
-        </ol></nav>
+      
     </div>
 </div>
 
 <!-- ══ HERO BAND ══ -->
 <div style="background:linear-gradient(135deg,var(--clr-theme-primary),var(--clr-theme-secondary));border-radius:14px;padding:20px 24px;
             margin-bottom:24px;color:#fff;display:flex;align-items:center;gap:16px;">
-    <div style="width:52px;height:52px;background:rgba(255,255,255,.15);border-radius:12px;
-                display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <i class="bi bi-bar-chart-steps" style="font-size:26px;"></i>
-    </div>
+
     <div>
         <div style="font-size:18px;font-weight:800;letter-spacing:-.3px;">Phase Weekly Progress Reports</div>
         <div style="font-size:12.5px;opacity:.85;margin-top:3px;">

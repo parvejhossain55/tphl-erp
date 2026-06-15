@@ -78,6 +78,11 @@ class Con_DashboardController extends Controller
         $recentFundsQuery .= " ORDER BY ofr.created_at DESC LIMIT 5 ";
         $recentFunds = $this->db->query($recentFundsQuery)->fetch_all(MYSQLI_ASSOC);
 
+        $statusFilter = "b.status = 'pending'";
+        if (in_array($userRole, [1, 3])) {
+            $statusFilter = "b.status = 'pm_approved'";
+        }
+
         // Pending Initial Estimate Budgets (for PM/SE approval panel)
         $pendingInitialBudgetsQuery = "
             SELECT b.id, b.total_estimated_cost, b.created_at,
@@ -89,7 +94,7 @@ class Con_DashboardController extends Controller
             LEFT JOIN users u         ON u.id  = b.created_by
             LEFT JOIN employees emp   ON emp.user_id = u.id
             LEFT JOIN designations des ON des.id = emp.designation_id
-            WHERE b.status = 'pending'
+            WHERE {$statusFilter}
         ";
         if ($selectedProjectId) {
             $pendingInitialBudgetsQuery .= " AND b.project_id = $selectedProjectId ";
@@ -475,6 +480,7 @@ class Con_DashboardController extends Controller
 
         $this->view('phase2/dashboard/cons-dashboard', [
             'current_route'           => 'con-dashboard',
+            'page_title'              => 'Construction Dashboard',
             'pendingLandRequisitions' => $pendingLandRequisitions,
             'pendingPettyCash'        => $pendingPettyCash,
             'pendingContractorBills'  => $pendingContractorBills,
@@ -949,6 +955,7 @@ class Con_DashboardController extends Controller
 
         return $this->view('phase2/dashboard/con-projects', [
             'current_route' => 'con-projects',
+            'page_title'    => 'My Projects',
             'projects'      => $projects,
             'statusCounts'  => $statusCounts,
         ]);
@@ -1060,6 +1067,7 @@ $project = $stmt->get_result()->fetch_assoc();
 
         return $this->view('phase2/dashboard/project-detail', [
             'current_route'   => 'con-dashboard',
+            'page_title'      => 'Project Detail — ' . ($project['name'] ?? ''),
             'project'         => $project,
             'budget'          => $budget,
             'progress'        => $progress,
@@ -1579,6 +1587,7 @@ $project = $stmt->get_result()->fetch_assoc();
 
         return $this->view('phase2/dashboard/site-engineer-dashboard', [
             'current_route'   => 'con-site-engineer-dashboard',
+            'page_title'      => 'Site Engineer Dashboard',
             'myProjectsCount' => $myProjectsCount,
             'totalReceived'   => $totalReceived,
             'totalIssued'     => $totalIssued,
@@ -1655,6 +1664,7 @@ $project = $stmt->get_result()->fetch_assoc();
 
         return $this->view('phase2/dashboard/operations-dashboard', [
             'current_route'         => 'operations-dashboard',
+            'page_title'            => 'Operations Dashboard',
             'isAdmin'               => $isAdmin,
             'myProjectsCount'       => $myProjectsCount,
             'pendingWorkingPlans'   => $pendingWorkingPlans,
@@ -1793,6 +1803,7 @@ $project = $stmt->get_result()->fetch_assoc();
 
         return $this->view('phase2/dashboard/qc-dashboard', [
             'current_route'  => 'qc-dashboard',
+            'page_title'     => 'QC Dashboard',
             'totalIssues'    => $totalIssues,
             'totalPOs'       => $totalPOs,
             'pendingPlans'   => $pendingPlans,
@@ -1957,6 +1968,7 @@ $project = $stmt->get_result()->fetch_assoc();
 
         return $this->view('phase2/dashboard/purchase-team-lead-dashboard', [
             'current_route'    => 'purchase-team-lead-dashboard',
+            'page_title'       => 'Purchase Team Dashboard',
             'totalPOs'         => $totalPOs,
             'totalVendors'     => $totalVendors,
             'totalPenalties'   => $totalPenalties,
@@ -2062,6 +2074,7 @@ $project = $stmt->get_result()->fetch_assoc();
 
         return $this->view('phase2/dashboard/draft-dashboard', [
             'current_route'           => 'draft-dashboard',
+            'page_title'              => 'Design & Drawing Dashboard',
             'totalDrawings'           => $totalDrawings,
             'totalDesignTypes'        => $totalDesignTypes,
             'projectsWithDrawings'    => $projectsWithDrawings,
@@ -2119,6 +2132,7 @@ $project = $stmt->get_result()->fetch_assoc();
 
         return $this->view('phase2/dashboard/land-dashboard', [
             'current_route'        => 'land-dashboard',
+            'page_title'           => 'Land Manager Dashboard',
             'totalStudies'         => $totalStudies,
             'totalProjects'        => $totalProjects,
             'projectsWithStudy'    => $projectsWithStudy,
@@ -2211,6 +2225,7 @@ $project = $stmt->get_result()->fetch_assoc();
 
         return $this->view('phase2/dashboard/project-architecture-dashboard', [
             'current_route'       => 'project-architecture-dashboard',
+            'page_title'          => 'Architecture Dashboard',
             'isAdmin'             => $isAdmin,
             'totalAE'             => $totalAE,
             'projectsWithAE'      => $projectsWithAE,
@@ -2314,6 +2329,7 @@ $project = $stmt->get_result()->fetch_assoc();
 
         return $this->view('phase2/dashboard/estimator-dashboard', [
             'current_route'           => 'estimator-dashboard',
+            'page_title'              => 'Estimator Dashboard',
             'totalDrawings'           => $totalDrawings,
             'totalDesignTypes'        => $totalDesignTypes,
             'pendingEstimates'        => $pendingEstimates,
@@ -2479,6 +2495,7 @@ $project = $stmt->get_result()->fetch_assoc();
 
         return $this->view('phase2/dashboard/project-structural-design-dashboard', [
             'current_route'         => 'project-structural-design-dashboard',
+            'page_title'            => 'Structural Design Dashboard',
             'isAdmin'               => $isAdmin,
             'myProjectsCount'       => $myProjectsCount,
             'totalDesigns'          => $totalDesigns,

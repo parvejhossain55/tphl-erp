@@ -176,17 +176,19 @@ class ProjectDrawingController extends Controller {
 
         $isInHouse = (int)($_POST['is_in_house'] ?? 1);
         $data = [
-            'project_id'           => $_POST['project_id'] ?? 0,
-            'design_type_id'       => $_POST['design_type_id'] ?? null,
-            'is_in_house'          => $isInHouse,
-            'user_id'              => $isInHouse ? $_SESSION['user']['id'] : null, // session if internal
-            'designer_name'        => $isInHouse ? null : ($_POST['designer_name'] ?? null),
-            'designer_designation' => $isInHouse ? null : ($_POST['designer_designation'] ?? null),
-            'designer_company'     => $isInHouse ? null : ($_POST['designer_company'] ?? null),
-            'design_link'          => $_POST['design_link'] ?? null,
-            'version'              => $_POST['version'] ?? '1.0',
-            'status'               => $_POST['status'] ?? 'Draft',
-            'created_by'           => $_SESSION['user']['id'],
+            'project_id'              => $_POST['project_id'] ?? 0,
+            'design_type_id'          => $_POST['design_type_id'] ?? null,
+            'is_in_house'             => $isInHouse,
+            'user_id'                 => $isInHouse ? $_SESSION['user']['id'] : null,
+            'designer_name'           => $isInHouse ? null : ($_POST['designer_name'] ?? null),
+            'designer_designation'    => $isInHouse ? null : ($_POST['designer_designation'] ?? null),
+            'designer_company'        => $isInHouse ? null : ($_POST['designer_company'] ?? null),
+            'upload_designer_name'    => !empty($_POST['upload_designer_name']) ? trim($_POST['upload_designer_name']) : null,
+            'upload_designer_details' => !empty($_POST['upload_designer_details']) ? trim($_POST['upload_designer_details']) : null,
+            'design_link'             => $_POST['design_link'] ?? null,
+            'version'                 => $_POST['version'] ?? '1.0',
+            'status'                  => $_POST['status'] ?? 'Draft',
+            'created_by'              => $_SESSION['user']['id'],
         ];
 
         if ($this->model->create($data)) {
@@ -248,16 +250,18 @@ class ProjectDrawingController extends Controller {
 
         $id   = $_POST['id'] ?? 0;
         $data = [
-            'project_id'           => $_POST['project_id'] ?? 0,
-            'design_type_id'       => $_POST['design_type_id'] ?? null,
-            'is_in_house'          => $_POST['is_in_house'] ?? 1,
-            'user_id'              => $_POST['user_id'] ?? null,
-            'designer_name'        => $_POST['designer_name'] ?? null,
-            'designer_designation' => $_POST['designer_designation'] ?? null,
-            'designer_company'     => $_POST['designer_company'] ?? null,
-            'design_link'          => $_POST['design_link'] ?? null,
-            'version'              => $_POST['version'] ?? '1.0',
-            'status'               => $_POST['status'] ?? 'Draft',
+            'project_id'              => $_POST['project_id'] ?? 0,
+            'design_type_id'          => $_POST['design_type_id'] ?? null,
+            'is_in_house'             => $_POST['is_in_house'] ?? 1,
+            'user_id'                 => $_POST['user_id'] ?? null,
+            'designer_name'           => $_POST['designer_name'] ?? null,
+            'designer_designation'    => $_POST['designer_designation'] ?? null,
+            'designer_company'        => $_POST['designer_company'] ?? null,
+            'upload_designer_name'    => !empty($_POST['upload_designer_name']) ? trim($_POST['upload_designer_name']) : null,
+            'upload_designer_details' => !empty($_POST['upload_designer_details']) ? trim($_POST['upload_designer_details']) : null,
+            'design_link'             => $_POST['design_link'] ?? null,
+            'version'                 => $_POST['version'] ?? '1.0',
+            'status'                  => $_POST['status'] ?? 'Draft',
         ];
 
         if ($this->model->update($id, $data)) {

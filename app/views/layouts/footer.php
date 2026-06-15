@@ -12,17 +12,31 @@
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <?php if (!empty($_SESSION['flash_success'])): ?>
             <script>
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: <?= json_encode($_SESSION['flash_success']); ?>,
-                    showConfirmButton: false,
-                    timer: 20000,
-                    timerProgressBar: true,
-                    customClass: {
-                        popup: 'swal2-toast'
-                    }
+                window.addEventListener('load', () => {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: <?= json_encode($_SESSION['flash_success']); ?>,
+                        showConfirmButton: false,
+                        timer: 20000,
+                        timerProgressBar: true,
+                        customClass: {
+                            popup: 'swal2-toast'
+                        },
+                        didOpen: (toast) => {
+                            const icon = toast.querySelector('.swal2-icon');
+                            if (icon) {
+                                icon.style.cursor = 'pointer';
+                                icon.querySelectorAll('*').forEach(el => el.style.cursor = 'pointer');
+                            }
+                            toast.addEventListener('click', (e) => {
+                                if (e.target.closest('.swal2-icon')) {
+                                    Swal.close();
+                                }
+                            });
+                        }
+                    });
                 });
             </script>
         <?php unset($_SESSION['flash_success']);
@@ -31,14 +45,28 @@
 
         <?php if (!empty($_SESSION['flash_error'])): ?>
             <script>
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'error',
-                    title: <?= json_encode($_SESSION['flash_error']); ?>,
-                    showConfirmButton: false,
-                    timer: 20000,
-                    width: '320px'
+                window.addEventListener('load', () => {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'error',
+                        title: <?= json_encode($_SESSION['flash_error']); ?>,
+                        showConfirmButton: false,
+                        timer: 20000,
+                        width: '320px',
+                        didOpen: (toast) => {
+                            const icon = toast.querySelector('.swal2-icon');
+                            if (icon) {
+                                icon.style.cursor = 'pointer';
+                                icon.querySelectorAll('*').forEach(el => el.style.cursor = 'pointer');
+                            }
+                            toast.addEventListener('click', (e) => {
+                                if (e.target.closest('.swal2-icon')) {
+                                    Swal.close();
+                                }
+                            });
+                        }
+                    });
                 });
             </script>
         <?php unset($_SESSION['flash_error']);

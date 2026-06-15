@@ -18,7 +18,14 @@ class Con_ContractorBill extends Model
                        v.full_name  AS verified_by_name,
                        ab.full_name AS approved_by_name,
                        ab_r.name    AS approved_by_role,
-                       pb.full_name AS payment_by_name
+                       pb.full_name AS payment_by_name,
+                       pwp.week_number AS target_week_number,
+                       pwp.week_start_date AS target_week_start_date,
+                       pwp.week_end_date AS target_week_end_date,
+                       pwp.overall_progress_pct AS target_overall_progress_pct,
+                       pp.phase_name AS target_phase_name,
+                       pmt.target_month_number,
+                       pmt.target_year
                 FROM {$this->table} cbr
                 LEFT JOIN contractors oo ON oo.id = cbr.operator_id
                 LEFT JOIN projects p  ON p.id  = cbr.project_id
@@ -32,7 +39,10 @@ class Con_ContractorBill extends Model
                     WHERE ref_type = 'contractor_bill'
                     ORDER BY id DESC
                 ) latest_txn ON latest_txn.ref_id = cbr.id
-                LEFT JOIN users pb ON pb.id = latest_txn.processed_by";
+                LEFT JOIN users pb ON pb.id = latest_txn.processed_by
+                LEFT JOIN phase_weekly_progress pwp ON pwp.id = cbr.target_id
+                LEFT JOIN project_phases pp ON pp.id = pwp.phase_id
+                LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id";
 
         if ($userId !== null) {
             $sql .= " WHERE cbr.created_by = " . (int)$userId;
@@ -54,7 +64,14 @@ class Con_ContractorBill extends Model
                        u.full_name  AS created_by_name,
                        v.full_name  AS verified_by_name,
                        ab.full_name AS approved_by_name,
-                       ab_r.name    AS approved_by_role
+                       ab_r.name    AS approved_by_role,
+                       pwp.week_number AS target_week_number,
+                       pwp.week_start_date AS target_week_start_date,
+                       pwp.week_end_date AS target_week_end_date,
+                       pwp.overall_progress_pct AS target_overall_progress_pct,
+                       pp.phase_name AS target_phase_name,
+                       pmt.target_month_number,
+                       pmt.target_year
                 FROM {$this->table} cbr
                 LEFT JOIN contractors oo ON oo.id = cbr.operator_id
                 LEFT JOIN projects p  ON p.id  = cbr.project_id
@@ -62,6 +79,9 @@ class Con_ContractorBill extends Model
                 LEFT JOIN users v     ON v.id  = cbr.verified_by
                 LEFT JOIN users ab    ON ab.id = cbr.approved_by
                 LEFT JOIN roles ab_r  ON ab_r.id = ab.role_id
+                LEFT JOIN phase_weekly_progress pwp ON pwp.id = cbr.target_id
+                LEFT JOIN project_phases pp ON pp.id = pwp.phase_id
+                LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
                 WHERE cbr.id = ?";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $id);

@@ -370,71 +370,77 @@ $hasTransactions = !empty($recentTransactions);
                 
                 <!-- 1. Default View (Insights list) -->
                 <div id="ai-default-view" class="d-flex flex-column justify-content-between h-100">
-                    <!-- AI Banner with cute robot avatar -->
-                    <div class="p-3 mb-3 d-flex align-items-center justify-content-between position-relative overflow-hidden" style="background: linear-gradient(135deg, rgba(var(--clr-theme-primary-rgb), 0.08) 0%, rgba(var(--clr-theme-primary-rgb), 0.02) 100%); border-radius: 12px; border: 1px solid rgba(var(--clr-theme-primary-rgb), 0.12);">
+                    <!-- AI Banner with cute robot avatar (no background as requested) -->
+                    <div class="mb-3 d-flex align-items-center justify-content-between position-relative" style="background: transparent; border: none; padding: 12px 0;">
                         <div style="flex: 1; z-index: 1;">
-                            <h6 class="fw-bold mb-1" style="font-size: 14px;">Hi Management! 👋</h6>
-                            <p class="mb-0 text-muted" style="font-size: 11px; line-height: 1.4; opacity: 0.8;">I've analyzed your business data and found some key insights.</p>
+                            <h5 class="fw-bold mb-1 text-dark" style="font-size: 15px; font-weight: 700; letter-spacing: -0.3px;">Hi Management! 👋</h5>
+                            <p class="mb-0 text-muted" style="font-size: 11.5px; line-height: 1.45;">I've analyzed your business data and found some key insights.</p>
                         </div>
-                        <div style="width: 70px; height: 70px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; z-index: 1;">
+                        <div style="width: 75px; height: 75px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; z-index: 1; margin-left: 10px;">
                             <img src="<?= $GLOBALS['base_url'] ?>/public/assets/images/ai_robot_avatar.png" alt="AI Robot" style="width: 100%; height: 100%; object-fit: contain;">
                         </div>
                     </div>
 
-                    <!-- Key Insights section -->
+                    <!-- Key Insights section inside a premium card container -->
                     <div class="flex-grow-1">
-                        <div class="d-flex align-items-center gap-2 mb-3" style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
-                            <i class="fa-light fa-lightbulb-on" style="color: var(--clr-theme-primary);"></i> Key Insights
-                        </div>
-                        
-                        <!-- Insight List -->
-                        <div class="d-flex flex-column gap-2">
-                            <!-- Insight 1: Total Booked Flats -->
-                            <div class="d-flex align-items-center justify-content-between p-2 rounded-3 hover-bg-light ai-insight-item" data-question="সিস্টেমে মোট কতটি ফ্ল্যাট বুকিং করা হয়েছে?" style="border: 1px solid rgba(0,0,0,0.03); cursor: pointer; transition: all 0.2s;">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background: rgba(99, 102, 241, 0.1); color: #6366f1; flex-shrink: 0;">
-                                        <i class="fa-light fa-building"></i>
-                                    </div>
-                                    <div>
-                                        <div style="font-size: 11.5px; font-weight: 600; line-height: 1.3;">
-                                            Total flats booked: <span class="text-indigo fw-bold" style="color: #6366f1;"><?= $totalFlatsBooking ?? 0 ?></span>
-                                        </div>
-                                        <div style="font-size: 9.5px; color: #64748b; margin-top: 1px;">Based on overall sales inventory data.</div>
-                                    </div>
-                                </div>
-                                <div class="text-muted ps-2" style="font-size: 12px;"><i class="fa-light fa-chevron-right"></i></div>
+                        <div class="card__wrapper shadow-sm border mb-0" style="border-radius: 16px; border-color: #8ecd8e !important;  overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.02) !important;">
+                            <!-- Header -->
+                            <div class="d-flex align-items-center gap-2 px-3 py-3 border-bottom" style="border-color: #f1f5f9 !important;">
+                                <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 28px; height: 28px; background: rgba(var(--clr-theme-primary-rgb), 0.08); color: var(--clr-theme-primary); font-size: 13px;">
+                                    <i class="fa-light fa-sparkles"></i>
+                                </span>
+                                <span class="fw-bold mb-0 text-dark" style="font-size: 13px; letter-spacing: 0.3px;">Key Insights</span>
                             </div>
-
-                            <!-- Insight 2: Construction in Progress -->
-                            <div class="d-flex align-items-center justify-content-between p-2 rounded-3 hover-bg-light ai-insight-item" data-question="বর্তমানে কোন কোন প্রজেক্টে কনস্ট্রাকশনের কাজ চলছে?" style="border: 1px solid rgba(0,0,0,0.03); cursor: pointer; transition: all 0.2s;">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; flex-shrink: 0;">
-                                        <i class="fa-light fa-helmet-safety"></i>
-                                    </div>
-                                    <div>
-                                        <div style="font-size: 11.5px; font-weight: 600; line-height: 1.3;">
-                                            Construction in progress: <span class="text-warning fw-bold"><?= $constructionProjectsCount ?? 0 ?></span> projects
+                            
+                            <!-- Insight List -->
+                            <div class="d-flex flex-column">
+                                <!-- Insight 1: Total Booked Flats -->
+                                <div class="d-flex align-items-center justify-content-between px-3 py-3 hover-bg-light border-bottom ai-insight-item" data-question="সিস্টেমে মোট কতটি ফ্ল্যাট বুকিং করা হয়েছে?" style="cursor: pointer; transition: all 0.2s; border-color: #f1f5f9 !important;">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background: rgba(99, 102, 241, 0.08); color: #6366f1; flex-shrink: 0; font-size: 16px;">
+                                            <i class="fa-light fa-building"></i>
                                         </div>
-                                        <div style="font-size: 9.5px; color: #64748b; margin-top: 1px;">Active phases currently under development.</div>
-                                    </div>
-                                </div>
-                                <div class="text-muted ps-2" style="font-size: 12px;"><i class="fa-light fa-chevron-right"></i></div>
-                            </div>
-
-                            <!-- Insight 3: Net Cashflow -->
-                            <div class="d-flex align-items-center justify-content-between p-2 rounded-3 hover-bg-light ai-insight-item" data-question="আমাদের টোটাল ক্যাশফ্লো এবং ক্যাশ ইন ও ক্যাশ আউট এর হিসাব দেখাও" style="border: 1px solid rgba(0,0,0,0.03); cursor: pointer; transition: all 0.2s;">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background: rgba(16, 185, 129, 0.1); color: #10b981; flex-shrink: 0;">
-                                        <i class="fa-light fa-wallet"></i>
-                                    </div>
-                                    <div>
-                                        <div style="font-size: 11.5px; font-weight: 600; line-height: 1.3;">
-                                            Net Cashflow: <span class="text-success fw-bold">৳<?= format_bdt(($overviewStats['total_cashin'] ?? 0) - ($overviewStats['total_cashout'] ?? 0)) ?></span>
+                                        <div class="flex-grow-1">
+                                            <div class="text-dark" style="font-size: 12.5px; font-weight: 600; line-height: 1.3;">
+                                                Total flats booked: <strong style="color: var(--clr-theme-primary);"><?= $totalFlatsBooking ?? 0 ?></strong>
+                                            </div>
+                                            <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">Based on overall sales inventory data.</div>
                                         </div>
-                                        <div style="font-size: 9.5px; color: #64748b; margin-top: 1px;">Cash In: ৳<?= format_bdt($overviewStats['total_cashin'] ?? 0) ?> | Cash Out: ৳<?= format_bdt($overviewStats['total_cashout'] ?? 0) ?></div>
                                     </div>
+                                    <div class="text-muted ps-2" style="font-size: 14px;"><i class="fa-light fa-chevron-right" style="color: #94a3b8;"></i></div>
                                 </div>
-                                <div class="text-muted ps-2" style="font-size: 12px;"><i class="fa-light fa-chevron-right"></i></div>
+
+                                <!-- Insight 2: Construction in Progress -->
+                                <div class="d-flex align-items-center justify-content-between px-3 py-3 hover-bg-light border-bottom ai-insight-item" data-question="বর্তমানে কোন কোন প্রজেক্টে কনস্ট্রাকশনের কাজ চলছে?" style="cursor: pointer; transition: all 0.2s; border-color: #f1f5f9 !important;">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background: rgba(245, 158, 11, 0.08); color: #f59e0b; flex-shrink: 0; font-size: 16px;">
+                                            <i class="fa-light fa-helmet-safety"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="text-dark" style="font-size: 12.5px; font-weight: 600; line-height: 1.3;">
+                                                Construction in progress: <strong style="color: #f59e0b;"><?= $constructionProjectsCount ?? 0 ?></strong> projects
+                                            </div>
+                                            <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">Active phases currently under development.</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-muted ps-2" style="font-size: 14px;"><i class="fa-light fa-chevron-right" style="color: #94a3b8;"></i></div>
+                                </div>
+
+                                <!-- Insight 3: Net Cashflow -->
+                                <div class="d-flex align-items-center justify-content-between px-3 py-3 hover-bg-light ai-insight-item" data-question="আমাদের টোটাল ক্যাশফ্লো এবং ক্যাশ ইন ও ক্যাশ আউট এর হিসাব দেখাও" style="cursor: pointer; transition: all 0.2s;">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background: rgba(16, 185, 129, 0.08); color: #10b981; flex-shrink: 0; font-size: 16px;">
+                                            <i class="fa-light fa-wallet"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="text-dark" style="font-size: 12.5px; font-weight: 600; line-height: 1.3;">
+                                                Net Cashflow: <strong style="color: #10b981;">৳<?= format_bdt(($overviewStats['total_cashin'] ?? 0) - ($overviewStats['total_cashout'] ?? 0)) ?></strong>
+                                            </div>
+                                            <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">Cash In: ৳<?= format_bdt($overviewStats['total_cashin'] ?? 0) ?> | Cash Out: ৳<?= format_bdt($overviewStats['total_cashout'] ?? 0) ?></div>
+                                        </div>
+                                    </div>
+                                    <div class="text-muted ps-2" style="font-size: 14px;"><i class="fa-light fa-chevron-right" style="color: #94a3b8;"></i></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -460,7 +466,7 @@ $hasTransactions = !empty($recentTransactions);
 
             <!-- Ask anything search input -->
             <div class="mt-3">
-                <div class="d-flex align-items-center p-1 w-100 flex-nowrap" style="border: 1.5px solid rgba(var(--clr-theme-primary-rgb), 0.15); border-radius: 24px; background: var(--clr-bg-body); box-shadow: 0 2px 8px rgba(var(--clr-theme-primary-rgb), 0.03); gap: 8px;">
+                <div class="d-flex align-items-center p-1 w-100 flex-nowrap" style="border: 1.5px solid green; border-radius: 24px; background: var(--clr-bg-body); box-shadow: 0 2px 8px rgba(var(--clr-theme-primary-rgb), 0.03); gap: 8px;">
                     <input type="text" id="ai-input" class="form-control border-0 bg-transparent flex-grow-1" placeholder="Ask me anything..." style="font-size: 12px; box-shadow: none; padding-left: 14px; min-width: 0;">
                     <button id="ai-send-btn" class="btn btn-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 32px; height: 32px; min-width: 32px; min-height: 32px; border-radius: 50% !important; padding: 0; background: var(--clr-theme-primary); border: none;">
                         <i class="fa-light fa-arrow-right" style="font-size: 12px; color: #fff;"></i>
@@ -1206,6 +1212,14 @@ $hasTransactions = !empty($recentTransactions);
             aiClearBtn.addEventListener('click', () => {
                 aiMessagesList.innerHTML = '';
                 addMessage('ai', 'আসসালামু আলাইকুম! 👋 আমি আপনার AI Assistant। আপনার বিজনেস এবং প্রজেক্টের যেকোনো প্রশ্ন আমাকে জিজ্ঞাসা করতে পারেন।');
+                // Clear session history on backend
+                fetch(baseUrl + '/ai-chatbox', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: 'clear_session_history_request' })
+                }).catch(err => console.error('Failed to clear backend session:', err));
             });
         }
 
@@ -1309,43 +1323,27 @@ $hasTransactions = !empty($recentTransactions);
     /* ==========================================
        AI Assistant Responsive Styles
        ========================================== */
-    #ai-default-view {
-        flex-direction: column !important; /* Stack vertically on mobile by default */
+    #ai-default-view,
+    #ai-chat-view {
+        flex-direction: column !important; /* Stack vertically on all screens */
+    }
+
+    #ai-default-view > div:first-child,
+    #ai-default-view > div:last-child {
+        width: 100%;
+        min-width: 0;
     }
 
     #ai-default-view > div:first-child {
-        width: 100%;
-        margin-bottom: 16px !important;
+        margin-bottom: 8px !important;
     }
 
-    #ai-default-view > div:last-child {
-        width: 100%;
-    }
-
-    /* Force column layout on mobile for specific AI assistant containers to override style.css row force */
-    @media (max-width: 767px) {
-        #ai-default-view,
-        #ai-default-view .flex-column,
-        #ai-chat-view,
-        #ai-chat-view .flex-column,
-        #ai-messages-list {
-            flex-direction: column !important;
-        }
-    }
-
-    @media (min-width: 768px) {
-        #ai-default-view {
-            flex-direction: row !important; /* Side-by-side on desktop/tablet */
-            gap: 20px;
-        }
-        #ai-default-view > div:first-child {
-            flex: 1 1 45%;
-            margin-bottom: 0 !important;
-            min-width: 0;
-        }
-        #ai-default-view > div:last-child {
-            flex: 1 1 55%;
-            min-width: 0;
-        }
+    /* Force column layout and prevent overflow on all screens for specific AI assistant containers */
+    #ai-default-view,
+    #ai-default-view .flex-column,
+    #ai-chat-view,
+    #ai-chat-view .flex-column,
+    #ai-messages-list {
+        flex-direction: column !important;
     }
 </style>

@@ -43,6 +43,12 @@ class Con_MonthlyTargetController extends Controller {
         $project = $pStmt->get_result()->fetch_assoc();
         if (!$project) { setError("Project not found."); header("Location: " . $GLOBALS['base_url'] . "/con-projects"); exit; }
 
+        // Check if budget estimate exists for this project
+        $budgetStmt = $this->db->prepare("SELECT COUNT(*) AS total FROM initial_estimate_budgets WHERE project_id = ?");
+        $budgetStmt->bind_param('i', $project_id);
+        $budgetStmt->execute();
+        $budgetCount = (int)($budgetStmt->get_result()->fetch_assoc()['total'] ?? 0);
+
         $targets = $this->model->getByProject($project_id);
         $phases  = $this->phaseModel->getByProject($project_id);
 
@@ -72,6 +78,7 @@ class Con_MonthlyTargetController extends Controller {
             'phases'             => $phases,
             'project_id'         => $project_id,
             'shortfallsByTarget' => $shortfallsByTarget,
+            'has_budget'         => ($budgetCount > 0),
         ]);
     }
 
@@ -141,6 +148,18 @@ class Con_MonthlyTargetController extends Controller {
             header("Location: " . $GLOBALS['base_url'] . "/con-monthly-targets/" . (int)$project_id); exit;
         }
         $project_id = (int)$project_id;
+
+        // Check if budget estimate exists for this project
+        $budgetStmt = $this->db->prepare("SELECT COUNT(*) AS total FROM initial_estimate_budgets WHERE project_id = ?");
+        $budgetStmt->bind_param('i', $project_id);
+        $budgetStmt->execute();
+        $budgetCount = (int)($budgetStmt->get_result()->fetch_assoc()['total'] ?? 0);
+
+        if ($budgetCount <= 0) {
+            setError("No estimate uploaded yet for this project.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-monthly-targets/" . $project_id); exit;
+        }
+
         $phase_id   = (int)($_POST['phase_id']     ?? 0);
         $monthRaw   = trim($_POST['target_month']  ?? '');
 

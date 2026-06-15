@@ -374,7 +374,7 @@ $isAdmin = $isAdmin ?? false;
           </div>
           Workflow Notification: Land Visibility Completed (Ready for Architecture)
         </div>
-        <div style="overflow-x:auto; background:#fff; border-radius:10px; border:1px solid rgba(0,0,0,.05);">
+        <div style="overflow-x:auto;  border-radius:10px; border:1px solid rgba(0,0,0,.05);">
           <table class="pa-table" style="margin:0;">
             <thead>
               <tr>

@@ -3,15 +3,12 @@
         <h4><?= htmlspecialchars($page_title) ?></h4>
         <nav>
             <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-material-receivings">Material Receiving</a></li>
                 <li class="breadcrumb-item active">QC Review</li>
             </ol>
         </nav>
     </div>
-    <a href="<?= $base_url ?>/con-material-receivings" class="btn btn-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i> Back to List
-    </a>
+  
 </div>
 
 <?php
@@ -366,7 +363,7 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                     <?php endif; ?>
                     <?php elseif (in_array($receiving['overall_status'], ['Accepted', 'Partially Accepted', 'Rejected']) && !empty($receiving['pm_approved_at'])): ?>
                         <div class="mt-3 alert alert-success small mb-0">
-                            <i class="bi bi-check-circle-fill me-1"></i> Fully Approved by PM on <?= date('d M Y h:i A', strtotime($receiving['pm_approved_at'])) ?>
+                           Fully Approved by PM on <?= date('d M Y h:i A', strtotime($receiving['pm_approved_at'])) ?>
                             <?php if(!empty($receiving['pm_note'])): ?>
                                 <br><strong class="mt-1 d-block">PM Note:</strong> <?= htmlspecialchars($receiving['pm_note']) ?>
                             <?php endif; ?>

@@ -31,9 +31,12 @@ class Con_InitialEstimate extends Model
         $sql = "SELECT b.*,
                        p.name        AS project_name,
                        ae.id         AS arch_id,
+                       u.full_name   AS creator_name,
                        u.full_name   AS created_by_name,
                        ab.full_name  AS approved_by_name,
                        ab_r.name     AS approved_by_role,
+                       pm_u.full_name AS pm_approved_by_name,
+                       mgmt_u.full_name AS mgmt_approved_by_name,
                        dt.name       AS design_type_name,
                        wt.work_type_name,
                        wt.design_type_id AS design_type_id,
@@ -44,6 +47,8 @@ class Con_InitialEstimate extends Model
                 LEFT JOIN users               u    ON u.id   = b.created_by
                 LEFT JOIN users               ab   ON ab.id  = b.approved_by
                 LEFT JOIN roles               ab_r ON ab_r.id = ab.role_id
+                LEFT JOIN users               pm_u ON pm_u.id = b.pm_approved_by
+                LEFT JOIN users               mgmt_u ON mgmt_u.id = b.mgmt_approved_by
                 LEFT JOIN work_types          wt   ON wt.id  = b.work_type_id
                 LEFT JOIN design_types        dt   ON dt.id  = wt.design_type_id
                 WHERE 1=1 {$draftFilter}
@@ -94,9 +99,12 @@ class Con_InitialEstimate extends Model
     {
         $sql = "SELECT b.*,
                        p.name        AS project_name,
+                       u.full_name   AS creator_name,
                        u.full_name   AS created_by_name,
                        ab.full_name  AS approved_by_name,
                        ab_r.name     AS approved_by_role,
+                       pm_u.full_name AS pm_approved_by_name,
+                       mgmt_u.full_name AS mgmt_approved_by_name,
                        dt.name       AS design_type_name,
                        wt.work_type_name,
                        CONCAT(dt.name, ' (', wt.work_type_name, ')') AS work_type_label
@@ -105,6 +113,8 @@ class Con_InitialEstimate extends Model
                 LEFT JOIN users    u    ON u.id    = b.created_by
                 LEFT JOIN users    ab   ON ab.id   = b.approved_by
                 LEFT JOIN roles    ab_r ON ab_r.id = ab.role_id
+                LEFT JOIN users    pm_u ON pm_u.id = b.pm_approved_by
+                LEFT JOIN users    mgmt_u ON mgmt_u.id = b.mgmt_approved_by
                 LEFT JOIN work_types   wt ON wt.id = b.work_type_id
                 LEFT JOIN design_types dt ON dt.id = wt.design_type_id
                 WHERE b.id = ?";
@@ -503,10 +513,10 @@ class Con_InitialEstimate extends Model
 
         $stmt = $this->db->prepare(
             "UPDATE {$this->budgetTable}
-             SET status = 'pm_approved', approved_by = ?, approval_date = NOW()
+             SET status = 'pm_approved', approved_by = ?, approval_date = NOW(), pm_approved_by = ?, pm_approval_date = NOW()
              WHERE id = ? AND status = 'pending'"
         );
-        $stmt->bind_param('ii', $userId, $id);
+        $stmt->bind_param('iii', $userId, $userId, $id);
         return $stmt->execute() && $stmt->affected_rows > 0;
     }
 
@@ -517,10 +527,10 @@ class Con_InitialEstimate extends Model
 
         $stmt = $this->db->prepare(
             "UPDATE {$this->budgetTable}
-             SET status = 'approved', approved_by = ?, approval_date = NOW()
+             SET status = 'approved', approved_by = ?, approval_date = NOW(), mgmt_approved_by = ?, mgmt_approval_date = NOW()
              WHERE id = ? AND status = 'pm_approved'"
         );
-        $stmt->bind_param('ii', $userId, $id);
+        $stmt->bind_param('iii', $userId, $userId, $id);
         return $stmt->execute() && $stmt->affected_rows > 0;
     }
 

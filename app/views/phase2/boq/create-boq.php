@@ -73,13 +73,7 @@ if ($phaseTarget) {
 <div class="pagetitle d-flex justify-content-between align-items-center">
     <div class="mb-4">
         <h4><?= htmlspecialchars($page_title) ?></h4>
-        <nav>
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
-                <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-boq">BOQ</a></li>
-                <li class="breadcrumb-item active">New BOQ</li>
-            </ol>
-        </nav>
+      
     </div>
     <a href="<?= $base_url ?>/con-boq" class="btn btn-secondary btn-sm">
         <i class="bi bi-arrow-left me-1"></i> Back to List
@@ -528,7 +522,7 @@ if (!empty($weeklyProgress) || $anyWeekHasPlan):
                         </button>
                     </div>
 
-                    <div class="mt-5 text-end">
+                    <div class="mt-5 text-end d-flex">
                         <a href="<?= $base_url ?>/con-boq" class="btn btn-secondary me-2">Cancel</a>
                         <button type="submit" class="btn btn-primary px-4 fw-bold" id="boqSubmitBtn">
                             <i class="bi bi-save me-1"></i> Save BOQ

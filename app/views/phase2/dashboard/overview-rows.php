@@ -145,8 +145,8 @@ if (empty($projects)): ?>
                     <?php endif; ?>
 
                     <div>
-                        <a href="<?= $detailUrl ?>" class="proj-title" style="font-size: 13.5px; font-weight: 700; color: #0f172a; text-decoration: none; display: block;"><?= htmlspecialchars($pr['name']) ?></a>
-                        <div class="proj-loc" style="font-size: 11px; color: #64748b; margin-top: 2px; display: flex; align-items: center; gap: 4px;">
+                        <a href="<?= $detailUrl ?>" class="proj-title" style="font-size: 13.5px; font-weight: 700; color: var(--clr-common-black, #0f172a); text-decoration: none; display: block;"><?= htmlspecialchars($pr['name']) ?></a>
+                        <div class="proj-loc" style="font-size: 11px; color: var(--po-text-muted, #64748b); margin-top: 2px; display: flex; align-items: center; gap: 4px;">
                             <i class="fa-solid fa-location-dot" style="font-size: 10px;"></i>
                             <?= htmlspecialchars($pr['location_name'] ?: 'N/A') ?>
                         </div>
@@ -156,7 +156,7 @@ if (empty($projects)): ?>
             
             <!-- Column 2: Current Phase -->
             <td style="padding: 16px; vertical-align: middle;">
-                <div style="font-weight: 700; color: #1e293b; font-size: 13px;"><?= htmlspecialchars($currentPhaseName) ?></div>
+                <div style="font-weight: 700; color: var(--clr-common-black, #1e293b); font-size: 13px;"><?= htmlspecialchars($currentPhaseName) ?></div>
                 <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;"><?= $currentPhaseSub ?></div>
             </td>
             
@@ -166,7 +166,7 @@ if (empty($projects)): ?>
                     <!-- Planned Bar -->
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                         <span style="font-size: 10px; font-weight: 700; color: #94a3b8; min-width: 24px;">Pla</span>
-                        <div class="prog-bar-container" style="height: 6px; flex: 1; background: #f1f5f9;">
+                        <div class="prog-bar-container" style="height: 6px; flex: 1; background: var(--clr-bg-body, #f1f5f9);">
                             <div class="prog-bar-fill-planned" style="width: <?= min(100, $pr['planned_progress_pct']) ?>%; height: 100%; background: #6366f1; opacity: 0.85;"></div>
                         </div>
                         <span style="font-size: 11px; font-weight: 800; color: #6366f1; min-width: 32px; text-align: right; display: flex; align-items: center; gap: 4px;">
@@ -177,7 +177,7 @@ if (empty($projects)): ?>
                     <!-- Actual Bar -->
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                         <span style="font-size: 10px; font-weight: 700; color: #94a3b8; min-width: 24px;">Act</span>
-                        <div class="prog-bar-container" style="height: 6px; flex: 1; background: #f1f5f9;">
+                        <div class="prog-bar-container" style="height: 6px; flex: 1; background: var(--clr-bg-body, #f1f5f9);">
                             <div class="prog-bar-fill-actual" style="width: <?= min(100, $pr['progress_pct']) ?>%; height: 100%; background: var(--po-primary, #198754);"></div>
                         </div>
                         <span style="font-size: 11px; font-weight: 800; color: var(--po-primary, #198754); min-width: 32px; text-align: right; display: flex; align-items: center; gap: 4px;">
@@ -198,7 +198,7 @@ if (empty($projects)): ?>
             
             <!-- Column 5: Handover Target -->
             <td style="padding: 16px; vertical-align: middle;">
-                <div style="font-weight: 700; color: #1e293b; font-size: 13px;">
+                <div style="font-weight: 700; color: var(--clr-common-black, #1e293b); font-size: 13px;">
                     <?= $pr['expected_handover_date'] ? date('M Y', strtotime($pr['expected_handover_date'])) : 'N/A' ?>
                 </div>
                 <div style="font-size:11px; color: #94a3b8; margin-top:2px">
@@ -218,9 +218,9 @@ if (empty($projects)): ?>
             
             <!-- Column 6: Budget Usage -->
             <td style="padding: 16px; vertical-align: middle;">
-                <div style="font-weight: 700; color: #1e293b; font-size: 13px;"><?= cpFmt($pr['total_spent']) ?></div>
+                <div style="font-weight: 700; color: var(--clr-common-black, #1e293b); font-size: 13px;"><?= cpFmt($pr['total_spent']) ?></div>
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px;">
-                    <div class="prog-bar-container" style="height: 4px; flex: 1; background: #f1f5f9;">
+                    <div class="prog-bar-container" style="height: 4px; flex: 1; background: var(--clr-bg-body, #f1f5f9);">
                         <div class="prog-bar-fill-actual" style="width: <?= min(100, $budgetPct) ?>%; height: 100%; background: <?= $budgetPct > 90 ? '#ef4444' : 'var(--po-primary, #198754)' ?>;"></div>
                     </div>
                     <span style="font-size: 10px; font-weight: 700; color: #64748b; min-width: 26px; text-align: right;"><?= $budgetPct ?>%</span>
@@ -238,7 +238,7 @@ if (empty($projects)): ?>
 
         <!-- Nested Timeline Phases Detail Block (Collapsible) -->
         <?php if (!empty($pr['phases'])): ?>
-            <tr id="phases-breakdown-<?= $pr['id'] ?>" class="phase-items-container" style="display: none; background: #fafbfc;">
+            <tr id="phases-breakdown-<?= $pr['id'] ?>" class="phase-items-container" style="display: none; background: var(--clr-bg-body, #fafbfc);">
                 <td colspan="7" style="padding: 18px 24px; border-bottom: 1px solid rgba(0,0,0,0.05);">
                     <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
                         <i class="fa-solid fa-folder-open text-primary"></i> Phase Progress Breakdown for <?= htmlspecialchars($pr['name']) ?>
@@ -266,7 +266,7 @@ if (empty($projects)): ?>
                                                       . "সূত্র: ফেজের বর্তমান প্রগ্রেস (" . toBengaliNum($phaseProgressVal2) . "%) × (ফেজ ওয়েট " . toBengaliNum($phaseWeightVal) . " ÷ ১০০) = " . toBengaliNum($phaseContributionVal) . "%";
                             ?>
                             <div style="display: grid; grid-template-columns: 200px 1fr; align-items: center; gap: 16px;">
-                                <div style="font-size: 12px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                                <div style="font-size: 12px; font-weight: 700; color: var(--clr-common-black, #1e293b); display: flex; align-items: center; gap: 8px;">
                                      <?php if (!empty($phase['items'])): ?>
                                         <i class="fa-solid fa-chevron-right phase-toggle-icon" 
                                            onclick="togglePhaseItems('subitems-<?= $pr['id'] ?>-<?= $phase['phase_id'] ?>', this)" 
@@ -289,7 +289,7 @@ if (empty($projects)): ?>
                                              <span style="font-size: 9px; cursor: pointer; color: #94a3b8;" data-bs-toggle="popover" data-bs-content="<?= htmlspecialchars($phaseProgressTooltip) ?>">ℹ️</span>
                                         </span>
                                     </div>
-                                    <div class="prog-bar-container" style="height: 6px; background: #e2e8f0; position: relative;">
+                                    <div class="prog-bar-container" style="height: 6px; background: var(--clr-bg-body, #e2e8f0); position: relative;">
                                         <!-- Planned phase width (representing total phase weight) -->
                                         <div class="prog-bar-fill-planned" style="width: <?= $phWeight ?>%; height: 100%; background: #6366f1; opacity: 0.15; position: absolute; left: 0;"></div>
                                         <!-- Actual phase contribution fill -->
@@ -300,7 +300,7 @@ if (empty($projects)): ?>
 
                             <!-- Nested Sub-items Loop -->
                             <?php if (!empty($phase['items'])): ?>
-                                <div id="subitems-<?= $pr['id'] ?>-<?= $phase['phase_id'] ?>" class="phase-items-container" style="display: none; flex-direction: column; gap: 8px; margin-left: 24px; border-left: 2px solid #e2e8f0; padding-left: 14px; margin-top: 4px; margin-bottom: 4px;">
+                                <div id="subitems-<?= $pr['id'] ?>-<?= $phase['phase_id'] ?>" class="phase-items-container" style="display: none; flex-direction: column; gap: 8px; margin-left: 24px; border-left: 2px solid var(--po-border, #e2e8f0); padding-left: 14px; margin-top: 4px; margin-bottom: 4px;">
                                     <?php foreach ($phase['items'] as $item): 
                                         $itemWeight = (float)$item['item_weight'];
                                         $itemActualPct = (float)$item['item_actual_pct'];
@@ -321,7 +321,7 @@ if (empty($projects)): ?>
                                                         <?php endif; ?>
                                                     </span>
                                                 </div>
-                                                <div class="prog-bar-container" style="height: 4px; background: #f1f5f9; position: relative;">
+                                                <div class="prog-bar-container" style="height: 4px; background: var(--clr-bg-body, #f1f5f9); position: relative;">
                                                     <div class="prog-bar-fill-planned" style="width: <?= $itemProjWeight ?>%; height: 100%; background: #6366f1; opacity: 0.15; position: absolute; left: 0;"></div>
                                                     <div class="prog-bar-fill-actual" style="width: <?= $itemActWeightVal ?>%; height: 100%; background: <?= $itemActualPct >= 100 ? 'var(--po-primary, #198754)' : '#f59e0b' ?>; position: absolute; left: 0;"></div>
                                                 </div>

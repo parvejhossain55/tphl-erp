@@ -247,6 +247,128 @@ function sib_format_floor($floorType, $floorNo) {
   </div>
 </div>
 
+<!-- ═══════════════ APPROVAL TRACKING TIMELINE ═══════════════ -->
+<div class="sib-panel" style="border-left: 4px solid var(--clr-theme-primary, #16a34a); background: rgba(22, 163, 74, 0.02); margin-bottom: 22px;">
+  <div class="sib-panel-title" style="margin-bottom: 18px; color: var(--clr-theme-primary, #16a34a); font-weight: 800;">
+    <div class="sib-dot" style="background: var(--clr-theme-primary, #16a34a)"></div>
+    <i class="fal fa-tasks me-1"></i> Budget Approval Status Tracker
+  </div>
+  <div class="row align-items-center justify-content-between text-center text-md-start">
+    <!-- Step 1: Creation -->
+    <div class="col-md-4 mb-3 mb-md-0">
+      <div class="d-flex align-items-center gap-3 justify-content-center justify-content-md-start">
+        <div class="step-icon" style="width:36px; height:36px; border-radius:50%; background:rgba(22,163,74,0.12); color:#16a34a; display:flex; align-items:center; justify-content:center; font-size:16px;">
+          <i class="fal fa-check-circle"></i>
+        </div>
+        <div>
+          <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Step 1: Submission</div>
+          <div style="font-size:13px; font-weight:700; color:#2d3748;">Created & Submitted</div>
+          <div style="font-size:11px; color:var(--text-muted);">
+            By <?= htmlspecialchars($budget['creator_name'] ?? 'Estimator') ?><br>
+            <span style="font-size:10px; opacity:0.8;"><?= !empty($budget['created_at']) ? date('d M Y, h:i A', strtotime($budget['created_at'])) : '' ?></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Step 2: PM Approval -->
+    <div class="col-md-4 mb-3 mb-md-0">
+      <div class="d-flex align-items-center gap-3 justify-content-center justify-content-md-start">
+        <?php
+        $pmApproved = in_array($st, ['pm_approved', 'approved']);
+        $pmPending = ($st === 'pending');
+        $pmRejected = ($st === 'cancelled' && empty($budget['pm_approved_by_name']));
+        
+        if ($pmApproved):
+        ?>
+          <div class="step-icon" style="width:36px; height:36px; border-radius:50%; background:rgba(22,163,74,0.12); color:#16a34a; display:flex; align-items:center; justify-content:center; font-size:16px;">
+            <i class="fal fa-check-circle"></i>
+          </div>
+          <div>
+            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Step 2: PM Approval</div>
+            <div style="font-size:13px; font-weight:700; color:#16a34a;">Approved</div>
+            <div style="font-size:11px; color:var(--text-muted);">
+              By <?= htmlspecialchars($budget['pm_approved_by_name'] ?? $budget['approved_by_name'] ?? 'Project Manager') ?><br>
+              <span style="font-size:10px; opacity:0.8;"><?= !empty($budget['pm_approval_date']) ? date('d M Y, h:i A', strtotime($budget['pm_approval_date'])) : '' ?></span>
+            </div>
+          </div>
+        <?php elseif ($pmRejected): ?>
+          <div class="step-icon" style="width:36px; height:36px; border-radius:50%; background:rgba(239,68,68,0.12); color:#ef4444; display:flex; align-items:center; justify-content:center; font-size:16px;">
+            <i class="fal fa-times-circle"></i>
+          </div>
+          <div>
+            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Step 2: PM Approval</div>
+            <div style="font-size:13px; font-weight:700; color:#ef4444;">Rejected</div>
+            <div style="font-size:11px; color:var(--text-muted);">PM Review Rejected</div>
+          </div>
+        <?php else: ?>
+          <div class="step-icon" style="width:36px; height:36px; border-radius:50%; background:rgba(245,158,11,0.12); color:#f59e0b; display:flex; align-items:center; justify-content:center; font-size:16px;">
+            <i class="fal fa-clock"></i>
+          </div>
+          <div>
+            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Step 2: PM Approval</div>
+            <div style="font-size:13px; font-weight:700; color:#f59e0b;">Pending Review</div>
+            <div style="font-size:11px; color:var(--text-muted);">Awaiting PM Approval</div>
+          </div>
+        <?php endif; ?>
+      </div>
+    </div>
+    
+    <!-- Step 3: Management Approval -->
+    <div class="col-md-4">
+      <div class="d-flex align-items-center gap-3 justify-content-center justify-content-md-start">
+        <?php
+        $mgmtApproved = ($st === 'approved');
+        $mgmtPending = ($st === 'pm_approved');
+        $mgmtRejected = ($st === 'cancelled' && !empty($budget['pm_approved_by_name']));
+        $mgmtLocked = ($st === 'pending');
+        
+        if ($mgmtApproved):
+        ?>
+          <div class="step-icon" style="width:36px; height:36px; border-radius:50%; background:rgba(22,163,74,0.12); color:#16a34a; display:flex; align-items:center; justify-content:center; font-size:16px;">
+            <i class="fal fa-check-circle"></i>
+          </div>
+          <div>
+            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Step 3: Management Approval</div>
+            <div style="font-size:13px; font-weight:700; color:#16a34a;">Approved (Final)</div>
+            <div style="font-size:11px; color:var(--text-muted);">
+              By <?= htmlspecialchars($budget['mgmt_approved_by_name'] ?? 'Management') ?><br>
+              <span style="font-size:10px; opacity:0.8;"><?= !empty($budget['mgmt_approval_date']) ? date('d M Y, h:i A', strtotime($budget['mgmt_approval_date'])) : '' ?></span>
+            </div>
+          </div>
+        <?php elseif ($mgmtRejected): ?>
+          <div class="step-icon" style="width:36px; height:36px; border-radius:50%; background:rgba(239,68,68,0.12); color:#ef4444; display:flex; align-items:center; justify-content:center; font-size:16px;">
+            <i class="fal fa-times-circle"></i>
+          </div>
+          <div>
+            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Step 3: Management Approval</div>
+            <div style="font-size:13px; font-weight:700; color:#ef4444;">Rejected</div>
+            <div style="font-size:11px; color:var(--text-muted);">Management Rejected</div>
+          </div>
+        <?php elseif ($mgmtPending): ?>
+          <div class="step-icon" style="width:36px; height:36px; border-radius:50%; background:rgba(245,158,11,0.12); color:#f59e0b; display:flex; align-items:center; justify-content:center; font-size:16px;">
+            <i class="fal fa-clock"></i>
+          </div>
+          <div>
+            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Step 3: Management Approval</div>
+            <div style="font-size:13px; font-weight:700; color:#f59e0b;">Pending Final Approval</div>
+            <div style="font-size:11px; color:var(--text-muted);">Awaiting Management Approval</div>
+          </div>
+        <?php else: ?>
+          <div class="step-icon" style="width:36px; height:36px; border-radius:50%; background:rgba(148,163,184,0.1); color:#94a3b8; display:flex; align-items:center; justify-content:center; font-size:16px;">
+            <i class="fal fa-lock"></i>
+          </div>
+          <div>
+            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Step 3: Management Approval</div>
+            <div style="font-size:13px; font-weight:700; color:#94a3b8;">Locked</div>
+            <div style="font-size:11px; color:var(--text-muted);">Awaiting Step 2 completion</div>
+          </div>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════ KPI GRID ═══════════════ -->
 <div class="sib-kpi-grid">
   <div class="sib-kpi">
@@ -377,7 +499,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 </div>
 <?php endif; ?>
 
-<?php if (!$locked && $st === 'pm_approved' && $roleId === 3): ?>
+<?php if (!$locked && $st === 'pm_approved' && in_array($roleId, [1, 3])): ?>
 <!-- ═══ MANAGEMENT FINAL APPROVAL CARD ══════════════════════════════ -->
 <div class="sib-action-card" style="border-left:4px solid #059669">
   <div class="sib-panel-title" style="margin-bottom:14px">

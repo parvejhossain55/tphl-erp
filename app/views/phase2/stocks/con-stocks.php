@@ -32,7 +32,7 @@ $grandTotal = $byProject['grand_total'] ?? 0;
         <div class="row mb-4">
 
             <!-- Total Stock Value -->
-            <div class="col-xl-4 col-md-4 col-sm-12">
+            <div class="col-xl-4 col-md-4 col-sm-12 mb-2">
                 <div class="stock-kpi-card stock-kpi-card--blue">
                     <div class="stock-kpi-icon">
                         <i class="fas fa-coins"></i>
@@ -46,7 +46,7 @@ $grandTotal = $byProject['grand_total'] ?? 0;
             </div>
 
             <!-- Total Materials -->
-            <div class="col-xl-4 col-md-4 col-sm-12">
+            <div class="col-xl-4 col-md-4 col-sm-12 mb-2">
                 <div class="stock-kpi-card stock-kpi-card--green">
                     <div class="stock-kpi-icon">
                         <i class="fas fa-boxes-stacked"></i>
@@ -60,7 +60,7 @@ $grandTotal = $byProject['grand_total'] ?? 0;
             </div>
 
             <!-- Low Stock Items -->
-            <div class="col-xl-4 col-md-4 col-sm-12">
+            <div class="col-xl-4 col-md-4 col-sm-12 mb-2">
                 <div class="stock-kpi-card stock-kpi-card--<?= $stats['low_stock_count'] > 0 ? 'red' : 'teal' ?>">
                     <div class="stock-kpi-icon">
                         <i class="fas fa-triangle-exclamation"></i>

@@ -43,9 +43,9 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
 
             /* Modern Color Palette & Aesthetics */
             :root {
-                --po-bg-card: #ffffff;
-                --po-border: rgba(0, 0, 0, 0.05);
-                --po-text-muted: #64748b;
+                --po-bg-card: var(--clr-bg-card, #ffffff);
+                --po-border: var(--clr-border-1, rgba(0, 0, 0, 0.05));
+                --po-text-muted: var(--clr-text-muted, #64748b);
                 --po-primary: var(--clr-theme-primary, #198754);
                 --po-secondary: var(--clr-theme-secondary, #1abc9c);
                 --po-primary-rgb: var(--clr-theme-primary-rgb, 25, 135, 84);
@@ -54,8 +54,6 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
 
             .po-body {
                 font-family: 'Inter', sans-serif;
-                color: #1e293b;
-                background-color: #f8fafc;
                 padding: 10px 0;
             }
 
@@ -73,7 +71,7 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                 font-size: 22px;
                 font-weight: 800;
                 margin: 0;
-                color: #0f172a;
+                color: var(--clr-common-black, #0f172a);
                 letter-spacing: -0.6px;
             }
             .po-breadcrumb {
@@ -102,9 +100,9 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                 padding: 8px 16px;
                 font-size: 13px;
                 font-weight: 600;
-                color: #475569;
-                background: #ffffff;
-                border: 1px solid rgba(0,0,0,0.08);
+                color: var(--clr-text-body, #475569);
+                background: var(--po-bg-card);
+                border: 1px solid var(--po-border);
                 border-radius: 10px;
                 display: inline-flex;
                 align-items: center;
@@ -115,9 +113,9 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                 padding: 8px 16px;
                 font-size: 13px;
                 font-weight: 600;
-                color: #475569;
-                background: #ffffff;
-                border: 1px solid rgba(0,0,0,0.08);
+                color: var(--clr-text-body, #475569);
+                background: var(--po-bg-card);
+                border: 1px solid var(--po-border);
                 border-radius: 10px;
                 display: inline-flex;
                 align-items: center;
@@ -209,7 +207,7 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
             .po-kpi-val {
                 font-size: 20px;
                 font-weight: 800;
-                color: #0f172a;
+                color: var(--clr-common-black, #0f172a);
                 line-height: 1.1;
                 margin-bottom: 2px;
             }
@@ -251,7 +249,7 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                 justify-content: center;
                 font-size: 12px;
                 font-weight: 800;
-                color: #0f172a;
+                color: var(--clr-common-black, #0f172a);
             }
             /* Premium Card Styling for Main Widgets */
             .po-card-wrapper {
@@ -264,13 +262,13 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
             }
             .po-card-header {
                 padding: 18px 24px;
-                border-bottom: 1px solid rgba(0,0,0,0.04);
+                border-bottom: 1px solid var(--po-border);
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 flex-wrap: wrap;
                 gap: 12px;
-                background: #ffffff;
+                background: var(--po-bg-card);
             }
             .po-card-title {
                 font-size: 14px;
@@ -278,7 +276,7 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
                 margin: 0;
-                color: #0f172a;
+                color: var(--clr-common-black, #0f172a);
                 display: flex;
                 align-items: center;
                 gap: 8px;
@@ -297,8 +295,8 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
             /* Progress Table Overrides */
             .po-table-search-bar {
                 padding: 14px 24px;
-                background: #fdfdfd;
-                border-bottom: 1px solid rgba(0,0,0,0.04);
+                background: var(--po-bg-card);
+                border-bottom: 1px solid var(--po-border);
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
@@ -316,9 +314,10 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                 padding: 8px 12px 8px 34px;
                 font-size: 12.5px;
                 border-radius: 10px;
-                border: 1px solid rgba(0,0,0,0.1);
+                border: 1px solid var(--po-border);
                 outline: none;
-                background: #fff;
+                background: var(--po-bg-card);
+                color: var(--clr-common-black, inherit);
                 transition: border-color 0.15s;
             }
             .po-search-input-wrap input:focus {
@@ -337,9 +336,9 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                 padding: 8px 14px;
                 font-size: 12.5px;
                 font-weight: 600;
-                color: #334155;
-                background: #fff;
-                border: 1px solid rgba(0,0,0,0.1);
+                color: var(--clr-text-body, #334155);
+                background: var(--po-bg-card);
+                border: 1px solid var(--po-border);
                 border-radius: 10px;
                 cursor: pointer;
                 outline: none;
@@ -358,7 +357,7 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                 font-size: 13px;
             }
             .po-table th {
-                background: #fcfdfd;
+                background: var(--po-bg-card);
                 padding: 14px 16px;
                 font-size: 10px;
                 font-weight: 700;
@@ -366,11 +365,11 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                 color: var(--po-text-muted);
                 letter-spacing: 0.5px;
                 text-align: left;
-                border-bottom: 1px solid rgba(0,0,0,0.05);
+                border-bottom: 1px solid var(--po-border);
             }
             .po-table td {
                 padding: 14px 16px;
-                border-bottom: 1px solid rgba(0,0,0,0.04);
+                border-bottom: 1px solid var(--po-border);
             }
 
             /* Custom Progress Bars */
@@ -421,7 +420,7 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
 
             .proj-title {
                 font-weight: 700;
-                color: #0f172a;
+                color: var(--clr-common-black, #0f172a);
                 text-decoration: none;
                 font-size: 13.5px;
                 transition: color 0.15s;
@@ -454,14 +453,14 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                 justify-content: center;
                 gap: 20px;
                 padding-left: 20px;
-                border-left: 1px solid #f1f5f9;
+                border-left: 1px solid var(--po-border);
                 min-width: 110px;
             }
             @media (max-width: 768px) {
                 .po-trend-side-metrics {
                     flex-direction: row;
                     border-left: none;
-                    border-top: 1px solid #f1f5f9;
+                    border-top: 1px solid var(--po-border);
                     padding-left: 0;
                     padding-top: 16px;
                     justify-content: space-around;
@@ -487,7 +486,7 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
             }
 
             .po-bottom-card {
-                background: #ffffff;
+                background: var(--po-bg-card);
                 border: 1px solid var(--po-border);
                 border-radius: 16px;
                 padding: 20px;
@@ -507,7 +506,7 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                 font-weight: 800;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
-                color: #0f172a;
+                color: var(--clr-common-black, #0f172a);
             }
             .po-bottom-card-link {
                 font-size: 11px;
@@ -529,7 +528,7 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                 justify-content: space-between;
                 gap: 12px;
                 padding: 8px 0;
-                border-bottom: 1px dashed #f1f5f9;
+                border-bottom: 1px dashed var(--po-border);
             }
             .po-bottom-list-item:last-child {
                 border-bottom: none;
@@ -810,7 +809,7 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                             <div style="width: 140px; height: 140px; position: relative; flex-shrink: 0; margin: 0 auto;">
                                 <canvas id="budgetBreakdownChart" style="height: 100%; width: 100%;"></canvas>
                                 <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;">
-                                    <span id="budgetBreakdownTotalUsed" style="font-size: 13px; font-weight: 800; color: #0f172a; line-height: 1;"><?= cpFmt($totalBudgetUsed) ?></span>
+                                    <span id="budgetBreakdownTotalUsed" style="font-size: 13px; font-weight: 800; color: var(--clr-common-black, #0f172a); line-height: 1;"><?= cpFmt($totalBudgetUsed) ?></span>
                                     <span style="font-size: 8px; font-weight: 600; color: var(--po-text-muted); text-transform: uppercase; margin-top: 4px;">Total Used</span>
                                 </div>
                             </div>
@@ -834,31 +833,31 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                         <div style="width: 120px; height: 120px; position: relative; flex-shrink: 0;">
                             <canvas id="projectStatusChart" style="height: 100%; width: 100%;"></canvas>
                             <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;">
-                                <span style="font-size: 22px; font-weight: 900; color: #0f172a; line-height: 1;"><?= $totalProjects ?></span>
+                                <span style="font-size: 22px; font-weight: 900; color: var(--clr-common-black, #0f172a); line-height: 1;"><?= $totalProjects ?></span>
                                 <span style="font-size: 8px; font-weight: 600; color: var(--po-text-muted); text-transform: uppercase; margin-top: 2px;">Projects</span>
                             </div>
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 120px;">
                             <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px;">
-                                <span style="display: flex; align-items: center; gap: 6px; font-weight: 600; color: #334155;">
+                                <span style="display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--clr-text-body, #334155);">
                                     <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--po-primary); display: inline-block;"></span>
                                     On Track
                                 </span>
-                                <span style="font-weight: 700; color: #0f172a;"><?= $onTrackCount ?> <span style="font-size: 10.5px; color:#94a3b8; font-weight:500;">(<?= $pctOnTrack ?>%)</span></span>
+                                <span style="font-weight: 700; color: var(--clr-common-black, #0f172a);"><?= $onTrackCount ?> <span style="font-size: 10.5px; color:#94a3b8; font-weight:500;">(<?= $pctOnTrack ?>%)</span></span>
                             </div>
                             <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px;">
-                                <span style="display: flex; align-items: center; gap: 6px; font-weight: 600; color: #334155;">
+                                <span style="display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--clr-text-body, #334155);">
                                     <span style="width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
                                     At Risk
                                 </span>
-                                <span style="font-weight: 700; color: #0f172a;"><?= $atRiskCount ?> <span style="font-size: 10.5px; color:#94a3b8; font-weight:500;">(<?= $pctAtRisk ?>%)</span></span>
+                                <span style="font-weight: 700; color: var(--clr-common-black, #0f172a);"><?= $atRiskCount ?> <span style="font-size: 10.5px; color:#94a3b8; font-weight:500;">(<?= $pctAtRisk ?>%)</span></span>
                             </div>
                             <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px;">
-                                <span style="display: flex; align-items: center; gap: 6px; font-weight: 600; color: #334155;">
+                                <span style="display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--clr-text-body, #334155);">
                                     <span style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444; display: inline-block;"></span>
                                     Delayed
                                 </span>
-                                <span style="font-weight: 700; color: #0f172a;"><?= $delayedCount ?> <span style="font-size: 10.5px; color:#94a3b8; font-weight:500;">(<?= $pctDelayed ?>%)</span></span>
+                                <span style="font-weight: 700; color: var(--clr-common-black, #0f172a);"><?= $delayedCount ?> <span style="font-size: 10.5px; color:#94a3b8; font-weight:500;">(<?= $pctDelayed ?>%)</span></span>
                             </div>
                         </div>
                     </div>
@@ -884,7 +883,7 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                                             <i class="fa-solid fa-triangle-exclamation"></i>
                                         </div>
                                         <div>
-                                            <div style="font-size: 12px; font-weight: 700; color: #1e293b;"><?= htmlspecialchars($r['project_name']) ?></div>
+                                            <div style="font-size: 12px; font-weight: 700; color: var(--clr-common-black, #1e293b);"><?= htmlspecialchars($r['project_name']) ?></div>
                                             <div style="font-size: 10.5px; color: var(--po-text-muted); margin-top: 2px;" title="<?= htmlspecialchars($r['description']) ?>">
                                                 <?= htmlspecialchars(strlen($r['description']) > 32 ? substr($r['description'], 0, 32) . '...' : $r['description']) ?>
                                             </div>
@@ -926,7 +925,7 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                                             <i class="fa-solid fa-file-invoice-dollar"></i>
                                         </div>
                                         <div>
-                                            <div style="font-size: 12px; font-weight: 700; color: #1e293b;"><?= htmlspecialchars($app['description']) ?></div>
+                                            <div style="font-size: 12px; font-weight: 700; color: var(--clr-common-black, #1e293b);"><?= htmlspecialchars($app['description']) ?></div>
                                             <div style="font-size: 10.5px; color: var(--po-text-muted); margin-top: 2px;">
                                                 <?= htmlspecialchars($app['project_name']) ?> &middot; <?= cpFmt($app['amount']) ?>
                                             </div>
@@ -957,7 +956,7 @@ $budgetUsedPct = $totalApprovedBudget > 0 ? round(($totalBudgetUsed / $totalAppr
                                         <?= $ico ?>
                                     </div>
                                     <div>
-                                        <div style="font-size: 12px; font-weight: 600; color: #1e293b;"><?= htmlspecialchars($alert['message']) ?></div>
+                                        <div style="font-size: 12px; font-weight: 600; color: var(--clr-common-black, #1e293b);"><?= htmlspecialchars($alert['message']) ?></div>
                                         <div style="font-size: 10px; color: var(--po-text-muted); margin-top: 2.5px;"><?= htmlspecialchars($alert['type']) ?></div>
                                     </div>
                                 </div>
@@ -1160,7 +1159,7 @@ function renderBudgetCategoryLegends(data) {
         const tooltipContent = `হিসাব: এই ফেজের সব আইটেমের মোট এস্টিমেটেড সাবটোটাল = ${formattedVal} (পুরো প্রজেক্টের ${weightVal}% ওয়েটের জন্য নির্ধারিত)।`;
 
         item.innerHTML = `
-            <div style="display:flex; align-items:center; gap:6px; font-weight:600; color:#475569;">
+            <div style="display:flex; align-items:center; gap:6px; font-weight:600; color:var(--clr-text-body, #475569);">
                 <span style="width:8px; height:8px; border-radius:50%; background:${categoryColors[idx % categoryColors.length]}; display:inline-block;"></span>
                 <span>${d.label}</span>
                 <a href="javascript:void(0)" class="text-secondary ms-1" style="font-size: 11px;" 
@@ -1169,10 +1168,10 @@ function renderBudgetCategoryLegends(data) {
                    data-bs-html="true" 
                    data-bs-title="${tooltipTitle}" 
                    data-bs-content="${tooltipContent}">
-                    <i class="fa-solid fa-circle-info"></i>
+                     <i class="fa-solid fa-circle-info"></i>
                 </a>
             </div>
-            <div style="font-weight:700; color:#0f172a;">
+            <div style="font-weight:700; color:var(--clr-common-black, #0f172a);">
                 ${formattedVal} <span style="font-size:10px; color:#94a3b8; font-weight:500;">(${weightVal}%)</span>
             </div>
         `;

@@ -370,6 +370,56 @@ Construction Progress & Budget Calculation Guidelines:
       ```
     - **CRITICAL INTERPRETATION RULE**: The calculated results `actual_progress_pct` and `planned_progress_pct` are ALREADY percentages (e.g. `0.0074` means `0.0074%` and `3.30` means `3.30%`). Do NOT multiply them by 100 under any circumstances!
     - **CRITICAL PRECISION RULE**: For very small percentages (e.g., less than 0.1% like `0.0074%`), you MUST format the value using 3 or 4 decimal places (e.g. `০.০০৭%`) in your Bengali text response. Do NOT round small non-zero progress values to `0.00%` or `0.0%` as that is inaccurate.
+    - **CRITICAL WARNING FOR PHASE-BASED PROJECTS**: When a project has `workflow_version = 'phase_based'`, the columns `project_phases.actual_progress` and `project_phases.planned_progress` (as well as `project_phase_items.actual_progress` and `project_phase_items.planned_progress`) are NOT updated in the database (they will return `0.00`). You MUST NEVER select these columns directly for phase-based projects. Instead, to get the actual progress of a phase, you MUST use `phase_actual_volume_pct` and for planned progress, use `phase_planned_volume_pct` from the breakdown query template below!
+    - **Phase 2: Remaining Progress**: Calculated as `100.0 - [Overall Actual Progress %]`. (For example, if actual progress is `0.0074%`, remaining progress is `99.9926%`).
+    - **Phase 2: Active/Ongoing Phase Detection**:
+      The ongoing or current active phase of a project is the first phase (ordered by `phase_order` ASC) where the volume-based actual completion percentage (`phase_actual_volume_pct`) is LESS than 100%. If all phases are 100% complete, the last phase is the active/completed phase.
+    - **Phase 2: CRITICAL PHASE BREAKDOWN SQL TEMPLATE**: You MUST use the following query template to calculate phase-wise weight, volume-based completion %, and contribution to get values that exactly match the dashboard:
+      ```sql
+      SELECT 
+          pp.id AS phase_id,
+          pp.phase_name,
+          pp.phase_order,
+          pp.weight_percentage AS phase_weight,
+          COALESCE((SUM(act.total_actual_qty) / NULLIF(SUM(ppid.total_boq_qty), 0)) * 100, 0) AS phase_actual_volume_pct,
+          COALESCE((SUM(plan.total_target_qty) / NULLIF(SUM(ppid.total_boq_qty), 0)) * 100, 0) AS phase_planned_volume_pct,
+          COALESCE((SUM(act.total_actual_qty) / NULLIF(SUM(ppid.total_boq_qty), 0)) * pp.weight_percentage, 0) AS phase_contribution
+      FROM project_phases pp
+      LEFT JOIN project_phase_items ppi ON ppi.phase_id = pp.id
+      LEFT JOIN project_phase_item_details ppid ON ppid.phase_item_id = ppi.id
+      LEFT JOIN (
+          SELECT pmt.project_id, pmti.phase_item_id, pmti.work_type_id, SUM(pmti.monthly_target_qty) AS total_target_qty
+          FROM phase_monthly_target_items pmti
+          JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
+          GROUP BY pmt.project_id, pmti.phase_item_id, pmti.work_type_id
+      ) plan ON plan.project_id = pp.project_id AND plan.phase_item_id = ppi.id AND plan.work_type_id = ppid.work_type_id
+      LEFT JOIN (
+          SELECT project_id, phase_item_id, work_type_id, SUM(qty) AS total_actual_qty
+          FROM (
+              SELECT pmt.project_id, pmti.phase_item_id, pmti.work_type_id, SUM(pwpi.achieved_qty) AS qty
+              FROM phase_weekly_progress_items pwpi
+              JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+              JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
+              JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
+              WHERE pwp.qc_status = 'Approved' AND pwp.pm_status = 'Approved'
+              GROUP BY pmt.project_id, pmti.phase_item_id, pmti.work_type_id
+              UNION ALL
+              SELECT dpl.project_id, pmti.phase_item_id, dwil.work_type_id, SUM(dwil.qty_done_today) AS qty
+              FROM daily_work_item_logs dwil
+              JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+              JOIN phase_weekly_progress pwp ON pwp.id = dpl.weekly_progress_id
+              LEFT JOIN phase_monthly_target_items pmti ON pmti.id = dwil.target_item_id
+              WHERE dpl.qc_status = 'Approved' AND dpl.pm_status = 'Approved'
+                AND NOT (pwp.qc_status = 'Approved' AND pwp.pm_status = 'Approved')
+                AND pmti.phase_item_id IS NOT NULL
+              GROUP BY dpl.project_id, pmti.phase_item_id, dwil.work_type_id
+          ) union_act
+          GROUP BY project_id, phase_item_id, work_type_id
+      ) act ON act.project_id = pp.project_id AND act.phase_item_id = ppi.id AND act.work_type_id = ppid.work_type_id
+      WHERE pp.project_id = [PROJECT_ID]
+      GROUP BY pp.id
+      ORDER BY pp.phase_order ASC;
+      ```
   - **Case 2: If `workflow_version` is NOT `'phase_based'` (Normal Progress)**:
     - **Actual Progress %**: Sum of phase actual progress weighted by phase weight (result is already a percentage e.g. `15.5` means `15.5%`, do NOT multiply by 100):
       `SUM((COALESCE(pp.actual_progress, 0) / 100) * COALESCE(pp.weight_percentage, 0))`
@@ -400,6 +450,79 @@ Construction Progress & Budget Calculation Guidelines:
   - **Remaining Budget**: Calculated as (Total Budget - Total Spent).
 - **Project Timelines & Dates**:
   To get overall project timeline details (such as `project_start_date`, `construction_start_date`, `construction_end_date`, `expected_handover_date`), query the `project_timelines` table matching `project_id`. If a timeline or duration for a specific phase or budget estimation is requested, query `start_date` and `end_date` from the `initial_estimate_budgets` table matching `project_id`.
+- **Company-wide Cash In, Cash Out, and Net Cashflow (Financial Overview)**:
+  When the user asks for the company's total or overall cash in, cash out, or net cashflow (e.g., "আমাদের টোটাল ক্যাশফ্লো এবং ক্যাশ ইন ও ক্যাশ আউট এর হিসাব দেখাও"), you MUST use the exact SQL templates below. Do NOT write your own query, as company-wide cashout involves multiple union tables:
+  - **Total Cash In**:
+    ```sql
+    SELECT (
+        (SELECT COALESCE(SUM(CASE WHEN payment_type = 'land_share' THEN land_share_amount ELSE amount END), 0) FROM lead_payments WHERE payment_status IN ('paid','partially_paid') AND verification_status = 'verified') +
+        (SELECT COALESCE(SUM(amount), 0) FROM management_cashin WHERE payment_status = 'paid') +
+        (SELECT COALESCE(SUM(at.amount), 0) FROM adjustment_transactions at JOIN expense_adjustments ea ON at.adjustment_id = ea.id WHERE at.transaction_type = 'cashin' AND ea.status IN ('approved', 'partially_paid', 'fully_paid'))
+    ) AS total_cash_in
+    ```
+  - **Total Cash Out**:
+    ```sql
+    SELECT COALESCE(SUM(total_amount), 0) as total_cash_out
+    FROM (
+        SELECT amount as total_amount, transaction_date as date
+        FROM management_cashout
+        WHERE payment_status = 'paid'
+        
+        UNION ALL
+        
+        SELECT cp.amount as total_amount, cp.payment_date as date
+        FROM cashout_payments cp
+        LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
+        WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
+        
+        UNION ALL
+        
+        SELECT net_salary as total_amount, 
+               STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') as date
+        FROM payslips
+        WHERE status = 'paid'
+        
+        UNION ALL
+        
+        SELECT COALESCE(approved_amount, bill_amount) as total_amount, COALESCE(updated_at, created_at) as date
+        FROM contractor_bill_requests
+        WHERE status IN ('approved', 'paid', 'partially_paid', 'fully_paid')
+        
+        UNION ALL
+        
+        SELECT COALESCE(approved_amount, net_payable) as total_amount, COALESCE(updated_at, created_at) as date
+        FROM vendor_payment_requests
+        WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
+        
+        UNION ALL
+        
+        SELECT amount_paid as total_amount, transaction_date as date
+        FROM con_financial_transactions
+        WHERE ref_type = 'operational_fund'
+        
+        UNION ALL
+        
+        SELECT at.amount as total_amount, at.payment_date as date
+        FROM adjustment_transactions at
+        JOIN expense_adjustments ea ON at.adjustment_id = ea.id
+        WHERE at.transaction_type = 'cashout'
+        AND ea.status IN ('approved', 'partially_paid', 'fully_paid')
+        
+        UNION ALL
+        
+        SELECT amount as total_amount, paid_at as date
+        FROM fund_requisitions
+        WHERE status = 'paid'
+        
+        UNION ALL
+        
+        SELECT lfr.requested_amount as total_amount, lfr.accounts_paid_at as date
+        FROM land_fund_requisitions lfr
+        WHERE lfr.mgmt_status = 'Approved'
+        AND lfr.accounts_status = 'Paid'
+    ) combined
+    ```
+  - **Net Cashflow**: Calculated as (Total Cash In - Total Cash Out).
 TEXT;
     }
 }

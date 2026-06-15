@@ -143,10 +143,7 @@ $phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a
     <div class="pt-page-header">
         <div>
             <h4><i class="fal fa-bullseye-arrow me-2"></i>Project Plan Targets</h4>
-            <div class="pt-breadcrumb">
-                <a href="<?= $base ?>/con-dashboard">Dashboard</a> ›
-                <span>Project Plan Targets</span>
-            </div>
+           
         </div>
         <a href="<?= $base ?>/con-boq" class="btn btn-sm btn-outline-secondary">
             <i class="fal fa-list me-1"></i>All BOQs
@@ -176,7 +173,7 @@ $phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a
     <div class="pt-project-group">
         <div class="pt-project-label">
             <i class="fal fa-building" style="color:var(--pt-primary); font-size:16px;"></i>
-            <div style="flex:1">
+            <div style="">
                 <h6><?= htmlspecialchars($group['project_name']) ?></h6>
                 <small><?= count($targets) ?> টি monthly target</small>
             </div>
@@ -264,7 +261,7 @@ $phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a
 
             <!-- Footer with BOQ Action -->
             <div class="pt-card-footer">
-                <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="d-flex align-items-center ">
                     <!-- View Target Details -->
                     <a href="<?= $base ?>/con-monthly-target/<?= $t['id'] ?>" class="btn-target-view">
                         <i class="fal fa-eye"></i> Target Details

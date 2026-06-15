@@ -7,12 +7,7 @@ $page_title = $page_title ?? 'Operational Fund Requests';
     <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
         <div class="my-auto">
             <h4 class="page-title fw-semibold fs-18 mb-0"><?= $page_title ?></h4>
-            <div class="d-flex">
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
-                    <li class="breadcrumb-item active">Fund Requests</li>
-                </ol>
-            </div>
+            
         </div>
         <div class="my-auto">
             <a href="<?= $base_url ?>/con-fund-request-create" class="btn btn-primary btn-sm">
@@ -45,8 +40,7 @@ $page_title = $page_title ?? 'Operational Fund Requests';
                     <tbody>
                         <?php if (!empty($requests)): ?>
                             <?php foreach ($requests as $i => $r): ?>
-                                <?php
-                                $statusMap = [
+                                <?php $statusMap = [
                                     'pending'        => 'warning',
                                     'approved'       => 'success',
                                     'rejected'       => 'danger',

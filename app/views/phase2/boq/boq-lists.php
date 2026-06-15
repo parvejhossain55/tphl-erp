@@ -113,7 +113,7 @@ function consumeClass($pct) {
                                 </td>
                                 <td style="font-size:12px"><?= htmlspecialchars($boq['created_by_name'] ?? '—') ?></td>
                                 <td class="text-muted" style="font-size:11px"><?= date('d M Y', strtotime($boq['created_at'])) ?></td>
-                                <td class="text-center" style="white-space:nowrap">
+                                <td class="text-center d-flex align-items-center gap-1" style="white-space:nowrap">
                                     <a href="<?= $base_url ?>/con-boq-show/<?= $boq['id'] ?>"
                                         class="btn btn-sm btn-outline-info" title="View Details">
                                         <i class="bi bi-eye"></i>
