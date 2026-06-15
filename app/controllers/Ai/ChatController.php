@@ -22,6 +22,13 @@ class ChatController extends Controller {
         $input = json_decode(file_get_contents('php://input'), true);
         $message = trim($input['message'] ?? '');
 
+        // Clear history request from UI
+        if ($message === 'clear_session_history_request') {
+            unset($_SESSION['ai_chat_history']);
+            echo json_encode(['success' => true, 'reply' => 'Session history cleared.']);
+            return;
+        }
+
         // Initial greeting
         if ($message === 'init') {
             echo json_encode([

@@ -46,7 +46,7 @@ $filterProjectId = $filterProjectId ?? 0;
                             <th>Project</th>
                             <th>Drawing Type</th>
                             <th>Designer</th>
-                            <th>Version</th>
+                            <th>Source / Received From</th>
                             <th>Status</th>
                             <th>Design Link</th>
                             <?php if ($canModify): ?><th>Actions</th><?php endif; ?>
@@ -64,7 +64,18 @@ $filterProjectId = $filterProjectId ?? 0;
                                             ? htmlspecialchars($row['internal_designer_name'] ?? 'In-House')
                                             : htmlspecialchars($row['designer_name'] ?? 'External') ?>
                                     </td>
-                                    <td><?= htmlspecialchars($row['version'] ?? '1.0') ?></td>
+                                    <td>
+                                        <?php if (!empty($row['upload_designer_name'])): ?>
+                                            <span class="fw-semibold" style="font-size:12.5px;">
+                                                <?= htmlspecialchars($row['upload_designer_name']) ?>
+                                            </span>
+                                            <?php if (!empty($row['upload_designer_details'])): ?>
+                                                <br><small class="text-muted" style="font-size:11px;"><?= nl2br(htmlspecialchars($row['upload_designer_details'])) ?></small>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="text-muted" style="font-size:12px;">—</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <?php
                                         $sBadge = match($row['status'] ?? 'Draft') {
@@ -74,7 +85,7 @@ $filterProjectId = $filterProjectId ?? 0;
                                             default     => 'warning'
                                         };
                                         ?>
-                                        <span class="bd-badge bg-<?= $sBadge ?>"><?= $row['status'] ?? 'Draft' ?></span>
+                                        <span class="bd-badge bg-<?= $sBadge ?>"><?= htmlspecialchars($row['status'] ?? 'Draft') ?></span>
                                     </td>
                                     <td>
                                         <?php if (!empty($row['design_link'])): ?>
@@ -85,8 +96,8 @@ $filterProjectId = $filterProjectId ?? 0;
                                             <span class="text-muted">—</span>
                                         <?php endif; ?>
                                     </td>
+                                    <?php if ($canModify): ?>
                                     <td class="table__icon-box">
-                                        <?php if ($canModify): ?>
                                         <div class="d-flex align-items-center justify-content-center gap-10">
                                             <a href="<?= $GLOBALS['base_url'] ?>/con-project-drawings/edit?id=<?= $row['id'] ?>" class="table__icon edit">
                                                 <i class="fa-sharp fa-light fa-pen"></i>
@@ -98,10 +109,8 @@ $filterProjectId = $filterProjectId ?? 0;
                                                 <i class="fa-regular fa-trash"></i>
                                             </button>
                                         </div>
-                                        <?php else: ?>
-                                          <span style="font-size:11px;color:var(--text-muted)">—</span>
-                                        <?php endif; ?>
                                     </td>
+                                    <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
@@ -190,12 +199,7 @@ $filterProjectId = $filterProjectId ?? 0;
                                     <td>Valid URL</td>
                                     <td><em>https://example.com/design</em></td>
                                 </tr>
-                                <tr>
-                                    <td><code>Version</code></td>
-                                    <td><span class="badge bg-secondary">Optional</span></td>
-                                    <td>Any text</td>
-                                    <td><em>1.0</em></td>
-                                </tr>
+
                                 <tr>
                                     <td><code>Status</code></td>
                                     <td><span class="badge bg-secondary">Optional</span></td>
@@ -240,17 +244,17 @@ function downloadProjectDrawingSampleCsv() {
     const headers = [
         'Project_Name', 'Design_Type_Name', 'Is_In_House', 'Internal_Designer_Email', 
         'Designer_Name', 'Designer_Designation', 'Designer_Company', 'Design_Link', 
-        'Version', 'Status'
+        'Status'
     ];
     const sampleInternal = [
         'The Prime Heights', 'Architectural', '1', 'designer@example.com', 
         '', '', '', 'https://example.com/design1', 
-        '1.0', 'Draft'
+        'Draft'
     ];
     const sampleExternal = [
         'The Prime Heights', 'Structural', '0', '', 
         'John Doe', 'Lead Engineer', 'ABC Engineering', 'https://example.com/design2', 
-        '1.1', 'Submitted'
+        'Submitted'
     ];
     
     const csvContent = [

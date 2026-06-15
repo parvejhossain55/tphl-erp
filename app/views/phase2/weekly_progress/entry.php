@@ -924,8 +924,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 
 <!-- ░░ Weekly Progress Visual (Gantt) ░░ -->
 <div class="wp-card">
-    <div class="wp-card-header">
-        <div class="wp-card-title"><i class="bi bi-bar-chart-steps"></i> Weekly Progress Visual
+    <div class="wp-card-header">Weekly Progress Visual
             <span style="font-size:10px;font-weight:500;color:#94a3b8"><?= date('d M', strtotime($weeklyProgress['week_start_date']??'now')) ?> – <?= date('d M Y', strtotime($weeklyProgress['week_end_date']??'now')) ?> (Week <?= $weekNo ?>)</span>
         </div>
     </div>

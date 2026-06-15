@@ -963,6 +963,7 @@ class Con_ProjectOverviewDashboardController extends Controller
 
         $this->view('phase2/dashboard/overview', [
             'current_route'        => 'all-projects-overview',
+            'page_title'           => 'All Projects Overview',
             'projects'             => $projects,
             'totalProjects'        => $totalProjectsCount,
             'onTrackCount'         => $onTrackCount,

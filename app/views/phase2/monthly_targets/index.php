@@ -205,6 +205,7 @@ $phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a
 </div>
 
 <!-- Create New Target -->
+<?php if (!empty($has_budget)): ?>
 <div class="mt-create-card">
     <h6><i class="fal fa-plus-circle me-2"></i>Create New Monthly Target</h6>
     <form method="POST" action="<?= $base ?>/con-monthly-target-create/<?= $project_id ?>">
@@ -234,6 +235,12 @@ $phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a
         </div>
     </form>
 </div>
+<?php else: ?>
+<div class="alert alert-warning text-center my-3 p-3" style="border-radius: 12px; border: 1px dashed var(--mt-red); background: rgba(239, 68, 68, 0.05); color: inherit;">
+    <h6 class="fw-bold mb-2" style="margin: 0;"><i class="fal fa-exclamation-triangle me-2 text-danger"></i>No estimate uploaded yet for this project</h6>
+    <p class="mt-2 mb-0 small text-muted">Please contact the estimator to upload the budget estimate before creating a monthly target plan.</p>
+</div>
+<?php endif; ?>
 
 <!-- Targets List -->
 <?php if (empty($byMonth)): ?>

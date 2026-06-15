@@ -18,16 +18,13 @@ $backUrl      = $backUrl      ?? '';
 ?>
 
 <div class="pagetitle d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h4><?= htmlspecialchars($page_title) ?></h4>
+
+      
         <nav>
             <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
-                <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-material-issues">Material Issues</a></li>
-                <li class="breadcrumb-item active">New Issue</li>
+                  <h4><?= htmlspecialchars($page_title) ?></h4>
             </ol>
         </nav>
-    </div>
     <div class="d-flex gap-2">
         <?php if ($fromWeekly && !empty($backUrl)): ?>
         <a href="<?= htmlspecialchars($backUrl) ?>" class="btn btn-outline-primary btn-sm">

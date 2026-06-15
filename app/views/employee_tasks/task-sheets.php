@@ -654,17 +654,12 @@ $currentMonth = $_GET['month'] ?? date('Y-m');
         onchange="filterMonth(this.value)">
 
     <div class="stat-pill">
-        <span class="dot" style="background:var(--green)"></span>
         Done: <strong><?= $doneTasks ?></strong>
     </div>
     <div class="stat-pill">
-        <span class="dot" style="background:var(--gold)"></span>
         Pending: <strong><?= $pendingTasks ?></strong>
     </div>
-    <div class="stat-pill">
-        <span class="dot" style="background:var(--blue)"></span>
-        <?= number_format($totalHours, 1) ?> hrs
-    </div>
+   
 </div>
 
 <!-- Main Grid -->

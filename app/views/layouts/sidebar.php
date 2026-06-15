@@ -367,7 +367,7 @@
                             </a>
                         </li>
 
-                        <li class="slide">
+                        <li class="slide d-none">
                             <a href="<?= $base_url ?>/task-dashboard"
                                 class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
                                 <span class="sidebar__menu-label">Task Dashbaord</span>
@@ -465,7 +465,7 @@
                             </a>
                         </li>
                     <?php endif; ?>
-                    <li class="slide">
+                    <li class="slide d-none">
                         <a href="<?= $base_url ?>/task-dashboard"
                             class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
@@ -555,7 +555,7 @@
                             <span class="sidebar__menu-label">HR Dashboard</span>
                         </a>
                     </li>
-                    <li class="slide">
+                    <li class="slide d-none">
                         <a href="<?= $base_url ?>/task-dashboard"
                             class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
@@ -890,7 +890,7 @@
                             <span class="sidebar__menu-label">Central Statement</span>
                         </a>
                     </li>
-                    <li class="slide <?= isActive('projects-cashout', $current_route) ?>">
+                    <li class="slide d-none <?= isActive('projects-cashout', $current_route) ?>">
                         <a href="<?= $base_url ?>/projects-cashout"
                             class="sidebar__menu-item <?= isActive('projects-cashout', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-book"></i></div>
@@ -984,13 +984,13 @@
                             <li class="slide <?= isActive('con-contractor-bills', $current_route) ?>">
                                 <a href="<?= $base_url ?>/con-contractor-bills"
                                     class="sidebar__menu-item <?= isActive('con-contractor-bills', $current_route) ?>">
-                                    <i class="bi bi-receipt me-1"></i> Contractor Bills
+                                    <i class="bi bi-receipt me-1"></i>Contractor Bills
                                 </a>
                             </li>
                             <li class="slide <?= isActive('con-transactions', $current_route) ?>">
                                 <a href="<?= $base_url ?>/con-transactions"
                                     class="sidebar__menu-item <?= isActive('con-transactions', $current_route) ?>">
-                                    <i class="bi bi-journal-check me-1"></i> Transactions Ledger
+                                    <i class="bi bi-journal-check me-1"></i>Transactions Ledger
                                 </a>
                             </li>
                             <li class="slide <?= isActive('con-pending-payments', $current_route) ?>">
@@ -1761,34 +1761,36 @@
 
                         <ul class="sidebar-menu child2" style="display:block;">
 
-                        <li class="slide <?= isActive('con-vendors', $current_route) ? 'active' : '' ?>">
-                            <a href="<?= $base_url ?>/con-vendors"
-                                class="sidebar__menu-item <?= isActive('con-vendors', $current_route) ?>">Vendor List</a>
-                        </li>
-                        <li class="slide <?= isActive('con-vendor-create', $current_route) ? 'active' : '' ?>">
-                            <a href="<?= $base_url ?>/con-vendor-create"
-                                class="sidebar__menu-item <?= isActive('con-vendor-create', $current_route) ?>">Add
-                                Vendor</a>
-                        </li>
-                        <li
-                            class="slide <?= isActive(['con-vendor-penalties', 'con-vendor-penalty-create'], $current_route) ? 'active' : '' ?>">
-                            <a href="<?= $base_url ?>/con-vendor-penalties"
-                                class="sidebar__menu-item <?= isActive(['con-vendor-penalties', 'con-vendor-penalty-create'], $current_route) ?>">Vendor
-                                Penalties</a>
-                        </li>
-                        <li class="slide <?= isActive('con-vendor-payment-requests', $current_route) ? 'active' : '' ?>">
-                            <a href="<?= $base_url ?>/con-vendor-payment-requests"
-                                class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?>">
-                                <i class="bi bi-wallet2 me-1"></i> Payment Requests
-                            </a>
-                        </li>
-                        <li class="slide <?= isActive('con-vendor-payment-create', $current_route) ? 'active' : '' ?>">
-                            <a href="<?= $base_url ?>/con-vendor-payment-create"
-                                class="sidebar__menu-item <?= isActive('con-vendor-payment-create', $current_route) ?>">
-                                + New Payment Request
-                            </a>
-                        </li>
-                    </ul>
+                            <li class="slide <?= isActive('con-vendors', $current_route) ? 'active' : '' ?>">
+                                <a href="<?= $base_url ?>/con-vendors"
+                                    class="sidebar__menu-item <?= isActive('con-vendors', $current_route) ?>">Vendor
+                                    List</a>
+                            </li>
+                            <li class="slide <?= isActive('con-vendor-create', $current_route) ? 'active' : '' ?>">
+                                <a href="<?= $base_url ?>/con-vendor-create"
+                                    class="sidebar__menu-item <?= isActive('con-vendor-create', $current_route) ?>">Add
+                                    Vendor</a>
+                            </li>
+                            <li
+                                class="slide <?= isActive(['con-vendor-penalties', 'con-vendor-penalty-create'], $current_route) ? 'active' : '' ?>">
+                                <a href="<?= $base_url ?>/con-vendor-penalties"
+                                    class="sidebar__menu-item <?= isActive(['con-vendor-penalties', 'con-vendor-penalty-create'], $current_route) ?>">Vendor
+                                    Penalties</a>
+                            </li>
+                            <li
+                                class="slide <?= isActive('con-vendor-payment-requests', $current_route) ? 'active' : '' ?>">
+                                <a href="<?= $base_url ?>/con-vendor-payment-requests"
+                                    class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?>">
+                                    <i class="bi bi-wallet2 me-1"></i> Payment Requests
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('con-vendor-payment-create', $current_route) ? 'active' : '' ?>">
+                                <a href="<?= $base_url ?>/con-vendor-payment-create"
+                                    class="sidebar__menu-item <?= isActive('con-vendor-payment-create', $current_route) ?>">
+                                    + New Payment Request
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                 <?php endif; ?>
 
@@ -1862,6 +1864,12 @@
                             class="sidebar__menu-item <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">
                             <div class="side-menu__icon"><i class="bi bi-calendar-week"></i></div>
                             <span class="sidebar__menu-label">Weekly Reports</span>
+                        </a>
+                    </li>
+                    <li class="slide <?= isActive('con-contractor-bills', $current_route) ?>">
+                        <a href="<?= $base_url ?>/con-contractor-bills"
+                            class="sidebar__menu-item <?= isActive('con-contractor-bills', $current_route) ?>">
+                            <i class="bi bi-receipt me-1"></i>Contractor Bills
                         </a>
                     </li>
                 <?php endif; ?>
@@ -2169,7 +2177,6 @@
                             <li class="slide">
                                 <a href="<?= $base_url ?>/task-dashboard"
                                     class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
-                                    <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
                                     <span class="sidebar__menu-label">Task Dashbaord</span>
                                 </a>
                             </li>

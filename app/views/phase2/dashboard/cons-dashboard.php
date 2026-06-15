@@ -649,6 +649,7 @@ $statusColor = [
         <?php endif; ?>
       </a>
 
+    
       <!-- 8. Lab Testing Alerts -->
       <a href="<?= $base ?>/con-soil-tests" class="kpi-card card__wrapper">
         <div class="kpi-accent" style="background:var(--cd-pink)"></div>

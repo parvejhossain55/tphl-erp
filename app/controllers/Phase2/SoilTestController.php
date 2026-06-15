@@ -42,6 +42,7 @@ class SoilTestController extends Controller {
 
         $this->view('phase2/soil_tests/soil-tests', [
             'current_route' => 'con-soil-tests',
+            'page_title'    => 'Soil Tests',
             'records' => $records,
             'title'   => 'Soil Tests'
         ]);
@@ -61,6 +62,7 @@ class SoilTestController extends Controller {
 
         $this->view('phase2/soil_tests/create-soil-test', [
             'current_route'   => 'con-soil-tests',
+            'page_title'      => 'Add Soil Test',
             'title'           => 'Add Soil Test',
             'projects'        => $projects,
             'currentUserName' => $currentUserName,
@@ -123,6 +125,7 @@ class SoilTestController extends Controller {
 
         $this->view('phase2/soil_tests/edit-soil-test', [
             'current_route' => 'con-soil-tests',
+            'page_title'    => 'Edit Soil Test',
             'title'     => 'Edit Soil Test',
             'record'    => $record,
             'projects'  => $projects,

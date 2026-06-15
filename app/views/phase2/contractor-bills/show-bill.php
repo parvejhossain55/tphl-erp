@@ -195,6 +195,105 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                 </div>
             </div>
 
+            <?php if (!empty($bill['target_id'])): ?>
+            <!-- Linked Site Target Details -->
+            <div class="card custom-card mb-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-geo-alt me-2 text-success"></i>Linked Site Target & Week Details
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3 text-muted">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Target Phase</div>
+                            <div class="info-value text-dark fw-semibold"><?= htmlspecialchars($bill['target_phase_name'] ?? '—') ?></div>
+                        </div>
+                        <div class="col-md-6 mb-3 text-muted">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Target Week</div>
+                            <div class="info-value text-dark fw-semibold">
+                                Week <?= htmlspecialchars($bill['target_week_number'] ?? '—') ?>
+                                <?php if (!empty($bill['target_week_start_date']) && !empty($bill['target_week_end_date'])): ?>
+                                    <span class="text-muted small fw-normal">(<?= date('d M Y', strtotime($bill['target_week_start_date'])) ?> - <?= date('d M Y', strtotime($bill['target_week_end_date'])) ?>)</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-muted">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Target Month & Year</div>
+                            <div class="info-value text-dark fw-semibold">
+                                <?php
+                                if (!empty($bill['target_month_number'])) {
+                                    $monthName = DateTime::createFromFormat('!m', $bill['target_month_number'])->format('F');
+                                    echo htmlspecialchars($monthName) . ' ' . htmlspecialchars($bill['target_year']);
+                                } else {
+                                    echo '—';
+                                }
+                                ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-muted">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Overall Weekly Progress</div>
+                            <div class="info-value text-dark fw-semibold">
+                                <span class="fw-bold text-success"><?= number_format($bill['target_overall_progress_pct'] ?? 0, 2) ?>%</span> Achieved
+                            </div>
+                        </div>
+                    </div>
+
+                    <?php if (!empty($target_items)): ?>
+                    <div class="mt-4">
+                        <h6 class="fs-14 fw-semibold mb-2 text-dark"><i class="bi bi-list-task me-1 text-success"></i>Weekly Progress Items Achieved</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead class="table-light text-muted small">
+                                    <tr>
+                                        <th>Work Item</th>
+                                        <th class="text-end">Planned Qty</th>
+                                        <th class="text-end">Achieved Qty</th>
+                                        <th class="text-center">Progress %</th>
+                                        <th>Assigned Contractor</th>
+                                        <th>Status / Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($target_items as $item): ?>
+                                    <?php 
+                                    $isCurrentContractor = ($item['contractor_id'] == $bill['operator_id']);
+                                    $rowClass = $isCurrentContractor ? 'table-success bg-opacity-10 fw-semibold' : '';
+                                    ?>
+                                    <tr class="<?= $rowClass ?>">
+                                        <td>
+                                            <?= htmlspecialchars($item['work_item_name']) ?>
+                                            <?php if ($isCurrentContractor): ?>
+                                                <span class="badge bg-success-transparent ms-1 small">Current Contractor</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-end text-nowrap"><?= number_format($item['planned_qty'] ?? 0, 2) ?> <?= htmlspecialchars($item['unit'] ?? '') ?></td>
+                                        <td class="text-end text-nowrap"><?= number_format($item['achieved_qty'] ?? 0, 2) ?> <?= htmlspecialchars($item['unit'] ?? '') ?></td>
+                                        <td class="text-center">
+                                            <span class="badge bg-<?= $item['percent_complete'] >= 100 ? 'success' : 'primary' ?>-transparent">
+                                                <?= number_format($item['percent_complete'] ?? 0, 2) ?>%
+                                            </span>
+                                        </td>
+                                        <td class="text-muted"><?= htmlspecialchars($item['contractor_name'] ?? '—') ?></td>
+                                        <td>
+                                            <span class="badge bg-<?= $item['status'] === 'Completed' ? 'success' : ($item['status'] === 'In Progress' ? 'info' : 'warning') ?>-transparent small mb-1 d-block w-fit">
+                                                <?= htmlspecialchars($item['status']) ?>
+                                            </span>
+                                            <?php if (!empty($item['remarks_action'])): ?>
+                                                <small class="text-muted d-block text-wrap"><em><?= htmlspecialchars($item['remarks_action']) ?></em></small>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- Payment History -->
             <?php if (!empty($payments)): ?>
             <div class="card custom-card mb-3">

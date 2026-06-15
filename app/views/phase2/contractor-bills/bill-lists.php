@@ -4,20 +4,15 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
 ?>
 <div class="container-fluid">
     <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-        <div class="my-auto">
+        <div class="d-flex align-items-center gap-2">
             <h4 class="page-title fw-semibold fs-18 mb-0"><?= $page_title ?></h4>
-            <div class="d-flex">
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
-                    <li class="breadcrumb-item active">Contractor Bills</li>
-                </ol>
-            </div>
+            <?php if (hasPermission('Contractor Bill') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
+                <a href="<?= $base_url ?>/con-contractor-bill-create" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-circle me-1"></i> New Bill
+                </a>
+            <?php endif; ?>
         </div>
-        <div class="my-auto">
-            <a href="<?= $base_url ?>/con-contractor-bill-create" class="btn btn-primary btn-sm">
-                <i class="bi bi-plus-circle me-1"></i> New Bill
-            </a>
-        </div>
+      
     </div>
 
     <div class="card custom-card">
@@ -62,7 +57,16 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
                                 ?>
                                 <tr>
                                     <td><?= $i + 1 ?></td>
-                                    <td><?= htmlspecialchars($b['project_name'] ?? '-') ?></td>
+                                    <td>
+                                        <?= htmlspecialchars($b['project_name'] ?? '-') ?>
+                                        <?php if (!empty($b['target_id'])): ?>
+                                            <br>
+                                            <small class="text-success fw-semibold">
+                                                <i class="bi bi-geo-alt me-1"></i><?= htmlspecialchars($b['target_phase_name'] ?? '') ?> 
+                                                <span class="text-muted">(Week <?= htmlspecialchars($b['target_week_number'] ?? '') ?>)</span>
+                                            </small>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <span class="fw-semibold"><?= htmlspecialchars($b['operator_name'] ?? '-') ?></span><br>
                                         <small class="text-muted"><?= htmlspecialchars($b['operator_role'] ?? '') ?></small>
@@ -101,7 +105,14 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr><td colspan="10" class="text-center text-muted py-4">No contractor bills found. <a href="<?= $base_url ?>/con-contractor-bill-create">Create one</a></td></tr>
+                            <tr>
+                                <td colspan="11" class="text-center text-muted py-4">
+                                    No contractor bills found.
+                                    <?php if (hasPermission('Contractor Bill') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
+                                        <a href="<?= $base_url ?>/con-contractor-bill-create">Create one</a>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
                         <?php endif; ?>
                     </tbody>
                 </table>

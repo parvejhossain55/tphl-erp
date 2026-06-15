@@ -93,6 +93,11 @@ class Con_ContractorBillController extends Controller
 
     public function create()
     {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3])) {
+            setError('You do not have permission to create contractor bills.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+            exit;
+        }
         $operators = $this->operatorModel->getActiveContractors();
         $projects  = $this->getProjects();
         $targets   = [];
@@ -114,6 +119,11 @@ class Con_ContractorBillController extends Controller
 
     public function store()
     {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3])) {
+            setError('You do not have permission to create contractor bills.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+            exit;
+        }
         $data = [
             'project_id'       => $_POST['project_id'] ?? null,
             'operator_id'      => $_POST['operator_id'] ?? null,
@@ -267,6 +277,21 @@ class Con_ContractorBillController extends Controller
         // Get banks for payment modal
         $banks = $this->db->query("SELECT id, bank_name, branch_name FROM banks WHERE status = 'active' ORDER BY bank_name")->fetch_all(MYSQLI_ASSOC);
 
+        // Fetch weekly progress items for the target if linked
+        $targetItems = [];
+        if (!empty($bill['target_id'])) {
+            $stmt = $this->db->prepare("
+                SELECT pwpi.*, pmti.work_item_name, pmti.unit, c.name AS contractor_name
+                FROM phase_weekly_progress_items pwpi
+                INNER JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
+                LEFT JOIN contractors c ON c.id = pwpi.contractor_id
+                WHERE pwpi.weekly_progress_id = ?
+            ");
+            $stmt->bind_param('i', $bill['target_id']);
+            $stmt->execute();
+            $targetItems = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
         $this->view('phase2/contractor-bills/show-bill', [
             'current_route'     => 'con-contractor-bills',
             'page_title'        => 'Contractor Bill Detail',
@@ -281,6 +306,7 @@ class Con_ContractorBillController extends Controller
             'canProcessPayment' => $this->canProcessPayment(),
             'userRole'          => $this->userRole,
             'banks'             => $banks,
+            'target_items'      => $targetItems,
         ]);
     }
 

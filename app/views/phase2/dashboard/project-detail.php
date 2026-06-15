@@ -383,7 +383,7 @@ $sc = $statusMap[$project['project_status'] ?? ''] ?? ['bg'=>'rgba(0,0,0,.07)','
       <?php if (!empty($project['description'])): ?>
       <div class="pd-panel">
         <div class="pd-panel-title"><i class="fal fa-align-left me-2"></i>Description</div>
-        <p style="font-size:13px;margin:0;line-height:1.6"><?= nl2br(htmlspecialchars($project['description'])) ?></p>
+        <p style="font-size:13px;margin:0;line-height:1.6"><?= ($project['description'])?></p>
       </div>
       <?php endif; ?>
     </div>

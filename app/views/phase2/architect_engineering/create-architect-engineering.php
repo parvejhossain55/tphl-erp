@@ -31,7 +31,7 @@
                     </select>
                 </div>
 
-                <div class="col-xl-12">
+                <div class="col-xl-6">
                     <label>Notes</label>
                     <textarea name="notes" class="form-control" rows="3" placeholder="Add notes..."></textarea>
                 </div>

@@ -157,6 +157,7 @@ class Con_PhasePlanController extends Controller {
 
         $this->view('phase2/phase_plan/index', [
             'current_route' => 'con-phase-plan',
+            'page_title'    => 'Phase Plan — ' . ($project['name'] ?? ''),
             'project'       => $project,
             'timeline'      => $timeline,
             'phases'        => $phases,

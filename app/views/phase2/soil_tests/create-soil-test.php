@@ -35,7 +35,7 @@ $show_breadcrumb = true; ?>
                     <label>Field Test Document Link</label>
                     <input type="url" name="field_test_doc_link" class="form-control" placeholder="https://...">
                 </div>
-                <div class="col-12 text-center mt-4">
+                <div class="col-12 text-center mt-4 d-flex ">
                     <button type="submit" class="btn btn-primary px-5">Save Soil Test</button>
                     <a href="<?= $GLOBALS['base_url'] ?>/con-soil-tests" class="btn btn-secondary ms-2">Cancel</a>
                 </div>

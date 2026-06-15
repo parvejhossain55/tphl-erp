@@ -1,12 +1,7 @@
 <div class="pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div class="mb-4">
         <h4><?= htmlspecialchars($page_title) ?></h4>
-        <nav>
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
-                <li class="breadcrumb-item active">Wastage Management</li>
-            </ol>
-        </nav>
+       
     </div>
     <div class="mb-4 d-flex gap-2 align-items-center">
         <?php if ($_SESSION['user']['role_id'] == 12): ?>

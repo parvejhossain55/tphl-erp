@@ -75,6 +75,7 @@ class Con_PhaseItemController extends Controller {
 
         $this->view('phase2/phase_items/index', [
             'current_route' => 'con-phase-plan',
+            'page_title'    => 'Phase Items — ' . ($phase['phase_name'] ?? ''),
             'phase'         => $phase,
             'items'         => $items,
             'totalWeight'   => round($totalWeight, 2),

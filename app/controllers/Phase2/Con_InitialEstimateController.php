@@ -647,8 +647,8 @@ class Con_InitialEstimateController extends Controller
         $userId = (int)($_SESSION['user']['id']      ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Only PM (15,22) and Management (3) can approve
-        if (!in_array($roleId, [3, 15, 22])) {
+        // Only PM (15,22) and Management (1,3) can approve
+        if (!in_array($roleId, [1, 3, 15, 22])) {
             setError('You do not have permission to approve estimates.');
             header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
             exit;
@@ -678,8 +678,8 @@ class Con_InitialEstimateController extends Controller
 
         // ── Management Final Approval: pm_approved → approved ───────────
         } elseif ($status === 'pm_approved') {
-            if ($roleId !== 3) {
-                setError('শুধুমাত্র Management (role 3) Final Approve করতে পারবেন।');
+            if (!in_array($roleId, [1, 3])) {
+                setError('শুধুমাত্র Management (role 1/3) Final Approve করতে পারবেন।');
                 header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
                 exit;
             }
@@ -709,15 +709,15 @@ class Con_InitialEstimateController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // Role guard: only 1, 3, 15, 22 can reject
-        if (!in_array($roleId, [1, 3, 22])) {
+        if (!in_array($roleId, [1, 3, 15, 22])) {
             setError('You do not have permission to reject budgets.');
             header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
             exit;
         }
 
-        // Creator cannot reject their own submission (except PM Head/MD)
+        // Creator cannot reject their own submission (except PM / PM Head / Management)
         $budget = $this->model->find($id);
-        if ($budget && (int)($budget['created_by'] ?? 0) === $userId && !in_array($roleId, [1, 3, 22])) {
+        if ($budget && (int)($budget['created_by'] ?? 0) === $userId && !in_array($roleId, [1, 3, 15, 22])) {
             setError('You cannot reject a budget that you created.');
             header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
             exit;

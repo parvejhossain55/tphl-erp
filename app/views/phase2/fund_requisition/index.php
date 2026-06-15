@@ -85,7 +85,7 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
                     <?php if ($isDefaultLimit): ?>
                         <div class="col-12 mt-2">
                             <span class="badge bg-info-transparent text-info fs-11">
-                                <i class="fa-solid fa-circle-info me-1"></i> Showing the latest 10 requisitions by default. Use the filters above to search by date.
+                               
                             </span>
                         </div>
                     <?php endif; ?>

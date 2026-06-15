@@ -23,7 +23,7 @@ $canModify = in_array($roleId, [1, 3, 14]);
     <!-- Main Info & Edit Form Column -->
     <div class="col-xl-7 col-lg-6 mb-4">
         <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white border-0 py-3">
+            <div class="card-header border-0 py-3">
                 <h5 class="mb-0 fw-bold text-primary"><i class="fa-light fa-file-invoice me-2"></i>Edit Land Details</h5>
             </div>
             <div class="card-body">
@@ -142,7 +142,7 @@ $canModify = in_array($roleId, [1, 3, 14]);
         <!-- Registration & Mutation Section -->
         <div class="card border-0 shadow-sm">
             <?php $regComplete = ($acquisition['registration_status'] ?? '') === 'complete'; ?>
-            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 fw-bold text-success"><i class="fa-light fa-stamp me-2"></i>Deed Registration & Mutation Details</h5>
                 <?php if ($regComplete): ?>
                     <span class="badge bg-success py-2 px-3"><i class="fa-light fa-circle-check me-1"></i> Registration Completed</span>
@@ -226,7 +226,7 @@ $canModify = in_array($roleId, [1, 3, 14]);
     <!-- Bayana Payments Column -->
     <div class="col-xl-5 col-lg-6">
         <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center">
                 <div>
                     <h5 class="mb-0 fw-bold text-warning"><i class="fa-light fa-wallet me-2"></i>Bayana (Advance) Payments</h5>
                     <?php if ($totalBayanaBudget > 0): ?>
@@ -303,7 +303,7 @@ $canModify = in_array($roleId, [1, 3, 14]);
                             <?php foreach ($bayanas as $b): ?>
                                 <div class="list-group-item px-0 py-3">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <h6 class="mb-0 fw-bold text-dark">BDT <?= number_format($b['payment_amount'], 2) ?></h6>
+                                        <h6 class="mb-0 fw-bold">BDT <?= number_format($b['payment_amount'], 2) ?></h6>
                                         <span class="badge bg-secondary"><?= htmlspecialchars($b['payment_method']) ?></span>
                                     </div>
                                     <div class="small text-muted mb-2">

@@ -8,7 +8,7 @@
             </ol>
         </nav>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 mb-2">
         <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#csvImportModal">
             <i class="bi bi-upload me-1"></i> Import CSV
         </button>
