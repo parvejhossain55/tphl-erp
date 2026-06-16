@@ -460,7 +460,7 @@ class Con_MonthlyTarget {
                     }
                 }
 
-                $stmt->bind_param('isisdsddddssddddsiissi',
+                $stmt->bind_param('isisisddddssddddsisssi',
                     $wid,
                     $name,
                     $phaseItemId,

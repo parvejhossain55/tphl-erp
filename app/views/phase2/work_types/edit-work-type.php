@@ -35,7 +35,7 @@ $show_breadcrumb = true;
                 </div>
                 <div class="col-xl-12 mt-3">
                     <label class="form-label fw-bold">Description</label>
-                    <textarea name="description" class="form-control" rows="3"><?= htmlspecialchars($record['description']) ?></textarea>
+                    <textarea name="description" class="form-control" rows="3"><?= htmlspecialchars($record['description'] ?? '') ?></textarea>
                 </div>
                 <div class="col-12 text-center mt-4">
                     <button type="submit" class="btn btn-primary px-5">Update</button>
