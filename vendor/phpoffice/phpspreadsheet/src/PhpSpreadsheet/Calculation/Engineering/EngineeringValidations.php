@@ -13,6 +13,7 @@ class EngineeringValidations
             throw new Exception(ExcelError::VALUE());
         }
 
+
         return (float) $value;
     }
 
