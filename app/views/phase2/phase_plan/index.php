@@ -100,8 +100,8 @@ $phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a
     margin-bottom: 14px;
 }
 .pp-config-header h6 { font-size: 14px; font-weight: 800; margin: 0; }
-.pp-config-wrap { border-radius: 12px; border: 1px solid rgba(0,0,0,.07); overflow: hidden; }
-.pp-config-table { width: 100%; border-collapse: collapse; }
+.pp-config-wrap { border-radius: 12px; border: 1px solid rgba(0,0,0,.07); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.pp-config-table { width: 100%; border-collapse: collapse; min-width: 800px; }
 .pp-config-table thead th {
     padding: 9px 10px;
     font-size: 10px;

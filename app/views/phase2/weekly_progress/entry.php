@@ -70,9 +70,9 @@ foreach ($dailyQuantities as $dq) {
 
 // Entry status meta
 $statusMeta = [
-    'Draft'     => ['label'=>'Draft',     'color'=>'#64748b','bg'=>'#f1f5f9','icon'=>'bi-pencil-square'],
+    'Draft'     => ['label'=>'Draft',     'color'=>'var(--clr-text-muted)','bg'=>'rgba(128,128,128,0.1)','icon'=>'bi-pencil-square'],
     'Submitted' => ['label'=>'Submitted', 'color'=>'var(--clr-theme-primary)','bg'=>'rgba(var(--clr-theme-primary-rgb),.08)','icon'=>'bi-send-fill'],
-    'Approved'  => ['label'=>'Approved',  'color'=>'#10b981','bg'=>'#d1fae5','icon'=>'bi-check-circle-fill'],
+    'Approved'  => ['label'=>'Approved',  'color'=>'#10b981','bg'=>'rgba(16,185,129,0.12)','icon'=>'bi-check-circle-fill'],
 ];
 $asm = $statusMeta[$entryStatus] ?? $statusMeta['Draft'];
 
@@ -89,59 +89,59 @@ body { font-family: 'Inter', sans-serif; }
 
 /* ---------- KPI Cards ---------- */
 .wp-kpi-grid { display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px }
-.wp-kpi { background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:12px }
+.wp-kpi { border:1px solid rgba(128,128,128,0.15);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:12px;background:rgba(var(--clr-theme-primary-rgb),0.02) }
 .wp-kpi-icon { width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0 }
-.wp-kpi-label { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate);margin-bottom:2px }
+.wp-kpi-label { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted, #64748b);margin-bottom:2px }
 .wp-kpi-val { font-size:17px;font-weight:800;line-height:1 }
-.wp-kpi-sub { font-size:10.5px;color:var(--slate);margin-top:2px }
+.wp-kpi-sub { font-size:10.5px;color:var(--text-muted, #64748b);margin-top:2px }
 
 /* ---------- Main Card ---------- */
-.wp-card { background:#fff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;margin-bottom:20px }
-.wp-card-header { padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between }
-.wp-card-title { font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#475569;display:flex;align-items:center;gap:8px }
+.wp-card { border-radius:16px;overflow:hidden;margin-bottom:20px }
+.wp-card-header { padding:14px 20px;border-bottom:1px solid rgba(128, 128, 128, 0.15);display:flex;align-items:center;justify-content:space-between }
+.wp-card-title { font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:inherit;opacity:0.8;display:flex;align-items:center;gap:8px }
 
 /* ---------- Progress Table ---------- */
 .wp-table { width:100%;border-collapse:collapse;font-size:12.5px }
-.wp-table th { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;background:#f8fafc;padding:9px 10px;border-bottom:2px solid #e2e8f0;white-space:nowrap }
-.wp-table td { padding:9px 10px;border-bottom:1px solid #f8fafc;vertical-align:middle;color:#1e293b }
+.wp-table th { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:inherit;opacity:0.8;background:rgba(128,128,128,0.06);padding:9px 10px;border-bottom:2px solid rgba(128,128,128,0.15);white-space:nowrap }
+.wp-table td { padding:9px 10px;border-bottom:1px solid rgba(128,128,128,0.08);vertical-align:middle;color:inherit }
 .wp-table tr:last-child td { border-bottom:none }
-.wp-table tr:hover td { background:#f8fafc }
+.wp-table tr:hover td { background:rgba(128, 128, 128, 0.04) }
 
-.pct-bar { height:6px;border-radius:3px;background:#e2e8f0;overflow:hidden;margin-top:3px;min-width:60px }
+.pct-bar { height:6px;border-radius:3px;background:rgba(128, 128, 128, 0.15);overflow:hidden;margin-top:3px;min-width:60px }
 .pct-fill { height:100%;border-radius:3px }
 
 .status-badge { display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap }
-.s-completed { background:#d1fae5;color:#065f46 }
-.s-in-progress { background:#dbeafe;color:#1e40af }
-.s-delayed { background:#fee2e2;color:#991b1b }
-.s-pending-qa { background:#fef3c7;color:#92400e }
-.s-not-started { background:#f1f5f9;color:#64748b }
+.s-completed { background:rgba(16,185,129,0.12);color:#10b981 }
+.s-in-progress { background:rgba(59,130,246,0.12);color:#3b82f6 }
+.s-delayed { background:rgba(239,68,68,0.12);color:#ef4444 }
+.s-pending-qa { background:rgba(245,158,11,0.12);color:#f59e0b }
+.s-not-started { background:rgba(128,128,128,0.1);color:inherit;opacity:0.8 }
 
-.qty-input { width:85px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:7px;font-size:12px;font-weight:600;text-align:center;background:#fff;color:#1e293b }
+.qty-input { width:85px;padding:5px 8px;border:1px solid rgba(128, 128, 128, 0.25);border-radius:7px;font-size:12px;font-weight:600;text-align:center;background:transparent;color:inherit }
 .qty-input:focus { outline:none;border-color:var(--pri);box-shadow:0 0 0 2px rgba(var(--clr-theme-primary-rgb),.15) }
-.qty-input:disabled { background:#f8fafc;color:#94a3b8 }
+.qty-input:disabled { background:rgba(128, 128, 128, 0.08);color:inherit;opacity:0.6 }
 
-.remarks-input { width:100%;padding:5px 8px;border:1px solid #e2e8f0;border-radius:7px;font-size:11.5px;background:#fff;color:#1e293b }
+.remarks-input { width:100%;padding:5px 8px;border:1px solid rgba(128, 128, 128, 0.25);border-radius:7px;font-size:11.5px;background:transparent;color:inherit }
 .remarks-input:focus { outline:none;border-color:var(--pri) }
 
-.photo-btn { width:30px;height:30px;border-radius:7px;border:1px dashed #94a3b8;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:14px }
-.photo-btn:hover { border-color:var(--pri);color:var(--pri) }
-.photo-btn.has-photo { border-color:var(--green);color:var(--green);background:rgba(16,185,129,.08);border-style:solid }
+.photo-btn { width:30px;height:30px;border-radius:7px;border:1px dashed rgba(128, 128, 128, 0.4);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;color:inherit;opacity:0.7;font-size:14px }
+.photo-btn:hover { border-color:var(--pri);color:var(--pri);opacity:1 }
+.photo-btn.has-photo { border-color:var(--green);color:var(--green);background:rgba(16,185,129,.08);border-style:solid;opacity:1 }
 
 .issue-flag { width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;cursor:pointer }
-.issue-none { background:#f1f5f9;color:#94a3b8 }
-.issue-delay { background:#fee2e2;color:#dc2626 }
-.issue-low-labor { background:#fef3c7;color:#d97706 }
-.issue-pending { background:#dbeafe;color:#3b82f6 }
+.issue-none { background:rgba(128, 128, 128, 0.1);color:inherit;opacity:0.6 }
+.issue-delay { background:rgba(239,68,68,0.12);color:#ef4444 }
+.issue-low-labor { background:rgba(245,158,11,0.12);color:#f59e0b }
+.issue-pending { background:rgba(59,130,246,0.12);color:#3b82f6 }
 
 /* ---------- Total Row ---------- */
-.wp-total-row { background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-top:2px solid #bae6fd;font-weight:700 }
+.wp-total-row { background:rgba(128, 128, 128, 0.08);border-top:2px solid rgba(128, 128, 128, 0.15);font-weight:700 }
 
 /* ---------- Weekly Gantt Visual ---------- */
 .gantt-wrap { overflow-x:auto }
 .gantt-table { width:100%;border-collapse:collapse;font-size:11.5px;min-width:700px }
-.gantt-table th { font-size:9px;font-weight:700;text-transform:uppercase;color:#64748b;padding:7px 6px;border-bottom:1px solid #e2e8f0;text-align:center }
-.gantt-table td { padding:5px 6px;border-bottom:1px solid #f8fafc;vertical-align:middle }
+.gantt-table th { font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text-muted, #64748b);padding:7px 6px;border-bottom:1px solid rgba(128,128,128,0.15);text-align:center }
+.gantt-table td { padding:5px 6px;border-bottom:1px solid rgba(128,128,128,0.08);vertical-align:middle }
 .gantt-item-name { font-weight:600;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis }
 .gantt-bar-cell { text-align:center }
 .gantt-bar { height:12px;border-radius:4px;margin:0 auto;min-width:4px }
@@ -149,8 +149,8 @@ body { font-family: 'Inter', sans-serif; }
 .gantt-bar-in-progress { background:var(--pri) }
 .gantt-bar-delayed { background:var(--red) }
 .gantt-bar-pending { background:#94a3b8 }
-.gantt-bar-none { background:#e2e8f0 }
-.gantt-legend { display:flex;gap:14px;flex-wrap:wrap;padding:10px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px;font-weight:600 }
+.gantt-bar-none { background:rgba(128,128,128,0.15) }
+.gantt-legend { display:flex;gap:14px;flex-wrap:wrap;padding:10px 16px;background:rgba(128,128,128,0.04);border-top:1px solid rgba(128,128,128,0.15);font-size:11px;font-weight:600 }
 .gantt-legend-item { display:flex;align-items:center;gap:5px }
 .gantt-dot { width:10px;height:10px;border-radius:3px }
 
@@ -164,24 +164,24 @@ body { font-family: 'Inter', sans-serif; }
 /* ---------- Site Inputs Card ---------- */
 .site-input-grid { display:grid;grid-template-columns:1fr 1fr;gap:10px }
 .site-inp-group { display:flex;flex-direction:column;gap:3px }
-.site-inp-label { font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#94a3b8 }
-.site-inp-val { font-size:13px;font-weight:700;color:#1e293b }
-.site-field { width:100%;padding:6px 9px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;background:#fff;color:#1e293b }
+.site-inp-label { font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted, #64748b) }
+.site-inp-val { font-size:13px;font-weight:700;color:inherit }
+.site-field { width:100%;padding:6px 9px;border:1px solid rgba(128, 128, 128, 0.25);border-radius:8px;font-size:12px;background:transparent;color:inherit }
 .site-field:focus { outline:none;border-color:var(--pri) }
 
 /* ---------- Issue Tracker ---------- */
-.issue-item { display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:12px }
+.issue-item { display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(128,128,128,0.08);font-size:12px }
 .issue-dot { width:8px;height:8px;border-radius:50%;flex-shrink:0 }
 
 /* ---------- Donut Chart ---------- */
 .donut-wrap { position:relative;display:inline-flex;align-items:center;justify-content:center }
 .donut-center { position:absolute;text-align:center }
-.donut-val { font-size:22px;font-weight:800;color:#1e293b }
-.donut-lbl { font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase }
+.donut-val { font-size:22px;font-weight:800;color:inherit }
+.donut-lbl { font-size:9px;font-weight:700;color:var(--text-muted, #64748b);text-transform:uppercase }
 
 /* ---------- Day Calendar ---------- */
 .day-bar { display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:16px }
-.day-chip { border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;text-align:center;cursor:pointer;text-decoration:none;color:#1e293b;min-width:70px;position:relative;flex-shrink:0;transition:all .15s }
+.day-chip { border:1px solid rgba(128, 128, 128, 0.25);border-radius:10px;padding:8px 12px;text-align:center;cursor:pointer;text-decoration:none;color:inherit;min-width:70px;position:relative;flex-shrink:0;transition:all .15s }
 .day-chip:hover { border-color:var(--pri);transform:translateY(-1px) }
 .day-chip.active { background:var(--pri);color:#fff;border-color:var(--pri);box-shadow:0 4px 12px rgba(var(--clr-theme-primary-rgb),.3) }
 .day-chip.has-log { border-top:3px solid var(--green) }
@@ -190,18 +190,18 @@ body { font-family: 'Inter', sans-serif; }
 .day-chip .day-month { font-size:9px;font-weight:600 }
 
 /* ---------- Buttons ---------- */
-.btn-save-draft { background:#f8fafc;border:1px solid #cbd5e1;color:#475569;font-weight:700;font-size:12.5px;padding:8px 20px;border-radius:9px;cursor:pointer }
-.btn-save-draft:hover { background:#f1f5f9 }
+.btn-save-draft { background:rgba(128,128,128,0.08);border:1px solid rgba(128, 128, 128, 0.25);color:inherit;font-weight:700;font-size:12.5px;padding:8px 20px;border-radius:9px;cursor:pointer }
+.btn-save-draft:hover { background:rgba(128,128,128,0.15) }
 .btn-submit { background:var(--red);color:#fff;font-weight:700;font-size:12.5px;padding:8px 22px;border-radius:9px;border:none;cursor:pointer }
 .btn-submit:hover { background:#dc2626 }
 .btn-save { background:var(--pri);color:#fff;font-weight:700;font-size:12.5px;padding:9px 22px;border-radius:9px;border:none;cursor:pointer }
 .btn-save:hover { background:var(--clr-theme-primary) }
-.btn-add-item { background:transparent;border:1.5px dashed #94a3b8;color:#64748b;font-size:12px;font-weight:600;padding:7px 18px;border-radius:8px;cursor:pointer }
-.btn-add-item:hover { border-color:var(--pri);color:var(--pri) }
+.btn-add-item { background:transparent;border:1.5px dashed rgba(128,128,128,0.4);color:inherit;opacity:0.8;font-size:12px;font-weight:600;padding:7px 18px;border-radius:8px;cursor:pointer }
+.btn-add-item:hover { border-color:var(--pri);color:var(--pri);opacity:1 }
 
-.team-inp { width:100%;padding:4px 7px;border:1px solid #e2e8f0;border-radius:6px;font-size:11.5px;background:#fff;color:#1e293b }
+.team-inp { width:100%;padding:4px 7px;border:1px solid rgba(128, 128, 128, 0.25);border-radius:6px;font-size:11.5px;background:transparent;color:inherit }
 .team-inp:focus { outline:none;border-color:var(--pri) }
-.st-sel { width:100%;padding:4px 6px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;background:#fff;color:#1e293b }
+.st-sel { width:100%;padding:4px 6px;border:1px solid rgba(128, 128, 128, 0.25);border-radius:6px;font-size:11px;background:transparent;color:inherit }
 .st-sel:focus { outline:none;border-color:var(--pri) }
 </style>
 
@@ -229,14 +229,14 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 <div class="d-flex justify-content-between align-items-center flex-wrap mb-3 gap-3">
     <div>
         <h4 class="fw-extrabold mb-1" style="font-size:20px">Daily / Weekly Progress Entry
-            <span class="ms-2" style="font-size:12px;font-weight:500;color:#64748b;vertical-align:middle">
+            <span class="ms-2" style="font-size:12px;font-weight:500;color:var(--text-muted, #64748b);vertical-align:middle">
                 <i class="bi bi-info-circle"></i>
                 Capture daily and weekly on-site progress, quantities, issues, and proof updates.
             </span>
         </h4>
-        <div style="font-size:11.5px;color:#64748b">
-            <a href="<?= $base ?>/con-projects" class="text-decoration-none" style="color:#94a3b8">Projects</a> ›
-            <a href="<?= $base ?>/con-monthly-target/<?= $target_id ?>" class="text-decoration-none" style="color:#64748b"><?= htmlspecialchars($target['phase_name'] ?? '') ?> — <?= $monthLabel ?></a>
+        <div style="font-size:11.5px;color:var(--text-muted, #64748b)">
+            <a href="<?= $base ?>/con-projects" class="text-decoration-none" style="color:var(--text-muted, #94a3b8)">Projects</a> ›
+            <a href="<?= $base ?>/con-monthly-target/<?= $target_id ?>" class="text-decoration-none" style="color:var(--text-muted, #64748b)"><?= htmlspecialchars($target['phase_name'] ?? '') ?> — <?= $monthLabel ?></a>
         </div>
     </div>
     <div class="d-flex gap-2 align-items-center flex-wrap">
@@ -269,10 +269,10 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 <?php endif; ?>
 
 <!-- ░░ Week Selector ░░ -->
-<div class="wp-card mb-3" style="border-radius:12px">
+<div class="card__wrapper wp-card mb-3" style="border-radius:12px">
     <div style="padding:12px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
         <div class="d-flex align-items-center gap-2">
-            <span style="font-size:10.5px;font-weight:700;color:#94a3b8;text-transform:uppercase">Work Week:</span>
+            <span style="font-size:10.5px;font-weight:700;color:var(--text-muted, #94a3b8);text-transform:uppercase">Work Week:</span>
             <div class="btn-group">
             <?php for ($w = 1; $w <= 4; $w++): ?>
                 <a href="<?= $base ?>/con-weekly-progress/<?= $target_id ?>?week=<?= $w ?>"
@@ -282,9 +282,9 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
             </div>
         </div>
         <div class="d-flex gap-4" style="font-size:12.5px">
-            <div><span style="color:#94a3b8">Duration:</span>
+            <div><span style="color:var(--text-muted, #94a3b8)">Duration:</span>
                  <strong><?= date('d M',strtotime($weeklyProgress['week_start_date']??'now')) ?> – <?= date('d M Y',strtotime($weeklyProgress['week_end_date']??'now')) ?></strong></div>
-            <div><span style="color:#94a3b8">Status:</span>
+            <div><span style="color:var(--text-muted, #94a3b8)">Status:</span>
                  <span style="background:<?= $asm['bg'] ?>;color:<?= $asm['color'] ?>;font-size:10.5px;font-weight:700;padding:2px 10px;border-radius:999px">
                      <i class="bi <?= $asm['icon'] ?> me-1"></i><?= $entryStatus ?>
                  </span></div>
@@ -342,10 +342,10 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 </div>
 
 <!-- ░░ Date Calendar ░░ -->
-<div class="wp-card" style="margin-bottom:18px">
+<div class="card__wrapper wp-card" style="margin-bottom:18px">
     <div class="wp-card-header">
         <div class="wp-card-title"><i class="bi bi-calendar3"></i> Weekly Calendar Logs</div>
-        <div style="font-size:11.5px;color:#64748b">Tap a date to log quantities for that day</div>
+        <div style="font-size:11.5px;color:var(--text-muted, #64748b)">Tap a date to log quantities for that day</div>
     </div>
     <div style="padding:12px 16px">
         <div class="day-bar">
@@ -382,9 +382,9 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 
 <?php if ($entryStatus !== 'Draft'): ?>
 <!-- ░░ Quality Control & Manager Review Panel ░░ -->
-<div class="wp-card mb-4" style="border-radius:16px; border: 1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05); background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
-    <div class="wp-card-header" style="background: rgba(248, 250, 252, 0.5); border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
-        <div class="wp-card-title" style="font-size: 13px; font-weight: 800; color: #1e293b; text-transform: uppercase;">
+<div class="card__wrapper wp-card mb-4" style="border-radius:16px;">
+    <div class="wp-card-header" style="border-bottom: 1px solid rgba(128, 128, 128, 0.15); display: flex; align-items: center; justify-content: space-between;">
+        <div class="wp-card-title" style="font-size: 13px; font-weight: 800; color: inherit; text-transform: uppercase;">
             <i class="bi bi-shield-check text-primary fs-5"></i>
             Quality Control &amp; Management Review
         </div>
@@ -402,10 +402,10 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         <div class="row g-4">
             
             <!-- Quality Control (QC) Section -->
-            <div class="col-md-6" style="border-right: 1px dashed #e2e8f0;">
+            <div class="col-md-6" style="border-right: 1px dashed rgba(128, 128, 128, 0.25);">
                 <div class="d-flex align-items-center gap-2 mb-3">
                     <span style="width: 28px; height: 28px; border-radius: 50%; background: rgba(var(--clr-theme-primary-rgb), 0.1); color: var(--pri); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">1</span>
-                    <h6 class="mb-0 fw-bold" style="color: #334155; font-size: 14px;">Quality Control Review</h6>
+                    <h6 class="mb-0 fw-bold" style="color: inherit; font-size: 14px;">Quality Control Review</h6>
                 </div>
                 
                 <?php if (empty($dailyLog['qc_approved_id'])): ?>
@@ -423,7 +423,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                             
                             <div class="mb-3">
                                 <label class="form-label small fw-bold text-muted">Verification Photo / Proof</label>
-                                <input type="file" name="qc_image" form="qcForm" class="form-control form-control-sm" accept="image/*" style="border-radius: 8px; color: #334155; background-color: #d9cfcf; border: 1px solid #cbd5e1;">
+                                <input type="file" name="qc_image" form="qcForm" class="form-control form-control-sm" accept="image/*" style="border-radius: 8px; color: inherit; background: transparent; border: 1px solid rgba(128, 128, 128, 0.25);">
                                 <div class="form-text" style="font-size: 10px;">Upload site photo as quality assessment proof.</div>
                             </div>
                             
@@ -437,7 +437,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                             </button>
                         </div>
                     <?php else: ?>
-                        <div class="text-center py-4 rounded-3" style="background: rgba(241, 245, 249, 0.5); border-radius: 12px; border: 1px solid #e2e8f0;">
+                        <div class="text-center py-4 rounded-3" style="background: rgba(128, 128, 128, 0.05); border-radius: 12px; border: 1px solid rgba(128, 128, 128, 0.15);">
                             <i class="bi bi-hourglass-split text-muted fs-4"></i>
                             <p class="text-muted small mt-2 mb-0">Awaiting review from Quality Control team.</p>
                         </div>
@@ -453,11 +453,11 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                         ];
                         $qsm = $qcStatusColors[$qcStatus] ?? $qcStatusColors['Approved'];
                     ?>
-                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.01);">
+                    <div style="background: rgba(128, 128, 128, 0.04); border: 1px solid rgba(128, 128, 128, 0.15); border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.01);">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div>
                                 <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">QC Specialist</div>
-                                <div style="font-size: 14px; font-weight: 700; color: #1e293b;"><?= htmlspecialchars($qcName) ?></div>
+                                <div style="font-size: 14px; font-weight: 700; color: inherit;"><?= htmlspecialchars($qcName) ?></div>
                             </div>
                             <span style="font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: <?= $qsm['bg'] ?>; color: <?= $qsm['text'] ?>;">
                                 <i class="bi <?= $qsm['icon'] ?> me-1"></i><?= $qcStatus ?>
@@ -466,7 +466,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                         
                         <div class="mb-3">
                             <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Comments</div>
-                            <div style="font-size: 12.5px; color: #334155; line-height: 1.5; background: #f8fafc; padding: 10px; border-radius: 8px; border-left: 3px solid <?= $qsm['text'] ?>;">
+                            <div style="font-size: 12.5px; color: inherit; line-height: 1.5; background: rgba(128, 128, 128, 0.05); padding: 10px; border-radius: 8px; border-left: 3px solid <?= $qsm['text'] ?>;">
                                 <?= nl2br(htmlspecialchars($dailyLog['qc_comment'] ?? 'No comments provided.')) ?>
                             </div>
                         </div>
@@ -474,7 +474,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                         <?php if (!empty($dailyLog['qc_image'])): ?>
                             <div>
                                 <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px;">Inspection Proof</div>
-                                <a href="<?= $base ?>/<?= htmlspecialchars($dailyLog['qc_image']) ?>" target="_blank" style="display: block; position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
+                                <a href="<?= $base ?>/<?= htmlspecialchars($dailyLog['qc_image']) ?>" target="_blank" style="display: block; position: relative; border-radius: 8px; overflow: hidden; border: 1px solid rgba(128, 128, 128, 0.15);">
                                     <img src="<?= $base ?>/<?= htmlspecialchars($dailyLog['qc_image']) ?>" style="width: 100%; max-height: 150px; object-fit: cover;" alt="QC Verification Image">
                                     <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); color: #fff; font-size: 10px; text-align: center; padding: 4px; font-weight: 600;">
                                         <i class="bi bi-zoom-in me-1"></i> View Full Image
@@ -490,11 +490,11 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
             <div class="col-md-6">
                 <div class="d-flex align-items-center gap-2 mb-3">
                     <span style="width: 28px; height: 28px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); color: var(--green); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">2</span>
-                    <h6 class="mb-0 fw-bold" style="color: #334155; font-size: 14px;">Management Decision</h6>
+                    <h6 class="mb-0 fw-bold" style="color: inherit; font-size: 14px;">Management Decision</h6>
                 </div>
                 
                 <?php if (empty($dailyLog['qc_approved_id'])): ?>
-                    <div class="text-center py-4 bg-light rounded-3" style="background: rgba(241, 245, 249, 0.5); border-radius: 12px; border: 1px solid #e2e8f0; height: calc(100% - 40px); display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <div class="text-center py-4 rounded-3" style="background: rgba(128, 128, 128, 0.05); border-radius: 12px; border: 1px solid rgba(128, 128, 128, 0.15); height: calc(100% - 40px); display: flex; flex-direction: column; align-items: center; justify-content: center;">
                         <i class="bi bi-lock text-muted fs-4"></i>
                         <p class="text-muted small mt-2 mb-0 px-3">PM Approval will unlock after Quality Control verification has been submitted.</p>
                     </div>
@@ -522,7 +522,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                                 </button>
                             </div>
                         <?php else: ?>
-                            <div class="text-center py-4 bg-light rounded-3" style="background: rgba(241, 245, 249, 0.5); border-radius: 12px; border: 1px solid #e2e8f0;">
+                            <div class="text-center py-4 rounded-3" style="background: rgba(128, 128, 128, 0.05); border-radius: 12px; border: 1px solid rgba(128, 128, 128, 0.15);">
                                 <i class="bi bi-hourglass-split text-muted fs-4"></i>
                                 <p class="text-muted small mt-2 mb-0">Awaiting Project Manager approval.</p>
                             </div>
@@ -538,11 +538,11 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                             ];
                             $psm = $pmStatusColors[$pmStatus] ?? $pmStatusColors['Approved'];
                         ?>
-                        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.01);">
+                        <div style="background: rgba(128, 128, 128, 0.04); border: 1px solid rgba(128, 128, 128, 0.15); border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.01);">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
                                     <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Project Manager</div>
-                                    <div style="font-size: 14px; font-weight: 700; color: #1e293b;"><?= htmlspecialchars($pmName) ?></div>
+                                    <div style="font-size: 14px; font-weight: 700; color: inherit;"><?= htmlspecialchars($pmName) ?></div>
                                 </div>
                                 <span style="font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: <?= $psm['bg'] ?>; color: <?= $psm['text'] ?>;">
                                     <i class="bi <?= $psm['icon'] ?> me-1"></i><?= $pmStatus ?>
@@ -551,7 +551,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                             
                             <div>
                                 <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Comments</div>
-                                <div style="font-size: 12.5px; color: #334155; line-height: 1.5; background: #f8fafc; padding: 10px; border-radius: 8px; border-left: 3px solid <?= $psm['text'] ?>;">
+                                <div style="font-size: 12.5px; color: inherit; line-height: 1.5; background: rgba(128, 128, 128, 0.05); padding: 10px; border-radius: 8px; border-left: 3px solid <?= $psm['text'] ?>;">
                                     <?= nl2br(htmlspecialchars($dailyLog['pm_comment'] ?? 'No comments provided.')) ?>
                                 </div>
                             </div>
@@ -566,8 +566,8 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 <?php endif; ?>
 
 <!-- ░░ Progress Entry Table ░░ -->
-<div class="wp-card">
-    <div class="wp-card-header" style="background:#f8fafc">
+<div class="card__wrapper wp-card">
+    <div class="wp-card-header" style="background:rgba(var(--clr-theme-primary-rgb),0.02)">
         <div class="wp-card-title">
             <i class="bi bi-journal-check text-primary"></i>
             Progress Entry Table
@@ -641,7 +641,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
             } elseif ($pct > 0) { 
                 $barColor = 'var(--pri)'; 
             } else { 
-                $barColor = '#cbd5e1'; 
+                $barColor = 'rgba(128, 128, 128, 0.25)'; 
             }
 
             if (empty($itemLogs)):
@@ -675,7 +675,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 <input type="hidden" name="items[<?= $formIndex ?>][target_item_id]" value="<?= $itemId ?>">
                 <input type="hidden" name="items[<?= $formIndex ?>][work_type_id]" value="">
             </td>
-            <td><span style="font-size:10.5px;font-weight:600;background:#f1f5f9;padding:2px 7px;border-radius:5px"><?= $unit ?></span></td>
+            <td><span style="font-size:10.5px;font-weight:600;background:rgba(128,128,128,0.12);padding:2px 7px;border-radius:5px"><?= $unit ?></span></td>
             <td class="text-center" style="font-weight:700"><?= number_format($planned,0,'.',',') ?></td>
             <td class="text-center" style="font-weight:700;color:var(--pri)"><?= number_format($achieved,0,'.',',') ?></td>
             <td class="text-center">
@@ -776,7 +776,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 <input type="hidden" name="items[<?= $formIndex ?>][target_item_id]" value="<?= $itemId ?>">
                 <input type="hidden" name="items[<?= $formIndex ?>][work_type_id]" value="<?= $todayWt ?>">
             </td>
-            <td><span style="font-size:10.5px;font-weight:600;background:#f1f5f9;padding:2px 7px;border-radius:5px"><?= $unit ?></span></td>
+            <td><span style="font-size:10.5px;font-weight:600;background:rgba(128,128,128,0.12);padding:2px 7px;border-radius:5px"><?= $unit ?></span></td>
             <td class="text-center" style="font-weight:700"><?= number_format($planned,0,'.',',') ?></td>
             <td class="text-center" style="font-weight:700;color:var(--pri)"><?= number_format($achieved,0,'.',',') ?></td>
             <td class="text-center">
@@ -859,11 +859,11 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         <!-- Total Row -->
         <tfoot>
         <tr class="wp-total-row">
-            <td colspan="3" style="font-weight:700;color:#1e40af">Totals</td>
-            <td class="text-center" style="color:#1e40af"><?= number_format($totalPlanned,0,'.',',') ?></td>
-            <td class="text-center" style="color:#1e40af"><?= number_format($totalAchieved,0,'.',',') ?></td>
+            <td colspan="3" style="font-weight:700;color:var(--clr-theme-primary)">Totals</td>
+            <td class="text-center" style="color:var(--clr-theme-primary)"><?= number_format($totalPlanned,0,'.',',') ?></td>
+            <td class="text-center" style="color:var(--clr-theme-primary)"><?= number_format($totalAchieved,0,'.',',') ?></td>
             <td class="text-center" style="color:var(--green);font-weight:800;font-size:14px"><?= number_format($overallWeekPct,1) ?>%</td>
-            <td colspan="6" class="text-end" style="padding-right:16px;color:#64748b;font-size:11.5px">
+            <td colspan="6" class="text-end" style="padding-right:16px;color:inherit;opacity:0.8;font-size:11.5px">
                 Overall Weekly Progress: <strong style="color:var(--green);font-size:14px"><?= number_format($overallWeekPct,1) ?>%</strong>
             </td>
         </tr>
@@ -873,9 +873,9 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
     </div>
 
     <?php if (!$isLocked && !empty($weeklyItems)): ?>
-    <div style="padding:12px 16px;border-top:1px solid #f1f5f9">
+    <div style="padding:12px 16px;border-top:1px solid rgba(128,128,128,0.12)">
         <!-- Work type selector row -->
-        <div style="background:#f8fafc;border-radius:10px;padding:12px 16px">
+        <div style="background:rgba(128,128,128,0.04);border-radius:10px;padding:12px 16px">
             <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#94a3b8;margin-bottom:8px">
                 <i class="bi bi-plus-circle me-1 text-primary"></i>Add Work to Schedule
             </div>
@@ -923,10 +923,10 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 </div>
 
 <!-- ░░ Weekly Progress Visual (Gantt) ░░ -->
-<div class="wp-card">
-    <div class="wp-card-header">Weekly Progress Visual
-            <span style="font-size:10px;font-weight:500;color:#94a3b8"><?= date('d M', strtotime($weeklyProgress['week_start_date']??'now')) ?> – <?= date('d M Y', strtotime($weeklyProgress['week_end_date']??'now')) ?> (Week <?= $weekNo ?>)</span>
-        </div>
+<div class="card__wrapper wp-card">
+    <div class="wp-card-header">
+        Weekly Progress Visual
+        <span style="font-size:10px;font-weight:500;color:#94a3b8"><?= date('d M', strtotime($weeklyProgress['week_start_date']??'now')) ?> – <?= date('d M Y', strtotime($weeklyProgress['week_end_date']??'now')) ?> (Week <?= $weekNo ?>)</span>
     </div>
     <div class="gantt-wrap">
     <table class="gantt-table">
@@ -967,7 +967,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 <?php if ($inRange): ?>
                 <div class="gantt-bar <?= $barClass ?>" style="width:<?= $width ?>%" title="<?= $title ?>"></div>
                 <?php else: ?>
-                <div style="height:12px;border-radius:4px;background:#f1f5f9"></div>
+                <div style="height:12px;border-radius:4px;background:rgba(128,128,128,0.08)"></div>
                 <?php endif; ?>
             </td>
             <?php endforeach; ?>
@@ -987,14 +987,14 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 
 
 <!-- ░░ Sub-Item Progress vs Monthly Target (full width) ░░ -->
-<div class="wp-card">
+<div class="card__wrapper wp-card">
     <div class="wp-card-header">
         <div class="wp-card-title"><i class="bi bi-table text-primary"></i> Sub-Item Progress vs Monthly Target</div>
     </div>
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:10.5px">
         <thead>
-            <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
+            <tr style="background:rgba(128,128,128,0.06);border-bottom:2px solid rgba(128,128,128,0.15)">
                 <th style="padding:7px 9px;font-size:8.5px;font-weight:700;text-transform:uppercase;color:#94a3b8;text-align:left;min-width:100px">Sub-Item</th>
                 <th style="padding:7px 7px;font-size:8.5px;font-weight:700;text-transform:uppercase;color:var(--clr-theme-secondary);text-align:center;width:36px" title="Weight % of this sub-item in phase">Wt%</th>
                 <th style="padding:7px 7px;font-size:8.5px;font-weight:700;text-transform:uppercase;color:#64748b;text-align:center;width:52px" title="Monthly Target Quantity">M.Target</th>
@@ -1049,23 +1049,23 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
             $totalRemaining  += $remQty;
             $totalWeightSum  += $weight;
         ?>
-        <tr style="border-bottom:1px solid #f1f5f9" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
+        <tr style="border-bottom:1px solid rgba(128,128,128,0.08)" onmouseover="this.style.background='rgba(128,128,128,0.04)'" onmouseout="this.style.background=''">
             <td style="padding:7px 10px;vertical-align:middle">
-                <div style="font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px" title="<?= htmlspecialchars($itemName) ?>">
+                <div style="font-weight:600;color:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px" title="<?= htmlspecialchars($itemName) ?>">
                     <?= htmlspecialchars($itemName) ?>
                 </div>
-                <?php if ($unit): ?><div style="font-size:9px;color:#94a3b8"><?= $unit ?></div><?php endif; ?>
+                <?php if ($unit): ?><div style="font-size:9px;color:var(--clr-text-muted)"><?= $unit ?></div><?php endif; ?>
             </td>
 
             <!-- Weight % -->
             <td style="padding:6px 8px;text-align:center;vertical-align:middle">
-                <span style="background:rgba(var(--clr-theme-primary-rgb),.08);color:#5b21b6;font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px">
+                <span style="background:rgba(var(--clr-theme-primary-rgb),.08);color:var(--clr-theme-secondary);font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px">
                     <?= number_format($weight,0) ?>%
                 </span>
             </td>
 
             <!-- Monthly Target Qty -->
-            <td style="padding:6px 8px;text-align:center;vertical-align:middle;color:#1e293b;font-weight:700;font-size:11px">
+            <td style="padding:6px 8px;text-align:center;vertical-align:middle;color:inherit;font-weight:700;font-size:11px">
                 <?= $mtQty > 0 ? number_format($mtQty,0,'.',',') : '<span style="color:#94a3b8">—</span>' ?>
             </td>
 
@@ -1081,7 +1081,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 <div style="font-weight:900;font-size:12px;color:<?= $pctColor ?>;line-height:1">
                     <?= number_format($monthlyActPct, 1) ?>%
                 </div>
-                <div style="height:4px;border-radius:2px;background:#f1f5f9;overflow:hidden;margin-top:3px">
+                <div style="height:4px;border-radius:2px;background:rgba(128,128,128,0.12);overflow:hidden;margin-top:3px">
                     <div style="width:<?= $monthlyActPct ?>%;height:100%;border-radius:2px;background:<?= $barC ?>"></div>
                 </div>
             </td>
@@ -1119,21 +1119,21 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         <?php endforeach; ?>
         </tbody>
         <tfoot>
-            <tr style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-top:2px solid #86efac">
-                <td style="padding:8px 9px;font-size:10.5px;font-weight:800;color:#166534">Total</td>
-                <td style="padding:8px 7px;text-align:center;color:#6d28d9;font-size:11px;font-weight:900"><?= number_format($totalWeightSum,0) ?>%</td>
-                <td style="padding:8px 7px;text-align:center;color:#374151;font-size:11px;font-weight:700"><?= number_format($totalMTQty,0,'.',',') ?></td>
+            <tr style="background:rgba(16,185,129,0.08);border-top:2px solid rgba(16,185,129,0.3)">
+                <td style="padding:8px 9px;font-size:10.5px;font-weight:800;color:#10b981">Total</td>
+                <td style="padding:8px 7px;text-align:center;color:var(--clr-theme-secondary);font-size:11px;font-weight:900"><?= number_format($totalWeightSum,0) ?>%</td>
+                <td style="padding:8px 7px;text-align:center;color:inherit;font-size:11px;font-weight:700"><?= number_format($totalMTQty,0,'.',',') ?></td>
                 <td style="padding:8px 7px;text-align:center;color:#1d4ed8;font-size:11px;font-weight:700"><?= number_format($totalMonthlyAch,0,'.',',') ?></td>
                 <td style="padding:8px 7px;text-align:center">
                     <?php $tActPct = $totalMTQty>0 ? min(100,$totalMonthlyAch/$totalMTQty*100) : 0; ?>
-                    <span style="font-weight:900;font-size:13px;color:<?= $tActPct>=100?'#065f46':'#6d28d9' ?>"><?= number_format($tActPct,1) ?>%</span>
+                    <span style="font-weight:900;font-size:13px;color:<?= $tActPct>=100?'#10b981':'var(--clr-theme-primary)' ?>"><?= number_format($tActPct,1) ?>%</span>
                 </td>
-                <td style="padding:8px 7px;text-align:center;color:#0369a1">—</td>
-                <td style="padding:8px 7px;text-align:center;color:#065f46;font-size:13px;font-weight:900"><?= number_format($totalContrib,2) ?>%</td>
+                <td style="padding:8px 7px;text-align:center;color:inherit">—</td>
+                <td style="padding:8px 7px;text-align:center;color:#10b981;font-size:13px;font-weight:900"><?= number_format($totalContrib,2) ?>%</td>
                 <td style="padding:8px 7px;text-align:center;color:#dc2626;font-size:11px;font-weight:700"><?= number_format($totalRemaining,0,'.',',') ?></td>
             </tr>
-            <tr style="background:#e0f2fe">
-                <td colspan="8" style="padding:7px 10px;font-size:10px;color:#1e40af;font-weight:600;line-height:1.7">
+            <tr style="background:rgba(var(--clr-theme-primary-rgb),0.08)">
+                <td colspan="8" style="padding:7px 10px;font-size:10px;color:var(--clr-theme-primary);font-weight:600;line-height:1.7">
                     <i class="bi bi-info-circle me-1"></i>
                     Phase: <strong><?= number_format($phaseActualPct,1) ?>%</strong>
                     → Project contrib: <strong style="color:#166534"><?= number_format($projectContrib,2) ?>%</strong>
@@ -1169,7 +1169,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 </div>
 
 <!-- ░░ Daily Entry Summary Donut ░░ -->
-<div class="wp-card mb-3">
+<div class="card__wrapper wp-card mb-3">
     <div class="wp-card-header"><div class="wp-card-title"><i class="bi bi-pie-chart-fill"></i> Daily Entry Summary</div></div>
     <div style="padding:16px;text-align:center">
         <?php
@@ -1182,7 +1182,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         ?>
         <!-- SVG Donut -->
         <svg viewBox="0 0 120 120" width="140" height="140" style="transform:rotate(-90deg)">
-            <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="18"/>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(128,128,128,0.12)" stroke-width="18"/>
             <?php
             $offset = 0; $circ = 314.16;
             $segs = [
@@ -1212,7 +1212,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 </div>
 
 <!-- ░░ Site Inputs ░░ -->
-<div class="wp-card mb-3">
+<div class="card__wrapper wp-card mb-3">
     <div class="wp-card-header"><div class="wp-card-title"><i class="bi bi-tools"></i> Site Inputs &amp; Resources</div></div>
     <div style="padding:14px 16px">
         <div class="site-input-grid mb-3">
@@ -1286,7 +1286,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                              . '&log_date=' . $selectedDate
                            );
         ?>
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f1f5f9">
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(128,128,128,0.12)">
             <a href="<?= $matIssueUrl ?>"
                style="display:flex;align-items:center;justify-content:center;gap:8px;
                       width:100%;padding:9px 0;border-radius:10px;border:none;cursor:pointer;
@@ -1302,7 +1302,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 
         <?php if (!$isLocked): ?>
         <!-- ── Save Button (right panel) ── -->
-        <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid #f1f5f9">
+        <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(128,128,128,0.12)">
             <button type="submit" name="save_action" value="save"
                     style="flex:1;background:var(--pri);color:#fff;font-weight:700;font-size:13px;
                            padding:10px 0;border-radius:10px;border:none;cursor:pointer;
@@ -1312,10 +1312,10 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 <i class="bi bi-check-circle-fill"></i> Save Progress
             </button>
             <button type="submit" name="save_action" value="draft"
-                    style="background:#f8fafc;border:1px solid #cbd5e1;color:#475569;font-weight:700;
+                    style="background:rgba(128,128,128,0.08);border:1px solid rgba(128,128,128,0.25);color:inherit;font-weight:700;
                            font-size:12px;padding:10px 14px;border-radius:10px;cursor:pointer;
                            display:flex;align-items:center;gap:5px;white-space:nowrap"
-                    onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+                    onmouseover="this.style.background='rgba(128,128,128,0.15)'" onmouseout="this.style.background='rgba(128,128,128,0.08)'">
                 <i class="bi bi-save"></i> Draft
             </button>
         </div>
@@ -1333,12 +1333,12 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 
     <!-- Issue & Delay Tracker -->
     <div style="flex:1;min-width:280px">
-        <div class="wp-card" style="margin-bottom:0;height:100%">
+        <div class="card__wrapper wp-card" style="margin-bottom:0;height:100%">
             <div class="wp-card-header">
                 <div class="wp-card-title">
                     <i class="bi bi-exclamation-triangle-fill text-danger"></i> Issue &amp; Delay Tracker
                 </div>
-                <span style="font-size:11px;background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:999px;font-weight:700">
+                <span style="font-size:11px;background:rgba(239,68,68,0.15);color:#ef4444;padding:2px 8px;border-radius:999px;font-weight:700">
                     <?= count($issueItems) ?> Issues
                 </span>
             </div>
@@ -1374,13 +1374,13 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 
     <!-- Material Issues -->
     <div style="flex:1;min-width:280px">
-        <div class="wp-card" style="margin-bottom:0;height:100%">
+        <div class="card__wrapper wp-card" style="margin-bottom:0;height:100%">
             <div class="wp-card-header">
                 <div class="wp-card-title">
                     <i class="bi bi-box-arrow-right text-info"></i> Material Issues
                 </div>
                 <div style="display:flex;align-items:center;gap:6px">
-                    <span style="font-size:11px;background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:999px;font-weight:700">
+                    <span style="font-size:11px;background:rgba(59,130,246,0.15);color:#3b82f6;padding:2px 8px;border-radius:999px;font-weight:700">
                         <?= count($materialIssues) ?> Issue<?= count($materialIssues) !== 1 ? 's' : '' ?>
                     </span>
                     <?php
@@ -1412,13 +1412,13 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 <?php else: ?>
                     <div style="display:flex;flex-direction:column;gap:7px">
                     <?php foreach ($materialIssues as $mi): ?>
-                        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;
+                        <div style="background:rgba(128,128,128,0.04);border:1px solid rgba(128,128,128,0.12);border-radius:10px;
                                     padding:8px 11px;display:flex;align-items:center;justify-content:space-between;gap:8px">
                             <div style="flex:1;min-width:0">
-                                <div style="font-size:12px;font-weight:700;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                                <div style="font-size:12px;font-weight:700;color:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
                                     <?= htmlspecialchars($mi['material_name'] ?? '—') ?>
                                 </div>
-                                <div style="font-size:10px;color:#64748b;margin-top:2px;display:flex;gap:6px;flex-wrap:wrap">
+                                <div style="font-size:10px;color:inherit;opacity:0.7;margin-top:2px;display:flex;gap:6px;flex-wrap:wrap">
                                     <?php if (!empty($mi['contractor_name'])): ?>
                                         <span><i class="bi bi-person-fill me-1"></i><?= htmlspecialchars($mi['contractor_name']) ?></span>
                                     <?php endif; ?>
