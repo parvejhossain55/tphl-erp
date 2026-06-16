@@ -662,6 +662,83 @@ $statusColor = [
 
     </div>
 
+    <!-- ══════════════════════ THIS MONTH'S PROJECT TARGETS ══════════════════════ -->
+    <?php 
+    $thisMonthTargets = $thisMonthTargets ?? [];
+    if (!empty($thisMonthTargets)): 
+    ?>
+      <div class="con-panel card__wrapper mb-4" style="border-color:rgba(var(--clr-theme-primary-rgb),.3);background:rgba(var(--clr-theme-primary-rgb),.03)">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="sec-title" style="margin-bottom:0">
+            <div class="sec-title-dot" style="background:var(--cd-primary)"></div>
+            <i class="fal fa-calendar-check me-2" style="color:var(--cd-primary)"></i>
+            This Month's Project Targets (<?= date('F Y') ?>)
+            <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
+        background:rgba(var(--clr-theme-primary-rgb),.12);color:var(--cd-primary)">
+              <?= count($thisMonthTargets) ?> Targets Set
+            </span>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="proj-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Project Name</th>
+                <th>Phase / Target Name</th>
+                <th>Responsible Team</th>
+                <th>Phase Weight</th>
+                <th>Work Items</th>
+                <th>Planning Status</th>
+                <th style="text-align:right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($thisMonthTargets as $ti => $targetPlan): 
+                $tStatus = $targetPlan['planning_status'];
+                $tBadgeBg = 'rgba(148,163,184,.12)';
+                $tBadgeColor = '#94a3b8';
+                if ($tStatus === 'Approved') {
+                    $tBadgeBg = 'rgba(16,185,129,.12)';
+                    $tBadgeColor = '#10b981';
+                } elseif ($tStatus === 'In Review') {
+                    $tBadgeBg = 'rgba(245,158,11,.12)';
+                    $tBadgeColor = '#f59e0b';
+                }
+              ?>
+                <tr>
+                  <td style="font-size:11px;color:var(--text-muted)"><?= $ti + 1 ?></td>
+                  <td>
+                    <div style="font-weight:700;font-size:13px"><?= htmlspecialchars($targetPlan['project_name']) ?></div>
+                  </td>
+                  <td>
+                    <div style="font-weight:600;font-size:12.5px"><?= htmlspecialchars($targetPlan['phase_name']) ?></div>
+                  </td>
+                  <td>
+                    <span style="font-size:12px;color:var(--text-muted)"><i class="fal fa-users me-1"></i><?= htmlspecialchars($targetPlan['responsible_team'] ?: 'General') ?></span>
+                  </td>
+                  <td style="font-weight:700;">
+                    <?= number_format((float)$targetPlan['phase_weight'], 0) ?>%
+                  </td>
+                  <td>
+                    <span class="badge bg-light text-dark border" style="font-size:10px"><?= (int)$targetPlan['item_count'] ?> items</span>
+                  </td>
+                  <td>
+                    <span class="badge" style="background: <?= $tBadgeBg ?>; color: <?= $tBadgeColor ?>; font-size: 10px; font-weight: 700;"><?= $tStatus ?></span>
+                  </td>
+                  <td style="text-align:right">
+                    <a href="<?= $base ?>/con-monthly-target/<?= $targetPlan['id'] ?>?read_only=1" class="btn btn-sm btn-outline-primary" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px">
+                      <i class="fal fa-eye me-1"></i> View Plan
+                    </a>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <?php endif; ?>
+
     <!-- ══════════════════════ PENDING CONTRACTOR BILLS ══════════════════════ -->
     <?php if (!empty($pendingContractorBills)): ?>
       <div class="con-panel card__wrapper mb-4" style="border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.03)">

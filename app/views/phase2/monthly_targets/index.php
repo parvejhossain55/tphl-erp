@@ -4,6 +4,7 @@ $project_id = $project['id']   ?? 0;
 $byMonth    = $byMonth         ?? [];
 $phases     = $phases          ?? [];
 $shortfallsByTarget = $shortfallsByTarget ?? [];
+$budgets    = $budgets         ?? [];
 
 $statusMeta = [
     'Draft'     => ['color' => '#94a3b8', 'bg' => 'rgba(148,163,184,.12)'],
@@ -185,6 +186,83 @@ $phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a
     font-size: 14px;
     flex-shrink: 0;
 }
+
+/* Budget list styling */
+.mt-budget-container {
+    border: 1px solid rgba(var(--clr-theme-primary-rgb), .15);
+    background: rgba(var(--clr-theme-primary-rgb), .02);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 24px;
+}
+.mt-budget-title {
+    font-size: 13.5px;
+    font-weight: 750;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.mt-budget-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+}
+.mt-budget-card {
+    background: rgba(var(--clr-theme-primary-rgb), .03);
+    border: 1px solid rgba(var(--clr-theme-primary-rgb), .1);
+    border-radius: 10px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.mt-budget-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(var(--clr-theme-primary-rgb), .08);
+}
+.mt-budget-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.mt-budget-id {
+    font-size: 12.5px;
+    font-weight: 750;
+}
+.mt-budget-cost {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--mt-primary);
+    margin: 4px 0;
+}
+.mt-budget-dates {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+.btn-budget-view {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: transparent;
+    border: 1px solid var(--mt-primary);
+    color: var(--mt-primary);
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s;
+    text-align: center;
+}
+.btn-budget-view:hover {
+    background: var(--mt-primary);
+    color: #ffffff !important;
+}
 </style>
 
 <div class="row"><div class="col-12">
@@ -203,6 +281,59 @@ $phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a
         <i class="fal fa-arrow-left me-1"></i>Phase Plan
     </a>
 </div>
+
+<!-- Project Budgets -->
+<?php if (!empty($budgets)): ?>
+<div class="mt-budget-container">
+    <div class="mt-budget-title">
+        <i class="fal fa-file-invoice-dollar" style="color:var(--mt-primary)"></i>
+        <span>Project Estimate Budgets (<?= count($budgets) ?>)</span>
+    </div>
+    <div class="mt-budget-grid">
+        <?php foreach ($budgets as $b): 
+            $bStatus = $b['status'];
+            $bBadgeBg = 'rgba(148,163,184,.12)';
+            $bBadgeColor = '#94a3b8';
+            if ($bStatus === 'approved') {
+                $bBadgeBg = 'rgba(16,185,129,.12)';
+                $bBadgeColor = '#10b981';
+            } elseif ($bStatus === 'pm_approved' || $bStatus === 'pending') {
+                $bBadgeBg = 'rgba(245,158,11,.12)';
+                $bBadgeColor = '#f59e0b';
+            } elseif ($bStatus === 'cancelled') {
+                $bBadgeBg = 'rgba(239,68,68,.12)';
+                $bBadgeColor = '#ef4444';
+            }
+            $statusLabel = ($bStatus === 'pm_approved') ? 'PM Approved' : ucfirst($bStatus);
+        ?>
+        <div class="mt-budget-card">
+            <div>
+                <div class="mt-budget-meta">
+                    <span class="mt-budget-id"><i class="fal fa-receipt text-muted me-1"></i>Estimate #<?= $b['id'] ?></span>
+                    <span class="mt-badge" style="background:<?= $bBadgeBg ?>;color:<?= $bBadgeColor ?>;margin:0;"><?= $statusLabel ?></span>
+                </div>
+                <div class="mt-budget-cost">
+                    <span style="font-size:11px;font-weight:500;color:var(--text-muted);">Total Budget:</span>
+                    <div style="font-size:16px;font-weight:800;color:var(--mt-primary);">৳ <?= number_format($b['total_estimated_cost'], 2) ?></div>
+                </div>
+                <div class="mt-budget-dates">
+                    <?php if ($b['start_date'] || $b['end_date']): ?>
+                        <i class="fal fa-calendar-alt me-1"></i>
+                        <?= $b['start_date'] ? date('M Y', strtotime($b['start_date'])) : '' ?> - 
+                        <?= $b['end_date'] ? date('M Y', strtotime($b['end_date'])) : '' ?>
+                    <?php else: ?>
+                        <i class="fal fa-calendar-alt me-1"></i> No dates defined
+                    <?php endif; ?>
+                </div>
+            </div>
+            <a href="<?= $base ?>/con-estimate-show/<?= $b['id'] ?>" class="btn-budget-view" target="_blank">
+                <i class="fal fa-eye"></i> View Estimate Details
+            </a>
+        </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- Create New Target -->
 <?php if (!empty($has_budget)): ?>

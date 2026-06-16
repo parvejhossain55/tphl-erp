@@ -661,12 +661,12 @@ if (!empty($periodYear)) {
                         $userId = $data['user']['id'];
                         $projectId = $project['project_id'];
                         $flatsSql = "
-            SELECT f.flat_name, lb.booking_date, lp.amount
-            FROM lead_bookings lb
-            JOIN flats f ON lb.flat_id = f.id
-            JOIN lead_payments lp ON lp.booking_id = lb.id AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified'
-            WHERE lb.project_id = ? AND lb.deleted_at IS NULL AND lb.booking_status IN ('completed', 'booked') AND lb.sales_by_id = ?
-        ";
+                    SELECT f.flat_name, lb.booking_date, lp.amount
+                    FROM lead_bookings lb
+                    JOIN flats f ON lb.flat_id = f.id
+                    JOIN lead_payments lp ON lp.booking_id = lb.id AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified'
+                    WHERE lb.project_id = ? AND lb.deleted_at IS NULL AND lb.booking_status IN ('completed', 'booked') AND lb.sales_by_id = ?
+                ";
                         $stmtFlats = $this->db->prepare($flatsSql);
                         $stmtFlats->bind_param("ii", $projectId, $userId);
                         $stmtFlats->execute();

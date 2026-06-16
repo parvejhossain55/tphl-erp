@@ -296,7 +296,7 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                 <input type="text" id="wi_sub_weight" class="mf-inp" readonly value="0.00%">
             </div>
             <input type="hidden" id="wi_planned_progress_pct" value="0">
-            <div class="mf-ctrl" style="flex:2;min-width:140px">
+            <div class="mf-ctrl d-none" style="flex:2;min-width:140px">
                 <label>Work Type <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
                 <select id="wi_work_type" class="mf-sel">
                     <option value="">-- None --</option>
@@ -473,7 +473,7 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
             <th>#</th>
             <th>Work Item</th>
             <th>Floor</th>
-            <th>Work Type <small style="font-weight:400;opacity:.7">(optional)</small></th>
+            <th class="d-none">Work Type <small style="font-weight:400;opacity:.7">(optional)</small></th>
             <th>Contractor</th>
             <th>Unit</th>
             <th>Monthly Qty</th>
@@ -513,7 +513,7 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                 <?= buildFloorOptionsPhp($projectFloors, $item['floor_type'] ?? 'Typical_Floor', $item['floor_no'] ?? null) ?>
             </select>
         </td>
-        <td>
+        <td class="d-none">
             <select name="items[<?= $i ?>][work_type_id]" style="min-width:120px">
                 <option value="">-- None --</option>
                 <?php foreach ($workTypes as $wt): ?>

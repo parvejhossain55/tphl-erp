@@ -343,7 +343,7 @@ class Con_MonthlyTarget {
         $week4Qty           = $d['week_4_qty']           ?? 0;
         $recoveryNotes      = $d['recovery_notes']       ?? null;
 
-        $stmt->bind_param('iisiisdsddddsssisdddddsi',
+        $stmt->bind_param('iisisisddddsssissddddsi',
             $d['target_id'],
             $workTypeId,
             $workItemName,

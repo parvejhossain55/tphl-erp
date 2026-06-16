@@ -478,6 +478,29 @@ class Con_DashboardController extends Controller
             $pendingContractorBills = $rCB ? $rCB->fetch_all(MYSQLI_ASSOC) : [];
         }
 
+        // Fetch all target plans set for this month across all projects
+        $curMonth = (int)date('n');
+        $curYear  = (int)date('Y');
+        $thisMonthTargetsQuery = "
+            SELECT pmt.id, pmt.project_id, pmt.phase_id, pmt.target_month, pmt.planning_status, pmt.responsible_team,
+                   p.name AS project_name, pp.phase_name, pp.weight_percentage AS phase_weight,
+                   (SELECT COUNT(*) FROM phase_monthly_target_items WHERE target_id = pmt.id) AS item_count
+            FROM phase_monthly_targets pmt
+            JOIN projects p ON p.id = pmt.project_id
+            JOIN project_phases pp ON pp.id = pmt.phase_id
+            WHERE pmt.target_month_number = ? 
+              AND pmt.target_year = ? 
+              AND p.deleted_at IS NULL
+        ";
+        if ($selectedProjectId) {
+            $thisMonthTargetsQuery .= " AND pmt.project_id = $selectedProjectId ";
+        }
+        $thisMonthTargetsQuery .= " ORDER BY p.name ASC, pp.phase_order ASC ";
+        $tStmt = $this->db->prepare($thisMonthTargetsQuery);
+        $tStmt->bind_param('ii', $curMonth, $curYear);
+        $tStmt->execute();
+        $thisMonthTargets = $tStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
         $this->view('phase2/dashboard/cons-dashboard', [
             'current_route'           => 'con-dashboard',
             'page_title'              => 'Construction Dashboard',
@@ -512,6 +535,7 @@ class Con_DashboardController extends Controller
             'recentFunds'             => $recentFunds,
             'recentMaterialIssues'    => $recentMaterialIssues,
             'prsForApproval'          => $prsForApproval,
+            'thisMonthTargets'        => $thisMonthTargets,
         ]);
     }
 

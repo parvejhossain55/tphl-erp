@@ -49,6 +49,17 @@ class Con_MonthlyTargetController extends Controller {
         $budgetStmt->execute();
         $budgetCount = (int)($budgetStmt->get_result()->fetch_assoc()['total'] ?? 0);
 
+        // Fetch all budgets for the current project (including revisions/extensions)
+        $budgetListStmt = $this->db->prepare("
+            SELECT id, total_estimated_cost, status, start_date, end_date, weight_percentage, created_at 
+            FROM initial_estimate_budgets 
+            WHERE project_id = ? 
+            ORDER BY id DESC
+        ");
+        $budgetListStmt->bind_param('i', $project_id);
+        $budgetListStmt->execute();
+        $budgets = $budgetListStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
         $targets = $this->model->getByProject($project_id);
         $phases  = $this->phaseModel->getByProject($project_id);
 
@@ -79,6 +90,7 @@ class Con_MonthlyTargetController extends Controller {
             'project_id'         => $project_id,
             'shortfallsByTarget' => $shortfallsByTarget,
             'has_budget'         => ($budgetCount > 0),
+            'budgets'            => $budgets,
         ]);
     }
 
@@ -118,7 +130,7 @@ class Con_MonthlyTargetController extends Controller {
 
         // Site engineer → read-only view (no edit/add/delete)
         $viewerRole = (int)($_SESSION['user']['role_id'] ?? 0);
-        $isSiteEngineer = !in_array($viewerRole, [1, 3, 15, 22]);
+        $isSiteEngineer = !in_array($viewerRole, [1, 3, 15, 22]) || isset($_GET['read_only']) || isset($_GET['view_only']);
 
         // Get project floors
         $stmtFl = $this->db->prepare("SELECT id, floor_no, floor_type, slab_area_sqft FROM project_floors WHERE project_id = ? ORDER BY floor_no ASC");
@@ -144,6 +156,7 @@ class Con_MonthlyTargetController extends Controller {
     // CREATE — POST: create a new monthly target
     // =========================================================================
     public function create($project_id) {
+        $this->checkWritePermission();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header("Location: " . $GLOBALS['base_url'] . "/con-monthly-targets/" . (int)$project_id); exit;
         }
@@ -198,6 +211,7 @@ class Con_MonthlyTargetController extends Controller {
     // UPDATE TARGET STATUS — POST
     // =========================================================================
     public function updateStatus($target_id) {
+        $this->checkWritePermission();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit; }
         $target_id = (int)$target_id;
         $target    = $this->model->find($target_id);
@@ -235,6 +249,7 @@ class Con_MonthlyTargetController extends Controller {
     // SAVE ITEMS — batch update items POST
     // =========================================================================
     public function saveItems($target_id) {
+        $this->checkWritePermission();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit; }
         $target_id = (int)$target_id;
         $target    = $this->model->find($target_id);
@@ -266,6 +281,7 @@ class Con_MonthlyTargetController extends Controller {
     // ADD ITEM — AJAX POST
     // =========================================================================
     public function addItem() {
+        $this->checkWritePermission(true);
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit; }
         $target_id = (int)($_POST['target_id'] ?? 0);
         $name      = trim($_POST['work_item_name'] ?? '');
@@ -325,6 +341,7 @@ class Con_MonthlyTargetController extends Controller {
     // DELETE ITEM — GET
     // =========================================================================
     public function deleteItem($id) {
+        $this->checkWritePermission();
         $id   = (int)$id;
         $item = $this->model->findItem($id);
         if (!$item) { setError("Item not found."); header("Location: " . $GLOBALS['base_url'] . "/con-projects"); exit; }
@@ -339,6 +356,7 @@ class Con_MonthlyTargetController extends Controller {
     // DELETE TARGET — GET
     // =========================================================================
     public function deleteTarget($id) {
+        $this->checkWritePermission();
         $id     = (int)$id;
         $target = $this->model->find($id);
         if (!$target) { setError("Not found."); header("Location: " . $GLOBALS['base_url'] . "/con-projects"); exit; }
@@ -492,6 +510,18 @@ class Con_MonthlyTargetController extends Controller {
             'assignedProjects'=> $assignedProjects,
             'dbError'         => $dbError ?? null,
         ]);
+    }
+
+    private function checkWritePermission(bool $isAjax = false) {
+        $viewerRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        if (!in_array($viewerRole, [1, 3, 15, 22])) {
+            if ($isAjax) {
+                $this->jsonError("Access denied. You do not have permission to modify targets.");
+            } else {
+                setError("Access denied. You do not have permission to modify targets.");
+                header("Location: " . $GLOBALS['base_url'] . "/con-dashboard"); exit;
+            }
+        }
     }
 
     private function jsonError(string $msg): never {
