@@ -427,7 +427,12 @@ class Con_MonthlyTarget {
                 $existStmt->execute();
                 $existRow = $existStmt->get_result()->fetch_assoc();
                 $actQty    = (float)($existRow['actual_qty'] ?? 0);
-                $actualPct = (float)($existRow['actual_progress_pct'] ?? 0);
+                
+                // Recalculate actual progress percentage based on updated monthly target qty
+                $actualPct = 0.00;
+                if ($qty > 0) {
+                    $actualPct = min(100.0, ($actQty / $qty) * 100);
+                }
 
                 $phaseItemId = !empty($i['phase_item_id']) ? (int)$i['phase_item_id'] : null;
                 if (empty($phaseItemId)) {
