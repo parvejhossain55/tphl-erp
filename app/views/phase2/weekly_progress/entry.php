@@ -380,7 +380,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 <div class="row ">
 <div class="col-lg-8">
 
-<?php if ($entryStatus !== 'Draft'): ?>
+<?php if ($entryStatus !== 'Draft' || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 13, 15, 22])): ?>
 <!-- ░░ Quality Control & Manager Review Panel ░░ -->
 <div class="card__wrapper wp-card mb-4" style="border-radius:16px;">
     <div class="wp-card-header" style="border-bottom: 1px solid rgba(128, 128, 128, 0.15); display: flex; align-items: center; justify-content: space-between;">

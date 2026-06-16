@@ -2081,7 +2081,8 @@ $project = $stmt->get_result()->fetch_assoc();
         if (!in_array($roleId, [1, 2, 3, 13, 15, 22])) {
             $stmtWait = $this->db->prepare("
                 SELECT p.id, p.name,
-                       COALESCE(u.full_name, 'N/A') AS architect_name
+                       COALESCE(u.full_name, 'N/A') AS architect_name,
+                       COALESCE((SELECT status FROM architect_engineering WHERE project_id = p.id ORDER BY id DESC LIMIT 1), 'not_started') AS ae_status
                 FROM projects p
                 LEFT JOIN users u ON u.id = p.architect_id
                 WHERE p.draftsman_id = ?

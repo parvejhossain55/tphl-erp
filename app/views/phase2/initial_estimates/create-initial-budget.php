@@ -103,6 +103,7 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
     width: 100%;
     border-collapse: collapse;
     font-size: .82rem;
+    min-width: 1180px !important;
 }
 .qs-table th {
     background: #1e40af;
@@ -119,6 +120,22 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
 }
 .qs-table tr:last-child td { border-bottom: none; }
 .qs-table tr:hover td { background: #f0f7ff; }
+
+/* Column widths optimization for laptops/tablets */
+.qs-table th:nth-child(1), .qs-table td:nth-child(1) { width: 55px !important; min-width: 55px !important; text-align: center; } /* SL */
+.qs-table th:nth-child(2), .qs-table td:nth-child(2) { min-width: 180px !important; } /* Location / Description */
+.qs-table th:nth-child(3), .qs-table td:nth-child(3) { min-width: 120px !important; } /* Floor */
+.qs-table th:nth-child(4), .qs-table td:nth-child(4) { min-width: 65px !important; }  /* Unit */
+.qs-table th:nth-child(5), .qs-table td:nth-child(5) { min-width: 75px !important; }  /* Nos */
+.qs-table th:nth-child(6), .qs-table td:nth-child(6) { min-width: 70px !important; }  /* L */
+.qs-table th:nth-child(7), .qs-table td:nth-child(7) { min-width: 70px !important; }  /* W */
+.qs-table th:nth-child(8), .qs-table td:nth-child(8) { min-width: 70px !important; }  /* H */
+.qs-table th:nth-child(9), .qs-table td:nth-child(9) { min-width: 90px !important; }  /* Volume/Qty */
+.qs-table th:nth-child(10), .qs-table td:nth-child(10) { min-width: 170px !important; } /* Material */
+.qs-table th:nth-child(11), .qs-table td:nth-child(11) { min-width: 90px !important; }  /* Rate */
+.qs-table th:nth-child(12), .qs-table td:nth-child(12) { min-width: 100px !important; }  /* Subtotal */
+.qs-table th:nth-child(13), .qs-table td:nth-child(13) { width: 40px !important; min-width: 40px !important; text-align: center; } /* Del */
+
 .qs-table input.form-control-sm {
     height: 28px;
     font-size: .8rem;

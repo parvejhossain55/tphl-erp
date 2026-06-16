@@ -15,7 +15,7 @@ $selectedMonthName = htmlspecialchars($reportingPeriodText ?? '');
         overflow: hidden;
     }
     .report-card-header {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        background: linear-gradient(135deg, #15803d 0%, #22c55e 100%);
         color: #fff;
         padding: 24px 30px;
         border-bottom: none;
@@ -215,9 +215,9 @@ document.addEventListener('DOMContentLoaded', togglePeriodFields);
     
     <!-- Print Only Letterhead -->
     <div class="print-only-header text-center">
-        <h2 style="font-weight: 700; color: #1e3c72; margin-bottom: 5px;">TPHL GROUP</h2>
+        <h2 style="font-weight: 700; color: #15803d; margin-bottom: 5px;">TPHL GROUP</h2>
         <p class="text-uppercase mb-2" style="font-size: 12px; letter-spacing: 1px; color: #475569;">Monthly Work Report</p>
-        <div style="border-top: 2px solid #1e3c72; margin: 10px auto; width: 100%;"></div>
+        <div style="border-top: 2px solid #15803d; margin: 10px auto; width: 100%;"></div>
     </div>
 
     <div class="card report-card">
@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', togglePeriodFields);
             </div>
 
             <!-- Detailed Performance List -->
-            <h6 class="fw-bold mb-3" style="color: #1e3c72;"><i class="fa-solid fa-list-check me-2"></i>Logged Activities (<?= count($records) ?>)</h6>
+            <h6 class="fw-bold mb-3" style="color: #15803d;"><i class="fa-solid fa-list-check me-2"></i>Logged Activities (<?= count($records) ?>)</h6>
             
             <div class="table-responsive">
                 <table class="table table-theme">

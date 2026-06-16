@@ -347,7 +347,7 @@ $aeStatusLabel = [
                 style="color:#fde68a;">Fully Complete</strong>.</div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;">
               <?php foreach ($projectsWaitingForAE as $wp):
-                $aeInfo = $aeStatusLabel[$wp['ae_status']] ?? ['label' => 'Unknown', 'color' => '#ccc', 'icon' => 'fa-question'];
+                $aeInfo = $aeStatusLabel[$wp['ae_status'] ?? 'not_started'] ?? ['label' => 'Unknown', 'color' => '#ccc', 'icon' => 'fa-question'];
                 ?>
                 <div
                   style="background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:8px;">
