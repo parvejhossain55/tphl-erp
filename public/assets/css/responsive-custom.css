@@ -53,24 +53,50 @@ html, body {
 @media (max-width: 575.98px) {
     .pagetitle, 
     .page-header-breadcrumb {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 12px !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
         text-align: left !important;
     }
     
     .pagetitle > div, 
     .page-header-breadcrumb > div {
-        width: 100% !important;
+        width: auto !important;
     }
 
     .pagetitle button, 
     .pagetitle a,
     .page-header-breadcrumb button,
     .page-header-breadcrumb a {
-        width: 100% !important;
-        display: block !important;
+        width: auto !important;
+        display: inline-block !important;
         text-align: center !important;
+    }
+
+    /* Keep back buttons, secondary actions, and small links compact on mobile */
+    .pagetitle a.btn-secondary,
+    .pagetitle a.btn-outline-secondary,
+    .pagetitle a.btn-back,
+    .pagetitle a.btn-sm,
+    .pagetitle a.sib-btn-w,
+    .pagetitle button.btn-secondary,
+    .pagetitle button.btn-outline-secondary,
+    .pagetitle button.btn-back,
+    .pagetitle button.btn-sm,
+    .page-header-breadcrumb a.btn-secondary,
+    .page-header-breadcrumb a.btn-outline-secondary,
+    .page-header-breadcrumb a.btn-back,
+    .page-header-breadcrumb a.btn-sm,
+    .page-header-breadcrumb a.sib-btn-w,
+    .page-header-breadcrumb button.btn-secondary,
+    .page-header-breadcrumb button.btn-outline-secondary,
+    .page-header-breadcrumb button.btn-back,
+    .page-header-breadcrumb button.btn-sm {
+        width: auto !important;
+        display: inline-block !important;
+        text-align: left !important;
     }
     
     .d-flex.justify-content-end.gap-2,
@@ -192,4 +218,147 @@ html, body {
     margin-top: 10px;
     padding-top: 10px;
     border-top: 1px dashed #eef2f5;
+}
+
+/* ==========================================
+   DARK THEME COMPATIBILITY OVERRIDES
+   ========================================== */
+[bd-theme="bd-theme-dark"] {
+    /* Cards and Containers */
+    .card,
+    .custom-card,
+    .card.custom-card,
+    .card__wrapper {
+        background-color: var(--clr-bg-card, #1f2937) !important;
+        border-color: var(--clr-border-1, #374151) !important;
+        color: var(--clr-text-body, #f9fafb) !important;
+        box-shadow: none !important;
+    }
+    
+    .card-header,
+    .card-footer {
+        background-color: transparent !important;
+        border-color: var(--clr-border-1, #374151) !important;
+        color: var(--clr-text-body, #f9fafb) !important;
+    }
+    
+    .card-body {
+        background-color: transparent !important;
+        color: var(--clr-text-body, #f9fafb) !important;
+    }
+
+    /* Headings & Text Colors */
+    h1, h2, h3, h4, h5, h6,
+    .page-title,
+    .card-title,
+    strong,
+    .fw-semibold,
+    .fw-bold {
+        color: var(--clr-text-body, #f9fafb) !important;
+    }
+
+    .text-muted {
+        color: var(--clr-text-muted, #9ca3af) !important;
+    }
+
+    .text-dark {
+        color: var(--clr-text-body, #f9fafb) !important;
+    }
+
+    /* Tables in Dark Mode */
+    .table {
+        color: var(--clr-text-body, #f9fafb) !important;
+        border-color: var(--clr-border-1, #374151) !important;
+    }
+
+    .table td,
+    .table th {
+        background-color: transparent !important;
+        color: var(--clr-text-body, #f9fafb) !important;
+        border-color: var(--clr-border-1, #374151) !important;
+    }
+
+    .table-striped tbody tr:nth-of-type(odd) {
+        background-color: rgba(255, 255, 255, 0.02) !important;
+    }
+
+    .table-hover tbody tr:hover td {
+        background-color: rgba(255, 255, 255, 0.04) !important;
+    }
+    
+    .table-light,
+    .table-light th {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: var(--clr-text-body, #f9fafb) !important;
+    }
+
+    /* Form Controls & Inputs */
+    .form-control,
+    .form-select,
+    .form-check-input,
+    input,
+    select,
+    textarea {
+        background-color: var(--clr-bg-card, #1f2937) !important;
+        border-color: var(--clr-border-1, #374151) !important;
+        color: var(--clr-text-body, #f9fafb) !important;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        background-color: var(--clr-bg-card, #1f2937) !important;
+        border-color: var(--clr-theme-primary, #10b981) !important;
+        color: var(--clr-text-body, #f9fafb) !important;
+    }
+
+    .input-group-text {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border-color: var(--clr-border-1, #374151) !important;
+        color: var(--clr-text-body, #f9fafb) !important;
+    }
+
+    /* Modals & Dialogs */
+    .modal-content {
+        background-color: var(--clr-bg-card, #1f2937) !important;
+        border-color: var(--clr-border-1, #374151) !important;
+        color: var(--clr-text-body, #f9fafb) !important;
+    }
+
+    .modal-header,
+    .modal-footer {
+        border-color: var(--clr-border-1, #374151) !important;
+    }
+
+    /* Alerts and Light background elements */
+    .alert-light,
+    .bg-light,
+    .bg-body-secondary {
+        background-color: rgba(255, 255, 255, 0.04) !important;
+        color: var(--clr-text-body, #f9fafb) !important;
+        border-color: var(--clr-border-1, #374151) !important;
+    }
+}
+
+/* ==========================================
+   MOBILE RESPONSIVE CARD ADJUSTMENTS
+   ========================================== */
+@media (max-width: 575.98px) {
+    .card.custom-card.text-center {
+        padding: 10px 5px !important;
+    }
+    .card.custom-card.text-center .fs-22 {
+        font-size: 16px !important;
+    }
+    .card.custom-card.text-center .fs-12 {
+        font-size: 10.5px !important;
+    }
+}
+
+/* ==========================================
+   MOBILE SIDEBAR Z-INDEX CORRECTION
+   ========================================== */
+@media (max-width: 1199.98px) {
+    .app-sidebar {
+        z-index: 1045 !important;
+    }
 }

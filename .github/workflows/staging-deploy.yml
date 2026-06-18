@@ -37,6 +37,9 @@ jobs:
             git reset --hard origin/develop
             git clean -fd
 
+
+   
+
             echo "Verifying SQL file integrity..."
             echo "tphl_db.sql lines: $(wc -l < $DATABASE_DIR/tphl_db.sql)"
             echo "drop_table.sql lines: $(wc -l < $DATABASE_DIR/drop_table.sql)"
@@ -48,6 +51,20 @@ jobs:
             # Import fresh database
             # echo "Importing fresh database..."
             # mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/tphl_db.sql
+
+
+
+
+
+
+            # ###### for STAGING  db only - to avoid any accidental data loss in production db during testing
+            # Drop all tables first
+            # echo "Dropping all tables..."
+            # mysql -u erp_staging_user -p${{ secrets.STAGING_DB_PASS }} erp_staging_db < $DATABASE_DIR/drop_table.sql
+
+            # Import fresh database
+            # echo "Importing fresh database..."
+            # mysql -u erp_staging_user -p${{ secrets.STAGING_DB_PASS }} erp_staging_db < $DATABASE_DIR/tphl_db.sql
 
             echo "Setting correct permissions"
             sudo chown -R www-data:www-data $PROJECT_DIR

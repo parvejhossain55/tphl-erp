@@ -11,7 +11,14 @@ class ApprovalRequest extends Model
 
         'salary_requests',
         'cashout_requests',
-        'manpower_requisitions'
+        'manpower_requisitions',
+        
+        // Phase 2 / Construction & Client refund tables
+        'client_refund_requests',
+        'operational_fund_requests',
+        'con_work_orders',
+        'vendor_payment_requests',
+        'contractor_bill_requests'
     ];
     public function create($data)
     {

@@ -122,7 +122,7 @@
 
     <div class="row g-20 mb-4 align-items-stretch">
         <!-- Pending Tasks -->
-        <div class="col-6 col-md-3">
+        <div class="col-12 col-sm-6 col-lg-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -135,7 +135,7 @@
         </div>
 
         <!-- Today Leads Assigned -->
-        <div class="col-6 col-md-3">
+        <div class="col-12 col-sm-6 col-lg-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -148,7 +148,7 @@
         </div>
 
         <!-- Today FollowUp Due -->
-        <div class="col-6 col-md-3">
+        <div class="col-12 col-sm-6 col-lg-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -162,7 +162,7 @@
         </div>
 
         <!-- Today Follow Up Complete -->
-        <div class="col-6 col-md-3">
+        <div class="col-12 col-sm-6 col-lg-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -176,7 +176,7 @@
         </div>
 
         <!-- My Total Sale -->
-        <div class="col-6 col-md-3">
+        <div class="col-12 col-sm-6 col-lg-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -190,7 +190,7 @@
         </div>
 
         <!-- Total Leads Assigned -->
-        <div class="col-6 col-md-3">
+        <div class="col-12 col-sm-6 col-lg-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -203,7 +203,7 @@
         </div>
 
         <!-- Monthly Site Visit Target -->
-        <div class="col-6 col-md-3">
+        <div class="col-12 col-sm-6 col-lg-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -217,7 +217,7 @@
         </div>
 
         <!-- My Monthly Booking Target -->
-        <div class="col-6 col-md-3">
+        <div class="col-12 col-sm-6 col-lg-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -231,7 +231,7 @@
         </div>
 
         <!-- Monthly Visit Complete -->
-        <div class="col-6 col-md-3">
+        <div class="col-12 col-sm-6 col-lg-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -250,7 +250,7 @@
         </div>
 
         <!-- Monthly Booking Target Complete -->
-        <div class="col-6 col-md-3">
+        <div class="col-12 col-sm-6 col-lg-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -264,7 +264,7 @@
         </div>
 
         <!-- Deal Lost -->
-        <div class="col-6 col-md-3">
+        <div class="col-12 col-sm-6 col-lg-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
@@ -277,7 +277,7 @@
         </div>
 
         <!-- Deal Win -->
-        <div class="col-6 col-md-3">
+        <div class="col-12 col-sm-6 col-lg-3">
             <div class="card__wrapper stat-card shadow-sm">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>

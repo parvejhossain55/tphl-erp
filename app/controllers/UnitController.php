@@ -59,11 +59,13 @@ public function update()
     $id = $_POST['id'] ?? 0;
 
     if ($id && $this->unitModel->delete($id)) {
-         setSuccess('Location delete successfully');
-        header("Location: {$GLOBALS['base_url']}/location-lists");
+        setSuccess('Unit deleted successfully');
+        header("Location: {$GLOBALS['base_url']}/unit-lists");
         exit;
     } else {
-        echo "<h3 style='color:red'>Failed to delete Locations</h3>";
+        setError('Failed to delete unit');
+        header("Location: {$GLOBALS['base_url']}/unit-lists");
+        exit;
     }
 }
 

@@ -35,14 +35,16 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
         --est-success: #16a34a;
         --est-warning: #d97706;
         --est-danger: #dc2626;
+        --est-purple: var(--clr-theme-secondary);
     }
 
     .est-form-card {
-        background: #fff;
+        background: var(--clr-bg-card, #fff);
         border-radius: 12px;
         box-shadow: 0 2px 12px rgba(0, 0, 0, .08);
         margin-bottom: 1.5rem;
         overflow: hidden;
+        border: 1px solid var(--clr-border-1, #e8edf3);
     }
 
     .est-form-card .card-hd {
@@ -50,8 +52,8 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
         align-items: center;
         justify-content: space-between;
         padding: .85rem 1.25rem;
-        background: #f8fafc;
-        border-bottom: 1px solid #e8edf3;
+        background: var(--clr-bg-card, #f8fafc);
+        border-bottom: 1px solid var(--clr-border-1, #e8edf3);
         font-weight: 600;
         font-size: .93rem;
     }
@@ -61,10 +63,10 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
     }
 
     .dt-block {
-        border: 2px solid #e2e8f0;
+        border: 2px solid var(--clr-border-1, #e2e8f0);
         border-radius: 12px;
         margin-bottom: 1.25rem;
-        background: #fafcff;
+        background: var(--clr-bg-card, #fafcff);
         overflow: hidden;
         transition: border-color .2s;
     }
@@ -84,7 +86,6 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
 
     .dt-color-1 .dt-block-header {
         background: #14532d;
-        ;
     }
 
     .dt-color-2 .dt-block-header {
@@ -133,10 +134,10 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
     }
 
     .wt-block {
-        border: 1px solid #dde3ef;
+        border: 1px solid var(--clr-border-1, #dde3ef);
         border-radius: 8px;
         margin-bottom: .85rem;
-        background: #fff;
+        background: var(--clr-bg-card, #fff);
         overflow: hidden;
     }
 
@@ -145,8 +146,8 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
         align-items: center;
         justify-content: space-between;
         padding: .55rem .9rem;
-        background: #f0f4ff;
-        border-bottom: 1px solid #e0e8ff;
+        background: var(--clr-bg-card, #f0f4ff);
+        border-bottom: 1px solid var(--clr-border-1, #e0e8ff);
     }
 
     .wt-block-body {
@@ -171,9 +172,12 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
 
     .qs-table td {
         padding: .3rem .35rem;
-        border-bottom: 1px solid #edf2f7;
+        border-bottom: 1px solid var(--clr-border-1, #edf2f7);
         vertical-align: middle;
     }
+    
+    .qs-table tr:last-child td { border-bottom: none; }
+    .qs-table tr:hover td { background: var(--clr-bg-card-hover, rgba(0,0,0,0.02)); }
 
     /* Column widths optimization for laptops/tablets */
     .qs-table th:nth-child(1), .qs-table td:nth-child(1) { width: 55px !important; min-width: 55px !important; text-align: center; } /* SL */
@@ -208,13 +212,21 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
         color: #1d4ed8;
         text-align: center;
         font-size: .85rem;
-        background: #eff6ff;
+        background: rgba(37, 99, 235, 0.08);
+    }
+    
+    .wt-subtotal-row td {
+        background: rgba(22, 101, 52, 0.08);
+        font-weight: 600;
+        color: var(--est-success, #16a34a);
+        font-size: .83rem;
     }
 
     .labor-table {
         width: 100%;
         border-collapse: collapse;
         font-size: .82rem;
+        min-width: 800px !important;
     }
 
     .labor-table th {
@@ -226,17 +238,20 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
 
     .labor-table td {
         padding: .3rem .35rem;
-        border-bottom: 1px solid #edf2f7;
+        border-bottom: 1px solid var(--clr-border-1, #edf2f7);
         vertical-align: middle;
     }
+    
+    .labor-table tr:last-child td { border-bottom: none; }
 
     .dt-summary-row {
         display: flex;
         gap: 1rem;
         padding: .6rem 1rem;
-        background: #f8fafc;
-        border-top: 1px solid #e2e8f0;
+        background: var(--clr-bg-card, #f8fafc);
+        border-top: 1px solid var(--clr-border-1, #e2e8f0);
         flex-wrap: wrap;
+        justify-content: flex-end;
     }
 
     .sum-item {
@@ -254,18 +269,18 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
     }
 
     .sum-mat {
-        background: #dcfce7;
-        color: #166534;
+        background: rgba(37, 99, 235, 0.15);
+        color: var(--est-primary, #2563eb);
     }
 
     .sum-lab {
-        background: #dbeafe;
-        color: #1e40af;
+        background: rgba(22, 163, 74, 0.15);
+        color: var(--est-success, #16a34a);
     }
 
     .sum-tot {
-        background: #fef3c7;
-        color: #92400e;
+        background: rgba(217, 119, 6, 0.15);
+        color: var(--est-warning, #d97706);
     }
 
     .grand-table {
@@ -277,7 +292,7 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
     .grand-table th,
     .grand-table td {
         padding: .5rem .75rem;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--clr-border-1, #e2e8f0);
     }
 
     .grand-table thead th {
@@ -287,7 +302,7 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
     }
 
     .grand-table tfoot td {
-        background: #fef9c3;
+        background: rgba(0, 0, 0, 0.05);
         font-weight: 700;
     }
 
@@ -350,8 +365,8 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
         <div class="est-form-card">
             <div class="card-hd"><span><i class="bi bi-info-circle me-2 text-primary"></i>Budget Header</span></div>
             <div class="card-bd">
-                <div class="row ">
-                    <div class="col-md-5">
+                <div class="row g-3">
+                    <div class="col-12 col-md-6 col-lg-5 mb-1">
                         <label class="form-label fw-semibold text-muted">Project <span
                                 class="text-danger">*</span></label>
                         <select name="project_id" id="estimateProjectId" class="form-select" required>
@@ -363,7 +378,7 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-5">
+                    <div class="col-12 col-md-6 col-lg-5 mb-1">
                         <label class="form-label fw-semibold text-muted">Architecture Record <span
                                 class="text-danger">*</span></label>
                         <div class="d-flex gap-2">
@@ -384,22 +399,22 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                             <i class="bi bi-hourglass-split me-1"></i> Loading...
                         </div>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-6 col-md-4 col-lg-2 mb-1">
                         <label class="form-label fw-semibold text-muted">Weight %</label>
                         <input type="number" step="0.01" name="weight_percentage" class="form-control"
                             value="<?= htmlspecialchars($budget['weight_percentage'] ?? 100) ?>">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-6 col-md-4 col-lg-3 mb-1">
                         <label class="form-label fw-semibold text-muted">Start Date</label>
                         <input type="date" name="start_date" class="form-control"
                             value="<?= (!empty($budget['start_date']) && $budget['start_date'] !== '0000-00-00') ? $budget['start_date'] : '' ?>">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-6 col-md-4 col-lg-3 mb-1">
                         <label class="form-label fw-semibold text-muted">End Date</label>
                         <input type="date" name="end_date" class="form-control"
                             value="<?= (!empty($budget['end_date']) && $budget['end_date'] !== '0000-00-00') ? $budget['end_date'] : '' ?>">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-6 col-md-4 col-lg-3 mb-1">
                         <label class="form-label fw-semibold text-muted d-flex justify-content-between align-items-center">
                             <span>Total Area (sqft)</span>
                             <button type="button" class="btn btn-link p-0 text-decoration-none" style="font-size:11px" onclick="syncTotalArea()" title="Sync from Floor Setup">
@@ -409,23 +424,23 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
                         <input type="number" step="0.01" name="total_area_sqft" id="totalAreaSqft" class="form-control"
                             value="<?= $budget['total_area_sqft'] ?? '' ?>" placeholder="0.00">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-6 col-md-4 col-lg-3 mb-1">
                         <label class="form-label fw-semibold text-muted">Other Costs (৳)</label>
                         <input type="number" step="0.01" name="other_costs" id="otherCosts" class="form-control"
                             value="<?= $budget['other_costs'] ?? 0 ?>" placeholder="0.00">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-12 col-md-6 col-lg-4 mb-1">
                         <label class="form-label fw-semibold text-muted">Budget Link</label>
                         <input type="url" name="budget_link" class="form-control"
                             value="<?= htmlspecialchars($budget['budget_link'] ?? '') ?>"
                             placeholder="Google Drive link...">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-12 col-md-6 col-lg-4 mb-1">
                         <label class="form-label fw-semibold text-muted">Other Cost Detail</label>
                         <input type="text" name="other_cost_detail" class="form-control"
                             value="<?= htmlspecialchars($budget['other_cost_detail'] ?? '') ?>">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-12 col-md-6 col-lg-4 mb-1">
                         <label class="form-label fw-semibold text-muted">Work Details</label>
                         <input type="text" name="work_details" class="form-control"
                             value="<?= htmlspecialchars($budget['work_details'] ?? '') ?>">
@@ -546,11 +561,11 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
         </div>
 
         <!-- ═══ Submit Buttons ═══════════════════════════════════════════════════ -->
-        <div class="d-flex justify-content-between align-items-center mb-5">
-            <a href="<?= $base_url ?>/con-estimate-show/<?= $budget['id'] ?>" class="btn btn-outline-secondary">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-stretch align-items-sm-center gap-3 mb-5">
+            <a href="<?= $base_url ?>/con-estimate-show/<?= $budget['id'] ?>" class="btn btn-outline-secondary text-center">
                 <i class="bi bi-x-circle me-1"></i> Cancel
             </a>
-            <div class="d-flex gap-2">
+            <div class="d-flex flex-column flex-sm-row gap-2">
                 <button type="button" id="saveDraftBtn" class="btn btn-draft">
                     <i class="bi bi-floppy me-1"></i> Save Draft
                 </button>
@@ -643,39 +658,43 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
 
             return `
     <div class="dt-block ${colorClass}" id="dt-block-${blockIdx}" data-block="${blockIdx}">
-        <div class="dt-block-header">
+        <div class="dt-block-header d-flex align-items-center flex-wrap gap-2">
             <i class="bi bi-layers fs-5"></i>
-            <div class="flex-grow-1">
-                <label class="text-white small mb-0 opacity-75">Design Type</label>
+            <div class="flex-grow-1" style="min-width: 200px;">
+                <label class="text-white small mb-0 opacity-75 d-block">Design Type</label>
                 <select name="dt_select_${blockIdx}" id="dt-select-${blockIdx}"
-                        class="form-select form-select-sm dt-select"
+                        class="form-select form-select-sm dt-select w-100"
                         style="max-width:320px"
                         onchange="onDtChange(${blockIdx})">
                     <option value="" style="background:#1e293b;color:#f1f5f9">-- Select Design Type --</option>
                     ${dtOptions}
                 </select>
             </div>
-            <a href="#" target="_blank" id="dt-view-link-${blockIdx}" class="btn btn-sm ms-2"
-               style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);color:#fff;display:none">
-                <i class="bi bi-eye me-1"></i>View Drawing
-            </a>
-            <button type="button" class="btn btn-sm btn-light ms-2" onclick="removeDtBlock(${blockIdx})">
-                <i class="bi bi-trash3"></i>
-            </button>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                <a href="#" target="_blank" id="dt-view-link-${blockIdx}" class="btn btn-sm"
+                   style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);color:#fff;display:none">
+                    <i class="bi bi-eye me-1"></i>View Drawing
+                </a>
+                <button type="button" class="btn btn-sm btn-light" onclick="removeDtBlock(${blockIdx})">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </div>
         </div>
 
         <div id="dt-link-row-${blockIdx}"
              style="display:none;background:#407340;padding:.5rem 1rem;border-bottom:1px solid rgba(255,255,255,.1)">
-            <div class="d-flex align-items-center gap-2">
-                <i class="bi bi-link-45deg text-white opacity-75"></i>
-                <span class="text-white small opacity-75" style="white-space:nowrap">Drawing Link:</span>
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-link-45deg text-white opacity-75"></i>
+                    <span class="text-white small opacity-75" style="white-space:nowrap">Drawing Link:</span>
+                </div>
                 <input type="url" id="dt-custom-link-${blockIdx}" name="dt_custom_link[]"
-                       class="form-control form-control-sm"
-                       style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;max-width:480px"
+                       class="form-control form-control-sm flex-grow-1"
+                       style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;max-width:480px;min-width:180px;"
                        placeholder="https://..."
                        oninput="syncDtViewBtn(${blockIdx})">
                 <a href="#" target="_blank" id="dt-custom-view-${blockIdx}" class="btn btn-sm"
-                   style="background:rgba(74,222,128,.2);border:1px solid rgba(74,222,128,.4);color:#fff;display:none">
+                   style="background:rgba(74,222,128,.2);border:1px solid rgba(74,222,128,.4);color:#fff;display:none;white-space:nowrap">
                     <i class="bi bi-box-arrow-up-right me-1"></i>Open
                 </a>
                 <input type="hidden" name="dt_design_type_id_link[]" id="dt-dtid-link-${blockIdx}" value="${selectedDtId || ''}">
@@ -831,23 +850,29 @@ $existingLaborsJson = json_encode($laborsByDt, JSON_UNESCAPED_UNICODE);
 
             const html = `
     <div class="wt-block" id="wt-block-${wtIdx}">
-        <div class="wt-block-header">
-            <div class="d-flex align-items-center gap-2">
-                <i class="bi bi-layers text-primary"></i>
-                <select id="phase-item-select-${wtIdx}" class="form-select form-select-sm phase-item-select"
-                        style="max-width:240px" onchange="onPhaseItemChange('${wtIdx}', ${dtIdx})">
-                    <option value="">-- Select Phase Item --</option>
-                </select>
+        <div class="wt-block-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center flex-wrap gap-2 flex-grow-1">
+                <div class="d-flex align-items-center gap-1">
+                    <i class="bi bi-layers text-primary"></i>
+                    <select id="phase-item-select-${wtIdx}" class="form-select form-select-sm phase-item-select"
+                            style="max-width:240px; min-width: 150px;" onchange="onPhaseItemChange('${wtIdx}', ${dtIdx})">
+                        <option value="">-- Select Phase Item --</option>
+                    </select>
+                </div>
                 
-                <i class="bi bi-tools text-secondary"></i>
-                <select class="form-select form-select-sm wt-select" id="wt-select-${wtIdx}"
-                        style="max-width:240px" onchange="onWtChange('${wtIdx}',${dtIdx})">
-                    ${wtOpts}
-                </select>
+                <div class="d-flex align-items-center gap-1">
+                    <i class="bi bi-tools text-secondary"></i>
+                    <select class="form-select form-select-sm wt-select" id="wt-select-${wtIdx}"
+                            style="max-width:240px; min-width: 150px;" onchange="onWtChange('${wtIdx}',${dtIdx})">
+                        ${wtOpts}
+                    </select>
+                </div>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeWtBlock('${wtIdx}',${dtIdx})">
-                <i class="bi bi-dash-circle"></i>
-            </button>
+            <div class="d-flex gap-1 ms-auto">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeWtBlock('${wtIdx}',${dtIdx})">
+                    <i class="bi bi-dash-circle"></i>
+                </button>
+            </div>
         </div>
         <div class="wt-block-body">
             <div class="table-responsive">

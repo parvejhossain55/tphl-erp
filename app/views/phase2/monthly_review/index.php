@@ -6,80 +6,110 @@ $targetsByPhase = $targetsByPhase ?? [];
 $projectId   = (int)($project['id'] ?? 0);
 
 $statusColors = [
-    'Not Started' => ['bg'=>'#f1f5f9','color'=>'#64748b'],
-    'In Progress' => ['bg'=>'#dbeafe','color'=>'#1e40af'],
-    'Completed'   => ['bg'=>'#d1fae5','color'=>'#065f46'],
-    'At Risk'     => ['bg'=>'#fef3c7','color'=>'#92400e'],
-    'Delayed'     => ['bg'=>'#fee2e2','color'=>'#991b1b'],
+    'Not Started' => ['bg'=>'rgba(148, 163, 184, 0.15)','color'=>'var(--clr-text-muted, #64748b)'],
+    'In Progress' => ['bg'=>'rgba(59, 130, 246, 0.15)','color'=>'var(--clr-theme-primary, #2563eb)'],
+    'Completed'   => ['bg'=>'rgba(16, 185, 129, 0.15)','color'=>'#10b981'],
+    'At Risk'     => ['bg'=>'rgba(245, 158, 11, 0.15)','color'=>'#d97706'],
+    'Delayed'     => ['bg'=>'rgba(239, 68, 68, 0.15)','color'=>'#ef4444'],
 ];
 $planStatusColors = [
-    'Draft'     => ['bg'=>'#f1f5f9','color'=>'#64748b'],
-    'In Review' => ['bg'=>'#fef3c7','color'=>'#d97706'],
-    'Approved'  => ['bg'=>'#d1fae5','color'=>'#059669'],
+    'Draft'     => ['bg'=>'rgba(148, 163, 184, 0.15)','color'=>'var(--clr-text-muted, #64748b)'],
+    'In Review' => ['bg'=>'rgba(245, 158, 11, 0.15)','color'=>'#d97706'],
+    'Approved'  => ['bg'=>'rgba(16, 185, 129, 0.15)','color'=>'#10b981'],
 ];
 ?>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 body { font-family:'Inter',sans-serif }
-:root { --pri:var(--clr-theme-primary);--green:#10b981;--amber:#f59e0b;--red:#ef4444;--slate:#64748b }
+:root { --pri:var(--clr-theme-primary);--green:#10b981;--amber:#f59e0b;--red:#ef4444;--slate:var(--clr-text-muted, #64748b) }
 
 .mr-header { margin-bottom:24px }
 .mr-crumb { font-size:11.5px;color:var(--slate);margin-bottom:6px }
 .mr-crumb a { color:var(--pri);text-decoration:none }
-.mr-title { font-size:22px;font-weight:900;color:#1e293b;margin:0 }
+.mr-title { font-size:22px;font-weight:900;color:var(--clr-text-body, #1e293b);margin:0 }
 .mr-subtitle { font-size:12.5px;color:var(--slate);margin-top:4px }
 
 .phase-grid { display:flex;flex-direction:column;gap:16px }
 
 .phase-card {
-    background:#fff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;
+    background:var(--clr-bg-card, #fff);border:1px solid var(--clr-border-1, #e2e8f0);border-radius:16px;overflow:hidden;
     box-shadow:0 1px 4px rgba(0,0,0,.06)
 }
 .phase-card-header {
     display:flex;align-items:center;justify-content:space-between;
-    padding:16px 22px;border-bottom:1px solid #f1f5f9;flex-wrap:wrap;gap:10px
+    padding:16px 22px;border-bottom:1px solid var(--clr-border-1, #f1f5f9);flex-wrap:wrap;gap:10px
 }
-.phase-name { font-size:15px;font-weight:800;color:#1e293b }
+.phase-name { font-size:15px;font-weight:800;color:var(--clr-text-body, #1e293b) }
 .phase-meta { font-size:11px;color:var(--slate);margin-top:3px }
 .phase-badge { display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;padding:3px 11px;border-radius:999px }
 .phase-stats { display:flex;gap:18px;align-items:center }
 .phase-stat { text-align:center }
-.phase-stat-val { font-size:16px;font-weight:800;color:#1e293b }
+.phase-stat-val { font-size:16px;font-weight:800;color:var(--clr-text-body, #1e293b) }
 .phase-stat-lbl { font-size:9.5px;color:var(--slate);font-weight:600;text-transform:uppercase }
 
 .phase-prog-row { display:flex;gap:10px;align-items:center;padding:0 22px 14px }
-.phase-prog-bar { flex:1;height:6px;border-radius:3px;background:#f1f5f9;overflow:hidden }
+.phase-prog-bar { flex:1;height:6px;border-radius:3px;background:var(--clr-border-1, #f1f5f9);overflow:hidden }
 .phase-prog-fill { height:100%;border-radius:3px }
 
 .months-body { padding:18px 22px }
 .months-label { font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--slate);margin-bottom:12px }
-.months-grid { display:flex;flex-wrap:wrap;gap:10px }
+.months-grid { display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:12px }
 
 .month-card {
-    border-radius:12px;border:1px solid #e2e8f0;padding:14px 18px;
-    text-decoration:none;color:inherit;min-width:170px;flex:0 0 auto;
-    transition:all .18s;cursor:pointer;background:#fafafa;position:relative;overflow:hidden
+    border-radius:12px;border:1px solid var(--clr-border-1, #e2e8f0);padding:14px 18px;
+    text-decoration:none;color:inherit;min-width:0;
+    transition:all .18s;cursor:pointer;background:var(--clr-bg-body, #fafafa);position:relative;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:space-between
 }
-.month-card:hover { border-color:var(--pri);background:#fff;box-shadow:0 4px 14px rgba(var(--clr-theme-primary-rgb),.14);transform:translateY(-2px) }
-.month-card.approved { border-color:#10b981;background:linear-gradient(135deg,#f0fdf4,#fff) }
-.month-card.draft    { border-color:#e2e8f0 }
+.month-card:hover { border-color:var(--pri);background:var(--clr-bg-card-hover, rgba(0, 0, 0, 0.02));box-shadow:0 4px 14px rgba(var(--clr-theme-primary-rgb),.14);transform:translateY(-2px) }
+.month-card.approved { border-color:#10b981;background:rgba(16, 185, 129, 0.08) }
+.month-card.draft    { border-color:var(--clr-border-1, #e2e8f0) }
 
-.month-name { font-size:13.5px;font-weight:800;color:#1e293b;margin-bottom:6px }
+.month-name { font-size:13.5px;font-weight:800;color:var(--clr-text-body, #1e293b);margin-bottom:6px }
 .month-stat { font-size:10.5px;color:var(--slate);display:flex;align-items:center;gap:5px;margin-top:3px }
-.month-stat-val { font-weight:700;color:#1e293b }
+.month-stat-val { font-weight:700;color:var(--clr-text-body, #1e293b) }
 .month-pct-row { display:flex;gap:8px;margin-top:10px }
 .month-pct-chip { font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px }
-.month-pct-plan { background:#dbeafe;color:#1e40af }
-.month-pct-act  { background:#d1fae5;color:#065f46 }
-.month-pct-behind { background:#fee2e2;color:#991b1b }
+.month-pct-plan { background:rgba(59, 130, 246, 0.15);color:var(--clr-theme-primary, #1e40af) }
+.month-pct-act  { background:rgba(16, 185, 129, 0.15);color:#10b981 }
+.month-pct-behind { background:rgba(239, 68, 68, 0.15);color:#ef4444 }
 
 .month-arrow {
     position:absolute;right:12px;top:50%;transform:translateY(-50%);
-    font-size:16px;color:#cbd5e1
+    font-size:16px;color:var(--clr-border-1, #cbd5e1)
 }
 .month-card:hover .month-arrow { color:var(--pri) }
 
 .empty-state { text-align:center;padding:40px;color:var(--slate);font-size:13px }
+
+@media (max-width: 575.98px) {
+    .months-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
+    .month-card {
+        padding: 10px 10px !important;
+    }
+    .month-name {
+        font-size: 12px !important;
+        margin-bottom: 4px !important;
+    }
+    .month-stat {
+        font-size: 9px !important;
+        gap: 3px !important;
+    }
+    .month-pct-row {
+        flex-wrap: wrap !important;
+        gap: 4px !important;
+    }
+    .month-pct-chip {
+        font-size: 8px !important;
+        padding: 1px 4px !important;
+    }
+    .month-arrow {
+        display: none !important;
+    }
+}
 </style>
 
 <div class="px-3 py-2">
@@ -120,7 +150,7 @@ body { font-family:'Inter',sans-serif }
                 <span class="phase-badge" style="background:<?= $sc['bg'] ?>;color:<?= $sc['color'] ?>">
                     <?= $phase['status'] ?>
                 </span>
-                <span style="font-size:10.5px;background:#f1f5f9;color:#475569;padding:2px 9px;border-radius:999px;font-weight:600">
+                <span style="font-size:10.5px;background:var(--clr-bg-body, #f1f5f9);color:var(--clr-text-body, #475569);padding:2px 9px;border-radius:999px;font-weight:600">
                     <?= number_format((float)$phase['weight_percentage'],0) ?>% of project
                 </span>
             </div>
@@ -145,7 +175,7 @@ body { font-family:'Inter',sans-serif }
                 <div class="phase-stat-lbl">Gap</div>
             </div>
             <div class="phase-stat">
-                <div class="phase-stat-val" style="color:#0369a1"><?= count($targets) ?></div>
+                <div class="phase-stat-val" style="color:var(--clr-theme-primary, #0369a1)"><?= count($targets) ?></div>
                 <div class="phase-stat-lbl">Months</div>
             </div>
         </div>

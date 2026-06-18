@@ -48,6 +48,6 @@ if (!empty($show_breadcrumb) && $show_breadcrumb === true) {
 
 <?php ?>
 <script>
- // base_url is already defined in footer.php before scripts load
- var base_url = "<?= $GLOBALS['base_url'] ?>"; 
+ // Ensure base_url is globally available (avoids conflict with const base_url in view scripts)
+ window.base_url = window.base_url || "<?= $GLOBALS['base_url'] ?>"; 
 </script>

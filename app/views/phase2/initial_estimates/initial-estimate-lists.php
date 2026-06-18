@@ -81,23 +81,25 @@
                                 </td>
                                 <td><?= htmlspecialchars($b['created_by_name']) ?></td>
                                 <td class="text-center">
-                                    <a href="<?= $base_url ?>/con-estimate-show/<?= $b['id'] ?>"
-                                       class="btn btn-sm btn-outline-info" title="View Detail">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    <?php if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])): ?>
-                                        <?php if (in_array($b['status'], ['draft', 'pending'])): ?>
-                                            <a href="<?= $base_url ?>/con-estimate-edit/<?= $b['id'] ?>"
-                                               class="btn btn-sm btn-outline-warning ms-1" title="Edit">
-                                                <i class="bi bi-pencil-square"></i>
-                                            </a>
-                                        <?php else: ?>
-                                            <span class="btn btn-sm btn-outline-secondary ms-1 disabled"
-                                                  title="<?= ucfirst($b['status']) ?> — cannot edit">
-                                                <i class="bi bi-lock"></i>
-                                            </span>
+                                    <div class="d-flex justify-content-center align-items-center gap-1">
+                                        <a href="<?= $base_url ?>/con-estimate-show/<?= $b['id'] ?>"
+                                           class="btn btn-sm btn-outline-info" title="View Detail">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <?php if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])): ?>
+                                            <?php if (in_array($b['status'], ['draft', 'pending'])): ?>
+                                                <a href="<?= $base_url ?>/con-estimate-edit/<?= $b['id'] ?>"
+                                                   class="btn btn-sm btn-outline-warning" title="Edit">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="btn btn-sm btn-outline-secondary disabled"
+                                                      title="<?= ucfirst($b['status']) ?> — cannot edit">
+                                                    <i class="bi bi-lock"></i>
+                                                </span>
+                                            <?php endif; ?>
                                         <?php endif; ?>
-                                    <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>

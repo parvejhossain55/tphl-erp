@@ -1090,7 +1090,7 @@ $project = $stmt->get_result()->fetch_assoc();
         }
 
         return $this->view('phase2/dashboard/project-detail', [
-            'current_route'   => 'con-dashboard',
+            'current_route'   => 'con-project',
             'page_title'      => 'Project Detail — ' . ($project['name'] ?? ''),
             'project'         => $project,
             'budget'          => $budget,

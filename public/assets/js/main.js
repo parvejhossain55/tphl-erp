@@ -536,7 +536,7 @@ function bd_settings_append($x) {
     quickbars_insert_toolbar: false,
     height: "300",
     
-    // ✅ Prevent TinyMCE from converting quotes into entities
+    //Prevent TinyMCE from converting quotes into entities
     entity_encoding: 'raw',
     forced_root_block: '', // Optional: <p> wrap control
 });

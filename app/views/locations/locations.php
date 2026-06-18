@@ -42,7 +42,7 @@ $show_breadcrumb = false;
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </button>
 
-                                        <button class="removeBtnCust table__icon delete"
+                                        <button type="button" class="removeBtnCust table__icon delete"
                                             data-id="<?= $location['id'] ?>"
                                             data-name="<?= htmlspecialchars($location['name']) ?>"
                                             data-action="delete-location">
@@ -147,26 +147,51 @@ $show_breadcrumb = false;
 
 <!-- edit department modal end -->
 <script>
-    const base_url = "<?= $GLOBALS['base_url'] ?>"; // PHP outputs the correct base URL
-
-
+    var base_url = "<?= $GLOBALS['base_url'] ?>";
 
     document.addEventListener("DOMContentLoaded", function() {
-        const modal = document.getElementById('locationEdit');
+        var modal = document.getElementById('locationEdit');
+        if (modal) {
+            modal.addEventListener('show.bs.modal', function(event) {
+                var button = event.relatedTarget;
+                var id     = button.getAttribute('data-id');
+                var name   = button.getAttribute('data-name');
+                document.getElementById('edit_location_id').value = id;
+                document.getElementById('edit_location').value    = name;
+            });
+        }
+    });
 
-        // Attach listener only once when modal is shown
-        modal.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget; // the clicked button
+    window.addEventListener('load', function() {
+        document.querySelectorAll('.removeBtnCust').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var itemId   = this.getAttribute('data-id');
+                var itemName = this.getAttribute('data-name') || 'this item';
+                var action   = this.getAttribute('data-action');
+                if (!action) return;
 
-            // Get data attributes
-            const id = button.getAttribute('data-id');
-            const name = button.getAttribute('data-name');
-
-            // Fill form fields
-            document.getElementById('edit_location_id').value = id;
-            document.getElementById('edit_location').value = name;
-            console.log("Button clicked:", button);
-
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: 'You are about to delete "' + itemName + '". This cannot be undone!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, delete it!',
+                    cancelButtonText: 'Cancel'
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        var form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = base_url + '/' + action;
+                        var input = document.createElement('input');
+                        input.type = 'hidden'; input.name = 'id'; input.value = itemId;
+                        form.appendChild(input);
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            });
         });
     });
 </script>

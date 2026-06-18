@@ -37,7 +37,6 @@ function formatTimelineDate($dateStr) {
 
       .tl-setup-container {
         font-family: 'Plus Jakarta Sans', sans-serif;
-        color: #1e293b;
       }
 
       /* ── Breadcrumb & Header ─────────────────────────────── */
@@ -52,7 +51,7 @@ function formatTimelineDate($dateStr) {
 
       .tl-breadcrumb {
         font-size: 12px;
-        color: #64748b;
+        color: var(--clr-text-muted, #64748b);
         display: flex;
         align-items: center;
         gap: 6px;
@@ -71,7 +70,6 @@ function formatTimelineDate($dateStr) {
       .tl-title {
         font-size: 24px;
         font-weight: 800;
-        color: #0f172a;
         margin: 4px 0 0;
         letter-spacing: -0.5px;
       }
@@ -87,8 +85,8 @@ function formatTimelineDate($dateStr) {
       .tl-stat-card {
         border-radius: 14px;
         padding: 18px 20px;
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        background: #ffffff;
+        border: 1px solid var(--clr-border-1, rgba(226, 232, 240, 0.8));
+        background: var(--clr-bg-card, #ffffff);
         box-shadow: 0 4px 12px rgba(15, 23, 42, 0.02);
         display: flex;
         align-items: center;
@@ -137,14 +135,13 @@ function formatTimelineDate($dateStr) {
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.8px;
-        color: #64748b;
+        color: var(--clr-text-muted, #64748b);
         margin-bottom: 2px;
       }
 
       .tl-stat-value {
         font-size: 18px;
         font-weight: 800;
-        color: #0f172a;
         line-height: 1.2;
       }
 
@@ -158,8 +155,8 @@ function formatTimelineDate($dateStr) {
 
       .tl-panel {
         border-radius: 16px;
-        background: #ffffff;
-        border: 1px solid rgba(226, 232, 240, 0.8);
+        background: var(--clr-bg-card, #ffffff);
+        border: 1px solid var(--clr-border-1, rgba(226, 232, 240, 0.8));
         box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03);
         padding: 24px;
       }
@@ -167,10 +164,9 @@ function formatTimelineDate($dateStr) {
       .tl-panel-title {
         font-size: 15px;
         font-weight: 700;
-        color: #0f172a;
         margin-bottom: 20px;
         padding-bottom: 12px;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 1px solid var(--clr-border-1, #f1f5f9);
         display: flex;
         align-items: center;
         gap: 8px;
@@ -181,19 +177,18 @@ function formatTimelineDate($dateStr) {
         display: flex;
         justify-content: space-between;
         padding: 11px 0;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 1px solid var(--clr-border-1, #f1f5f9);
         font-size: 13.5px;
       }
       .info-row:last-child {
         border-bottom: none;
       }
       .info-label {
-        color: #64748b;
+        color: var(--clr-text-muted, #64748b);
         font-weight: 500;
       }
       .info-value {
         font-weight: 600;
-        color: #1e293b;
       }
 
       /* ── Visual Timeline Bar ──────────────────────────────── */
@@ -206,14 +201,14 @@ function formatTimelineDate($dateStr) {
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.8px;
-        color: #64748b;
+        color: var(--clr-text-muted, #64748b);
         margin-bottom: 14px;
       }
 
       .tl-progress-bar-wrapper {
         height: 38px;
         border-radius: 12px;
-        background: #f1f5f9;
+        background: var(--clr-border-1, #f1f5f9);
         display: flex;
         overflow: hidden;
         box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
@@ -231,6 +226,17 @@ function formatTimelineDate($dateStr) {
         font-weight: 700;
         transition: width 0.3s ease;
         position: relative;
+        min-width: 0;
+      }
+
+      .tl-bar-segment span {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+        padding: 0 4px;
+        text-align: center;
       }
 
       .tl-segment-pre {
@@ -258,7 +264,6 @@ function formatTimelineDate($dateStr) {
         gap: 8px;
         font-size: 12px;
         font-weight: 600;
-        color: #475569;
       }
 
       .tl-legend-dot {
@@ -273,7 +278,7 @@ function formatTimelineDate($dateStr) {
 
       /* ── Milestones List ─────────────────────────────────── */
       .tl-milestones-wrapper {
-        border-left: 2px dashed #cbd5e1;
+        border-left: 2px dashed var(--clr-border-1, #cbd5e1);
         padding-left: 24px;
         margin-left: 10px;
       }
@@ -294,7 +299,7 @@ function formatTimelineDate($dateStr) {
         width: 16px;
         height: 16px;
         border-radius: 50%;
-        border: 3px solid #ffffff;
+        border: 3px solid var(--clr-bg-card, #ffffff);
         box-shadow: 0 0 0 2px var(--m-color);
         background: var(--m-color);
       }
@@ -302,7 +307,6 @@ function formatTimelineDate($dateStr) {
       .tl-milestone-title {
         font-size: 13.5px;
         font-weight: 700;
-        color: #0f172a;
         margin-bottom: 2px;
       }
 
@@ -315,7 +319,7 @@ function formatTimelineDate($dateStr) {
 
       .tl-milestone-desc {
         font-size: 12px;
-        color: #64748b;
+        color: var(--clr-text-muted, #64748b);
       }
 
       .badge-workflow-type {
@@ -339,6 +343,64 @@ function formatTimelineDate($dateStr) {
         gap: 8px;
         text-decoration: none !important;
       }
+
+      /* ── Responsive Styling (Mobile & Tablet) ────────────── */
+      @media (max-width: 991.98px) {
+        .tl-grid {
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+
+        .tl-stats-grid {
+          grid-template-columns: repeat(2, 1fr);
+          gap: 14px;
+        }
+
+        .tl-title {
+          font-size: 20px;
+        }
+      }
+
+      @media (max-width: 575.98px) {
+        .tl-stats-grid {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+
+        .tl-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
+        }
+
+        .badge-workflow-type {
+          align-self: flex-start;
+        }
+
+        .tl-panel {
+          padding: 16px;
+        }
+
+        .tl-stat-card {
+          padding: 14px 16px;
+        }
+        
+        .tl-bar-legend {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
+          margin-bottom: 20px;
+        }
+        
+        .tl-milestones-wrapper {
+          padding-left: 18px;
+          margin-left: 6px;
+        }
+        
+        .tl-milestone-dot {
+          left: -27px;
+        }
+      }
     </style>
 
     <div class="tl-setup-container">
@@ -347,10 +409,7 @@ function formatTimelineDate($dateStr) {
       <div class="tl-header">
         <div>
           <div class="tl-breadcrumb">
-            <a href="<?= $base ?>/con-dashboard"><i class="fal fa-tachometer-alt me-1"></i>Dashboard</a>
-            <span>›</span>
-            <a href="<?= $base ?>/con-projects">Projects</a>
-            <span>›</span>
+           
             <a href="<?= $base ?>/con-project/<?= $project['id'] ?>"><?= htmlspecialchars($project['name']) ?></a>
             <span>›</span>
             <span>Timeline</span>
@@ -432,7 +491,7 @@ function formatTimelineDate($dateStr) {
             <span class="info-value"><?= $construction_months ?> Months</span>
           </div>
           <div class="info-row">
-            <span class="info-label">Post Construction Period</span>
+            <span class="info-label">Grace Period</span>
             <span class="info-value"><?= $post_construction_months ?> Months</span>
           </div>
           <div class="info-row">
@@ -442,7 +501,7 @@ function formatTimelineDate($dateStr) {
           
           <div class="form-group mt-3">
             <label class="form-label" style="font-weight: 700;">PM Timeline Notes</label>
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 14px; border-radius: 10px; font-size: 13px; line-height: 1.5; color: #475569; max-height: 100px; overflow-y: auto;">
+            <div style="background: var(--clr-bg-body, #f8fafc); border: 1px solid var(--clr-border-1, #e2e8f0); padding: 12px 14px; border-radius: 10px; font-size: 13px; line-height: 1.5; color: inherit; max-height: 100px; overflow-y: auto;">
               <?= nl2br($description) ?>
             </div>
           </div>
@@ -473,20 +532,20 @@ function formatTimelineDate($dateStr) {
             <div class="tl-bar-title">Visual Roadmap Breakdown</div>
             <div class="tl-progress-bar-wrapper">
               <?php if ($pre_construction_months > 0): ?>
-              <div class="tl-bar-segment tl-segment-pre" style="width: <?= $pre_pct ?>%;">
+              <div class="tl-bar-segment tl-segment-pre" style="width: <?= $pre_pct ?>%;" title="Pre-Con (<?= $pre_construction_months ?>M)">
                 <span>Pre-Con (<?= $pre_construction_months ?>M)</span>
               </div>
               <?php endif; ?>
               
               <?php if ($construction_months > 0): ?>
-              <div class="tl-bar-segment tl-segment-construction" style="width: <?= $con_pct ?>%;">
+              <div class="tl-bar-segment tl-segment-construction" style="width: <?= $con_pct ?>%;" title="Construction (<?= $construction_months ?>M)">
                 <span>Construction (<?= $construction_months ?>M)</span>
               </div>
               <?php endif; ?>
               
               <?php if ($post_construction_months > 0): ?>
-              <div class="tl-bar-segment tl-segment-post" style="width: <?= $post_pct ?>%;">
-                <span>Post-Con (<?= $post_construction_months ?>M)</span>
+              <div class="tl-bar-segment tl-segment-post" style="width: <?= $post_pct ?>%;" title="Grace Period (<?= $post_construction_months ?>M)">
+                <span>Grace Period (<?= $post_construction_months ?>M)</span>
               </div>
               <?php endif; ?>
             </div>
@@ -502,7 +561,7 @@ function formatTimelineDate($dateStr) {
               </div>
               <div class="tl-legend-item">
                 <div class="tl-legend-dot tl-legend-post"></div>
-                Post-Construction
+                Grace Period
               </div>
             </div>
           </div>
@@ -539,7 +598,7 @@ function formatTimelineDate($dateStr) {
               <!-- Milestone 4 -->
               <div class="tl-milestone-item" style="--m-color: var(--clr-theme-secondary);">
                 <div class="tl-milestone-dot"></div>
-                <div class="tl-milestone-title">Post-Construction & Client Handover</div>
+                <div class="tl-milestone-title">Grace Period & Client Handover</div>
                 <div class="tl-milestone-date"><?= formatTimelineDate($expected_handover_date) ?></div>
                 <div class="tl-milestone-desc">Finishing details, testing & commissioning, and handing keys to buyers.</div>
               </div>

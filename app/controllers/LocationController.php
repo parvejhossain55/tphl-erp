@@ -61,11 +61,13 @@ public function update()
     $id = $_POST['id'] ?? 0;
 
     if ($id && $this->locationModel->delete($id)) {
-         setSuccess('Location delete successfully');
+         setSuccess('Location deleted successfully');
         header("Location: {$GLOBALS['base_url']}/location-lists");
         exit;
     } else {
-        echo "<h3 style='color:red'>Failed to delete Locations</h3>";
+        setError('Failed to delete location');
+        header("Location: {$GLOBALS['base_url']}/location-lists");
+        exit;
     }
 }
 

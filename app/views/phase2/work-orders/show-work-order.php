@@ -167,7 +167,7 @@ $workTypesStr = !empty($uniqueWorkTypes) ? implode(', ', $uniqueWorkTypes) : '-'
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-bordered table-sm align-middle mb-0" style="font-size:.84rem">
-                            <thead style="background:#1e3a8a;color:#fff">
+                            <thead class="table-light">
                                 <tr>
                                     <th class="text-center" style="width:50px">নং</th>
                                     <th>বিবরণ (Description)</th>
@@ -207,7 +207,7 @@ $workTypesStr = !empty($uniqueWorkTypes) ? implode(', ', $uniqueWorkTypes) : '-'
                                 <?php endforeach; ?>
                             </tbody>
                             <tfoot>
-                                <tr style="background:#eff6ff">
+                                <tr>
                                     <td colspan="6" class="text-end fw-bold text-primary">Grand Total:</td>
                                     <td class="text-end fw-bold text-primary fs-15">৳<?= number_format($grandTotal, 2) ?></td>
                                 </tr>
@@ -274,8 +274,7 @@ $workTypesStr = !empty($uniqueWorkTypes) ? implode(', ', $uniqueWorkTypes) : '-'
             <!-- ── Update History Timeline ──────────────────────────── -->
             <?php if (!empty($updateLogs)): ?>
             <div class="card custom-card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center"
-                     style="background:#fffbeb;border-bottom:2px solid #fbbf24">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h6 class="card-title mb-0 text-warning-emphasis">
                         <i class="bi bi-clock-history me-2 text-warning"></i>
                         Update History
@@ -291,13 +290,13 @@ $workTypesStr = !empty($uniqueWorkTypes) ? implode(', ', $uniqueWorkTypes) : '-'
                         <div class="mb-4" style="position:relative">
                             <!-- Dot -->
                             <div style="position:absolute;left:-20px;top:4px;width:12px;height:12px;
-                                        background:#f59e0b;border-radius:50%;border:2px solid #fff;
-                                        box-shadow:0 0 0 2px #fbbf24"></div>
+                                        background:var(--clr-theme-secondary);border-radius:50%;border:2px solid var(--clr-bg-card);
+                                        box-shadow:0 0 0 2px rgba(var(--clr-theme-secondary-rgb), 0.3)"></div>
 
                             <div class="d-flex align-items-start gap-2 flex-wrap">
                                 <!-- Date badge -->
-                                <span class="badge text-dark fw-bold px-3 py-2"
-                                      style="background:#fef3c7;font-size:.85rem;min-width:110px">
+                                <span class="badge bg-warning-transparent text-warning fw-bold px-3 py-2"
+                                      style="font-size:.85rem;min-width:110px">
                                     <i class="bi bi-calendar3 me-1"></i>
                                     <?= date('d M Y', strtotime($log['update_date'])) ?>
                                 </span>
@@ -314,7 +313,7 @@ $workTypesStr = !empty($uniqueWorkTypes) ? implode(', ', $uniqueWorkTypes) : '-'
 
                             <?php if (!empty($log['update_notes'])): ?>
                             <div class="mt-2 p-3 rounded border-start border-warning border-3"
-                                 style="background:#fffdf0;font-size:.9rem">
+                                 style="background:rgba(var(--clr-theme-secondary-rgb), 0.05);font-size:.9rem">
                                 <?= nl2br(htmlspecialchars($log['update_notes'])) ?>
                             </div>
                             <?php else: ?>
@@ -509,7 +508,7 @@ $workTypesStr = !empty($uniqueWorkTypes) ? implode(', ', $uniqueWorkTypes) : '-'
             }
             ?>
             <div class="card custom-card mb-4">
-                <div class="card-header" style="background:#f8fafc;border-bottom:2px solid #e2e8f0">
+                <div class="card-header">
                     <h6 class="card-title mb-0">
                         <i class="bi bi-shield-check me-2 text-primary"></i>
                         Approval Workflow Progress
@@ -540,7 +539,7 @@ $workTypesStr = !empty($uniqueWorkTypes) ? implode(', ', $uniqueWorkTypes) : '-'
                             $lbl = $roleLabels[$rId] ?? 'Approval Step';
                             $badge = $badgeClasses[$appStatus] ?? 'bg-secondary-transparent';
                         ?>
-                            <div class="p-3 rounded border" style="background: #fdfdfd;">
+                            <div class="p-3 rounded border">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="fw-semibold text-muted" style="font-size: .88rem;"><?= $lbl ?></span>
                                     <span class="badge <?= $badge ?> text-uppercase fs-10 px-2"><?= $appStatus ?></span>
@@ -552,7 +551,7 @@ $workTypesStr = !empty($uniqueWorkTypes) ? implode(', ', $uniqueWorkTypes) : '-'
                                         on <?= date('d M Y h:i A', strtotime($app['action_at'])) ?>
                                     </div>
                                     <?php if (!empty($app['remarks'])): ?>
-                                        <div class="mt-2 p-2 rounded text-dark-emphasis small" style="background:#fff5f5; border-left:3px solid #ef4444; font-size: .82rem;">
+                                        <div class="mt-2 p-2 rounded small" style="background:rgba(239, 68, 68, 0.1); border-left:3px solid #ef4444; font-size: .82rem; color: var(--clr-text-body);">
                                             <i class="bi bi-chat-right-text me-1"></i>
                                             <?= nl2br(htmlspecialchars($app['remarks'])) ?>
                                         </div>

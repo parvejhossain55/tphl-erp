@@ -50,7 +50,7 @@ $show_breadcrumb = true;
                                                 <i class="fa-sharp fa-light fa-pen"></i>
                                             </button>
 
-                                            <button class="removeBtnCust table__icon delete"
+                                            <button type="button" class="removeBtnCust table__icon delete"
                                                 data-id="<?= $desg['id'] ?>"
                                                 data-name="<?= htmlspecialchars($desg['designation_name']) ?>"
                                                 data-action="delete-designation">
@@ -242,25 +242,53 @@ $show_breadcrumb = true;
 
 
 <script>
-    const base_url = "<?= $GLOBALS['base_url'] ?>"; // PHP outputs the correct base URL
-
-
+    var base_url = "<?= $GLOBALS['base_url'] ?>";
 
     document.addEventListener("DOMContentLoaded", function() {
-        const modal = document.getElementById('editDesignation');
+        var modal = document.getElementById('editDesignation');
+        if (modal) {
+            modal.addEventListener('show.bs.modal', function(event) {
+                var button       = event.relatedTarget;
+                var id           = button.getAttribute('data-id');
+                var name         = button.getAttribute('data-name');
+                var departmentId = button.getAttribute('data-department');
+                document.getElementById('edit_designation_id').value = id;
+                document.getElementById('edit_desgination').value    = name;
+                document.getElementById('edit_department_id').value  = departmentId;
+            });
+        }
+    });
 
-        modal.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
+    window.addEventListener('load', function() {
+        document.querySelectorAll('.removeBtnCust').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var itemId   = this.getAttribute('data-id');
+                var itemName = this.getAttribute('data-name') || 'this item';
+                var action   = this.getAttribute('data-action');
+                if (!action) return;
 
-            const id = button.getAttribute('data-id');
-            const name = button.getAttribute('data-name');
-            const departmentId = button.getAttribute('data-department'); // <-- important
-
-            document.getElementById('edit_designation_id').value = id;
-            document.getElementById('edit_desgination').value = name;
-
-            // Set selected department
-            document.getElementById('edit_department_id').value = departmentId;
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: 'You are about to delete "' + itemName + '". This cannot be undone!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, delete it!',
+                    cancelButtonText: 'Cancel'
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        var form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = base_url + '/' + action;
+                        var input = document.createElement('input');
+                        input.type = 'hidden'; input.name = 'id'; input.value = itemId;
+                        form.appendChild(input);
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            });
         });
     });
 </script>

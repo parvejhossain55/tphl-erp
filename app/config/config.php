@@ -1,10 +1,10 @@
 <?php
 
 // 1 = Local Development Server
-// 2 = Project Testing Server
+// 2 = Project staging Server
 // 3 = Production Server
 
-$current_server = 3; 
+$current_server = 1; 
 
 /////////
 
@@ -38,10 +38,17 @@ if ($current_server == 1) {
 
 if ($current_server == 2) {
     return [
-        "db_host" => "localhost",
-        "db_user" => "root",
-        "db_pass" => "",
-        "db_name" => "easy_nirmanX",
+          "db_host" => "localhost",
+        "db_user" => "erp_staging_user",
+        "db_pass" => "erp_staging_db@#5672dhKL%sd10",
+        "db_name" => "erp_staging_db",
+
+         // AI Assistant Read-Only database connection
+        "db_ai_user" => "tphl_read_only",
+        "db_ai_pass" => "ReadOnlyPass123!",
+
+        // Google Gemini API Key
+        "gemini_api_key" => "AQ.Ab8RN6KH-h0rRtsg0SIvPvY8GuHa6V3gx5VY0c3SC52cLSqybQ",
     ];
 
 }
@@ -64,6 +71,7 @@ if ($current_server == 3) {
         "gemini_api_key" => "AQ.Ab8RN6KH-h0rRtsg0SIvPvY8GuHa6V3gx5VY0c3SC52cLSqybQ",
     ];
 }
+
 
 
 

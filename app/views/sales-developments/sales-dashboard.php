@@ -91,7 +91,7 @@
             </div>
 
             <!-- Action Buttons -->
-            <div class="col-6 col-md-3">
+            <div class="col-12 col-md-3">
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="fa-solid fa-magnifying-glass me-1"></i> Filter
@@ -112,7 +112,7 @@
 
 
             <!-- New Lead & Action tracking data -->
-            <div class="col-6 col-md-4 mb-3 card-item">
+            <div class="col-12 col-sm-6 col-md-4 mb-3 card-item">
                 <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4" style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
@@ -129,7 +129,7 @@
                 </div>
             </div>
 
-            <div class="col-6 col-md-4 mb-3 card-item">
+            <div class="col-12 col-sm-6 col-md-4 mb-3 card-item">
                 <div class="card__wrapper p-3 shadow-sm border-end border-success border-4" style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
@@ -146,7 +146,7 @@
                 </div>
             </div>
 
-            <div class="col-6 col-md-4 mb-3 card-item">
+            <div class="col-12 col-sm-6 col-md-4 mb-3 card-item">
                 <div class="card__wrapper p-3 shadow-sm border-end border-warning border-4" style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
@@ -163,7 +163,7 @@
                 </div>
             </div>
 
-            <div class="col-6 col-md-4 mb-3 card-item">
+            <div class="col-12 col-sm-6 col-md-4 mb-3 card-item">
                 <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4" style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
@@ -180,7 +180,7 @@
                 </div>
             </div>
 
-            <div class="col-6 col-md-4 mb-3 card-item">
+            <div class="col-12 col-sm-6 col-md-4 mb-3 card-item">
                 <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4" style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
@@ -197,7 +197,7 @@
                 </div>
             </div>
 
-            <div class="col-6 col-md-4 mb-3 card-item">
+            <div class="col-12 col-sm-6 col-md-4 mb-3 card-item">
                 <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4" style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
@@ -227,7 +227,7 @@
     </div>
     <div class="row g-20 mb-4 align-items-stretch">
 
-        <div class="col-xxl-3  col-md-4 col-6 mb-2">
+        <div class="col-12 col-sm-6 col-md-4 col-xxl-3 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -241,7 +241,7 @@
             </div>
         </div>
 
-        <div class="col-xxl-3  col-md-4 col-6 mb-2">
+        <div class="col-12 col-sm-6 col-md-4 col-xxl-3 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -269,7 +269,7 @@
             </div>
         </div>
 
-        <div class="col-xxl-3  col-md-4 col-6 mb-2">
+        <div class="col-12 col-sm-6 col-md-4 col-xxl-3 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -282,7 +282,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-xxl-3  col-md-4 col-6 mb-2">
+        <div class="col-12 col-sm-6 col-md-4 col-xxl-3 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -298,7 +298,7 @@
 
 
         <!-- REVENUE + CONVERSION -->
-        <div class="col-xxl-3 col-xl-4 col-md-4 col-6 mb-2">
+        <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -313,7 +313,7 @@
         </div>
 
         <!-- TOTAL PROJECT -->
-        <div class="col-xxl-3 col-xl-4 col-md-4 col-6 mb-2">
+        <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -328,7 +328,7 @@
         </div>
 
         <!-- BOOKING MONEY COLLECTED -->
-        <div class="col-xxl-3  col-xl-4 col-md-4 col-6 mb-2">
+        <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
@@ -344,7 +344,7 @@
             </div>
         </div>
         <!-- CONVERSION RATE -->
-        <div class="col-xxl-3  col-xl-4 col-md-4 col-6 mb-2">
+        <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">

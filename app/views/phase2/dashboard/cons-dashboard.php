@@ -93,6 +93,19 @@ $statusColor = [
         margin-bottom: 22px;
       }
 
+      @media (max-width: 1200px) {
+        .kpi-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      @media (max-width: 576px) {
+        .kpi-grid {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+      }
+
       .kpi-card {
         border-radius: 14px;
         padding: 18px 20px;
@@ -505,6 +518,16 @@ $statusColor = [
       @keyframes slideDown {
           from { opacity: 0; transform: translateY(-5px); }
           to { opacity: 1; transform: translateY(0); }
+      }
+      @media (max-width: 576px) {
+        .phase-progress-row {
+          grid-template-columns: 1fr !important;
+          gap: 8px !important;
+        }
+        .subitem-progress-row {
+          grid-template-columns: 1fr !important;
+          gap: 6px !important;
+        }
       }
     </style>
 
@@ -2061,7 +2084,7 @@ $statusColor = [
     <div class="row  mb-4">
 
       <!-- Smart Alerts -->
-      <div class="col-4">
+      <div class="col-12 col-md-6 col-lg-4 mb-3 mb-lg-0">
         <div class="con-panel card__wrapper h-100">
           <div class="sec-title">
             <div class="sec-title-dot" style="background:var(--cd-red)"></div>
@@ -2137,7 +2160,7 @@ $statusColor = [
       </div>
 
       <!-- Lab Testing Alerts -->
-      <div class="col-4">
+      <div class="col-12 col-md-6 col-lg-4 mb-3 mb-lg-0">
         <div class="con-panel card__wrapper h-100">
           <div class="sec-title">
             <div class="sec-title-dot" style="background:var(--cd-pink)"></div>
@@ -2180,7 +2203,7 @@ $statusColor = [
       </div>
 
       <!-- Low Stock Items -->
-      <div class="col-4">
+      <div class="col-12 col-md-6 col-lg-4 mb-3 mb-lg-0">
         <div class="con-panel card__wrapper h-100">
           <div class="sec-title">
             <div class="sec-title-dot" style="background:var(--cd-red)"></div>
@@ -2225,7 +2248,7 @@ $statusColor = [
     <div class="row  mb-4">
 
       <!-- Project Progress Overview -->
-      <div class="col-8">
+      <div class="col-12 col-xl-8 mb-4 mb-xl-0">
         <div class="con-panel card__wrapper h-100">
           <div class="sec-title">
             <div class="sec-title-dot" style="background:var(--cd-blue)"></div>
@@ -2506,7 +2529,7 @@ $statusColor = [
                                                   $phaseContributionTooltip = "<strong>ℹ️ প্রজেক্টে এই ফেজের অবদান (Project Contribution):</strong><br/>"
                                                                             . "সূত্র: ফেজের বর্তমান প্রগ্রেস (" . toBengaliNum($phaseProgressVal2) . "%) × (ফেজ ওয়েট " . toBengaliNum($phaseWeightVal) . " ÷ ১০০) = " . toBengaliNum($phaseContributionVal) . "%";
                                                   ?>
-                                                  <div style="display: grid; grid-template-columns: 200px 1fr; align-items: center; gap: 16px;">
+                                                  <div class="phase-progress-row" style="display: grid; grid-template-columns: 200px 1fr; align-items: center; gap: 16px;">
                                                       <div style="font-size: 12px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
                                                            <?php if (!empty($phase['items'])): ?>
                                                               <i class="fa-solid fa-chevron-right phase-toggle-icon" 
@@ -2548,7 +2571,7 @@ $statusColor = [
                                                               $itemProjWeight = ($itemWeight / 100) * $phWeight;
                                                               $itemActWeightVal = ($itemActualPct / 100) * $itemProjWeight;
                                                               ?>
-                                                              <div style="display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 16px;">
+                                                              <div class="subitem-progress-row" style="display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 16px;">
                                                                   <div style="font-size: 11.5px; font-weight: 600; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= htmlspecialchars($item['item_name']) ?>">
                                                                       ↳ <?= htmlspecialchars($item['item_name']) ?>
                                                                   </div>
@@ -2586,7 +2609,7 @@ $statusColor = [
       </div>
 
       <!-- Budget Utilization Donut -->
-      <div class="col-4">
+      <div class="col-12 col-xl-4">
         <div class="con-panel card__wrapper h-100 text-center">
           <div class="sec-title justify-content-center">
             <div class="sec-title-dot" style="background:var(--cd-amber)"></div>

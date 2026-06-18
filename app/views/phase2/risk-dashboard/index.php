@@ -27,11 +27,12 @@ $projectId    = $project['id'];
 /* KPI Cards */
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 16px; margin-bottom: 24px; }
 .kpi-card {
-    background: #fff;
+    background: var(--clr-bg-card, #fff);
     border-radius: 14px;
     padding: 20px 22px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-    border-left: 4px solid #e2e8f0;
+    border: 1px solid var(--clr-border-1, #e2e8f0);
+    border-left: 4px solid var(--clr-border-1, #e2e8f0);
     transition: transform 0.18s, box-shadow 0.18s;
 }
 .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(0,0,0,0.1); }
@@ -41,7 +42,7 @@ $projectId    = $project['id'];
 .kpi-card.blue  { border-left-color: #3b82f6; }
 .kpi-card.purple{ border-left-color: var(--clr-theme-secondary); }
 .kpi-number { font-size: 2rem; font-weight: 800; line-height: 1; }
-.kpi-label  { font-size: 0.78rem; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: .04em; }
+.kpi-label  { font-size: 0.78rem; color: var(--clr-text-muted, #64748b); margin-top: 4px; text-transform: uppercase; letter-spacing: .04em; }
 
 /* Severity badges */
 .badge-severity {
@@ -53,10 +54,10 @@ $projectId    = $project['id'];
     text-transform: uppercase;
     letter-spacing: .04em;
 }
-.sev-low      { background: #dcfce7; color: #166534; }
-.sev-medium   { background: #fef9c3; color: #854d0e; }
-.sev-high     { background: #ffedd5; color: #9a3412; }
-.sev-critical { background: #fee2e2; color: #991b1b; }
+.sev-low      { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.sev-medium   { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.sev-high     { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.sev-critical { background: rgba(239, 68, 68, 0.25); color: #ef4444; font-weight: 800; }
 
 /* Status badges */
 .badge-status {
@@ -66,20 +67,25 @@ $projectId    = $project['id'];
     font-size: 0.73rem;
     font-weight: 600;
 }
-.st-open        { background: #fee2e2; color: #991b1b; }
-.st-in-progress { background: #fef3c7; color: #92400e; }
-.st-resolved    { background: #d1fae5; color: #065f46; }
-.st-closed      { background: #e0e7ff; color: #3730a3; }
+.st-open        { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.st-in-progress { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.st-resolved    { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.st-closed      { background: rgba(59, 130, 246, 0.15); color: var(--clr-theme-primary, #3b82f6); }
 
 /* Table */
-.risk-table-wrap { background: #fff; border-radius: 14px; padding: 0; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; margin-bottom: 24px; }
-.risk-table-head { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; border-bottom: 1px solid #f1f5f9; }
-.risk-table-head h5 { margin: 0; font-weight: 700; font-size: 1rem; }
+.risk-table-wrap { background: var(--clr-bg-card, #fff); border-radius: 14px; padding: 0; box-shadow: 0 2px 12px rgba(0,0,0,0.06); border: 1px solid var(--clr-border-1, #e2e8f0); overflow: hidden; margin-bottom: 24px; }
+.risk-table-head { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; border-bottom: 1px solid var(--clr-border-1, #f1f5f9); }
+.risk-table-head h5 { margin: 0; font-weight: 700; font-size: 1rem; color: var(--clr-text-body, inherit); }
 .risk-tbl { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
-.risk-tbl th { background: #f8fafc; color: #475569; font-weight: 600; padding: 10px 14px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-.risk-tbl td { padding: 11px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.risk-tbl th { background: var(--clr-bg-body, #f8fafc); color: var(--clr-text-muted, #475569); font-weight: 600; padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--clr-border-1, #e2e8f0); }
+.risk-tbl td { padding: 11px 14px; border-bottom: 1px solid var(--clr-border-1, #f1f5f9); vertical-align: middle; color: var(--clr-text-body, inherit); }
 .risk-tbl tr:last-child td { border-bottom: none; }
-.risk-tbl tr:hover td { background: #f8fafc; }
+.risk-tbl tr:hover td { background: var(--clr-bg-card-hover, rgba(0, 0, 0, 0.02)); }
+
+/* Description Truncation */
+.risk-desc-col { max-width: 260px; white-space: normal; }
+.risk-desc-text { cursor: pointer; transition: color 0.15s; }
+.risk-desc-text:hover { color: var(--clr-theme-primary, #3b82f6); }
 
 /* Auto badge */
 .badge-auto { background: rgba(var(--clr-theme-primary-rgb),.08); color: #6d28d9; font-size: 0.68rem; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
@@ -87,30 +93,61 @@ $projectId    = $project['id'];
 /* Missed target rows */
 .missed-row td { font-size: 0.83rem; }
 .qty-miss { color: #ef4444; font-weight: 700; }
-.qty-plan { color: #3b82f6; }
+.qty-plan { color: var(--clr-theme-primary, #3b82f6); }
 .qty-ach  { color: #10b981; }
 
 /* Modal */
-.modal-content { border-radius: 16px; border: none; }
+.modal-content { border-radius: 16px; border: none; background: var(--clr-bg-card, #fff); color: var(--clr-text-body, inherit); }
 .modal-header  { background: linear-gradient(135deg, #1e293b, #0f172a); color: #fff; border-radius: 16px 16px 0 0; }
 .modal-header .btn-close { filter: invert(1); }
-.modal-footer  { border-top: 1px solid #f1f5f9; }
-.form-label    { font-weight: 600; font-size: 0.84rem; color: #374151; margin-bottom: 4px; }
-.form-control, .form-select { border-radius: 8px; border: 1.5px solid #e2e8f0; font-size: 0.88rem; }
-.form-control:focus, .form-select:focus { border-color: var(--clr-theme-primary); box-shadow: 0 0 0 3px rgba(var(--clr-theme-primary-rgb),0.1); }
+.modal-footer  { border-top: 1px solid var(--clr-border-1, #f1f5f9); }
+.form-label    { font-weight: 600; font-size: 0.84rem; color: var(--clr-text-body, #374151); margin-bottom: 4px; }
+.form-control, .form-select { border-radius: 8px; border: 1.5px solid var(--clr-border-1, #e2e8f0); font-size: 0.88rem; background: var(--clr-bg-card, #fff); color: var(--clr-text-body, inherit); }
+.form-control:focus, .form-select:focus { border-color: var(--clr-theme-primary); box-shadow: 0 0 0 3px rgba(var(--clr-theme-primary-rgb),0.1); background: var(--clr-bg-card, #fff); color: var(--clr-text-body, inherit); }
 
 /* Tabs */
-.risk-tabs .nav-link { color: #64748b; font-weight: 600; font-size: 0.85rem; border: none; padding: 10px 20px; border-radius: 8px; transition: all 0.2s; }
-.risk-tabs .nav-link.active { background: #1e293b; color: #fff; }
+.risk-tabs .nav-link { color: var(--clr-text-muted, #64748b); font-weight: 600; font-size: 0.85rem; border: none; padding: 10px 20px; border-radius: 8px; transition: all 0.2s; }
+.risk-tabs .nav-link.active { background: var(--clr-theme-primary, #1e293b); color: #fff; }
 .risk-tabs { gap: 6px; }
 
 /* Section title */
-.section-hdr { font-weight: 700; font-size: 1rem; color: #1e293b; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.section-hdr { font-weight: 700; font-size: 1rem; color: var(--clr-text-body, #1e293b); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 .section-hdr .dot { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; }
 
 /* Recovery link */
 .btn-recovery { background: linear-gradient(135deg, var(--clr-theme-secondary), var(--clr-theme-primary)); color: #fff; border: none; border-radius: 10px; padding: 8px 18px; font-weight: 600; font-size: 0.85rem; transition: opacity 0.2s; }
 .btn-recovery:hover { opacity: 0.88; color: #fff; }
+
+/* Mobile Responsiveness Styles */
+@media (max-width: 767.98px) {
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+    .kpi-card {
+        padding: 12px 14px !important;
+    }
+    .kpi-number {
+        font-size: 1.5rem !important;
+    }
+    .kpi-label {
+        font-size: 0.7rem !important;
+    }
+    .risk-tbl th, .risk-tbl td {
+        padding: 8px 10px !important;
+        font-size: 0.78rem !important;
+    }
+    .risk-desc-col {
+        max-width: 150px !important;
+    }
+    .risk-desc-text.truncated {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
 </style>
 
 <div class="container-fluid py-4">
@@ -232,8 +269,10 @@ $projectId    = $project['id'];
                                     <?php endif; ?>
                                 </td>
                                 <td><?= htmlspecialchars($r['category']) ?></td>
-                                <td style="max-width:260px; white-space:normal;">
-                                    <?= htmlspecialchars($r['description']) ?>
+                                <td class="risk-desc-col">
+                                    <div class="risk-desc-text truncated" onclick="toggleRiskDesc(this)" title="Click to expand/collapse">
+                                        <?= htmlspecialchars($r['description']) ?>
+                                    </div>
                                 </td>
                                 <td><?= htmlspecialchars($r['phase_name'] ?? '—') ?></td>
                                 <td>
@@ -326,7 +365,7 @@ $projectId    = $project['id'];
                             <?php
                             $missRatio = $m['planned_qty'] > 0 ? ($m['missed_qty'] / $m['planned_qty']) : 0;
                             $missPct   = round($missRatio * 100, 1);
-                            $rowBg     = $missPct >= 50 ? 'rgba(254,242,242,0.5)' : ($missPct >= 25 ? 'rgba(254,249,195,0.5)' : '');
+                            $rowBg     = $missPct >= 50 ? 'rgba(239, 68, 68, 0.15)' : ($missPct >= 25 ? 'rgba(245, 158, 11, 0.15)' : '');
                             ?>
                             <tr style="background:<?= $rowBg ?>;">
                                 <td><?= htmlspecialchars($m['phase_name']) ?></td>
@@ -458,5 +497,8 @@ function showTab(id, el) {
     document.getElementById(id).style.display = 'block';
     el.classList.add('active');
     return false;
+}
+function toggleRiskDesc(el) {
+    el.classList.toggle('truncated');
 }
 </script>

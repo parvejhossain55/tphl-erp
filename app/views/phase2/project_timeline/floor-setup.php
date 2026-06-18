@@ -23,7 +23,6 @@ if (!empty($project['floor_wise_unit_meta'])) {
 
       .fs-setup-container {
         font-family: 'Plus Jakarta Sans', sans-serif;
-        color: #1e293b;
       }
 
       /* ── Breadcrumb & Header ─────────────────────────────── */
@@ -38,7 +37,7 @@ if (!empty($project['floor_wise_unit_meta'])) {
 
       .fs-breadcrumb {
         font-size: 12px;
-        color: #64748b;
+        color: var(--clr-text-muted, #64748b);
         display: flex;
         align-items: center;
         gap: 6px;
@@ -57,7 +56,6 @@ if (!empty($project['floor_wise_unit_meta'])) {
       .fs-title {
         font-size: 24px;
         font-weight: 800;
-        color: #0f172a;
         margin: 4px 0 0;
         letter-spacing: -0.5px;
       }
@@ -65,15 +63,15 @@ if (!empty($project['floor_wise_unit_meta'])) {
       /* ── Grid Layout ─────────────────────────────────────── */
       .fs-grid {
         display: grid;
-        grid-template-columns: 7fr 5fr;
+        grid-template-columns: 1fr;
         gap: 24px;
         align-items: start;
       }
 
       .fs-panel {
         border-radius: 16px;
-        background: #ffffff;
-        border: 1px solid rgba(226, 232, 240, 0.8);
+        background: var(--clr-bg-card, #ffffff);
+        border: 1px solid var(--clr-border-1, rgba(226, 232, 240, 0.8));
         box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03);
         padding: 24px;
         min-height: 500px;
@@ -82,10 +80,9 @@ if (!empty($project['floor_wise_unit_meta'])) {
       .fs-panel-title {
         font-size: 15px;
         font-weight: 700;
-        color: #0f172a;
         margin-bottom: 20px;
         padding-bottom: 12px;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 1px solid var(--clr-border-1, #f1f5f9);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -100,10 +97,11 @@ if (!empty($project['floor_wise_unit_meta'])) {
       /* Form inputs */
       .form-control, .form-select {
         border-radius: 10px;
-        border: 1px solid #cbd5e1;
+        border: 1px solid var(--clr-border-1, #cbd5e1);
         padding: 8px 12px;
         font-size: 13px;
-        color: #1e293b;
+        background-color: var(--clr-bg-card, #ffffff);
+        color: inherit;
         transition: all 0.15s ease;
       }
 
@@ -113,9 +111,16 @@ if (!empty($project['floor_wise_unit_meta'])) {
         outline: none;
       }
 
+      .fs-table-wrapper {
+        overflow-x: auto;
+        width: 100%;
+        margin-bottom: 15px;
+      }
+
       /* Dynamic table */
       .fs-table {
         width: 100%;
+        min-width: 750px;
         border-collapse: collapse;
       }
 
@@ -123,22 +128,22 @@ if (!empty($project['floor_wise_unit_meta'])) {
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
-        color: #64748b;
+        color: var(--clr-text-muted, #64748b);
         padding: 10px 8px;
-        border-bottom: 2px solid #e2e8f0;
+        border-bottom: 2px solid var(--clr-border-1, #e2e8f0);
         text-align: left;
       }
 
       .fs-table td {
         padding: 10px 8px;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 1px solid var(--clr-border-1, #f1f5f9);
         vertical-align: middle;
       }
 
       .btn-add-row {
-        background: #f1f5f9;
-        color: #475569;
-        border: 1px dashed #cbd5e1;
+        background: var(--clr-border-1, #f1f5f9);
+        color: inherit;
+        border: 1px dashed var(--clr-border-1, #cbd5e1);
         font-size: 12.5px;
         font-weight: 600;
         padding: 8px 16px;
@@ -153,8 +158,8 @@ if (!empty($project['floor_wise_unit_meta'])) {
       }
 
       .btn-add-row:hover {
-        background: #e2e8f0;
-        color: #1e293b;
+        background: var(--clr-border-1, #e2e8f0);
+        color: inherit;
       }
 
       .btn-delete-row {
@@ -191,9 +196,9 @@ if (!empty($project['floor_wise_unit_meta'])) {
 
       /* ── Building stack visual preview ────────────────────── */
       .building-wrapper {
-        background: #f8fafc;
+        background: var(--clr-bg-body, #f8fafc);
         border-radius: 12px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--clr-border-1, #e2e8f0);
         padding: 30px;
         display: flex;
         flex-direction: column;
@@ -211,7 +216,7 @@ if (!empty($project['floor_wise_unit_meta'])) {
         left: 20px;
         font-size: 11px;
         font-weight: 600;
-        color: #94a3b8;
+        color: var(--clr-text-muted, #94a3b8);
         display: flex;
         align-items: center;
         gap: 6px;
@@ -276,14 +281,14 @@ if (!empty($project['floor_wise_unit_meta'])) {
       .building-ground-line {
         width: 120%;
         height: 6px;
-        background: #cbd5e1;
+        background: var(--clr-border-1, #cbd5e1);
         margin-top: 15px;
         border-radius: 4px;
         z-index: 1;
       }
 
       .empty-building-state {
-        color: #94a3b8;
+        color: var(--clr-text-muted, #94a3b8);
         font-size: 13px;
         font-weight: 600;
         text-align: center;
@@ -297,7 +302,7 @@ if (!empty($project['floor_wise_unit_meta'])) {
 
       .empty-building-state i {
         font-size: 32px;
-        color: #cbd5e1;
+        color: var(--clr-border-1, #cbd5e1);
       }
 
       /* Quick fill button group */
@@ -312,9 +317,9 @@ if (!empty($project['floor_wise_unit_meta'])) {
         font-weight: 700;
         padding: 5px 10px;
         border-radius: 6px;
-        border: 1px solid #cbd5e1;
-        background: #ffffff;
-        color: #475569;
+        border: 1px solid var(--clr-border-1, #cbd5e1);
+        background: var(--clr-bg-card, #ffffff);
+        color: inherit;
         transition: all 0.15s ease;
       }
 
@@ -386,72 +391,74 @@ if (!empty($project['floor_wise_unit_meta'])) {
           </div>
 
           <form action="<?= $base ?>/con-floor-setup-save/<?= $project['id'] ?>" method="POST" id="floorForm">
-            <table class="fs-table" id="floorTable">
-              <thead>
-                <tr>
-                  <th style="width: 12%">Floor Number</th>
-                  <th style="width: 18%">Floor Type</th>
-                  <th style="width: 22%">Unit Area (SQFT)</th>
-                  <th style="width: 20%">Extra Area (SQFT)</th>
-                  <th style="width: 18%">Slab Area (SQFT)</th>
-                  <th style="width: 10%">Height (FT)</th>
-                  <th style="width: 10%">Action</th>
-                </tr>
-              </thead>
-              <tbody id="floorTableBody">
-                <!-- Rows loaded via PHP or Javascript -->
-                <?php if (empty($floors)): ?>
-                  <!-- Default structure suggestion if empty -->
-                  <tr class="floor-row">
-                    <td><input type="number" class="form-control floor-no-input" name="floor_no[]" value="0" required></td>
-                    <td>
-                      <select class="form-select floor-type-select" name="floor_type[]">
-                        <option value="Ground_Floor">Ground Floor</option>
-                        <option value="Basement">Basement</option>
-                        <option value="Typical_Floor">Typical Floor</option>
-                        <option value="Roof">Roof</option>
-                      </select>
-                    </td>
-                    <td>
-                      <input type="number" step="0.01" class="form-control unit-area-input" name="unit_area_sqft[]" value="<?= number_format($unitMetaSum, 2, '.', '') ?>" placeholder="e.g. 1200" required>
-                    </td>
-                    <td>
-                      <input type="number" step="0.01" class="form-control extra-area-input" name="extra_sqft[]" value="0.00" placeholder="e.g. 300" required>
-                    </td>
-                    <td>
-                      <input type="number" step="0.01" class="form-control slab-area-input" name="slab_area_sqft[]" value="<?= number_format($unitMetaSum, 2, '.', '') ?>" readonly style="background-color: #f1f5f9; cursor: not-allowed;" required>
-                    </td>
-                    <td><input type="number" step="0.1" class="form-control height-input" name="height_ft[]" value="10.0" required></td>
-                    <td><button type="button" class="btn-delete-row" title="Delete Floor"><i class="fal fa-times"></i></button></td>
+            <div class="fs-table-wrapper">
+              <table class="fs-table" id="floorTable">
+                <thead>
+                  <tr>
+                    <th style="width: 12%">Floor Number</th>
+                    <th style="width: 18%">Floor Type</th>
+                    <th style="width: 22%">Unit Area (SQFT)</th>
+                    <th style="width: 20%">Extra Area (SQFT)</th>
+                    <th style="width: 18%">Slab Area (SQFT)</th>
+                    <th style="width: 10%">Height (FT)</th>
+                    <th style="width: 10%">Action</th>
                   </tr>
-                <?php else: ?>
-                  <?php foreach ($floors as $floor): ?>
+                </thead>
+                <tbody id="floorTableBody">
+                  <!-- Rows loaded via PHP or Javascript -->
+                  <?php if (empty($floors)): ?>
+                    <!-- Default structure suggestion if empty -->
                     <tr class="floor-row">
-                      <td><input type="number" class="form-control floor-no-input" name="floor_no[]" value="<?= $floor['floor_no'] ?>" required></td>
+                      <td><input type="number" class="form-control floor-no-input" name="floor_no[]" value="0" required></td>
                       <td>
                         <select class="form-select floor-type-select" name="floor_type[]">
-                          <option value="Basement" <?= $floor['floor_type'] === 'Basement' ? 'selected' : '' ?>>Basement</option>
-                          <option value="Ground_Floor" <?= $floor['floor_type'] === 'Ground_Floor' ? 'selected' : '' ?>>Ground Floor</option>
-                          <option value="Typical_Floor" <?= $floor['floor_type'] === 'Typical_Floor' ? 'selected' : '' ?>>Typical Floor</option>
-                          <option value="Roof" <?= $floor['floor_type'] === 'Roof' ? 'selected' : '' ?>>Roof</option>
+                          <option value="Ground_Floor">Ground Floor</option>
+                          <option value="Basement">Basement</option>
+                          <option value="Typical_Floor">Typical Floor</option>
+                          <option value="Roof">Roof</option>
                         </select>
                       </td>
                       <td>
-                        <input type="number" step="0.01" class="form-control unit-area-input" name="unit_area_sqft[]" value="<?= number_format($floor['unit_area_sqft'], 2, '.', '') ?>" required>
+                        <input type="number" step="0.01" class="form-control unit-area-input" name="unit_area_sqft[]" value="<?= number_format($unitMetaSum, 2, '.', '') ?>" placeholder="e.g. 1200" required>
                       </td>
                       <td>
-                        <input type="number" step="0.01" class="form-control extra-area-input" name="extra_sqft[]" value="<?= number_format($floor['extra_sqft'], 2, '.', '') ?>" required>
+                        <input type="number" step="0.01" class="form-control extra-area-input" name="extra_sqft[]" value="0.00" placeholder="e.g. 300" required>
                       </td>
                       <td>
-                        <input type="number" step="0.01" class="form-control slab-area-input" name="slab_area_sqft[]" value="<?= number_format($floor['slab_area_sqft'], 2, '.', '') ?>" readonly style="background-color: #f1f5f9; cursor: not-allowed;" required>
+                        <input type="number" step="0.01" class="form-control slab-area-input" name="slab_area_sqft[]" value="<?= number_format($unitMetaSum, 2, '.', '') ?>" readonly style="background-color: var(--clr-bg-body, #f1f5f9); cursor: not-allowed;" required>
                       </td>
-                      <td><input type="number" step="0.1" class="form-control height-input" name="height_ft[]" value="<?= $floor['height_ft'] ?>" required></td>
+                      <td><input type="number" step="0.1" class="form-control height-input" name="height_ft[]" value="10.0" required></td>
                       <td><button type="button" class="btn-delete-row" title="Delete Floor"><i class="fal fa-times"></i></button></td>
                     </tr>
-                  <?php endforeach; ?>
-                <?php endif; ?>
-              </tbody>
-            </table>
+                  <?php else: ?>
+                    <?php foreach ($floors as $floor): ?>
+                      <tr class="floor-row">
+                        <td><input type="number" class="form-control floor-no-input" name="floor_no[]" value="<?= $floor['floor_no'] ?>" required></td>
+                        <td>
+                          <select class="form-select floor-type-select" name="floor_type[]">
+                            <option value="Basement" <?= $floor['floor_type'] === 'Basement' ? 'selected' : '' ?>>Basement</option>
+                            <option value="Ground_Floor" <?= $floor['floor_type'] === 'Ground_Floor' ? 'selected' : '' ?>>Ground Floor</option>
+                            <option value="Typical_Floor" <?= $floor['floor_type'] === 'Typical_Floor' ? 'selected' : '' ?>>Typical Floor</option>
+                            <option value="Roof" <?= $floor['floor_type'] === 'Roof' ? 'selected' : '' ?>>Roof</option>
+                          </select>
+                        </td>
+                        <td>
+                          <input type="number" step="0.01" class="form-control unit-area-input" name="unit_area_sqft[]" value="<?= number_format($floor['unit_area_sqft'], 2, '.', '') ?>" required>
+                        </td>
+                        <td>
+                          <input type="number" step="0.01" class="form-control extra-area-input" name="extra_sqft[]" value="<?= number_format($floor['extra_sqft'], 2, '.', '') ?>" required>
+                        </td>
+                        <td>
+                          <input type="number" step="0.01" class="form-control slab-area-input" name="slab_area_sqft[]" value="<?= number_format($floor['slab_area_sqft'], 2, '.', '') ?>" readonly style="background-color: var(--clr-bg-body, #f1f5f9); cursor: not-allowed;" required>
+                        </td>
+                        <td><input type="number" step="0.1" class="form-control height-input" name="height_ft[]" value="<?= $floor['height_ft'] ?>" required></td>
+                        <td><button type="button" class="btn-delete-row" title="Delete Floor"><i class="fal fa-times"></i></button></td>
+                      </tr>
+                    <?php endforeach; ?>
+                  <?php endif; ?>
+                </tbody>
+              </table>
+            </div>
 
             <button type="button" class="btn-add-row" id="btnAddRow">
               <i class="fal fa-plus-circle"></i> Add Custom Floor Row
@@ -465,30 +472,7 @@ if (!empty($project['floor_wise_unit_meta'])) {
           </form>
         </div>
 
-        <!-- RIGHT PANEL: INTERACTIVE BUILDING STACK PREVIEW -->
-        <div class="fs-panel">
-          <div class="fs-panel-title">
-            <span>
-              <i class="fal fa-eye" style="color:#10b981"></i>
-              Building Stack Visualization
-            </span>
-          </div>
 
-          <div class="building-wrapper">
-            <div class="building-sky"><i class="fal fa-clouds"></i> Sky View</div>
-            
-            <div class="empty-building-state" id="emptyBuildingState">
-              <i class="fal fa-building"></i>
-              No floors configured yet.
-            </div>
-
-            <div class="building-stack" id="buildingStack">
-              <!-- Stack items injected via javascript -->
-            </div>
-
-            <div class="building-ground-line"></div>
-          </div>
-        </div>
 
       </div>
 
@@ -500,81 +484,9 @@ if (!empty($project['floor_wise_unit_meta'])) {
 document.addEventListener("DOMContentLoaded", function() {
   const tableBody = document.getElementById("floorTableBody");
   const btnAddRow = document.getElementById("btnAddRow");
-  const buildingStack = document.getElementById("buildingStack");
-  const emptyState = document.getElementById("emptyBuildingState");
-
-  // Load select option mapping
-  const typeLabels = {
-    'Basement': 'Basement',
-    'Ground_Floor': 'Ground Floor',
-    'Typical_Floor': 'Typical Floor',
-    'Roof': 'Roof'
-  };
-
-  const typeClasses = {
-    'Basement': 'bf-basement',
-    'Ground_Floor': 'bf-ground',
-    'Typical_Floor': 'bf-typical',
-    'Roof': 'bf-roof'
-  };
-
-  // Redraw Building Stack Visual
+  // Redraw Building Stack Visual (Visualization Removed)
   function updateBuildingStack() {
-    const rows = tableBody.querySelectorAll(".floor-row");
-    buildingStack.innerHTML = "";
-
-    if (rows.length === 0) {
-      emptyState.style.display = "flex";
-      return;
-    }
-    emptyState.style.display = "none";
-
-    // Gather floor objects
-    let floorData = [];
-    rows.forEach(row => {
-      const fNoInput = row.querySelector(".floor-no-input");
-      const fTypeSelect = row.querySelector(".floor-type-select");
-      const slabInput = row.querySelector(".slab-area-input");
-      
-      const floorNo = parseInt(fNoInput.value);
-      const floorType = fTypeSelect.value;
-      const slabArea = parseFloat(slabInput.value) || 0;
-
-      if (!isNaN(floorNo)) {
-        floorData.push({
-          no: floorNo,
-          type: floorType,
-          area: slabArea
-        });
-      }
-    });
-
-    // Sort by floor_no ascending (flex-direction: column-reverse handles stacking correctly)
-    floorData.sort((a, b) => a.no - b.no);
-
-    floorData.forEach(item => {
-      const card = document.createElement("div");
-      card.className = `building-floor ${typeClasses[item.type] || 'bf-typical'}`;
-      
-      // Label logic
-      let floorLabel = '';
-      if (item.type === 'Roof') {
-        floorLabel = `Roof (Lvl ${item.no})`;
-      } else if (item.type === 'Ground_Floor') {
-        floorLabel = `Ground Floor`;
-      } else if (item.type === 'Basement') {
-        floorLabel = `Basement ${Math.abs(item.no)}`;
-      } else {
-        floorLabel = `${getOrdinal(item.no)} Floor`;
-      }
-
-      card.innerHTML = `
-        <div>${floorLabel}</div>
-        <div class="floor-meta">${item.area.toLocaleString()} SQFT</div>
-      `;
-      
-      buildingStack.appendChild(card);
-    });
+    // No-op
   }
 
   function getOrdinal(n) {
@@ -614,7 +526,7 @@ document.addEventListener("DOMContentLoaded", function() {
         <input type="number" step="0.01" class="form-control extra-area-input" name="extra_sqft[]" value="${extraVal.toFixed(2)}" required>
       </td>
       <td>
-        <input type="number" step="0.01" class="form-control slab-area-input" name="slab_area_sqft[]" value="${slabVal.toFixed(2)}" readonly style="background-color: #f1f5f9; cursor: not-allowed;" required>
+        <input type="number" step="0.01" class="form-control slab-area-input" name="slab_area_sqft[]" value="${slabVal.toFixed(2)}" readonly style="background-color: var(--clr-bg-body, #f1f5f9); cursor: not-allowed;" required>
       </td>
       <td><input type="number" step="0.1" class="form-control height-input" name="height_ft[]" value="${height}" required></td>
       <td><button type="button" class="btn-delete-row" title="Delete Floor"><i class="fal fa-times"></i></button></td>
