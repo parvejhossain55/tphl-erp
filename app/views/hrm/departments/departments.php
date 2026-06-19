@@ -217,37 +217,7 @@ $show_breadcrumb = true;
         }
     });
 
-    // Delete handler — runs after ALL scripts (jQuery + Swal) are loaded
-    window.addEventListener('load', function() {
-        document.querySelectorAll('.removeBtnCust').forEach(function(btn) {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                var itemId   = this.getAttribute('data-id');
-                var itemName = this.getAttribute('data-name') || 'this item';
-                var action   = this.getAttribute('data-action');
-                if (!action) return;
 
-                Swal.fire({
-                    title: 'Are you sure?',
-                    text: 'You are about to delete "' + itemName + '". This cannot be undone!',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Yes, delete it!',
-                    cancelButtonText: 'Cancel'
-                }).then(function(result) {
-                    if (result.isConfirmed) {
-                        var form = document.createElement('form');
-                        form.method = 'POST';
-                        form.action = base_url + '/' + action;
-                        var input = document.createElement('input');
-                        input.type = 'hidden'; input.name = 'id'; input.value = itemId;
-                        form.appendChild(input);
-                        document.body.appendChild(form);
-                        form.submit();
-                    }
-                });
-            });
-        });
-    });
+    // Deletion is handled globally by footer.php's delegated listener on .removeBtnCust
+
 </script>

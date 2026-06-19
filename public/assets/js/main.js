@@ -1793,37 +1793,9 @@ function bd_settings_append($x) {
 
 	// crypto order list search js 
 	
-$(document).on('click', '.removeBtnCust', function (e) {
-    e.preventDefault();
-
-    const itemId   = $(this).data('id');
-    const itemName = $(this).data('name');
-    const actionUrl = $(this).attr('data-action');
-
-    Swal.fire({
-        title: "Are you sure?",
-        text: `You are about to delete "${itemName}". This action cannot be undone!`,
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Yes, delete it!"
-    }).then((result) => {
-        if (result.isConfirmed) {
-            const form = $('<form>', {
-                method: 'POST',
-                action: base_url + '/' + actionUrl
-            });
-
-            form.append($('<input>', {
-                type: 'hidden',
-                name: 'id',
-                value: itemId
-            }));
-
-            $('body').append(form);
-            form.submit();
-        }
-    });
-});
+	// NOTE: Global delete click handler on .removeBtnCust is handled centrally in layouts/footer.php to avoid conflicts and handle base_url safety.
+	
+	
 
 	
 	

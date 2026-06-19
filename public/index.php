@@ -739,6 +739,29 @@ if (strpos($route, $base_folder) === 0) {
 }
 $route = trim($route, '/');
 
+if ($route === 'log-client-debug') {
+    header('Content-Type: application/json');
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+    if ($data) {
+        $logFile = dirname(__DIR__) . '/logs/client_debug.log';
+        $timestamp = date('Y-m-d H:i:s');
+        $message = sprintf(
+            "[%s] URL: %s | Type: %s | Message: %s | Details: %s\n",
+            $timestamp,
+            $data['url'] ?? 'N/A',
+            $data['type'] ?? 'info',
+            $data['message'] ?? '',
+            json_encode($data['details'] ?? [], JSON_UNESCAPED_SLASHES)
+        );
+        file_put_contents($logFile, $message, FILE_APPEND);
+        echo json_encode(['status' => 'success']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Invalid data']);
+    }
+    exit;
+}
+
 /**
  *  GLOBAL AUTH CHECK
  */
