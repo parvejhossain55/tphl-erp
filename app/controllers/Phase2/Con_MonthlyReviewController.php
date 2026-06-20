@@ -70,32 +70,43 @@ class Con_MonthlyReviewController extends Controller {
 
         // Fetch planned quantities from monthly targets
         $planStmt = $this->db->prepare("
-            SELECT pmti.phase_item_id, pmti.work_type_id, SUM(pmti.monthly_target_qty) AS total_target_qty
+            SELECT pmti.phase_item_id, pmti.work_type_id, pmti.target_mode,
+                   SUM(CASE WHEN pmti.target_mode = 'pct' THEN pmti.monthly_target_pct ELSE pmti.monthly_target_qty END) AS total_target_qty
             FROM phase_monthly_target_items pmti
             INNER JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
             WHERE pmt.project_id = ?
-            GROUP BY pmti.phase_item_id, pmti.work_type_id
+            GROUP BY pmti.phase_item_id, pmti.work_type_id, pmti.target_mode
         ");
         $planStmt->bind_param('i', $projectId);
         $planStmt->execute();
         $plannedQuantities = $planStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        // Fetch actual completed quantities from approved daily logs with fallback for NULL detail IDs
+        // Fetch actual completed quantities from approved daily logs
         $actStmt = $this->db->prepare("
-            SELECT COALESCE(dwil.phase_item_detail_id, ppid.id) AS phase_item_detail_id,
-                   SUM(dwil.qty_done_today) AS total_actual_qty
+            SELECT pmti.phase_item_id, pmti.work_type_id, pmti.target_mode,
+                   SUM(CASE WHEN pmti.target_mode = 'pct' THEN dwil.pct_done_today ELSE dwil.qty_done_today END) AS total_actual_qty
             FROM daily_work_item_logs dwil
             INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
             LEFT JOIN phase_monthly_target_items pmti ON pmti.id = dwil.target_item_id
-            LEFT JOIN project_phase_item_details ppid ON ppid.phase_item_id = pmti.phase_item_id AND ppid.work_type_id = dwil.work_type_id
             WHERE dpl.project_id = ?
               AND dpl.qc_status = 'Approved'
               AND dpl.pm_status = 'Approved'
-            GROUP BY COALESCE(dwil.phase_item_detail_id, ppid.id)
+            GROUP BY pmti.phase_item_id, pmti.work_type_id, pmti.target_mode
         ");
         $actStmt->bind_param('i', $projectId);
         $actStmt->execute();
         $actualQuantities = $actStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Fetch project sub-items (Layer 2) to get weights
+        $ppiStmt = $this->db->prepare("
+            SELECT ppi.id AS item_id, ppi.phase_id, ppi.weight_pct AS item_weight
+            FROM project_phase_items ppi
+            INNER JOIN project_phases pp ON pp.id = ppi.phase_id
+            WHERE pp.project_id = ?
+        ");
+        $ppiStmt->bind_param('i', $projectId);
+        $ppiStmt->execute();
+        $projectItems = $ppiStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
         // Map data in PHP
         $targetsMap = [];
@@ -106,8 +117,42 @@ class Con_MonthlyReviewController extends Controller {
 
         $actualsMap = [];
         foreach ($actualQuantities as $q) {
-            if ($q['phase_item_detail_id'] !== null) {
-                $actualsMap[(int)$q['phase_item_detail_id']] = (float)$q['total_actual_qty'];
+            $key = $q['phase_item_id'] . '_' . $q['work_type_id'];
+            $actualsMap[$key] = ($actualsMap[$key] ?? 0.0) + (float)$q['total_actual_qty'];
+        }
+
+        // Synthesize detail rows for any planned targets not in project_phase_item_details
+        $existingDetailKeys = [];
+        foreach ($details as $d) {
+            $existingDetailKeys[$d['phase_item_id'] . '_' . $d['work_type_id']] = true;
+        }
+
+        foreach ($plannedQuantities as $q) {
+            $itemId = (int)$q['phase_item_id'];
+            $wtId = (int)$q['work_type_id'];
+            $key = $itemId . '_' . $wtId;
+            if (!isset($existingDetailKeys[$key])) {
+                $phId = null;
+                $subItemWeight = 0.0;
+                foreach ($projectItems as $pi) {
+                    if ((int)$pi['item_id'] === $itemId) {
+                        $phId = (int)$pi['phase_id'];
+                        $subItemWeight = (float)$pi['item_weight'];
+                        break;
+                    }
+                }
+                
+                if ($phId !== null) {
+                    $details[] = [
+                        'phase_id' => $phId,
+                        'phase_item_id' => $itemId,
+                        'detail_id' => null,
+                        'work_type_id' => $wtId,
+                        'total_boq_qty' => ($q['target_mode'] === 'pct') ? 100.0 : 0.0,
+                        'detail_weight' => $subItemWeight,
+                    ];
+                    $existingDetailKeys[$key] = true;
+                }
             }
         }
 
@@ -118,6 +163,7 @@ class Con_MonthlyReviewController extends Controller {
             $phaseId = (int)$d['phase_id'];
             $boqQty  = (float)$d['total_boq_qty'];
             $weight  = (float)$d['detail_weight'];
+            $key = $d['phase_item_id'] . '_' . $d['work_type_id'];
 
             if (!isset($phasePlannedProgress[$phaseId])) {
                 $phasePlannedProgress[$phaseId] = 0.0;
@@ -126,13 +172,12 @@ class Con_MonthlyReviewController extends Controller {
 
             if ($boqQty > 0) {
                 // Planned ratio (capped at 1.0)
-                $targetKey = $d['phase_item_id'] . '_' . $d['work_type_id'];
-                $targetQty = $targetsMap[$targetKey] ?? 0.0;
+                $targetQty = $targetsMap[$key] ?? 0.0;
                 $plannedRatio = min(1.0, $targetQty / $boqQty);
                 $phasePlannedProgress[$phaseId] += $plannedRatio * $weight;
 
                 // Actual ratio (capped at 1.0)
-                $actualQty = $actualsMap[(int)$d['detail_id']] ?? 0.0;
+                $actualQty = $actualsMap[$key] ?? 0.0;
                 $actualRatio = min(1.0, $actualQty / $boqQty);
                 $phaseActualProgress[$phaseId] += $actualRatio * $weight;
             }
@@ -150,12 +195,43 @@ class Con_MonthlyReviewController extends Controller {
             SELECT pmt.id, pmt.phase_id, pmt.target_month, pmt.planning_status,
                    pmt.responsible_team,
                    COUNT(pmti.id)                        AS item_count,
-                   SUM(pmti.monthly_target_qty)          AS total_target_qty,
+                   SUM(CASE WHEN pmti.target_mode = 'pct' THEN pmti.monthly_target_pct ELSE pmti.monthly_target_qty END) AS total_target_qty,
                    SUM(pmti.actual_qty)                  AS total_actual_qty,
-                   SUM(COALESCE((pmti.monthly_target_qty / NULLIF(ppid.total_boq_qty, 0)) * 100, 0)) AS avg_planned_pct,
-                   SUM(COALESCE((pmti.actual_qty / NULLIF(ppid.total_boq_qty, 0)) * 100, 0)) AS avg_actual_pct
+                   SUM(
+                       CASE
+                           WHEN pmti.target_mode = 'pct' THEN
+                               COALESCE(
+                                   (
+                                       SELECT (pmti.monthly_target_pct / 100.0) * ppid.weight_pct
+                                       FROM project_phase_item_details ppid
+                                       WHERE ppid.phase_item_id = pmti.phase_item_id
+                                         AND ppid.work_type_id = pmti.work_type_id
+                                   ),
+                                   (pmti.monthly_target_pct / 100.0) * ppi.weight_pct,
+                                   0
+                               )
+                           ELSE COALESCE((pmti.monthly_target_qty / NULLIF(ppid.total_boq_qty, 0)) * ppid.weight_pct, 0)
+                       END
+                   ) AS avg_planned_pct,
+                   SUM(
+                       CASE
+                           WHEN pmti.target_mode = 'pct' THEN
+                               COALESCE(
+                                   (
+                                       SELECT (pmti.actual_progress_pct / 100.0) * ppid.weight_pct
+                                       FROM project_phase_item_details ppid
+                                       WHERE ppid.phase_item_id = pmti.phase_item_id
+                                         AND ppid.work_type_id = pmti.work_type_id
+                                   ),
+                                   (pmti.actual_progress_pct / 100.0) * ppi.weight_pct,
+                                   0
+                               )
+                           ELSE COALESCE((pmti.actual_qty / NULLIF(ppid.total_boq_qty, 0)) * ppid.weight_pct, 0)
+                       END
+                   ) AS avg_actual_pct
             FROM phase_monthly_targets pmt
             LEFT JOIN phase_monthly_target_items pmti ON pmti.target_id = pmt.id
+            LEFT JOIN project_phase_items ppi ON ppi.phase_id = pmt.phase_id AND ppi.item_name = pmti.work_item_name COLLATE utf8mb4_general_ci
             LEFT JOIN project_phase_item_details ppid ON ppid.phase_item_id = pmti.phase_item_id AND ppid.work_type_id = pmti.work_type_id
             WHERE pmt.project_id = ?
             GROUP BY pmt.id
@@ -228,8 +304,22 @@ class Con_MonthlyReviewController extends Controller {
             SELECT pmti.*,
                    wt.work_type_name,
                    dt.name AS design_type_name,
-                   COALESCE((pmti.monthly_target_qty / NULLIF(ppid.total_boq_qty, 0)) * 100, 0) AS planned_progress_pct,
-                   COALESCE((pmti.actual_qty / NULLIF(ppid.total_boq_qty, 0)) * 100, 0) AS actual_progress_pct
+                   CASE
+                       WHEN pmti.target_mode = 'pct' THEN pmti.monthly_target_pct
+                       ELSE COALESCE((pmti.monthly_target_qty / NULLIF(ppid.total_boq_qty, 0)) * 100, 0)
+                   END AS planned_progress_pct,
+                   CASE
+                       WHEN pmti.target_mode = 'pct' THEN
+                           COALESCE((
+                               SELECT SUM(dwil.pct_done_today)
+                               FROM daily_work_item_logs dwil
+                               INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+                               WHERE dwil.target_item_id = pmti.id
+                                 AND dpl.qc_status = 'Approved'
+                                 AND dpl.pm_status = 'Approved'
+                           ), 0)
+                       ELSE COALESCE((pmti.actual_qty / NULLIF(ppid.total_boq_qty, 0)) * 100, 0)
+                   END AS actual_progress_pct
             FROM phase_monthly_target_items pmti
             LEFT JOIN work_types wt ON wt.id = pmti.work_type_id
             LEFT JOIN design_types dt ON dt.id = wt.design_type_id
@@ -269,10 +359,19 @@ class Con_MonthlyReviewController extends Controller {
         $wpiStmt->execute();
         $allWPI = $wpiStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
+        // Map item modes for easy lookup
+        $itemModeMap = [];
+        foreach ($workItems as $wi) {
+            $itemModeMap[(int)$wi['id']] = $wi['target_mode'] ?? 'qty';
+        }
+
         // Build per-item aggregate (sum achieved across all weeks)
         $itemAgg = []; // [target_item_id => ['achieved'=>X, 'status'=>..., 'responsible_team'=>..., 'has_issue'=>...]]
         foreach ($allWPI as $wpi) {
             $tid = (int)$wpi['target_item_id'];
+            $mode = $itemModeMap[$tid] ?? 'qty';
+            $achievedVal = ($mode === 'pct') ? (float)$wpi['achieved_pct'] : (float)$wpi['achieved_qty'];
+
             if (!isset($itemAgg[$tid])) {
                 $itemAgg[$tid] = [
                     'achieved_sum' => 0,
@@ -283,7 +382,7 @@ class Con_MonthlyReviewController extends Controller {
                     'weeks'        => [],
                 ];
             }
-            $itemAgg[$tid]['achieved_sum']    += (float)$wpi['achieved_qty'];
+            $itemAgg[$tid]['achieved_sum']    += $achievedVal;
             $itemAgg[$tid]['has_issue']       += (int)$wpi['has_issue_flag'];
             if (!empty($wpi['remarks_action']) && empty($itemAgg[$tid]['delay_reason'])) {
                 $itemAgg[$tid]['delay_reason'] = $wpi['remarks_action'];
@@ -293,7 +392,7 @@ class Con_MonthlyReviewController extends Controller {
             }
             // Last week status wins
             $itemAgg[$tid]['status'] = $wpi['status'];
-            $itemAgg[$tid]['weeks'][$wpi['week_number']] = (float)$wpi['achieved_qty'];
+            $itemAgg[$tid]['weeks'][$wpi['week_number']] = $achievedVal;
         }
 
         // Team performance aggregation
@@ -342,14 +441,24 @@ class Con_MonthlyReviewController extends Controller {
             $plannedPct = (float)$wi['planned_progress_pct'];
             $totalPlannedPct += $plannedPct;
 
-            $mTargetQty = (float)($wi['monthly_target_qty'] ?? 0);
-            $plannedQtyUpToActiveWeek = 0;
-            for ($w = 1; $w <= $activeWeek; $w++) {
-                $plannedQtyUpToActiveWeek += (float)($wi['week_' . $w . '_qty'] ?? 0);
-            }
-
-            if ($mTargetQty > 0) {
-                $totalPlannedProRated += $plannedPct * ($plannedQtyUpToActiveWeek / $mTargetQty);
+            if (($wi['target_mode'] ?? 'qty') === 'pct') {
+                $mTargetPct = (float)($wi['monthly_target_pct'] ?? 0);
+                $plannedPctUpToActiveWeek = 0;
+                for ($w = 1; $w <= $activeWeek; $w++) {
+                    $plannedPctUpToActiveWeek += (float)($wi['week_' . $w . '_pct'] ?? 0);
+                }
+                if ($mTargetPct > 0) {
+                    $totalPlannedProRated += $plannedPct * ($plannedPctUpToActiveWeek / $mTargetPct);
+                }
+            } else {
+                $mTargetQty = (float)($wi['monthly_target_qty'] ?? 0);
+                $plannedQtyUpToActiveWeek = 0;
+                for ($w = 1; $w <= $activeWeek; $w++) {
+                    $plannedQtyUpToActiveWeek += (float)($wi['week_' . $w . '_qty'] ?? 0);
+                }
+                if ($mTargetQty > 0) {
+                    $totalPlannedProRated += $plannedPct * ($plannedQtyUpToActiveWeek / $mTargetQty);
+                }
             }
         }
         $totalPlannedProRated = min($totalPlannedPct, $totalPlannedProRated);

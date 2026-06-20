@@ -108,6 +108,14 @@ class Con_MonthlyTargetController extends Controller {
         $summary  = $this->model->getProgressSummary($target_id);
         $workTypes = $this->model->getWorkTypes();
 
+        // Load daily breakdown for all pct items
+        $dailyBreakdowns = [];
+        foreach ($items as $item) {
+            if (($item['target_mode'] ?? 'qty') === 'pct') {
+                $dailyBreakdowns[$item['id']] = $this->model->getDailyPctBreakdown($item['id']);
+            }
+        }
+
         // Get design_types for filter
         $dtRes    = $this->db->query("SELECT id, name FROM design_types WHERE status='active' ORDER BY name");
         $designTypes = $dtRes ? $dtRes->fetch_all(MYSQLI_ASSOC) : [];
@@ -139,16 +147,17 @@ class Con_MonthlyTargetController extends Controller {
         $projectFloors = $stmtFl->get_result()->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/monthly_targets/form', [
-            'current_route' => 'con-monthly-targets',
-            'target'        => $target,
-            'items'         => $items,
-            'summary'       => $summary,
-            'workTypes'     => $workTypes,
-            'designTypes'   => $designTypes,
-            'phaseSubItems' => $phaseSubItems,
-            'contractors'   => $contractors,
-            'is_readonly'   => $isSiteEngineer,
-            'projectFloors' => $projectFloors,
+            'current_route'   => 'con-monthly-targets',
+            'target'          => $target,
+            'items'           => $items,
+            'summary'         => $summary,
+            'workTypes'       => $workTypes,
+            'designTypes'     => $designTypes,
+            'phaseSubItems'   => $phaseSubItems,
+            'contractors'     => $contractors,
+            'is_readonly'     => $isSiteEngineer,
+            'projectFloors'   => $projectFloors,
+            'dailyBreakdowns' => $dailyBreakdowns,
         ]);
     }
 
@@ -267,11 +276,31 @@ class Con_MonthlyTargetController extends Controller {
                 }
                 $raw[$k]['floor_type'] = $floorType;
                 $raw[$k]['floor_no'] = $floorNo;
+
+                // Set % target mode fields
+                $raw[$k]['target_mode']        = $i['target_mode'] ?? 'qty';
+                $raw[$k]['monthly_target_pct'] = (float)($i['monthly_target_pct'] ?? 0);
+                $raw[$k]['week_1_pct']         = (float)($i['week_1_pct'] ?? 0);
+                $raw[$k]['week_2_pct']         = (float)($i['week_2_pct'] ?? 0);
+                $raw[$k]['week_3_pct']         = (float)($i['week_3_pct'] ?? 0);
+                $raw[$k]['week_4_pct']         = (float)($i['week_4_pct'] ?? 0);
+
+                if ($raw[$k]['target_mode'] === 'pct') {
+                    $raw[$k]['monthly_target_qty'] = 0.00;
+                    $raw[$k]['week_1_qty'] = 0.00;
+                    $raw[$k]['week_2_qty'] = 0.00;
+                    $raw[$k]['week_3_qty'] = 0.00;
+                    $raw[$k]['week_4_qty'] = 0.00;
+                }
             }
-            if ($this->model->batchUpdateItems($raw)) {
-                setSuccess("Items saved successfully.");
-            } else {
-                setError("Failed to save some items.");
+            try {
+                if ($this->model->batchUpdateItems($raw)) {
+                    setSuccess("Items saved successfully.");
+                } else {
+                    setError("Failed to save some items.");
+                }
+            } catch (\Exception $e) {
+                setError($e->getMessage());
             }
         }
         header("Location: " . $GLOBALS['base_url'] . "/con-monthly-target/" . $target_id); exit;
@@ -304,35 +333,59 @@ class Con_MonthlyTargetController extends Controller {
             $floorNo = ($floorNoStr !== '') ? (int)$floorNoStr : null;
         }
 
-        $id = $this->model->createItem([
-            'target_id'           => $target_id,
-            'work_type_id'        => $wid,
-            'work_item_name'      => $name,
-            'phase_item_id'       => !empty($_POST['phase_item_id']) ? (int)$_POST['phase_item_id'] : null,
-            'floor_type'          => $floorType,
-            'floor_no'            => $floorNo,
-            'unit'                => trim($_POST['unit']               ?? ''),
-            'monthly_target_qty'  => (float)($_POST['monthly_target_qty'] ?? 0),
-            'planned_progress_pct'=> (float)($_POST['planned_progress_pct'] ?? 0),
-            'start_date'          => $startDate,
-            'end_date'            => $endDate,
-            'responsible_team'    => trim($_POST['responsible_team']   ?? ''),
-            'contractor_id'       => !empty($_POST['contractor_id']) ? (int)$_POST['contractor_id'] : null,
-            'priority'            => $_POST['priority'] ?? 'Medium',
-            'status'              => 'Draft',
-            'week_1_qty'          => (float)($_POST['week_1_qty'] ?? 0),
-            'week_2_qty'          => (float)($_POST['week_2_qty'] ?? 0),
-            'week_3_qty'          => (float)($_POST['week_3_qty'] ?? 0),
-            'week_4_qty'          => (float)($_POST['week_4_qty'] ?? 0),
-        ]);
+        $targetMode = $_POST['target_mode'] ?? 'qty';
+        $monthlyTargetQty = $targetMode === 'pct' ? 0.00 : (float)($_POST['monthly_target_qty'] ?? 0);
+        $monthlyTargetPct = $targetMode === 'pct' ? (float)($_POST['monthly_target_pct'] ?? 0) : 0.00;
 
-        if ($id) {
-            $items   = $this->model->getItems($target_id);
-            $summary = $this->model->getProgressSummary($target_id);
-            header('Content-Type: application/json');
-            echo json_encode(['success' => true, 'item_id' => $id, 'summary' => $summary]);
-        } else {
-            $this->jsonError("Failed to add item.");
+        $week1Qty = $targetMode === 'pct' ? 0.00 : (float)($_POST['week_1_qty'] ?? 0);
+        $week2Qty = $targetMode === 'pct' ? 0.00 : (float)($_POST['week_2_qty'] ?? 0);
+        $week3Qty = $targetMode === 'pct' ? 0.00 : (float)($_POST['week_3_qty'] ?? 0);
+        $week4Qty = $targetMode === 'pct' ? 0.00 : (float)($_POST['week_4_qty'] ?? 0);
+
+        $week1Pct = $targetMode === 'pct' ? (float)($_POST['week_1_pct'] ?? 0) : 0.00;
+        $week2Pct = $targetMode === 'pct' ? (float)($_POST['week_2_pct'] ?? 0) : 0.00;
+        $week3Pct = $targetMode === 'pct' ? (float)($_POST['week_3_pct'] ?? 0) : 0.00;
+        $week4Pct = $targetMode === 'pct' ? (float)($_POST['week_4_pct'] ?? 0) : 0.00;
+
+        try {
+            $id = $this->model->createItem([
+                'target_id'           => $target_id,
+                'work_type_id'        => $wid,
+                'work_item_name'      => $name,
+                'phase_item_id'       => !empty($_POST['phase_item_id']) ? (int)$_POST['phase_item_id'] : null,
+                'floor_type'          => $floorType,
+                'floor_no'            => $floorNo,
+                'unit'                => $targetMode === 'pct' ? null : trim($_POST['unit'] ?? ''),
+                'target_mode'         => $targetMode,
+                'monthly_target_qty'  => $monthlyTargetQty,
+                'monthly_target_pct'  => $monthlyTargetPct,
+                'planned_progress_pct'=> (float)($_POST['planned_progress_pct'] ?? 0),
+                'start_date'          => $startDate,
+                'end_date'            => $endDate,
+                'responsible_team'    => trim($_POST['responsible_team']   ?? ''),
+                'contractor_id'       => !empty($_POST['contractor_id']) ? (int)$_POST['contractor_id'] : null,
+                'priority'            => $_POST['priority'] ?? 'Medium',
+                'status'              => 'Draft',
+                'week_1_qty'          => $week1Qty,
+                'week_2_qty'          => $week2Qty,
+                'week_3_qty'          => $week3Qty,
+                'week_4_qty'          => $week4Qty,
+                'week_1_pct'          => $week1Pct,
+                'week_2_pct'          => $week2Pct,
+                'week_3_pct'          => $week3Pct,
+                'week_4_pct'          => $week4Pct,
+            ]);
+
+            if ($id) {
+                $items   = $this->model->getItems($target_id);
+                $summary = $this->model->getProgressSummary($target_id);
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'item_id' => $id, 'summary' => $summary]);
+            } else {
+                $this->jsonError("Failed to add item.");
+            }
+        } catch (\Exception $e) {
+            $this->jsonError($e->getMessage());
         }
         exit;
     }
@@ -510,6 +563,59 @@ class Con_MonthlyTargetController extends Controller {
             'assignedProjects'=> $assignedProjects,
             'dbError'         => $dbError ?? null,
         ]);
+    }
+
+    // =========================================================================
+    // SAVE DAILY PCT BREAKDOWN — AJAX POST
+    // =========================================================================
+    public function saveDailyPctBreakdown() {
+        $this->checkWritePermission(true);
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit; }
+
+        $itemId = (int)($_POST['item_id'] ?? 0);
+        $grid   = $_POST['grid'] ?? []; // Expected format: [ ['week'=>1,'day'=>1,'pct'=>4.00], ... ]
+
+        if (!$itemId) {
+            $this->jsonError("Item ID is required.");
+        }
+
+        $item = $this->model->findItem($itemId);
+        if (!$item) {
+            $this->jsonError("Item not found.");
+        }
+
+        // Validate the grid sums against weekly targets set on the item
+        // Sum the grid days by week number
+        $weekSums = [];
+        foreach ($grid as $row) {
+            $w = (int)$row['week'];
+            $pct = (float)$row['pct'];
+            if (!isset($weekSums[$w])) {
+                $weekSums[$w] = 0.00;
+            }
+            $weekSums[$w] += $pct;
+        }
+
+        // Compare sums with week_1_pct, week_2_pct, week_3_pct, week_4_pct
+        for ($w = 1; $w <= 4; $w++) {
+            $targetVal = (float)($item["week_{$w}_pct"] ?? 0);
+            $sumVal = (float)($weekSums[$w] ?? 0);
+            if (round($sumVal, 2) != round($targetVal, 2)) {
+                $this->jsonError("Week {$w} daily total ({$sumVal}%) does not match weekly target ({$targetVal}%).");
+            }
+        }
+
+        try {
+            if ($this->model->saveDailyPctBreakdown($itemId, $grid)) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Daily breakdown saved successfully.']);
+            } else {
+                $this->jsonError("Failed to save daily breakdown.");
+            }
+        } catch (\Exception $e) {
+            $this->jsonError($e->getMessage());
+        }
+        exit;
     }
 
     private function checkWritePermission(bool $isAjax = false) {

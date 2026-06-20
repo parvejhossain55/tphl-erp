@@ -2,6 +2,7 @@
 namespace Phase2;
 
 use Controller;
+use Con_MonthlyTarget;
 
 class Con_WeeklyReportController extends Controller
 {
@@ -122,18 +123,8 @@ class Con_WeeklyReportController extends Controller
 
             if ($phaseTarget) {
                 // B. Target items
-                $tiStmt = $this->db->prepare("
-                    SELECT pmti.*, wt.work_type_name
-                    FROM phase_monthly_target_items pmti
-                    LEFT JOIN work_types wt ON wt.id = pmti.work_type_id
-                    WHERE pmti.target_id = ?
-                    ORDER BY pmti.sort_order ASC, pmti.id ASC
-                ");
-                if ($tiStmt) {
-                    $tiStmt->bind_param('i', $target_id);
-                    $tiStmt->execute();
-                    $targetItems = $tiStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-                }
+                $monthlyTargetModel = new Con_MonthlyTarget($this->db);
+                $targetItems = $monthlyTargetModel->getItems($target_id);
 
                 // Pre-calc planned qty per week from target items
                 foreach ($targetItems as $ti) {
@@ -168,9 +159,11 @@ class Con_WeeklyReportController extends Controller
                     $wNo       = (int)$session['week_number'];
                     $sessionId = (int)$session['id'];
 
-                    // Weekly items — fetch week_1..4_qty for fallback planned qty
+                    // Weekly items — fetch week_1..4_qty/pct for fallback planned qty/pct
                     $wiStmt = $this->db->prepare("
                         SELECT pwpi.*,
+                               pmti.target_mode, pmti.monthly_target_pct,
+                               pmti.week_1_pct, pmti.week_2_pct, pmti.week_3_pct, pmti.week_4_pct,
                                pmti.work_item_name, pmti.unit, pmti.monthly_target_qty,
                                pmti.week_1_qty, pmti.week_2_qty, pmti.week_3_qty, pmti.week_4_qty,
                                wt.work_type_name,
@@ -187,9 +180,13 @@ class Con_WeeklyReportController extends Controller
                         $wiStmt->bind_param('i', $sessionId);
                         $wiStmt->execute();
                         $weekItems = $wiStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-                        // Attach the correct week's planned qty as 'planned_qty_from_target'
+                        // Attach the correct week's planned qty/pct as 'planned_qty_from_target'
                         foreach ($weekItems as &$wi) {
-                            $wi['planned_qty_from_target'] = (float)($wi["week_{$wNo}_qty"] ?? 0);
+                            if (($wi['target_mode'] ?? 'qty') === 'pct') {
+                                $wi['planned_qty_from_target'] = (float)($wi["week_{$wNo}_pct"] ?? 0);
+                            } else {
+                                $wi['planned_qty_from_target'] = (float)($wi["week_{$wNo}_qty"] ?? 0);
+                            }
                         }
                         unset($wi);
                     }
@@ -220,6 +217,7 @@ class Con_WeeklyReportController extends Controller
                         $logId = (int)$dl['id'];
                         $dwStmt = $this->db->prepare("
                             SELECT dwil.*,
+                                   pmti.target_mode,
                                    pmti.work_item_name, pmti.unit,
                                    wt.work_type_name
                             FROM daily_work_item_logs dwil

@@ -2863,12 +2863,13 @@ $project = $stmt->get_result()->fetch_assoc();
 
         // 5. Fetch planned quantities from monthly targets
         $planRes = $this->db->query("
-            SELECT pmti.phase_item_id, pmti.work_type_id, SUM(pmti.monthly_target_qty) AS total_target_qty,
+            SELECT pmti.phase_item_id, pmti.work_type_id, pmti.target_mode, pmt.phase_id,
+                   SUM(CASE WHEN pmti.target_mode = 'pct' THEN pmti.monthly_target_pct ELSE pmti.monthly_target_qty END) AS total_target_qty,
                    pmt.project_id
             FROM phase_monthly_target_items pmti
             INNER JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
             WHERE pmt.project_id IN ($idsList)
-            GROUP BY pmt.project_id, pmti.phase_item_id, pmti.work_type_id
+            GROUP BY pmt.project_id, pmt.phase_id, pmti.phase_item_id, pmti.work_type_id, pmti.target_mode
         ");
         $plannedQuantities = $planRes ? $planRes->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -2876,7 +2877,7 @@ $project = $stmt->get_result()->fetch_assoc();
         // 6a. Approved weekly progress items
         $weeklyActRes = $this->db->query("
             SELECT pmti.phase_item_id, pmti.work_type_id, pmt.project_id,
-                   SUM(pwpi.achieved_qty) AS total_actual_qty
+                   SUM(CASE WHEN pmti.target_mode = 'pct' THEN pwpi.achieved_pct ELSE pwpi.achieved_qty END) AS total_actual_qty
             FROM phase_weekly_progress_items pwpi
             INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
             INNER JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
@@ -2891,7 +2892,7 @@ $project = $stmt->get_result()->fetch_assoc();
         // 6b. Approved daily logs for pending/draft weeks (to avoid double counting, but capture intermediate work)
         $dailyActRes = $this->db->query("
             SELECT pmti.phase_item_id, pmti.work_type_id, dpl.project_id,
-                   SUM(dwil.qty_done_today) AS total_actual_qty
+                   SUM(CASE WHEN pmti.target_mode = 'pct' THEN dwil.pct_done_today ELSE dwil.qty_done_today END) AS total_actual_qty
             FROM daily_work_item_logs dwil
             JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
             INNER JOIN phase_weekly_progress pwp ON pwp.id = dpl.weekly_progress_id
@@ -2906,10 +2907,13 @@ $project = $stmt->get_result()->fetch_assoc();
 
         // Map data in PHP
         $targetsMap = [];
+        $phaseTargetsList = [];
         foreach ($plannedQuantities as $q) {
             $pid = (int)$q['project_id'];
+            $phaseId = (int)$q['phase_id'];
             $key = $q['phase_item_id'] . '_' . $q['work_type_id'];
             $targetsMap[$pid][$key] = (float)$q['total_target_qty'];
+            $phaseTargetsList[$pid][$phaseId][] = $q;
         }
 
         $actualsMap = [];
@@ -2923,6 +2927,53 @@ $project = $stmt->get_result()->fetch_assoc();
             if ($q['phase_item_id'] !== null) {
                 $key = $q['phase_item_id'] . '_' . $q['work_type_id'];
                 $actualsMap[$pid][$key] = ($actualsMap[$pid][$key] ?? 0.0) + (float)$q['total_actual_qty'];
+            }
+        }
+
+        // Synthesize detail rows for any planned targets not in project_phase_item_details
+        foreach ($projectIds as $pid) {
+            $phasesList = $projectPhases[$pid] ?? [];
+            foreach ($phasesList as $phase) {
+                $phaseId = (int)$phase['id'];
+                $phaseDetails = $projectPhaseDetails[$pid][$phaseId] ?? [];
+                
+                $existingDetailKeys = [];
+                foreach ($phaseDetails as $d) {
+                    $existingDetailKeys[$d['phase_item_id'] . '_' . $d['work_type_id']] = true;
+                }
+                
+                if (!empty($phaseTargetsList[$pid][$phaseId])) {
+                    foreach ($phaseTargetsList[$pid][$phaseId] as $target) {
+                        $key = $target['phase_item_id'] . '_' . $target['work_type_id'];
+                        if (!isset($existingDetailKeys[$key])) {
+                            $subItemWeight = 0.0;
+                            $itemId = (int)$target['phase_item_id'];
+                            if (!empty($phaseItems[$phaseId])) {
+                                foreach ($phaseItems[$phaseId] as $pi) {
+                                    if ((int)$pi['item_id'] === $itemId) {
+                                        $subItemWeight = (float)$pi['item_weight'];
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            $synthesizedDetail = [
+                                'phase_id' => $phaseId,
+                                'phase_item_id' => $itemId,
+                                'detail_id' => null,
+                                'work_type_id' => $target['work_type_id'],
+                                'total_boq_qty' => ($target['target_mode'] === 'pct') ? 100.0 : 0.0,
+                                'detail_weight' => $subItemWeight,
+                                'project_id' => $pid,
+                                'unit' => ($target['target_mode'] === 'pct') ? '%' : ''
+                            ];
+                            
+                            $phaseDetails[] = $synthesizedDetail;
+                            $projectPhaseDetails[$pid][$phaseId] = $phaseDetails;
+                            $itemDetails[$itemId][] = $synthesizedDetail;
+                        }
+                    }
+                }
             }
         }
 

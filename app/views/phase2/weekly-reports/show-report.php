@@ -53,7 +53,7 @@ $statusBadge = function(string $s): string {
 
 <!-- ═══ PROJECT + TARGET SELECTOR ═══ -->
 <form method="GET" action="<?= $base_url ?>/con-weekly-report/<?= $project['id'] ?>" id="reportFilterForm">
-    <div style="background:#fff;border:1.5px solid rgba(25,135,84,.12);border-radius:12px;
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;
                 padding:14px 18px;margin-bottom:18px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
         <!-- Target Month Select -->
         <div style="flex:1;min-width:220px;">
@@ -174,10 +174,55 @@ $totPlan     = ($sessionPlan > 0) ? $sessionPlan : ($weekPlanQty[$activeWeek] ??
 $totAch      = $wSession ? (float)($wSession['total_achieved_qty'] ?? 0) : 0;
 $wPct        = ($totPlan > 0 && $wSession) ? min(100, round($totAch / $totPlan * 100, 1)) : 0;
 $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started';
+
+$viewerRole = (int)($_SESSION['user']['role_id'] ?? 0);
+$isPmOrAdmin = in_array($viewerRole, [1, 15, 22]);
+$overachievedItems = [];
+if (!empty($wItems)) {
+    foreach ($wItems as $wi) {
+        $targetMode = $wi['target_mode'] ?? 'qty';
+        $planned = $targetMode === 'pct' ? (float)($wi['planned_pct'] ?? $wi['planned_qty_from_target'] ?? 0) : (float)($wi['planned_qty'] ?? $wi['planned_qty_from_target'] ?? 0);
+        $achieved = $targetMode === 'pct' ? (float)($wi['achieved_pct'] ?? 0) : (float)($wi['achieved_qty'] ?? 0);
+        $carryover = $targetMode === 'pct' ? (float)($wi['carryover_pct'] ?? 0) : (float)($wi['carryover_qty'] ?? 0);
+        $effectiveTarget = $planned + $carryover;
+
+        if ($achieved > $effectiveTarget && $effectiveTarget > 0) {
+            $overachievedItems[] = [
+                'name' => $wi['work_item_name'],
+                'achieved' => $achieved,
+                'target' => $effectiveTarget,
+                'mode' => $targetMode,
+                'unit' => $targetMode === 'pct' ? '%' : ($wi['unit'] ?? '')
+            ];
+        }
+    }
+}
 ?>
 
+<?php if ($isPmOrAdmin && !empty($overachievedItems)): ?>
+<div class="alert alert-info border-0 shadow-sm mb-3" style="border-radius:12px; background: rgba(59,130,246,0.08); border-left: 4px solid #3b82f6; color: inherit; padding: 14px 18px;">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-info-circle-fill text-primary fs-5"></i>
+        <strong style="font-size:14px; color: #3b82f6;">Target Over-Achievement Notice (PM Only)</strong>
+    </div>
+    <div style="font-size:12.5px; opacity:0.9; line-height: 1.5;">
+        নিম্নলিখিত আইটেমগুলোতে এই সপ্তাহের নির্ধারিত টার্গেটের চেয়ে বেশি কাজ করা হয়েছে। QC কর্তৃক এটি অনুমোদিত হলে, PM চাইলে মান্থলি টার্গেট প্ল্যান থেকে এই সপ্তাহের এবং সামগ্রিক মাসের টার্গেট বাড়িয়ে এডিট করে দিতে পারেন:
+        <ul class="mt-2 mb-0 ps-3">
+            <?php foreach ($overachievedItems as $oi): ?>
+                <li>
+                    <strong><?= htmlspecialchars($oi['name']) ?>:</strong> 
+                    টার্গেট ছিল <?= $oi['mode'] === 'pct' ? number_format($oi['target'], 2) : number_format($oi['target'], 0) ?><?= $oi['unit'] ?>, 
+                    অর্জিত হয়েছে <?= $oi['mode'] === 'pct' ? number_format($oi['achieved'], 2) : number_format($oi['achieved'], 0) ?><?= $oi['unit'] ?> 
+                    (অতিরিক্ত: <?= $oi['mode'] === 'pct' ? number_format($oi['achieved'] - $oi['target'], 2) : number_format($oi['achieved'] - $oi['target'], 0) ?><?= $oi['unit'] ?>)
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- ══ WEEK SESSION HEADER ══ -->
-<div style="background:#fff;border:1.5px solid rgba(25,135,84,.15);border-radius:12px;
+<div style="background:#fff;border:1px solid #e2e8f0;border-left:4px solid var(--clr-theme-primary);border-radius:12px;
             padding:14px 18px;margin-bottom:16px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div>
@@ -281,10 +326,9 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
 
 <!-- ══ WORK ITEMS TABLE ══ -->
 <?php if (!empty($wItems)): ?>
-<div style="background:#fff;border:1.5px solid rgba(25,135,84,.12);border-radius:12px;
+<div style="background:#fff;border:1px solid #e2e8f0;border-left:4px solid var(--clr-theme-primary);border-radius:12px;
             margin-bottom:16px;overflow:hidden;">
-    <div style="background:linear-gradient(90deg,rgba(25,135,84,.07),transparent);
-                padding:10px 16px;border-bottom:1px solid rgba(25,135,84,.1);
+    <div style="background:#f8fafc;padding:12px 16px;border-bottom:1px solid #e2e8f0;
                 display:flex;align-items:center;justify-content:space-between;">
         <div style="font-size:12.5px;font-weight:700;color:var(--clr-theme-primary);">
             <i class="bi bi-list-check me-2"></i>Work Items — Week <?= $activeWeek ?>
@@ -316,8 +360,9 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
                 <?php
                 $td = 'padding:8px 10px;border-bottom:1px solid rgba(0,0,0,.05);font-size:12.5px;vertical-align:middle;';
                 foreach ($wItems as $n => $item):
-                    $planQty = (float)($item['planned_qty'] ?? $item['planned_qty_from_target'] ?? 0);
-                    $achQty  = (float)($item['achieved_qty'] ?? 0);
+                    $targetMode = $item['target_mode'] ?? 'qty';
+                    $planQty = $targetMode === 'pct' ? (float)($item['planned_pct'] ?? $item['planned_qty_from_target'] ?? 0) : (float)($item['planned_qty'] ?? $item['planned_qty_from_target'] ?? 0);
+                    $achQty  = $targetMode === 'pct' ? (float)($item['achieved_pct'] ?? 0) : (float)($item['achieved_qty'] ?? 0);
                     $pct     = ($planQty > 0) ? min(100, round($achQty / $planQty * 100, 1)) : 0;
                     $pctColor = $pct >= 100 ? '#10b981' : ($pct > 0 ? 'var(--clr-theme-primary)' : '#94a3b8');
                     $iStatus  = $item['item_status'] ?? '—';
@@ -330,18 +375,51 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
                     <td style="<?= $td ?>;color:#94a3b8;font-size:11px;"><?= $n + 1 ?></td>
                     <td style="<?= $td ?>;font-weight:600;color:#1e293b;">
                         <?= htmlspecialchars($item['work_item_name'] ?? '—') ?>
+                        <?php if (($item['earned_star'] ?? 0) == 1): ?>
+                            <span style="color:#f59e0b;font-size:14px;margin-left:4px;text-shadow: 0 0 4px rgba(245,158,11,0.5);" title="Performance Star Awarded! ★">★</span>
+                        <?php endif; ?>
+                        <?php
+                        $hasGap = $targetMode === 'pct' ? ((float)($item['gap_pct'] ?? 0) > 0) : ((float)($item['gap_qty'] ?? 0) > 0);
+                        $hasRec = $targetMode === 'pct' ? ((float)($item['recovered_pct'] ?? 0) > 0) : ((float)($item['recovered_qty'] ?? 0) > 0);
+                        if ($hasGap || $hasRec):
+                        ?>
+                        <div style="font-size:10px;margin-top:4px;display:flex;gap:4px">
+                            <?php if ($hasGap): 
+                                $gapVal = $targetMode === 'pct' ? (float)$item['gap_pct'] : (float)$item['gap_qty'];
+                            ?>
+                                <span style="background:rgba(239,68,68,0.08);color:#ef4444;padding:1px 6px;border-radius:4px;font-weight:600">
+                                    Gap: -<?= $targetMode === 'pct' ? number_format($gapVal,2).'%' : number_format($gapVal,0,'.',',') ?>
+                                </span>
+                            <?php endif; ?>
+                            <?php if ($hasRec): 
+                                $recVal = $targetMode === 'pct' ? (float)$item['recovered_pct'] : (float)$item['recovered_qty'];
+                            ?>
+                                <span style="background:rgba(16,185,129,0.08);color:#10b981;padding:1px 6px;border-radius:4px;font-weight:600">
+                                    Recovered: +<?= $targetMode === 'pct' ? number_format($recVal,2).'%' : number_format($recVal,0,'.',',') ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
                     </td>
                     <td style="<?= $td ?>;color:#64748b;font-size:11.5px;">
                         <?= htmlspecialchars($item['work_type_name'] ?? '—') ?>
                     </td>
                     <td style="<?= $td ?>;text-align:center;color:#64748b;">
-                        <?= htmlspecialchars($item['unit'] ?? '—') ?>
+                        <?= $targetMode === 'pct' ? '%' : htmlspecialchars($item['unit'] ?? '—') ?>
                     </td>
-                    <td style="<?= $td ?>;text-align:center;font-weight:600;">
-                        <?= number_format($planQty, 2) ?>
+                    <td style="<?= $td ?>;text-align:center;">
+                        <div style="font-weight:600;"><?= $targetMode === 'pct' ? number_format($planQty, 2).'%' : number_format($planQty, 2) ?></div>
+                        <?php
+                        $coVal = $targetMode === 'pct' ? (float)($item['carryover_pct'] ?? 0) : (float)($item['carryover_qty'] ?? 0);
+                        if ($coVal > 0):
+                        ?>
+                        <div style="font-size:9.5px;color:#f59e0b;font-weight:600;margin-top:2px" title="Carryover from previous week">
+                            +<?= $targetMode === 'pct' ? number_format($coVal,2).'%' : number_format($coVal,0,'.',',') ?> CO
+                        </div>
+                        <?php endif; ?>
                     </td>
                     <td style="<?= $td ?>;text-align:center;font-weight:700;color:#10b981;">
-                        <?= number_format($achQty, 2) ?>
+                        <?= $targetMode === 'pct' ? number_format($achQty, 2).'%' : number_format($achQty, 2) ?>
                     </td>
                     <td style="<?= $td ?>;text-align:center;">
                         <div style="display:flex;align-items:center;gap:6px;justify-content:center;">
@@ -387,10 +465,9 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
 
 <!-- ══ DAILY LOGS ACCORDION ══ -->
 <?php if (!empty($wDailyLogs)): ?>
-<div style="background:#fff;border:1.5px solid rgba(16,185,129,.15);border-radius:12px;
+<div style="background:#fff;border:1px solid #e2e8f0;border-left:4px solid #10b981;border-radius:12px;
             margin-bottom:16px;overflow:hidden;">
-    <div style="background:linear-gradient(90deg,rgba(16,185,129,.07),transparent);
-                padding:10px 16px;border-bottom:1px solid rgba(16,185,129,.1);">
+    <div style="background:#f8fafc;padding:12px 16px;border-bottom:1px solid #e2e8f0;">
         <div style="font-size:12.5px;font-weight:700;color:#10b981;">
             <i class="bi bi-journal-text me-2"></i>Daily Logs — Week <?= $activeWeek ?>
             <span style="font-size:11px;font-weight:500;color:#94a3b8;margin-left:6px;">
@@ -465,13 +542,14 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
                     <!-- Daily Work Items -->
                     <?php if (!empty($logItems)): ?>
                     <div style="grid-column:1/-1;background:#f8fafc;border-radius:10px;padding:12px;
-                                border:1px solid rgba(25,135,84,.1);">
+                                border:1px solid #e2e8f0;">
                         <div style="font-size:11px;font-weight:700;color:var(--clr-theme-primary);margin-bottom:8px;">
                             <i class="bi bi-check2-square me-1"></i>আজকের কাজ
                         </div>
                         <table style="width:100%;border-collapse:collapse;">
                             <?php foreach ($logItems as $di):
-                                $dAch = (float)($di['qty_done_today'] ?? 0);
+                                $dTargetMode = $di['target_mode'] ?? 'qty';
+                                $dAch = $dTargetMode === 'pct' ? (float)($di['pct_done_today'] ?? 0) : (float)($di['qty_done_today'] ?? 0);
                             ?>
                             <tr style="border-bottom:1px solid rgba(0,0,0,.04);">
                                 <td style="padding:5px 8px;font-size:12px;color:#1e293b;font-weight:600;">
@@ -481,7 +559,7 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
                                     <?= htmlspecialchars($di['work_type_name'] ?? '—') ?>
                                 </td>
                                 <td style="padding:5px 8px;font-size:12.5px;font-weight:800;color:#10b981;text-align:right;">
-                                    +<?= number_format($dAch, 2) ?> <?= htmlspecialchars($di['unit'] ?? '') ?>
+                                    +<?= number_format($dAch, 2) ?><?= $dTargetMode === 'pct' ? '%' : ' ' . htmlspecialchars($di['unit'] ?? '') ?>
                                 </td>
                                 <td style="padding:5px 8px;font-size:10.5px;color:#94a3b8;text-align:right;">
                                     <?= htmlspecialchars($di['item_status'] ?? '') ?>
@@ -608,10 +686,9 @@ $wStatus     = $wSession ? ($wSession['entry_status'] ?? 'Draft') : 'Not Started
 
 <!-- ══ SITE PHOTOS GALLERY ══ -->
 <?php if (!empty($wPhotos)): ?>
-<div style="background:#fff;border:1.5px solid rgba(245,158,11,.2);border-radius:12px;
+<div style="background:#fff;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:12px;
             margin-bottom:16px;overflow:hidden;">
-    <div style="background:linear-gradient(90deg,rgba(245,158,11,.07),transparent);
-                padding:10px 16px;border-bottom:1px solid rgba(245,158,11,.1);">
+    <div style="background:#f8fafc;padding:12px 16px;border-bottom:1px solid #e2e8f0;">
         <div style="font-size:12.5px;font-weight:700;color:#f59e0b;">
             <i class="bi bi-images me-2"></i>Site Photos — Week <?= $activeWeek ?>
             <span style="font-size:11px;font-weight:500;color:#94a3b8;margin-left:6px;">(<?= count($wPhotos) ?> টি)</span>

@@ -93,7 +93,7 @@ class Con_RecoveryPlanController extends Controller {
 
         // ── Auto-sync risks to get the latest count ─────────────────────────
         require_once __DIR__ . '/Con_RiskDashboardController.php';
-        $riskCtrl = new Con_RiskDashboardController($this->db);
+        $riskCtrl = new Con_RiskDashboardController($this->db, false);
         $riskCtrl->syncRisksForProject($projectId);
 
         // Open risks count (from project_risks)

@@ -121,6 +121,9 @@ class Con_BOQController extends Controller
         $projects  = $this->projectModel->getAll();
         $materials = $this->materialModel->getAll();
 
+        $categoryModel = new \Con_MaterialCategory($this->db);
+        $categories    = $categoryModel->getAll();
+
         $projectFloors = [];
         if ($target_id && $phaseTarget && !empty($phaseTarget['project_id'])) {
             $stmtFl = $this->db->prepare("SELECT id, floor_no, floor_type, slab_area_sqft FROM project_floors WHERE project_id = ? ORDER BY floor_no ASC");
@@ -134,6 +137,7 @@ class Con_BOQController extends Controller
             'page_title'        => 'New Bill of Quantities',
             'projects'          => $projects,
             'materials'         => $materials,
+            'categories'        => $categories,
             'phaseTarget'       => $phaseTarget,
             'target_id'         => $target_id,
             'targetPhaseItems'  => $targetPhaseItems,

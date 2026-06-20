@@ -402,7 +402,12 @@ $phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a
         <div class="mt-card-head">
             <div style="display:flex;align-items:center;gap:9px">
                 <div class="mt-phase-dot" style="background:<?= $color ?>"></div>
-                <div class="mt-phase-name"><?= htmlspecialchars($t['phase_name']) ?></div>
+                <div class="mt-phase-name">
+                    <?= htmlspecialchars($t['phase_name']) ?>
+                    <?php if (($t['earned_star'] ?? 0) == 1): ?>
+                        <span style="color:#f59e0b;font-size:14px;margin-left:4px;text-shadow: 0 0 4px rgba(245,158,11,0.5);" title="Performance Star Awarded! ★">★</span>
+                    <?php endif; ?>
+                </div>
                 <span style="font-size:10px;color:var(--text-muted)">(<?= number_format((float)$t['phase_weight'],0) ?>% of project)</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px">

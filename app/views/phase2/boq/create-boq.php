@@ -516,9 +516,12 @@ if (!empty($weeklyProgress) || $anyWeekHasPlan):
                         </table>
                     </div>
 
-                    <div class="mt-2">
+                    <div class="mt-2 d-flex gap-2">
                         <button type="button" class="btn btn-outline-primary btn-sm" id="boqAddRow">
                             <i class="bi bi-plus-circle me-1"></i> Add Item
+                        </button>
+                        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#addMaterialModal">
+                            <i class="bi bi-plus-square me-1"></i> Add New Material
                         </button>
                     </div>
 
@@ -536,12 +539,62 @@ if (!empty($weeklyProgress) || $anyWeekHasPlan):
 
 </section>
 
+<!-- Add Material Modal -->
+<div class="modal fade" id="addMaterialModal" tabindex="-1" aria-labelledby="addMaterialModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 14px;">
+            <div class="modal-header bg-success text-white" style="border-top-left-radius: 14px; border-top-right-radius: 14px;">
+                <h5 class="modal-title fw-bold" id="addMaterialModalLabel">
+                    <i class="bi bi-plus-circle-fill me-2"></i>Add New Material
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="addMaterialForm">
+                    <div class="mb-3">
+                        <label for="modal_category_id" class="form-label fw-semibold text-secondary">Category</label>
+                        <select name="category_id" id="modal_category_id" class="form-select">
+                            <option value="">— Select Category —</option>
+                            <?php foreach ($categories as $cat): ?>
+                                <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modal_material_name" class="form-label fw-semibold text-secondary">Material Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="modal_material_name" class="form-control" placeholder="e.g. Cement - Holcim" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="modal_unit" class="form-label fw-semibold text-secondary">Unit <span class="text-danger">*</span></label>
+                            <input type="text" name="unit" id="modal_unit" class="form-control" placeholder="e.g. Bag, KG, CFT" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="modal_min_stock" class="form-label fw-semibold text-secondary">Min Stock Level</label>
+                            <input type="number" step="0.001" name="min_stock_level" id="modal_min_stock" class="form-control" value="0.000" placeholder="0.000">
+                        </div>
+                    </div>
+
+                    <div class="text-end mt-3">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success px-4 fw-bold" id="btnSaveMaterialSubmit">
+                            <i class="bi bi-save me-1"></i> Save Material
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const BASE_URL  = '<?= $base_url ?>';
 const MONTHS    = <?= json_encode($months) ?>;
 
 // ── Stored material options HTML (for cloning rows) ──
-const materialOptionsHTML = document.querySelector('.boq-material').innerHTML;
+let materialOptionsHTML = document.querySelector('.boq-material').innerHTML;
 
 // ── Project → Load Targets (only when no phaseTarget pre-selected) ────────
 <?php if (!$phaseTarget): ?>
@@ -665,6 +718,86 @@ document.addEventListener('DOMContentLoaded', function () {
         const stockBtn = e.target.closest('.check-stock-btn');
         if (stockBtn) checkStock(stockBtn);
     });
+
+    // ── Add New Material AJAX Submission ──
+    const addMaterialForm = document.getElementById('addMaterialForm');
+    if (addMaterialForm) {
+        addMaterialForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('btnSaveMaterialSubmit');
+            const origHtml  = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving...';
+
+            const formData = new FormData(addMaterialForm);
+
+            fetch(BASE_URL + '/con-material-store-ajax', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = origHtml;
+
+                if (data.success) {
+                    // Update all active dropdowns on the page
+                    const optionLabel = `${data.name} [${data.category_name || 'Uncategorized'}] (${data.unit})`;
+                    document.querySelectorAll('.boq-material').forEach(select => {
+                        const opt = document.createElement('option');
+                        opt.value = data.id;
+                        opt.setAttribute('data-unit', data.unit);
+                        opt.textContent = optionLabel;
+                        select.appendChild(opt);
+                    });
+
+                    // Update row cloning template variable
+                    materialOptionsHTML += `<option value="${data.id}" data-unit="${data.unit}">${escapeHtml(optionLabel)}</option>`;
+
+                    // Reset form & close modal
+                    addMaterialForm.reset();
+                    const modalEl = document.getElementById('addMaterialModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    modalInstance.hide();
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success',
+                        text: `Material "${data.name}" added successfully!`,
+                        confirmButtonColor: 'var(--clr-theme-primary)'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Failed',
+                        text: data.error || 'Failed to save material.',
+                        confirmButtonColor: '#ef4444'
+                    });
+                }
+            })
+            .catch(err => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = origHtml;
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Network Error',
+                    text: 'Could not connect to the server. Please try again.',
+                    confirmButtonColor: '#ef4444'
+                });
+            });
+        });
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
 });
 
 // ── Stock Check ───────────────────────────────────────────────────────────

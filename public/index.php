@@ -866,6 +866,7 @@ $routes['con-monthly-item-delete/(\d+)']    = ['controller' => 'Phase2\Con_Month
 $routes['con-monthly-target-delete/(\d+)']  = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'deleteTarget'];
 $routes['con-monthly-worktypes']            = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'ajaxWorkTypes'];
 $routes['con-project-plan-targets']         = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'siteEngineerTargets'];
+$routes['con-monthly-item-daily-breakdown'] = ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'saveDailyPctBreakdown'];
 
 // Phase-wise Construction - Module 5: Daily / Weekly Progress Entry
 $routes['con-weekly-progress/(\d+)']        = ['controller' => 'Phase2\Con_PhaseWeeklyProgressController', 'method' => 'show'];
@@ -988,6 +989,7 @@ $routes['con-fund-request-payment/(\d+)']  = ['controller' => 'Phase2\Con_FundRe
 $routes['con-materials']               = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'index'];
 $routes['con-material-create']         = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'create'];
 $routes['con-material-store']          = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'store'];
+$routes['con-material-store-ajax']     = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'ajaxStoreMaterial'];
 $routes['con-material-edit/(\d+)']     = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'edit'];
 $routes['con-material-update/(\d+)']   = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'update'];
 $routes['con-materials-import']        = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'importCsv'];
@@ -1244,6 +1246,7 @@ $routes['asset-extra-purchases/confirm/(\d+)']      = ['controller' => 'Phase2\\
 
 // ── Working Plans ─────────────────────────────────────────────────────────────
 $routes['con-project-progress-report/(\d+)'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectProgressReport'];
+$routes['con-progress-report']               = ['controller' => 'Phase2\Con_ProgressReportController', 'method' => 'index'];
 
 // ── Budget Extension Requests ─────────────────────────────────────────────────
 

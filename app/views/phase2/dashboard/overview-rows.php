@@ -190,7 +190,10 @@ if (empty($projects)): ?>
             
             <!-- Column 4: Status Badge -->
             <td style="padding: 16px; vertical-align: middle;">
-                <span class="status-pill <?= $statusClass ?>">
+                <span class="status-pill <?= $statusClass ?>" 
+                      style="cursor: pointer;" 
+                      data-bs-toggle="popover" 
+                      data-bs-content="<?= htmlspecialchars($pr['status_explanation'] ?? '') ?>">
                     <span class="status-pill-dot"></span>
                     <?= $status ?>
                 </span>

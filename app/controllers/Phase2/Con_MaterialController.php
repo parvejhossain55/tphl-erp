@@ -92,6 +92,69 @@ class Con_MaterialController extends Controller
         exit;
     }
 
+    public function ajaxStoreMaterial()
+    {
+        header('Content-Type: application/json');
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
+            echo json_encode(['success' => false, 'error' => 'You do not have permission to add records.']);
+            exit;
+        }
+
+        $categoryId = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
+        $name = trim($_POST['name'] ?? '');
+        $unit = trim($_POST['unit'] ?? '');
+        $minStock = !empty($_POST['min_stock_level']) ? (float)$_POST['min_stock_level'] : 0.00;
+
+        if (!$name || !$unit) {
+            echo json_encode(['success' => false, 'error' => 'Name and Unit are required.']);
+            exit;
+        }
+
+        $data = [
+            'category_id'     => $categoryId,
+            'name'            => $name,
+            'unit'            => $unit,
+            'min_stock_level' => $minStock,
+            'created_by'      => $_SESSION['user']['id'] ?? null,
+        ];
+
+        // Check if material name already exists
+        $stmt = $this->db->prepare("SELECT id FROM con_materials WHERE name = ? LIMIT 1");
+        $stmt->bind_param("s", $name);
+        $stmt->execute();
+        if ($stmt->get_result()->num_rows > 0) {
+            echo json_encode(['success' => false, 'error' => "Material '{$name}' already exists."]);
+            exit;
+        }
+
+        $id = $this->materialModel->create($data);
+        if ($id) {
+            $catName = 'Uncategorized';
+            if ($categoryId) {
+                $catStmt = $this->db->prepare("SELECT name FROM con_material_categories WHERE id = ? LIMIT 1");
+                $catStmt->bind_param("i", $categoryId);
+                $catStmt->execute();
+                $catRow = $catStmt->get_result()->fetch_assoc();
+                if ($catRow) {
+                    $catName = $catRow['name'];
+                }
+            }
+
+            echo json_encode([
+                'success' => true,
+                'id'      => $id,
+                'name'    => $name,
+                'unit'    => $unit,
+                'category_name' => $catName
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Failed to save material.']);
+        }
+        exit;
+    }
+
     // =========================================================================
     // EDIT / UPDATE MATERIAL
     // =========================================================================
