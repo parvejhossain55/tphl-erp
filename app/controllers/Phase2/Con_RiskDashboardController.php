@@ -7,15 +7,17 @@ class Con_RiskDashboardController extends Controller {
 
     protected $db;
 
-    public function __construct($db) {
+    public function __construct($db, $checkRole = true) {
         $this->db = $db;
-        if (session_status() === PHP_SESSION_NONE) session_start();
-        if (!isset($_SESSION['user'])) {
-            header("Location: " . $GLOBALS['base_url'] . "/login"); exit;
-        }
-        if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
-            setError("Access denied.");
-            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard"); exit;
+        if ($checkRole) {
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            if (!isset($_SESSION['user'])) {
+                header("Location: " . $GLOBALS['base_url'] . "/login"); exit;
+            }
+            if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
+                setError("Access denied.");
+                header("Location: " . $GLOBALS['base_url'] . "/con-dashboard"); exit;
+            }
         }
     }
 

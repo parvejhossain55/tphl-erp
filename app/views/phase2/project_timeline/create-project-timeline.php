@@ -30,7 +30,6 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
 
       .tl-setup-container {
         font-family: 'Plus Jakarta Sans', sans-serif;
-        color: #1e293b;
       }
 
       /* ── Breadcrumb & Header ─────────────────────────────── */
@@ -45,7 +44,7 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
 
       .tl-breadcrumb {
         font-size: 12px;
-        color: #64748b;
+        color: var(--clr-text-muted, #64748b);
         display: flex;
         align-items: center;
         gap: 6px;
@@ -64,7 +63,6 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
       .tl-title {
         font-size: 24px;
         font-weight: 800;
-        color: #0f172a;
         margin: 4px 0 0;
         letter-spacing: -0.5px;
       }
@@ -80,8 +78,8 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
       .tl-stat-card {
         border-radius: 14px;
         padding: 18px 20px;
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        background: #ffffff;
+        border: 1px solid var(--clr-border-1, rgba(226, 232, 240, 0.8));
+        background: var(--clr-bg-card, #ffffff);
         box-shadow: 0 4px 12px rgba(15, 23, 42, 0.02);
         display: flex;
         align-items: center;
@@ -130,14 +128,13 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.8px;
-        color: #64748b;
+        color: var(--clr-text-muted, #64748b);
         margin-bottom: 2px;
       }
 
       .tl-stat-value {
         font-size: 18px;
         font-weight: 800;
-        color: #0f172a;
         line-height: 1.2;
       }
 
@@ -151,8 +148,8 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
 
       .tl-panel {
         border-radius: 16px;
-        background: #ffffff;
-        border: 1px solid rgba(226, 232, 240, 0.8);
+        background: var(--clr-bg-card, #ffffff);
+        border: 1px solid var(--clr-border-1, rgba(226, 232, 240, 0.8));
         box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03);
         padding: 24px;
       }
@@ -160,10 +157,9 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
       .tl-panel-title {
         font-size: 15px;
         font-weight: 700;
-        color: #0f172a;
         margin-bottom: 20px;
         padding-bottom: 12px;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 1px solid var(--clr-border-1, #f1f5f9);
         display: flex;
         align-items: center;
         gap: 8px;
@@ -173,16 +169,16 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
       .form-label {
         font-size: 12.5px;
         font-weight: 600;
-        color: #334155;
         margin-bottom: 6px;
       }
 
       .form-control, .form-select {
         border-radius: 10px;
-        border: 1px solid #cbd5e1;
+        border: 1px solid var(--clr-border-1, #cbd5e1);
         padding: 10px 14px;
         font-size: 13.5px;
-        color: #1e293b;
+        background-color: var(--clr-bg-card, #ffffff);
+        color: inherit;
         transition: all 0.15s ease;
       }
 
@@ -193,8 +189,8 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
       }
 
       .form-control[readonly] {
-        background-color: #f8fafc;
-        border-color: #e2e8f0;
+        background-color: var(--clr-bg-body, #f8fafc);
+        border-color: var(--clr-border-1, #e2e8f0);
         font-weight: 600;
       }
 
@@ -237,14 +233,14 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.8px;
-        color: #64748b;
+        color: var(--clr-text-muted, #64748b);
         margin-bottom: 14px;
       }
 
       .tl-progress-bar-wrapper {
         height: 38px;
         border-radius: 12px;
-        background: #f1f5f9;
+        background: var(--clr-border-1, #f1f5f9);
         display: flex;
         overflow: hidden;
         box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
@@ -262,6 +258,17 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
         font-weight: 700;
         transition: width 0.3s ease;
         position: relative;
+        min-width: 0;
+      }
+
+      .tl-bar-segment span {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+        padding: 0 4px;
+        text-align: center;
       }
 
       .tl-segment-pre {
@@ -289,7 +296,6 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
         gap: 8px;
         font-size: 12px;
         font-weight: 600;
-        color: #475569;
       }
 
       .tl-legend-dot {
@@ -304,7 +310,7 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
 
       /* ── Milestones List ─────────────────────────────────── */
       .tl-milestones-wrapper {
-        border-left: 2px dashed #cbd5e1;
+        border-left: 2px dashed var(--clr-border-1, #cbd5e1);
         padding-left: 24px;
         margin-left: 10px;
       }
@@ -325,7 +331,7 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
         width: 16px;
         height: 16px;
         border-radius: 50%;
-        border: 3px solid #ffffff;
+        border: 3px solid var(--clr-bg-card, #ffffff);
         box-shadow: 0 0 0 2px var(--m-color);
         background: var(--m-color);
       }
@@ -333,7 +339,6 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
       .tl-milestone-title {
         font-size: 13.5px;
         font-weight: 700;
-        color: #0f172a;
         margin-bottom: 2px;
       }
 
@@ -346,7 +351,7 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
 
       .tl-milestone-desc {
         font-size: 12px;
-        color: #64748b;
+        color: var(--clr-text-muted, #64748b);
       }
 
       .badge-workflow-type {
@@ -354,8 +359,8 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
         font-weight: 700;
         padding: 4px 10px;
         border-radius: 20px;
-        background: #f1f5f9;
-        color: #475569;
+        background: var(--clr-border-1, #f1f5f9);
+        color: inherit;
       }
 
       .badge-workflow-active {
@@ -373,6 +378,70 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
         font-weight: 600;
         margin-bottom: 16px;
         display: none;
+      }
+
+      /* ── Responsive Styling (Mobile & Tablet) ────────────── */
+      @media (max-width: 991.98px) {
+        .tl-grid {
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+
+        .tl-stats-grid {
+          grid-template-columns: repeat(2, 1fr);
+          gap: 14px;
+        }
+
+        .tl-title {
+          font-size: 20px;
+        }
+      }
+
+      @media (max-width: 575.98px) {
+        .tl-stats-grid {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+
+        .form-row {
+          grid-template-columns: 1fr;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+
+        .tl-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
+        }
+
+        .badge-workflow-type {
+          align-self: flex-start;
+        }
+
+        .tl-panel {
+          padding: 16px;
+        }
+
+        .tl-stat-card {
+          padding: 14px 16px;
+        }
+        
+        .tl-bar-legend {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
+          margin-bottom: 20px;
+        }
+        
+        .tl-milestones-wrapper {
+          padding-left: 18px;
+          margin-left: 6px;
+        }
+        
+        .tl-milestone-dot {
+          left: -27px;
+        }
       }
     </style>
 
@@ -486,7 +555,7 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
 
             <div class="form-row">
               <div>
-                <label class="form-label">Post Construction (Months)</label>
+                <label class="form-label">Grace Period (Months)</label>
                 <input type="number" class="form-control" name="post_construction_months" id="input_post" value="<?= $post_construction_months ?>" min="0" required>
               </div>
               <div>
@@ -523,7 +592,7 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
                 <option value="Planning" <?= $current_status === 'Planning' ? 'selected' : '' ?>>Planning</option>
                 <option value="Pre-Construction" <?= $current_status === 'Pre-Construction' ? 'selected' : '' ?>>Pre-Construction</option>
                 <option value="Construction" <?= $current_status === 'Construction' ? 'selected' : '' ?>>Construction</option>
-                <option value="Post-Construction" <?= $current_status === 'Post-Construction' ? 'selected' : '' ?>>Post-Construction</option>
+                <option value="Post-Construction" <?= $current_status === 'Post-Construction' ? 'selected' : '' ?>>Grace Period</option>
                 <option value="Handover" <?= $current_status === 'Handover' ? 'selected' : '' ?>>Handover</option>
                 <option value="Completed" <?= $current_status === 'Completed' ? 'selected' : '' ?>>Completed</option>
               </select>
@@ -581,7 +650,7 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
               </div>
               <div class="tl-legend-item">
                 <div class="tl-legend-dot tl-legend-post"></div>
-                Post-Construction
+                Grace Period
               </div>
             </div>
           </div>
@@ -618,7 +687,7 @@ $form_action = $timeline_id ? "/con-project-timeline-update/" . $timeline_id : "
               <!-- Milestone 4 -->
               <div class="tl-milestone-item" style="--m-color: var(--clr-theme-secondary);">
                 <div class="tl-milestone-dot"></div>
-                <div class="tl-milestone-title">Post-Construction & Client Handover</div>
+                <div class="tl-milestone-title">Grace Period & Client Handover</div>
                 <div class="tl-milestone-date" id="milestone-handover-date">—</div>
                 <div class="tl-milestone-desc">Finishing details, testing & commissioning, and handing keys to buyers.</div>
               </div>
@@ -716,7 +785,7 @@ document.addEventListener("DOMContentLoaded", function() {
       errorMsg = "Months values must be positive numbers.";
     } else if (pre < 0) {
       hasError = true;
-      errorMsg = "Invalid Month Division! Handover Months (" + handover + ") cannot be less than Construction (" + construction + ") + Post Construction (" + post + ") Months.";
+      errorMsg = "Invalid Month Division! Handover Months (" + handover + ") cannot be less than Construction (" + construction + ") + Grace Period (" + post + ") Months.";
     }
 
     // Dates updates
@@ -767,9 +836,17 @@ document.addEventListener("DOMContentLoaded", function() {
       barCon.style.width = conPct + "%";
       barPost.style.width = postPct + "%";
 
-      barPreLbl.textContent = pre > 0 ? "Pre-Con (" + pre + "M)" : "";
-      barConLbl.textContent = construction > 0 ? "Construction (" + construction + "M)" : "";
-      barPostLbl.textContent = post > 0 ? "Post-Con (" + post + "M)" : "";
+      const preTxt = pre > 0 ? "Pre-Con (" + pre + "M)" : "";
+      const conTxt = construction > 0 ? "Construction (" + construction + "M)" : "";
+      const postTxt = post > 0 ? "Grace Period (" + post + "M)" : "";
+
+      barPreLbl.textContent = preTxt;
+      barConLbl.textContent = conTxt;
+      barPostLbl.textContent = postTxt;
+
+      barPre.title = preTxt;
+      barCon.title = conTxt;
+      barPost.title = postTxt;
 
       barPre.style.display = pre > 0 ? "flex" : "none";
       barCon.style.display = construction > 0 ? "flex" : "none";

@@ -1247,6 +1247,16 @@
                     </li>
                 <?php endif; ?>
 
+                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 22])): ?>
+                    <li class="slide">
+                        <a href="<?= $base_url ?>/con-progress-report"
+                            class="sidebar__menu-item <?= isActive('con-progress-report', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-file-invoice"></i></div>
+                            <span class="sidebar__menu-label">Site Progress Report</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
                 <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])): ?>
                     <li class="slide">
                         <a href="<?= $base_url ?>/con-projects"
@@ -1943,7 +1953,7 @@
                 <?php endif; ?>
                 <!-- ══ Weekly Progress Reports (Phase-Based) ════════════════════ -->
                 <?php if (hasPermission('Construction Management') || hasPermission('site engineer dashboard') || hasPermission('QC Dashboard') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])): ?>
-                    <li class="slide <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">
+                    <li class="d-none slide <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">
                         <a href="<?= $base_url ?>/con-weekly-reports"
                             class="sidebar__menu-item <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">
                             <div class="side-menu__icon"><i class="bi bi-calendar-week"></i></div>

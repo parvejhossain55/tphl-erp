@@ -168,3 +168,62 @@ Phase Item-এর অর্জিত শতকরা হার	project_phase_ite
 ফেজের সামগ্রিক প্রগ্রেস	project_phases	actual_progress	পূর্বের ধাপে ক্যালকুলেট করা ফেজের অগ্রগতি।
 ফেজের ওয়েট পারসেন্টেজ	project_phases	weight_percentage	পুরো প্রজেক্টের মধ্যে ওই ফেজটির অবদান বা ওজন কতটুকু (যেমন: ফাউন্ডেশন ফেজের ওজন হতে পারে ২০%)।
 প্রজেক্টের ওভারঅল প্রগ্রেস	projects	actual_progress (বা ড্যাশবোর্ড কুয়েরি)	প্রজেক্টের মেইন বা টোটাল কাজের ওভারঅল প্রগ্রেস (০ থেকে ১০০%)।
+
+
+
+20-june-26
+হ্যাঁ, আমার সব মনে আছে! 😊 তোমার project-এর পুরো structure টা পড়লাম। তোমার system টা এখন বেশ well-documented এবং clearly defined। চলো একটু su
+mmary করি কী কী মনে আছে এবং file-এ কী পেলাম:
+
+🏗️ TPHL-ERP — যা আমি জানি
+📋 Complete Workflow Chain
+তোমার system একটা beautiful chain-এ কাজ করে:
+
+Project Timeline & Floor Setup
+        ↓
+Initial Estimate Budget
+        ↓
+Phase Plan & Phase Items
+        ↓
+Monthly Targets (with Weekly Qty breakdown)
+        ↓                    ↓
+BOQ Setup & Purchase    Daily/Weekly Progress Entry (DPR)
+        ↓                    ↓
+Material Issue ──────→ QC & PM Approval
+👷 Site Engineer কীভাবে কাজ করছে (তোমার file থেকে):
+ধাপ	কে করে	কী করে	Status Change
+Monthly Target	PM	Month-wise qty set করে, week 1–4 ভাগ করে	—
+DPR Entry	Site Engineer	প্রতিদিন qty_done_today submit করে	Draft → Submitted
+QC Approval	QC	প্রতিদিনের daily log check করে approve করে	→ QC Approved
+PM Final	PM	চূড়ান্ত approve দেয়	→ PM Approved
+PM Reject করলে	—	পুরো weekly progress আবার Draft-এ যায়	→ Draft again
+🗄️ Key Database Tables (মনে আছে):
+Progress Tracking:
+
+phase_weekly_progress — Weekly session master
+phase_weekly_progress_items — Item-level progress
+daily_progress_logs — DPR header (labour, cement, concrete)
+daily_work_item_logs — Item-wise daily qty
+Target:
+
+phase_monthly_targets — Month/year header
+phase_monthly_target_items — week_1_qty, week_2_qty, week_3_qty, week_4_qty + actual_qty, actual_progress_pct
+Progress Calculation Chain:
+
+daily_work_item_logs.qty_done_today
+    → phase_monthly_target_items.actual_qty
+    → phase_monthly_target_items.actual_progress_pct
+    → project_phase_items.actual_progress (synced)
+    → project_phases.actual_progress (weighted sum)
+    → projects.actual_progress (overall %)
+🔑 Key Controllers:
+
+
+Con_PhaseWeeklyProgressController.php
+
+
+Con_MonthlyTargetController.php
+
+
+Con_MaterialIssueController.php
+এখন বলো — তুমি কি নতুন কোনো feature implement করতে চাও, নাকি কোনো specific part-এ কোনো সমস্যা হচ্ছে? আমি ready! 🚀

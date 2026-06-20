@@ -84,18 +84,19 @@ function sib_format_floor($floorType, $floorNo) {
 /* ── KPI Grid ── */
 .sib-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
 @media(max-width:992px){.sib-kpi-grid{grid-template-columns:repeat(2,1fr);}}
-.sib-kpi{border-radius:14px;padding:18px 20px;border:1px solid rgba(0,0,0,.08);
-  background:var(--card-bg,#fff);position:relative;overflow:hidden;}
+@media(max-width:576px){.sib-kpi-grid{grid-template-columns:1fr;}}
+.sib-kpi{border-radius:14px;padding:18px 20px;border:1px solid var(--clr-border-1, rgba(0,0,0,.08));
+  background:var(--clr-bg-card, var(--card-bg,#fff));position:relative;overflow:hidden;}
 .sib-kpi-accent{position:absolute;left:0;top:0;width:4px;height:100%;border-radius:14px 0 0 14px;}
 .sib-kpi-icon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;
   justify-content:center;font-size:17px;margin-bottom:11px;}
 .sib-kpi-val{font-size:20px;font-weight:900;line-height:1;margin-bottom:3px;}
 .sib-kpi-lbl{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
-  color:var(--text-muted);}
+  color:var(--clr-text-muted, var(--text-muted));}
 
 /* ── Panel ── */
-.sib-panel{border-radius:14px;padding:22px;border:1px solid rgba(0,0,0,.08);
-  background:var(--card-bg,#fff);margin-bottom:20px;}
+.sib-panel{border-radius:14px;padding:22px;border:1px solid var(--clr-border-1, rgba(0,0,0,.08));
+  background:var(--clr-bg-card, var(--card-bg,#fff));margin-bottom:20px;}
 .sib-panel-title{font-size:11px;font-weight:700;letter-spacing:1.5px;
   text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
 .sib-dot{width:8px;height:8px;border-radius:50%;}
@@ -103,19 +104,19 @@ function sib_format_floor($floorType, $floorNo) {
 /* ── Table ── */
 .sib-table{width:100%;border-collapse:collapse;}
 .sib-table th{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;
-  font-weight:600;padding:0 10px 10px;border-bottom:2px solid rgba(0,0,0,.07);text-align:left;}
-.sib-table td{padding:11px 10px;border-bottom:1px solid rgba(0,0,0,.05);
+  font-weight:600;padding:0 10px 10px;border-bottom:2px solid var(--clr-border-1, rgba(0,0,0,.07));text-align:left;}
+.sib-table td{padding:11px 10px;border-bottom:1px solid var(--clr-border-1, rgba(0,0,0,.05));
   font-size:12.5px;vertical-align:middle;}
 .sib-table tr:last-child td{border-bottom:none;}
 .sib-table .text-right{text-align:right;}
 
 /* ── Design Type Breakdown ── */
-.bkd-card{border:1px solid rgba(0,0,0,.08);border-radius:12px;
+.bkd-card{border:1px solid var(--clr-border-1, rgba(0,0,0,.08));border-radius:12px;
   padding:16px;margin-bottom:12px;}
 .bkd-card:last-child{margin-bottom:0;}
 .bkd-name{font-size:13px;font-weight:800;margin-bottom:10px;}
 .bkd-row{display:flex;justify-content:space-between;font-size:12px;
-  border-bottom:1px dashed rgba(0,0,0,.07);padding:5px 0;}
+  border-bottom:1px dashed var(--clr-border-1, rgba(0,0,0,.07));padding:5px 0;}
 .bkd-row:last-child{border-bottom:none;font-weight:800;font-size:13px;}
 
 /* ── Working Plan Status Pills ── */
@@ -127,33 +128,33 @@ function sib_format_floor($floorType, $floorNo) {
 
 /* ── Approve / Cancel Action card ── */
 .sib-action-card{border-radius:14px;padding:22px;
-  border:2px solid rgba(245,158,11,.3);background:rgba(245,158,11,.04);
+  border:2px solid var(--clr-border-1, rgba(245,158,11,.3));background:rgba(245,158,11,.04);
   margin-bottom:20px;}
 
 /* ── Tab Nav ── */
-.sib-tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid rgba(0,0,0,.07);
-  padding-bottom:-2px;}
+.sib-tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--clr-border-1, rgba(0,0,0,.07));
+  padding-bottom:-2px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;}
 .sib-tab-btn{background:none;border:none;padding:10px 18px;font-size:12px;
-  font-weight:700;color:var(--text-muted);cursor:pointer;border-radius:8px 8px 0 0;
-  transition:all .18s;letter-spacing:.5px;}
+  font-weight:700;color:var(--clr-text-muted, var(--text-muted));cursor:pointer;border-radius:8px 8px 0 0;
+  transition:all .18s;letter-spacing:.5px;flex-shrink:0;}
 .sib-tab-btn.active,.sib-tab-btn:hover{color:var(--sib-blue);}
 .sib-tab-btn.active{border-bottom:3px solid var(--sib-blue);margin-bottom:-2px;}
 .sib-tab-pane{display:none;}
 .sib-tab-pane.active{display:block;}
 
-.empty-state{text-align:center;padding:32px 0;color:var(--text-muted);}
+.empty-state{text-align:center;padding:32px 0;color:var(--clr-text-muted, var(--text-muted));}
 .empty-state i{font-size:32px;opacity:.25;display:block;margin-bottom:8px;}
 
 /* Spent Modal Tabs custom styling */
 .spent-nav-tabs .nav-link {
-  color: var(--text-muted) !important;
+  color: var(--clr-text-muted, var(--text-muted)) !important;
   border: none !important;
   border-bottom: 3px solid transparent !important;
   background: none !important;
   transition: all 0.2s;
 }
 .spent-nav-tabs .nav-link:hover {
-  border-bottom-color: rgba(0,0,0,0.1) !important;
+  border-bottom-color: var(--clr-border-1, rgba(0,0,0,0.1)) !important;
 }
 .spent-nav-tabs .nav-link.active {
   color: currentColor !important;
@@ -261,8 +262,8 @@ function sib_format_floor($floorType, $floorNo) {
           <i class="fal fa-check-circle"></i>
         </div>
         <div>
-          <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Step 1: Submission</div>
-          <div style="font-size:13px; font-weight:700; color:#2d3748;">Created & Submitted</div>
+          <div style="font-size:11px; font-weight:700; color:var(--clr-text-muted, var(--text-muted)); text-transform:uppercase; letter-spacing:0.5px;">Step 1: Submission</div>
+          <div style="font-size:13px; font-weight:700;">Created & Submitted</div>
           <div style="font-size:11px; color:var(--text-muted);">
             By <?= htmlspecialchars($budget['creator_name'] ?? 'Estimator') ?><br>
             <span style="font-size:10px; opacity:0.8;"><?= !empty($budget['created_at']) ? date('d M Y, h:i A', strtotime($budget['created_at'])) : '' ?></span>
@@ -426,7 +427,7 @@ function sib_format_floor($floorType, $floorNo) {
       <div class="sib-kpi-lbl">Remaining Budget</div>
       <div class="sib-kpi-val" style="color:<?= $remColor ?>"><?= sib_fmt($remaining) ?></div>
       <div class="text-muted mt-2" style="font-size:11.5px; padding-top:2px;">
-        Usage Ratio: <span class="fw-bold text-dark"><?= $pct ?>%</span>
+        Usage Ratio: <span class="fw-bold"><?= $pct ?>%</span>
       </div>
     </div>
   </div>
@@ -442,14 +443,14 @@ function sib_format_floor($floorType, $floorNo) {
           $totalSlabArea += (float)($f['slab_area_sqft'] ?? 0);
       }
       ?>
-      <div class="p-3 rounded border shadow-sm" style="background:#f0fdf4; border-color:#bbf7d0;">
+      <div class="p-3 rounded border shadow-sm" style="background:rgba(25,135,84,0.06); border-color:rgba(25,135,84,0.15);">
           <div class="d-flex align-items-center justify-content-between mb-2 text-success fw-bold" style="font-size:0.9rem">
               <span><i class="fal fa-layer-group"></i> Project Floor Setup Details</span>
               <span class="badge bg-success" style="font-size:0.85rem; padding: 5px 10px;">Total: <?= number_format($totalSlabArea, 2) ?> sqft</span>
           </div>
           <div class="d-flex flex-wrap">
               <?php foreach ($projectFloors as $f): ?>
-                  <span class="badge bg-light text-dark border p-2 me-2 mb-2" style="font-size:0.85rem; font-weight:normal">
+                  <span class="badge border p-2 me-2 mb-2" style="font-size:0.85rem; font-weight:normal; background:rgba(128,128,128,0.12); color:inherit;">
                       <i class="fal fa-building text-success"></i> <strong><?= htmlspecialchars(sib_format_floor($f['floor_type'], $f['floor_no'])) ?></strong>: <?= number_format($f['slab_area_sqft'], 2) ?> sqft
                   </span>
               <?php endforeach; ?>
@@ -592,7 +593,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
   <?php else: ?>
   <div class="row">
     <?php foreach ($breakdown as $bk): ?>
-    <div class="col-lg-6">
+    <div class="col-md-6">
       <div class="bkd-card">
         <div class="bkd-name">
           <i class="fal fa-layer-group me-2" style="color:var(--sib-purple)"></i>
@@ -649,7 +650,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
               <?= htmlspecialchars($item['work_type_label'] ?? $item['design_type_name'] ?? '—') ?>
             </span>
             <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
-              background:rgba(0,0,0,.06);color:#333;margin-left:4px;" title="Floor">
+              background:rgba(128,128,128,.12);color:inherit;margin-left:4px;" title="Floor">
               <i class="fal fa-building me-1"></i><?= htmlspecialchars(sib_format_floor($item['floor_type'] ?? 'Typical_Floor', $item['floor_no'] ?? null)) ?>
             </span>
             <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">
@@ -678,7 +679,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         <?php endforeach; ?>
       </tbody>
       <tfoot>
-        <tr style="background:rgba(0,0,0,.03)">
+        <tr style="background:rgba(128,128,128,.05)">
           <td colspan="7" style="text-align:right;font-weight:800;padding:12px 10px">Material Total:</td>
           <td class="text-right" style="font-weight:900;color:var(--sib-green);font-size:14px"><?= sib_fmt($matGrand) ?></td>
         </tr>
@@ -719,7 +720,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
               <?= htmlspecialchars($lb['work_type_label'] ?? $lb['design_type_name'] ?? '—') ?>
             </span>
             <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
-              background:rgba(0,0,0,.06);color:#333;margin-left:4px;" title="Floor">
+              background:rgba(128,128,128,.12);color:inherit;margin-left:4px;" title="Floor">
               <i class="fal fa-building me-1"></i><?= htmlspecialchars(sib_format_floor($lb['floor_type'] ?? 'Typical_Floor', $lb['floor_no'] ?? null)) ?>
             </span>
             <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">
@@ -744,7 +745,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         <?php endforeach; ?>
       </tbody>
       <tfoot>
-        <tr style="background:rgba(0,0,0,.03)">
+        <tr style="background:rgba(128,128,128,.05)">
           <td colspan="6" style="text-align:right;font-weight:800;padding:12px 10px">Labor Total:</td>
           <td class="text-right" style="font-weight:900;color:var(--sib-blue);font-size:14px"><?= sib_fmt($labGrand) ?></td>
         </tr>
@@ -811,7 +812,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;padding:0 4px">
         <?php foreach ($months as $m): ?>
-        <div style="background:var(--card-bg,#fff);border:1px solid rgba(0,0,0,.07);border-radius:10px;padding:10px 14px;position:relative;overflow:hidden">
+        <div style="background:var(--clr-bg-card, var(--card-bg,#fff));border:1px solid var(--clr-border-1, rgba(0,0,0,.07));border-radius:10px;padding:10px 14px;position:relative;overflow:hidden">
           <div style="position:absolute;left:0;top:0;width:3px;height:100%;background:var(--sib-teal);border-radius:10px 0 0 10px"></div>
           <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:3px"><?= $monthNames[(int)$m['month']] ?></div>
           <div style="font-size:14px;font-weight:900;color:var(--sib-teal)">৳<?= number_format($m['total_cost'], 2) ?></div>
@@ -892,7 +893,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         <?php endforeach; ?>
       </tbody>
       <tfoot>
-        <tr style="background:rgba(0,0,0,.03)">
+        <tr style="background:rgba(128,128,128,.05)">
           <td colspan="5" style="text-align:right;font-weight:800;padding:12px 10px">Total Planned Cost:</td>
           <td class="text-right" style="font-weight:900;color:var(--sib-teal);font-size:14px">
             <?= sib_fmt(array_sum(array_column($workingPlans, 'estimated_cost'))) ?>

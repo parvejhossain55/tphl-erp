@@ -47,15 +47,36 @@ $summaryByDate = [];
 foreach ($weeklyLogsSummary as $ls) { $summaryByDate[$ls['log_date']] = $ls; }
 
 // KPI totals
-$totalPlanned  = 0; $totalAchieved = 0; $completedItems = 0; $inProgressItems = 0; $delayedItems = 0;
+$totalPlanned  = 0; 
+$totalAchieved = 0; 
+$completedItems = 0; 
+$inProgressItems = 0; 
+$delayedItems = 0;
+$sumPcts = 0;
+$countPcts = 0;
+$hasQtyItems = false;
+
 foreach ($weeklyItems as $wi) {
-    $totalPlanned  += (float)$wi['planned_qty'];
-    $totalAchieved += (float)$wi['achieved_qty'];
-    $pct = (float)$wi['percent_complete'];
+    $targetMode = $wi['target_mode'] ?? 'qty';
+    $planned    = $targetMode === 'pct' ? (float)($wi['planned_pct'] ?? 0) : (float)$wi['planned_qty'];
+    $achieved   = $targetMode === 'pct' ? (float)($wi['achieved_pct'] ?? 0) : (float)$wi['achieved_qty'];
+    $pct        = (float)$wi['percent_complete'];
+    
     if ($pct >= 100) $completedItems++;
     elseif ($pct > 0) $inProgressItems++;
+    
+    if ($targetMode === 'qty') {
+        $totalPlanned  += $planned;
+        $totalAchieved += $achieved;
+        $hasQtyItems = true;
+    }
+    
+    if ($planned > 0) {
+        $sumPcts += $pct;
+        $countPcts++;
+    }
 }
-$overallWeekPct = $totalPlanned > 0 ? min(100, ($totalAchieved / $totalPlanned) * 100) : 0;
+$overallWeekPct = $countPcts > 0 ? ($sumPcts / $countPcts) : 0;
 $updatedToday   = count($dqByItem);
 $totalItems     = count($weeklyItems);
 
@@ -207,16 +228,24 @@ body { font-family: 'Inter', sans-serif; }
 
 <?php
 // Derive phase actual progress from weekly items
-// weighted average: sum(achieved_qty / monthly_target_qty * weight_pct) for items with monthly_target_qty > 0
 $phaseActual = 0;
 $weightSum = 0;
 foreach ($weeklyItems as $wi) {
-    $mt = (float)($wi['monthly_target_qty'] ?? 0);
-    $ach = (float)($wi['achieved_qty'] ?? 0);
+    $targetMode = $wi['target_mode'] ?? 'qty';
     $wp2 = (float)($wi['sub_item_weight'] ?? 0);
-    if ($mt > 0 && $wp2 > 0) {
-        $phaseActual += ($ach / $mt) * $wp2;
-        $weightSum   += $wp2;
+    if ($wp2 > 0) {
+        if ($targetMode === 'pct') {
+            $ach = (float)($wi['achieved_pct'] ?? 0);
+            $phaseActual += ($ach / 100) * $wp2;
+            $weightSum   += $wp2;
+        } else {
+            $mt = (float)($wi['monthly_target_qty'] ?? 0);
+            $ach = (float)($wi['achieved_qty'] ?? 0);
+            if ($mt > 0) {
+                $phaseActual += ($ach / $mt) * $wp2;
+                $weightSum   += $wp2;
+            }
+        }
     }
 }
 $phaseActualPct = ($weightSum > 0) ? min(100, $phaseActual) : 0;
@@ -265,6 +294,78 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 <div class="alert alert-success alert-dismissible fade show" role="alert">
     <i class="bi bi-check-circle-fill me-2"></i><?= $_SESSION['success']; unset($_SESSION['success']); ?>
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<?php endif; ?>
+
+<?php
+$rejectedLogs = [];
+foreach ($weeklyLogsSummary as $ls) {
+    if (($ls['qc_status'] ?? '') === 'Rejected') {
+        $rejectedLogs[] = $ls;
+    }
+}
+if (!empty($rejectedLogs)):
+?>
+<div class="alert alert-warning border-0 shadow-sm mb-3" style="border-radius:12px; background: rgba(239,68,68,0.08); border-left: 4px solid #ef4444; color: inherit;">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-shield-x text-danger fs-5"></i>
+        <strong style="font-size:14px; color: #ef4444;">QC Rejections Notice</strong>
+    </div>
+    <div style="font-size:12.5px; opacity:0.9; line-height: 1.5;">
+        নিম্নলিখিত দিনগুলোর প্রোগ্রেস রিপোর্ট QC স্পেশালিস্ট দ্বারা বাতিল (Rejected) করা হয়েছে। বাতিলকৃত কাজ সাপ্তাহিক অগ্রগতি হিসাব থেকে বাদ দেওয়া হয়েছে:
+        <ul class="mt-2 mb-0 ps-3">
+            <?php foreach ($rejectedLogs as $rl): ?>
+                <li>
+                    <strong><?= date('d M Y', strtotime($rl['log_date'])) ?>:</strong> 
+                    <?= htmlspecialchars($rl['qc_comment'] ?? 'কোন মন্তব্য দেওয়া হয়নি।') ?>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php
+$viewerRole = (int)($_SESSION['user']['role_id'] ?? 0);
+$isPmOrAdmin = in_array($viewerRole, [1, 15, 22]);
+$overachievedItems = [];
+foreach ($weeklyItems as $wi) {
+    $targetMode = $wi['target_mode'] ?? 'qty';
+    $planned = $targetMode === 'pct' ? (float)($wi['planned_pct'] ?? 0) : (float)$wi['planned_qty'];
+    $achieved = $targetMode === 'pct' ? (float)($wi['achieved_pct'] ?? 0) : (float)$wi['achieved_qty'];
+    $carryover = $targetMode === 'pct' ? (float)($wi['carryover_pct'] ?? 0) : (float)$wi['carryover_qty'];
+    $effectiveTarget = $planned + $carryover;
+
+    if ($achieved > $effectiveTarget && $effectiveTarget > 0) {
+        $overachievedItems[] = [
+            'name' => $wi['work_item_name'],
+            'achieved' => $achieved,
+            'target' => $effectiveTarget,
+            'mode' => $targetMode,
+            'unit' => $targetMode === 'pct' ? '%' : ($wi['unit'] ?? '')
+        ];
+    }
+}
+if ($isPmOrAdmin && !empty($overachievedItems)):
+?>
+<div class="alert alert-info border-0 shadow-sm mb-3" style="border-radius:12px; background: rgba(59,130,246,0.08); border-left: 4px solid #3b82f6; color: inherit;">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-info-circle-fill text-primary fs-5"></i>
+        <strong style="font-size:14px; color: #3b82f6;">Target Over-Achievement Notice (PM Only)</strong>
+    </div>
+    <div style="font-size:12.5px; opacity:0.9; line-height: 1.5;">
+        নিম্নলিখিত আইটেমগুলোতে এই সপ্তাহের নির্ধারিত টার্গেটের চেয়ে বেশি কাজ করা হয়েছে। QC কর্তৃক এটি অনুমোদিত হলে, PM চাইলে মান্থলি টার্গেট প্ল্যান থেকে এই সপ্তাহের এবং সামগ্রিক মাসের টার্গেট বাড়িয়ে এডিট করে দিতে পারেন:
+        <ul class="mt-2 mb-0 ps-3">
+            <?php foreach ($overachievedItems as $oi): ?>
+                <li>
+                    <strong><?= htmlspecialchars($oi['name']) ?>:</strong> 
+                    টার্গেট ছিল <?= $oi['mode'] === 'pct' ? number_format($oi['target'], 2) : number_format($oi['target'], 0) ?><?= $oi['unit'] ?>, 
+                    অর্জিত হয়েছে <?= $oi['mode'] === 'pct' ? number_format($oi['achieved'], 2) : number_format($oi['achieved'], 0) ?><?= $oi['unit'] ?> 
+                    (অতিরিক্ত: <?= $oi['mode'] === 'pct' ? number_format($oi['achieved'] - $oi['target'], 2) : number_format($oi['achieved'] - $oi['target'], 0) ?><?= $oi['unit'] ?>)
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
 </div>
 <?php endif; ?>
 
@@ -380,7 +481,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 <div class="row ">
 <div class="col-lg-8">
 
-<?php if ($entryStatus !== 'Draft' || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 13, 15, 22])): ?>
+<?php if (true): // Always show QC & PM review status to everyone ?>
 <!-- ░░ Quality Control & Manager Review Panel ░░ -->
 <div class="card__wrapper wp-card mb-4" style="border-radius:16px;">
     <div class="wp-card-header" style="border-bottom: 1px solid rgba(128, 128, 128, 0.15); display: flex; align-items: center; justify-content: space-between;">
@@ -623,12 +724,22 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         <?php else: ?>
         <?php 
         $formIndex = 0;
+        // Compute day number (1 to 7) for selected date in the week
+        $start_dt_calc = new DateTime($weeklyProgress['week_start_date'] ?? 'now');
+        $sel_dt_calc   = new DateTime($selectedDate);
+        $diff_days     = $start_dt_calc->diff($sel_dt_calc)->days;
+        $dayNum        = $diff_days + 1;
+        if ($dayNum < 1 || $dayNum > 7) $dayNum = 1; // safety fallback
+
         foreach ($weeklyItems as $wi):
             $itemId     = (int)$wi['target_item_id'];
             $itemName   = htmlspecialchars($wi['work_item_name']);
             $unit       = htmlspecialchars($wi['unit'] ?? '');
-            $planned    = (float)$wi['planned_qty'];
-            $achieved   = (float)$wi['achieved_qty'];
+            
+            $targetMode = $wi['target_mode'] ?? 'qty';
+            $planned    = $targetMode === 'pct' ? (float)($wi['planned_pct'] ?? 0) : (float)$wi['planned_qty'];
+            $achieved   = $targetMode === 'pct' ? (float)($wi['achieved_pct'] ?? 0) : (float)$wi['achieved_qty'];
+            
             $pct        = $planned > 0 ? min(100, ($achieved / $planned) * 100) : 0;
             $monthlyQty = (float)($wi['monthly_target_qty'] ?? 0);
 
@@ -650,6 +761,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 }
                 // Render a default empty row for this planned weekly item
                 $todayQty    = 0;
+                $todayPct    = 0;
                 $todayRem    = '';
                 $todayWt     = '';
                 $todayStatus = $wi['status'] ?? 'Not Started';
@@ -663,39 +775,93 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         <tr data-item-id="<?= $itemId ?>">
             <td style="color:#94a3b8;font-weight:700"><?= $formIndex + 1 ?></td>
             <td>
-                <div style="font-weight:600"><?= $itemName ?></div>
-                <?php if ($monthlyQty > 0): ?>
-                <div style="font-size:10px;color:#94a3b8">Monthly: <?= number_format($monthlyQty,0,'.',',') ?> <?= $unit ?></div>
+                <div style="font-weight:600">
+                    <?= $itemName ?>
+                    <?php if (($wi['earned_star'] ?? 0) == 1): ?>
+                        <span style="color:#f59e0b;font-size:14px;margin-left:4px;text-shadow: 0 0 4px rgba(245,158,11,0.5);" title="Performance Star Awarded! ★">★</span>
+                    <?php endif; ?>
+                </div>
+                <?php if ($targetMode === 'pct'): ?>
+                    <div style="font-size:10px;color:#94a3b8">Monthly Target: <?= number_format((float)($wi['monthly_target_pct'] ?? 0), 2) ?>%</div>
+                <?php else: ?>
+                    <?php if ($monthlyQty > 0): ?>
+                    <div style="font-size:10px;color:#94a3b8">Monthly Target: <?= number_format($monthlyQty,0,'.',',') ?> <?= $unit ?></div>
+                    <?php endif; ?>
                 <?php endif; ?>
                 <?php if (!empty($wi['contractor_name'])): ?>
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-top:2px">
                     <i class="bi bi-briefcase me-1"></i><?= htmlspecialchars($wi['contractor_name']) ?>
                 </div>
                 <?php endif; ?>
+                <?php
+                $hasGap = $targetMode === 'pct' ? ((float)($wi['gap_pct'] ?? 0) > 0) : ((float)($wi['gap_qty'] ?? 0) > 0);
+                $hasRec = $targetMode === 'pct' ? ((float)($wi['recovered_pct'] ?? 0) > 0) : ((float)($wi['recovered_qty'] ?? 0) > 0);
+                if ($hasGap || $hasRec):
+                ?>
+                <div style="font-size:9.5px;margin-top:4px;display:flex;gap:4px">
+                    <?php if ($hasGap): 
+                        $gapVal = $targetMode === 'pct' ? (float)$wi['gap_pct'] : (float)$wi['gap_qty'];
+                    ?>
+                        <span style="background:rgba(239,68,68,0.08);color:#ef4444;padding:1px 6px;border-radius:4px;font-weight:600">
+                            Gap: -<?= $targetMode === 'pct' ? number_format($gapVal,2).'%' : number_format($gapVal,0,'.',',') ?>
+                        </span>
+                    <?php endif; ?>
+                    <?php if ($hasRec): 
+                        $recVal = $targetMode === 'pct' ? (float)$wi['recovered_pct'] : (float)$wi['recovered_qty'];
+                    ?>
+                        <span style="background:rgba(16,185,129,0.08);color:#10b981;padding:1px 6px;border-radius:4px;font-weight:600">
+                            Recovered: +<?= $targetMode === 'pct' ? number_format($recVal,2).'%' : number_format($recVal,0,'.',',') ?>
+                        </span>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
                 <input type="hidden" name="items[<?= $formIndex ?>][target_item_id]" value="<?= $itemId ?>">
                 <input type="hidden" name="items[<?= $formIndex ?>][work_type_id]" value="">
             </td>
-            <td><span style="font-size:10.5px;font-weight:600;background:rgba(128,128,128,0.12);padding:2px 7px;border-radius:5px"><?= $unit ?></span></td>
-            <td class="text-center" style="font-weight:700"><?= number_format($planned,0,'.',',') ?></td>
-            <td class="text-center" style="font-weight:700;color:var(--pri)"><?= number_format($achieved,0,'.',',') ?></td>
+            <td><span style="font-size:10.5px;font-weight:600;background:rgba(128,128,128,0.12);padding:2px 7px;border-radius:5px"><?= $targetMode === 'pct' ? '%' : $unit ?></span></td>
+            <td class="text-center">
+                <div style="font-weight:700"><?= $targetMode === 'pct' ? number_format($planned,2).'%' : number_format($planned,0,'.',',') ?></div>
+                <?php
+                $coVal = $targetMode === 'pct' ? (float)($wi['carryover_pct'] ?? 0) : (float)($wi['carryover_qty'] ?? 0);
+                if ($coVal > 0):
+                ?>
+                <div style="font-size:9.5px;color:#f59e0b;font-weight:600;margin-top:2px;" title="Carryover from previous week">
+                    +<?= $targetMode === 'pct' ? number_format($coVal,2).'%' : number_format($coVal,0,'.',',') ?> CO
+                </div>
+                <?php endif; ?>
+            </td>
+            <td class="text-center" style="font-weight:700;color:var(--pri)"><?= $targetMode === 'pct' ? number_format($achieved,2).'%' : number_format($achieved,0,'.',',') ?></td>
             <td class="text-center">
                 <div style="font-weight:800;font-size:13px;color:<?= $pct>=100?'var(--green)':($pct>0?'var(--pri)':'#94a3b8') ?>"><?= number_format($pct,1) ?>%</div>
                 <div class="pct-bar"><div class="pct-fill" style="width:<?= $pct ?>%;background:<?= $barColor ?>"></div></div>
             </td>
-            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['1st_day_qty'] ?? 0) > 0 ? number_format($wi['1st_day_qty'],1) : '—' ?></td>
-            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['2nd_day_qty'] ?? 0) > 0 ? number_format($wi['2nd_day_qty'],1) : '—' ?></td>
-            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['3rd_day_qty'] ?? 0) > 0 ? number_format($wi['3rd_day_qty'],1) : '—' ?></td>
-            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['4th_day_qty'] ?? 0) > 0 ? number_format($wi['4th_day_qty'],1) : '—' ?></td>
-            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['5th_day_qty'] ?? 0) > 0 ? number_format($wi['5th_day_qty'],1) : '—' ?></td>
-            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['6_th_day_qty'] ?? 0) > 0 ? number_format($wi['6_th_day_qty'],1) : '—' ?></td>
-            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['7th_day_qty'] ?? 0) > 0 ? number_format($wi['7th_day_qty'],1) : '—' ?></td>
+            <?php for ($d = 1; $d <= 7; $d++): 
+                $colKey = $d === 6 ? '6_th_day_qty' : ($d === 7 ? '7th_day_qty' : ($d === 1 ? '1st_day_qty' : ($d === 2 ? '2nd_day_qty' : ($d === 3 ? '3rd_day_qty' : ($d === 4 ? '4th_day_qty' : '5th_day_qty')))));
+                $val = (float)($wi[$colKey] ?? 0);
+            ?>
+            <td class="text-center text-muted" style="font-size:11px">
+                <?= $val > 0 ? ($targetMode === 'pct' ? number_format($val,2).'%' : number_format($val,1)) : '—' ?>
+            </td>
+            <?php endfor; ?>
             <td class="text-center">
-                <input type="number" name="items[<?= $formIndex ?>][qty_done_today]"
-                       value="<?= number_format($todayQty,2,'.','') ?>"
-                       step="0.01" min="0"
-                       class="qty-input" <?= $disAttr ?>
-                       placeholder="0.00"
-                       title="Enter qty done today">
+                <?php if ($targetMode === 'pct'): ?>
+                    <?php $todayTarget = $dailyBreakdowns[$itemId][$weekNo][$dayNum] ?? 0; ?>
+                    <div style="font-size:10px;color:var(--text-muted, #64748b);margin-bottom:2px">Target: <?= number_format($todayTarget,2) ?>%</div>
+                    <input type="number" name="items[<?= $formIndex ?>][pct_done_today]"
+                           value="<?= $todayPct > 0 ? number_format($todayPct,2,'.','') : '' ?>"
+                           step="0.01" min="0" max="100"
+                           class="qty-input" <?= $disAttr ?>
+                           placeholder="0.00%"
+                           title="Enter % done today">
+                    <input type="hidden" name="items[<?= $formIndex ?>][qty_done_today]" value="0.00">
+                <?php else: ?>
+                    <input type="number" name="items[<?= $formIndex ?>][qty_done_today]"
+                           value="<?= $todayQty > 0 ? number_format($todayQty,2,'.','') : '' ?>"
+                           step="0.01" min="0"
+                           class="qty-input" <?= $disAttr ?>
+                           placeholder="0.00"
+                           title="Enter qty done today">
+                <?php endif; ?>
                 <input type="hidden" name="items[<?= $formIndex ?>][unit]" value="<?= $unit ?>">
             </td>
             <td>
@@ -742,6 +908,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 // Render a row for each daily progress log entry
                 foreach ($itemLogs as $dq):
                     $todayQty    = (float)$dq['qty_done_today'];
+                    $todayPct    = (float)($dq['pct_done_today'] ?? 0);
                     $todayRem    = $dq['remarks'] ?? '';
                     $todayWt     = $dq['work_type_id'] ?? '';
                     $todayStatus = $dq['item_status'] ?? 'In Progress';
@@ -761,9 +928,18 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         <tr data-item-id="<?= $itemId ?>">
             <td style="color:#94a3b8;font-weight:700"><?= $formIndex + 1 ?></td>
             <td>
-                <div style="font-weight:600"><?= $itemName ?></div>
-                <?php if ($monthlyQty > 0): ?>
-                <div style="font-size:10px;color:#94a3b8">Monthly: <?= number_format($monthlyQty,0,'.',',') ?> <?= $unit ?></div>
+                <div style="font-weight:600">
+                    <?= $itemName ?>
+                    <?php if (($wi['earned_star'] ?? 0) == 1): ?>
+                        <span style="color:#f59e0b;font-size:14px;margin-left:4px;text-shadow: 0 0 4px rgba(245,158,11,0.5);" title="Performance Star Awarded! ★">★</span>
+                    <?php endif; ?>
+                </div>
+                <?php if ($targetMode === 'pct'): ?>
+                    <div style="font-size:10px;color:#94a3b8">Monthly Target: <?= number_format((float)($wi['monthly_target_pct'] ?? 0), 2) ?>%</div>
+                <?php else: ?>
+                    <?php if ($monthlyQty > 0): ?>
+                    <div style="font-size:10px;color:#94a3b8">Monthly Target: <?= number_format($monthlyQty,0,'.',',') ?> <?= $unit ?></div>
+                    <?php endif; ?>
                 <?php endif; ?>
                 <?php if (!empty($wi['contractor_name'])): ?>
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-top:2px">
@@ -773,30 +949,75 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 <?php if (!empty($dq['work_type_name'])): ?>
                 <div style="font-size:11px;color:var(--pri);font-weight:600;margin-top:2px"><?= htmlspecialchars($dq['work_type_name']) ?></div>
                 <?php endif; ?>
+                <?php
+                $hasGap = $targetMode === 'pct' ? ((float)($wi['gap_pct'] ?? 0) > 0) : ((float)($wi['gap_qty'] ?? 0) > 0);
+                $hasRec = $targetMode === 'pct' ? ((float)($wi['recovered_pct'] ?? 0) > 0) : ((float)($wi['recovered_qty'] ?? 0) > 0);
+                if ($hasGap || $hasRec):
+                ?>
+                <div style="font-size:9.5px;margin-top:4px;display:flex;gap:4px">
+                    <?php if ($hasGap): 
+                        $gapVal = $targetMode === 'pct' ? (float)$wi['gap_pct'] : (float)$wi['gap_qty'];
+                    ?>
+                        <span style="background:rgba(239,68,68,0.08);color:#ef4444;padding:1px 6px;border-radius:4px;font-weight:600">
+                            Gap: -<?= $targetMode === 'pct' ? number_format($gapVal,2).'%' : number_format($gapVal,0,'.',',') ?>
+                        </span>
+                    <?php endif; ?>
+                    <?php if ($hasRec): 
+                        $recVal = $targetMode === 'pct' ? (float)$wi['recovered_pct'] : (float)$wi['recovered_qty'];
+                    ?>
+                        <span style="background:rgba(16,185,129,0.08);color:#10b981;padding:1px 6px;border-radius:4px;font-weight:600">
+                            Recovered: +<?= $targetMode === 'pct' ? number_format($recVal,2).'%' : number_format($recVal,0,'.',',') ?>
+                        </span>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
                 <input type="hidden" name="items[<?= $formIndex ?>][target_item_id]" value="<?= $itemId ?>">
                 <input type="hidden" name="items[<?= $formIndex ?>][work_type_id]" value="<?= $todayWt ?>">
             </td>
-            <td><span style="font-size:10.5px;font-weight:600;background:rgba(128,128,128,0.12);padding:2px 7px;border-radius:5px"><?= $unit ?></span></td>
-            <td class="text-center" style="font-weight:700"><?= number_format($planned,0,'.',',') ?></td>
-            <td class="text-center" style="font-weight:700;color:var(--pri)"><?= number_format($achieved,0,'.',',') ?></td>
+            <td><span style="font-size:10.5px;font-weight:600;background:rgba(128,128,128,0.12);padding:2px 7px;border-radius:5px"><?= $targetMode === 'pct' ? '%' : $unit ?></span></td>
+            <td class="text-center">
+                <div style="font-weight:700"><?= $targetMode === 'pct' ? number_format($planned,2).'%' : number_format($planned,0,'.',',') ?></div>
+                <?php
+                $coVal = $targetMode === 'pct' ? (float)($wi['carryover_pct'] ?? 0) : (float)($wi['carryover_qty'] ?? 0);
+                if ($coVal > 0):
+                ?>
+                <div style="font-size:9.5px;color:#f59e0b;font-weight:600;margin-top:2px;" title="Carryover from previous week">
+                    +<?= $targetMode === 'pct' ? number_format($coVal,2).'%' : number_format($coVal,0,'.',',') ?> CO
+                </div>
+                <?php endif; ?>
+            </td>
+            <td class="text-center" style="font-weight:700;color:var(--pri)"><?= $targetMode === 'pct' ? number_format($achieved,2).'%' : number_format($achieved,0,'.',',') ?></td>
             <td class="text-center">
                 <div style="font-weight:800;font-size:13px;color:<?= $pct>=100?'var(--green)':($pct>0?'var(--pri)':'#94a3b8') ?>"><?= number_format($pct,1) ?>%</div>
                 <div class="pct-bar"><div class="pct-fill" style="width:<?= $pct ?>%;background:<?= $barColor ?>"></div></div>
             </td>
-            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['1st_day_qty'] ?? 0) > 0 ? number_format($wi['1st_day_qty'],1) : '—' ?></td>
-            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['2nd_day_qty'] ?? 0) > 0 ? number_format($wi['2nd_day_qty'],1) : '—' ?></td>
-            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['3rd_day_qty'] ?? 0) > 0 ? number_format($wi['3rd_day_qty'],1) : '—' ?></td>
-            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['4th_day_qty'] ?? 0) > 0 ? number_format($wi['4th_day_qty'],1) : '—' ?></td>
-            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['5th_day_qty'] ?? 0) > 0 ? number_format($wi['5th_day_qty'],1) : '—' ?></td>
-            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['6_th_day_qty'] ?? 0) > 0 ? number_format($wi['6_th_day_qty'],1) : '—' ?></td>
-            <td class="text-center text-muted" style="font-size:11px"><?= (float)($wi['7th_day_qty'] ?? 0) > 0 ? number_format($wi['7th_day_qty'],1) : '—' ?></td>
+            <?php for ($d = 1; $d <= 7; $d++): 
+                $colKey = $d === 6 ? '6_th_day_qty' : ($d === 7 ? '7th_day_qty' : ($d === 1 ? '1st_day_qty' : ($d === 2 ? '2nd_day_qty' : ($d === 3 ? '3rd_day_qty' : ($d === 4 ? '4th_day_qty' : '5th_day_qty')))));
+                $val = (float)($wi[$colKey] ?? 0);
+            ?>
+            <td class="text-center text-muted" style="font-size:11px">
+                <?= $val > 0 ? ($targetMode === 'pct' ? number_format($val,2).'%' : number_format($val,1)) : '—' ?>
+            </td>
+            <?php endfor; ?>
             <td class="text-center">
-                <input type="number" name="items[<?= $formIndex ?>][qty_done_today]"
-                       value="<?= number_format($todayQty,2,'.','') ?>"
-                       step="0.01" min="0"
-                       class="qty-input" <?= $disAttr ?>
-                       placeholder="0.00"
-                       title="Enter qty done today">
+                <?php if ($targetMode === 'pct'): ?>
+                    <?php $todayTarget = $dailyBreakdowns[$itemId][$weekNo][$dayNum] ?? 0; ?>
+                    <div style="font-size:10px;color:var(--text-muted, #64748b);margin-bottom:2px">Target: <?= number_format($todayTarget,2) ?>%</div>
+                    <input type="number" name="items[<?= $formIndex ?>][pct_done_today]"
+                           value="<?= $todayPct > 0 ? number_format($todayPct,2,'.','') : '' ?>"
+                           step="0.01" min="0" max="100"
+                           class="qty-input" <?= $disAttr ?>
+                           placeholder="0.00%"
+                           title="Enter % done today">
+                    <input type="hidden" name="items[<?= $formIndex ?>][qty_done_today]" value="0.00">
+                <?php else: ?>
+                    <input type="number" name="items[<?= $formIndex ?>][qty_done_today]"
+                           value="<?= $todayQty > 0 ? number_format($todayQty,2,'.','') : '' ?>"
+                           step="0.01" min="0"
+                           class="qty-input" <?= $disAttr ?>
+                           placeholder="0.00"
+                           title="Enter qty done today">
+                <?php endif; ?>
                 <input type="hidden" name="items[<?= $formIndex ?>][unit]" value="<?= $unit ?>">
             </td>
             <td>
@@ -836,7 +1057,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                            value="<?= htmlspecialchars($todayRem) ?>"
                            class="remarks-input" <?= $disAttr ?>
                            placeholder="Remarks...">
-                    <?php if (!$isLocked && isset($dq['log_row_id'])): ?>
+                    <?php if (!$isLocked && !empty($dq['log_row_id'])): ?>
                     <button type="button" class="btn btn-sm btn-link text-danger p-0 border-0"
                             onclick="confirmDelete(<?= (int)$dq['log_row_id'] ?>, '<?= htmlspecialchars(addslashes($itemName . (!empty($dq['work_type_name']) ? ' - ' . $dq['work_type_name'] : '')), ENT_QUOTES, 'UTF-8') ?>')"
                             title="Remove from schedule">
@@ -860,8 +1081,8 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         <tfoot>
         <tr class="wp-total-row">
             <td colspan="3" style="font-weight:700;color:var(--clr-theme-primary)">Totals</td>
-            <td class="text-center" style="color:var(--clr-theme-primary)"><?= number_format($totalPlanned,0,'.',',') ?></td>
-            <td class="text-center" style="color:var(--clr-theme-primary)"><?= number_format($totalAchieved,0,'.',',') ?></td>
+            <td class="text-center" style="color:var(--clr-theme-primary)"><?= $hasQtyItems ? number_format($totalPlanned,0,'.',',') : '—' ?></td>
+            <td class="text-center" style="color:var(--clr-theme-primary)"><?= $hasQtyItems ? number_format($totalAchieved,0,'.',',') : '—' ?></td>
             <td class="text-center" style="color:var(--green);font-weight:800;font-size:14px"><?= number_format($overallWeekPct,1) ?>%</td>
             <td colspan="6" class="text-end" style="padding-right:16px;color:inherit;opacity:0.8;font-size:11.5px">
                 Overall Weekly Progress: <strong style="color:var(--green);font-size:14px"><?= number_format($overallWeekPct,1) ?>%</strong>
@@ -1012,30 +1233,40 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         $totalMonthlyAch = 0;
         $totalRemaining  = 0;
         $totalWeightSum  = 0;
+        $hasQtyItemsSub  = false;
         foreach ($weeklyItems as $wi):
             $itemName      = $wi['work_item_name'];
             $unit          = $wi['unit'] ?? '';
             $weight        = (float)($wi['sub_item_weight'] ?? 0);
-            $mtQty         = (float)($wi['monthly_target_qty'] ?? 0);
+            
+            $targetMode    = $wi['target_mode'] ?? 'qty';
+            $mtQty         = $targetMode === 'pct' ? (float)($wi['monthly_target_pct'] ?? 0) : (float)($wi['monthly_target_qty'] ?? 0);
 
-            // ✅ Use MONTHLY actual qty (pmti.actual_qty), NOT weekly pwpi.achieved_qty
-            $monthlyAchQty = (float)($wi['monthly_actual_qty'] ?? $wi['achieved_qty'] ?? 0);
+            // Use MONTHLY actual qty (pmti.actual_qty), NOT weekly pwpi.achieved_qty
+            $monthlyAchQty = $targetMode === 'pct' ? (float)($wi['monthly_actual_pct'] ?? $wi['achieved_pct'] ?? 0) : (float)($wi['monthly_actual_qty'] ?? $wi['achieved_qty'] ?? 0);
 
             // Planned % from pmti.planned_progress_pct
             $planPct       = (float)($wi['monthly_planned_pct'] ?? 0);
 
             // Actual monthly % — use DB stored actual_progress_pct if available
             $dbActualPct   = (float)($wi['monthly_actual_pct'] ?? 0);
-            $monthlyActPct = ($dbActualPct > 0 && $dbActualPct <= 100)
+            $monthlyActPct = ($targetMode === 'pct')
                            ? $dbActualPct
-                           : (($mtQty > 0) ? min(100, $monthlyAchQty / $mtQty * 100) : 0);
+                           : (($dbActualPct > 0 && $dbActualPct <= 100)
+                              ? $dbActualPct
+                              : (($mtQty > 0) ? min(100, $monthlyAchQty / $mtQty * 100) : 0));
 
             // Phase contribution = Weight% × Actual% / 100
             $contrib       = ($weight * $monthlyActPct / 100);
 
             // Remaining
-            $remQty        = max(0, $mtQty - $monthlyAchQty);
-            $remPct        = max(0, 100 - $monthlyActPct);
+            if ($targetMode === 'pct') {
+                $remQty = max(0, $mtQty - $monthlyActPct);
+                $remPct = $mtQty > 0 ? max(0, ($remQty / $mtQty) * 100) : 0;
+            } else {
+                $remQty = max(0, $mtQty - $monthlyAchQty);
+                $remPct = max(0, 100 - $monthlyActPct);
+            }
 
             // Colors
             if ($monthlyActPct >= 100)                              { $barC='#10b981'; $pctColor='#065f46'; }
@@ -1044,17 +1275,20 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
             else                                                     { $barC='#e2e8f0'; $pctColor='#94a3b8'; }
 
             $totalContrib    += $contrib;
-            $totalMTQty      += $mtQty;
-            $totalMonthlyAch += $monthlyAchQty;
-            $totalRemaining  += $remQty;
             $totalWeightSum  += $weight;
+            if ($targetMode === 'qty') {
+                $totalMTQty      += $mtQty;
+                $totalMonthlyAch += $monthlyAchQty;
+                $totalRemaining  += $remQty;
+                $hasQtyItemsSub  = true;
+            }
         ?>
         <tr style="border-bottom:1px solid rgba(128,128,128,0.08)" onmouseover="this.style.background='rgba(128,128,128,0.04)'" onmouseout="this.style.background=''">
             <td style="padding:7px 10px;vertical-align:middle">
                 <div style="font-weight:600;color:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px" title="<?= htmlspecialchars($itemName) ?>">
                     <?= htmlspecialchars($itemName) ?>
                 </div>
-                <?php if ($unit): ?><div style="font-size:9px;color:var(--clr-text-muted)"><?= $unit ?></div><?php endif; ?>
+                <?php if ($unit): ?><div style="font-size:9px;color:var(--clr-text-muted)"><?= $targetMode === 'pct' ? '%' : $unit ?></div><?php endif; ?>
             </td>
 
             <!-- Weight % -->
@@ -1064,15 +1298,15 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
                 </span>
             </td>
 
-            <!-- Monthly Target Qty -->
+            <!-- Monthly Target Qty / Pct -->
             <td style="padding:6px 8px;text-align:center;vertical-align:middle;color:inherit;font-weight:700;font-size:11px">
-                <?= $mtQty > 0 ? number_format($mtQty,0,'.',',') : '<span style="color:#94a3b8">—</span>' ?>
+                <?= $targetMode === 'pct' ? number_format($mtQty,2).'%' : ($mtQty > 0 ? number_format($mtQty,0,'.',',') : '<span style="color:#94a3b8">—</span>') ?>
             </td>
 
-            <!-- Monthly Achieved Qty -->
+            <!-- Monthly Achieved Qty / Pct -->
             <td style="padding:6px 7px;text-align:center;vertical-align:middle">
-                <span style="color:<?= $monthlyAchQty>0?'#1d4ed8':'#94a3b8' ?>;font-weight:800;font-size:11px">
-                    <?= number_format($monthlyAchQty, 0, '.', ',') ?>
+                <span style="color:<?= $monthlyAchQty>0 || ($targetMode==='pct'&&$monthlyActPct>0)?'#1d4ed8':'#94a3b8' ?>;font-weight:800;font-size:11px">
+                    <?= $targetMode === 'pct' ? number_format($monthlyActPct, 2).'%' : number_format($monthlyAchQty, 0, '.', ',') ?>
                 </span>
             </td>
 
@@ -1106,13 +1340,24 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 
             <!-- Remaining -->
             <td style="padding:6px 8px;text-align:center;vertical-align:middle">
-                <?php if ($mtQty > 0): ?>
-                <div style="color:#dc2626;font-weight:700;font-size:10.5px">
-                    <?= number_format($remQty,0,'.',',') ?> <?= $unit ?>
-                </div>
-                <div style="font-size:9px;color:#ef4444;font-weight:600"><?= number_format($remPct,0) ?>% left</div>
+                <?php if ($targetMode === 'pct'): ?>
+                    <?php if ($mtQty > 0): ?>
+                    <div style="color:#dc2626;font-weight:700;font-size:10.5px">
+                        <?= number_format($remQty,2) ?>%
+                    </div>
+                    <div style="font-size:9px;color:#ef4444;font-weight:600"><?= number_format(100 - ($monthlyActPct / $mtQty * 100), 0) ?>% left</div>
+                    <?php else: ?>
+                    <span style="color:#94a3b8;font-size:10px">—</span>
+                    <?php endif; ?>
                 <?php else: ?>
-                <span style="color:#94a3b8;font-size:10px">—</span>
+                    <?php if ($mtQty > 0): ?>
+                    <div style="color:#dc2626;font-weight:700;font-size:10.5px">
+                        <?= number_format($remQty,0,'.',',') ?> <?= $unit ?>
+                    </div>
+                    <div style="font-size:9px;color:#ef4444;font-weight:600"><?= number_format($remPct,0) ?>% left</div>
+                    <?php else: ?>
+                    <span style="color:#94a3b8;font-size:10px">—</span>
+                    <?php endif; ?>
                 <?php endif; ?>
             </td>
         </tr>
@@ -1122,15 +1367,19 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
             <tr style="background:rgba(16,185,129,0.08);border-top:2px solid rgba(16,185,129,0.3)">
                 <td style="padding:8px 9px;font-size:10.5px;font-weight:800;color:#10b981">Total</td>
                 <td style="padding:8px 7px;text-align:center;color:var(--clr-theme-secondary);font-size:11px;font-weight:900"><?= number_format($totalWeightSum,0) ?>%</td>
-                <td style="padding:8px 7px;text-align:center;color:inherit;font-size:11px;font-weight:700"><?= number_format($totalMTQty,0,'.',',') ?></td>
-                <td style="padding:8px 7px;text-align:center;color:#1d4ed8;font-size:11px;font-weight:700"><?= number_format($totalMonthlyAch,0,'.',',') ?></td>
+                <td style="padding:8px 7px;text-align:center;color:inherit;font-size:11px;font-weight:700"><?= $hasQtyItemsSub ? number_format($totalMTQty,0,'.',',') : '—' ?></td>
+                <td style="padding:8px 7px;text-align:center;color:#1d4ed8;font-size:11px;font-weight:700"><?= $hasQtyItemsSub ? number_format($totalMonthlyAch,0,'.',',') : '—' ?></td>
                 <td style="padding:8px 7px;text-align:center">
-                    <?php $tActPct = $totalMTQty>0 ? min(100,$totalMonthlyAch/$totalMTQty*100) : 0; ?>
-                    <span style="font-weight:900;font-size:13px;color:<?= $tActPct>=100?'#10b981':'var(--clr-theme-primary)' ?>"><?= number_format($tActPct,1) ?>%</span>
+                    <?php if ($hasQtyItemsSub && $totalMTQty > 0): ?>
+                        <?php $tActPct = min(100,$totalMonthlyAch/$totalMTQty*100); ?>
+                        <span style="font-weight:900;font-size:13px;color:<?= $tActPct>=100?'#10b981':'var(--clr-theme-primary)' ?>"><?= number_format($tActPct,1) ?>%</span>
+                    <?php else: ?>
+                        <span style="color:#94a3b8">—</span>
+                    <?php endif; ?>
                 </td>
                 <td style="padding:8px 7px;text-align:center;color:inherit">—</td>
                 <td style="padding:8px 7px;text-align:center;color:#10b981;font-size:13px;font-weight:900"><?= number_format($totalContrib,2) ?>%</td>
-                <td style="padding:8px 7px;text-align:center;color:#dc2626;font-size:11px;font-weight:700"><?= number_format($totalRemaining,0,'.',',') ?></td>
+                <td style="padding:8px 7px;text-align:center;color:#dc2626;font-size:11px;font-weight:700"><?= $hasQtyItemsSub ? number_format($totalRemaining,0,'.',',') : '—' ?></td>
             </tr>
             <tr style="background:rgba(var(--clr-theme-primary-rgb),0.08)">
                 <td colspan="8" style="padding:7px 10px;font-size:10px;color:var(--clr-theme-primary);font-weight:600;line-height:1.7">
@@ -1515,9 +1764,10 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
 
 <?php
 $activeWtByItem = [];
-foreach ($dailyQuantities as $dq) {
-    $iid = (int)$dq['target_item_id'];
-    $wtId = $dq['work_type_id'] ? (int)$dq['work_type_id'] : 0;
+$persistentWorkTypes = $persistentWorkTypes ?? [];
+foreach ($persistentWorkTypes as $pwt) {
+    $iid = (int)$pwt['target_item_id'];
+    $wtId = (int)$pwt['work_type_id'];
     if ($wtId > 0) {
         $activeWtByItem[$iid][] = $wtId;
     }

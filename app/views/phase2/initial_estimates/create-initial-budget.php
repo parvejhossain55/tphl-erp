@@ -18,19 +18,20 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
     --dt-colors: #2563eb,#16a34a,#d97706,var(--clr-theme-secondary),#db2777,#0891b2,#ea580c,#65a30d,#9333ea;
 }
 .est-form-card {
-    background: #fff;
+    background: var(--clr-bg-card, #fff);
     border-radius: 12px;
     box-shadow: 0 2px 12px rgba(0,0,0,.08);
     margin-bottom: 1.5rem;
     overflow: hidden;
+    border: 1px solid var(--clr-border-1, #e8edf3);
 }
 .est-form-card .card-hd {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: .85rem 1.25rem;
-    background: #f8fafc;
-    border-bottom: 1px solid #e8edf3;
+    background: var(--clr-bg-card, #f8fafc);
+    border-bottom: 1px solid var(--clr-border-1, #e8edf3);
     font-weight: 600;
     font-size: .93rem;
 }
@@ -38,10 +39,10 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
 
 /* Design Type Block */
 .dt-block {
-    border: 2px solid #e2e8f0;
+    border: 2px solid var(--clr-border-1, #e2e8f0);
     border-radius: 12px;
     margin-bottom: 1.25rem;
-    background: #fafcff;
+    background: var(--clr-bg-card, #fafcff);
     overflow: hidden;
     transition: border-color .2s;
 }
@@ -82,10 +83,10 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
 
 /* Work Type Block */
 .wt-block {
-    border: 1px solid #dde3ef;
+    border: 1px solid var(--clr-border-1, #dde3ef);
     border-radius: 8px;
     margin-bottom: .85rem;
-    background: #fff;
+    background: var(--clr-bg-card, #fff);
     overflow: hidden;
 }
 .wt-block-header {
@@ -93,8 +94,8 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
     align-items: center;
     justify-content: space-between;
     padding: .55rem .9rem;
-    background: #f0f4ff;
-    border-bottom: 1px solid #e0e8ff;
+    background: var(--clr-bg-card, #f0f4ff);
+    border-bottom: 1px solid var(--clr-border-1, #e0e8ff);
 }
 .wt-block-body { padding: .6rem 0 0; }
 
@@ -115,11 +116,11 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
 }
 .qs-table td {
     padding: .3rem .35rem;
-    border-bottom: 1px solid #edf2f7;
+    border-bottom: 1px solid var(--clr-border-1, #edf2f7);
     vertical-align: middle;
 }
 .qs-table tr:last-child td { border-bottom: none; }
-.qs-table tr:hover td { background: #f0f7ff; }
+.qs-table tr:hover td { background: var(--clr-bg-card-hover, rgba(0,0,0,0.02)); }
 
 /* Column widths optimization for laptops/tablets */
 .qs-table th:nth-child(1), .qs-table td:nth-child(1) { width: 55px !important; min-width: 55px !important; text-align: center; } /* SL */
@@ -152,12 +153,12 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
     color: #1d4ed8;
     text-align: center;
     font-size: .85rem;
-    background: #eff6ff;
+    background: rgba(37, 99, 235, 0.08);
 }
 .wt-subtotal-row td {
-    background: #f0fdf4;
+    background: rgba(22, 101, 52, 0.08);
     font-weight: 600;
-    color: #166534;
+    color: var(--est-success, #16a34a);
     font-size: .83rem;
 }
 
@@ -166,6 +167,7 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
     width: 100%;
     border-collapse: collapse;
     font-size: .82rem;
+    min-width: 800px !important;
 }
 .labor-table th {
     background: #374151;
@@ -175,7 +177,7 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
 }
 .labor-table td {
     padding: .3rem .35rem;
-    border-bottom: 1px solid #edf2f7;
+    border-bottom: 1px solid var(--clr-border-1, #edf2f7);
     vertical-align: middle;
 }
 .labor-table tr:last-child td { border-bottom: none; }
@@ -186,8 +188,8 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
     justify-content: flex-end;
     gap: 1rem;
     padding: .55rem .9rem;
-    background: #f8fafc;
-    border-top: 1px solid #e5e7eb;
+    background: var(--clr-bg-card, #f8fafc);
+    border-top: 1px solid var(--clr-border-1, #e5e7eb);
     font-size: .83rem;
     flex-wrap: wrap;
 }
@@ -202,14 +204,14 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
     border-radius: 20px;
     font-size: .8rem;
 }
-.sum-mat  { background: #dbeafe; color: #1d4ed8; }
-.sum-lab  { background: #dcfce7; color: #166534; }
-.sum-tot  { background: #fef3c7; color: #92400e; }
+.sum-mat  { background: rgba(37, 99, 235, 0.15); color: var(--est-primary, #2563eb); }
+.sum-lab  { background: rgba(22, 163, 74, 0.15); color: var(--est-success, #16a34a); }
+.sum-tot  { background: rgba(217, 119, 6, 0.15); color: var(--est-warning, #d97706); }
 
 /* Grand summary table */
 .grand-summary-table th { background: #1e293b; color: #fff; padding: .5rem .75rem; }
-.grand-summary-table td { padding: .45rem .75rem; border-bottom: 1px solid #e2e8f0; }
-.grand-summary-table tr:last-child td { border-bottom: none; font-weight: 700; background: #f1f5f9; }
+.grand-summary-table td { padding: .45rem .75rem; border-bottom: 1px solid var(--clr-border-1, #e2e8f0); }
+.grand-summary-table tr:last-child td { border-bottom: none; font-weight: 700; background: rgba(0, 0, 0, 0.05); }
 
 /* Buttons */
 .btn-draft  { background: #f59e0b; border-color: #f59e0b; color: #fff; }
@@ -220,9 +222,7 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
 
 <div class="pagetitle d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h3><?= htmlspecialchars($page_title) ?></h3>
         <nav><ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
             <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-estimates">Estimates</a></li>
             <li class="breadcrumb-item active">New Estimate</li>
         </ol></nav>
@@ -246,7 +246,7 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
     </div>
     <div class="card-bd">
         <div class="row ">
-            <div class="col-md-5">
+            <div class="col-12 col-md-6 col-lg-5 mb-1">
                 <label class="form-label fw-semibold text-muted">Project <span class="text-danger">*</span></label>
                 <select name="project_id" id="estimateProjectId" class="form-select" required>
                     <option value="">-- Choose Project --</option>
@@ -258,7 +258,7 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
                     <small class="text-danger">No projects assigned to you yet.</small>
                 <?php endif; ?>
             </div>
-            <div class="col-md-5">
+            <div class="col-12 col-md-6 col-lg-5 mb-1">
                 <label class="form-label fw-semibold text-muted">Architecture Record <span class="text-danger">*</span></label>
                 <div class="d-flex gap-2">
                     <select name="architecture_id" id="archSelect" class="form-select" required>
@@ -272,15 +272,15 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
                     <i class="bi bi-hourglass-split me-1"></i> Loading...
                 </div>
             </div>
-            <div class="col-md-2">
+            <div class="col-6 col-md-4 col-lg-2 mb-1">
                 <label class="form-label fw-semibold text-muted">Start Date</label>
                 <input type="date" name="start_date" class="form-control">
             </div>
-            <div class="col-md-2">
+            <div class="col-6 col-md-4 col-lg-2 mb-1">
                 <label class="form-label fw-semibold text-muted">End Date</label>
                 <input type="date" name="end_date" class="form-control">
             </div>
-            <div class="col-md-2">
+            <div class="col-6 col-md-4 col-lg-2 mb-1">
                 <label class="form-label fw-semibold text-muted d-flex justify-content-between align-items-center">
                     <span>Total Area (sqft)</span>
                     <button type="button" class="btn btn-link p-0 text-decoration-none" style="font-size:11px" onclick="syncTotalArea()" title="Sync from Floor Setup">
@@ -289,23 +289,23 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
                 </label>
                 <input type="number" step="0.01" name="total_area_sqft" id="totalAreaSqft" class="form-control" placeholder="0.00">
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-md-6 col-lg-4 mb-1">
                 <label class="form-label fw-semibold text-muted">Budget Link <small class="text-secondary">(Optional)</small></label>
                 <input type="url" name="budget_link" class="form-control" placeholder="Google Drive link...">
             </div>
-            <div class="col-md-2">
+            <div class="col-6 col-md-3 col-lg-2 mb-1">
                 <label class="form-label fw-semibold text-muted">Other Costs (৳)</label>
                 <input type="number" step="0.01" name="other_costs" id="otherCosts" class="form-control" value="0" placeholder="0.00">
             </div>
-            <div class="col-md-2">
+            <div class="col-6 col-md-3 col-lg-2 mb-1">
                 <label class="form-label fw-semibold text-muted">Other Cost Detail</label>
                 <input type="text" name="other_cost_detail" class="form-control" placeholder="Note...">
             </div>
             
             <!-- Project Timeline Section -->
-            <div class="col-md-12 mt-3" id="projectTimelineSection" style="display:none;"></div>
+            <div class="col-12 mt-2" id="projectTimelineSection" style="display:none;"></div>
             <!-- Project Floors Section -->
-            <div class="col-md-12 mt-3" id="projectFloorsSection" style="display:none;"></div>
+            <div class="col-12 mt-2" id="projectFloorsSection" style="display:none;"></div>
         </div>
     </div>
 </div>
@@ -370,15 +370,15 @@ $designTypesJson = json_encode($designTypes ?? [], JSON_UNESCAPED_UNICODE);
 <!-- ═══════════════════════════════════════════════════════════════
      ACTION BUTTONS
 ═══════════════════════════════════════════════════════════════ -->
-<div class="d-flex justify-content-between align-items-center mb-5">
-    <a href="<?= $base_url ?>/con-estimates" class="btn btn-secondary">
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-stretch align-items-sm-center gap-3 mb-5">
+    <a href="<?= $base_url ?>/con-estimates" class="btn btn-secondary text-center">
         <i class="bi bi-x-circle me-1"></i> Cancel
     </a>
-    <div class="d-flex gap-2">
-        <button type="button" class="btn btn-draft px-4" id="saveDraftBtn">
+    <div class="d-flex flex-column flex-sm-row gap-2">
+        <button type="button" class="btn btn-draft px-4 py-2" id="saveDraftBtn">
             <i class="bi bi-floppy me-1"></i> Save as Draft
         </button>
-        <button type="button" class="btn btn-submit px-4" id="submitBtn">
+        <button type="button" class="btn btn-submit px-4 py-2" id="submitBtn">
             <i class="bi bi-send-check me-1"></i> Submit for Approval
         </button>
     </div>
@@ -475,42 +475,46 @@ function buildDtBlock(blockIdx) {
     return `
     <div class="dt-block ${colorClass}" id="dt-block-${blockIdx}" data-block="${blockIdx}">
         <!-- Header -->
-        <div class="dt-block-header">
+        <div class="dt-block-header d-flex align-items-center flex-wrap gap-2">
             <i class="bi bi-layers fs-5"></i>
-            <div class="flex-grow-1">
-                <label class="text-white small mb-0 opacity-75">Design Type</label>
+            <div class="flex-grow-1" style="min-width: 200px;">
+                <label class="text-white small mb-0 opacity-75 d-block">Design Type</label>
                 <select name="dt_select_${blockIdx}" id="dt-select-${blockIdx}"
-                        class="form-select form-select-sm dt-select"
+                        class="form-select form-select-sm dt-select w-100"
                         style="max-width:320px"
                         onchange="onDtChange(${blockIdx})">
                     <option value="" style="background:#1e293b;color:#f1f5f9">-- Select Design Type --</option>
                     ${dtOptions}
                 </select>
             </div>
-            <!-- View Drawing Button -->
-            <a href="#" target="_blank" id="dt-view-link-${blockIdx}"
-               class="btn btn-sm ms-2"
-               style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);color:#fff;display:none"
-               title="View Design Drawing">
-                <i class="bi bi-eye me-1"></i>View Drawing
-            </a>
-            <button type="button" class="btn btn-sm btn-light ms-2"
-                    onclick="removeDtBlock(${blockIdx})" title="Remove this design type">
-                <i class="bi bi-trash3"></i>
-            </button>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                <!-- View Drawing Button -->
+                <a href="#" target="_blank" id="dt-view-link-${blockIdx}"
+                   class="btn btn-sm"
+                   style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);color:#fff;display:none"
+                   title="View Design Drawing">
+                    <i class="bi bi-eye me-1"></i>View Drawing
+                </a>
+                <button type="button" class="btn btn-sm btn-light"
+                        onclick="removeDtBlock(${blockIdx})" title="Remove this design type">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </div>
         </div>
 
         <!-- Custom Link Row (shown after design type selected) -->
         <div id="dt-link-row-${blockIdx}"
              style="display:none;background:rgba(0,0,0,.18);padding:.5rem 1rem;border-bottom:1px solid rgba(255,255,255,.1)">
-            <div class="d-flex align-items-center gap-2">
-                <i class="bi bi-link-45deg text-white opacity-75"></i>
-                <span class="text-white small opacity-75" style="white-space:nowrap">Drawing Link:</span>
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-link-45deg text-white opacity-75"></i>
+                    <span class="text-white small opacity-75" style="white-space:nowrap">Drawing Link:</span>
+                </div>
                 <input type="url"
                        id="dt-custom-link-${blockIdx}"
                        name="dt_custom_link[]"
-                       class="form-control form-control-sm"
-                       style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#000;max-width:480px"
+                       class="form-control form-control-sm flex-grow-1"
+                       style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#000;max-width:480px;min-width:180px;"
                        placeholder="https://drive.google.com/... (link paste করুন)"
                        oninput="syncDtViewBtn(${blockIdx})">
                 <a href="#" target="_blank" id="dt-custom-view-${blockIdx}"
@@ -774,21 +778,25 @@ function addWtBlock(dtBlockIdx) {
 
     const html = `
     <div class="wt-block" id="wt-block-${blockKey}">
-        <div class="wt-block-header">
-            <div class="d-flex align-items-center gap-2">
-                <i class="bi bi-layers text-primary"></i>
-                <select id="phase-item-select-${blockKey}" class="form-select form-select-sm phase-item-select"
-                        style="max-width:240px" onchange="onPhaseItemChange('${blockKey}', ${dtBlockIdx})">
-                    <option value="">-- Select Phase Item --</option>
-                </select>
+        <div class="wt-block-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center flex-wrap gap-2 flex-grow-1">
+                <div class="d-flex align-items-center gap-1">
+                    <i class="bi bi-layers text-primary"></i>
+                    <select id="phase-item-select-${blockKey}" class="form-select form-select-sm phase-item-select"
+                            style="max-width:240px; min-width: 150px;" onchange="onPhaseItemChange('${blockKey}', ${dtBlockIdx})">
+                        <option value="">-- Select Phase Item --</option>
+                    </select>
+                </div>
                 
-                <i class="bi bi-tools text-secondary"></i>
-                <select id="wt-select-${blockKey}" class="form-select form-select-sm wt-select"
-                        style="max-width:240px" onchange="recalcGrand()">
-                    <option value="">-- Select Work Type --</option>
-                </select>
+                <div class="d-flex align-items-center gap-1">
+                    <i class="bi bi-tools text-secondary"></i>
+                    <select id="wt-select-${blockKey}" class="form-select form-select-sm wt-select"
+                            style="max-width:240px; min-width: 150px;" onchange="recalcGrand()">
+                        <option value="">-- Select Work Type --</option>
+                    </select>
+                </div>
             </div>
-            <div class="d-flex gap-1">
+            <div class="d-flex gap-1 ms-auto">
                 <button type="button" class="btn btn-sm btn-outline-primary"
                         onclick="addQsRow('${blockKey}', ${dtBlockIdx})">
                     <i class="bi bi-plus-circle"></i> Add Row

@@ -661,226 +661,8 @@ class Con_PhaseWeeklyProgress {
             $delStmt->bind_param('i', $logRowId);
             $delStmt->execute();
 
-            // 3. Recalculate Weekly Achievements for all items in this weekly session
-            $wItems = $this->getWeeklyItems($weeklyProgressId);
-
-            // Fetch the week start date once
-            $weekStmt = $this->db->prepare("SELECT week_start_date FROM phase_weekly_progress WHERE id = ?");
-            $weekStmt->bind_param('i', $weeklyProgressId);
-            $weekStmt->execute();
-            $weekInfo = $weekStmt->get_result()->fetch_assoc();
-            $weekStart = $weekInfo['week_start_date'] ?? null;
-
-            $updWeeklyItem = $this->db->prepare("
-                UPDATE phase_weekly_progress_items SET
-                    achieved_qty       = ?,
-                    percent_complete   = ?,
-                    status             = ?,
-                    today_progress_qty = ?,
-                    `1st_day_qty`      = ?,
-                    `2nd_day_qty`      = ?,
-                    `3rd_day_qty`      = ?,
-                    `4th_day_qty`      = ?,
-                    `5th_day_qty`      = ?,
-                    `6_th_day_qty`     = ?,
-                    `7th_day_qty`      = ?
-                WHERE id = ?
-            ");
-
-            foreach ($wItems as $wi) {
-                $tItemId = (int)$wi['target_item_id'];
-                $plannedQty = (float)$wi['planned_qty'];
-
-                // Sum quantities done across all days in this weekly progress session
-                $sumQuery = $this->db->prepare("
-                    SELECT SUM(dwil.qty_done_today) AS total_achieved
-                    FROM daily_work_item_logs dwil
-                    INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
-                    WHERE dpl.weekly_progress_id = ? AND dwil.target_item_id = ?
-                ");
-                $sumQuery->bind_param('ii', $weeklyProgressId, $tItemId);
-                $sumQuery->execute();
-                $totalAchieved = (float)($sumQuery->get_result()->fetch_assoc()['total_achieved'] ?? 0);
-
-                // Calculate daily quantities for days 1 to 7
-                $dailyQtys = [
-                    1 => 0.00,
-                    2 => 0.00,
-                    3 => 0.00,
-                    4 => 0.00,
-                    5 => 0.00,
-                    6 => 0.00,
-                    7 => 0.00
-                ];
-
-                if ($weekStart) {
-                    $start = new DateTime($weekStart);
-                    
-                    // Fetch all daily logs for this week and this item
-                    $dayLogsQuery = $this->db->prepare("
-                        SELECT dpl.log_date, dwil.qty_done_today
-                        FROM daily_work_item_logs dwil
-                        INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
-                        WHERE dpl.weekly_progress_id = ? AND dwil.target_item_id = ?
-                    ");
-                    $dayLogsQuery->bind_param('ii', $weeklyProgressId, $tItemId);
-                    $dayLogsQuery->execute();
-                    $dayLogs = $dayLogsQuery->get_result()->fetch_all(MYSQLI_ASSOC);
-
-                    foreach ($dayLogs as $dl) {
-                        $current = new DateTime($dl['log_date']);
-                        if ($current < $start) {
-                            $dayIndex = 1;
-                        } else {
-                            $diffDays = $start->diff($current)->days;
-                            $dayIndex = $diffDays + 1;
-                        }
-                        if ($dayIndex >= 1 && $dayIndex <= 7) {
-                            $dailyQtys[$dayIndex] += (float)$dl['qty_done_today'];
-                        }
-                    }
-                }
-
-                // Get today_progress_qty (quantity of the latest logged day)
-                $latestQtyQuery = $this->db->prepare("
-                    SELECT dwil.qty_done_today
-                    FROM daily_work_item_logs dwil
-                    INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
-                    WHERE dpl.weekly_progress_id = ? AND dwil.target_item_id = ?
-                    ORDER BY dpl.log_date DESC, dwil.id DESC
-                    LIMIT 1
-                ");
-                $latestQtyQuery->bind_param('ii', $weeklyProgressId, $tItemId);
-                $latestQtyQuery->execute();
-                $latestQtyRow = $latestQtyQuery->get_result()->fetch_assoc();
-                $todayProgressQty = (float)($latestQtyRow['qty_done_today'] ?? 0.00);
-
-                // Calculate percent complete
-                $pct = 0.00;
-                if ($plannedQty > 0) {
-                    $pct = ($totalAchieved / $plannedQty) * 100;
-                }
-
-                // Determine Status
-                $status = 'Not Started';
-
-                // Get the latest status from daily logs for this week
-                $statusQuery = $this->db->prepare("
-                    SELECT dwil.item_status 
-                    FROM daily_work_item_logs dwil
-                    INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
-                    WHERE dpl.weekly_progress_id = ? AND dwil.target_item_id = ?
-                    ORDER BY dpl.log_date DESC, dwil.id DESC
-                    LIMIT 1
-                ");
-                $statusQuery->bind_param('ii', $weeklyProgressId, $tItemId);
-                $statusQuery->execute();
-                $latestDailyStatus = $statusQuery->get_result()->fetch_assoc()['item_status'] ?? null;
-
-                if ($pct >= 100 && $plannedQty > 0) {
-                    $status = 'Completed';
-                } elseif ($latestDailyStatus) {
-                    $status = $latestDailyStatus;
-                } elseif ($totalAchieved > 0) {
-                    $status = 'In Progress';
-                }
-
-                $pwpiId = (int)$wi['id'];
-                $updWeeklyItem->bind_param('ddsddddddddi', $totalAchieved, $pct, $status, $todayProgressQty, $dailyQtys[1], $dailyQtys[2], $dailyQtys[3], $dailyQtys[4], $dailyQtys[5], $dailyQtys[6], $dailyQtys[7], $pwpiId);
-                $updWeeklyItem->execute();
-
-                // 4. Update Monthly Target Item's Actual Quantity and Actual Progress
-                $cumQuery = $this->db->prepare("
-                    SELECT SUM(pwpi.achieved_qty) AS cumulative_achieved
-                    FROM phase_weekly_progress_items pwpi
-                    INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
-                    WHERE pwpi.target_item_id = ?
-                ");
-                $cumQuery->bind_param('i', $tItemId);
-                $cumQuery->execute();
-                $cumulativeAchieved = (float)($cumQuery->get_result()->fetch_assoc()['cumulative_achieved'] ?? 0);
-
-                // Fetch monthly target item to get monthly target qty
-                $mItemStmt = $this->db->prepare("SELECT monthly_target_qty FROM phase_monthly_target_items WHERE id = ?");
-                $mItemStmt->bind_param('i', $tItemId);
-                $mItemStmt->execute();
-                $mItem = $mItemStmt->get_result()->fetch_assoc();
-
-                $mTargetQty = (float)($mItem['monthly_target_qty'] ?? 0);
-                $cumPct = 0.00;
-                if ($mTargetQty > 0) {
-                    $cumPct = ($cumulativeAchieved / $mTargetQty) * 100;
-                }
-                $cumPct = min(100.0, $cumPct);
-
-                $updMItem = $this->db->prepare("
-                    UPDATE phase_monthly_target_items SET
-                        actual_qty = ?,
-                        actual_progress_pct = ?
-                    WHERE id = ?
-                ");
-                $updMItem->bind_param('ddi', $cumulativeAchieved, $cumPct, $tItemId);
-                $updMItem->execute();
-            }
-
-            // 5. Aggregate weekly totals into phase_weekly_progress
-            $aggQuery = $this->db->prepare("
-                SELECT 
-                    SUM(labour_count) AS total_labour,
-                    SUM(cement_bags) AS total_cement,
-                    SUM(concrete_mt) AS total_mt,
-                    SUM(concrete_cft) AS total_cft,
-                    SUM(materials_used) AS total_materials,
-                    SUM(equipment_active) AS total_equip
-                FROM daily_progress_logs
-                WHERE weekly_progress_id = ?
-            ");
-            $aggQuery->bind_param('i', $weeklyProgressId);
-            $aggQuery->execute();
-            $agg = $aggQuery->get_result()->fetch_assoc();
-
-            $totalPlannedQuery = $this->db->prepare("
-                SELECT 
-                    SUM(planned_qty) AS tot_plan, 
-                    SUM(achieved_qty) AS tot_achieved, 
-                    COALESCE(AVG(CASE WHEN planned_qty > 0 OR achieved_qty > 0 THEN percent_complete END), 0) AS avg_pct
-                FROM phase_weekly_progress_items
-                WHERE weekly_progress_id = ?
-            ");
-            $totalPlannedQuery->bind_param('i', $weeklyProgressId);
-            $totalPlannedQuery->execute();
-            $planAgg = $totalPlannedQuery->get_result()->fetch_assoc();
-
-            $updWeekMaster = $this->db->prepare("
-                UPDATE phase_weekly_progress SET
-                    overall_progress_pct = ?,
-                    total_planned_qty    = ?,
-                    total_achieved_qty   = ?,
-                    labour_used          = ?,
-                    cement_used_bags     = ?,
-                    concrete_poured_mt   = ?,
-                    concrete_poured_cft  = ?,
-                    materials_used       = ?,
-                    equipment_active     = ?
-                WHERE id = ?
-            ");
-
-            $avgPct = (float)($planAgg['avg_pct'] ?? 0);
-            $totPlan = (float)($planAgg['tot_plan'] ?? 0);
-            $totAchieved = (float)($planAgg['tot_achieved'] ?? 0);
-            $totLabour = (int)($agg['total_labour'] ?? 0);
-            $totCement = (int)($agg['total_cement'] ?? 0);
-            $totMt = (float)($agg['total_mt'] ?? 0);
-            $totCft = (float)($agg['total_cft'] ?? 0);
-            $totMaterials = (int)($agg['total_materials'] ?? 0);
-            $totEquip = (int)($agg['total_equip'] ?? 0);
-
-            $updWeekMaster->bind_param('dddiidddii',
-                $avgPct, $totPlan, $totAchieved,
-                $totLabour, $totCement, $totMt, $totCft,
-                $totMaterials, $totEquip, $weeklyProgressId
-            );
-            $updWeekMaster->execute();
+            // 3. Recalculate using unified helper method
+            $this->recalculateWeeklyAchievements($weeklyProgressId);
 
             $this->db->commit();
             return $meta;
@@ -889,5 +671,397 @@ class Con_PhaseWeeklyProgress {
             error_log('deleteDailyLogItem transaction error: ' . $e->getMessage());
             return [];
         }
+    }
+
+    // =========================================================================
+    // RECALCULATE WEEKLY ACHIEVEMENTS (WITH CARRYOVER, GAPS, STARS, QC STATUS)
+    // =========================================================================
+    public function recalculateWeeklyAchievements(int $weeklyProgressId): void {
+        // Fetch the week details
+        $pwpStmt = $this->db->prepare("SELECT target_id, week_number, week_start_date FROM phase_weekly_progress WHERE id = ?");
+        $pwpStmt->bind_param('i', $weeklyProgressId);
+        $pwpStmt->execute();
+        $pwpInfo = $pwpStmt->get_result()->fetch_assoc();
+        if (!$pwpInfo) return;
+
+        $targetId = (int)$pwpInfo['target_id'];
+        $weekNo = (int)$pwpInfo['week_number'];
+        $weekStart = $pwpInfo['week_start_date'] ?? null;
+
+        // Get all weekly progress items for this week
+        $wItems = $this->getWeeklyItems($weeklyProgressId);
+
+        // Pre-prepare updates
+        $updWeeklyItem = $this->db->prepare("
+            UPDATE phase_weekly_progress_items SET
+                achieved_qty       = ?,
+                achieved_pct       = ?,
+                percent_complete   = ?,
+                status             = ?,
+                today_progress_qty = ?,
+                `1st_day_qty`      = ?,
+                `2nd_day_qty`      = ?,
+                `3rd_day_qty`      = ?,
+                `4th_day_qty`      = ?,
+                `5th_day_qty`      = ?,
+                `6_th_day_qty`     = ?,
+                `7th_day_qty`      = ?,
+                carryover_qty      = ?,
+                carryover_pct      = ?,
+                gap_qty            = ?,
+                gap_pct            = ?,
+                recovered_qty      = ?,
+                recovered_pct      = ?,
+                earned_star        = ?
+            WHERE id = ?
+        ");
+
+        foreach ($wItems as $wi) {
+            $targetItemId = (int)$wi['target_item_id'];
+            $targetMode   = $wi['target_mode'] ?? 'qty';
+            $plannedQty   = (float)$wi['planned_qty'];
+            $plannedPct   = (float)($wi['planned_pct'] ?? 0);
+
+            // 1. Calculate Carryover from previous weeks
+            $carryoverQty = 0.00;
+            $carryoverPct = 0.00;
+
+            if ($weekNo > 1) {
+                $prevStmt = $this->db->prepare("
+                    SELECT pwpi.planned_qty, pwpi.planned_pct, pwpi.achieved_qty, pwpi.achieved_pct
+                    FROM phase_weekly_progress_items pwpi
+                    INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+                    WHERE pwp.target_id = ? AND pwpi.target_item_id = ? AND pwp.week_number < ?
+                ");
+                $prevStmt->bind_param('iii', $targetId, $targetItemId, $weekNo);
+                $prevStmt->execute();
+                $prevRows = $prevStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+                $cumPlannedQty = 0.00;
+                $cumPlannedPct = 0.00;
+                $cumAchievedQty = 0.00;
+                $cumAchievedPct = 0.00;
+                foreach ($prevRows as $pr) {
+                    $cumPlannedQty  += (float)$pr['planned_qty'];
+                    $cumPlannedPct  += (float)$pr['planned_pct'];
+                    $cumAchievedQty += (float)$pr['achieved_qty'];
+                    $cumAchievedPct += (float)$pr['achieved_pct'];
+                }
+
+                $carryoverQty = max(0.00, $cumPlannedQty - $cumAchievedQty);
+                $carryoverPct = max(0.00, $cumPlannedPct - $cumAchievedPct);
+            }
+
+            // 2. Sum quantities achieved this week (EXCLUDE REJECTED LOGS)
+            $sumQuery = $this->db->prepare("
+                SELECT SUM(dwil.qty_done_today) AS total_achieved, SUM(dwil.pct_done_today) AS total_pct_achieved
+                FROM daily_work_item_logs dwil
+                INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+                WHERE dpl.weekly_progress_id = ? AND dwil.target_item_id = ?
+                  AND (dpl.qc_status IS NULL OR dpl.qc_status != 'Rejected')
+            ");
+            $sumQuery->bind_param('ii', $weeklyProgressId, $targetItemId);
+            $sumQuery->execute();
+            $sumResult = $sumQuery->get_result()->fetch_assoc();
+            $totalAchieved    = (float)($sumResult['total_achieved'] ?? 0);
+            $totalPctAchieved = (float)($sumResult['total_pct_achieved'] ?? 0);
+
+            // 3. Daily breakdown quantities (EXCLUDE REJECTED LOGS)
+            $dailyQtys = [
+                1 => 0.00,
+                2 => 0.00,
+                3 => 0.00,
+                4 => 0.00,
+                5 => 0.00,
+                6 => 0.00,
+                7 => 0.00
+            ];
+
+            if ($weekStart) {
+                $start = new DateTime($weekStart);
+                $dayLogsQuery = $this->db->prepare("
+                    SELECT dpl.log_date, dwil.qty_done_today, dwil.pct_done_today
+                    FROM daily_work_item_logs dwil
+                    INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+                    WHERE dpl.weekly_progress_id = ? AND dwil.target_item_id = ?
+                      AND (dpl.qc_status IS NULL OR dpl.qc_status != 'Rejected')
+                ");
+                $dayLogsQuery->bind_param('ii', $weeklyProgressId, $targetItemId);
+                $dayLogsQuery->execute();
+                $dayLogs = $dayLogsQuery->get_result()->fetch_all(MYSQLI_ASSOC);
+
+                foreach ($dayLogs as $dl) {
+                    $current = new DateTime($dl['log_date']);
+                    if ($current < $start) {
+                        $dayIndex = 1;
+                    } else {
+                        $diffDays = $start->diff($current)->days;
+                        $dayIndex = $diffDays + 1;
+                    }
+                    if ($dayIndex >= 1 && $dayIndex <= 7) {
+                        if ($targetMode === 'pct') {
+                            $dailyQtys[$dayIndex] += (float)$dl['pct_done_today'];
+                        } else {
+                            $dailyQtys[$dayIndex] += (float)$dl['qty_done_today'];
+                        }
+                    }
+                }
+            }
+
+            // Get today_progress_qty (latest non-rejected logged day)
+            $latestQtyQuery = $this->db->prepare("
+                SELECT dwil.qty_done_today, dwil.pct_done_today
+                FROM daily_work_item_logs dwil
+                INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+                WHERE dpl.weekly_progress_id = ? AND dwil.target_item_id = ?
+                  AND (dpl.qc_status IS NULL OR dpl.qc_status != 'Rejected')
+                ORDER BY dpl.log_date DESC, dwil.id DESC
+                LIMIT 1
+            ");
+            $latestQtyQuery->bind_param('ii', $weeklyProgressId, $targetItemId);
+            $latestQtyQuery->execute();
+            $latestQtyRow = $latestQtyQuery->get_result()->fetch_assoc();
+            if ($targetMode === 'pct') {
+                $todayProgressQty = (float)($latestQtyRow['pct_done_today'] ?? 0.00);
+            } else {
+                $todayProgressQty = (float)($latestQtyRow['qty_done_today'] ?? 0.00);
+            }
+
+            // 4. Calculate Effective Target, Gap, Recovery, and Star
+            $effectiveTargetQty = $plannedQty + $carryoverQty;
+            $effectiveTargetPct = $plannedPct + $carryoverPct;
+
+            $gapQty = 0.00;
+            $gapPct = 0.00;
+            $recoveredQty = 0.00;
+            $recoveredPct = 0.00;
+            $earnedStar = 0;
+
+            if ($targetMode === 'pct') {
+                $gapPct = max(0.00, $effectiveTargetPct - $totalPctAchieved);
+                if ($carryoverPct > 0 && $totalPctAchieved > $plannedPct) {
+                    $recoveredPct = min($carryoverPct, max(0.00, $totalPctAchieved - $plannedPct));
+                }
+                $earnedStar = ($totalPctAchieved >= $effectiveTargetPct && $effectiveTargetPct > 0) ? 1 : 0;
+                
+                $pct = 0.00;
+                if ($plannedPct > 0) {
+                    $pct = ($totalPctAchieved / $plannedPct) * 100;
+                }
+            } else {
+                $gapQty = max(0.00, $effectiveTargetQty - $totalAchieved);
+                if ($carryoverQty > 0 && $totalAchieved > $plannedQty) {
+                    $recoveredQty = min($carryoverQty, max(0.00, $totalAchieved - $plannedQty));
+                }
+                $earnedStar = ($totalAchieved >= $effectiveTargetQty && $effectiveTargetQty > 0) ? 1 : 0;
+
+                $pct = 0.00;
+                if ($plannedQty > 0) {
+                    $pct = ($totalAchieved / $plannedQty) * 100;
+                }
+            }
+
+            // Determine Status
+            $status = 'Not Started';
+            $statusQuery = $this->db->prepare("
+                SELECT dwil.item_status 
+                FROM daily_work_item_logs dwil
+                INNER JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
+                WHERE dpl.weekly_progress_id = ? AND dwil.target_item_id = ?
+                  AND (dpl.qc_status IS NULL OR dpl.qc_status != 'Rejected')
+                ORDER BY dpl.log_date DESC, dwil.id DESC
+                LIMIT 1
+            ");
+            $statusQuery->bind_param('ii', $weeklyProgressId, $targetItemId);
+            $statusQuery->execute();
+            $latestDailyStatus = $statusQuery->get_result()->fetch_assoc()['item_status'] ?? null;
+
+            $totalAchValue = ($targetMode === 'pct' ? $totalPctAchieved : $totalAchieved);
+            if ($pct >= 100 && (($targetMode === 'pct' ? $plannedPct : $plannedQty) > 0)) {
+                $status = 'Completed';
+            } elseif ($latestDailyStatus) {
+                $status = $latestDailyStatus;
+            } elseif ($totalAchValue > 0) {
+                $status = 'In Progress';
+            }
+
+            $pwpiId = (int)$wi['id'];
+            $updWeeklyItem->bind_param(
+                'dddsddddddddddddddii',
+                $totalAchieved, $totalPctAchieved, $pct, $status, $todayProgressQty,
+                $dailyQtys[1], $dailyQtys[2], $dailyQtys[3], $dailyQtys[4], $dailyQtys[5], $dailyQtys[6], $dailyQtys[7],
+                $carryoverQty, $carryoverPct, $gapQty, $gapPct, $recoveredQty, $recoveredPct,
+                $earnedStar, $pwpiId
+            );
+            $updWeeklyItem->execute();
+
+            // 5. Update Monthly Target Item's Actual Quantity and Actual Progress
+            // Cumulative Achieved: Sum achieved quantities across all weekly sessions for this target_item_id
+            $cumQuery = $this->db->prepare("
+                SELECT SUM(pwpi.achieved_qty) AS cumulative_achieved, SUM(pwpi.achieved_pct) AS cumulative_achieved_pct
+                FROM phase_weekly_progress_items pwpi
+                INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+                WHERE pwpi.target_item_id = ?
+            ");
+            $cumQuery->bind_param('i', $targetItemId);
+            $cumQuery->execute();
+            $cumRow = $cumQuery->get_result()->fetch_assoc();
+            $cumulativeAchieved = (float)($cumRow['cumulative_achieved'] ?? 0);
+            $cumulativeAchievedPct = (float)($cumRow['cumulative_achieved_pct'] ?? 0);
+
+            // Fetch monthly target item to get monthly target qty
+            $mItemStmt = $this->db->prepare("SELECT target_mode, monthly_target_qty, monthly_target_pct FROM phase_monthly_target_items WHERE id = ?");
+            $mItemStmt->bind_param('i', $targetItemId);
+            $mItemStmt->execute();
+            $mItem = $mItemStmt->get_result()->fetch_assoc();
+            
+            $mTargetQty = (float)($mItem['monthly_target_qty'] ?? 0);
+            $mTargetPct = (float)($mItem['monthly_target_pct'] ?? 0);
+            $mTargetMode = $mItem['target_mode'] ?? 'qty';
+
+            if ($mTargetMode === 'pct') {
+                $cumPct = 0.00;
+                if ($mTargetPct > 0) {
+                    $cumPct = ($cumulativeAchievedPct / $mTargetPct) * 100;
+                }
+                $cumPct = min(100.0, $cumPct);
+                $actualQty = 0.00;
+                $actualProgressPct = $cumulativeAchievedPct;
+            } else {
+                $cumPct = 0.00;
+                if ($mTargetQty > 0) {
+                    $cumPct = ($cumulativeAchieved / $mTargetQty) * 100;
+                }
+                $cumPct = min(100.0, $cumPct);
+                $actualQty = $cumulativeAchieved;
+                $actualProgressPct = $cumPct;
+            }
+
+            $updMItem = $this->db->prepare("
+                UPDATE phase_monthly_target_items SET
+                    actual_qty = ?,
+                    actual_progress_pct = ?
+                WHERE id = ?
+            ");
+            $updMItem->bind_param('ddi', $actualQty, $actualProgressPct, $targetItemId);
+            $updMItem->execute();
+        }
+
+        // 6. Aggregate weekly totals into phase_weekly_progress
+        $aggQuery = $this->db->prepare("
+            SELECT 
+                SUM(labour_count) AS total_labour,
+                SUM(cement_bags) AS total_cement,
+                SUM(concrete_mt) AS total_mt,
+                SUM(concrete_cft) AS total_cft,
+                SUM(materials_used) AS total_materials,
+                SUM(equipment_active) AS total_equip
+            FROM daily_progress_logs
+            WHERE weekly_progress_id = ?
+        ");
+        $aggQuery->bind_param('i', $weeklyProgressId);
+        $aggQuery->execute();
+        $agg = $aggQuery->get_result()->fetch_assoc();
+
+        $totalPlannedQuery = $this->db->prepare("
+            SELECT 
+                SUM(CASE WHEN pmti.target_mode = 'pct' THEN pwpi.planned_pct ELSE pwpi.planned_qty END) AS tot_plan, 
+                SUM(CASE WHEN pmti.target_mode = 'pct' THEN pwpi.achieved_pct ELSE pwpi.achieved_qty END) AS tot_achieved, 
+                COALESCE(AVG(CASE WHEN pwpi.planned_qty > 0 OR pwpi.achieved_qty > 0 OR pwpi.planned_pct > 0 OR pwpi.achieved_pct > 0 THEN pwpi.percent_complete END), 0) AS avg_pct
+            FROM phase_weekly_progress_items pwpi
+            INNER JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
+            WHERE pwpi.weekly_progress_id = ?
+        ");
+        $totalPlannedQuery->bind_param('i', $weeklyProgressId);
+        $totalPlannedQuery->execute();
+        $planAgg = $totalPlannedQuery->get_result()->fetch_assoc();
+
+        $updWeekMaster = $this->db->prepare("
+            UPDATE phase_weekly_progress SET
+                overall_progress_pct = ?,
+                total_planned_qty    = ?,
+                total_achieved_qty   = ?,
+                labour_used          = ?,
+                cement_used_bags     = ?,
+                concrete_poured_mt   = ?,
+                concrete_poured_cft  = ?,
+                materials_used       = ?,
+                equipment_active     = ?
+            WHERE id = ?
+        ");
+        
+        $avgPct = (float)($planAgg['avg_pct'] ?? 0);
+        $totPlan = (float)($planAgg['tot_plan'] ?? 0);
+        $totAchieved = (float)($planAgg['tot_achieved'] ?? 0);
+        $totLabour = (int)($agg['total_labour'] ?? 0);
+        $totCement = (int)($agg['total_cement'] ?? 0);
+        $totMt = (float)($agg['total_mt'] ?? 0);
+        $totCft = (float)($agg['total_cft'] ?? 0);
+        $totMaterials = (int)($agg['total_materials'] ?? 0);
+        $totEquip = (int)($agg['total_equip'] ?? 0);
+
+        $updWeekMaster->bind_param('dddiidddii',
+            $avgPct, $totPlan, $totAchieved,
+            $totLabour, $totCement, $totMt, $totCft,
+            $totMaterials, $totEquip, $weeklyProgressId
+        );
+        $updWeekMaster->execute();
+
+        // 7. Update Monthly Target's earned_star
+        // Let's count if the monthly target is fully achieved
+        $totMTItemsStmt = $this->db->prepare("
+            SELECT COUNT(*) AS total_count, SUM(CASE WHEN actual_progress_pct >= 100 THEN 1 ELSE 0 END) AS completed_count
+            FROM phase_monthly_target_items
+            WHERE target_id = ?
+        ");
+        $totMTItemsStmt->bind_param('i', $targetId);
+        $totMTItemsStmt->execute();
+        $mtCountRow = $totMTItemsStmt->get_result()->fetch_assoc();
+        $totalItemsCount = (int)$mtCountRow['total_count'];
+        $completedItemsCount = (int)$mtCountRow['completed_count'];
+
+        // If all items are completed (100% actual_progress_pct), they get a monthly star
+        $monthlyStar = ($totalItemsCount > 0 && $completedItemsCount === $totalItemsCount) ? 1 : 0;
+
+        $updMTStar = $this->db->prepare("UPDATE phase_monthly_targets SET earned_star = ? WHERE id = ?");
+        $updMTStar->bind_param('ii', $monthlyStar, $targetId);
+        $updMTStar->execute();
+    }
+
+    // =========================================================================
+    // PERSISTENT WORK TYPES MAPPING
+    // =========================================================================
+    public function savePersistentWorkTypes(int $targetItemId, array $workTypeIds): void {
+        $this->db->begin_transaction();
+        try {
+            $del = $this->db->prepare("DELETE FROM phase_target_item_work_types WHERE target_item_id = ?");
+            $del->bind_param('i', $targetItemId);
+            $del->execute();
+
+            if (!empty($workTypeIds)) {
+                $ins = $this->db->prepare("INSERT INTO phase_target_item_work_types (target_item_id, work_type_id) VALUES (?, ?)");
+                foreach ($workTypeIds as $wtId) {
+                    $ins->bind_param('ii', $targetItemId, $wtId);
+                    $ins->execute();
+                }
+            }
+            $this->db->commit();
+        } catch (\Exception $e) {
+            $this->db->rollback();
+            error_log('savePersistentWorkTypes error: ' . $e->getMessage());
+        }
+    }
+
+    public function getPersistentWorkTypesForTarget(int $targetId): array {
+        $stmt = $this->db->prepare("
+            SELECT ptiwt.target_item_id, ptiwt.work_type_id, wt.work_type_name
+            FROM phase_target_item_work_types ptiwt
+            INNER JOIN phase_monthly_target_items pmti ON pmti.id = ptiwt.target_item_id
+            INNER JOIN work_types wt ON wt.id = ptiwt.work_type_id
+            WHERE pmti.target_id = ?
+        ");
+        $stmt->bind_param('i', $targetId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 }

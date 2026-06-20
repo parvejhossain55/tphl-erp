@@ -87,7 +87,7 @@ $page_title = $page_title ?? 'New Work Order';
                                 <small class="text-muted" id="design_hint">
                                     Project select করুন → তারপর Design Type দেখাবে
                                 </small>
-                                <div id="phase_info_container" class="mt-2 px-2 py-1 rounded" style="background:#eff6ff; display:none; font-size:0.82rem; border:1px solid #bfdbfe">
+                                <div id="phase_info_container" class="mt-2 px-2 py-1 rounded" style="background:rgba(var(--clr-theme-primary-rgb),.08); display:none; font-size:0.82rem; border:1px solid var(--clr-border-1)">
                                     <i class="bi bi-diagram-3 me-1 text-primary"></i>
                                     <span class="fw-semibold text-muted">Phase:</span>
                                     <span id="wo_phase_name" class="badge bg-primary ms-1 me-2"></span>
@@ -177,7 +177,7 @@ $page_title = $page_title ?? 'New Work Order';
 
                         <div class="table-responsive d-none" id="rate-table-wrap">
                             <table class="table table-bordered align-middle mb-0" id="workItemsTable" style="font-size:.84rem">
-                                <thead style="background:#1e3a8a;color:#fff">
+                                <thead class="table-light">
                                     <tr>
                                         <th style="width:42px" class="text-center">নং</th>
                                         <th style="width:18%">Phase Item</th>
@@ -194,7 +194,7 @@ $page_title = $page_title ?? 'New Work Order';
                                 <tbody id="workItemsBody">
                                 </tbody>
                                 <tfoot>
-                                    <tr style="background:#f0f9ff">
+                                    <tr>
                                         <td colspan="8" class="text-end fw-bold text-primary">Grand Total:</td>
                                         <td class="text-end fw-bold text-primary fs-15" id="grandTotalDisplay">৳ 0.00</td>
                                         <td></td>
@@ -275,7 +275,7 @@ $page_title = $page_title ?? 'New Work Order';
                         <!-- Payment visual summary -->
                         <div class="row g-2 mt-1">
                             <div class="col-md-4">
-                                <div class="p-3 rounded" style="background:#e0f2fe;border-left:4px solid #0284c7">
+                                <div class="p-3 rounded" style="background:rgba(59, 130, 246, 0.1);border-left:4px solid #3b82f6">
                                     <div class="small text-muted mb-1">Advance Payment</div>
                                     <div class="fw-bold text-info fs-15" id="adv_card">৳ 0.00</div>
                                 </div>
@@ -287,7 +287,7 @@ $page_title = $page_title ?? 'New Work Order';
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <div class="p-3 rounded" style="background:#fee2e2;border-left:4px solid #b91c1c">
+                                <div class="p-3 rounded" style="background:rgba(239, 68, 68, 0.1);border-left:4px solid #ef4444">
                                     <div class="small text-muted mb-1">Retention</div>
                                     <div class="fw-bold text-danger fs-15" id="ret_card">৳ 0.00</div>
                                 </div>
@@ -565,7 +565,7 @@ function addWorkItemRow(data = {}) {
                    value="${rate}" min="0" step="0.01" placeholder="0"
                    oninput="recalcRow(this)" style="min-width:65px">
         </td>
-        <td class="text-end fw-semibold wi-subtotal p-2" style="color:#1d4ed8;min-width:80px">৳ 0.00</td>
+        <td class="text-end fw-semibold wi-subtotal p-2" style="color:var(--clr-theme-primary);min-width:80px">৳ 0.00</td>
         <td class="text-center p-1">
             <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1"
                     onclick="this.closest('tr').remove(); recalcGrandTotal();" title="Delete">

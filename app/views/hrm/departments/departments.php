@@ -51,7 +51,7 @@ $show_breadcrumb = true;
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </button>
 
-                                        <button class="removeBtnCust table__icon delete"
+                                        <button type="button" class="removeBtnCust table__icon delete"
                                             data-id="<?= $dept['id'] ?>"
                                             data-name="<?= $dept['name'] ?>"
                                             data-action="delete-department">
@@ -195,33 +195,59 @@ $show_breadcrumb = true;
 </div>
 <!-- edit department modal end -->
 <script>
-    var base_url = "<?= $GLOBALS['base_url'] ?>"; // PHP outputs the correct base URL
+    var base_url = "<?= $GLOBALS['base_url'] ?>";
 
-
-
+    // Edit modal — vanilla JS, works before jQuery loads
     document.addEventListener("DOMContentLoaded", function() {
-        const modal = document.getElementById('editDepartment');
+        var modal = document.getElementById('editDepartment');
+        if (modal) {
+            modal.addEventListener('show.bs.modal', function(event) {
+                var button = event.relatedTarget;
+                var id     = button.getAttribute('data-id');
+                var name   = button.getAttribute('data-name');
+                var status = button.getAttribute('data-status');
+                document.getElementById('edit_department_id').value = id;
+                document.getElementById('edit_department').value    = name;
+                if (status === "1") {
+                    document.getElementById('editStatusActive').checked = true;
+                } else {
+                    document.getElementById('editStatusInactive').checked = true;
+                }
+            });
+        }
+    });
 
-        // Attach listener only once when modal is shown
-        modal.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget; // the clicked button
+    // Delete handler — runs after ALL scripts (jQuery + Swal) are loaded
+    window.addEventListener('load', function() {
+        document.querySelectorAll('.removeBtnCust').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var itemId   = this.getAttribute('data-id');
+                var itemName = this.getAttribute('data-name') || 'this item';
+                var action   = this.getAttribute('data-action');
+                if (!action) return;
 
-            // Get data attributes
-            const id = button.getAttribute('data-id');
-            const name = button.getAttribute('data-name');
-            const status = button.getAttribute('data-status');
-
-            // Fill form fields
-            document.getElementById('edit_department_id').value = id;
-            document.getElementById('edit_department').value = name;
-            console.log("Button clicked:", button);
-            console.log("Department ID:", id, "Name:", name, "Status:", status);
-
-            if (status === "1") {
-                document.getElementById('editStatusActive').checked = true;
-            } else {
-                document.getElementById('editStatusInactive').checked = true;
-            }
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: 'You are about to delete "' + itemName + '". This cannot be undone!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, delete it!',
+                    cancelButtonText: 'Cancel'
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        var form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = base_url + '/' + action;
+                        var input = document.createElement('input');
+                        input.type = 'hidden'; input.name = 'id'; input.value = itemId;
+                        form.appendChild(input);
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            });
         });
     });
 </script>

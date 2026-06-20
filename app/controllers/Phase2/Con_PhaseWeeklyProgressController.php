@@ -60,12 +60,71 @@ class Con_PhaseWeeklyProgressController extends Controller {
             $selectedDate = $start; // Reset to start of week if out of range
         }
 
+        // Recalculate weekly achievements to sync carryover, gaps, and stars
+        $this->model->recalculateWeeklyAchievements($weeklyProgressId);
+
         // Fetch weekly items (Planned vs Achieved)
         $weeklyItems = $this->model->getWeeklyItems($weeklyProgressId);
+
+        // Fetch daily target pct breakdowns for pct-mode items
+        $dailyBreakdowns = [];
+        foreach ($weeklyItems as $item) {
+            if (($item['target_mode'] ?? 'qty') === 'pct') {
+                $dailyBreakdowns[(int)$item['target_item_id']] = $this->monthlyTargetModel->getDailyPctBreakdown((int)$item['target_item_id']);
+            }
+        }
 
         // Fetch daily logs and quantities for the selected log date
         $dailyLog = $this->model->getOrCreateDailyLog($weeklyProgressId, $selectedDate, (int)$target['project_id']);
         $dailyQuantities = $this->model->getDailyQuantities($weeklyProgressId, $selectedDate);
+
+        // Fetch persistent work types for this target
+        $pwtRows = $this->model->getPersistentWorkTypesForTarget($targetId);
+
+        // Populate virtual rows into $dailyQuantities if not locked
+        $isLocked = ($weeklyProgress['entry_status'] ?? 'Draft') !== 'Draft';
+        if (!$isLocked) {
+            $persistentWts = [];
+            foreach ($pwtRows as $r) {
+                $persistentWts[(int)$r['target_item_id']][] = [
+                    'work_type_id'   => (int)$r['work_type_id'],
+                    'work_type_name' => $r['work_type_name']
+                ];
+            }
+
+            $loggedByItem = [];
+            foreach ($dailyQuantities as $dq) {
+                $iid = (int)$dq['target_item_id'];
+                $wtId = $dq['work_type_id'] ? (int)$dq['work_type_id'] : 0;
+                $loggedByItem[$iid][$wtId] = true;
+            }
+
+            foreach ($weeklyItems as $wi) {
+                $itemId = (int)$wi['target_item_id'];
+                $planned = (($wi['target_mode'] ?? 'qty') === 'pct') ? (float)($wi['planned_pct'] ?? 0) : (float)$wi['planned_qty'];
+                
+                if ($planned > 0 && isset($persistentWts[$itemId])) {
+                    foreach ($persistentWts[$itemId] as $pwt) {
+                        $wtId = $pwt['work_type_id'];
+                        if (!isset($loggedByItem[$itemId][$wtId])) {
+                            // Append virtual row
+                            $dailyQuantities[] = [
+                                'log_row_id'       => null,
+                                'target_item_id'   => $itemId,
+                                'work_type_id'     => $wtId,
+                                'qty_done_today'   => 0.00,
+                                'pct_done_today'   => 0.00,
+                                'remarks'          => '',
+                                'item_status'      => 'Not Started',
+                                'responsible_team' => $wi['responsible_team'] ?? '',
+                                'work_type_name'   => $pwt['work_type_name']
+                            ];
+                            $loggedByItem[$itemId][$wtId] = true;
+                        }
+                    }
+                }
+            }
+        }
 
         // Fetch daily logs summary list for Mon-Sun progress visual block
         $weeklyLogsSummary = $this->model->getDailyLogsForWeek($weeklyProgressId);
@@ -146,6 +205,7 @@ class Con_PhaseWeeklyProgressController extends Controller {
             'selectedDate'      => $selectedDate,
             'dailyLog'          => $dailyLog,
             'dailyQuantities'   => $dailyQuantities,
+            'dailyBreakdowns'   => $dailyBreakdowns,
             'weeklyLogsSummary' => $weeklyLogsSummary,
             'project'           => $project,
             'weekNo'            => $weekNo,
@@ -153,6 +213,7 @@ class Con_PhaseWeeklyProgressController extends Controller {
             'materialIssues'    => $materialIssues,
             'qcName'            => $qcName,
             'pmName'            => $pmName,
+            'persistentWorkTypes'=> $pwtRows,
         ]);
     }
 
@@ -202,6 +263,7 @@ class Con_PhaseWeeklyProgressController extends Controller {
                 'target_item_id'   => (int)($val['target_item_id'] ?? 0),
                 'work_type_id'     => !empty($val['work_type_id']) ? (int)$val['work_type_id'] : null,
                 'qty_done_today'   => (float)($val['qty_done_today'] ?? 0),
+                'pct_done_today'   => (float)($val['pct_done_today'] ?? 0),
                 'unit'             => trim($val['unit'] ?? ''),
                 'remarks'          => trim($val['remarks'] ?? ''),
                 'item_status'      => trim($val['item_status'] ?? 'In Progress'),
@@ -215,6 +277,9 @@ class Con_PhaseWeeklyProgressController extends Controller {
             $newWorkTypes = $_POST['new_work_types'] ?? [];
             // Convert checked work type IDs to integers
             $newWorkTypes = array_map('intval', $newWorkTypes);
+
+            // Persist these work types for the monthly target item
+            $this->model->savePersistentWorkTypes($newWorkItemId, $newWorkTypes);
             
             // 1. Remove any items from $itemQtys for this newWorkItemId where work_type_id is NOT in $newWorkTypes
             $filteredItemQtys = [];
@@ -252,6 +317,7 @@ class Con_PhaseWeeklyProgressController extends Controller {
                             'target_item_id'   => $newWorkItemId,
                             'work_type_id'     => $wtId,
                             'qty_done_today'   => 0.00,
+                            'pct_done_today'   => 0.00,
                             'unit'             => $unit,
                             'remarks'          => '',
                             'item_status'      => 'In Progress',
@@ -273,6 +339,7 @@ class Con_PhaseWeeklyProgressController extends Controller {
                         'target_item_id'   => $newWorkItemId,
                         'work_type_id'     => null,
                         'qty_done_today'   => 0.00,
+                        'pct_done_today'   => 0.00,
                         'unit'             => $unit,
                         'remarks'          => '',
                         'item_status'      => 'In Progress',

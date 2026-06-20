@@ -81,7 +81,7 @@ $sel  = fn($field, $v)    => ($wo[$field] ?? '') == $v ? 'selected' : '';
                                 <select name="design_id" id="wo_design_id" class="form-select">
                                     <option value="">-- Loading... --</option>
                                 </select>
-                                <div id="phase_info_container" class="mt-2 px-2 py-1 rounded" style="background:#eff6ff; display:none; font-size:0.82rem; border:1px solid #bfdbfe">
+                                <div id="phase_info_container" class="mt-2 px-2 py-1 rounded" style="background:rgba(var(--clr-theme-primary-rgb),.08); display:none; font-size:0.82rem; border:1px solid var(--clr-border-1)">
                                     <i class="bi bi-diagram-3 me-1 text-primary"></i>
                                     <span class="fw-semibold text-muted">Phase:</span>
                                     <span id="wo_phase_name" class="badge bg-primary ms-1 me-2"></span>
@@ -160,7 +160,7 @@ $sel  = fn($field, $v)    => ($wo[$field] ?? '') == $v ? 'selected' : '';
                     <div class="card-body p-0">
                         <div class="table-responsive" id="rate-table-wrap">
                             <table class="table table-bordered align-middle mb-0" id="workItemsTable" style="font-size:.84rem">
-                                <thead style="background:#1e3a8a;color:#fff">
+                                <thead class="table-light">
                                     <tr>
                                         <th style="width:42px" class="text-center">নং</th>
                                         <th style="width:18%">Phase Item</th>
@@ -178,7 +178,7 @@ $sel  = fn($field, $v)    => ($wo[$field] ?? '') == $v ? 'selected' : '';
                                     <!-- Pre-filled by PHP then managed by JS -->
                                 </tbody>
                                 <tfoot>
-                                    <tr style="background:#f0f9ff">
+                                    <tr>
                                         <td colspan="8" class="text-end fw-bold text-primary">Grand Total:</td>
                                         <td class="text-end fw-bold text-primary fs-15" id="grandTotalDisplay">৳ 0.00</td>
                                         <td></td>
@@ -214,7 +214,7 @@ $sel  = fn($field, $v)    => ($wo[$field] ?? '') == $v ? 'selected' : '';
 
                 <!-- ── Section 4: Update Tracking ────────────────────────── -->
                 <div class="card custom-card mb-4 border-warning border-2">
-                    <div class="card-header" style="background:#fffbeb;border-bottom:2px solid #fbbf24">
+                    <div class="card-header">
                         <h6 class="card-title mb-0 text-warning-emphasis">
                             <i class="bi bi-clock-history me-2 text-warning"></i>
                             এই Edit এর তথ্য
@@ -222,7 +222,7 @@ $sel  = fn($field, $v)    => ($wo[$field] ?? '') == $v ? 'selected' : '';
                         </h6>
                         <small class="text-muted">প্রতিটি edit এর date ও কী পরিবর্তন হয়েছে সেটা record থাকবে</small>
                     </div>
-                    <div class="card-body" style="background:#fffdf0">
+                    <div class="card-body" style="background:rgba(var(--clr-theme-secondary-rgb), 0.05)">
                         <div class="row ">
                             <div class="col-md-4">
                                 <label class="form-label fw-semibold">
@@ -307,7 +307,7 @@ $sel  = fn($field, $v)    => ($wo[$field] ?? '') == $v ? 'selected' : '';
                         <!-- Payment visual summary -->
                         <div class="row g-2 mt-1">
                             <div class="col-md-4">
-                                <div class="p-3 rounded" style="background:#e0f2fe;border-left:4px solid #0284c7">
+                                <div class="p-3 rounded" style="background:rgba(59, 130, 246, 0.1);border-left:4px solid #3b82f6">
                                     <div class="small text-muted mb-1">Advance Payment</div>
                                     <div class="fw-bold text-info fs-15" id="adv_card">৳ 0.00</div>
                                 </div>
@@ -319,7 +319,7 @@ $sel  = fn($field, $v)    => ($wo[$field] ?? '') == $v ? 'selected' : '';
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <div class="p-3 rounded" style="background:#fee2e2;border-left:4px solid #b91c1c">
+                                <div class="p-3 rounded" style="background:rgba(239, 68, 68, 0.1);border-left:4px solid #ef4444">
                                     <div class="small text-muted mb-1">Retention</div>
                                     <div class="fw-bold text-danger fs-15" id="ret_card">৳ 0.00</div>
                                 </div>
@@ -593,7 +593,7 @@ function addWorkItemRow(data = {}) {
                    value="${rate}" min="0" step="0.01" placeholder="0"
                    oninput="recalcRow(this)" style="min-width:65px">
         </td>
-        <td class="text-end fw-semibold wi-subtotal p-2" style="color:#1d4ed8;min-width:80px">৳ 0.00</td>
+        <td class="text-end fw-semibold wi-subtotal p-2" style="color:var(--clr-theme-primary);min-width:80px">৳ 0.00</td>
         <td class="text-center p-1">
             <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1"
                     onclick="this.closest('tr').remove(); recalcGrandTotal();" title="Delete">

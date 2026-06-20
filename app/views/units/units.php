@@ -34,10 +34,10 @@ $show_breadcrumb = true;
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </button>
 
-                                        <button class="removeBtnCust table__icon delete"
+                                        <button type="button" class="removeBtnCust table__icon delete"
                                             data-id="<?= $unit['id'] ?>"
                                             data-name="<?= $unit['name'] ?>"
-                                            data-action="delete-department">
+                                            data-action="delete-unit">
                                             <i class="fa-regular fa-trash"></i>
                                         </button>
                                     </div>
@@ -136,7 +136,7 @@ $show_breadcrumb = true;
 
 <!-- edit department modal end -->
 <script>
-    const base_url = "<?= $GLOBALS['base_url'] ?>"; // PHP outputs the correct base URL
+    var base_url = "<?= $GLOBALS['base_url'] ?>"; // PHP outputs the correct base URL
 
 
 

@@ -584,6 +584,7 @@ class Con_ProjectOverviewDashboardController extends Controller
 
         // Fetch open risks stats for all projects to determine status downgrades
         $projectRisksStats = [];
+        $projectRisksDetails = [];
         if (!empty($projectIds)) {
             $riskIdsStr = implode(',', $projectIds);
             $riskQuery = $this->db->query("
@@ -600,6 +601,18 @@ class Con_ProjectOverviewDashboardController extends Controller
                         'total_open' => (int)$row['total_open_risks'],
                         'critical_high' => (int)$row['critical_high_count']
                     ];
+                }
+            }
+
+            $riskDetailsQuery = $this->db->query("
+                SELECT project_id, risk_code, description, severity, status, missed_week
+                FROM project_risks
+                WHERE status = 'Open' AND project_id IN ($riskIdsStr)
+                ORDER BY severity DESC, missed_week ASC
+            ");
+            if ($riskDetailsQuery) {
+                while ($row = $riskDetailsQuery->fetch_assoc()) {
+                    $projectRisksDetails[(int)$row['project_id']][] = $row;
                 }
             }
         }
@@ -655,6 +668,60 @@ class Con_ProjectOverviewDashboardController extends Controller
                 }
             }
 
+            // Calculate status explanation for popover on hover
+            $statusExplanation = "";
+            if ($calcStatus === 'On Track') {
+                $statusExplanation = "<strong>ℹ️ প্রজেক্টটি সঠিক ট্র্যাকে রয়েছে:</strong><br/>";
+                $statusExplanation .= "• প্রগ্রেস গ্যাপ ৫% এর কম এবং কোনো ক্রিটিক্যাল রিস্ক নেই।";
+            } elseif ($calcStatus === 'Planning') {
+                $statusExplanation = "<strong>ℹ️ প্রজেক্টটি প্ল্যানিং বা প্রি-কনস্ট্রাকশন ধাপে রয়েছে।</strong>";
+            } elseif ($calcStatus === 'Completed') {
+                $statusExplanation = "<strong>🎉 প্রজেক্টের কাজ সফলভাবে সম্পন্ন হয়েছে।</strong>";
+            } else {
+                $gap = $planned - $actual;
+                $statusExplanation = $calcStatus === 'Delayed' 
+                    ? "<strong>❌ প্রজেক্টটি বিলম্বে (Delayed) রয়েছে। কারণসমূহ:</strong><br/>" 
+                    : "<strong>⚠️ প্রজেক্টটি ঝুঁকিতে (At Risk) রয়েছে। কারণসমূহ:</strong><br/>";
+
+                $hasReasons = false;
+                if ($gap > 5) {
+                    $statusExplanation .= "• প্রগ্রেস ঘাটতি (Gap): " . number_format($gap, 1) . "% (পরিকল্পিত: " . number_format($planned, 1) . "%, প্রকৃত: " . number_format($actual, 1) . "%)<br/>";
+                    $hasReasons = true;
+                }
+
+                $projRisks = $projectRisksDetails[$pid] ?? [];
+                if (!empty($projRisks)) {
+                    $nologCounts = [];
+                    $otherRisks = [];
+                    foreach ($projRisks as $risk) {
+                        if (strpos($risk['risk_code'], 'AUTO-NOLOG-D') === 0) {
+                            $wk = (int)$risk['missed_week'];
+                            $nologCounts[$wk] = ($nologCounts[$wk] ?? 0) + 1;
+                        } else {
+                            $otherRisks[] = $risk;
+                        }
+                    }
+
+                    // Format daily log warnings
+                    foreach ($nologCounts as $wk => $cnt) {
+                        $statusExplanation .= "• Week {$wk}: {$cnt}টি দিন কোনো Daily Work Log দেওয়া হয়নি।<br/>";
+                        $hasReasons = true;
+                    }
+
+                    // Format other risks (e.g. target missed, manual risks)
+                    foreach ($otherRisks as $risk) {
+                        $sev = $risk['severity'];
+                        $desc = $risk['description'];
+                        $statusExplanation .= "• [{$sev}] {$desc}<br/>";
+                        $hasReasons = true;
+                    }
+                }
+
+                if (!$hasReasons) {
+                    $statusExplanation .= "• প্রজেক্টের স্ট্যাটাস ম্যানুয়ালি বা অন্য কোনো কারণে আপডেট করা হয়েছে।";
+                }
+            }
+            $pr['status_explanation'] = $statusExplanation;
             $pr['calculated_status'] = $calcStatus;
 
             // Check filters in PHP for pagination
@@ -826,7 +893,7 @@ class Con_ProjectOverviewDashboardController extends Controller
         // 8. Top Delay / Risk Summary
         if (!empty($projectIds)) {
             require_once __DIR__ . '/Con_RiskDashboardController.php';
-            $riskCtrl = new Con_RiskDashboardController($this->db);
+            $riskCtrl = new Con_RiskDashboardController($this->db, false);
             foreach ($projectIds as $pid) {
                 $riskCtrl->syncRisksForProject($pid);
             }
@@ -1092,12 +1159,13 @@ class Con_ProjectOverviewDashboardController extends Controller
 
         // 5. Fetch planned quantities from monthly targets
         $planRes = $this->db->query("
-            SELECT pmti.phase_item_id, pmti.work_type_id, SUM(pmti.monthly_target_qty) AS total_target_qty,
+            SELECT pmti.phase_item_id, pmti.work_type_id, pmti.target_mode, pmt.phase_id,
+                   SUM(CASE WHEN pmti.target_mode = 'pct' THEN pmti.monthly_target_pct ELSE pmti.monthly_target_qty END) AS total_target_qty,
                    pmt.project_id
             FROM phase_monthly_target_items pmti
             INNER JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
             WHERE pmt.project_id IN ($idsList)
-            GROUP BY pmt.project_id, pmti.phase_item_id, pmti.work_type_id
+            GROUP BY pmt.project_id, pmt.phase_id, pmti.phase_item_id, pmti.work_type_id, pmti.target_mode
         ");
         $plannedQuantities = $planRes ? $planRes->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -1105,7 +1173,7 @@ class Con_ProjectOverviewDashboardController extends Controller
         // 6a. Approved weekly progress items
         $weeklyActRes = $this->db->query("
             SELECT pmti.phase_item_id, pmti.work_type_id, pmt.project_id,
-                   SUM(pwpi.achieved_qty) AS total_actual_qty
+                   SUM(CASE WHEN pmti.target_mode = 'pct' THEN pwpi.achieved_pct ELSE pwpi.achieved_qty END) AS total_actual_qty
             FROM phase_weekly_progress_items pwpi
             INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
             INNER JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
@@ -1120,7 +1188,7 @@ class Con_ProjectOverviewDashboardController extends Controller
         // 6b. Approved daily logs for pending/draft weeks (to avoid double counting, but capture intermediate work)
         $dailyActRes = $this->db->query("
             SELECT pmti.phase_item_id, pmti.work_type_id, dpl.project_id,
-                   SUM(dwil.qty_done_today) AS total_actual_qty
+                   SUM(CASE WHEN pmti.target_mode = 'pct' THEN dwil.pct_done_today ELSE dwil.qty_done_today END) AS total_actual_qty
             FROM daily_work_item_logs dwil
             JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
             INNER JOIN phase_weekly_progress pwp ON pwp.id = dpl.weekly_progress_id
@@ -1135,10 +1203,13 @@ class Con_ProjectOverviewDashboardController extends Controller
 
         // Map data in PHP
         $targetsMap = [];
+        $phaseTargetsList = [];
         foreach ($plannedQuantities as $q) {
             $pid = (int)$q['project_id'];
+            $phaseId = (int)$q['phase_id'];
             $key = $q['phase_item_id'] . '_' . $q['work_type_id'];
             $targetsMap[$pid][$key] = (float)$q['total_target_qty'];
+            $phaseTargetsList[$pid][$phaseId][] = $q;
         }
 
         $actualsMap = [];
@@ -1152,6 +1223,53 @@ class Con_ProjectOverviewDashboardController extends Controller
             if ($q['phase_item_id'] !== null) {
                 $key = $q['phase_item_id'] . '_' . $q['work_type_id'];
                 $actualsMap[$pid][$key] = ($actualsMap[$pid][$key] ?? 0.0) + (float)$q['total_actual_qty'];
+            }
+        }
+
+        // Synthesize detail rows for any planned targets not in project_phase_item_details
+        foreach ($projectIds as $pid) {
+            $phasesList = $projectPhases[$pid] ?? [];
+            foreach ($phasesList as $phase) {
+                $phaseId = (int)$phase['id'];
+                $phaseDetails = $projectPhaseDetails[$pid][$phaseId] ?? [];
+                
+                $existingDetailKeys = [];
+                foreach ($phaseDetails as $d) {
+                    $existingDetailKeys[$d['phase_item_id'] . '_' . $d['work_type_id']] = true;
+                }
+                
+                if (!empty($phaseTargetsList[$pid][$phaseId])) {
+                    foreach ($phaseTargetsList[$pid][$phaseId] as $target) {
+                        $key = $target['phase_item_id'] . '_' . $target['work_type_id'];
+                        if (!isset($existingDetailKeys[$key])) {
+                            $subItemWeight = 0.0;
+                            $itemId = (int)$target['phase_item_id'];
+                            if (!empty($phaseItems[$phaseId])) {
+                                foreach ($phaseItems[$phaseId] as $pi) {
+                                    if ((int)$pi['item_id'] === $itemId) {
+                                        $subItemWeight = (float)$pi['item_weight'];
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            $synthesizedDetail = [
+                                'phase_id' => $phaseId,
+                                'phase_item_id' => $itemId,
+                                'detail_id' => null,
+                                'work_type_id' => $target['work_type_id'],
+                                'total_boq_qty' => ($target['target_mode'] === 'pct') ? 100.0 : 0.0,
+                                'detail_weight' => $subItemWeight,
+                                'project_id' => $pid,
+                                'unit' => ($target['target_mode'] === 'pct') ? '%' : ''
+                            ];
+                            
+                            $phaseDetails[] = $synthesizedDetail;
+                            $projectPhaseDetails[$pid][$phaseId] = $phaseDetails;
+                            $itemDetails[$itemId][] = $synthesizedDetail;
+                        }
+                    }
+                }
             }
         }
 
@@ -1338,8 +1456,10 @@ class Con_ProjectOverviewDashboardController extends Controller
         $dayOfQueryDate = (int)date('j', strtotime($date));
         
         $planRes = $this->db->query("
-            SELECT pmti.phase_item_id, pmti.work_type_id, pmt.target_month,
-                   pmti.monthly_target_qty, pmti.week_1_qty, pmti.week_2_qty, pmti.week_3_qty, pmti.week_4_qty
+            SELECT pmti.phase_item_id, pmti.work_type_id, pmt.target_month, pmti.target_mode,
+                   pmti.monthly_target_qty, pmti.monthly_target_pct,
+                   pmti.week_1_qty, pmti.week_2_qty, pmti.week_3_qty, pmti.week_4_qty,
+                   pmti.week_1_pct, pmti.week_2_pct, pmti.week_3_pct, pmti.week_4_pct
             FROM phase_monthly_target_items pmti
             INNER JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
             WHERE pmt.project_id = $projectId
@@ -1353,19 +1473,36 @@ class Con_ProjectOverviewDashboardController extends Controller
             $targetMonth = $r['target_month'];
             
             $plannedQty = 0.0;
-            if ($targetMonth < $queryMonthStr) {
-                $plannedQty = (float)$r['monthly_target_qty'];
-            } elseif ($targetMonth === $queryMonthStr) {
-                if ($dayOfQueryDate <= 7) {
-                    $plannedQty = (float)$r['week_1_qty'];
-                } elseif ($dayOfQueryDate <= 14) {
-                    $plannedQty = (float)$r['week_1_qty'] + (float)$r['week_2_qty'];
-                } elseif ($dayOfQueryDate <= 21) {
-                    $plannedQty = (float)$r['week_1_qty'] + (float)$r['week_2_qty'] + (float)$r['week_3_qty'];
-                } else {
-                    $plannedQty = (float)$r['week_1_qty'] + (float)$r['week_2_qty'] + (float)$r['week_3_qty'] + (float)$r['week_4_qty'];
+            if ($r['target_mode'] === 'pct') {
+                if ($targetMonth < $queryMonthStr) {
+                    $plannedQty = (float)$r['monthly_target_pct'];
+                } elseif ($targetMonth === $queryMonthStr) {
+                    if ($dayOfQueryDate <= 7) {
+                        $plannedQty = (float)$r['week_1_pct'];
+                    } elseif ($dayOfQueryDate <= 14) {
+                        $plannedQty = (float)$r['week_1_pct'] + (float)$r['week_2_pct'];
+                    } elseif ($dayOfQueryDate <= 21) {
+                        $plannedQty = (float)$r['week_1_pct'] + (float)$r['week_2_pct'] + (float)$r['week_3_pct'];
+                    } else {
+                        $plannedQty = (float)$r['week_1_pct'] + (float)$r['week_2_pct'] + (float)$r['week_3_pct'] + (float)$r['week_4_pct'];
+                    }
+                    $plannedQty = min((float)$r['monthly_target_pct'], $plannedQty);
                 }
-                $plannedQty = min((float)$r['monthly_target_qty'], $plannedQty);
+            } else {
+                if ($targetMonth < $queryMonthStr) {
+                    $plannedQty = (float)$r['monthly_target_qty'];
+                } elseif ($targetMonth === $queryMonthStr) {
+                    if ($dayOfQueryDate <= 7) {
+                        $plannedQty = (float)$r['week_1_qty'];
+                    } elseif ($dayOfQueryDate <= 14) {
+                        $plannedQty = (float)$r['week_1_qty'] + (float)$r['week_2_qty'];
+                    } elseif ($dayOfQueryDate <= 21) {
+                        $plannedQty = (float)$r['week_1_qty'] + (float)$r['week_2_qty'] + (float)$r['week_3_qty'];
+                    } else {
+                        $plannedQty = (float)$r['week_1_qty'] + (float)$r['week_2_qty'] + (float)$r['week_3_qty'] + (float)$r['week_4_qty'];
+                    }
+                    $plannedQty = min((float)$r['monthly_target_qty'], $plannedQty);
+                }
             }
             
             $targetsMap[$key] = ($targetsMap[$key] ?? 0.0) + $plannedQty;
@@ -1374,7 +1511,8 @@ class Con_ProjectOverviewDashboardController extends Controller
         // 5. Fetch actual completed quantities up to $date
         // 5a. Approved weekly progress items
         $weeklyActRes = $this->db->query("
-            SELECT pmti.phase_item_id, pmti.work_type_id, SUM(pwpi.achieved_qty) AS total_actual_qty
+            SELECT pmti.phase_item_id, pmti.work_type_id,
+                   SUM(CASE WHEN pmti.target_mode = 'pct' THEN pwpi.achieved_pct ELSE pwpi.achieved_qty END) AS total_actual_qty
             FROM phase_weekly_progress_items pwpi
             INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
             INNER JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
@@ -1389,7 +1527,8 @@ class Con_ProjectOverviewDashboardController extends Controller
 
         // 5b. Approved daily logs for pending/draft weeks (to avoid double counting, but capture intermediate work)
         $dailyActRes = $this->db->query("
-            SELECT pmti.phase_item_id, pmti.work_type_id, SUM(dwil.qty_done_today) AS total_actual_qty
+            SELECT pmti.phase_item_id, pmti.work_type_id,
+                   SUM(CASE WHEN pmti.target_mode = 'pct' THEN dwil.pct_done_today ELSE dwil.qty_done_today END) AS total_actual_qty
             FROM daily_work_item_logs dwil
             JOIN daily_progress_logs dpl ON dpl.id = dwil.daily_log_id
             INNER JOIN phase_weekly_progress pwp ON pwp.id = dpl.weekly_progress_id
@@ -1412,6 +1551,57 @@ class Con_ProjectOverviewDashboardController extends Controller
             if ($q['phase_item_id'] !== null) {
                 $key = $q['phase_item_id'] . '_' . $q['work_type_id'];
                 $actualsMap[$key] = ($actualsMap[$key] ?? 0.0) + (float)$q['total_actual_qty'];
+            }
+        }
+
+        // Synthesize detail rows for any planned targets not in project_phase_item_details
+        $existingDetailKeys = [];
+        foreach ($itemDetails as $itemId => $dets) {
+            foreach ($dets as $d) {
+                $existingDetailKeys[$itemId . '_' . $d['work_type_id']] = true;
+            }
+        }
+        
+        // Find phase_id for each item_id from phaseItems
+        $itemToPhaseMap = [];
+        foreach ($phaseItems as $phId => $itms) {
+            foreach ($itms as $it) {
+                $itemToPhaseMap[(int)$it['item_id']] = $phId;
+            }
+        }
+        
+        foreach ($plannedRows as $r) {
+            $itemId = (int)$r['phase_item_id'];
+            $wtId = (int)$r['work_type_id'];
+            $key = $itemId . '_' . $wtId;
+            if (!isset($existingDetailKeys[$key])) {
+                $phId = $itemToPhaseMap[$itemId] ?? null;
+                if ($phId !== null) {
+                    // Find the sub-item weight
+                    $subItemWeight = 0.0;
+                    if (!empty($phaseItems[$phId])) {
+                        foreach ($phaseItems[$phId] as $pi) {
+                            if ((int)$pi['item_id'] === $itemId) {
+                                $subItemWeight = (float)$pi['item_weight'];
+                                break;
+                            }
+                        }
+                    }
+                    
+                    $synthesizedDetail = [
+                        'phase_id' => $phId,
+                        'phase_item_id' => $itemId,
+                        'detail_id' => null,
+                        'work_type_id' => $wtId,
+                        'total_boq_qty' => ($r['target_mode'] === 'pct') ? 100.0 : 0.0,
+                        'detail_weight' => $subItemWeight,
+                        'project_id' => $projectId,
+                        'unit' => ($r['target_mode'] === 'pct') ? '%' : ''
+                    ];
+                    
+                    $itemDetails[$itemId][] = $synthesizedDetail;
+                    $existingDetailKeys[$key] = true;
+                }
             }
         }
 

@@ -56,9 +56,9 @@ if (is_array($designations)) {
     public function store()
     {
         $data = [
-            'name'   => $_POST['name'] ?? '',
-            'department_id'   => $_POST['department_id'] ?? '',
-
+            'name'          => $_POST['name'] ?? '',
+            'department_id' => $_POST['department_id'] ?? '',
+            'created_by'    => $_SESSION['user']['id'] ?? null,
         ];
 
         if ($this->designationModel->create($data)) {
@@ -108,10 +108,13 @@ if (is_array($designations)) {
         $id = $_POST['id'] ?? 0;
 
         if ($id && $this->designationModel->delete($id)) {
+            setSuccess("Designation deleted successfully.");
             header("Location: {$GLOBALS['base_url']}/designations");
             exit;
         } else {
-            echo "<h3 style='color:red'>Failed to delete department</h3>";
+            setError("Failed to delete designation.");
+            header("Location: {$GLOBALS['base_url']}/designations");
+            exit;
         }
     }
 }

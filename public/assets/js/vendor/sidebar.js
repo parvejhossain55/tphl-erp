@@ -19,33 +19,43 @@ class PopperObject {
   init(reference, popperTarget) {
     this.reference = reference;
     this.popperTarget = popperTarget;
-    this.instance = Popper.createPopper(this.reference, this.popperTarget, {
-      placement: "bottom",
-      strategy: "relative",
-      resize: true,
-      modifiers: [
-        {
-          name: "computeStyles",
-          options: {
-            adaptive: false,
-          },
-        },
-      ],
-    });
+    if (!this.popperTarget) return;
 
-    document.addEventListener("click", (e) => this.clicker(e, this.popperTarget, this.reference), false);
+    if (typeof Popper !== "undefined" && typeof Popper.createPopper === "function") {
+      try {
+        this.instance = Popper.createPopper(this.reference, this.popperTarget, {
+          placement: "bottom",
+          strategy: "relative",
+          resize: true,
+          modifiers: [
+            {
+              name: "computeStyles",
+              options: {
+                adaptive: false,
+              },
+            },
+          ],
+        });
 
-    const ro = new ResizeObserver(() => {
-      this.instance.update();
-    });
+        document.addEventListener("click", (e) => this.clicker(e, this.popperTarget, this.reference), false);
 
-    ro.observe(this.popperTarget);
-    ro.observe(this.reference);
+        const ro = new ResizeObserver(() => {
+          if (this.instance) this.instance.update();
+        });
+
+        ro.observe(this.popperTarget);
+        ro.observe(this.reference);
+      } catch (err) {
+        console.warn("Failed to initialize Popper instance:", err);
+      }
+    }
   }
 
   clicker(event, popperTarget, reference) {
     if (
+      sidebar &&
       sidebar.classList.contains("collapsed") &&
+      popperTarget &&
       !popperTarget.contains(event.target) &&
       !reference.contains(event.target)
     ) {
@@ -62,28 +72,37 @@ class Poppers {
   subMenuPoppers = [];
 
   constructor() {
-    this.init();
+    try {
+      this.init();
+    } catch (err) {
+      console.warn("Poppers constructor init failed:", err);
+    }
   }
 
   init() {
     slideHasSub.forEach((element) => {
-      this.subMenuPoppers.push(new PopperObject(element, element.lastElementChild));
-      this.closePoppers();
+      const target = element.lastElementChild;
+      if (target) {
+        this.subMenuPoppers.push(new PopperObject(element, target));
+      }
     });
+    this.closePoppers();
   }
 
   togglePopper(target) {
-    if (window.getComputedStyle(target).visibility === "hidden") {
+    if (target && window.getComputedStyle(target).visibility === "hidden") {
       target.style.visibility = "visible";
-    } else {
+    } else if (target) {
       target.style.visibility = "hidden";
     }
   }
 
   updatePoppers() {
     this.subMenuPoppers.forEach((element) => {
-      element.instance.state.elements.popper.style.display = "none";
-      element.instance.update();
+      if (element.instance && element.instance.state && element.instance.state.elements && element.instance.state.elements.popper) {
+        element.instance.state.elements.popper.style.display = "none";
+        element.instance.update();
+      }
     });
   }
 
@@ -95,8 +114,9 @@ class Poppers {
 }
 
 const slideUp = (target, duration = ANIMATION_DURATION) => {
+  if (!target) return;
   const { parentElement } = target;
-  parentElement.classList.remove("open");
+  if (parentElement) parentElement.classList.remove("open");
   target.style.transitionProperty = "height, margin, padding";
   target.style.transitionDuration = `${duration}ms`;
   target.style.boxSizing = "border-box";
@@ -122,8 +142,9 @@ const slideUp = (target, duration = ANIMATION_DURATION) => {
 };
 
 const slideDown = (target, duration = ANIMATION_DURATION) => {
+  if (!target) return;
   const { parentElement } = target;
-  parentElement.classList.add("open");
+  if (parentElement) parentElement.classList.add("open");
   target.style.removeProperty("display");
   let { display } = window.getComputedStyle(target);
   if (display === "none") display = "block";
@@ -153,23 +174,31 @@ const slideDown = (target, duration = ANIMATION_DURATION) => {
 };
 
 const slideToggle = (target, duration = ANIMATION_DURATION) => {
+  if (!target) return;
   if (window.getComputedStyle(target).display === "none") {
     return slideDown(target, duration);
   }
   return slideUp(target, duration);
 };
 
-const PoppersInstance = new Poppers();
+let PoppersInstance = null;
+try {
+  PoppersInstance = new Poppers();
+} catch (e) {
+  console.warn("Could not initialize PoppersInstance:", e);
+}
 
 const updatePoppersTimeout = () => {
   setTimeout(() => {
-    PoppersInstance.updatePoppers();
+    if (PoppersInstance) PoppersInstance.updatePoppers();
   }, ANIMATION_DURATION);
 };
 
 const defaultOpenMenus = document.querySelectorAll(".slide.has-sub.open");
 defaultOpenMenus.forEach((element) => {
-  element.lastElementChild.style.display = "block";
+  if (element.lastElementChild) {
+    element.lastElementChild.style.display = "block";
+  }
 });
 
 firstLevelItems.forEach((element) => {
@@ -177,11 +206,13 @@ firstLevelItems.forEach((element) => {
     const parentMenu = element.closest(".nav.sub-open");
     if (parentMenu)
       parentMenu.querySelectorAll(":scope > ul > .slide.has-sub > a").forEach((el) => {
-        if (el.nextElementSibling.style.display === "block" || window.getComputedStyle(el.nextElementSibling).display === "block") {
+        if (el.nextElementSibling && (el.nextElementSibling.style.display === "block" || window.getComputedStyle(el.nextElementSibling).display === "block")) {
           slideUp(el.nextElementSibling);
         }
       });
-    slideToggle(element.nextElementSibling);
+    if (element.nextElementSibling) {
+      slideToggle(element.nextElementSibling);
+    }
   });
 });
 
@@ -194,28 +225,30 @@ innerLevelItems.forEach((element) => {
           slideUp(el.nextElementSibling);
         }
       });
-    slideToggle(element.nextElementSibling);
+    if (element.nextElementSibling) {
+      slideToggle(element.nextElementSibling);
+    }
   });
 });
 
 const setNavActive = () => {
   // Expand all submenus by default on page load
-  const slideHasSub = document.querySelectorAll(".slide.has-sub");
-  slideHasSub.forEach((element) => {
-    const submenu = element.lastElementChild;
-    if (!submenu) return;
-    element.classList.add("open");
-    submenu.style.display = "block";
-    
-    const subLink = element.querySelector(":scope > a");
+  const allSubMenus = document.querySelectorAll(".slide.has-sub");
+  allSubMenus.forEach((subMenu) => {
+    subMenu.classList.add("open");
+    const subUl = subMenu.querySelector("ul.sidebar-menu");
+    if (subUl) {
+      subUl.style.display = "block";
+    }
+    const subLink = subMenu.querySelector(":scope > a");
     if (subLink) {
       subLink.classList.add("menu-open");
     }
   });
 
-  // Find the sidebar menu item that has been marked active by PHP
-  const activeItem = document.querySelector(".sidebar__menu-item.active");
-  if (activeItem) {
+  // Find active items (which PHP sets on the specific .sidebar__menu-item)
+  const activeItems = document.querySelectorAll(".sidebar__menu-item.active");
+  activeItems.forEach((activeItem) => {
     // Traverse up to find parent submenus and highlight them as active
     let parent = activeItem.parentElement;
     while (parent && parent !== sidebar) {
@@ -228,24 +261,22 @@ const setNavActive = () => {
       }
       parent = parent.parentElement;
     }
-  }
+  });
 };
 
 setNavActive();
 
 /* for menu scroll to top active page */
-const customScrollTop = () => {
-  const activeItem = document.querySelector(".sidebar__menu-item.active");
-  if (activeItem) {
-    const container = document.getElementById("sidebar-scroll");
-    if (container) {
-      const activeRect = activeItem.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-
-      // If active item is outside visible bounds of scroll container, scroll it in
-      if (activeRect.bottom > containerRect.bottom || activeRect.top < containerRect.top) {
-        activeItem.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
+let customScrollTop = () => {
+  // Prefer the sub-menu active item (which doesn't have href="javascript:void(0);")
+  let activeEle = document.querySelector(".sidebar__menu-item.active:not([href^='javascript:'])");
+  if (!activeEle) {
+    activeEle = document.querySelector(".sidebar__menu-item.active");
+  }
+  if (activeEle) {
+    let elemRect = activeEle.getBoundingClientRect();
+    if (elemRect.top > 450 || elemRect.top < 0) {
+      activeEle.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }
 };

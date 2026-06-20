@@ -1,24 +1,24 @@
 <?php
-$base_url   = $GLOBALS['base_url'];
+$base_url = $GLOBALS['base_url'];
 $page_title = $page_title ?? 'Work Orders';
 
 $statusColors = [
-    'draft'          => 'secondary',
-    'approved'       => 'info',
-    'active'         => 'primary',
+    'draft' => 'secondary',
+    'approved' => 'info',
+    'active' => 'primary',
     'work_completed' => 'warning',
-    'qc_approved'    => 'success',
-    'closed'         => 'dark',
-    'rejected'       => 'danger',
+    'qc_approved' => 'success',
+    'closed' => 'dark',
+    'rejected' => 'danger',
 ];
 $statusLabels = [
-    'draft'          => 'Draft',
-    'approved'       => 'Approved',
-    'active'         => 'Active',
+    'draft' => 'Draft',
+    'approved' => 'Approved',
+    'active' => 'Active',
     'work_completed' => 'Work Completed',
-    'qc_approved'    => 'QC Approved',
-    'closed'         => 'Closed',
-    'rejected'       => 'Rejected',
+    'qc_approved' => 'QC Approved',
+    'closed' => 'Closed',
+    'rejected' => 'Rejected',
 ];
 ?>
 
@@ -27,18 +27,15 @@ $statusLabels = [
     <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
         <div class="my-auto">
             <h4 class="page-title fw-semibold fs-18 mb-0"><?= $page_title ?></h4>
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
-                <li class="breadcrumb-item active">Work Orders</li>
-            </ol>
+            <?php if ($canCreate): ?>
+                <div class="d-flex my-xl-auto right-content align-items-center flex-wrap gap-2">
+                    <a href="<?= $base_url ?>/con-work-order-create" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-lg me-1"></i> New Work Order
+                    </a>
+                </div>
+            <?php endif; ?>
         </div>
-        <?php if ($canCreate): ?>
-        <div class="d-flex my-xl-auto right-content align-items-center flex-wrap gap-2">
-            <a href="<?= $base_url ?>/con-work-order-create" class="btn btn-primary btn-sm">
-                <i class="bi bi-plus-lg me-1"></i> New Work Order
-            </a>
-        </div>
-        <?php endif; ?>
+
     </div>
 
     <!-- Stats Cards -->
@@ -66,7 +63,8 @@ $statusLabels = [
         <div class="col-6 col-md-2">
             <div class="card custom-card text-center border-0 shadow-sm">
                 <div class="card-body py-3">
-                    <div class="fs-22 fw-bold text-info"><?= ($statusCount['approved'] ?? 0) + ($statusCount['active'] ?? 0) ?></div>
+                    <div class="fs-22 fw-bold text-info">
+                        <?= ($statusCount['approved'] ?? 0) + ($statusCount['active'] ?? 0) ?></div>
                     <div class="text-muted fs-12">Active</div>
                 </div>
             </div>
@@ -136,7 +134,8 @@ $statusLabels = [
                                 <tr>
                                     <td><?= ($offset ?? 0) + $i + 1 ?></td>
                                     <td>
-                                        <a href="<?= $base_url ?>/con-work-order/<?= $wo['id'] ?>" class="fw-semibold text-primary">
+                                        <a href="<?= $base_url ?>/con-work-order/<?= $wo['id'] ?>"
+                                            class="fw-semibold text-primary">
                                             <?= htmlspecialchars($wo['wo_number'] ?? 'WO-') ?>
                                         </a>
                                     </td>
@@ -162,18 +161,19 @@ $statusLabels = [
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <span class="badge bg-<?= $statusColors[$wo['status']] ?? 'secondary' ?>-transparent text-<?= $statusColors[$wo['status']] ?? 'secondary' ?>">
+                                        <span
+                                            class="badge bg-<?= $statusColors[$wo['status']] ?? 'secondary' ?>-transparent text-<?= $statusColors[$wo['status']] ?? 'secondary' ?>">
                                             <?= $statusLabels[$wo['status']] ?? ucfirst($wo['status']) ?>
                                         </span>
                                     </td>
                                     <td>
                                         <a href="<?= $base_url ?>/con-work-order/<?= $wo['id'] ?>"
-                                           class="btn btn-sm btn-outline-primary">
+                                            class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-eye"></i>
                                         </a>
                                         <?php if ($wo['status'] === 'draft' && $canCreate): ?>
                                             <a href="<?= $base_url ?>/con-work-order-edit/<?= $wo['id'] ?>"
-                                               class="btn btn-sm btn-outline-warning">
+                                                class="btn btn-sm btn-outline-warning">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
                                         <?php endif; ?>

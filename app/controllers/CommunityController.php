@@ -33,9 +33,11 @@ class CommunityController extends Controller
         ];
 
         if ($this->deparmentModel->create($data)) {
+            setSuccess("Community created successfully.");
             header("Location: {$GLOBALS['base_url']}/community-lists");
             exit;
         } else {
+            setError("Failed to create community.");
             echo "<h3 style='color:red'>Failed to create communities</h3>";
         }
     }
@@ -48,7 +50,7 @@ class CommunityController extends Controller
             'created_by'      => $_SESSION['user']['id'] ?? null,
         ];
 
-        print_r($data); // debug: check values
+        // debug removed
 
         if ($this->deparmentModel->update($data)) {
             header("Location: {$GLOBALS['base_url']}/community-lists");
@@ -65,11 +67,14 @@ class CommunityController extends Controller
     {
         $id = $_POST['id'] ?? 0;
 
-        if ($id && $this->deparmentModel->delete($id)) {
+        if ($this->deparmentModel->delete($id)) {
+            setSuccess("Community deleted successfully.");
             header("Location: {$GLOBALS['base_url']}/community-lists");
             exit;
         } else {
-            echo "<h3 style='color:red'>Failed to delete communities</h3>";
+            setError("Failed to delete community.");
+            header("Location: {$GLOBALS['base_url']}/community-lists");
+            exit;
         }
     }
 }
