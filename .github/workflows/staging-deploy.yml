@@ -38,8 +38,6 @@ jobs:
             git clean -fd
 
 
-   
-
             echo "Verifying SQL file integrity..."
             echo "tphl_db.sql lines: $(wc -l < $DATABASE_DIR/tphl_db.sql)"
             echo "drop_table.sql lines: $(wc -l < $DATABASE_DIR/drop_table.sql)"
@@ -51,9 +49,6 @@ jobs:
             # Import fresh database
             # echo "Importing fresh database..."
             # mysql -u final_erp_user -p${{ secrets.DB_PASS }} final_erp_db < $DATABASE_DIR/tphl_db.sql
-
-
-
 
 
 
