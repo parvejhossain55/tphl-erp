@@ -153,22 +153,93 @@
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/main.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/sidebar.js"></script>
 
-        <!-- ✅ Global Delete Handler -->
+        <!-- ✅ Global Delete Handler & Client-Side Error Logging -->
         <script>
-        jQuery(document).ready(function($) {
-            // Remove any old handler then attach fresh one
-            $(document).off('click.globalDelete', '.removeBtnCust').on('click.globalDelete', '.removeBtnCust', function(e) {
+        (function() {
+            var baseUrl = (typeof base_url !== 'undefined' ? base_url : '') || window.base_url || '/TPHL-ERP';
+
+            // Core Log Function
+            function sendClientLog(type, message, details) {
+                fetch(baseUrl + '/log-client-debug', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        url: window.location.href,
+                        type: type,
+                        message: message,
+                        details: details
+                    })
+                }).catch(function(err) {
+                    console.warn('Failed to send debug log to server:', err);
+                });
+            }
+
+            // 1. Capture Global JS Errors
+            window.addEventListener('error', function(e) {
+                sendClientLog('js-error', e.message || 'Unhandled JS Error', {
+                    filename: e.filename || '',
+                    lineno: e.lineno || 0,
+                    colno: e.colno || 0,
+                    stack: e.error ? e.error.stack : null
+                });
+            });
+
+            window.addEventListener('unhandledrejection', function(e) {
+                sendClientLog('js-promise-rejection', e.reason ? (e.reason.message || String(e.reason)) : 'Unhandled rejection', {
+                    stack: e.reason ? e.reason.stack : null
+                });
+            });
+
+            // 2. Capture Phase Click Listener (Intercept click immediately before it can be stopped by other scripts)
+            window.addEventListener('click', function(e) {
+                var btn = e.target.closest('.removeBtnCust');
+                if (!btn) return;
+
+                // Intercept immediately
                 e.preventDefault();
                 e.stopPropagation();
 
-                var btn      = $(this);
-                var itemId   = btn.data('id');
-                var itemName = btn.data('name') || 'this item';
-                var action   = btn.attr('data-action');
+                var itemId   = btn.getAttribute('data-id');
+                var itemName = btn.getAttribute('data-name') || 'this item';
+                var action   = btn.getAttribute('data-action');
 
-                if (!action) return;
+                sendClientLog('click-capture', 'Delete button clicked (Intercepted in Capture Phase)', {
+                    itemId: itemId,
+                    itemName: itemName,
+                    action: action,
+                    classes: btn.className,
+                    tagName: btn.tagName,
+                    swalLoaded: typeof Swal !== 'undefined',
+                    jqueryLoaded: typeof $ !== 'undefined'
+                });
 
-                var baseUrl = (typeof base_url !== 'undefined' ? base_url : '') || window.base_url || '';
+                if (!action) {
+                    sendClientLog('error-delete', 'Deletion failed: data-action attribute is missing on the button!', {
+                        itemId: itemId,
+                        itemName: itemName
+                    });
+                    return;
+                }
+
+                // Ensure Swal is loaded
+                if (typeof Swal === 'undefined') {
+                    var errMsg = 'SweetAlert2 (Swal) is undefined! Cannot open delete modal.';
+                    console.error(errMsg);
+                    sendClientLog('error-delete', errMsg, {
+                        itemId: itemId,
+                        action: action
+                    });
+                    alert('Error: SweetAlert2 is not loaded. Cannot delete.');
+                    return;
+                }
+
+                sendClientLog('info-delete', 'Triggering Swal.fire confirmation modal (Capture Phase)', {
+                    itemId: itemId,
+                    itemName: itemName,
+                    action: action
+                });
 
                 Swal.fire({
                     title: 'Are you sure?',
@@ -179,6 +250,12 @@
                     cancelButtonText: 'Cancel'
                 }).then(function(result) {
                     if (result.isConfirmed) {
+                        sendClientLog('info-delete', 'Deletion confirmed by user. Submitting form...', {
+                            itemId: itemId,
+                            action: action,
+                            postUrl: baseUrl + '/' + action
+                        });
+
                         var form = document.createElement('form');
                         form.method = 'POST';
                         form.action = baseUrl + '/' + action;
@@ -189,10 +266,18 @@
                         form.appendChild(input);
                         document.body.appendChild(form);
                         form.submit();
+                    } else {
+                        sendClientLog('info-delete', 'Deletion cancelled by user', {
+                            itemId: itemId
+                        });
                     }
+                }).catch(function(swalErr) {
+                    sendClientLog('error-delete', 'Swal.fire encountered an error: ' + swalErr.message, {
+                        stack: swalErr.stack
+                    });
                 });
-            });
-        });
+            }, true); // true = capture phase
+        })();
         </script>
 
         <script>
