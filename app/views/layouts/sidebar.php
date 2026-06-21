@@ -1457,9 +1457,9 @@
                 <!-- ====== QC MODULE ====== -->
                 <?php if (hasPermission('QC Dashboard')): ?>
                     <li
-                        class="slide has-sub <?= isActive(['qc-dashboard', 'qc-inspection-create', 'qc-material-test-create', 'qc-checklists', 'qc-test-types', 'con-wastage', 'con-wastage-create'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['qc-dashboard', 'con-weekly-reports', 'con-weekly-report', 'qc-inspection-create', 'qc-material-test-create', 'qc-checklists', 'qc-test-types', 'con-wastage', 'con-wastage-create'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['qc-dashboard', 'qc-inspection-create', 'qc-material-test-create', 'qc-checklists', 'qc-test-types', 'con-wastage', 'con-wastage-create'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['qc-dashboard', 'con-weekly-reports', 'con-weekly-report', 'qc-inspection-create', 'qc-material-test-create', 'qc-checklists', 'qc-test-types', 'con-wastage', 'con-wastage-create'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="bi bi-shield-check"></i></div>
                             <span class="sidebar__menu-label">QC Module</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -1471,8 +1471,8 @@
                                     Dashboard</a>
                             </li>
                             <li class="slide">
-                                <a href="<?= $GLOBALS['base_url'] ?>/qc-inspection-create"
-                                    class="sidebar__menu-item <?= isActive('qc-inspection-create', $current_route) ?>">New
+                                <a href="<?= $GLOBALS['base_url'] ?>/con-weekly-reports"
+                                    class="sidebar__menu-item <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">New
                                     Inspection</a>
                             </li>
 

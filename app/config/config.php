@@ -4,7 +4,7 @@
 // 2 = Project staging Server
 // 3 = Production Server
 
-$current_server = 3; 
+$current_server = 1; 
 
 /////////
 

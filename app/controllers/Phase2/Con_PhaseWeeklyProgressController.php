@@ -104,6 +104,11 @@ class Con_PhaseWeeklyProgressController extends Controller {
                 $planned = (($wi['target_mode'] ?? 'qty') === 'pct') ? (float)($wi['planned_pct'] ?? 0) : (float)$wi['planned_qty'];
                 
                 if ($planned > 0 && isset($persistentWts[$itemId])) {
+                    // If general progress is already logged (wtId = 0), skip virtual work types to avoid confusion
+                    if (isset($loggedByItem[$itemId][0])) {
+                        continue;
+                    }
+
                     foreach ($persistentWts[$itemId] as $pwt) {
                         $wtId = $pwt['work_type_id'];
                         if (!isset($loggedByItem[$itemId][$wtId])) {
@@ -430,6 +435,40 @@ class Con_PhaseWeeklyProgressController extends Controller {
         ];
 
         if ($this->model->updateWeeklyProgressDetails($id, $updateData)) {
+            // Fetch project name and assigned qc_id for notifications
+            $pStmt = $this->db->prepare("SELECT name, qc_id FROM projects WHERE id = ?");
+            $pStmt->bind_param('i', $session['project_id']);
+            $pStmt->execute();
+            $projectObj = $pStmt->get_result()->fetch_assoc();
+
+            if ($projectObj) {
+                $qcId = (int)($projectObj['qc_id'] ?? 0);
+                $title = 'Weekly Progress Report Submitted';
+                $msg = 'Weekly progress report for project ' . htmlspecialchars($projectObj['name']) . ' (Week ' . $weekNo . ') has been submitted for QC review.';
+                $url = $GLOBALS['base_url'] . '/con-weekly-progress/' . $targetId . '?week=' . $weekNo;
+
+                if ($qcId > 0) {
+                    // Notify the assigned QC Specialist
+                    $notifStmt = $this->db->prepare("INSERT INTO head_notifications (user_id, type, title, message, url) VALUES (?, 'weekly_progress', ?, ?, ?)");
+                    $notifStmt->bind_param('isss', $qcId, $title, $msg, $url);
+                    $notifStmt->execute();
+                } else {
+                    // Notify all users with role_id = 13 (QC Specialists)
+                    $qcStmt = $this->db->prepare("SELECT id FROM users WHERE role_id = 13");
+                    $qcStmt->execute();
+                    $qcUsers = $qcStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    
+                    if (!empty($qcUsers)) {
+                        $notifStmt = $this->db->prepare("INSERT INTO head_notifications (user_id, type, title, message, url) VALUES (?, 'weekly_progress', ?, ?, ?)");
+                        foreach ($qcUsers as $qcUser) {
+                            $userQcId = (int)$qcUser['id'];
+                            $notifStmt->bind_param('isss', $userQcId, $title, $msg, $url);
+                            $notifStmt->execute();
+                        }
+                    }
+                }
+            }
+
             setSuccess("Weekly progress report submitted successfully for review.");
         } else {
             setError("Failed to submit weekly progress report.");

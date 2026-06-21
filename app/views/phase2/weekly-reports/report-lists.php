@@ -18,8 +18,8 @@ $roleId       = (int)($_SESSION['user']['role_id'] ?? 0);
 </div>
 
 <!-- ══ HERO BAND ══ -->
-<div style="background:linear-gradient(135deg,var(--clr-theme-primary),var(--clr-theme-secondary));border-radius:14px;padding:20px 24px;
-            margin-bottom:24px;color:#fff;display:flex;align-items:center;gap:16px;">
+<div style="border-radius:14px;padding:20px 24px;
+            margin-bottom:24px;display:flex;align-items:center;gap:16px;">
 
     <div>
         <div style="font-size:18px;font-weight:800;letter-spacing:-.3px;">Phase Weekly Progress Reports</div>
@@ -33,7 +33,7 @@ $roleId       = (int)($_SESSION['user']['role_id'] ?? 0);
 </div>
 
 <?php if (empty($projects)): ?>
-<div style="text-align:center;padding:60px 20px;background:#f8fafc;border-radius:12px;border:1px dashed #cbd5e1;">
+<div style="text-align:center;padding:60px 20px;border-radius:12px;border:1px dashed #cbd5e1;">
     <i class="bi bi-folder2-open" style="font-size:40px;color:#cbd5e1;display:block;margin-bottom:12px;"></i>
     <div style="font-size:14px;color:#94a3b8;">কোনো project পাওয়া যায়নি</div>
 </div>
@@ -46,7 +46,7 @@ $roleId       = (int)($_SESSION['user']['role_id'] ?? 0);
 </div>
 
 <!-- ══ PROJECT GRID ══ -->
-<div id="projectGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;">
+<div  id="projectGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;">
     <?php foreach ($projects as $proj):
         $hasTargets = (int)($proj['total_targets'] ?? 0) > 0;
         $hasWeekly  = (int)($proj['total_weekly_sessions'] ?? 0) > 0;
@@ -61,14 +61,14 @@ $roleId       = (int)($_SESSION['user']['role_id'] ?? 0);
         };
     ?>
     <a href="<?= $base_url ?>/con-weekly-report/<?= $proj['id'] ?>"
-       class="project-card"
+       class="project-card card__wrapper"
        data-name="<?= strtolower(htmlspecialchars($proj['name'])) ?>"
-       style="display:block;text-decoration:none;background:#fff;border-radius:12px;
+       style="display:block;text-decoration:none;border-radius:12px;
               border:1.5px solid rgba(25,135,84,.12);padding:16px 18px;
               transition:all .2s;box-shadow:0 1px 4px rgba(0,0,0,.04);">
         <!-- Header row -->
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
-            <div style="font-size:14px;font-weight:700;color:#1e293b;line-height:1.3;flex:1;margin-right:8px;">
+            <div style="font-size:14px;font-weight:700;line-height:1.3;flex:1;margin-right:8px;">
                 <?= htmlspecialchars($proj['name']) ?>
             </div>
             <span style="font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:999px;
@@ -88,7 +88,7 @@ $roleId       = (int)($_SESSION['user']['role_id'] ?? 0);
         <?php endif; ?>
 
         <!-- Stats row -->
-        <div style="display:flex;gap:10px;">
+        <div style="display:flex;gap:10px;" >
             <div style="flex:1;background:rgba(25,135,84,.05);border-radius:8px;padding:8px 10px;text-align:center;">
                 <div style="font-size:18px;font-weight:900;color:var(--clr-theme-primary);">
                     <?= $proj['total_targets'] ?? 0 ?>

@@ -18,9 +18,18 @@ $phase_id   = (int)($target['phase_id']   ?? 0);
 $dt_obj     = new DateTime($target['target_month'] ?? 'now');
 $monthLabel = $dt_obj->format('F Y');
 
-$isLocked    = ($weeklyProgress['entry_status'] ?? 'Draft') !== 'Draft';
+$roleId        = (int)($_SESSION['user']['role_id'] ?? 0);
+$designationId = (int)($_SESSION['user']['designation_id'] ?? 0);
+$isSiteEngineer = ($roleId === 12 || $designationId === 38);
+$isAdmin        = in_array($roleId, [1, 3]);
+$hasEditRole    = ($isSiteEngineer || $isAdmin);
+
+$isWeeklyLocked = ($weeklyProgress['entry_status'] ?? 'Draft') !== 'Draft';
+$isQCApproved   = in_array($dailyLog['qc_status'] ?? '', ['Approved', 'Partially Approved']);
+$isLocked       = $isWeeklyLocked || $isQCApproved;
+
 $entryStatus = $weeklyProgress['entry_status'] ?? 'Draft';
-$disAttr     = $isLocked ? 'disabled' : '';
+$disAttr     = ($isLocked || !$hasEditRole) ? 'disabled' : '';
 
 // Build weekly items map
 $weeklyItemsMap = [];
@@ -272,7 +281,7 @@ $projectContrib = $phaseActualPct * ($phaseWeight / 100);
         <a href="<?= $base ?>/con-monthly-target/<?= $target_id ?>" class="btn btn-sm btn-outline-secondary fw-bold px-3">
             <i class="bi bi-arrow-left me-1"></i> Back
         </a>
-        <?php if (!$isLocked): ?>
+        <?php if (!$isWeeklyLocked && $hasEditRole): ?>
         <button type="button" class="btn-submit" data-bs-toggle="modal" data-bs-target="#submitModal">
             <i class="bi bi-send-fill me-1"></i> Submit Weekly Update
         </button>
@@ -675,7 +684,7 @@ if ($isPmOrAdmin && !empty($overachievedItems)):
             <span style="font-size:10px;font-weight:500;color:#94a3b8"><?= date('d M Y',strtotime($selectedDate)) ?></span>
         </div>
         <div class="d-flex gap-2">
-            <?php if (!$isLocked): ?>
+            <?php if (!$isLocked && $hasEditRole): ?>
             <button type="submit" name="save_action" value="draft" class="btn-save-draft">
                 <i class="bi bi-save me-1"></i>Save Draft
             </button>
@@ -686,8 +695,8 @@ if ($isPmOrAdmin && !empty($overachievedItems)):
         </div>
     </div>
 
-    <?php if ($isLocked): ?>
-    <div class="px-4 pt-2"><div class="alert alert-info border-0 py-2 small"><i class="bi bi-lock-fill me-1"></i>This week's report is locked. View only.</div></div>
+    <?php if ($isLocked || !$hasEditRole): ?>
+    <div class="px-4 pt-2"><div class="alert alert-info border-0 py-2 small"><i class="bi bi-lock-fill me-1"></i>This day's report is locked or read-only.</div></div>
     <?php endif; ?>
 
     <div style="overflow-x:auto">
@@ -1057,7 +1066,7 @@ if ($isPmOrAdmin && !empty($overachievedItems)):
                            value="<?= htmlspecialchars($todayRem) ?>"
                            class="remarks-input" <?= $disAttr ?>
                            placeholder="Remarks...">
-                    <?php if (!$isLocked && !empty($dq['log_row_id'])): ?>
+                    <?php if (!$isLocked && $hasEditRole && !empty($dq['log_row_id'])): ?>
                     <button type="button" class="btn btn-sm btn-link text-danger p-0 border-0"
                             onclick="confirmDelete(<?= (int)$dq['log_row_id'] ?>, '<?= htmlspecialchars(addslashes($itemName . (!empty($dq['work_type_name']) ? ' - ' . $dq['work_type_name'] : '')), ENT_QUOTES, 'UTF-8') ?>')"
                             title="Remove from schedule">
@@ -1093,7 +1102,7 @@ if ($isPmOrAdmin && !empty($overachievedItems)):
     </table>
     </div>
 
-    <?php if (!$isLocked && !empty($weeklyItems)): ?>
+    <?php if (!$isLocked && $hasEditRole && !empty($weeklyItems)): ?>
     <div style="padding:12px 16px;border-top:1px solid rgba(128,128,128,0.12)">
         <!-- Work type selector row -->
         <div style="background:rgba(128,128,128,0.04);border-radius:10px;padding:12px 16px">
@@ -1105,8 +1114,12 @@ if ($isPmOrAdmin && !empty($overachievedItems)):
                     <label style="font-size:10px;font-weight:700;color:#94a3b8;display:block;margin-bottom:4px">1. Select Work Item</label>
                     <select id="addItemSelect" name="new_work_item_id" class="form-select form-select-sm fs-12">
                         <option value="">-- Choose Work Item --</option>
-                        <?php foreach ($weeklyItems as $wi): ?>
-                        <option value="<?= $wi['target_item_id'] ?>"
+                        <?php 
+                        $isSingle = count($weeklyItems) === 1;
+                        foreach ($weeklyItems as $wi): 
+                            $selAttr = $isSingle ? 'selected' : '';
+                        ?>
+                        <option value="<?= $wi['target_item_id'] ?>" <?= $selAttr ?>
                                 data-name="<?= htmlspecialchars($wi['work_item_name']) ?>"
                                 data-unit="<?= htmlspecialchars($wi['unit']??'') ?>"
                                 data-target="<?= number_format($wi['planned_qty'],2,'.','') ?>"
@@ -1549,7 +1562,7 @@ if ($isPmOrAdmin && !empty($overachievedItems)):
             </a>
         </div>
 
-        <?php if (!$isLocked): ?>
+        <?php if (!$isLocked && $hasEditRole): ?>
         <!-- ── Save Button (right panel) ── -->
         <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(128,128,128,0.12)">
             <button type="submit" name="save_action" value="save"
@@ -1787,11 +1800,29 @@ function onAddItemSelectChange() {
     });
 }
 
-// Bind the change event to the work item selector dropdown
+// Bind the change event to the work item selector dropdown and validate form submission
 document.addEventListener('DOMContentLoaded', function() {
     const sel = document.getElementById('addItemSelect');
     if (sel) {
         sel.addEventListener('change', onAddItemSelectChange);
+        // If there's an automatically selected option, load its work types
+        if (sel.value) {
+            onAddItemSelectChange();
+        }
+        
+        // Form validation to prevent saving work types without choosing a work item
+        const form = sel.form;
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                // If the user has checked any work types but has not selected a work item
+                const checkedWts = Array.from(document.querySelectorAll('.wt-check:checked'));
+                if (checkedWts.length > 0 && !sel.value) {
+                    alert("Please select a Work Item first before adding or saving work types.");
+                    e.preventDefault();
+                    return false;
+                }
+            });
+        }
     }
 });
 

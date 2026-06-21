@@ -2,13 +2,16 @@
 $base_url = $GLOBALS['base_url'];
 $page_title = 'Site Progress Report';
 $projects = $projects ?? [];
+$siteEngineers = $siteEngineers ?? [];
 $reportData = $reportData ?? [];
 $filters = $filters ?? [];
 
 $selProjectId = (int)($filters['project_id'] ?? 0);
-$selInterval = $filters['interval'] ?? 'weekly';
+$selSiteEngineerId = (int)($filters['site_engineer_id'] ?? 0);
+$selInterval = $filters['interval'] ?? 'monthly';
 $selYear = (int)($filters['year'] ?? date('Y'));
 $selMonth = (int)($filters['month'] ?? date('n'));
+$roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
 // Stats calculation
 $totalTarget = 0.0;
@@ -66,6 +69,12 @@ if ($totalTarget > 0) {
         padding: 8px !important;
         font-size: 11px !important;
     }
+    .print-only-header {
+        display: block !important;
+    }
+}
+.print-only-header {
+    display: none;
 }
 .report-badge {
     font-size: 11px;
@@ -79,6 +88,49 @@ if ($totalTarget > 0) {
 .badge-delayed { background-color: rgba(220, 53, 69, 0.1); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.2); }
 .badge-notstarted { background-color: rgba(108, 117, 125, 0.1); color: #6c757d; border: 1px solid rgba(108, 117, 125, 0.2); }
 </style>
+
+<!-- ══ PRINT METADATA HEADER ══ -->
+<div class="print-only-header mb-4" style="font-family: 'Inter', sans-serif; font-size:12px; border-bottom:2.5px solid #1e293b; padding-bottom:12px; margin-bottom:20px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+            <h2 style="font-size: 20px; font-weight: 800; color: #0f172a; margin: 0;">Site Progress Report</h2>
+            <div style="font-size: 12px; color: #475569; margin-top: 4px;">The Premium Homes Ltd.</div>
+        </div>
+        <div style="text-align: right; font-size: 11px; color: #475569;">
+            <strong>Print Date:</strong> <?= date('d M Y, h:i A') ?>
+        </div>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #cbd5e1;">
+        <div>
+            <strong>Site Engineer:</strong> 
+            <?php 
+                if ($selSiteEngineerId > 0) {
+                    $engName = "Unknown";
+                    foreach ($siteEngineers as $eng) {
+                        if ((int)$eng['id'] === $selSiteEngineerId) {
+                            $engName = $eng['full_name'];
+                            break;
+                        }
+                    }
+                    echo htmlspecialchars($engName);
+                } else {
+                    if ($roleId === 12) {
+                        echo htmlspecialchars($_SESSION['user']['full_name'] ?? '');
+                    } else {
+                        echo "All Engineers (সকল ইঞ্জিনিয়ার)";
+                    }
+                }
+            ?>
+        </div>
+        <div>
+            <strong>Period:</strong> 
+            <?php 
+                $dispMonth = ($selMonth > 0) ? date('F', mktime(0, 0, 0, $selMonth, 10)) : 'All Months';
+                echo ucfirst($selInterval) . " ($dispMonth $selYear)";
+            ?>
+        </div>
+    </div>
+</div>
 
 <!-- ══ PAGE TITLE ══ -->
 <div class="pagetitle d-flex justify-content-between align-items-center mb-3">
@@ -96,7 +148,7 @@ if ($totalTarget > 0) {
 </div>
 
 <!-- ══ STATS OVERVIEW CARDS ══ -->
-<div class="row g-3 mb-4">
+<div class="row  mb-4">
     <div class="col-md-3">
         <div class="card border-0 shadow-sm" style="border-radius:12px; background:#fff; padding:16px 20px;">
             <div style="font-size:12px; color:#64748b; font-weight:600;">Total Planned / Target</div>
@@ -146,7 +198,7 @@ if ($totalTarget > 0) {
         <form method="GET" action="<?= $base_url ?>/con-progress-report">
             <div class="row g-2 align-items-end">
                 <!-- Project Selector -->
-                <div class="col-md-3">
+                <div class="<?= !empty($siteEngineers) ? 'col-md-2' : 'col-md-3' ?>">
                     <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:5px; display:block;">Project</label>
                     <select name="project_id" class="form-select" style="border-radius:8px; font-size:13px; border:1.5px solid #cbd5e1; height:38px;">
                         <option value="0">All Projects (সকল প্রজেক্ট)</option>
@@ -157,6 +209,21 @@ if ($totalTarget > 0) {
                         <?php endforeach; ?>
                     </select>
                 </div>
+
+                <!-- Site Engineer Selector (Shown only for Admin, PM, PM Head, Super Admin) -->
+                <?php if (!empty($siteEngineers)): ?>
+                    <div class="col-md-3">
+                        <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:5px; display:block;">Site Engineer</label>
+                        <select name="site_engineer_id" class="form-select" style="border-radius:8px; font-size:13px; border:1.5px solid #cbd5e1; height:38px;">
+                            <option value="0">All Engineers (সকল ইঞ্জিনিয়ার)</option>
+                            <?php foreach ($siteEngineers as $eng): ?>
+                                <option value="<?= $eng['id'] ?>" <?= $selSiteEngineerId === (int)$eng['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($eng['full_name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
 
                 <!-- Interval Selector -->
                 <div class="col-md-2">
@@ -171,7 +238,7 @@ if ($totalTarget > 0) {
                 </div>
 
                 <!-- Year Selector -->
-                <div class="col-md-2">
+                <div class="<?= !empty($siteEngineers) ? 'col-md-1' : 'col-md-2' ?>">
                     <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:5px; display:block;">Year</label>
                     <select name="year" class="form-select" style="border-radius:8px; font-size:13px; border:1.5px solid #cbd5e1; height:38px;">
                         <?php
@@ -198,7 +265,7 @@ if ($totalTarget > 0) {
                 </div>
 
                 <!-- Buttons -->
-                <div class="col-md-3 d-flex gap-2">
+                <div class="<?= !empty($siteEngineers) ? 'col-md-2' : 'col-md-3' ?> d-flex gap-2">
                     <button type="submit" class="btn btn-success flex-grow-1" style="border-radius:8px; font-size:13px; font-weight:600; height:38px; background:#198754; border-color:#198754;">
                         <i class="bi bi-funnel me-1"></i> Filter
                     </button>
@@ -212,18 +279,18 @@ if ($totalTarget > 0) {
 </div>
 
 <!-- ══ REPORT DATA CARD ══ -->
-<div class="card border-0 shadow-sm" style="border-radius:12px; background:#fff;">
+<div class="card border-0 shadow-sm" style="border-radius:12px; ">
     <div class="card-body p-0">
         <?php if (empty($reportData)): ?>
-            <div style="text-align:center; padding:60px 20px; color:#64748b;">
-                <i class="bi bi-folder2-open" style="font-size:40px; color:#cbd5e1; display:block; margin-bottom:12px;"></i>
+            <div style="text-align:center; padding:60px 20px; ">
+                <i class="bi bi-folder2-open" style="font-size:40px;  display:block; margin-bottom:12px;"></i>
                 <div style="font-size:14px; font-weight:600;">কোনো প্রগ্রেস ডাটা পাওয়া যায়নি</div>
                 <div style="font-size:12px; opacity:0.8; margin-top:4px;">দয়া করে প্রজেক্ট, পিরিয়ড বা ফিল্টার পরিবর্তন করে চেষ্টা করুন।</div>
             </div>
         <?php else: ?>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0" style="font-size:13px;">
-                    <thead class="table-light" style="font-weight:700; color:#334155; border-bottom:1.5px solid #e2e8f0;">
+                    <thead class="table-light" style="font-weight:700; border-bottom:1.5px solid #e2e8f0;">
                         <tr>
                             <th style="padding:14px 16px;">Project & Phase Item Details</th>
                             <th style="padding:14px 10px; text-align:center;">Period</th>
@@ -271,7 +338,17 @@ if ($totalTarget > 0) {
                             }
 
                             // Status badge class
-                            $statusVal = $row['status'] ?? 'Not Started';
+                            $targetVal = ($targetMode === 'pct') ? (float)$row['planned_pct'] : (float)$row['planned_qty'];
+                            $achievedVal = ($targetMode === 'pct') ? (float)$row['achieved_pct'] : (float)$row['achieved_qty'];
+                            
+                            if ($targetVal > 0 && $achievedVal >= $targetVal) {
+                                $statusVal = 'Completed';
+                            } elseif ($achievedVal > 0) {
+                                $statusVal = 'In Progress';
+                            } else {
+                                $statusVal = $row['status'] ?? 'Not Started';
+                            }
+
                             $badgeClass = match($statusVal) {
                                 'Completed' => 'badge-completed',
                                 'In Progress' => 'badge-progress',
@@ -281,15 +358,18 @@ if ($totalTarget > 0) {
                         ?>
                             <tr style="border-bottom:1px solid #f1f5f9;">
                                 <td style="padding:14px 16px;">
-                                    <div style="font-weight:700; color:#1e293b;">
+                                    <div style="font-weight:700;">
                                         <?= htmlspecialchars($row['work_item_name']) ?>
                                         <?php if ((int)$row['earned_star'] === 1): ?>
                                             <span style="color:#f59e0b; margin-left:4px;" title="Earned Star"><i class="bi bi-star-fill"></i></span>
                                         <?php endif; ?>
                                     </div>
-                                    <div style="font-size:11px; color:#64748b; margin-top:2px;">
+                                    <div style="font-size:11px;  margin-top:2px;">
                                         <i class="bi bi-building me-1"></i> <?= htmlspecialchars($row['project_name']) ?> 
                                         &bull; Month: <?= date('M Y', strtotime($row['target_month'])) ?>
+                                        <?php if (!empty($row['site_engineer_name'])): ?>
+                                            &bull; Engineer: <?= htmlspecialchars($row['site_engineer_name']) ?>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                                 <td style="padding:14px 10px; text-align:center; font-weight:600; color:#475569;">

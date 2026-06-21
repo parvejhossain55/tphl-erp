@@ -85,12 +85,22 @@ class Con_ProgressReportController extends Controller
 
         // Fetch query parameters
         $projectId = isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
-        $interval = isset($_GET['interval']) ? trim($_GET['interval']) : 'weekly';
+        $interval = isset($_GET['interval']) ? trim($_GET['interval']) : 'monthly';
         if (!in_array($interval, ['weekly', '15-day', 'monthly', 'quarterly', 'yearly'])) {
-            $interval = 'weekly';
+            $interval = 'monthly';
         }
         $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
         $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('n');
+
+        // Fetch site engineers for filter option (for role_id 1, 3, 15, 22)
+        $selSiteEngineerId = 0;
+        $siteEngineersList = [];
+        if (in_array($roleId, [1, 3, 15, 22])) {
+            $selSiteEngineerId = isset($_GET['site_engineer_id']) ? (int)$_GET['site_engineer_id'] : 0;
+            $engSql = "SELECT id, full_name FROM users WHERE role_id = 12 ORDER BY full_name ASC";
+            $engRes = $this->db->query($engSql);
+            $siteEngineersList = $engRes ? $engRes->fetch_all(MYSQLI_ASSOC) : [];
+        }
 
         // 1. Fetch authorized projects for dropdown list
         $projectSql = "SELECT id, name FROM projects WHERE deleted_at IS NULL";
@@ -109,9 +119,11 @@ class Con_ProgressReportController extends Controller
             // Handle case where user is assigned to no projects
             $this->view('phase2/progress_report/index', [
                 'projects' => [],
+                'siteEngineers' => $siteEngineersList,
                 'reportData' => [],
                 'filters' => [
                     'project_id' => $projectId,
+                    'site_engineer_id' => $selSiteEngineerId,
                     'interval' => $interval,
                     'year' => $year,
                     'month' => $month
@@ -126,6 +138,12 @@ class Con_ProgressReportController extends Controller
             $projectFilterStr = "AND p.id = " . $projectId;
         } else {
             $projectFilterStr = "AND p.id IN (" . implode(',', $authorizedProjectIds) . ")";
+        }
+
+        // Apply site engineer filter
+        $engineerFilterStr = "";
+        if ($selSiteEngineerId > 0) {
+            $engineerFilterStr = "AND p.site_engineer_id = " . $selSiteEngineerId;
         }
 
         // Apply year and month filter
@@ -144,6 +162,7 @@ class Con_ProgressReportController extends Controller
                 SELECT 
                     p.id AS project_id,
                     p.name AS project_name,
+                    u.full_name AS site_engineer_name,
                     pmt.id AS target_id,
                     pmt.target_month,
                     pmt.target_year,
@@ -170,8 +189,10 @@ class Con_ProgressReportController extends Controller
                 INNER JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
                 INNER JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
                 INNER JOIN projects p ON p.id = pwp.project_id
+                LEFT JOIN users u ON u.id = p.site_engineer_id
                 WHERE p.deleted_at IS NULL
                   $projectFilterStr
+                  $engineerFilterStr
                   $yearFilterStr
                   $monthFilterStr
                 ORDER BY p.id, pmt.target_year, pmt.target_month_number, pwp.week_number, pmti.sort_order
@@ -216,6 +237,7 @@ class Con_ProgressReportController extends Controller
                 SELECT 
                     p.id AS project_id,
                     p.name AS project_name,
+                    MAX(u.full_name) AS site_engineer_name,
                     pmt.id AS target_id,
                     pmt.target_month,
                     pmt.target_year,
@@ -242,8 +264,10 @@ class Con_ProgressReportController extends Controller
                 INNER JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
                 INNER JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id
                 INNER JOIN projects p ON p.id = pwp.project_id
+                LEFT JOIN users u ON u.id = p.site_engineer_id
                 WHERE p.deleted_at IS NULL
                   $projectFilterStr
+                  $engineerFilterStr
                   $yearFilterStr
                   $monthFilterStr
                 GROUP BY $groupByStr
@@ -307,9 +331,11 @@ class Con_ProgressReportController extends Controller
         // 3. Render view page with variables
         $this->view('phase2/progress_report/index', [
             'projects' => $projectsList,
+            'siteEngineers' => $siteEngineersList,
             'reportData' => $reportData,
             'filters' => [
                 'project_id' => $projectId,
+                'site_engineer_id' => $selSiteEngineerId,
                 'interval' => $interval,
                 'year' => $year,
                 'month' => $month

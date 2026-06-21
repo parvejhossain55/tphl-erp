@@ -53,11 +53,11 @@ $statusBadge = function(string $s): string {
 
 <!-- ═══ PROJECT + TARGET SELECTOR ═══ -->
 <form method="GET" action="<?= $base_url ?>/con-weekly-report/<?= $project['id'] ?>" id="reportFilterForm">
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;
+    <div style="border:1px solid #e2e8f0;border-radius:12px;
                 padding:14px 18px;margin-bottom:18px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
         <!-- Target Month Select -->
         <div style="flex:1;min-width:220px;">
-            <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;
+            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
                           display:block;margin-bottom:5px;">
                 <i class="bi bi-bullseye me-1 text-primary"></i>Target Month
             </label>
@@ -88,13 +88,12 @@ $statusBadge = function(string $s): string {
             ?>
             <a href="?target_id=<?= $target_id ?>&week=<?= $w ?>"
                style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;
-                      background:<?= $activeWeek == $w ? 'var(--clr-theme-primary)' : '#f8fafc' ?>;
-                      color:<?= $activeWeek == $w ? '#fff' : '#64748b' ?>;
+                     >;
                       border:1.5px solid <?= $activeWeek == $w ? 'var(--clr-theme-primary)' : '#e2e8f0' ?>;">
                 Week <?= $w ?>
                 <?php if ($wSession): ?>
                 <span style="display:inline-block;width:6px;height:6px;border-radius:50%;
-                              background:<?= $wColor ?>;margin-left:4px;vertical-align:middle;"></span>
+                            margin-left:4px;vertical-align:middle;"></span>
                 <?php endif; ?>
             </a>
             <?php endfor; ?>
@@ -105,10 +104,10 @@ $statusBadge = function(string $s): string {
 
 <?php if (!$target_id): ?>
 <!-- ── No target selected ── -->
-<div style="text-align:center;padding:60px 20px;background:#f8fafc;border-radius:12px;border:1px dashed #cbd5e1;">
-    <i class="bi bi-calendar2-check" style="font-size:40px;color:#cbd5e1;display:block;margin-bottom:12px;"></i>
-    <div style="font-size:14px;color:#94a3b8;font-weight:600;">Target Month বেছে নিন</div>
-    <div style="font-size:12px;color:#cbd5e1;margin-top:4px;">উপরের dropdown থেকে যে মাসের report দেখতে চান সেটি select করুন</div>
+<div style="text-align:center;padding:60px 20px;border-radius:12px;border:1px dashed #cbd5e1;">
+    <i class="bi bi-calendar2-check" style="font-size:40px;display:block;margin-bottom:12px;"></i>
+    <div style="font-size:14px;font-weight:600;">Target Month বেছে নিন</div>
+    <div style="font-size:12px;margin-top:4px;">উপরের dropdown থেকে যে মাসের report দেখতে চান সেটি select করুন</div>
 </div>
 
 <?php elseif (!$phaseTarget): ?>
@@ -124,7 +123,7 @@ $statusBadge = function(string $s): string {
 ?>
 <!-- Phase Header -->
 <div style="background:linear-gradient(135deg,var(--clr-theme-primary) 0%,var(--clr-theme-secondary) 100%);border-radius:14px;
-            padding:18px 22px;margin-bottom:18px;color:#fff;">
+            padding:18px 22px;margin-bottom:18px;">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div>
             <div style="font-size:11px;opacity:.75;font-weight:600;letter-spacing:.5px;text-transform:uppercase;">
@@ -151,7 +150,7 @@ $statusBadge = function(string $s): string {
             ];
             foreach ($kpis as [$val, $label]):
             ?>
-            <div style="background:rgba(255,255,255,.15);border-radius:10px;padding:10px 16px;text-align:center;min-width:70px;">
+            <div style="border-radius:10px;padding:10px 16px;text-align:center;min-width:70px;">
                 <div style="font-size:20px;font-weight:900;"><?= $val ?></div>
                 <div style="font-size:9.5px;opacity:.8;margin-top:1px;"><?= $label ?></div>
             </div>
@@ -222,15 +221,15 @@ if (!empty($wItems)) {
 <?php endif; ?>
 
 <!-- ══ WEEK SESSION HEADER ══ -->
-<div style="background:#fff;border:1px solid #e2e8f0;border-left:4px solid var(--clr-theme-primary);border-radius:12px;
+<div style="border:1px solid #e2e8f0;border-left:4px solid var(--clr-theme-primary);border-radius:12px;
             padding:14px 18px;margin-bottom:16px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div>
-            <div style="font-size:13px;font-weight:800;color:#1e293b;">
+            <div style="font-size:13px;font-weight:800;">
                 Week <?= $activeWeek ?> — Status
             </div>
             <?php if ($wSession && !empty($wSession['week_start_date'])): ?>
-            <div style="font-size:11px;color:#94a3b8;margin-top:2px;">
+            <div style="font-size:11px;margin-top:2px;">
                 <i class="bi bi-calendar3 me-1"></i>
                 <?= date('d M Y', strtotime($wSession['week_start_date'])) ?> –
                 <?= date('d M Y', strtotime($wSession['week_end_date'])) ?>
@@ -242,10 +241,10 @@ if (!empty($wItems)) {
         <!-- Approval chain badges -->
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
             <!-- Site Engineer (Submitted By) -->
-            <div style="background:#f8fafc;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;
+            <div style="border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;
                         border:1px solid #e2e8f0;">
                 <div style="width:30px;height:30px;background:var(--clr-theme-primary);border-radius:50%;display:flex;
-                             align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0;">
+                             align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">
                     <i class="bi bi-person-hard-hat"></i>
                 </div>
                 <div>
@@ -259,7 +258,7 @@ if (!empty($wItems)) {
 
             <!-- QC Approval -->
             <?php $qcStatus = $wSession['qc_status'] ?? 'Pending'; ?>
-            <div style="background:#f8fafc;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;
+            <div style="border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;
                         border:1px solid <?= $qcStatus === 'Approved' ? 'rgba(16,185,129,.25)' : '#e2e8f0' ?>;">
                 <div style="width:30px;height:30px;background:<?= $qcStatus === 'Approved' ? '#10b981' : '#e2e8f0' ?>;
                              border-radius:50%;display:flex;align-items:center;justify-content:center;
@@ -277,7 +276,7 @@ if (!empty($wItems)) {
 
             <!-- PM Approval -->
             <?php $pmStatus = $wSession['pm_status'] ?? 'Pending'; ?>
-            <div style="background:#f8fafc;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;
+            <div style="border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;
                         border:1px solid <?= $pmStatus === 'Approved' ? 'rgba(25,135,84,.25)' : '#e2e8f0' ?>;">
                 <div style="width:30px;height:30px;background:<?= $pmStatus === 'Approved' ? 'var(--clr-theme-primary)' : '#e2e8f0' ?>;
                              border-radius:50%;display:flex;align-items:center;justify-content:center;
@@ -326,9 +325,9 @@ if (!empty($wItems)) {
 
 <!-- ══ WORK ITEMS TABLE ══ -->
 <?php if (!empty($wItems)): ?>
-<div style="background:#fff;border:1px solid #e2e8f0;border-left:4px solid var(--clr-theme-primary);border-radius:12px;
+<div style="border:1px solid #e2e8f0;border-left:4px solid var(--clr-theme-primary);border-radius:12px;
             margin-bottom:16px;overflow:hidden;">
-    <div style="background:#f8fafc;padding:12px 16px;border-bottom:1px solid #e2e8f0;
+    <div style="padding:12px 16px;border-bottom:1px solid #e2e8f0;
                 display:flex;align-items:center;justify-content:space-between;">
         <div style="font-size:12.5px;font-weight:700;color:var(--clr-theme-primary);">
             <i class="bi bi-list-check me-2"></i>Work Items — Week <?= $activeWeek ?>
@@ -455,7 +454,7 @@ if (!empty($wItems)) {
     </div>
 </div>
 <?php elseif ($totPlan > 0): ?>
-<div style="background:#fff;border:1.5px dashed rgba(25,135,84,.2);border-radius:12px;
+<div style="border:1.5px dashed rgba(25,135,84,.2);border-radius:12px;
             padding:20px;text-align:center;margin-bottom:16px;color:#94a3b8;font-size:12.5px;">
     <i class="bi bi-hourglass-split me-2" style="color:var(--clr-theme-primary);"></i>
     এই week এ planned qty: <strong style="color:var(--clr-theme-primary);"><?= number_format($totPlan, 1) ?></strong>
@@ -465,7 +464,7 @@ if (!empty($wItems)) {
 
 <!-- ══ DAILY LOGS ACCORDION ══ -->
 <?php if (!empty($wDailyLogs)): ?>
-<div style="background:#fff;border:1px solid #e2e8f0;border-left:4px solid #10b981;border-radius:12px;
+<div style="border:1px solid #e2e8f0;border-left:4px solid #10b981;border-radius:12px;
             margin-bottom:16px;overflow:hidden;">
     <div style="background:#f8fafc;padding:12px 16px;border-bottom:1px solid #e2e8f0;">
         <div style="font-size:12.5px;font-weight:700;color:#10b981;">
@@ -686,7 +685,7 @@ if (!empty($wItems)) {
 
 <!-- ══ SITE PHOTOS GALLERY ══ -->
 <?php if (!empty($wPhotos)): ?>
-<div style="background:#fff;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:12px;
+<div style="border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:12px;
             margin-bottom:16px;overflow:hidden;">
     <div style="background:#f8fafc;padding:12px 16px;border-bottom:1px solid #e2e8f0;">
         <div style="font-size:12.5px;font-weight:700;color:#f59e0b;">
