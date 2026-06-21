@@ -206,41 +206,8 @@ $pendingWeeklyCount   = $pendingWeeklyCount   ?? 0;
 
   <!-- Left Column -->
   <div class="col-lg-7 d-flex flex-column">
-    <!-- Project Progress -->
-    <div class="rd-panel flex-fill">
-      <div class="rd-panel-title">
-        <div class="rd-dot" style="background:var(--qc-blue)"></div>
-        Project Progress Overview
-        <a href="<?= $base ?>/con-projects" style="font-size:10px;color:var(--qc-blue);margin-left:auto;text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
-      </div>
-      <?php if (empty($projects)): ?>
-        <div class="empty-msg"><i class="fal fa-chart-bar fa-2x" style="opacity:.3;display:block;margin-bottom:8px"></i>No projects found</div>
-      <?php else: ?>
-        <?php foreach ($projects as $pr):
-          $pct  = round((float)($pr['progress_pct'] ?? 0), 1);
-          $grad = $pct >= 75 ? 'linear-gradient(90deg,#059669,#10b981)' : ($pct >= 40 ? 'linear-gradient(90deg,#d97706,#f59e0b)' : 'linear-gradient(90deg,#dc2626,#ef4444)');
-          $clr  = $pct >= 75 ? 'var(--qc-green)' : ($pct >= 40 ? 'var(--qc-amber)' : 'var(--qc-red)');
-        ?>
-        <div class="prog-row" style="cursor:pointer" onclick="location.href='<?= $base ?>/con-project/<?= $pr['id'] ?>'">
-          <div class="prog-meta">
-            <div>
-              <strong style="font-size:13px"><?= htmlspecialchars($pr['name']) ?></strong>
-              <span style="font-size:11px;color:var(--text-muted);margin-left:8px"><i class="fal fa-map-marker-alt me-1"></i><?= htmlspecialchars($pr['location_name'] ?: 'N/A') ?></span>
-            </div>
-            <span style="font-weight:800;font-size:13px;color:<?= $clr ?>"><?= $pct ?>%</span>
-          </div>
-          <div class="prog-track"><div class="prog-fill" style="width:<?= $pct ?>%;background:<?= $grad ?>"></div></div>
-        </div>
-        <?php endforeach; ?>
-      <?php endif; ?>
-    </div>
-  </div>
-
-  <!-- Right Column -->
-  <div class="col-lg-5 d-flex flex-column">
-
     <!-- Quick Actions -->
-    <div class="rd-panel flex-grow-0">
+    <div class="rd-panel flex-fill">
       <div class="rd-panel-title">
         <div class="rd-dot" style="background:var(--qc-indigo)"></div>
         Quick Actions
@@ -272,11 +239,13 @@ $pendingWeeklyCount   = $pendingWeeklyCount   ?? 0;
           <span>Checklists</span>
         </a>
       </div>
-
     </div>
+  </div>
 
-    <!-- QC Activity Summary (filler to equalize height) -->
-    <div class="rd-panel flex-grow-1" style="display:flex;flex-direction:column;">
+  <!-- Right Column -->
+  <div class="col-lg-5 d-flex flex-column">
+    <!-- QC Activity Summary -->
+    <div class="rd-panel flex-fill" style="display:flex;flex-direction:column;">
       <div class="rd-panel-title">
         <div class="rd-dot" style="background:var(--qc-green)"></div>
         QC Activity Summary
@@ -322,10 +291,8 @@ $pendingWeeklyCount   = $pendingWeeklyCount   ?? 0;
           <span style="font-size:26px;font-weight:900;color:var(--qc-purple)"><?= $pendingGRNsCount ?></span>
         </div>
 
-
       </div>
     </div>
-
   </div>
 
 </div>
@@ -417,17 +384,23 @@ $pendingWeeklyReportsQC = $pendingWeeklyReportsQC ?? [];
           <th style="text-align:right">Action</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="weekly-reports-table-body">
         <?php foreach ($pendingWeeklyReportsQC as $pi => $rep): 
           $monthText = !empty($rep['target_month']) ? date('F Y', strtotime($rep['target_month'])) : 'N/A';
           $phaseText = !empty($rep['phase_name']) ? htmlspecialchars($rep['phase_name']) : 'N/A';
         ?>
-        <tr>
-          <td style="font-size:11px;color:var(--text-muted)"><?= $pi+1 ?></td>
-          <td style="font-weight:800;color:#0f5132"><i class="fal fa-file-invoice me-1"></i><?= $monthText ?> Progress Approval</td>
+        <tr class="weekly-report-row">
+          <td style="font-size:11px;color:var(--text-muted)" class="row-num-col"><?= $pi+1 ?></td>
+          <td style="font-weight:800;color:#0f5132">
+            <a href="<?= $base ?>/con-weekly-report/<?= (int)$rep['project_id'] ?>" style="color: #0f5132; text-decoration: none;">
+              <i class="fal fa-file-invoice me-1"></i><?= $monthText ?> Progress Approval
+            </a>
+          </td>
           <td>
-            <div style="font-weight:700"><?= htmlspecialchars($rep['project_name'] ?? 'N/A') ?></div>
-            <div style="font-size:11px;color:var(--text-muted)"><?= $phaseText ?></div>
+            <a href="<?= $base ?>/con-weekly-report/<?= (int)$rep['project_id'] ?>" style="color: inherit; text-decoration: none;">
+              <div style="font-weight:700; color: var(--qc-blue, #2563eb);"><?= htmlspecialchars($rep['project_name'] ?? 'N/A') ?></div>
+              <div style="font-size:11px;color:var(--text-muted)"><?= $phaseText ?></div>
+            </a>
           </td>
           <td style="font-size:11px;color:var(--text-muted);font-weight:700">Week <?= (int)$rep['week_no'] ?></td>
           <td style="font-size:12px"><?= htmlspecialchars($rep['created_by_name'] ?? '&mdash;') ?></td>
@@ -444,6 +417,76 @@ $pendingWeeklyReportsQC = $pendingWeeklyReportsQC ?? [];
     <div class="empty-msg"><i class="fal fa-calendar-week fa-2x" style="opacity:.3;display:block;margin-bottom:8px"></i>No pending weekly progress reports awaiting QC approval.</div>
     <?php endif; ?>
   </div>
+  <!-- Pagination Controls for Weekly Reports -->
+  <?php if (!empty($pendingWeeklyReportsQC) && count($pendingWeeklyReportsQC) > 10): ?>
+  <div class="d-flex justify-content-between align-items-center mt-3" id="weekly-pagination-controls" style="border-top: 1px solid rgba(0,0,0,.05); padding-top: 12px;">
+    <div class="text-muted" style="font-size:12px;" id="weekly-pagination-info">Showing 1-10 of <?= count($pendingWeeklyReportsQC) ?> reports</div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-secondary" id="weekly-prev-btn" style="border-radius:20px; font-size:11px; padding:4px 14px;" onclick="changeWeeklyPage(-1)">
+        <i class="fal fa-chevron-left me-1"></i> Previous
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" id="weekly-next-btn" style="border-radius:20px; font-size:11px; padding:4px 14px;" onclick="changeWeeklyPage(1)">
+        Next <i class="fal fa-chevron-right ms-1"></i>
+      </button>
+    </div>
+  </div>
+  <?php endif; ?>
+</div>
+
+<!-- Project Progress Overview Panel (Relocated Below Weekly Reports) -->
+<div class="rd-panel" style="border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.03);margin-top:4px">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="rd-panel-title" style="margin-bottom:0">
+      <div class="rd-dot" style="background:var(--qc-blue)"></div>
+      <i class="fal fa-chart-bar me-2" style="color:var(--qc-blue)"></i>
+      Project Progress Overview
+      <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
+        background:rgba(59,130,246,.12);color:var(--qc-blue)">
+        <?= count($projects) ?> Total Projects
+      </span>
+    </div>
+    <a href="<?= $base ?>/con-projects" style="font-size:11px;color:var(--qc-blue);text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  
+  <div id="project-list-container">
+    <?php if (empty($projects)): ?>
+      <div class="empty-msg"><i class="fal fa-chart-bar fa-2x" style="opacity:.3;display:block;margin-bottom:8px"></i>No projects found</div>
+    <?php else: ?>
+      <?php foreach ($projects as $pr):
+        $pctVal  = (float)($pr['progress_pct'] ?? 0);
+        $pctText = ($pctVal > 0 && $pctVal < 0.1) ? number_format($pctVal, 3) : number_format($pctVal, 1);
+        $pctWidth = max(0.0, min(100.0, $pctVal));
+        $grad = $pctVal >= 75 ? 'linear-gradient(90deg,#059669,#10b981)' : ($pctVal >= 40 ? 'linear-gradient(90deg,#d97706,#f59e0b)' : 'linear-gradient(90deg,#dc2626,#ef4444)');
+        $clr  = $pctVal >= 75 ? 'var(--qc-green)' : ($pctVal >= 40 ? 'var(--qc-amber)' : 'var(--qc-red)');
+      ?>
+      <div class="prog-row project-item-row" style="cursor:pointer; margin-bottom: 16px; padding: 12px; border-radius: 8px; background: var(--clr-bg-card, #fff); border: 1px solid rgba(0,0,0,.04);" onclick="location.href='<?= $base ?>/con-project/<?= $pr['id'] ?>'">
+        <div class="prog-meta">
+          <div>
+            <strong style="font-size:13px"><?= htmlspecialchars($pr['name']) ?></strong>
+            <span style="font-size:11px;color:var(--text-muted);margin-left:8px"><i class="fal fa-map-marker-alt me-1"></i><?= htmlspecialchars($pr['location_name'] ?: 'N/A') ?></span>
+          </div>
+          <span style="font-weight:800;font-size:13px;color:<?= $clr ?>"><?= $pctText ?>%</span>
+        </div>
+        <div class="prog-track"><div class="prog-fill" style="width:<?= $pctWidth ?>%;background:<?= $grad ?>"></div></div>
+      </div>
+      <?php endforeach; ?>
+    <?php endif; ?>
+  </div>
+  
+  <!-- Pagination Controls for Projects -->
+  <?php if (!empty($projects) && count($projects) > 10): ?>
+  <div class="d-flex justify-content-between align-items-center mt-3" id="project-pagination-controls" style="border-top: 1px solid rgba(0,0,0,.05); padding-top: 12px;">
+    <div class="text-muted" style="font-size:12px;" id="project-pagination-info">Showing 1-10 of <?= count($projects) ?> projects</div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-secondary" id="project-prev-btn" style="border-radius:20px; font-size:11px; padding:4px 14px;" onclick="changeProjectPage(-1)">
+        <i class="fal fa-chevron-left me-1"></i> Previous
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" id="project-next-btn" style="border-radius:20px; font-size:11px; padding:4px 14px;" onclick="changeProjectPage(1)">
+        Next <i class="fal fa-chevron-right ms-1"></i>
+      </button>
+    </div>
+  </div>
+  <?php endif; ?>
 </div>
 
 
@@ -778,3 +821,99 @@ $pendingWeeklyReportsQC = $pendingWeeklyReportsQC ?? [];
 <div style="height:30px"></div>
 
 </div></div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. Project Progress Overview Pagination
+    let currentProjectPage = 1;
+    const projectsPerPage = 10;
+    const projectRows = document.querySelectorAll("#project-list-container .project-item-row");
+    const totalProjects = projectRows.length;
+    
+    function showProjectPage(page) {
+        if (totalProjects === 0) return;
+        const totalPages = Math.ceil(totalProjects / projectsPerPage);
+        if (page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
+        currentProjectPage = page;
+        
+        const start = (currentProjectPage - 1) * projectsPerPage;
+        const end = start + projectsPerPage;
+        
+        projectRows.forEach((row, idx) => {
+            if (idx >= start && idx < end) {
+                row.style.display = "block";
+            } else {
+                row.style.display = "none";
+            }
+        });
+        
+        const infoEl = document.getElementById("project-pagination-info");
+        if (infoEl) {
+            const displayEnd = Math.min(end, totalProjects);
+            infoEl.textContent = `Showing ${start + 1}-${displayEnd} of ${totalProjects} projects`;
+        }
+        
+        const prevBtn = document.getElementById("project-prev-btn");
+        const nextBtn = document.getElementById("project-next-btn");
+        if (prevBtn) prevBtn.disabled = (currentProjectPage === 1);
+        if (nextBtn) nextBtn.disabled = (currentProjectPage === totalPages);
+    }
+    
+    window.changeProjectPage = function(direction) {
+        showProjectPage(currentProjectPage + direction);
+    };
+    
+    if (totalProjects > 0) {
+        showProjectPage(1);
+    }
+    
+    // 2. Pending Weekly Reports Pagination
+    let currentWeeklyPage = 1;
+    const weeklyPerPage = 10;
+    const weeklyRows = document.querySelectorAll("#weekly-reports-table-body .weekly-report-row");
+    const totalWeekly = weeklyRows.length;
+    
+    function showWeeklyPage(page) {
+        if (totalWeekly === 0) return;
+        const totalPages = Math.ceil(totalWeekly / weeklyPerPage);
+        if (page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
+        currentWeeklyPage = page;
+        
+        const start = (currentWeeklyPage - 1) * weeklyPerPage;
+        const end = start + weeklyPerPage;
+        
+        weeklyRows.forEach((row, idx) => {
+            if (idx >= start && idx < end) {
+                row.style.display = "table-row";
+                const numCol = row.querySelector(".row-num-col");
+                if (numCol) {
+                    numCol.textContent = idx + 1;
+                }
+            } else {
+                row.style.display = "none";
+            }
+        });
+        
+        const infoEl = document.getElementById("weekly-pagination-info");
+        if (infoEl) {
+            const displayEnd = Math.min(end, totalWeekly);
+            infoEl.textContent = `Showing ${start + 1}-${displayEnd} of ${totalWeekly} reports`;
+        }
+        
+        const prevBtn = document.getElementById("weekly-prev-btn");
+        const nextBtn = document.getElementById("weekly-next-btn");
+        if (prevBtn) prevBtn.disabled = (currentWeeklyPage === 1);
+        if (nextBtn) nextBtn.disabled = (currentWeeklyPage === totalPages);
+    }
+    
+    window.changeWeeklyPage = function(direction) {
+        showWeeklyPage(currentWeeklyPage + direction);
+    };
+    
+    if (totalWeekly > 0) {
+        showWeeklyPage(1);
+    }
+});
+</script>
