@@ -221,17 +221,14 @@ class Con_ProgressReportController extends Controller
 
             if ($interval === '15-day') {
                 $periodSelectStr = "IF(pwp.week_number <= 2, 1, 2) AS period_number";
-                $groupByStr = "p.id, pmti.id, period_number";
             } elseif ($interval === 'monthly') {
                 $periodSelectStr = "pmt.target_month_number AS period_number";
-                $groupByStr = "p.id, pmti.id, period_number";
             } elseif ($interval === 'quarterly') {
                 $periodSelectStr = "CEIL(pmt.target_month_number / 3) AS period_number";
-                $groupByStr = "p.id, pmti.id, period_number";
             } else { // yearly
                 $periodSelectStr = "pmt.target_year AS period_number";
-                $groupByStr = "p.id, pmti.id, period_number";
             }
+            $groupByStr = "p.id, p.name, pmt.id, pmt.target_month, pmt.target_year, pmt.target_month_number, pmti.id, pmti.work_item_name, pmti.unit, pmti.target_mode, period_number, pmti.sort_order";
 
             $sql = "
                 SELECT 

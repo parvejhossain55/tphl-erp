@@ -2254,6 +2254,14 @@
 
                 <!-- ==================== END PHASE 2 ==================== -->
 
+                <li class="slide <?= isActive('tutorial-video', $current_route) ?>">
+                    <a href="<?= $GLOBALS['base_url'] ?>/tutorial-video" target="_blank"
+                        class="sidebar__menu-item <?= isActive('tutorial-video', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-circle-play"></i></div>
+                        <span class="sidebar__menu-label">Tutorial Video</span>
+                    </a>
+                </li>
+
                 <li class="slide ">
                     <a class="sidebar__menu-item " href="<?= $GLOBALS['base_url'] ?>/logout"><svg width="18" height="18"
                             viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
