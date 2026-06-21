@@ -762,6 +762,8 @@ if ($route === 'log-client-debug') {
     exit;
 }
 
+$routes['tutorial-video'] = ['controller' => 'TutorialController', 'method' => 'redirect'];
+
 /**
  *  GLOBAL AUTH CHECK
  */
