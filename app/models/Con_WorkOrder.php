@@ -26,7 +26,13 @@ class Con_WorkOrder extends Model
                        u.full_name     AS created_by_name,
                        ab.full_name    AS approved_by_name,
                        qc.full_name    AS qc_approved_by_name,
-                       cm.full_name    AS completed_by_name
+                       cm.full_name    AS completed_by_name,
+                       (SELECT r.name 
+                        FROM con_work_order_approvals wa 
+                        INNER JOIN roles r ON r.id = wa.role_id 
+                        WHERE wa.work_order_id = wo.id AND wa.status = 'pending' 
+                        ORDER BY FIELD(wa.role_id, 12, 15, 3) 
+                        LIMIT 1) AS pending_role_name
                 FROM {$this->table} wo
                 LEFT JOIN projects p       ON p.id  = wo.project_id
                 LEFT JOIN contractors c    ON c.id  = wo.contractor_id
@@ -77,7 +83,13 @@ class Con_WorkOrder extends Model
                        u.full_name     AS created_by_name,
                        ab.full_name    AS approved_by_name,
                        qc.full_name    AS qc_approved_by_name,
-                       cm.full_name    AS completed_by_name
+                       cm.full_name    AS completed_by_name,
+                       (SELECT r.name 
+                        FROM con_work_order_approvals wa 
+                        INNER JOIN roles r ON r.id = wa.role_id 
+                        WHERE wa.work_order_id = wo.id AND wa.status = 'pending' 
+                        ORDER BY FIELD(wa.role_id, 12, 15, 3) 
+                        LIMIT 1) AS pending_role_name
                 FROM {$this->table} wo
                 LEFT JOIN projects p       ON p.id  = wo.project_id
                 LEFT JOIN contractors c    ON c.id  = wo.contractor_id

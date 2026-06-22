@@ -732,26 +732,24 @@ if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id']
     document.addEventListener("DOMContentLoaded", function() {
         let isActive = true;
 
-        // Function to check if the tab is active (visible and has focus)
-        function isTabActive() {
-            return document.visibilityState === 'visible' && document.hasFocus();
+        // Function to check if the tab is visible
+        function isTabVisible() {
+            return document.visibilityState === 'visible';
         }
 
         // Track user activity (mouse movement, key down, scroll, click, touch)
         const activityEvents = ['mousemove', 'keydown', 'scroll', 'click', 'touchstart'];
         function setActivityTrue() {
-            if (isTabActive()) {
-                isActive = true;
-            }
+            isActive = true;
         }
 
         activityEvents.forEach(function(event) {
             window.addEventListener(event, setActivityTrue, { passive: true });
         });
 
-        // Ping the server every 1 minute (60,000 milliseconds) if active and tab has focus
+        // Ping the server every 1 minute (60,000 milliseconds) if active and tab is visible
         setInterval(function() {
-            if (isActive && isTabActive()) {
+            if (isActive && isTabVisible()) {
                 if (typeof $ !== 'undefined') {
                     $.ajax({
                         url: (window.base_url || '') + '/update-activity',
@@ -785,14 +783,9 @@ if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id']
             }
         }, 60000);
 
-        // Reset activity status when user returns to the tab or focuses the window
+        // Reset activity status when user returns to the tab
         document.addEventListener('visibilitychange', function() {
-            if (isTabActive()) {
-                isActive = true;
-            }
-        });
-        window.addEventListener('focus', function() {
-            if (isTabActive()) {
+            if (isTabVisible()) {
                 isActive = true;
             }
         });

@@ -39,10 +39,11 @@ class UserActivityLogController extends Controller
         // ── Build main activity query ─────────────────────────────────────────
         $sql = "
             SELECT
-                ual.id,
-                ual.login_time,
-                ual.last_active_time,
-                TIMESTAMPDIFF(MINUTE, ual.login_time, ual.last_active_time) AS active_minutes,
+                MIN(ual.id) AS id,
+                MIN(ual.login_time) AS login_time,
+                MAX(ual.last_active_time) AS last_active_time,
+                SUM(TIMESTAMPDIFF(MINUTE, ual.login_time, ual.last_active_time)) AS active_minutes,
+                COUNT(ual.id) AS session_count,
                 u.full_name,
                 u.email,
                 r.name  AS role_name,
@@ -78,7 +79,8 @@ class UserActivityLogController extends Controller
             $paramTypes .= 's';
         }
 
-        $sql .= " ORDER BY dept.name ASC, ual.login_time DESC";
+        $sql .= " GROUP BY DATE(ual.login_time), ual.user_id, u.full_name, u.email, r.name, dept.id, dept.name, des.name";
+        $sql .= " ORDER BY dept.name ASC, DATE(ual.login_time) DESC, MIN(ual.login_time) DESC";
 
         $stmt = $this->db->prepare($sql);
 
@@ -101,21 +103,39 @@ class UserActivityLogController extends Controller
                     'total_minutes'     => 0,
                 ];
             }
-            $deptSummary[$dName]['total_sessions']++;
+            $deptSummary[$dName]['total_sessions'] += (int)($log['session_count'] ?? 1);
             $deptSummary[$dName]['total_minutes'] += max(0, (int)$log['active_minutes']);
         }
         // Sort by dept name
         ksort($deptSummary);
 
+        // ── Pagination Logic ──────────────────────────────────────────────────
+        $showAll = isset($_GET['show_all']) && $_GET['show_all'] == '1';
+        $totalRecords = count($logs);
+        $perPage = 15;
+        $totalPages = $totalRecords > 0 ? (int)ceil($totalRecords / $perPage) : 1;
+        $currentPage = isset($_GET['page']) ? max(1, min($totalPages, (int)$_GET['page'])) : 1;
+
+        $displayLogs = $logs;
+        if (!$showAll) {
+            $offset = ($currentPage - 1) * $perPage;
+            $displayLogs = array_slice($logs, $offset, $perPage);
+        }
+
         $this->view("hrm/user-activity-log", [
             "current_route"    => "user-activity-log",
             "page_title"       => "User Activity Log",
             "departments"      => $departments,
-            "logs"             => $logs,
+            "logs"             => $displayLogs,
+            "rawLogsCount"     => $totalRecords,
             "deptSummary"      => array_values($deptSummary),
             "filterDeptId"     => $filterDeptId,
             "filterDateFrom"   => $filterDateFrom,
             "filterDateTo"     => $filterDateTo,
+            "currentPage"      => $currentPage,
+            "totalPages"       => $totalPages,
+            "showAll"          => $showAll,
+            "perPage"          => $perPage
         ]);
     }
 }
