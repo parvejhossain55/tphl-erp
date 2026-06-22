@@ -718,6 +718,19 @@
 
                     </ul>
 
+                    <!-- User Activity Log — Admin / Management only -->
+                    <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
+                    <li class="slide <?= isActive('user-activity-log', $current_route) ?>">
+                        <a href="<?= $base_url ?>/user-activity-log"
+                            class="sidebar__menu-item <?= isActive('user-activity-log', $current_route) ?>">
+                            <div class="side-menu__icon">
+                                <i class="fa-solid fa-user-clock"></i>
+                            </div>
+                            <span class="sidebar__menu-label">User Activity Log</span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+
                 <?php endif; ?>
 
                 <?php if (hasPermission("Sales team Performance")): ?>

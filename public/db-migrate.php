@@ -439,6 +439,56 @@ if (tableExists($db, 'phase_weekly_progress')) {
     }
 }
 
+// ---------------------------------------------------------
+// SECTION 7: login_attempts Table for Rate Limiting
+// ---------------------------------------------------------
+echo "<div class='log-section'>
+        <div class='log-title'><span>7. Table: login_attempts</span></div>
+        <div class='log-body'>";
+
+if (!tableExists($db, 'login_attempts')) {
+    $sql = "CREATE TABLE `login_attempts` (
+      `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      `ip_address` VARCHAR(45) NOT NULL,
+      `username` VARCHAR(150) NOT NULL,
+      `attempted_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      KEY `idx_la_ip` (`ip_address`),
+      KEY `idx_la_username` (`username`),
+      KEY `idx_la_time` (`attempted_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;";
+    
+    executeMigrationQuery($db, $sql, "Creating table 'login_attempts'");
+} else {
+    echo "Table 'login_attempts' already exists.\n";
+}
+
+echo "</div></div>";
+
+// ---------------------------------------------------------
+// SECTION 8: user_activity_logs Table for Activity Tracking
+// ---------------------------------------------------------
+echo "<div class='log-section'>
+        <div class='log-title'><span>8. Table: user_activity_logs</span></div>
+        <div class='log-body'>";
+
+if (!tableExists($db, 'user_activity_logs')) {
+    $sql = "CREATE TABLE `user_activity_logs` (
+      `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      `user_id` INT NOT NULL,
+      `login_time` DATETIME NOT NULL,
+      `last_active_time` DATETIME NOT NULL,
+      `session_id` VARCHAR(100) NOT NULL,
+      `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      KEY `idx_ual_user` (`user_id`),
+      KEY `idx_ual_active` (`last_active_time`),
+      KEY `idx_ual_session` (`session_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;";
+    
+    executeMigrationQuery($db, $sql, "Creating table 'user_activity_logs'");
+} else {
+    echo "Table 'user_activity_logs' already exists.\n";
+}
+
 echo "</div></div>";
 
 // Close database connection
