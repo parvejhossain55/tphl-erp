@@ -1274,6 +1274,11 @@ $routes['con-project-progress-report/(\d+)'] = ['controller' => 'Phase2\Con_Dash
 $routes['con-progress-report']               = ['controller' => 'Phase2\Con_ProgressReportController', 'method' => 'index'];
 
 // ── Budget Extension Requests ─────────────────────────────────────────────────
+$routes['con-budget-extends']              = ['controller' => 'Phase2\Con_BudgetExtendController', 'method' => 'index'];
+$routes['con-budget-extend-create']        = ['controller' => 'Phase2\Con_BudgetExtendController', 'method' => 'create'];
+$routes['con-budget-extend-store']         = ['controller' => 'Phase2\Con_BudgetExtendController', 'method' => 'store'];
+$routes['con-budget-extend-approve/(\d+)'] = ['controller' => 'Phase2\Con_BudgetExtendController', 'method' => 'approve'];
+$routes['con-budget-extend-reject/(\d+)']  = ['controller' => 'Phase2\Con_BudgetExtendController', 'method' => 'reject'];
 
 // ── AJAX: Cascade project → plans + budgets ───────────────────────────────
 // ── AJAX: Cascade project → targets ──────────────────────────────────────

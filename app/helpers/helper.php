@@ -101,7 +101,26 @@ function uploadImage($input, $module = 'general', $mode = 'original',  $width = 
     $imgSize = getimagesize($_FILES[$input]['tmp_name']);
     if ($imgSize) {
         [$w, $h] = $imgSize;
-        imagecopyresampled($dst, $src, 0, 0, 0, 0, $width, $height, $w, $h);
+        
+        $target_ratio = $width / $height;
+        $src_ratio = $w / $h;
+        
+        if ($src_ratio > $target_ratio) {
+            // Source is wider
+            $crop_h = $h;
+            $crop_w = (int)($h * $target_ratio);
+            $src_x = (int)(($w - $crop_w) / 2);
+            $src_y = 0;
+        } else {
+            // Source is taller
+            $crop_w = $w;
+            $crop_h = (int)($w / $target_ratio);
+            $src_x = 0;
+            // Crop from the top (y=0) to keep the head/face visible in portrait photos
+            $src_y = 0;
+        }
+        
+        imagecopyresampled($dst, $src, 0, 0, $src_x, $src_y, $width, $height, $crop_w, $crop_h);
     } else {
         imagedestroy($src);
         imagedestroy($dst);

@@ -12521,7 +12521,10 @@ table.dataTable tbody tr:last-child {
   position: relative;
 }
 .employee__thumb img {
-  max-width: 100px;
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  object-position: top;
   border-radius: 50%;
 }
 .employee__digi {
@@ -12601,6 +12604,8 @@ table.dataTable tbody tr:last-child {
   border-radius: 50%;
   height: 120px;
   width: 120px;
+  object-fit: cover;
+  object-position: top;
 }
 .profile-info li {
   display: -webkit-box;
