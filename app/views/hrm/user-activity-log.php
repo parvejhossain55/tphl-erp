@@ -7,6 +7,34 @@ $logs           = $logs           ?? [];
 $departments    = $departments    ?? [];
 $deptSummary    = $deptSummary    ?? [];
 
+$currentPage    = $currentPage    ?? 1;
+$totalPages     = $totalPages     ?? 1;
+$showAll        = $showAll        ?? false;
+$rawLogsCount   = $rawLogsCount   ?? count($logs);
+$perPage        = $perPage        ?? 15;
+$offset         = ($currentPage - 1) * $perPage;
+
+function getPageUrl($p) {
+    $params = $_GET;
+    $params['page'] = $p;
+    unset($params['show_all']);
+    return '?' . http_build_query($params);
+}
+
+function getShowAllUrl() {
+    $params = $_GET;
+    $params['show_all'] = 1;
+    unset($params['page']);
+    return '?' . http_build_query($params);
+}
+
+function getShowPaginatedUrl() {
+    $params = $_GET;
+    unset($params['show_all']);
+    $params['page'] = 1;
+    return '?' . http_build_query($params);
+}
+
 // Helper: convert minutes to human-readable
 function formatDuration(int $mins): string {
     if ($mins <= 0) return '<span class="badge bg-secondary">-</span>';
@@ -123,7 +151,18 @@ function durationBadgeClass(int $mins): string {
             <div class="d-flex align-items-center gap-2">
                 <i class="fa-solid fa-user-clock text-primary"></i>
                 <span class="fw-semibold">Login Activity Records</span>
-                <span class="badge bg-primary ms-1"><?= count($logs) ?> records</span>
+                <span class="badge bg-primary ms-1"><?= (int)$rawLogsCount ?> records</span>
+            </div>
+            <div>
+                <?php if ($showAll): ?>
+                    <a href="<?= getShowPaginatedUrl() ?>" class="btn btn-sm btn-outline-primary">
+                        <i class="fa-solid fa-list me-1"></i>Show Paginated (15 per page)
+                    </a>
+                <?php else: ?>
+                    <a href="<?= getShowAllUrl() ?>" class="btn btn-sm btn-primary text-white">
+                        <i class="fa-solid fa-eye me-1"></i>Show All Records
+                    </a>
+                <?php endif; ?>
             </div>
         </div>
         <div class="table__wrapper table-responsive p-2">
@@ -151,7 +190,7 @@ function durationBadgeClass(int $mins): string {
                     <?php endif; ?>
 
                     <?php
-                    $serial = 1;
+                    $serial = $showAll ? 1 : ($offset + 1);
                     $prevDept = null;
                     foreach ($logs as $log):
                         $dept        = $log['department_name'] ?: '—';
@@ -204,6 +243,53 @@ function durationBadgeClass(int $mins): string {
                 </tbody>
             </table>
         </div>
+        
+        <?php if (!$showAll && $totalPages > 1): ?>
+        <div class="card-footer py-3 d-flex align-items-center justify-content-between border-top">
+            <div class="text-muted small">
+                Showing <?= $offset + 1 ?> to <?= min($offset + $perPage, $rawLogsCount) ?> of <?= $rawLogsCount ?> records (Page <?= $currentPage ?> of <?= $totalPages ?>)
+            </div>
+            <nav aria-label="Activity Log Pagination">
+                <ul class="pagination mb-0 gap-1">
+                    <?php if ($currentPage > 1): ?>
+                        <li class="page-item">
+                            <a class="page-link" href="<?= getPageUrl(1) ?>" aria-label="First">
+                                <i class="fa-solid fa-angles-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="<?= getPageUrl($currentPage - 1) ?>" aria-label="Previous">
+                                <i class="fa-solid fa-angle-left"></i>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+
+                    <?php
+                    $startPage = max(1, $currentPage - 2);
+                    $endPage = min($totalPages, $currentPage + 2);
+                    for ($p = $startPage; $p <= $endPage; $p++):
+                    ?>
+                        <li class="page-item <?= ($p == $currentPage) ? 'active' : '' ?>">
+                            <a class="page-link" href="<?= getPageUrl($p) ?>"><?= $p ?></a>
+                        </li>
+                    <?php endfor; ?>
+
+                    <?php if ($currentPage < $totalPages): ?>
+                        <li class="page-item">
+                            <a class="page-link" href="<?= getPageUrl($currentPage + 1) ?>" aria-label="Next">
+                                <i class="fa-solid fa-angle-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="<?= getPageUrl($totalPages) ?>" aria-label="Last">
+                                <i class="fa-solid fa-angles-right"></i>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 

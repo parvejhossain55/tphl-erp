@@ -162,9 +162,31 @@ $statusLabels = [
                                     </td>
                                     <td>
                                         <span
-                                            class="badge bg-<?= $statusColors[$wo['status']] ?? 'secondary' ?>-transparent text-<?= $statusColors[$wo['status']] ?? 'secondary' ?>">
+                                            class="badge bg-<?= $statusColors[$wo['status']] ?? 'secondary' ?>-transparent text-<?= $statusColors[$wo['status']] ?? 'secondary' ?> mb-1">
                                             <?= $statusLabels[$wo['status']] ?? ucfirst($wo['status']) ?>
                                         </span>
+                                        <?php if (in_array($wo['status'], ['approved', 'active', 'work_completed', 'qc_approved', 'closed']) && !empty($wo['approved_by_name'])): ?>
+                                            <div class="text-muted" style="font-size: 11px; line-height: 1.3;">
+                                                <i class="bi bi-check-circle text-success me-1"></i>Approved by:
+                                                <span class="fw-semibold text-dark"><?= htmlspecialchars($wo['approved_by_name']) ?></span>
+                                                <?php if (!empty($wo['approved_at'])): ?>
+                                                    <br><span class="text-muted" style="font-size: 10px; padding-left: 14px;"><?= date('d M Y h:i A', strtotime($wo['approved_at'])) ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php elseif (in_array($wo['status'], ['draft', 'rejected'])): ?>
+                                            <?php 
+                                            $pendingRole = $wo['pending_role_name'] ?? '';
+                                            if ($pendingRole === 'super Admin') {
+                                                $pendingRole = 'Management';
+                                            }
+                                            if (!empty($pendingRole)): 
+                                            ?>
+                                                <div class="text-warning-emphasis" style="font-size: 11px; line-height: 1.3;">
+                                                    <i class="bi bi-hourglass-split text-warning me-1"></i>Pending:
+                                                    <span class="fw-semibold text-warning-emphasis"><?= htmlspecialchars($pendingRole) ?></span>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <a href="<?= $base_url ?>/con-work-order/<?= $wo['id'] ?>"

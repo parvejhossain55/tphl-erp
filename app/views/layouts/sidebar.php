@@ -46,106 +46,108 @@
 
                 $upcomingCount = getFollowUpCount($userId, 'upcoming');
                 ?>
-                <?php if (hasPermission("sales & business")): ?>
+                <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [15, 22])): ?>
 
                     <!--Sales CATEGORY -->
                     <li class="sidebar__menu-category">
                         <span class="category-name">Sales & Business</span>
                     </li>
 
-                    <!-- sales Dashboard -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/sales-dashboard"
-                            class="sidebar__menu-item <?= isActive('sales-dashboard', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
-                            <span class="sidebar__menu-label">Sales Dashboard</span>
-                        </a>
-                    </li>
+                    <?php if (hasPermission("sales & business")): ?>
+                        <!-- sales Dashboard -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/sales-dashboard"
+                                class="sidebar__menu-item <?= isActive('sales-dashboard', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                                <span class="sidebar__menu-label">Sales Dashboard</span>
+                            </a>
+                        </li>
 
-                    <!-- Location -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/location-lists"
-                            class="sidebar__menu-item <?= isActive('location-lists', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-location-dot"></i></div>
-                            <span class="sidebar__menu-label">Location Manage</span>
-                        </a>
-                    </li>
+                        <!-- Location -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/location-lists"
+                                class="sidebar__menu-item <?= isActive('location-lists', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-location-dot"></i></div>
+                                <span class="sidebar__menu-label">Location Manage</span>
+                            </a>
+                        </li>
 
-                    <!-- Amenities -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/amenities"
-                            class="sidebar__menu-item <?= isActive(['amenities', 'create-amenity', 'edit-amenity'], $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-spa"></i></div>
-                            <span class="sidebar__menu-label">Amenities Manage</span>
-                        </a>
-                    </li>
+                        <!-- Amenities -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/amenities"
+                                class="sidebar__menu-item <?= isActive(['amenities', 'create-amenity', 'edit-amenity'], $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-spa"></i></div>
+                                <span class="sidebar__menu-label">Amenities Manage</span>
+                            </a>
+                        </li>
 
-                    <!-- Community -->
-                    <li class="slide">
-                        <a href="<?= $base_url ?>/community-lists"
-                            class="sidebar__menu-item  <?= isActive('community-lists', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-people-group"></i></div>
-                            <span class="sidebar__menu-label">Community Lists</span>
-                        </a>
-                    </li>
+                        <!-- Community -->
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/community-lists"
+                                class="sidebar__menu-item  <?= isActive('community-lists', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-people-group"></i></div>
+                                <span class="sidebar__menu-label">Community Lists</span>
+                            </a>
+                        </li>
 
-                    <!-- Lead & Booking -->
-                    <li
-                        class="slide has-sub <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients', 'client-refunds'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients', 'client-refunds'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
-                            <span class="sidebar__menu-label">Lead & Booking</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/create-lead"
-                                    class="sidebar__menu-item <?= isActive('create-lead', $current_route) ?>">Add Lead</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/lead-lists"
-                                    class="sidebar__menu-item <?= isActive('lead-lists', $current_route) ?>">Lead List</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/my-all-assigned-leads"
-                                    class="sidebar__menu-item <?= isActive('my-all-assigned-leads', $current_route) ?>">My
-                                    All Assigned Leads </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/today-leads"
-                                    class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">
-                                    Today Leads Assigned
-                                </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/today-follow-up"
-                                    class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today
-                                    Follow Up <span class="badge bg-primary ms-2"><?= $todayCount ?></span> </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/upcoming-follow-up"
-                                    class="sidebar__menu-item <?= isActive('overdue-next-followup', $current_route) ?>">
-                                    Upcoming Follow Up<span class="ms-2 badge bg-warning"><?= $upcomingCount ?></span></a>
-                            </li>
+                        <!-- Lead & Booking -->
+                        <li
+                            class="slide has-sub <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients', 'client-refunds'], $current_route) ? 'active' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients', 'client-refunds'], $current_route) ? 'menu-open active' : '' ?>">
+                                <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                                <span class="sidebar__menu-label">Lead & Booking</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/create-lead"
+                                        class="sidebar__menu-item <?= isActive('create-lead', $current_route) ?>">Add Lead</a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/lead-lists"
+                                        class="sidebar__menu-item <?= isActive('lead-lists', $current_route) ?>">Lead List</a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/my-all-assigned-leads"
+                                        class="sidebar__menu-item <?= isActive('my-all-assigned-leads', $current_route) ?>">My
+                                        All Assigned Leads </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/today-leads"
+                                        class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">
+                                        Today Leads Assigned
+                                    </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/today-follow-up"
+                                        class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today
+                                        Follow Up <span class="badge bg-primary ms-2"><?= $todayCount ?></span> </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/upcoming-follow-up"
+                                        class="sidebar__menu-item <?= isActive('overdue-next-followup', $current_route) ?>">
+                                        Upcoming Follow Up<span class="ms-2 badge bg-warning"><?= $upcomingCount ?></span></a>
+                                </li>
 
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/my-onboarding-projects"
-                                    class="sidebar__menu-item <?= isActive('my-onboarding-projects', $current_route) ?>">My
-                                    Onboarding Projects </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/onboarding-clients"
-                                    class="sidebar__menu-item <?= isActive('onboarding-clients', $current_route) ?>">All
-                                    Onboarding Clients</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/client-refunds"
-                                    class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">Client
-                                    Refunds</a>
-                            </li>
-                        </ul>
-                    </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/my-onboarding-projects"
+                                        class="sidebar__menu-item <?= isActive('my-onboarding-projects', $current_route) ?>">My
+                                        Onboarding Projects </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/onboarding-clients"
+                                        class="sidebar__menu-item <?= isActive('onboarding-clients', $current_route) ?>">All
+                                        Onboarding Clients</a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/client-refunds"
+                                        class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">Client
+                                        Refunds</a>
+                                </li>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
 
                     <!-- Project Manage -->
                     <li
@@ -170,55 +172,56 @@
                         </ul>
                     </li>
 
-                    <!-- Flats Manage -->
-                    <li
-                        class="slide has-sub <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-house"></i></div>
-                            <span class="sidebar__menu-label">Flats Manage</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide child2">
-                                <a href="<?= $base_url ?>/create-flat"
-                                    class="sidebar__menu-item <?= isActive('create-flat', $current_route) ?>">Add Flat</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/flat-lists"
-                                    class="sidebar__menu-item <?= isActive('flat-lists', $current_route) ?>">Flat List</a>
-                            </li>
-                        </ul>
-                    </li>
-                    <!-- Inventroy -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/inventory-lists"
-                            class="sidebar__menu-item <?= isActive('inventory-lists', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="bi bi-stack"></i> </div>
-                            <span class="sidebar__menu-label">Project Wise Flat Stock</span>
-                        </a>
-                    </li>
+                    <?php if (hasPermission("sales & business")): ?>
+                        <!-- Flats Manage -->
+                        <li
+                            class="slide has-sub <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'active' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'menu-open active' : '' ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-house"></i></div>
+                                <span class="sidebar__menu-label">Flats Manage</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <li class="slide child2">
+                                    <a href="<?= $base_url ?>/create-flat"
+                                        class="sidebar__menu-item <?= isActive('create-flat', $current_route) ?>">Add Flat</a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/flat-lists"
+                                        class="sidebar__menu-item <?= isActive('flat-lists', $current_route) ?>">Flat List</a>
+                                </li>
+                            </ul>
+                        </li>
+                        <!-- Inventroy -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/inventory-lists"
+                                class="sidebar__menu-item <?= isActive('inventory-lists', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="bi bi-stack"></i> </div>
+                                <span class="sidebar__menu-label">Project Wise Flat Stock</span>
+                            </a>
+                        </li>
 
-                    <!-- Executive Team  -->
-                    <!--target set-sales-target show here for sales executiive team  -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/sales-executive-teams"
-                            class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
-                            <span class="sidebar__menu-label">Sales Executive Team</span>
-                        </a>
-                    </li>
+                        <!-- Executive Team  -->
+                        <!--target set-sales-target show here for sales executiive team  -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/sales-executive-teams"
+                                class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                                <span class="sidebar__menu-label">Sales Executive Team</span>
+                            </a>
+                        </li>
 
 
 
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/contact-lists"
-                            class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
-                            <span class="sidebar__menu-label">Contact Lists</span>
-                        </a>
-                    </li>
-
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/contact-lists"
+                                class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                                <span class="sidebar__menu-label">Contact Lists</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
 
                 <?php endif; ?>
                 <!--End Sales Manager CATEGORY -->
@@ -567,7 +570,7 @@
                         <a href="<?= $base_url ?>/teams"
                             class="sidebar__menu-item <?= isActive('teams', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-users-gear"></i></div>
-                            <span class="sidebar__menu-label">Teams Manage</span>
+                            <span class="sidebar__menu-label">Sales Teams Add</span>
                         </a>
                     </li>
                     <!-- Location -->

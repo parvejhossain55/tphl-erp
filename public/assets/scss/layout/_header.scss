@@ -192,6 +192,9 @@
 .user__portfolio-thumb {
     img {
         width: 40px;
+        height: 40px;
+        object-fit: cover;
+        object-position: top;
         border-radius: 50%;
     }
 }
