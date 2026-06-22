@@ -726,6 +726,80 @@ if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id']
 </script>
 <?php endif; ?>
 
+<?php if (isset($_SESSION['activity_log_id'])): ?>
+<!-- User Activity Tracking Heartbeat -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        let isActive = true;
+
+        // Function to check if the tab is active (visible and has focus)
+        function isTabActive() {
+            return document.visibilityState === 'visible' && document.hasFocus();
+        }
+
+        // Track user activity (mouse movement, key down, scroll, click, touch)
+        const activityEvents = ['mousemove', 'keydown', 'scroll', 'click', 'touchstart'];
+        function setActivityTrue() {
+            if (isTabActive()) {
+                isActive = true;
+            }
+        }
+
+        activityEvents.forEach(function(event) {
+            window.addEventListener(event, setActivityTrue, { passive: true });
+        });
+
+        // Ping the server every 1 minute (60,000 milliseconds) if active and tab has focus
+        setInterval(function() {
+            if (isActive && isTabActive()) {
+                if (typeof $ !== 'undefined') {
+                    $.ajax({
+                        url: (window.base_url || '') + '/update-activity',
+                        type: 'POST',
+                        success: function(response) {
+                            console.log("Activity heartbeat updated successfully.");
+                        },
+                        error: function(xhr) {
+                            console.error("Activity heartbeat failed: ", xhr.responseText);
+                        }
+                    });
+                } else {
+                    // Fallback to vanilla fetch if jQuery isn't loaded
+                    fetch((window.base_url || '') + '/update-activity', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log("Activity heartbeat updated successfully (fetch).");
+                    })
+                    .catch(err => {
+                        console.error("Activity heartbeat failed (fetch): ", err);
+                    });
+                }
+                
+                // Reset active flag until next interaction
+                isActive = false;
+            }
+        }, 60000);
+
+        // Reset activity status when user returns to the tab or focuses the window
+        document.addEventListener('visibilitychange', function() {
+            if (isTabActive()) {
+                isActive = true;
+            }
+        });
+        window.addEventListener('focus', function() {
+            if (isTabActive()) {
+                isActive = true;
+            }
+        });
+    });
+</script>
+<?php endif; ?>
+
         </body>
 
         </html>

@@ -71,6 +71,7 @@ $routes = [
     "reject-request/(\d+)" => ["controller" => "HomeController", "method" => "reject"],
     "show-request/(\d+)" => ["controller" => "HomeController", "method" => "show"],
     "logout" => ["controller" => "LoginController", "method" => "logout"],
+    "update-activity" => ["controller" => "LoginController", "method" => "updateActivity"],
     "qc-audit-dashboard" => ["controller" => "QcAuditController", "method" => "dashboard"],
     "qc-advanced-audit" => ["controller" => "QcAuditController", "method" => "advancedAudit"],
     "api/qc-audit/materials" => ["controller" => "QcAuditController", "method" => "getAuditMaterials"],
@@ -95,6 +96,8 @@ $routes = [
     "user-profile/(\d+)" => ["controller" => "UserController", "method" => "show"],
     "update-user/(\d+)" => ["controller" => "UserController", "method" => "update"],
     "delete-user" => ["controller" => "UserController", "method" => "delete"],
+    // User Activity Log (Admin / Management only)
+    "user-activity-log" => ["controller" => "UserActivityLogController", "method" => "index"],
     "my-dashboard" => ["controller" => "UserDashboardController", "method" => "dashboard"],
     "today-leads" => ["controller" => "UserDashboardController", "method" => "todayLead"],
     "update-call-status" => ["controller" => "UserDashboardController", "method" => "updateCallStatus"],

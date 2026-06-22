@@ -30,12 +30,12 @@ class TutorialController extends Controller
             1  => 'https://drive.google.com/drive/folders/placeholder_admin',                       // Admin
             2  => 'https://drive.google.com/drive/folders/placeholder_employee',                    // Employee
             3  => 'https://drive.google.com/drive/folders/placeholder_super_admin',                 // super Admin
-            4  => 'https://drive.google.com/drive/folders/placeholder_hr',                           // HR
-            5  => 'https://drive.google.com/drive/folders/placeholder_sales_manager',               // Sales Manager
+            4  => 'https://drive.google.com/file/d/11MARWakxK07MS3Yj7Yyv3RD7u17YTNik/view?usp=sharing',      //Done HR
+            5  => 'https://drive.google.com/file/d/1_3o5AyBYVJ6EDrVBQDCq7VNlRDRWJ41j/view?usp=sharing',      //Done Sales Manager
             6  => 'https://drive.google.com/drive/folders/placeholder_accounts',                     // Accounts
             7  => 'https://drive.google.com/drive/folders/placeholder_clients_experiment',           // Clients Experiment
-            8  => 'https://drive.google.com/drive/folders/placeholder_sales_executive',             // Sales Executive
-            9  => 'https://drive.google.com/drive/folders/placeholder_sales_team_head',             // Sales Team Head
+            8  => ' https://drive.google.com/file/d/1N1hnMRkxeqak_Z3h6elD_ijb1F2rc_GT/view?usp=sharing',             //Done Sales Executive
+            9  => 'https://drive.google.com/file/d/1_3o5AyBYVJ6EDrVBQDCq7VNlRDRWJ41j/view?usp=sharing',             //Done Sales Team Head
             10 => 'https://drive.google.com/drive/folders/placeholder_head_of_digital_marketing',   // Head Of Digital Marketing Team
             11 => 'https://drive.google.com/drive/folders/placeholder_executive_of_digital_marketing', // Executive Of Digital Marketing Team
             12 => 'https://drive.google.com/file/d/1JtzuDBlMIkwpxqAj5v_0-fWSR12V7oD6/view',               //done Site Engineer
