@@ -184,26 +184,34 @@ LEFT JOIN designations AS desig ON u.designation_id = desig.id
             e.email AS employee_email,
             e.photo AS emp_photo,
             des_emp.name AS employee_designation,
+            COALESCE(emp_to.employee_id, CONCAT('USR-', e.id)) AS employee_code,
 
             -- Assigned By
             u.full_name AS assigned_by_name,
             u.email AS assigned_by_email,
             u.photo AS assigned_photo,
-            des_assign.name AS assigned_by_designation
+            des_assign.name AS assigned_by_designation,
+            dep_assign.name AS assigned_by_department,
+            COALESCE(emp_by.employee_id, CONCAT('USR-', u.id)) AS assigned_by_emp_code
 
         FROM tasks t
 
-      LEFT JOIN users e 
+        LEFT JOIN users e 
             ON t.user_id = e.id
+        LEFT JOIN employees emp_to
+            ON e.employee_id = emp_to.id
 
         LEFT JOIN users u 
             ON t.assigned_by = u.id
+        LEFT JOIN employees emp_by
+            ON u.employee_id = emp_by.id
 
         LEFT JOIN designations des_emp 
             ON e.designation_id = des_emp.id
-
         LEFT JOIN designations des_assign 
             ON u.designation_id = des_assign.id
+        LEFT JOIN departments dep_assign
+            ON des_assign.department_id = dep_assign.id
 
         WHERE t.id = ?
     ");
@@ -349,7 +357,7 @@ LEFT JOIN designations AS desig ON u.designation_id = desig.id
     }
 
 
-    public function updateProgress($taskId, $progress)
+    public function updateProgress($taskId, $progress, $remarks = null, $image = null)
     {
         // Start transaction
         $this->db->begin_transaction();
@@ -358,12 +366,27 @@ LEFT JOIN designations AS desig ON u.designation_id = desig.id
             //  Update task progress
             $status = ($progress >= 100) ? 'completed' : 'in_progress';
 
-            $stmt = $this->db->prepare("
-            UPDATE tasks
-            SET progress = ?, status = ?
-            WHERE id = ?
-        ");
-            $stmt->bind_param("isi", $progress, $status, $taskId);
+            $sql = "UPDATE tasks SET progress = ?, status = ?";
+            $types = "is";
+            $params = [$progress, $status];
+
+            if ($remarks !== null) {
+                $sql .= ", remarks = ?";
+                $types .= "s";
+                $params[] = $remarks;
+            }
+            if ($image !== null) {
+                $sql .= ", attachment_image = ?";
+                $types .= "s";
+                $params[] = $image;
+            }
+
+            $sql .= " WHERE id = ?";
+            $types .= "i";
+            $params[] = $taskId;
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param($types, ...$params);
             $stmt->execute();
 
             $this->db->commit();

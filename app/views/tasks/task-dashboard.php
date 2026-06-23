@@ -120,7 +120,7 @@
                                     </div>
                                     <!-- Action Form -->
                                     <form action="<?= $GLOBALS['base_url'] ?>/<?= $task['employee_accept'] == 0 ? 'update-task-status' : 'update-task-progress' ?>"
-                                        method="POST" class="action-form">
+                                        method="POST" enctype="multipart/form-data" class="action-form">
                                         <input type="hidden" name="task_id" value="<?= $task['id'] ?>">
 
                                         <?php if ($task['employee_accept'] == 0): ?>
@@ -130,23 +130,35 @@
                                                 Accept Task
                                             </button>
                                         <?php else: ?>
-                                            <!-- Update Progress -->
-                                            <div class="input-group">
-                                                <span class="input-group-text">
-                                                    <i class="bi bi-percent"></i>
-                                                </span>
+                                            <!-- Update Progress Details -->
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold text-dark"><i class="bi bi-percent me-1"></i>Progress (%)</label>
                                                 <input type="number"
                                                     name="progress"
                                                     min="<?= $task['progress'] ?>"
                                                     max="100"
                                                     value="<?= $task['progress'] ?>"
                                                     class="form-control"
-                                                    placeholder="Enter progress percentage">
-                                                <button type="submit" class="btn btn-update">
-                                                    <i class="bi bi-arrow-clockwise me-2"></i>
-                                                    Update
-                                                </button>
+                                                    placeholder="Progress percentage"
+                                                    required>
                                             </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold text-dark"><i class="bi bi-chat-left-text me-1"></i>Remarks</label>
+                                                <textarea name="remarks" class="form-control" rows="2" placeholder="Explain what has been completed..." required><?= htmlspecialchars($task['remarks'] ?? '') ?></textarea>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold text-dark"><i class="bi bi-image me-1"></i>Proof Image (Optional)</label>
+                                                <input type="file" name="attachment_image" class="form-control" accept="image/*">
+                                                <?php if (!empty($task['attachment_image'])): ?>
+                                                    <div class="mt-2 text-start">
+                                                        <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/tasks/<?= $task['attachment_image'] ?>" target="_blank" class="text-primary fs-13"><i class="bi bi-eye me-1"></i>View Current Image</a>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                            <button type="submit" class="btn btn-update w-100">
+                                                <i class="bi bi-arrow-clockwise me-2"></i>
+                                                Update Progress
+                                            </button>
                                         <?php endif; ?>
                                     </form>
 

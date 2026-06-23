@@ -87,6 +87,28 @@
                     </div>
                 </div>
 
+                <?php if (!empty($task['remarks']) || !empty($task['attachment_image'])): ?>
+                    <div class="card__wrapper mt-4">
+                        <div class="card__title-wrap mb-25">
+                            <h5 class="card__heading-title">Employee Task Remarks & Attached Proof</h5>
+                        </div>
+                        <?php if (!empty($task['remarks'])): ?>
+                            <div class="mb-4">
+                                <h6 class="fw-semibold text-dark mb-1">Execution Remarks:</h6>
+                                <p class="text-muted" style="white-space: pre-wrap;"><?= htmlspecialchars($task['remarks']) ?></p>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($task['attachment_image'])): ?>
+                            <div>
+                                <h6 class="fw-semibold text-dark mb-2">Attached Proof Image:</h6>
+                                <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/tasks/<?= $task['attachment_image'] ?>" target="_blank">
+                                    <img src="<?= $GLOBALS['base_url'] ?>/public/uploads/tasks/<?= $task['attachment_image'] ?>" alt="Task Proof Image" class="img-fluid rounded-3" style="max-height: 350px; object-fit: contain; border: 1px solid #e8e6ff;">
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
 
             </div>
             <div class="col-xxl-4 col-xl-4">
@@ -98,11 +120,25 @@
                         <div class="card__body">
                             <ul class="user__list">
                                 <li>
-                                    <div class="d-flex align-items-center gap-10 mb-10">
+                                    <div class="d-flex align-items-center gap-10 mb-15">
                                         <img class="img-50 border-circle" src="<?= getImage('users', $task['assigned_photo']) ?>" alt="user image">
                                         <div class="profile-info">
-                                            <h6><?= $task['assigned_by_name'] ?>.</h6>
-                                            <p class="mb-0"><?= $task['assigned_by_designation'] ?></p>
+                                            <h6 class="fw-bold mb-1"><?= htmlspecialchars($task['assigned_by_name'] ?? 'N/A') ?></h6>
+                                            <p class="mb-0 text-primary fw-semibold" style="font-size: 0.85rem;"><?= htmlspecialchars($task['assigned_by_designation'] ?? 'N/A') ?></p>
+                                        </div>
+                                    </div>
+                                    <div class="assigned-by-details border-top pt-3" style="font-size: 0.85rem;">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="text-muted">Employee ID:</span>
+                                            <span class="fw-semibold text-dark"><?= htmlspecialchars($task['assigned_by_emp_code'] ?? 'N/A') ?></span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="text-muted">Department:</span>
+                                            <span class="fw-semibold text-dark"><?= htmlspecialchars(ucwords($task['assigned_by_department'] ?? 'N/A')) ?></span>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span class="text-muted">Email:</span>
+                                            <span class="fw-semibold text-dark"><?= htmlspecialchars($task['assigned_by_email'] ?? 'N/A') ?></span>
                                         </div>
                                     </div>
                                 </li>

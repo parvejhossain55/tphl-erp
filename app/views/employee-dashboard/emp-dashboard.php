@@ -323,13 +323,50 @@ $photoPath = !empty($employee['photo'])
                         </div>
                         <!-- Progress update form -->
                         <?php if ($status !== 'completed'): ?>
-                            <form method="POST" action="<?= $GLOBALS['base_url'] ?>/update-task-progress-employee" class="mt-2 d-flex gap-2 align-items-center">
-                                <input type="hidden" name="task_id" value="<?= (int)$task['id'] ?>">
-                                <input type="range" name="progress" min="0" max="100"
-                                    value="<?= (int)($task['progress'] ?? 0) ?>"
-                                    class="form-range flex-grow-1" style="height:4px">
-                                <button type="submit" class="btn btn-outline-secondary btn-sm py-0" style="font-size:.7rem">Save</button>
-                            </form>
+                            <button type="button" class="btn btn-outline-primary btn-sm w-100 mt-2" data-bs-toggle="modal" data-bs-target="#updateProgressModal-<?= (int)$task['id'] ?>">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Update Progress
+                            </button>
+
+                            <!-- Bootstrap Modal for progress update -->
+                            <div class="modal fade" id="updateProgressModal-<?= (int)$task['id'] ?>" tabindex="-1" aria-labelledby="updateProgressModalLabel-<?= (int)$task['id'] ?>" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title text-dark" id="updateProgressModalLabel-<?= (int)$task['id'] ?>">Update Progress: <?= htmlspecialchars($task['title'] ?? 'Task') ?></h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form method="POST" action="<?= $GLOBALS['base_url'] ?>/update-task-progress-employee" enctype="multipart/form-data">
+                                            <div class="modal-body text-start">
+                                                <input type="hidden" name="task_id" value="<?= (int)$task['id'] ?>">
+                                                
+                                                <div class="mb-3">
+                                                    <label class="form-label text-dark fw-semibold">Progress Percentage (%)</label>
+                                                    <input type="number" name="progress" min="<?= (int)($task['progress'] ?? 0) ?>" max="100" value="<?= (int)($task['progress'] ?? 0) ?>" class="form-control" required>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label class="form-label text-dark fw-semibold">Remarks</label>
+                                                    <textarea name="remarks" class="form-control" rows="3" placeholder="What parts of this task have you completed?" required><?= htmlspecialchars($task['remarks'] ?? '') ?></textarea>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label class="form-label text-dark fw-semibold">Attached Image (Optional)</label>
+                                                    <input type="file" name="attachment_image" class="form-control" accept="image/*">
+                                                    <?php if (!empty($task['attachment_image'])): ?>
+                                                        <div class="mt-2">
+                                                            <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/tasks/<?= $task['attachment_image'] ?>" target="_blank" class="text-primary"><i class="bi bi-image me-1"></i>View Current Image</a>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                                                <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
                         <?php endif; ?>
                     </div>
                 </div>
