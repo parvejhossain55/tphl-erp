@@ -7,15 +7,6 @@ $categories = ['Electronics','Furniture','Vehicle','IT Equipment','Office Suppli
     <!-- Page Header -->
     <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
         <h1 class="page-title fw-semibold fs-18 mb-0">Office Asset Products</h1>
-        <div class="ms-md-1 ms-0">
-            <nav>
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="<?= $GLOBALS['base_url'] ?>/home">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="<?= $GLOBALS['base_url'] ?>/assets">Asset Management</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Products</li>
-                </ol>
-            </nav>
-        </div>
     </div>
 
     <!-- Alert Messages -->
@@ -37,62 +28,62 @@ $categories = ['Electronics','Furniture','Vehicle','IT Equipment','Office Suppli
     </div>
 
     <!-- Stats Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3 col-sm-6">
+    <div class="row mb-4" id="stats-cards">
+        <div class="col-md-3 col-sm-6 col-6">
             <div class="card custom-card">
-                <div class="card-body">
+                <div class="card-body p-2 p-md-3">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="text-muted mb-1 fs-12">Total Products</p>
-                            <h4 class="fw-bold mb-0"><?= count($products ?? []) ?></h4>
+                            <p class="text-muted mb-1 fs-11">Total Products</p>
+                            <h5 class="fw-bold mb-0"><?= count($products ?? []) ?></h5>
                         </div>
-                        <div class="avatar avatar-lg bg-primary-transparent rounded-circle">
-                            <i class="fa-solid fa-boxes-stacked fs-18 text-primary"></i>
+                        <div class="avatar avatar-sm bg-primary-transparent rounded-circle d-none d-sm-flex">
+                            <i class="fa-solid fa-boxes-stacked fs-14 text-primary"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 col-sm-6">
+        <div class="col-md-3 col-sm-6 col-6">
             <div class="card custom-card">
-                <div class="card-body">
+                <div class="card-body p-2 p-md-3">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="text-muted mb-1 fs-12">Active Products</p>
-                            <h4 class="fw-bold mb-0 text-success"><?= count(array_filter($products ?? [], fn($p) => $p['status'] === 'active')) ?></h4>
+                            <p class="text-muted mb-1 fs-11">Active Products</p>
+                            <h5 class="fw-bold mb-0 text-success"><?= count(array_filter($products ?? [], fn($p) => $p['status'] === 'active')) ?></h5>
                         </div>
-                        <div class="avatar avatar-lg bg-success-transparent rounded-circle">
-                            <i class="fa-solid fa-check-circle fs-18 text-success"></i>
+                        <div class="avatar avatar-sm bg-success-transparent rounded-circle d-none d-sm-flex">
+                            <i class="fa-solid fa-check-circle fs-14 text-success"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 col-sm-6">
+        <div class="col-md-3 col-sm-6 col-6">
             <div class="card custom-card">
-                <div class="card-body">
+                <div class="card-body p-2 p-md-3">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="text-muted mb-1 fs-12">Total Stock Items</p>
-                            <h4 class="fw-bold mb-0 text-info"><?= array_sum(array_column($stockMap ?? [], 'total_assets')) ?></h4>
+                            <p class="text-muted mb-1 fs-11">Total Stock</p>
+                            <h5 class="fw-bold mb-0 text-info"><?= array_sum(array_column($stockMap ?? [], 'total_assets')) ?></h5>
                         </div>
-                        <div class="avatar avatar-lg bg-info-transparent rounded-circle">
-                            <i class="fa-solid fa-warehouse fs-18 text-info"></i>
+                        <div class="avatar avatar-sm bg-info-transparent rounded-circle d-none d-sm-flex">
+                            <i class="fa-solid fa-warehouse fs-14 text-info"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 col-sm-6">
+        <div class="col-md-3 col-sm-6 col-6">
             <div class="card custom-card">
-                <div class="card-body">
+                <div class="card-body p-2 p-md-3">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="text-muted mb-1 fs-12">Need Attention</p>
-                            <h4 class="fw-bold mb-0 text-danger"><?= array_sum(array_column($stockMap ?? [], 'need_repair')) + array_sum(array_column($stockMap ?? [], 'damaged')) ?></h4>
+                            <p class="text-muted mb-1 fs-11">Attention</p>
+                            <h5 class="fw-bold mb-0 text-danger"><?= array_sum(array_column($stockMap ?? [], 'need_repair')) + array_sum(array_column($stockMap ?? [], 'damaged')) ?></h5>
                         </div>
-                        <div class="avatar avatar-lg bg-danger-transparent rounded-circle">
-                            <i class="fa-solid fa-triangle-exclamation fs-18 text-danger"></i>
+                        <div class="avatar avatar-sm bg-danger-transparent rounded-circle d-none d-sm-flex">
+                            <i class="fa-solid fa-triangle-exclamation fs-14 text-danger"></i>
                         </div>
                     </div>
                 </div>
@@ -137,9 +128,9 @@ $categories = ['Electronics','Furniture','Vehicle','IT Equipment','Office Suppli
                         <option value="inactive" <?= ($filters['status'] ?? '') === 'inactive' ? 'selected' : '' ?>>Inactive</option>
                     </select>
                 </div>
-                <div class="col-md-3 col-sm-6">
-                    <button type="submit" class="btn btn-primary btn-sm px-3"><i class="fa-solid fa-filter me-1"></i> Filter</button>
-                    <a href="<?= $GLOBALS['base_url'] ?>/asset-products" class="btn btn-light btn-sm ms-1"><i class="fa-solid fa-arrows-rotate me-1"></i> Reset</a>
+                <div class="col-md-3 col-sm-6 mt-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm flex-fill"><i class="fa-solid fa-filter me-1"></i> Filter</button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/asset-products" class="btn btn-light btn-sm flex-fill text-center"><i class="fa-solid fa-arrows-rotate me-1"></i> Reset</a>
                 </div>
             </form>
         </div>
@@ -368,6 +359,23 @@ $categories = ['Electronics','Furniture','Vehicle','IT Equipment','Office Suppli
         </form>
     </div>
 </div>
+
+<style>
+@media (max-width: 480px) {
+    #stats-cards .card.custom-card {
+        padding: 10px !important;
+    }
+    #stats-cards .card-body {
+        padding: 0px !important;
+    }
+    #stats-cards .fs-11 {
+        font-size: 10px !important;
+    }
+    #stats-cards h5 {
+        font-size: 15px !important;
+    }
+}
+</style>
 
 <script>
 function openEditModal(product) {

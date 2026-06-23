@@ -18,15 +18,6 @@ $statusBadges = [
     <!-- Page Header -->
     <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
         <h1 class="page-title fw-semibold fs-18 mb-0">Asset Register</h1>
-        <div class="ms-md-1 ms-0">
-            <nav>
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="<?= $GLOBALS['base_url'] ?>/home">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="<?= $GLOBALS['base_url'] ?>/asset-products">Asset Management</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">All Assets</li>
-                </ol>
-            </nav>
-        </div>
     </div>
 
     <!-- Alert Messages -->
@@ -48,10 +39,10 @@ $statusBadges = [
     </div>
 
     <!-- Stats Cards -->
-    <div class="row mb-4">
+    <div class="row mb-4" id="stats-cards">
         <div class="col-md-2 col-sm-4 col-6">
             <div class="card custom-card">
-                <div class="card-body text-center py-3">
+                <div class="card-body text-center p-2 p-md-3">
                     <h3 class="fw-bold text-primary mb-0"><?= $stats['total_assets'] ?? 0 ?></h3>
                     <p class="text-muted mb-0 fs-11">Total Assets</p>
                 </div>
@@ -59,7 +50,7 @@ $statusBadges = [
         </div>
         <div class="col-md-2 col-sm-4 col-6">
             <div class="card custom-card">
-                <div class="card-body text-center py-3">
+                <div class="card-body text-center p-2 p-md-3">
                     <h3 class="fw-bold text-success mb-0"><?= $stats['total_products'] ?? 0 ?></h3>
                     <p class="text-muted mb-0 fs-11">Products</p>
                 </div>
@@ -67,7 +58,7 @@ $statusBadges = [
         </div>
         <div class="col-md-2 col-sm-4 col-6">
             <div class="card custom-card">
-                <div class="card-body text-center py-3">
+                <div class="card-body text-center p-2 p-md-3">
                     <h3 class="fw-bold text-danger mb-0"><?= $stats['needs_attention'] ?? 0 ?></h3>
                     <p class="text-muted mb-0 fs-11">Need Attention</p>
                 </div>
@@ -75,7 +66,7 @@ $statusBadges = [
         </div>
         <div class="col-md-2 col-sm-4 col-6">
             <div class="card custom-card">
-                <div class="card-body text-center py-3">
+                <div class="card-body text-center p-2 p-md-3">
                     <h3 class="fw-bold text-warning mb-0"><?= $stats['pending_purchases'] ?? 0 ?></h3>
                     <p class="text-muted mb-0 fs-11">Pending Purchases</p>
                 </div>
@@ -83,7 +74,7 @@ $statusBadges = [
         </div>
         <div class="col-md-4 col-sm-8 col-12">
             <div class="card custom-card">
-                <div class="card-body text-center py-3">
+                <div class="card-body text-center p-2 p-md-3">
                     <h3 class="fw-bold text-info mb-0">৳ <?= number_format($stats['total_value'] ?? 0, 2) ?></h3>
                     <p class="text-muted mb-0 fs-11">Total Asset Value</p>
                 </div>
@@ -138,9 +129,9 @@ $statusBadges = [
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-primary btn-sm px-3"><i class="fa-solid fa-filter me-1"></i> Filter</button>
-                    <a href="<?= $GLOBALS['base_url'] ?>/office-assets" class="btn btn-light btn-sm ms-1"><i class="fa-solid fa-arrows-rotate"></i></a>
+                <div class="col-md-3 mt-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm flex-fill"><i class="fa-solid fa-filter me-1"></i> Filter</button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/office-assets" class="btn btn-light btn-sm flex-fill text-center"><i class="fa-solid fa-arrows-rotate"></i> Reset</a>
                 </div>
             </form>
         </div>
@@ -402,6 +393,26 @@ $statusBadges = [
         </form>
     </div>
 </div>
+
+<style>
+@media (max-width: 480px) {
+    #stats-cards .card.custom-card {
+        padding: 10px !important;
+    }
+    #stats-cards .card-body {
+        padding: 0px !important;
+    }
+    #stats-cards .fs-11 {
+        font-size: 10px !important;
+    }
+    #stats-cards h3 {
+        font-size: 18px !important;
+    }
+    #stats-cards p {
+    font-size: 13px !important;
+}
+}
+</style>
 
 <script>
 function openEditModal(button) {

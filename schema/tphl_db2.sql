@@ -1694,6 +1694,7 @@ CREATE TABLE `expense_adjustments` (
   `id` int(10) UNSIGNED NOT NULL,
   `user_id` int(11) NOT NULL COMMENT 'User who is making the adjustment request',
   `cashout_request_id` int(11) NOT NULL COMMENT 'FK to cashout_requests.id',
+  `parent_type` varchar(50) DEFAULT 'cashout',
   `adjustment_type` enum('return','extra') NOT NULL COMMENT 'Return unused money or request extra money',
   `title` varchar(255) NOT NULL,
   `description` text DEFAULT NULL,

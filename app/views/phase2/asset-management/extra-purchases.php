@@ -13,15 +13,6 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
     <!-- Page Header -->
     <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
         <h1 class="page-title fw-semibold fs-18 mb-0">Extra Asset Purchase Requests</h1>
-        <div class="ms-md-1 ms-0">
-            <nav>
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="<?= $GLOBALS['base_url'] ?>/home">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="<?= $GLOBALS['base_url'] ?>/asset-products">Asset Management</a></li>
-                    <li class="breadcrumb-item active">Extra Purchases</li>
-                </ol>
-            </nav>
-        </div>
     </div>
 
     <!-- Alert Messages -->
@@ -87,9 +78,9 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                         <option value="purchased" <?= ($_GET['status'] ?? '') === 'purchased' ? 'selected' : '' ?>>Purchased</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-primary btn-sm px-3"><i class="fa-solid fa-filter me-1"></i> Filter</button>
-                    <a href="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases" class="btn btn-light btn-sm ms-1"><i class="fa-solid fa-arrows-rotate"></i></a>
+                <div class="col-md-3 mt-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm flex-fill"><i class="fa-solid fa-filter me-1"></i> Filter</button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases" class="btn btn-light btn-sm flex-fill text-center"><i class="fa-solid fa-arrows-rotate"></i> Reset</a>
                 </div>
             </form>
         </div>

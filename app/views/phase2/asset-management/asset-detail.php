@@ -23,15 +23,6 @@ $conditionStatuses = ['new','ok','need_repair','repairing','repaired','damaged',
         <h1 class="page-title fw-semibold fs-18 mb-0">
             <i class="fa-solid fa-box text-primary me-2"></i><?= htmlspecialchars($asset['asset_code']) ?>
         </h1>
-        <div class="ms-md-1 ms-0">
-            <nav>
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="<?= $GLOBALS['base_url'] ?>/home">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="<?= $GLOBALS['base_url'] ?>/office-assets">All Assets</a></li>
-                    <li class="breadcrumb-item active"><?= htmlspecialchars($asset['asset_code']) ?></li>
-                </ol>
-            </nav>
-        </div>
     </div>
 
     <!-- Alert Messages -->

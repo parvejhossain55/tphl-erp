@@ -49,7 +49,6 @@ if ($current_server == 2) {
         // Google Gemini API Key
         "gemini_api_key" => "AQ.Ab8RN6KH-h0rRtsg0SIvPvY8GuHa6V3gx5VY0c3SC52cLSqybQ",
     ];
-
 }
 
 ///////////////////////////////////////////////
