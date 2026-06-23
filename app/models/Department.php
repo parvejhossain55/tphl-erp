@@ -115,33 +115,66 @@ class Department extends Model
 
     public function delete($id)
     {
-        // 1. Delete tasks of employees in this department
+        // 1. Delete payslip_details for employees in this department
         $stmt = $this->db->prepare("
-        DELETE t FROM tasks t
-        JOIN employees e ON t.employee_id = e.id
-        WHERE e.department_id = ?
-    ");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $stmt->close();
+            DELETE pd FROM payslip_details pd
+            JOIN payslips p ON pd.payslip_id = p.id
+            JOIN employees e ON p.employee_id = e.id
+            WHERE e.department_id = ?
+        ");
+        if ($stmt) {
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $stmt->close();
+        }
 
-        // 2. Delete employees in this department
+        // 2. Delete payslips for employees in this department
+        $stmt = $this->db->prepare("
+            DELETE p FROM payslips p
+            JOIN employees e ON p.employee_id = e.id
+            WHERE e.department_id = ?
+        ");
+        if ($stmt) {
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        // 3. Delete tasks of employees in this department
+        $stmt = $this->db->prepare("
+            DELETE t FROM tasks t
+            JOIN employees e ON t.user_id = e.id
+            WHERE e.department_id = ?
+        ");
+        if ($stmt) {
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $stmt->close();
+        }
+
+        // 4. Delete employees in this department
         $stmt = $this->db->prepare("DELETE FROM employees WHERE department_id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $stmt->close();
+        if ($stmt) {
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $stmt->close();
+        }
 
-        // 3. Delete designations linked to this department
+        // 5. Delete designations linked to this department
         $stmt = $this->db->prepare("DELETE FROM designations WHERE department_id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $stmt->close();
+        if ($stmt) {
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $stmt->close();
+        }
 
-        // 4. Delete the department
+        // 6. Delete the department
         $stmt = $this->db->prepare("DELETE FROM departments WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $stmt->close();
+        if ($stmt) {
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $stmt->close();
+        }
 
         return true;
     }

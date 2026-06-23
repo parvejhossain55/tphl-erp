@@ -69,8 +69,9 @@ class HrmDashboardController extends Controller
         // $totalLeadsCount = count($totalLeads);
         $totalDeparttment = count($departmentCount);
         $totalPaidSalary = $this->payslipModel->getPaidSalarySum($year, $month);
-
         $totalUnpaidSalary = $this->payslipModel->getUnpaidSalarySum($year, $month);
+        $paidCount = $this->payslipModel->getPaidCount($year, $month);
+        $unpaidEmployeeCount = $totalEmployees - $paidCount;
         // Max employee for progress bar calculation
 
         $departmentCount2 = count($departmentEmpCount);
@@ -190,6 +191,8 @@ class HrmDashboardController extends Controller
             "departmentEmpCount"    => $departmentEmpCount,
             "totalPaidSalary"    => $totalPaidSalary,
             "totalUnpaidSalary"    => $totalUnpaidSalary,
+            "unpaidEmployeeCount"  => $unpaidEmployeeCount,
+            "paidEmployeeCount"    => $paidCount,
             "deptLabels"    => $deptLabels,
             "maxEmployee"    => $maxEmployee,
             "deptSeries"    => $deptSeries,

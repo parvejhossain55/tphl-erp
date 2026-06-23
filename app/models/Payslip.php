@@ -103,13 +103,17 @@ public function getPendingCount($year = null, $month = null)
     {
         $stmt = $this->db->prepare("
             INSERT INTO payslips
-            (employee_id, designation_id, payslip_month, total_earning, total_deduction, net_salary, status,created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?,?)
+            (employee_id, designation_id, payslip_month, total_earning, total_deduction, net_salary, status, company_bank_id, payment_method, upload_by, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $status = 'pending';
+        
+        $status = $data['status'] ?? 'pending';
+        $companyBankId = isset($data['company_bank_id']) ? $data['company_bank_id'] : null;
+        $paymentMethod = isset($data['payment_method']) ? $data['payment_method'] : null;
+        $uploadBy = $data['upload_by'] ?? 'manual';
 
         $stmt->bind_param(
-            "iisdddsi",
+            "iisdddsissi",
             $data['employee_id'],
             $data['designation_id'],
             $data['payslip_month'],
@@ -117,8 +121,10 @@ public function getPendingCount($year = null, $month = null)
             $data['total_deduction'],
             $data['net_salary'],
             $status,
+            $companyBankId,
+            $paymentMethod,
+            $uploadBy,
             $data['created_by']
-
         );
 
         $stmt->execute();
@@ -271,63 +277,98 @@ public function getPendingCount($year = null, $month = null)
 
 
 
-    public function getAllWithEmployeeFiltered($year = null, $month = null)
+    public function getAllWithEmployeeFiltered($year = null, $month = null, $status = null)
     {
+        if (empty($year)) $year = date('Y');
+        if (empty($month)) $month = date('m');
 
+        if ($status === 'unpaid') {
+            $sql = "
+                SELECT 
+                    p.id AS id,
+                    e.id AS employee_id,
+                    e.full_name AS employee_name,
+                    e.photo AS photo,
+                    e.email AS email,
+                    e.joining_date AS joining_date,
+                    desg.name AS desgination_name,
+                    dept.name AS department_name,
+                    p.total_earning,
+                    p.total_deduction,
+                    COALESCE(p.net_salary, e.basic_salary) AS net_salary,
+                    COALESCE(p.status, 'unpaid') AS status,
+                    p.payment_method,
+                    p.company_bank_id,
+                    p.upload_by,
+                    ar.approved_at AS approval_time,
+                    ar.status AS approval_status
+                FROM employees AS e
+                LEFT JOIN designations AS desg ON e.designation_id = desg.id
+                LEFT JOIN departments AS dept ON e.department_id = dept.id
+                LEFT JOIN payslips AS p ON p.employee_id = e.id AND YEAR(p.payslip_month) = ? AND MONTH(p.payslip_month) = ?
+                LEFT JOIN (
+                    SELECT *
+                    FROM (
+                        SELECT *,
+                               ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY approved_at DESC) AS rn
+                        FROM approval_requests
+                        WHERE source_table = 'payslips' AND status IN ('approved','partially_approved')
+                    ) AS t
+                    WHERE rn = 1
+                ) AS ar ON ar.source_id = p.id
+                WHERE (p.id IS NOT NULL AND p.status != 'paid') OR (p.id IS NULL)
+                ORDER BY p.id DESC, e.full_name ASC
+            ";
+        } else {
+            $sql = "
+                SELECT 
+                    p.id AS id,
+                    e.id AS employee_id,
+                    e.full_name AS employee_name,
+                    e.photo AS photo,
+                    e.email AS email,
+                    e.joining_date AS joining_date,
+                    d.name AS desgination_name,
+                    dept.name AS department_name,
+                    p.total_earning,
+                    p.total_deduction,
+                    p.net_salary,
+                    p.status,
+                    p.payment_method,
+                    p.company_bank_id,
+                    p.upload_by,
+                    ar.approved_at AS approval_time,
+                    ar.status AS approval_status
+                FROM payslips AS p
+                LEFT JOIN employees AS e ON p.employee_id = e.id
+                LEFT JOIN designations AS d ON e.designation_id = d.id
+                LEFT JOIN departments AS dept ON e.department_id = dept.id
+                LEFT JOIN (
+                    SELECT *
+                    FROM (
+                        SELECT *,
+                               ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY approved_at DESC) AS rn
+                        FROM approval_requests
+                        WHERE source_table = 'payslips' AND status IN ('approved','partially_approved')
+                    ) AS t
+                    WHERE rn = 1
+                ) AS ar ON ar.source_id = p.id
+                WHERE YEAR(p.payslip_month) = ? AND MONTH(p.payslip_month) = ?
+            ";
 
+            if ($status === 'paid') {
+                $sql .= " AND p.status = 'paid'";
+            }
 
-        $sql = "
-    SELECT p.*, 
-           e.id AS employee_id,
-           e.full_name AS employee_name,
-           e.photo,
-           e.email,
-           e.joining_date,
-           d.name AS desgination_name,
-           ar.approved_at AS approval_time,
-           ar.status AS approval_status
-    FROM payslips AS p
-    LEFT JOIN employees AS e ON p.employee_id = e.id
-    LEFT JOIN designations AS d ON p.designation_id = d.id
-   LEFT JOIN (
-    SELECT *
-    FROM (
-        SELECT *,
-               ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY approved_at DESC) AS rn
-        FROM approval_requests
-        WHERE source_table = 'payslips' AND status IN ('approved','partially_approved')
-    ) AS t
-    WHERE rn = 1
-) AS ar ON ar.source_id = p.id
-
-    WHERE 1
-";
-
-
-        $params = [];
-        $types  = "";
-
-        if (!empty($year)) {
-            $sql .= " AND YEAR(p.payslip_month) = ?";
-            $params[] = $year;
-            $types .= "i";
+            $sql .= " ORDER BY p.id DESC";
         }
-
-        if (!empty($month)) {
-            $sql .= " AND MONTH(p.payslip_month) = ?";
-            $params[] = $month;
-            $types .= "i";
-        }
-
-        $sql .= " ORDER BY p.id DESC";
 
         $stmt = $this->db->prepare($sql);
-
-        if (!empty($params)) {
-            $stmt->bind_param($types, ...$params);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
         }
 
-
+        $stmt->bind_param("ii", $year, $month);
         $stmt->execute();
         $result = $stmt->get_result();
         $data = $result->fetch_all(MYSQLI_ASSOC);

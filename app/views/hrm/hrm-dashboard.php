@@ -185,10 +185,15 @@
         <div class="col-xxl-3 col-xl-3 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
-                    <div class="card__icon"><span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span></div>
+                    <div class="card__icon" style="background: rgba(40, 167, 69, 0.1); color: #28a745;">
+                        <span><i class="fa-regular fa-user-check"></i></span>
+                    </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Salary Paid (<?= $filterLabel ?>) </h6>
-                        <h4 class="card__title text-break text-success mb-10"> &#2547; <?= $totalPaidSalary ?></h4>
+                        <h6 class="card__sub-title mb-10">Paid Employees (<?= $filterLabel ?>)</h6>
+                        <div class="d-flex flex-column align-items-start gap-1">
+                            <h4 class="card__title text-break text-success mb-0"><?= $paidEmployeeCount ?> Employees</h4>
+                            <span class="fs-13 text-success fw-bold">&#2547; <?= number_format($totalPaidSalary, 2) ?></span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -197,10 +202,15 @@
         <div class="col-xxl-3 col-xl-3 col-md-6 col-sm-12 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-sm">
-                    <div class="card__icon"><span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span></div>
+                    <div class="card__icon" style="background: rgba(220, 53, 69, 0.1); color: #dc3545;">
+                        <span><i class="fa-regular fa-user-xmark"></i></span>
+                    </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Unpaid Salary (<?= $filterLabel ?>) </h6>
-                        <h4 class="card__title text-break text-success mb-10"> &#2547; <?= $totalUnpaidSalary ?></h4>
+                        <h6 class="card__sub-title mb-10">Unpaid Employees (<?= $filterLabel ?>)</h6>
+                        <div class="d-flex flex-column align-items-start gap-1">
+                            <h4 class="card__title text-break text-danger mb-0"><?= $unpaidEmployeeCount ?> Employees</h4>
+                            <span class="fs-13 text-danger fw-bold">&#2547; <?= number_format($totalUnpaidSalary, 2) ?></span>
+                        </div>
                     </div>
                 </div>
             </div>

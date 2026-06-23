@@ -493,6 +493,11 @@ $routes = [
     "store-payslip-item" => ["controller" => "PayslipItemController", "method" => "store"],
     "update-payslip-item" => ["controller" => "PayslipItemController", "method" => "update"],
     "delete-payslip-item" => ["controller" => "PayslipItemController", "method" => "delete"],
+
+    // payslip import
+    "import-payslips" => ["controller" => "PayrollController", "method" => "showImportForm"],
+    "execute-import-payslips" => ["controller" => "PayrollController", "method" => "importCSV"],
+    "download-sample-payslips-csv" => ["controller" => "PayrollController", "method" => "downloadSampleCSV"],
     //======payrolls==========//
 
     // ====== Camera Controller ======= //
