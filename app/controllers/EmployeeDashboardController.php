@@ -39,21 +39,46 @@ class EmployeeDashboardController extends Controller
         $user = $stmt->get_result()->fetch_assoc();
         if (!$user) return null;
 
-        $employeeId = (int) $user['employee_id'];
+        $employeeId = (int) ($user['employee_id'] ?? 0);
+        $employee = null;
 
-        $stmt = $this->db->prepare("
-            SELECT e.*,
-                   d.name AS department_name,
-                   des.name AS designation_name
-            FROM employees e
-            LEFT JOIN departments d    ON e.department_id  = d.id
-            LEFT JOIN designations des ON e.designation_id = des.id
-            WHERE e.id = ? LIMIT 1
-        ");
-        $stmt->bind_param("i", $employeeId);
-        $stmt->execute();
-        $employee = $stmt->get_result()->fetch_assoc();
-        if (!$employee) return null;
+        if ($employeeId > 0) {
+            $stmt = $this->db->prepare("
+                SELECT e.*,
+                       d.name AS department_name,
+                       des.name AS designation_name
+                FROM employees e
+                LEFT JOIN departments d    ON e.department_id  = d.id
+                LEFT JOIN designations des ON e.designation_id = des.id
+                WHERE e.id = ? LIMIT 1
+            ");
+            $stmt->bind_param("i", $employeeId);
+            $stmt->execute();
+            $employee = $stmt->get_result()->fetch_assoc();
+        }
+
+        // Fallback: If no employee record exists in the database, construct it from the users table and session
+        if (!$employee) {
+            $employee = [
+                'id' => 0,
+                'user_id' => $user['id'],
+                'full_name' => $user['full_name'] ?? $_SESSION['user']['full_name'] ?? '',
+                'phone' => !empty($user['phone']) ? $user['phone'] : 'N/A',
+                'email' => !empty($user['email']) ? $user['email'] : ($_SESSION['user']['email'] ?? 'N/A'),
+                'address' => !empty($user['address']) ? $user['address'] : 'N/A',
+                'nid' => !empty($user['nid']) ? $user['nid'] : 'N/A',
+                'dob' => null,
+                'photo' => !empty($user['photo']) ? $user['photo'] : null,
+                'employee_id' => 'USR-' . $user['id'],
+                'employee_status' => 'Active',
+                'employee_type' => 'Management',
+                'joining_date' => $user['created_at'] ?? null,
+                'workplace' => 'HQ',
+                'department_name' => !empty($_SESSION['user']['department_name']) ? ucwords($_SESSION['user']['department_name']) : 'Management',
+                'designation_name' => !empty($_SESSION['user']['designation_name']) ? ucwords($_SESSION['user']['designation_name']) : 'Administrator',
+            ];
+            $employeeId = 0;
+        }
 
         // Return both so callers can use the correct ID per query:
         //  - $employeeId  → for emp_attendances, employee_leaves (FK = employees.id)
@@ -411,7 +436,31 @@ class EmployeeDashboardController extends Controller
 
         $taskId   = (int)$_POST['task_id'];
         $progress = (int)$_POST['progress'];
-        $success  = $this->taskModel->updateProgress($taskId, $progress);
+        $remarks  = isset($_POST['remarks']) ? trim($_POST['remarks']) : null;
+        $imageName = null;
+
+        // Process File Upload
+        if (isset($_FILES['attachment_image']) && $_FILES['attachment_image']['error'] === UPLOAD_ERR_OK) {
+            $fileTmpPath = $_FILES['attachment_image']['tmp_name'];
+            $originalName = $_FILES['attachment_image']['name'];
+            $fileExtension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            if (in_array($fileExtension, $allowedExtensions)) {
+                $uploadDir = dirname(__DIR__, 2) . '/public/uploads/tasks/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $newFileName = time() . '_' . rand(1000, 9999) . '.' . $fileExtension;
+                $destPath = $uploadDir . $newFileName;
+
+                if (move_uploaded_file($fileTmpPath, $destPath)) {
+                    $imageName = $newFileName;
+                }
+            }
+        }
+
+        $success  = $this->taskModel->updateProgress($taskId, $progress, $remarks, $imageName);
 
         if ($success) {
             header("Location: " . $GLOBALS['base_url'] . "/employee-dashboard");

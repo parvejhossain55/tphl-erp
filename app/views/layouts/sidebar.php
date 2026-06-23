@@ -15,6 +15,12 @@
     // Only hide create/edit/delete UI for truly view-only construction roles
     // Roles 3 (Director) and 22 (PM Head) are APPROVERS — they need to see Action columns
     $conReadOnlyRoles = []; // Currently no role is fully restricted — footer.php handles role 20
+
+    // Check if the current user belongs to Management (Admin or Super Admin)
+    $isManagement = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3]);
+
+    // Check if the current user belongs to Management (Admin or Super Admin)
+    $isManagement = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3]);
     ?>
 
 
@@ -63,6 +69,7 @@
                             </a>
                         </li>
 
+                        <?php if (!$isManagement): ?>
                         <!-- Location -->
                         <li class="slide ">
                             <a href="<?= $base_url ?>/location-lists"
@@ -90,6 +97,7 @@
                             </a>
                         </li>
 
+                        <?php endif; ?>
                         <!-- Lead & Booking -->
                         <li
                             class="slide has-sub <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients', 'client-refunds'], $current_route) ? 'active' : '' ?>">
@@ -100,10 +108,12 @@
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             </a>
                             <ul class="sidebar-menu child2" style="display:block;">
+                                <?php if (!$isManagement): ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/create-lead"
                                         class="sidebar__menu-item <?= isActive('create-lead', $current_route) ?>">Add Lead</a>
                                 </li>
+                                <?php endif; ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/lead-lists"
                                         class="sidebar__menu-item <?= isActive('lead-lists', $current_route) ?>">Lead List</a>
@@ -113,33 +123,43 @@
                                         class="sidebar__menu-item <?= isActive('my-all-assigned-leads', $current_route) ?>">My
                                         All Assigned Leads </a>
                                 </li>
+                                <?php if (!$isManagement): ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/today-leads"
                                         class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">
                                         Today Leads Assigned
                                     </a>
                                 </li>
+                                <?php endif; ?>
+                                <?php if (!$isManagement): ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/today-follow-up"
                                         class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today
                                         Follow Up <span class="badge bg-primary ms-2"><?= $todayCount ?></span> </a>
                                 </li>
+                                <?php endif; ?>
+                                <?php if (!$isManagement): ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/upcoming-follow-up"
                                         class="sidebar__menu-item <?= isActive('overdue-next-followup', $current_route) ?>">
                                         Upcoming Follow Up<span class="ms-2 badge bg-warning"><?= $upcomingCount ?></span></a>
                                 </li>
+                                <?php endif; ?>
 
+                                <?php if (!$isManagement): ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/my-onboarding-projects"
                                         class="sidebar__menu-item <?= isActive('my-onboarding-projects', $current_route) ?>">My
                                         Onboarding Projects </a>
                                 </li>
+                                <?php endif; ?>
+                                <?php if (!$isManagement): ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/onboarding-clients"
                                         class="sidebar__menu-item <?= isActive('onboarding-clients', $current_route) ?>">All
                                         Onboarding Clients</a>
                                 </li>
+                                <?php endif; ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/client-refunds"
                                         class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">Client
@@ -159,11 +179,13 @@
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
                         <ul class="sidebar-menu child2" style="display:block;">
+                            <?php if (!$isManagement): ?>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/create-project"
                                     class="sidebar__menu-item <?= isActive('create-project', $current_route) ?>">Add
                                     Project</a>
                             </li>
+                            <?php endif; ?>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/project-lists"
                                     class="sidebar__menu-item <?= isActive('project-lists', $current_route) ?>">Project
@@ -183,10 +205,12 @@
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             </a>
                             <ul class="sidebar-menu child2" style="display:block;">
+                                <?php if (!$isManagement): ?>
                                 <li class="slide child2">
                                     <a href="<?= $base_url ?>/create-flat"
                                         class="sidebar__menu-item <?= isActive('create-flat', $current_route) ?>">Add Flat</a>
                                 </li>
+                                <?php endif; ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/flat-lists"
                                         class="sidebar__menu-item <?= isActive('flat-lists', $current_route) ?>">Flat List</a>
@@ -202,6 +226,7 @@
                             </a>
                         </li>
 
+                        <?php if (!$isManagement): ?>
                         <!-- Executive Team  -->
                         <!--target set-sales-target show here for sales executiive team  -->
                         <li class="slide ">
@@ -221,11 +246,12 @@
                                 <span class="sidebar__menu-label">Contact Lists</span>
                             </a>
                         </li>
+                        <?php endif; ?>
                     <?php endif; ?>
 
                 <?php endif; ?>
                 <!--End Sales Manager CATEGORY -->
-                <?php if (hasPermission("whatsapp panel")): ?>
+                <?php if (hasPermission("whatsapp panel") && !$isManagement): ?>
                     <!--Sales CATEGORY -->
 
                     <div class="card-title ms-4 fs-6 fw-semibold mb-2">Whatsapp System</div>
@@ -298,7 +324,7 @@
                 <?php endif; ?>
 
                 <!-- Camera Manage -->
-                <?php if (hasPermission("Camera Manage")): ?>
+                <?php if (hasPermission("Camera Manage") && !$isManagement): ?>
                     <li
                         class="slide has-sub <?= isActive(['create-camera', 'camera-lists'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
@@ -565,6 +591,7 @@
                             <span class="sidebar__menu-label">Task Dashbaord</span>
                         </a>
                     </li>
+                    <?php if (!$isManagement): ?>
                     <!-- Teams Manage -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/teams"
@@ -573,6 +600,7 @@
                             <span class="sidebar__menu-label">Sales Teams Add</span>
                         </a>
                     </li>
+                    <?php endif; ?>
                     <!-- Location -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/employee-lists"
@@ -583,6 +611,7 @@
                         </a>
                     </li>
 
+                    <?php if (!$isManagement): ?>
                     <!-- department -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/departments"
@@ -721,6 +750,7 @@
 
                     </ul>
 
+                    <?php endif; ?>
                     <!-- User Activity Log — Admin / Management only -->
                     <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
                     <li class="slide <?= isActive('user-activity-log', $current_route) ?>">
@@ -802,18 +832,22 @@
 
 
 
+                <!-- My Profile (Accessible by all logged-in users) -->
+                <li class="slide <?= isActive('my-profile', $current_route) ?>">
+                    <a href="<?= $base_url ?>/my-profile"
+                        class="sidebar__menu-item <?= isActive('my-profile', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fas fa-user"></i></div>
+                        <span class="sidebar__menu-label">My Profile</span>
+                    </a>
+                </li>
+
                 <?php if (hasPermission("Employee Dashboard")): ?>
-                    <!-- Sales Dashboard -->
-                    <li class="slide ">
+                    <!-- Employee Dashboard -->
+                    <li class="slide <?= isActive(['employee-dashboard', 'my-attendance', 'my-leaves'], $current_route) ?>">
                         <a href="<?= $base_url ?>/employee-dashboard"
                             class="sidebar__menu-item <?= isActive('employee-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">My Dashboard</span>
-                        </a>
-                        <a href="<?= $base_url ?>/my-profile"
-                            class="sidebar__menu-item <?= isActive('my-profile', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fas fa-user"></i></div>
-                            <span class="sidebar__menu-label">My Profile</span>
                         </a>
                         <a href="<?= $base_url ?>/my-attendance"
                             class="d-none sidebar__menu-item <?= isActive('my-attendance', $current_route) ?>">
@@ -825,15 +859,13 @@
                             <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
                             <span class="sidebar__menu-label">My Leaves </span>
                         </a>
-
                     </li>
-
                 <?php endif; ?>
 
 
 
                 <!--Start CED  -->
-                <?php if (hasPermission("CED Manage")): ?>
+                <?php if (hasPermission("CED Manage") && !$isManagement): ?>
                     <!--CED CATEGORY -->
                     <li class="sidebar__menu-category">
 
@@ -913,6 +945,7 @@
                             <span class="sidebar__menu-label">Projects Cashout</span>
                         </a>
                     </li>
+                    <?php if (!$isManagement): ?>
                     <li class="slide <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
                         <a href="<?= $GLOBALS['base_url'] ?>/con-wastage"
                             class="sidebar__menu-item <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
@@ -922,6 +955,7 @@
                     </li>
 
 
+                    <?php endif; ?>
                     <!-- ===================== -->
                     <!-- Manage Cash In -->
                     <!-- ===================== -->
@@ -947,6 +981,7 @@
                         </ul>
                     </li>
 
+                    <?php if (!$isManagement): ?>
                     <li
                         class="slide has-sub <?= isActive(['create-cashout-request', 'admin-cashout-requests', 'expense-adjustments'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
@@ -979,6 +1014,7 @@
                         </ul>
                     </li>
 
+                    <?php endif; ?>
                     <!-- ===================== -->
                     <!-- Construction Finance -->
                     <!-- ===================== -->
@@ -1093,7 +1129,7 @@
                 <?php endif ?>
                 <!--ROle & Permission -->
 
-                <?php if (hasPermission("My Leave Request")): ?>
+                <?php if (hasPermission("My Leave Request") && !$isManagement): ?>
                     <ul class="sidebar-menu child2" style="display:block;">
                         <li class="slide ">
                             <a href="<?= $base_url ?>/create-self-leave-request"
@@ -1123,33 +1159,7 @@
                     </li>
 
 
-                    <li
-                        class="slide has-sub <?= isActive(['create-review', 'review-lists'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['create-review', 'review-lists'], $current_route) ? 'active' : '' ?>">
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                            <div class="side-menu__icon">
-                                <i class="fas fa-clipboard-list"></i>
-                            </div>
-                            <span class="sidebar__menu-label">Review Manage</span>
-                        </a>
 
-                        <!-- always open -->
-                        <ul class="sidebar-menu child1" style="display:block;">
-                            <li class="slide <?= isActive('create-review', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('create-review', $current_route) ?>"
-                                    href="<?= $base_url ?>/create-review">
-                                    Add Review
-                                </a>
-                            </li>
-                            <li class="slide <?= isActive('review-lists', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('review-lists', $current_route) ?>"
-                                    href="<?= $base_url ?>/review-lists">
-                                    Review List
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
 
 
                     <!-- Location -->
@@ -1164,9 +1174,9 @@
 
                     <!-- Site Manage -->
                     <li
-                        class="slide has-sub <?= isActive(['slider-manage', 'site-settings', 'home-footer-setting', 'flat-purchase-rules'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['site-settings', 'home-footer-setting', 'flat-purchase-rules'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['slider-manage', 'site-settings', 'home-footer-setting', 'flat-purchase-rules'], $current_route) ? 'active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['site-settings', 'home-footer-setting', 'flat-purchase-rules'], $current_route) ? 'active' : '' ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             <div class="side-menu__icon">
                                 <i class="fa-solid fa-gear"></i>
@@ -1176,13 +1186,6 @@
 
                         <!-- always open -->
                         <ul class="sidebar-menu child1" style="display:block;">
-                            <li class="slide <?= isActive('slider-manage', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('slider-manage', $current_route) ?>"
-                                    href="<?= $GLOBALS['base_url'] ?>/slider-manage">
-                                    Slider Manage
-                                </a>
-                            </li>
-
                             <li class="slide <?= isActive('site-settings', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('site-settings', $current_route) ?>"
                                     href="<?= $GLOBALS['base_url'] ?>/site-settings">
@@ -1200,34 +1203,7 @@
                     </li>
 
 
-                    <li
-                        class="slide has-sub <?= isActive(['create-blog', 'blog-lists'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['create-blog', 'blog-lists'], $current_route) ? 'active' : '' ?>">
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                            <div class="side-menu__icon">
-                                <i class="fas fa-clipboard-list"></i>
-                            </div>
-                            <span class="sidebar__menu-label">Blog Manage</span>
-                        </a>
 
-                        <!-- always open -->
-                        <ul class="sidebar-menu child1" style="display:block;">
-                            <li class="slide <?= isActive('create-blog', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('create-blog', $current_route) ?>"
-                                    href="<?= $base_url ?>/create-blog">
-                                    Add Blog
-                                </a>
-                            </li>
-
-                            <li class="slide <?= isActive('blog-lists', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('blog-lists', $current_route) ?>"
-                                    href="<?= $base_url ?>/blog-lists">
-                                    Blog List
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
 
 
 

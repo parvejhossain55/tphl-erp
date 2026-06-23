@@ -354,14 +354,7 @@ $routes = [
     "update-leadSource" => ["controller" => "LeadSourceController", "method" => "update"],
     "delete-leadSource" => ["controller" => "LeadSourceController", "method" => "delete"],
 
-    //blogs
-    "blog-lists" => ["controller" => "BlogController", "method" => "index"],
-    "create-blog" => ["controller" => "BlogController", "method" => "create"],
-    "store-blog" => ["controller" => "BlogController", "method" => "store"],
-    "blog-details/(\d+)" => ["controller" => "BlogController", "method" => "show"],
-    "edit-blog/(\d+)" => ["controller" => "BlogController", "method" => "edit"],
-    "update-blog/(\d+)" => ["controller" => "BlogController", "method" => "update"],
-    "delete-blog/(\d+)" => ["controller" => "BlogController", "method" => "delete"],
+
 
     //location
     "location-lists" => ["controller" => "LocationController", "method" => "index"],
@@ -395,11 +388,7 @@ $routes = [
     "delete-leave-type" => ["controller" => "Leaves\\LeaveTypeController", "method" => "delete"],
 
 
-    //Others Site controller 
-    "slider-manage" => ["controller" => "SiteManage\\SliderController", "method" => "index"],
-    "store-slider" => ["controller" => "SiteManage\\SliderController", "method" => "store"],
-    "update-slider" => ["controller" => "SiteManage\\SliderController", "method" => "update"],
-    "delete-slider" => ["controller" => "SiteManage\\SliderController", "method" => "delete"],
+
     // "store-leave-type" => ["controller" => "Leaves\\LeaveTypeController","method" => "store" ],
 
     // site-Setting 
@@ -417,13 +406,7 @@ $routes = [
     "store-company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "store"],
     "update-company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "update"],
     "delete-company-bank-accounts" => ["controller" => "SiteManage\\BankAccountController", "method" => "delete"],
-    //company bank accounts
-    "review-lists" => ["controller" => "ReviewController", "method" => "index"],
-    "create-review" => ["controller" => "ReviewController", "method" => "create"],
-    "store-review" => ["controller" => "ReviewController", "method" => "store"],
-    "edit-review/(\d+)" => ["controller" => "ReviewController", "method" => "edit"],
-    "update-review/(\d+)" => ["controller" => "ReviewController", "method" => "update"],
-    "delete-review" => ["controller" => "ReviewController", "method" => "delete"],
+
     // ==========SALES & BUISENESS======//
 
     //project

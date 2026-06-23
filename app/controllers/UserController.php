@@ -54,7 +54,8 @@ class UserController extends Controller
         if ($loggedInRoleId == 1) {
             $roles = $this->roleModel->getAll();
         } else {
-            $roles = $this->roleModel->getAllFilterRole();
+            // $roles = $this->roleModel->getAllFilterRole();
+              $roles = $this->roleModel->getAll();
         }
 
         $this->view("users/create-user", [
@@ -140,7 +141,8 @@ class UserController extends Controller
         if ($loggedInRoleId == 1) {
             $roles = $this->roleModel->getAll();
         } else {
-            $roles = $this->roleModel->getAllFilterRole();
+            // $roles = $this->roleModel->getAllFilterRole();
+              $roles = $this->roleModel->getAll();
         }
         if (!$user) {
             setError("User not found");
@@ -195,13 +197,27 @@ class UserController extends Controller
             'employee_id'    => $_POST['employee_id'] ?? null,
         ];
 
+        $redirectTo = $_POST['redirect_to'] ?? $_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/user-lists";
+
+        // Get the user we are updating to verify role constraints
+        $existingUser = $this->userModel->find($id);
+        if (!$existingUser) {
+            setError("User not found");
+            header("Location: " . $redirectTo);
+            exit;
+        }
+
+        // Only Admin (1) and Super Admin/Director (3) can update user roles
+        $loggedInUserRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        if (!in_array($loggedInUserRole, [1, 3])) {
+            $data['role_id'] = $existingUser['role_id'];
+        }
+
         // ===== VALIDATION =====
         $errors = [];
         if (empty($data['full_name'])) $errors[] = "Full Name is required";
         if (empty($data['email'])) $errors[] = "Email is required";
         elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) $errors[] = "Invalid email format";
-
-        $redirectTo = $_POST['redirect_to'] ?? $_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/user-lists";
 
         if (!empty($errors)) {
             setError(implode('<br>', $errors));

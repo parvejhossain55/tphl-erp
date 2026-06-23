@@ -54,12 +54,19 @@ $show_breadcrumb = true;
                     <!-- Role -->
                     <div class="col-lg-6 mb-3">
                         <label for="role">Role <span>*</span></label>
-                        <select class="form-control" name="role_id" id="role" required>
+                        <?php 
+                        $loggedInUserRole = (int)($_SESSION['user']['role_id'] ?? 0);
+                        $canEditRole = in_array($loggedInUserRole, [1, 3]);
+                        ?>
+                        <select class="form-control" name="role_id" id="role" required <?= !$canEditRole ? 'disabled' : '' ?>>
                             <option value="">Select Role</option>
                             <?php foreach ($roles as $role): ?>
                                 <option value="<?= $role['id'] ?>" <?= ($user['role_id'] == $role['id'] ? 'selected' : '') ?>><?= $role['name'] ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <?php if (!$canEditRole): ?>
+                            <input type="hidden" name="role_id" value="<?= $user['role_id'] ?>">
+                        <?php endif; ?>
                     </div>
                     <!-- Address -->
                     <div class="col-lg-6 mb-3">

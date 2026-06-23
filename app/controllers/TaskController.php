@@ -298,10 +298,33 @@ class TaskController extends Controller
             return;
         }
 
-        $taskId = (int)$_POST['task_id'];
+        $taskId   = (int)$_POST['task_id'];
         $progress = (int)$_POST['progress'];
+        $remarks  = isset($_POST['remarks']) ? trim($_POST['remarks']) : null;
+        $imageName = null;
 
-        $success = $this->taskModel->updateProgress($taskId, $progress);
+        // Process File Upload
+        if (isset($_FILES['attachment_image']) && $_FILES['attachment_image']['error'] === UPLOAD_ERR_OK) {
+            $fileTmpPath = $_FILES['attachment_image']['tmp_name'];
+            $originalName = $_FILES['attachment_image']['name'];
+            $fileExtension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            if (in_array($fileExtension, $allowedExtensions)) {
+                $uploadDir = dirname(__DIR__, 2) . '/public/uploads/tasks/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $newFileName = time() . '_' . rand(1000, 9999) . '.' . $fileExtension;
+                $destPath = $uploadDir . $newFileName;
+
+                if (move_uploaded_file($fileTmpPath, $destPath)) {
+                    $imageName = $newFileName;
+                }
+            }
+        }
+
+        $success = $this->taskModel->updateProgress($taskId, $progress, $remarks, $imageName);
 
         if ($success) {
             header("Location: " . $GLOBALS['base_url'] . "/task-dashboard");
