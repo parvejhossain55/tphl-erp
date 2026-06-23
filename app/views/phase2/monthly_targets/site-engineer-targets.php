@@ -154,7 +154,7 @@ $phaseColors = ['var(--clr-theme-primary)','#10b981','#f59e0b','#ef4444','#14b8a
     <!-- Empty State -->
     <div class="card custom-card">
         <div class="card-body">
-            <div class="pt-empty text-light">
+            <div class="pt-empty ">
                 <i class="fal fa-calendar-times"></i>
                 <div style="font-size:15px; font-weight:700; margin-bottom:6px">No Targets Found</div>
                 <div style="font-size:12.5px">আপনার assigned project-এ এখনো কোনো monthly target তৈরি হয়নি।</div>

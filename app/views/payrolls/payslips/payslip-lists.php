@@ -10,6 +10,7 @@ $show_breadcrumb = true;
     </h4>
 
     <div class="d-flex gap-2">
+        <a href="<?= $GLOBALS['base_url'] ?>/import-payslips" class="btn btn-info"> <i class="fa-light fa-upload me-1"></i> Import Payslips (CSV)</a>
         <a href="<?= $GLOBALS['base_url'] ?>/create-payslip" class="btn btn-primary"> <i class="fa-light fa-plus me-1"></i> Create Payslip</a>
     </div>
 
@@ -47,7 +48,7 @@ $show_breadcrumb = true;
         ?>
 
         <!-- Year Select -->
-        <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
+        <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-12 animate__animated animate__fadeIn">
             <div class="card__wrapper h-100">
                 <div class="from__input-box">
                     <select name="year" class="form-control">
@@ -63,7 +64,7 @@ $show_breadcrumb = true;
         </div>
 
         <!-- Month Select -->
-        <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
+        <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-12 animate__animated animate__fadeIn">
             <div class="card__wrapper h-100">
                 <div class="from__input-box">
                     <select name="month" class="form-control">
@@ -78,19 +79,34 @@ $show_breadcrumb = true;
             </div>
         </div>
 
+        <!-- Status Select -->
+        <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-12 animate__animated animate__fadeIn">
+            <div class="card__wrapper h-100">
+                <div class="from__input-box">
+                    <select name="status" class="form-control">
+                        <option value="">Status Select</option>
+                        <option value="paid" <?= (isset($selectedStatus) && $selectedStatus == 'paid') ? 'selected' : '' ?>>Paid</option>
+                        <option value="unpaid" <?= (isset($selectedStatus) && $selectedStatus == 'unpaid') ? 'selected' : '' ?>>Unpaid</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
         <!-- Buttons -->
-        <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-12 col-12">
+        <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-12 col-12 animate__animated animate__fadeIn">
             <div class="card__wrapper ">
                 <div class="d-flex flex-column flex-sm-row gap-2">
                     <button type="submit" class="btn btn-secondary w-100 px-0">
-                        Payslip Search
+                        Search
                     </button>
                     <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists" class="btn btn-success w-100 px-0">
                         Reset
                     </a>
-
+                    <a href="<?= $GLOBALS['base_url'] ?>/import-payslips" class="btn btn-info w-100 px-0">
+                        Import
+                    </a>
                     <a href="<?= $GLOBALS['base_url'] ?>/create-payslip" class="btn btn-primary w-100 px-0">
-                        Create Payslip
+                        Create
                     </a>
                 </div>
             </div>
@@ -104,67 +120,85 @@ $show_breadcrumb = true;
 
 
 
-<div class="row">
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-sm">
-                <div class="card__icon">
-                    <span><i class="fa-sharp fa-regular fa-gear"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Employee</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h3 class="card__title"><?= $totalEmployees ?></h3>
+<div class="row gy-3 mb-4 animate__animated animate__fadeIn">
+    <!-- Total Employee -->
+    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-12">
+        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=" class="text-decoration-none card-hover-effect">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon" style="background: rgba(108, 117, 125, 0.1); color: #6c757d;">
+                        <span><i class="fa-sharp fa-regular fa-gear"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10 text-dark">Total Employee</h6>
+                        <div class="d-flex flex-column align-items-start gap-1">
+                            <h3 class="card__title mb-0"><?= $totalEmployees ?> Employees</h3>
+                            <span class="fs-13 text-muted fw-bold">All Staff</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-sm">
-                <div class="card__icon">
-                    <span><i class="fa-light fa-badge-check"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Paid</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h3 class="card__title"><?= $paidCount ?></h3>
+    
+    <!-- Total Paid -->
+    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-12">
+        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=paid" class="text-decoration-none card-hover-effect">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon" style="background: rgba(40, 167, 69, 0.1); color: #28a745;">
+                        <span><i class="fa-light fa-badge-check"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10 text-dark">Total Paid</h6>
+                        <div class="d-flex flex-column align-items-start gap-1">
+                            <h3 class="card__title mb-0"><?= $paidCount ?> Employees</h3>
+                            <span class="fs-13 text-success fw-bold"><?= number_format($paidSalarySum, 2) ?> TK</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-sm">
-                <div class="card__icon">
-                    <span><i class="fa-sharp fa-regular fa-user"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Unpaid</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h3 class="card__title"><?= $pendingCount ?></h3>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </a>
     </div>
 
-    <div class="d-none col-xxl-3 col-xl-6 col-lg-4 col-md-4 col-12">
-        <div class="card__wrapper">
-            <div class="d-flex align-items-center gap-sm">
-                <div class="card__icon">
-                    <span><i class="fa-sharp fa-regular fa-house-person-leave"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Total Leave</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h3 class="card__title">55</h3>
+    <!-- Total Unpaid -->
+    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-12">
+        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=unpaid" class="text-decoration-none card-hover-effect">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon" style="background: rgba(220, 53, 69, 0.1); color: #dc3545;">
+                        <span><i class="fa-sharp fa-regular fa-user"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10 text-dark">Total Unpaid</h6>
+                        <div class="d-flex flex-column align-items-start gap-1">
+                            <h3 class="card__title mb-0"><?= $pendingCount ?> Employees</h3>
+                            <span class="fs-13 text-danger fw-bold"><?= number_format($unpaidSalarySum, 2) ?> TK</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
+    </div>
+
+    <!-- Total Paid Amount -->
+    <div class="col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-12">
+        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=paid" class="text-decoration-none card-hover-effect">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-sm">
+                    <div class="card__icon" style="background: rgba(0, 123, 255, 0.1); color: #007bff;">
+                        <span><i class="fa-light fa-money-bill-wave"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10 text-dark">Total Paid Amount</h6>
+                        <div class="d-flex flex-column align-items-start gap-1">
+                            <h3 class="card__title mb-0"><?= number_format($paidSalarySum, 2) ?> TK</h3>
+                            <span class="fs-13 text-primary fw-bold">Paid Funds</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
     </div>
     <div class="col-xxl-12">
         <div class="card__wrapper">
@@ -174,6 +208,7 @@ $show_breadcrumb = true;
                         <tr class="table__title">
                             <th class="th_1">Employee</th>
                             <th>Designation</th>
+                            <th>Department</th>
                             <th>Email</th>
                             <th>Joining Date</th>
                             <th>Salary (Monthly)</th>
@@ -195,6 +230,7 @@ $show_breadcrumb = true;
                                     </span>
                                 </td>
                                 <td class="table__employee-position"><?= $payslip['desgination_name'] ?></td>
+                                <td class="table__employee-department"><?= htmlspecialchars($payslip['department_name'] ?? 'N/A') ?></td>
                                 <td class="table__employee-email">
                                     <a href="mailto:<?= htmlspecialchars($payslip['email']) ?>">
                                         <?= htmlspecialchars($payslip['email']) ?>
@@ -208,54 +244,54 @@ $show_breadcrumb = true;
                                 <td class="table__approval-time">
                                     <?= !empty($payslip['approval_time']) ? date('d M Y H:i', strtotime($payslip['approval_time'])) : 'Not Approved' ?>
                                 </td>
-                                <td class="table__delivery ">
-                                    <?php if ($payslip['status'] == 'paid'): ?>
-                                        <span class="bd-badge bg-success">Paid</span>
-                                    <?php elseif ($payslip['status'] == 'approved'): ?>
-                                        <span class="bd-badge bg-primary">Approved</span>
-                                    <?php elseif ($payslip['status'] == 'reject'): ?>
-                                        <span class="bd-badge bg-danger">Reject</span>
-                                    <?php else: ?>
-                                        
-                                        <span class="status-badge status-pending">Pending</span>
-                                    <?php endif; ?>
-                                </td>
+                                 <td class="table__delivery ">
+                                     <?php if ($payslip['status'] == 'paid'): ?>
+                                         <span class="bd-badge bg-success">Paid</span>
+                                     <?php elseif ($payslip['status'] == 'approved'): ?>
+                                         <span class="bd-badge bg-primary">Approved</span>
+                                     <?php elseif ($payslip['status'] == 'reject'): ?>
+                                         <span class="bd-badge bg-danger">Reject</span>
+                                     <?php elseif ($payslip['status'] == 'unpaid'): ?>
+                                         <span class="bd-badge bg-warning text-dark">Unpaid</span>
+                                     <?php else: ?>
+                                         <span class="status-badge status-pending">Pending</span>
+                                     <?php endif; ?>
+                                 </td>
 
 
 
-                                <td class="able__icon-box">
-                                    <div class="d-flex align-items-center justify-content-start gap-10">
-                                        <?php if ($payslip['status'] != 'paid'): ?>
-                                            <button
-                                                class="btn btn-warning btn-sm payPayslipBtn"
-                                                data-id="<?= $payslip['id'] ?>"
-                                                data-earning="<?= $payslip['total_earning'] ?>"
-                                                data-deduction="<?= $payslip['total_deduction'] ?>"
-                                                data-net="<?= $payslip['net_salary'] ?>">
-                                                Payment
-                                            </button>
-                                        <?php else: ?>
-                                            <button
-                                                class="btn btn-primary btn-sm desabled">
-                                                Completed
-                                            </button>
-                                        <?php endif; ?>
+                                 <td class="able__icon-box">
+                                     <div class="d-flex align-items-center justify-content-start gap-10">
+                                         <?php if (empty($payslip['id'])): ?>
+                                             <a href="<?= $GLOBALS['base_url'] ?>/create-payslip" class="btn btn-info btn-sm">
+                                                 <i class="fa-light fa-plus me-1"></i> Create Payslip
+                                             </a>
+                                         <?php else: ?>
+                                             <?php if ($payslip['status'] != 'paid'): ?>
+                                                 <button
+                                                     class="btn btn-warning btn-sm payPayslipBtn"
+                                                     data-id="<?= $payslip['id'] ?>"
+                                                     data-earning="<?= $payslip['total_earning'] ?>"
+                                                     data-deduction="<?= $payslip['total_deduction'] ?>"
+                                                     data-net="<?= $payslip['net_salary'] ?>">
+                                                     Payment
+                                                 </button>
+                                             <?php else: ?>
+                                                 <button
+                                                     class="btn btn-primary btn-sm desabled">
+                                                     Completed
+                                                 </button>
+                                             <?php endif; ?>
 
-
-                                        <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>" class="table__icon download">
-                                            <i class="fa-regular fa-eye"></i>
-                                        </a>
-                                        <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>?print=1" class="table__icon download">
-                                            <i class="fas fa-print"></i>
-                                        </a>
-
-                                        <a href="#" class="d-none table__icon edit">
-                                            <i class="fa-sharp fa-light fa-pen"></i>
-                                        </a>
-                                        <button class="d-none removeBtn table__icon delete"><i
-                                                class="fa-regular fa-trash"></i></button>
-                                    </div>
-                                </td>
+                                             <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>" class="table__icon download">
+                                                 <i class="fa-regular fa-eye"></i>
+                                             </a>
+                                             <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>?print=1" class="table__icon download">
+                                                 <i class="fas fa-print"></i>
+                                             </a>
+                                         <?php endif; ?>
+                                     </div>
+                                 </td>
                             </tr>
 
                         <?php endforeach; ?>
@@ -462,7 +498,18 @@ $show_breadcrumb = true;
     font-weight: 600;
 }
 
-    </style>
+.card-hover-effect {
+    display: block;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover-effect:hover {
+    transform: translateY(-4px);
+}
+.card-hover-effect:hover .card__wrapper {
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+    border-color: rgba(0, 0, 0, 0.12);
+}
+</style>
 
 
 
