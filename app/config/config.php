@@ -27,8 +27,6 @@ if ($current_server == 1) {
 // GRANT SELECT ON `tphl_db`.* TO 'tphl_read_only'@'localhost';
 // FLUSH PRIVILEGES;
 
-
-///////////////////////////////////////////////
 // Project Testing Server
 
 if ($current_server == 2) {
@@ -47,7 +45,6 @@ if ($current_server == 2) {
     ];
 }
 
-///////////////////////////////////////////////
 // Production Server
 
 if ($current_server == 3) {
