@@ -108,6 +108,63 @@ class Letter extends Model
         return $stmt->get_result()->fetch_assoc();
     }
 
+    public function update($id, $data)
+    {
+        $stmt = $this->db->prepare("
+            UPDATE letters SET 
+                employee_id = ?, 
+                designation_id = ?, 
+                department_id = ?,
+                letter_type = ?, 
+                template_id = ?,
+                subject = ?, 
+                body = ?,
+                letter_date = ?, 
+                ref_number = ?,
+                joining_date = ?, 
+                effective_date = ?,
+                current_salary = ?, 
+                revised_salary = ?, 
+                new_designation = ?,
+                signatory_name = ?, 
+                signatory_title = ?,
+                cc_email = ?, 
+                send_to_email = ?, 
+                status = ?
+            WHERE id = ?
+        ");
+
+        $template_id = !empty($data['template_id']) ? (int)$data['template_id'] : null;
+        $send_to_email = !empty($data['send_to_email']) ? (int)$data['send_to_email'] : 0;
+        $id = (int)$id;
+
+        $stmt->bind_param(
+            "iiisissssssssssssisi",
+            $data['employee_id'],
+            $data['designation_id'],
+            $data['department_id'],
+            $data['letter_type'],
+            $template_id,
+            $data['subject'],
+            $data['body'],
+            $data['letter_date'],
+            $data['ref_number'],
+            $data['joining_date'],
+            $data['effective_date'],
+            $data['current_salary'],
+            $data['revised_salary'],
+            $data['new_designation'],
+            $data['signatory_name'],
+            $data['signatory_title'],
+            $data['cc_email'],
+            $send_to_email,
+            $data['status'],
+            $id
+        );
+
+        return $stmt->execute();
+    }
+
     public function delete($id)
     {
         $stmt = $this->db->prepare("DELETE FROM letters WHERE id = ?");

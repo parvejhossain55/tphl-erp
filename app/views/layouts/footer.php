@@ -375,12 +375,13 @@
         if ($(this).hasClass('select2-hidden-accessible')) return;
 
         var placeholder = $(this).data('placeholder') || 'Select option';
+        var modalParent = $(this).closest('.modal');
 
         $(this).select2({
             placeholder: placeholder,
             allowClear: true,
             width: '100%',
-            dropdownParent: $(this).parent() //  IMPORTANT
+            dropdownParent: modalParent.length ? modalParent : $('body')
         });
     });
 

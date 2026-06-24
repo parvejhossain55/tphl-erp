@@ -37,7 +37,7 @@
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/plugins/simplebar.css">
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/plugins/waves.min.css">
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/plugins/nano.min.css">
-    <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/main.css">
+    <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/main.css?v=1.0.2">
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/style.css">
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/employee-dashboard.css">
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/holiday-calender.css">

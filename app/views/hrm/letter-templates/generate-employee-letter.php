@@ -127,6 +127,9 @@
                                             <a href="<?= $GLOBALS['base_url'] ?>/view-letter/<?= $letter['id'] ?>" class="btn btn-info btn-sm" title="View">
                                                 <i class="fa fa-eye"></i>
                                             </a>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/edit-letter/<?= $letter['id'] ?>" class="btn btn-primary btn-sm" title="Edit">
+                                                <i class="fa fa-edit"></i>
+                                            </a>
                                             <a href="<?= $GLOBALS['base_url'] ?>/pdf-letter/<?= $letter['id'] ?>" class="btn btn-danger btn-sm" target="_blank" title="PDF">
                                                 <i class="fa fa-file-pdf"></i>
                                             </a>
@@ -142,7 +145,7 @@
                                 <?php endforeach ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="7" class="text-center">No issued letters found.</td>
+                                    <td colspan="8" class="text-center">No issued letters found.</td>
                                 </tr>
                             <?php endif ?>
                         </tbody>

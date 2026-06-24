@@ -442,7 +442,42 @@
         background: #D1D5DB;
     }
 
+    /* ── Filter Bar Element Styles ── */
+    .responsive-search-input {
+        width: 300px !important;
+    }
+    .responsive-select-wrapper {
+        width: 250px;
+    }
+
     /* ── Responsive ── */
+    @media (max-width: 1024px) {
+        .responsive-search-input {
+            width: 240px !important;
+        }
+        .responsive-select-wrapper {
+            width: 200px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .filter-bar form {
+            flex-direction: column;
+            align-items: stretch !important;
+        }
+        .responsive-search-input,
+        .responsive-select-wrapper {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        .filter-bar select,
+        .filter-bar input,
+        .filter-bar select + .select2-container {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+    }
+
     @media (max-width: 640px) {
         .main-content {
             padding: 16px 14px;
@@ -463,6 +498,22 @@
 
         .kpi-cell:nth-child(even) {
             border-right: none;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .kpi-grid {
+            grid-template-columns: 1fr;
+        }
+        .kpi-cell {
+            border-right: none !important;
+            border-bottom: 1px solid #f1f3f5;
+        }
+        .kpi-cell:last-child {
+            border-bottom: none;
+        }
+        .summary-strip {
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
         }
     }
 
@@ -523,17 +574,19 @@ if (!empty($periodYear)) {
 <div class="filter-bar">
     <span class="period-badge"><?= htmlspecialchars($periodText) ?></span>
     <form method="GET" action="" class="d-flex flex-wrap gap-10 align-items-center w-100">
-        <input type="text" name="q" class="form-control" placeholder="Search executive name, email or phone"
+        <input type="text" name="q" class="form-control responsive-search-input" placeholder="Search executive name, email or phone"
             value="<?= htmlspecialchars($searchTerm ?? '') ?>">
 
-        <select name="executive">
-            <option value="">All Executives</option>
-            <?php foreach ($executives as $executive): ?>
-                <option value="<?= $executive['id'] ?>" <?= isset($selectedExecutive) && $selectedExecutive == $executive['id'] ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($executive['full_name']) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
+        <div class="responsive-select-wrapper">
+            <select name="executive" class="form-control select2">
+                <option value="">All Executives</option>
+                <?php foreach ($executives as $executive): ?>
+                    <option value="<?= $executive['id'] ?>" <?= isset($selectedExecutive) && $selectedExecutive == $executive['id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($executive['full_name']) ?> <?php if (!empty($executive['employee_code'])): ?>(<?= htmlspecialchars($executive['employee_code']) ?>)<?php endif; ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
 
         <select name="month">
             <option value="">All Months</option>
@@ -680,7 +733,7 @@ if (!empty($periodYear)) {
                             <div class="ps-title text-primary"><i class="fa-solid fa-building me-1"></i> Project: <?= htmlspecialchars($project['project_name'] ?? '') ?></div>
                             <div class="d-flex flex-wrap gap-2 my-2">
                                 <?php while ($flat = $flatsResult->fetch_assoc()): ?>
-                                    <div class="p-2 border rounded d-flex align-items-center gap-2  shadow-sm" style="min-width: 235px; border-radius: 8px;">
+                                    <div class="p-2 border rounded d-flex align-items-center gap-2 shadow-sm" style="flex: 1 1 200px; min-width: 0; border-radius: 8px;">
                                         <div class="avatar d-flex align-items-center justify-content-center" style="width: 34px; height: 34px; border-radius: 50%; font-size: 13px; background: #EEF2FF; color: #4F46E5; flex-shrink: 0;">
                                             <i class="fa-solid fa-house-chimney"></i>
                                         </div>

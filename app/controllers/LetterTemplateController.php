@@ -281,5 +281,70 @@ class LetterTemplateController extends Controller
         $pdf->Output($filename, 'I');
         exit;
     }
+
+    public function editLetter($id)
+    {
+        $letter = $this->letterModel->find($id);
+        if (!$letter) {
+            die("Letter not found");
+        }
+
+        $employees = $this->employeeModel->getAll();
+        $templates = $this->templateModel->getAll();
+
+        require_once __DIR__ . '/../models/Department.php';
+        require_once __DIR__ . '/../models/Designation.php';
+        $departmentModel = new Department($this->db);
+        $designationModel = new Designation($this->db);
+        
+        $departments = $departmentModel->getAll();
+        $designations = $designationModel->getAll();
+
+        $this->view("hrm/letter-templates/edit-generated-letter", [
+            "letter" => $letter,
+            "employees" => $employees,
+            "templates" => $templates,
+            "departments" => $departments,
+            "designations" => $designations
+        ]);
+    }
+
+    public function updateLetter($id)
+    {
+        $data = $_POST;
+
+        $employee = $this->employeeModel->find($data['employee_id']);
+
+        $body = $data['letter_body'];
+        if (!empty($data['template_id'])) {
+            $body = $this->replacePlaceholders($body, $employee, $data);
+        }
+
+        $updateData = [
+            "employee_id" => $data['employee_id'],
+            "designation_id" => $data['designation_id'],
+            "department_id" => $data['department_id'],
+            "letter_type" => $data['letter_type'],
+            "template_id" => $data['template_id'] ?? null,
+            "subject" => $data['subject'],
+            "body" => $body,
+            "letter_date" => $data['letter_date'],
+            "ref_number" => $data['ref_number'] ?? null,
+            "joining_date" => $data['joining_date'],
+            "effective_date" => $data['effective_date'] ?? null,
+            "current_salary" => $data['current_salary'] ?? null,
+            "revised_salary" => $data['revised_salary'] ?? null,
+            "new_designation" => $data['new_designation'] ?? null,
+            "signatory_name" => $data['signatory_name'],
+            "signatory_title" => $data['signatory_title'],
+            "cc_email" => $data['cc_email'] ?? null,
+            "send_to_email" => $data['send_to_email'] ?? 0,
+            "status" => $data['letter_status']
+        ];
+
+        $this->letterModel->update($id, $updateData);
+
+        header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
+    }
 }
 

@@ -133,7 +133,7 @@ public function getAllDepartments() {
 }
 
 public function getAllEmployees() {
-    $res = $this->db->query("SELECT id, full_name FROM employees");
+    $res = $this->db->query("SELECT id, full_name, employee_id FROM employees");
     return $res->fetch_all(MYSQLI_ASSOC);
 }
 

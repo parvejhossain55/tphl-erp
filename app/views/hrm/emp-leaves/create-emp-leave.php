@@ -15,11 +15,11 @@ $page = 'Create leave'
 
                             <label for="employeeSelect" class="form-label">Employee <span class="text-danger">*</span></label>
                         </div>
-                        <select id="employeeSelect" name="employee_id" class="form-select" required>
+                        <select id="employeeSelect" name="employee_id" class="form-select select2" required>
                             <option value="">Select Employee</option>
                             <?php foreach ($employees as $emp): ?>
                                 <option value="<?= (int)$emp['id'] ?>">
-                                    <?= htmlspecialchars($emp['full_name']) ?>
+                                    <?= htmlspecialchars($emp['full_name']) ?> (<?= htmlspecialchars($emp['employee_id']) ?>)
                                 </option>
 
                             <?php endforeach; ?>

@@ -3460,7 +3460,7 @@ padding: 5px 10px;
   inset-inline-end: 20px !important;
   top: 10px;
 }
-.from__input-box .form__input span {
+.from__input-box .form__input > span:not(.select2) {
   display: none;
 }
 

@@ -435,7 +435,7 @@
 
             <div class="filter-group">
                 <label>Department</label>
-                <select name="department_id">
+                <select name="department_id" class="select2">
                     <option value="">All</option>
                     <?php foreach ($departments as $d): ?>
                         <option value="<?= $d['id'] ?>"
@@ -448,12 +448,12 @@
 
             <div class="filter-group">
                 <label>Employee</label>
-                <select name="employee_id">
+                <select name="employee_id" class="select2">
                     <option value="">All</option>
                     <?php foreach ($employees as $e): ?>
                         <option value="<?= $e['id'] ?>"
                             <?= ($filters['employee_id'] ?? '') == $e['id'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($e['full_name']) ?>
+                            <?= htmlspecialchars($e['full_name']) ?> (<?= htmlspecialchars($e['employee_id']) ?>)
                         </option>
                     <?php endforeach; ?>
                 </select>
