@@ -70,7 +70,8 @@ class AccountClient extends Model
                 INNER JOIN lead_bookings lb2 ON lb2.id = lp.booking_id
                 WHERE lb2.lead_id = l.id
                 AND lp.payment_status IN ('paid','partially_paid')
-            ) AS last_payment_date
+            ) AS last_payment_date,
+            MAX(lb.id) AS booking_id
         FROM leads l
         INNER JOIN lead_bookings lb ON lb.lead_id = l.id
         $whereClause
@@ -549,14 +550,14 @@ ORDER BY lb.booking_date DESC
             // Remaining land share = effective target - all land share group payments
             // Land share group = booking money + additional land share payments + registration
             // Discount from sales reduces the effective land share target
-            $landSharePaymentsOnly    = $bookingMoney + $additionalLandSharePaid + $registrationPaid;
-            $effectiveLandShareTarget = max(0, $totalLandShare - $discountAmount);
-            $remainingLandShare       = max(0, $effectiveLandShareTarget - $landSharePaymentsOnly);
+            $landSharePaymentsOnly    = round($bookingMoney + $additionalLandSharePaid + $registrationPaid);
+            $effectiveLandShareTarget = max(0, round($totalLandShare - $discountAmount));
+            $remainingLandShare       = max(0, round($effectiveLandShareTarget - $landSharePaymentsOnly));
             $isLandShareCompleted     = ($remainingLandShare <= 0);
 
             // Total Construction Fee = Total Price - (Land Share + Dev Charges)
             // Discount only affects land share remaining, NOT the construction fee
-            $constructionFee = max(0, $totalPrice - ($totalLandShare + $flatDevCharges));
+            $constructionFee = max(0, round($totalPrice - ($totalLandShare + $flatDevCharges)));
 
             // Fixed Per-EMI Amount = Construction Fee / Total EMI count
             $emiStats = $this->getEMIStatistics($bookingId);
@@ -581,8 +582,8 @@ ORDER BY lb.booking_date DESC
 
             // Total due and net received
             // Booking discount + Bulk EMI discount both reduce the client's total obligation
-            $totalDue     = max(0, $totalPrice - $discountAmount - $totalPaid - $totalBulkEmiDiscount);
-            $netReceived  = $totalPaid - $totalServiceFee;
+            $totalDue     = max(0, round($totalPrice - $discountAmount - $totalPaid - $totalBulkEmiDiscount));
+            $netReceived  = round($totalPaid - $totalServiceFee);
             $totalEmiDue  = (float) ($clientDetails['total_emi_due'] ?? 0);
 
             // Safety net: if construction fee is fully paid, there can be NO outstanding EMI due
@@ -685,6 +686,143 @@ ORDER BY lb.booking_date DESC
         }
 
         return $stats;
+    }
+
+    /**
+     * Get Virtual EMI Schedule (Yield to Maturity Logic)
+     * Calculates the maturity status of all EMIs based on the current date.
+     */
+    public function getVirtualEmiSchedule($bookingId)
+    {
+        $clientDetails = $this->getClientByBookingId($bookingId);
+        if (!$clientDetails) return [];
+
+        $totalEmi = $clientDetails['total_emi'] ?? 0;
+        if ($totalEmi <= 0) return [];
+
+        // Fetch all verified paid/partially paid EMIs
+        $paidEmiStmt = $this->db->prepare("
+            SELECT es.emi_no, es.emi_amount, es.due_emi_amount, es.due_date, es.status, lp.payment_date, lp.payment_status
+            FROM emi_schedules es
+            INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
+            WHERE lp.booking_id = ? 
+            AND lp.payment_status IN ('paid','partially_paid')
+            AND lp.verification_status = 'verified'
+            ORDER BY es.emi_no ASC
+        ");
+        $paidEmiStmt->bind_param("i", $bookingId);
+        $paidEmiStmt->execute();
+        $paidResult = $paidEmiStmt->get_result();
+        
+        $paidEmis = [];
+        $lastPaidDueDate = null;
+        if ($paidResult) {
+            while ($row = $paidResult->fetch_assoc()) {
+                $paidEmis[(int)$row['emi_no']] = $row;
+                if (!empty($row['due_date'])) {
+                    $lastPaidDueDate = $row['due_date'];
+                }
+            }
+        }
+
+        $schedule = [];
+        $currentDate = new \DateTime();
+        $currentMonth = (int)$currentDate->format('Ym'); // e.g., 202606
+        
+        // Determine the anchor date for the very first EMI
+        $anchorDate = null;
+        if (!empty($lastPaidDueDate)) {
+            $anchorDate = new \DateTime($lastPaidDueDate);
+        } else {
+            // No EMIs paid yet, anchor to the date of the last completed pre-EMI payment
+            $lastPaymentStmt = $this->db->prepare("
+                SELECT MAX(payment_date) as last_payment_date 
+                FROM lead_payments 
+                WHERE booking_id = ? 
+                AND payment_status IN ('paid','partially_paid') 
+                AND verification_status = 'verified'
+            ");
+            $lastPaymentStmt->bind_param("i", $bookingId);
+            $lastPaymentStmt->execute();
+            $lastPaymentResult = $lastPaymentStmt->get_result();
+            $lastPaymentRow = $lastPaymentResult ? $lastPaymentResult->fetch_assoc() : null;
+            
+            $anchorDateStr = !empty($lastPaymentRow['last_payment_date']) 
+                                ? $lastPaymentRow['last_payment_date'] 
+                                : (!empty($clientDetails['booking_date']) ? $clientDetails['booking_date'] : date('Y-m-d'));
+            
+            $anchorDate = new \DateTime($anchorDateStr);
+            $anchorDate->modify('+1 month');
+        }
+
+        $runnerDate = clone $anchorDate;
+        
+        for ($i = 1; $i <= $totalEmi; $i++) {
+            $isPaid = isset($paidEmis[$i]);
+            
+            if ($isPaid) {
+                $record = $paidEmis[$i];
+                $dueDateObj = new \DateTime($record['due_date']);
+                $dueMonth = (int)$dueDateObj->format('Ym');
+                
+                $isPartiallyPaid = ($record['payment_status'] === 'partially_paid' && $record['due_emi_amount'] > 0);
+                
+                if ($isPartiallyPaid) {
+                    if ($dueMonth < $currentMonth) {
+                        $maturityStatus = 'due';
+                    } else {
+                        $maturityStatus = 'pending';
+                    }
+                } else {
+                    if ($dueMonth < $currentMonth) {
+                        $maturityStatus = 'matured';
+                    } else {
+                        $maturityStatus = 'paid';
+                    }
+                }
+                
+                $schedule[] = [
+                    'emi_no' => $i,
+                    'due_date' => $record['due_date'],
+                    'amount' => $clientDetails['per_emi_amount'],
+                    'paid_amount' => $record['emi_amount'],
+                    'due_amount' => $record['due_emi_amount'],
+                    'status' => $record['payment_status'],
+                    'maturity_status' => $maturityStatus,
+                    'is_virtual' => false
+                ];
+                
+                $runnerDate = clone $dueDateObj;
+                
+            } else {
+                if (count($paidEmis) > 0 || $i > 1) {
+                    $runnerDate->modify('+1 month');
+                }
+                $projectedDueDate = $runnerDate->format('Y-m-d');
+                $dueMonth = (int)$runnerDate->format('Ym');
+                
+                if ($dueMonth < $currentMonth) {
+                    $maturityStatus = 'due';
+                } elseif ($dueMonth == $currentMonth) {
+                    $maturityStatus = 'pending';
+                } else {
+                    $maturityStatus = 'future';
+                }
+                
+                $schedule[] = [
+                    'emi_no' => $i,
+                    'due_date' => $projectedDueDate,
+                    'amount' => $clientDetails['per_emi_amount'],
+                    'paid_amount' => 0,
+                    'due_amount' => $clientDetails['per_emi_amount'],
+                    'status' => 'unpaid',
+                    'maturity_status' => $maturityStatus,
+                    'is_virtual' => true
+                ];
+            }
+        }
+        
+        return $schedule;
     }
 
     /**

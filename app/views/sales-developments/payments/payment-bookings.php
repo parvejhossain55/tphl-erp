@@ -219,7 +219,7 @@ if (!$is_booking_fully_paid) {
                             <div class="form__input-title">
                                 <label class="form__input-title"><?= $form_mode === 'registration' ? 'Pay Registration Money' : 'Pay Booking Money' ?> *</label>
                             </div>
-                            <input type="number" step="0.01" name="amount"
+                            <input type="number" step="1" name="amount"
                                 class="form-control"
                                 placeholder="<?= $placeholderText ?>"
                                 <?= $form_mode === 'booking_money' ? 'max="' . $remaining . '"' : '' ?>

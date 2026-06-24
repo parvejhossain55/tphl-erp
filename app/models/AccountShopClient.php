@@ -202,12 +202,12 @@ class AccountShopClient extends AccountClient
 
             $totalLandSharePaid = $bookingMoney + $registrationPaid;
 
-            $landSharePaymentsOnly    = $bookingMoney + $registrationPaid;
-            $effectiveLandShareTarget = max(0, $totalLandShare - $discountAmount);
-            $remainingLandShare       = max(0, $effectiveLandShareTarget - $landSharePaymentsOnly);
+            $landSharePaymentsOnly    = round($bookingMoney + $registrationPaid);
+            $effectiveLandShareTarget = max(0, round($totalLandShare - $discountAmount));
+            $remainingLandShare       = max(0, round($effectiveLandShareTarget - $landSharePaymentsOnly));
             $isLandShareCompleted     = ($remainingLandShare <= 0);
 
-            $constructionFee = max(0, $totalPrice - ($totalLandShare + $shopServiceChargeTarget));
+            $constructionFee = max(0, round($totalPrice - ($totalLandShare + $shopServiceChargeTarget)));
 
             // Fixed Per-EMI Amount
             $emiStatsStmt = $this->db->prepare("SELECT total_emi_no FROM lead_payments WHERE booking_id = ? AND total_emi_no IS NOT NULL LIMIT 1");
@@ -229,8 +229,8 @@ class AccountShopClient extends AccountClient
 
             $isRegistrationPaid = ($registrationPaid > 0);
 
-            $totalDue     = max(0, $totalPrice - $discountAmount - $totalPaid - $totalBulkEmiDiscount);
-            $netReceived  = $totalPaid - $totalServiceFee;
+            $totalDue     = max(0, round($totalPrice - $discountAmount - $totalPaid - $totalBulkEmiDiscount));
+            $netReceived  = round($totalPaid - $totalServiceFee);
             $totalEmiDue  = (float) ($clientDetails['total_emi_due'] ?? 0);
 
             if ($remainingConstructionFee <= 0) {
@@ -695,11 +695,6 @@ class AccountShopClient extends AccountClient
                     break;
 
                 case 'shop_service_charge':
-                    // Shop service charge requires registration to be fully completed
-                    if (empty($summary['is_land_share_completed'])) {
-                        $remaining = number_format($summary['remaining_land_share'] ?? 0, 2);
-                        throw new Exception("Registration must be fully completed before shop service charge can be recorded. Remaining registration: ৳{$remaining}");
-                    }
                     $svcTarget = (float) ($summary['shop_service_charge_target'] ?? 0);
                     $svcPaid   = (float) ($summary['shop_service_charge_paid_total'] ?? 0);
                     $svcRemaining = max(0, $svcTarget - $svcPaid);

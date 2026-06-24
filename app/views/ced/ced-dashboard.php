@@ -319,6 +319,7 @@ $statusBadgeMap = [
                             <th>Total Price</th>
                             <th>Total Paid</th>
                             <th>Last Payment</th>
+                            <th>Current Month</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -345,6 +346,17 @@ $statusBadgeMap = [
                                         <?php else: ?>
                                             <span class="text-muted">No Payment</span>
                                         <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php 
+                                            $cms = $client['current_month_status'] ?? 'N/A';
+                                            if ($cms === 'paid') echo '<span class="badge bg-success">Paid</span>';
+                                            elseif ($cms === 'matured') echo '<span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;">Matured</span>';
+                                            elseif ($cms === 'pending') echo '<span class="badge bg-warning text-dark">Pending</span>';
+                                            elseif ($cms === 'due') echo '<span class="badge bg-danger">Due</span>';
+                                            elseif ($cms === 'future') echo '<span class="badge bg-secondary">Future</span>';
+                                            else echo '<span class="text-muted">-</span>';
+                                        ?>
                                     </td>
                                     <td>
                                         <a class="table__icon"

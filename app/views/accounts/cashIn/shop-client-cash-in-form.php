@@ -199,8 +199,8 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                         <div class="col-md-6">
                             <div class="from__input-box">
                                 <label class="form__input-title">Paid Amount <span>*</span></label>
-                                        <input type="number" name="amount" id="amount" class="form-control" step="0.01"
-                                    min="0.01" required placeholder="Enter payment amount">
+                                        <input type="number" name="amount" id="amount" class="form-control" step="1"
+                                    min="1" required placeholder="Enter payment amount">
                                 <small id="amountHelp" class="text-muted"></small>
                             </div>
                         </div>

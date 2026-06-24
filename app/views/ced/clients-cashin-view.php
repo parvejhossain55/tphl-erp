@@ -173,6 +173,7 @@ $show_breadcrumb = true;
                             <th>Total Agreement Value</th>
                             <th>Total Paid</th>
                             <th>Last Payment Date</th>
+                            <th>Current Month</th>
                             <th>Profile</th>
                             <th>Action</th>
                         </tr>
@@ -194,6 +195,17 @@ $show_breadcrumb = true;
                                         <?= $client['last_payment_date'] ? date('d M, Y', strtotime($client['last_payment_date'])) : 'No Payment' ?>
                                     </td>
                                     <td>
+                                        <?php 
+                                            $cms = $client['current_month_status'] ?? 'N/A';
+                                            if ($cms === 'paid') echo '<span class="badge bg-success">Paid</span>';
+                                            elseif ($cms === 'matured') echo '<span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;">Matured</span>';
+                                            elseif ($cms === 'pending') echo '<span class="badge bg-warning text-dark">Pending</span>';
+                                            elseif ($cms === 'due') echo '<span class="badge bg-danger">Due</span>';
+                                            elseif ($cms === 'future') echo '<span class="badge bg-secondary">Future</span>';
+                                            else echo '<span class="text-muted">-</span>';
+                                        ?>
+                                    </td>
+                                    <td>
                                         <button class="btn btn-sm btn-outline-primary py-0 px-2"
                                             onclick="openProfileModal(<?= $client['lead_id'] ?>)"
                                             title="View Client Profile" style="font-size:12px;">
@@ -213,7 +225,7 @@ $show_breadcrumb = true;
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="11" class="text-center py-4">
+                                <td colspan="12" class="text-center py-4">
                                     <i class="fa-light fa-folder-open fa-2x d-block mb-2 text-muted"></i>
                                     <span class="text-muted"><?= $selectedProjectId ? 'No clients found for this project' : 'No clients found' ?></span>
                                 </td>
@@ -262,6 +274,7 @@ $show_breadcrumb = true;
                                     <th>Booking Status</th>
                                     <th>Land Share Status</th>
                                     <th>Last Payment</th>
+                                    <th>Current Month</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
@@ -567,6 +580,9 @@ $show_breadcrumb = true;
                 ${land.last_payment_date ? formatDate(land.last_payment_date) : 'No Payment'}
             </td>
             <td>
+                ${getCurrentMonthBadge(land.current_month_status)}
+            </td>
+            <td>
                 <a class="table__icon download"
                     href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history-view/${land.booking_id}"
                     title="View Transaction History">
@@ -586,7 +602,27 @@ $show_breadcrumb = true;
     function showError(message) {
         document.getElementById('error_message').textContent = message;
         document.getElementById('projects_loading').style.display = 'none';
+        document.getElementById('projects_content').style.display = 'none';
         document.getElementById('projects_error').style.display = 'block';
+    }
+
+    function getCurrentMonthBadge(status) {
+        if (!status) return '<span class="text-muted">-</span>';
+        
+        switch(status.toLowerCase()) {
+            case 'paid':
+                return '<span class="badge bg-success">Paid</span>';
+            case 'matured':
+                return '<span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;">Matured</span>';
+            case 'pending':
+                return '<span class="badge bg-warning text-dark">Pending</span>';
+            case 'due':
+                return '<span class="badge bg-danger">Due</span>';
+            case 'future':
+                return '<span class="badge bg-secondary">Future</span>';
+            default:
+                return '<span class="text-muted">-</span>';
+        }
     }
 
     function getStatusClass(status) {
