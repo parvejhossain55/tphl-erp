@@ -93,7 +93,7 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                         <div class="col-md-6">
                             <div class="from__input-box">
                                 <label class="form__input-title">Paid Amount <span>*</span></label>
-                                <input type="number" name="amount" id="amountField" class="form-control" step="0.01" min="0" value="<?= $transaction['amount'] ?? '' ?>" required>
+                                <input type="number" name="amount" id="amountField" class="form-control" step="1" min="0" value="<?= $transaction['amount'] ?? '' ?>" required>
                             </div>
                         </div>
 
@@ -104,7 +104,7 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                                     <div class="from__input-box">
                                         <label class="form__input-title">Due Amount</label>
                                         <input type="number" name="due_emi_amount" id="dueEmiAmount" class="form-control"
-                                            step="0.01" min="0"
+                                            step="1" min="0"
                                             value="<?= $emiSchedule['due_emi_amount'] ?? ($transaction['schedule_due_emi_amount'] ?? 0) ?>"
                                             placeholder="Enter due amount for this EMI">
 

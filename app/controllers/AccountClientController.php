@@ -152,6 +152,11 @@ public function indexTwo($bookingId = null)
         // Get client's lands/projects
         $lands = $this->clientModel->getLandsByLeadId($leadId);
 
+        foreach ($lands as &$land) {
+            $schedule = $this->clientModel->getVirtualEmiSchedule($land['booking_id']);
+            $land['current_month_status'] = $this->calculateCurrentMonthStatus($schedule, $land['last_payment_date'] ?? null);
+        }
+
         echo json_encode([
             'success' => true,
             'client' => $clientDetails,
@@ -239,6 +244,11 @@ public function indexTwo($bookingId = null)
             }
         }
 
+        foreach ($clients as &$client) {
+            $schedule = $this->clientModel->getVirtualEmiSchedule($client['booking_id']);
+            $client['current_month_status'] = $this->calculateCurrentMonthStatus($schedule, $client['last_payment_date'] ?? null);
+        }
+
         $this->view("ced/clients-cashin-view", [
             "current_route" => "clients-cashin-view",
             "page_title" => "Clients Cash In" . ($selectedProjectName ? " - " . $selectedProjectName : ""),
@@ -260,6 +270,11 @@ public function indexTwo($bookingId = null)
         $paymentStats = $this->clientModel->getPaymentStatistics();
         $collectionData = $this->clientModel->getDashboardCollectionStats();
 
+        foreach ($clients as &$client) {
+            $schedule = $this->clientModel->getVirtualEmiSchedule($client['booking_id']);
+            $client['current_month_status'] = $this->calculateCurrentMonthStatus($schedule, $client['last_payment_date'] ?? null);
+        }
+
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
@@ -271,6 +286,33 @@ public function indexTwo($bookingId = null)
             "paymentStats" => $paymentStats,
             "collectionData" => $collectionData
         ]);
+    }
+    
+    private function calculateCurrentMonthStatus($schedule, $lastPaymentDate = null) {
+        if (empty($schedule)) return 'N/A';
+        $currentMonthStatus = 'N/A';
+        $currentMonth = (int)date('Ym');
+        $hasDue = false;
+        
+        foreach ($schedule as $emi) {
+            if ($emi['maturity_status'] === 'due') {
+                $hasDue = true;
+            }
+            $dueMonth = (int)date('Ym', strtotime($emi['due_date']));
+            if ($dueMonth === $currentMonth) {
+                $currentMonthStatus = $emi['maturity_status'];
+            }
+        }
+        
+        if ($hasDue) return 'due';
+        if ($currentMonthStatus !== 'N/A') return $currentMonthStatus;
+        
+        // If there's no current month schedule, check if a pre-EMI payment was made this month
+        if ($lastPaymentDate && (int)date('Ym', strtotime($lastPaymentDate)) === $currentMonth) {
+            return 'paid';
+        }
+        
+        return 'N/A';
     }
     
 
@@ -360,11 +402,14 @@ public function indexTwoView($bookingId = null)
         }
     }
 
+    $virtualEmiSchedule = $this->clientModel->getVirtualEmiSchedule($bookingId);
+
     $this->view("ced/clients-cash-in-history-view", [
         "current_route" => "clients-cash-in-history-view",
         "page_title" => "Transaction History - " . $clientDetails['client_name'],
         "clientDetails" => $clientDetails,
         "transactions" => $transactions,
+        "virtualEmiSchedule" => $virtualEmiSchedule,
         "paymentSummary" => $paymentSummary,
         "refundDetails"   => $refundDetails,
         "refundPaidAmount"=> $refundPaidAmount,
@@ -397,11 +442,23 @@ public function showCedTransactionForm($bookingId = null)
         exit;
     }
 
+    if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
+        require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+        $this->clientModel = new AccountShopClient($this->db);
+        $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+    }
+
+    $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+    $outstandingDues = $this->clientModel->getOutstandingEmiDues($bookingId);
+
     $this->view("ced/ced-cash-in-form", [
         "current_route" => "ced-add-transaction-form",
         "page_title"    => "CED Add Transaction - " . $clientDetails['client_name'],
         "clientDetails" => $clientDetails,
-        "bookingId"     => $bookingId
+        "bookingId"     => $bookingId,
+        "paymentSummary"=> $paymentSummary,
+        "outstandingDues" => $outstandingDues,
+        "isShop"        => (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1)
     ]);
 }
 
@@ -427,9 +484,11 @@ public function addCedTransaction()
 
     $paymentType = $_POST['payment_type'] ?? '';
 
-    // CED can only add development_charge, emi, or emi_due_settlement
-    if (!in_array($paymentType, ['development_charge', 'emi', 'emi_due_settlement'])) {
-        setError("CED can only add Development Charges, EMI, or EMI Settlement transactions.");
+    $paymentType = $_POST['payment_type'] ?? '';
+
+    // CED can only add development_charge, shop_service_charge, emi, or emi_due_settlement
+    if (!in_array($paymentType, ['development_charge', 'shop_service_charge', 'emi', 'emi_due_settlement'])) {
+        setError("CED can only add Development Charges, Shop Service Charges, EMI, or EMI Settlement transactions.");
         header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
         exit;
     }
@@ -511,8 +570,9 @@ public function addCedTransaction()
     }
 
     // Route to correct model method
-    if ($transactionData['payment_type'] === 'emi_due_settlement') {
+    if ($transactionData['payment_type'] === 'emi_due_settlement' || $transactionData['payment_type'] === 'development_charge' || $transactionData['payment_type'] === 'shop_service_charge') {
         // Use addTransaction (not WithEMI) so settlement_type & parent_payment_id are handled
+        // and non-EMI payments skip the EMI scheduler
         $result = $this->clientModel->addTransaction($transactionData, null);
     } else {
         $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
