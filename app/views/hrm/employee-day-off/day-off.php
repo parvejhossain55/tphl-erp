@@ -34,7 +34,7 @@ $show_breadcrumb = true;
                                     <label>Select Employee <span>*</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <select name="employee_id" id="employeeSelect" class="form-select form-control" required>
+                                    <select name="employee_id" id="employeeSelect" class="form-select form-control select2" required>
                                         <option value="">-- Select Employee --</option>
                                         <?php if (!empty($employees)): ?>
                                             <?php foreach ($employees as $employee): ?>

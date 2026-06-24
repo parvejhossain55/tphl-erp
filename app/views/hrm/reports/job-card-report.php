@@ -34,7 +34,7 @@
                         <option value="">-- Select Employee --</option>
                         <?php foreach ($employees as $emp): ?>
                             <option value="<?= $emp['id'] ?>" <?= ($emp['id'] == $selectedEmployeeId) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($emp['full_name']) ?> (<?= htmlspecialchars($emp['id']) ?>)
+                                <?= htmlspecialchars($emp['full_name']) ?> (<?= htmlspecialchars($emp['employee_id']) ?>)
                             </option>
                         <?php endforeach; ?>
                     </select>

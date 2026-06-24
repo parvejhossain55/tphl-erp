@@ -177,10 +177,10 @@
                         <div class="field-row replacement-for-row" style="display:none;">
                             <div class="field-cell" style="flex:1">
                                 <label class="field-label">Replacement For</label>
-                                <select name="replacement_for_id" class="form-control-plain">
+                                <select name="replacement_for_id" class="form-control-plain select2">
                                     <option value="">Select Employee</option>
                                     <?php foreach ($employees as $emp): ?>
-                                        <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['full_name']) ?> (<?= htmlspecialchars($emp['designation_name'] ?? 'N/A') ?>)</option>
+                                        <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['full_name']) ?> (<?= htmlspecialchars($emp['employee_id']) ?>)</option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>

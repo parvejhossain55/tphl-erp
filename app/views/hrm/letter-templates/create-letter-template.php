@@ -23,7 +23,7 @@
                                     <label for="employee_id">Select Employee <span>*</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <select name="employee_id" id="employee_id" class="form-control" onchange="autoSelectDeptDesig()">
+                                    <select name="employee_id" id="employee_id" class="form-control select2" onchange="autoSelectDeptDesig()">
                                         <option value="">Select Employee</option>
                                         <?php if (!empty($employees)): ?>
                                             <?php foreach ($employees as $emp): ?>
@@ -31,7 +31,7 @@
                                                     value="<?= $emp['id'] ?>"
                                                     data-designation="<?= $emp['designation_id'] ?>"
                                                     data-department="<?= $emp['department_id'] ?>">
-                                                    <?= $emp['full_name'] ?>
+                                                    <?= htmlspecialchars($emp['full_name']) ?> (<?= htmlspecialchars($emp['employee_id']) ?>)
                                                 </option>
                                             <?php endforeach; ?>
                                         <?php endif; ?>
@@ -67,7 +67,7 @@
                                     <label for="designation_id">Designation <span>*</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <select class="form-control" name="designation_id" id="designation_id" required>
+                                    <select class="form-control select2" name="designation_id" id="designation_id" required>
                                         <option value="">— Select Designation —</option>
                                         <?php if (!empty($designations)): ?>
                                             <?php foreach ($designations as $desig): ?>
@@ -86,7 +86,7 @@
                                     <label for="department_id">Department <span>*</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <select class="form-control" name="department_id" id="department_id" required>
+                                    <select class="form-control select2" name="department_id" id="department_id" required>
                                         <option value="">— Select Department —</option>
                                         <?php if (!empty($departments)): ?>
                                             <?php foreach ($departments as $dept): ?>
@@ -313,8 +313,13 @@
     var selected = empSelect.options[empSelect.selectedIndex];
 
     if (!selected || !selected.value) {
-        document.getElementById('designation_id').value = '';
-        document.getElementById('department_id').value = '';
+        if (typeof $ !== 'undefined') {
+            $('#designation_id').val('').trigger('change');
+            $('#department_id').val('').trigger('change');
+        } else {
+            document.getElementById('designation_id').value = '';
+            document.getElementById('department_id').value = '';
+        }
         return;
     }
 
@@ -322,8 +327,13 @@
     var desigId = selected.dataset.designation || '';
     var deptId = selected.dataset.department || '';
 
-    document.getElementById('designation_id').value = desigId;
-    document.getElementById('department_id').value = deptId;
+    if (typeof $ !== 'undefined') {
+        $('#designation_id').val(desigId).trigger('change');
+        $('#department_id').val(deptId).trigger('change');
+    } else {
+        document.getElementById('designation_id').value = desigId;
+        document.getElementById('department_id').value = deptId;
+    }
 }
 
     document.addEventListener('DOMContentLoaded', function() {

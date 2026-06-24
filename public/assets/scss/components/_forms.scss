@@ -104,7 +104,7 @@
 	}
 
 	.form__input {
-		span {
+		> span:not(.select2) {
 			display: none;
 		}
 	}

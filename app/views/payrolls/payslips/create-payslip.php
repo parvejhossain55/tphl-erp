@@ -73,7 +73,7 @@
                           <div class="col-sm-6">
                               <div class="form__group">
                                   <label class="form__input-title" for="employeeSelect"><strong>Employee</strong></label>
-                                  <select id="employeeSelect" class="form-select">
+                                  <select id="employeeSelect" class="form-select select2">
                                       <option value="">-- Select Employee --</option>
                                       <?php foreach ($employees as $emp): ?>
                                           <option

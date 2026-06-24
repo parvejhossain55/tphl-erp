@@ -27,9 +27,9 @@ class TutorialController extends Controller
 
         // Map role_id to specific Google Drive links
         $links = [
-            1  => 'https://drive.google.com/drive/folders/placeholder_admin',                       // Admin
+            1  => 'https://drive.google.com/file/d/1eAv78W2wGI0e3WCoKzYMKLxZrctWcYav/view?usp=sharing',                       // Admin
             2  => 'https://drive.google.com/drive/folders/placeholder_employee',                    // Employee
-            3  => 'https://drive.google.com/drive/folders/placeholder_super_admin',                 // super Admin
+            3  => 'https://drive.google.com/file/d/1eAv78W2wGI0e3WCoKzYMKLxZrctWcYav/view?usp=sharing',                 // super Admin
             4  => 'https://drive.google.com/file/d/11MARWakxK07MS3Yj7Yyv3RD7u17YTNik/view?usp=sharing',      //Done HR
             5  => 'https://drive.google.com/file/d/1_3o5AyBYVJ6EDrVBQDCq7VNlRDRWJ41j/view?usp=sharing',      //Done Sales Manager
             6  => 'https://drive.google.com/file/d/1Nre2UfwHHH7d2615ebEABTf-splwvMu4/view?usp=sharing',                     // Accounts

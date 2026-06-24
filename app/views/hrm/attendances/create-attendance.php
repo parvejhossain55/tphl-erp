@@ -26,13 +26,13 @@ $show_breadcrumb = true;
                                                 <label for="employee">Employee <span>*</span></label>
                                             </div>
                                             <div class="form__input">
-                                                <select class="form-control" name="employee_id" id="employee_id">
-                                                    <option value="">Select Employee</option>
-                                                    <?php foreach ($employees as $emp): ?>
-                                                        <option value="<?= $emp['id'] ?>"><?= $emp['full_name'] ?? '' ?></option>
+                                                 <select class="form-control select2" name="employee_id" id="employee_id">
+                                                     <option value="">Select Employee</option>
+                                                     <?php foreach ($employees as $emp): ?>
+                                                         <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['full_name'] ?? '') ?> (<?= htmlspecialchars($emp['employee_id'] ?? '') ?>)</option>
 
-                                                    <?php endforeach ?>
-                                                </select>
+                                                     <?php endforeach ?>
+                                                 </select>
                                             </div>
                                         </div>
                                     </div>

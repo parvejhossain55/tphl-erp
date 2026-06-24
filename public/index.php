@@ -253,6 +253,8 @@ $routes = [
     "print-letter/(\d+)" => ["controller" => "LetterTemplateController", "method" => "printLetter"],
     "pdf-letter/(\d+)" => ["controller" => "LetterTemplateController", "method" => "generatePDFLetter"],
     "delete-letter/(\d+)" => ["controller" => "LetterTemplateController", "method" => "deleteLetter"],
+    "edit-letter/(\d+)" => ["controller" => "LetterTemplateController", "method" => "editLetter"],
+    "update-letter/(\d+)" => ["controller" => "LetterTemplateController", "method" => "updateLetter"],
     //=== End Report
 
     // Employee Leave Controller

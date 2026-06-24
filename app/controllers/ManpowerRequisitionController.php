@@ -47,7 +47,7 @@ class ManpowerRequisitionController extends Controller
         $designations = $this->designationModel->getAll();
         
         $employees = $this->db->query("
-            SELECT e.id, e.full_name, d.name AS designation_name
+            SELECT e.id, e.full_name, e.employee_id, d.name AS designation_name
             FROM employees e
             LEFT JOIN designations d ON e.designation_id = d.id
             ORDER BY e.full_name ASC

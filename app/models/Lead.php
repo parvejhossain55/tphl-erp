@@ -546,10 +546,11 @@ class Lead extends Model
         $hasVisits = !empty($options['has_visits']);
 
         // Fetch sales users
-        $sql = "SELECT DISTINCT u.id, u.full_name, u.email, r.name as role_name
+        $sql = "SELECT DISTINCT u.id, u.full_name, u.email, r.name as role_name, e.employee_id as employee_code
             FROM users u
             JOIN leads l ON l.assigned_id = u.id
             LEFT JOIN roles r ON r.id = u.role_id
+            LEFT JOIN employees e ON e.user_id = u.id
             WHERE l.deleted_at IS NULL";
 
         $params = [];
