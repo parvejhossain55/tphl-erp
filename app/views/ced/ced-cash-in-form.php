@@ -7,19 +7,27 @@ $show_breadcrumb = true;
 // Get booking ID from URL or session
 $bookingId = $_GET['booking_id'] ?? $clientDetails['id'] ?? null;
 
-// Get payment summary
-$accountModel = new AccountClient();
-$paymentSummary = $accountModel->getPaymentSummaryByBookingId($bookingId);
+// Avoid instantiating the model directly here since it's passed from the controller
+// Use variables passed from controller ($paymentSummary, $outstandingDues, $isShop)
+if (!isset($paymentSummary)) {
+    // Fallback if accessed directly (should not happen)
+    $accountModel = new AccountClient();
+    $paymentSummary = $accountModel->getPaymentSummaryByBookingId($bookingId);
+    $outstandingDues = $accountModel->getOutstandingEmiDues($bookingId);
+    $isShop = false;
+}
 
 $isLandShareCompleted  = $paymentSummary['is_land_share_completed'] ?? false;
 $isRegistrationPaid    = $paymentSummary['is_registration_paid'] ?? false;
-$devChargePaid         = $paymentSummary['development_charge_paid'] ?? 0;
-$flatDevCharges        = (float)($paymentSummary['flat_development_charges'] ?? 0);
-$isDevChargeCompleted  = !empty($paymentSummary['is_dev_charge_completed']);
+$devChargePaid         = $isShop ? ($paymentSummary['shop_service_charge_paid'] ?? 0) : ($paymentSummary['development_charge_paid'] ?? 0);
+$flatDevCharges        = (float)($isShop ? ($paymentSummary['total_shop_service_charge'] ?? 0) : ($paymentSummary['flat_development_charges'] ?? 0));
+$isDevChargeCompleted  = $isShop ? !empty($paymentSummary['is_shop_service_charge_completed']) : !empty($paymentSummary['is_dev_charge_completed']);
+$devChargeLabel        = $isShop ? "Shop Service Charge" : "Development Charges";
+$devChargeValue        = $isShop ? "shop_service_charge" : "development_charge";
 $perEmiAmount          = (float)($paymentSummary['per_emi_amount'] ?? 0);
 $serviceChargeRate     = (float)($paymentSummary['service_charge_per_emi'] ?? 0);
 $totalEmiDue           = (float)($paymentSummary['total_emi_due'] ?? 0);
-$outstandingDues       = $accountModel->getOutstandingEmiDues($bookingId);
+
 $hasOutstandingDues    = count($outstandingDues) > 0;
 $remainingCF           = (float)($paymentSummary['remaining_construction_fee'] ?? 0);
 $totalBulkDiscount     = (float)($paymentSummary['total_bulk_emi_discount'] ?? 0);
@@ -52,7 +60,7 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
 
-                <?php if (!$isLandShareCompleted): ?>
+                <?php if (!$isLandShareCompleted && !$isShop): ?>
                     <div class="alert alert-danger mb-4 d-flex align-items-center">
                         <div>
                             <strong>Land Share Required!</strong>
@@ -82,31 +90,31 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                             <select name="payment_type" class="form-control" id="paymentType" required>
                                 <option value="">-- Select Payment Type --</option>
 
-                                <!-- Development Charges — requires landshare completed -->
-                                <?php if ($isLandShareCompleted && !$isDevChargeCompleted): ?>
-                                    <option value="development_charge" data-details="false">
-                                        Development Charges (Remaining: TK.<?= number_format(max(0, $flatDevCharges - $devChargePaid), 2) ?>)
+                                <!-- Development Charges or Shop Service Charge — requires landshare completed for flats -->
+                                <?php if (($isLandShareCompleted || $isShop) && !$isDevChargeCompleted): ?>
+                                    <option value="<?= $devChargeValue ?>" data-details="false">
+                                        <?= $devChargeLabel ?> (Remaining: TK.<?= number_format(max(0, $flatDevCharges - $devChargePaid), 2) ?>)
                                     </option>
                                 <?php elseif ($isDevChargeCompleted): ?>
-                                    <option value="development_charge" disabled>
-                                        Development Charges — Fully Paid ✓ (TK.<?= number_format($devChargePaid, 2) ?>)
+                                    <option value="<?= $devChargeValue ?>" disabled>
+                                        <?= $devChargeLabel ?> — Fully Paid ✓ (TK.<?= number_format($devChargePaid, 2) ?>)
                                     </option>
                                 <?php else: ?>
-                                    <option value="development_charge" disabled>
-                                        Development Charges (Locked — complete land share first)
+                                    <option value="<?= $devChargeValue ?>" disabled>
+                                        <?= $devChargeLabel ?> (Locked — complete land share first)
                                     </option>
                                 <?php endif; ?>
 
                                 <!-- EMI - Only if land share is completed -->
-                                <?php if ($isLandShareCompleted && $isDevChargeCompleted && $remainingCF > 0): ?>
+                                <?php if (($isLandShareCompleted || $isShop) && $isDevChargeCompleted && $remainingCF > 0): ?>
                                     <option value="emi" data-details="true">
                                         EMI (Construction Fee)<?php if ($perEmiAmount > 0): ?> — Suggested: TK.<?= number_format($perEmiAmount, 2) ?><?php endif; ?><?php if ($totalEmiDue > 0): ?> — Outstanding Due: TK.<?= number_format($totalEmiDue, 2) ?><?php endif; ?>
                                     </option>
-                                <?php elseif ($isLandShareCompleted && $isDevChargeCompleted && $remainingCF <= 0): ?>
+                                <?php elseif (($isLandShareCompleted || $isShop) && $isDevChargeCompleted && $remainingCF <= 0): ?>
                                     <option value="emi" disabled>
                                         EMI (Construction Fee) — Fully Paid ✓ (TK.<?= number_format($constructionFee, 2) ?>)
                                     </option>
-                                <?php elseif ($isLandShareCompleted): ?>
+                                <?php elseif ($isLandShareCompleted || $isShop): ?>
                                     <option value="emi" disabled>
                                         EMI (Locked — pay development charge first)
                                     </option>
@@ -127,7 +135,7 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
 
                             <!-- Help text -->
                             <small class="text-muted mt-2 d-block">
-                                <?php if (!$isLandShareCompleted): ?>
+                                <?php if (!$isLandShareCompleted && !$isShop): ?>
                                     <span class="text-warning">
                                         <i class="fa-light fa-exclamation-triangle"></i>
                                         Land share must be completed before EMI payments
@@ -135,7 +143,7 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                 <?php else: ?>
                                     <span class="text-success">
                                         <i class="fa-light fa-circle-check"></i>
-                                        Ready for development charges and construction fee payments
+                                        Ready for <?= strtolower($devChargeLabel) ?> and construction fee payments
                                     </span>
                                 <?php endif; ?>
                             </small>
@@ -145,8 +153,8 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                         <div class="col-md-6">
                             <div class="from__input-box">
                                 <label class="form__input-title">Paid Amount <span>*</span></label>
-                                <input type="number" name="amount" id="amount" class="form-control" step="0.01"
-                                    min="0.01" required>
+                                <input type="number" name="amount" id="amount" class="form-control" step="1"
+                                    min="1" required>
                                 <small id="amountHelp" class="text-muted"></small>
                             </div>
                         </div>
