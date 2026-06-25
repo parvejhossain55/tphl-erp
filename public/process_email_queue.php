@@ -28,11 +28,11 @@ if ($result && $result->num_rows > 0) {
     // Mail configuration
     $smtpHost     = 'smtp.gmail.com';
     $smtpPort     = 587;
-    $senderEmail  = 'info@dpremiumhomes.com';
+    $senderEmail  = 'tech@dpremiumhomes.com';
     $senderName   = 'TPHL ERP System';
-    $clientId     = '893215055562-pbt3j7lg7ufqju370ltss46kh7pati3n.apps.googleusercontent.com';
-    $clientSecret = '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';
-    $refreshToken = '1//04tQCZJUfNcm7CgYIARAAGAQSNwF-L9IrFjuXh9BJ80IcIEKsg8h5m5TFRRQS6BQTt-wwIvtJKnUHd4sAtITIw8QJ0pgbijIOF0w';
+    $clientId     = '684667519692-hcdp7rhi9r64d87g93eq1cagpgqurk35.apps.googleusercontent.com';
+    $clientSecret = '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';
+    $refreshToken = '1//041-wDvZzKIoVCgYIARAAGAQSNwF-L9IrP3uKc9BZMrTRHt9EHVR-PDRZdgog0Hk8uAOapqaf45h4Xkp8rkwzPTIY2Vhxt1DgIx4';
 
     $provider = new Google([
         'clientId'     => $clientId,

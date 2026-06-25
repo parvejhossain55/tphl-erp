@@ -35,11 +35,12 @@
                                                   <label for="user_id">Assigned Employee <span>*</span></label>
                                               </div>
                                               <div class="form__input">
-                                                  <select id="user_id" name="user_id" class="form-select">
+                                                  <select id="user_id" name="user_id" class="form-select select2">
+                                                      <option value="">Select Employee</option>
                                                       <?php foreach ($users as $employee): ?>
                                                           <option value="<?= $employee['id'] ?>"
                                                               <?= $employee['id'] == $task['user_id'] ? 'selected' : '' ?>>
-                                                              <?= $employee['full_name'] ?>
+                                                              <?= htmlspecialchars($employee['full_name']) ?><?php if (!empty($employee['employee_code'])): ?> (<?= htmlspecialchars($employee['employee_code']) ?>)<?php endif; ?>
                                                           </option>
                                                       <?php endforeach; ?>
                                                   </select>

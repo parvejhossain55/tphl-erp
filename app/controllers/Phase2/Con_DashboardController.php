@@ -133,53 +133,58 @@ class Con_DashboardController extends Controller
         // Pending Targets (legacy target_fixed system) — removed.
         $pendingTargetsPM = [];
 
-        // ── Pending POs awaiting PM approval ──────────────────────────────
-        $pendingPOsPMQuery = "
-            SELECT po.id, po.status, po.order_date,
-                   po.approved_by_se,
-                   p.name AS project_name,
-                   u.full_name AS created_by_name,
-                   (SELECT MIN(bi.required_date)
-                    FROM purchase_order_items poi
-                    JOIN boq_items bi ON bi.boq_id = pr.bom_id AND bi.material_id = poi.material_id
-                    WHERE poi.purchase_order_id = po.id) AS earliest_required_date
-            FROM purchase_orders po
-            JOIN purchase_requests pr ON pr.id = po.request_id
-            LEFT JOIN projects p ON p.id = pr.project_id
-            LEFT JOIN users u   ON u.id = po.created_by
-            WHERE po.approved_by_pm = 0
-              AND po.status NOT IN ('Cancelled','Fully Received','Approved')
-        ";
-        if ($selectedProjectId) {
-            $pendingPOsPMQuery .= " AND pr.project_id = $selectedProjectId ";
-        }
-        $pendingPOsPMQuery .= " ORDER BY po.id DESC LIMIT 10";
-        $rPendingPOsPM = $this->db->query($pendingPOsPMQuery);
-        $pendingPOsForPM = $rPendingPOsPM ? $rPendingPOsPM->fetch_all(MYSQLI_ASSOC) : [];
+        // ── Pending POs awaiting QC (role 24) and Management (role 3) approvals ──────────────────────────────
+        $pendingPOsForPM = []; // Reused for QC pending POs
+        $pendingPOsForSE = []; // Reused for Management pending POs
 
-        // ── Pending POs awaiting SE approval ──────────────────────────────
-        $pendingPOsSEQuery = "
-            SELECT po.id, po.status, po.order_date,
-                   po.approved_by_pm,
-                   p.name AS project_name,
-                   u.full_name AS created_by_name,
-                   (SELECT MIN(bi.required_date)
-                    FROM purchase_order_items poi
-                    JOIN boq_items bi ON bi.boq_id = pr.bom_id AND bi.material_id = poi.material_id
-                    WHERE poi.purchase_order_id = po.id) AS earliest_required_date
-            FROM purchase_orders po
-            JOIN purchase_requests pr ON pr.id = po.request_id
-            LEFT JOIN projects p ON p.id = pr.project_id
-            LEFT JOIN users u   ON u.id = po.created_by
-            WHERE po.approved_by_se = 0
-              AND po.status NOT IN ('Cancelled','Fully Received','Approved')
-        ";
-        if ($selectedProjectId) {
-            $pendingPOsSEQuery .= " AND pr.project_id = $selectedProjectId ";
+        if ($userRole === 24) {
+            $pendingPOsQCQuery = "
+                SELECT po.id, po.status, po.order_date,
+                       p.name AS project_name,
+                       u.full_name AS created_by_name,
+                       (SELECT MIN(bi.required_date)
+                        FROM purchase_order_items poi
+                        JOIN boq_items bi ON bi.boq_id = pr.bom_id AND bi.material_id = poi.material_id
+                        WHERE poi.purchase_order_id = po.id) AS earliest_required_date
+                FROM purchase_orders po
+                JOIN purchase_requests pr ON pr.id = po.request_id
+                LEFT JOIN projects p ON p.id = pr.project_id
+                LEFT JOIN users u   ON u.id = po.created_by
+                WHERE po.qc_approved_by_id IS NULL
+                  AND po.status = 'Issued'
+            ";
+            if ($selectedProjectId) {
+                $pendingPOsQCQuery .= " AND pr.project_id = $selectedProjectId ";
+            }
+            $pendingPOsQCQuery .= " ORDER BY po.id DESC LIMIT 10";
+            $rPendingPOsQC = $this->db->query($pendingPOsQCQuery);
+            $pendingPOsForPM = $rPendingPOsQC ? $rPendingPOsQC->fetch_all(MYSQLI_ASSOC) : [];
         }
-        $pendingPOsSEQuery .= " ORDER BY po.id DESC LIMIT 10";
-        $rPendingPOsSE = $this->db->query($pendingPOsSEQuery);
-        $pendingPOsForSE = $rPendingPOsSE ? $rPendingPOsSE->fetch_all(MYSQLI_ASSOC) : [];
+
+        if ($userRole === 3) {
+            $pendingPOsMgmtQuery = "
+                SELECT po.id, po.status, po.order_date,
+                       p.name AS project_name,
+                       u.full_name AS created_by_name,
+                       (SELECT MIN(bi.required_date)
+                        FROM purchase_order_items poi
+                        JOIN boq_items bi ON bi.boq_id = pr.bom_id AND bi.material_id = poi.material_id
+                        WHERE poi.purchase_order_id = po.id) AS earliest_required_date
+                FROM purchase_orders po
+                JOIN purchase_requests pr ON pr.id = po.request_id
+                LEFT JOIN projects p ON p.id = pr.project_id
+                LEFT JOIN users u   ON u.id = po.created_by
+                WHERE po.qc_approved_by_id IS NOT NULL
+                  AND po.mgmt_approved_by_id IS NULL
+                  AND po.status = 'QC Approved'
+            ";
+            if ($selectedProjectId) {
+                $pendingPOsMgmtQuery .= " AND pr.project_id = $selectedProjectId ";
+            }
+            $pendingPOsMgmtQuery .= " ORDER BY po.id DESC LIMIT 10";
+            $rPendingPOsMgmt = $this->db->query($pendingPOsMgmtQuery);
+            $pendingPOsForSE = $rPendingPOsMgmt ? $rPendingPOsMgmt->fetch_all(MYSQLI_ASSOC) : [];
+        }
 
         // ── Pending GRNs awaiting QC ──────────────────────────────
         $pendingGRNsQuery = "
@@ -404,8 +409,19 @@ class Con_DashboardController extends Controller
         $prsForApproval = [];
         if (in_array($userRole, [3, 15, 22])) {
             $projFilterPart = $selectedProjectId ? " AND pr.project_id = $selectedProjectId " : "";
+            
+            // Build filter based on role (excluding Admin role 1)
+            if (in_array($userRole, [15, 22])) {
+                // PM only sees Stage 1 pending
+                $approvalFilter = " AND pr.approved_by_id IS NULL ";
+            } else { // Management (role 3)
+                // Management only sees Stage 3 pending
+                $approvalFilter = " AND pr.approved_by_id IS NOT NULL AND pr.qc_approved_by_id IS NOT NULL AND pr.mgmt_approved_by_id IS NULL ";
+            }
+
             $rPRApproval = $this->db->query("
                 SELECT pr.id, pr.status, pr.created_at, pr.notes,
+                       pr.approved_by_id, pr.qc_approved_by_id, pr.mgmt_approved_by_id,
                        p.name  AS project_name,
                        u.full_name AS created_by_name,
                        r.name  AS created_by_role,
@@ -420,8 +436,10 @@ class Con_DashboardController extends Controller
                 LEFT JOIN roles r       ON r.id  = u.role_id
                 LEFT JOIN purchase_request_items pri ON pri.request_id = pr.id
                 WHERE pr.status IN ('Draft', 'Submitted')
-                {$projFilterPart}
+                  {$approvalFilter}
+                  {$projFilterPart}
                 GROUP BY pr.id, pr.status, pr.created_at, pr.notes,
+                         pr.approved_by_id, pr.qc_approved_by_id, pr.mgmt_approved_by_id,
                          p.name, u.full_name, r.name
                 ORDER BY
                     CASE pr.status WHEN 'Submitted' THEN 0 WHEN 'Draft' THEN 1 ELSE 2 END,
@@ -600,6 +618,16 @@ class Con_DashboardController extends Controller
         $s['stock_alerts'] = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
 
         // 6. Pending Approvals (all approval queues combined)
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $prQueryPart = "";
+        if (in_array($userRole, [15, 22])) {
+            $prQueryPart = " UNION ALL SELECT id FROM purchase_requests WHERE status = 'Submitted' AND approved_by_id IS NULL" . ($projectId ? " AND project_id = $projectId" : "");
+        } elseif ($userRole === 20) {
+            $prQueryPart = " UNION ALL SELECT id FROM purchase_requests WHERE status = 'Submitted' AND approved_by_id IS NOT NULL AND qc_approved_by_id IS NULL" . ($projectId ? " AND project_id = $projectId" : "");
+        } elseif ($userRole === 3) {
+            $prQueryPart = " UNION ALL SELECT id FROM purchase_requests WHERE status = 'Submitted' AND approved_by_id IS NOT NULL AND qc_approved_by_id IS NOT NULL AND mgmt_approved_by_id IS NULL" . ($projectId ? " AND project_id = $projectId" : "");
+        }
+
         if ($projectId) {
             $r4 = $this->db->query("
                 SELECT COUNT(*) AS c FROM (
@@ -614,6 +642,7 @@ class Con_DashboardController extends Controller
                     SELECT id FROM fund_requisitions           WHERE status = 'pending' AND project_id = $projectId
                     UNION ALL
                     SELECT lfr.id FROM land_fund_requisitions lfr JOIN land_acquisitions la ON la.id = lfr.land_acquisition_id WHERE lfr.mgmt_status = 'Pending' AND la.project_id = $projectId
+                    {$prQueryPart}
                 ) t");
         } else {
             $r4 = $this->db->query("
@@ -629,6 +658,7 @@ class Con_DashboardController extends Controller
                     SELECT id FROM fund_requisitions           WHERE status = 'pending'
                     UNION ALL
                     SELECT id FROM land_fund_requisitions      WHERE mgmt_status = 'Pending'
+                    {$prQueryPart}
                 ) t");
         }
         $s['pending_approvals'] = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
@@ -797,6 +827,16 @@ class Con_DashboardController extends Controller
 
     private function getPendingApprovalsList($projectId = null): array
     {
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $prUnion = "";
+        if (in_array($userRole, [15, 22])) {
+            $prUnion = " UNION ALL SELECT 'Purchase Request' AS type, CONCAT('PR #', id) AS description, 0 AS amount, project_id, created_at, CONCAT('/con-purchase-request/', id) AS url FROM purchase_requests WHERE status = 'Submitted' AND approved_by_id IS NULL" . ($projectId ? " AND project_id = $projectId" : "");
+        } elseif ($userRole === 20) {
+            $prUnion = " UNION ALL SELECT 'Purchase Request' AS type, CONCAT('PR #', id) AS description, 0 AS amount, project_id, created_at, CONCAT('/con-purchase-request/', id) AS url FROM purchase_requests WHERE status = 'Submitted' AND approved_by_id IS NOT NULL AND qc_approved_by_id IS NULL" . ($projectId ? " AND project_id = $projectId" : "");
+        } elseif ($userRole === 3) {
+            $prUnion = " UNION ALL SELECT 'Purchase Request' AS type, CONCAT('PR #', id) AS description, 0 AS amount, project_id, created_at, CONCAT('/con-purchase-request/', id) AS url FROM purchase_requests WHERE status = 'Submitted' AND approved_by_id IS NOT NULL AND qc_approved_by_id IS NOT NULL AND mgmt_approved_by_id IS NULL" . ($projectId ? " AND project_id = $projectId" : "");
+        }
+
         if ($projectId) {
             $sql = "
                 SELECT 'Contractor Bill'   AS type,
@@ -828,6 +868,7 @@ class Con_DashboardController extends Controller
                        project_id, created_at,
                        CONCAT('/con-vendor-payment/', id) AS url
                 FROM vendor_payment_requests WHERE status = 'Submitted' AND project_id = $projectId
+                {$prUnion}
                 ORDER BY created_at DESC LIMIT 5";
         } else {
             $sql = "
@@ -860,6 +901,7 @@ class Con_DashboardController extends Controller
                        project_id, created_at,
                        CONCAT('/con-vendor-payment/', id) AS url
                 FROM vendor_payment_requests WHERE status = 'Submitted'
+                {$prUnion}
                 ORDER BY created_at DESC LIMIT 5";
         }
         $result = $this->db->query($sql);
@@ -1643,7 +1685,7 @@ $project = $stmt->get_result()->fetch_assoc();
         $myProjectsCount = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
 
         // Migrated: pending phase items (formerly pendingWorkingPlans from project_working_plans)
-        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM phase_monthly_targets pmt INNER JOIN project_phases pp ON pp.id = pmt.phase_id INNER JOIN projects p ON p.id = pp.project_id WHERE p.deleted_at IS NULL AND $filter AND (pmt.status = 'Pending' OR pmt.status IS NULL)");
+        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM phase_monthly_targets pmt INNER JOIN project_phases pp ON pp.id = pmt.phase_id INNER JOIN projects p ON p.id = pp.project_id WHERE p.deleted_at IS NULL AND $filter AND (pmt.planning_status IN ('Draft', 'In Review'))");
         $pendingWorkingPlans = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
 
         $r3 = $this->db->query("SELECT COUNT(*) AS c FROM con_material_issues mi JOIN projects p ON p.id = mi.project_id WHERE p.deleted_at IS NULL AND $filter");
@@ -1656,7 +1698,7 @@ $project = $stmt->get_result()->fetch_assoc();
         $myProjects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
 
         // Migrated: recent phase monthly targets (formerly project_working_plans)
-        $rWP = $this->db->query("SELECT pmt.id, COALESCE(pmt.title, CONCAT(pp.phase_name,' - Month ',pmt.month_number)) AS work_description, p.name AS project_name FROM phase_monthly_targets pmt INNER JOIN project_phases pp ON pp.id = pmt.phase_id INNER JOIN projects p ON p.id = pp.project_id WHERE p.deleted_at IS NULL AND $filter ORDER BY pmt.id DESC LIMIT 5");
+        $rWP = $this->db->query("SELECT pmt.id, CONCAT(pp.phase_name, ' - ', DATE_FORMAT(pmt.target_month, '%M %Y')) AS work_description, p.name AS project_name FROM phase_monthly_targets pmt INNER JOIN project_phases pp ON pp.id = pmt.phase_id INNER JOIN projects p ON p.id = pp.project_id WHERE p.deleted_at IS NULL AND $filter ORDER BY pmt.id DESC LIMIT 5");
         $recentWorkingPlans = $rWP ? $rWP->fetch_all(MYSQLI_ASSOC) : [];
 
         $rMI = $this->db->query("SELECT mi.*, p.name AS project_name, m.name AS material_name FROM con_material_issues mi JOIN projects p ON p.id = mi.project_id LEFT JOIN con_materials m ON m.id = mi.material_id WHERE p.deleted_at IS NULL AND $filter ORDER BY mi.id DESC LIMIT 5");
@@ -1686,6 +1728,38 @@ $project = $stmt->get_result()->fetch_assoc();
             $pendingWorkOrders = $rWO ? $rWO->fetch_all(MYSQLI_ASSOC) : [];
         }
 
+        // ── PRs awaiting Stage 2 (Operation) Approval ───────────────────────
+        $prsForApproval = [];
+        if ($roleId === 20 || $roleId === 3) {
+            $projFilterPart = $selectedProjectId ? " AND pr.project_id = $selectedProjectId " : "";
+            $rPRApproval = $this->db->query("
+                SELECT pr.id, pr.status, pr.created_at, pr.notes,
+                       pr.approved_by_id, pr.qc_approved_by_id,
+                       p.name  AS project_name,
+                       u.full_name AS created_by_name,
+                       r.name  AS created_by_role,
+                       COUNT(pri.id) AS item_count,
+                       (SELECT MIN(bi.required_date)
+                        FROM purchase_request_items pri2
+                        JOIN boq_items bi ON bi.boq_id = pr.bom_id AND bi.material_id = pri2.material_id
+                        WHERE pri2.request_id = pr.id) AS earliest_required_date
+                FROM purchase_requests pr
+                LEFT JOIN projects p    ON p.id  = pr.project_id
+                LEFT JOIN users u       ON u.id  = pr.created_by
+                LEFT JOIN roles r       ON r.id  = u.role_id
+                LEFT JOIN purchase_request_items pri ON pri.request_id = pr.id
+                WHERE pr.status = 'Submitted'
+                  AND pr.approved_by_id IS NOT NULL
+                  AND pr.qc_approved_by_id IS NULL
+                  {$projFilterPart}
+                GROUP BY pr.id, pr.status, pr.created_at, pr.notes,
+                         pr.approved_by_id, pr.qc_approved_by_id,
+                         p.name, u.full_name, r.name
+                ORDER BY pr.id DESC
+                LIMIT 15");
+            $prsForApproval = $rPRApproval ? $rPRApproval->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
         return $this->view('phase2/dashboard/operations-dashboard', [
             'current_route'         => 'operations-dashboard',
             'page_title'            => 'Operations Dashboard',
@@ -1699,6 +1773,7 @@ $project = $stmt->get_result()->fetch_assoc();
             'recentMaterialIssues'  => $recentMaterialIssues,
             'recentVendorPayments'  => $recentVendorPayments,
             'pendingWorkOrders'     => $pendingWorkOrders,
+            'prsForApproval'        => $prsForApproval,
         ]);
     }
 
@@ -1715,7 +1790,7 @@ $project = $stmt->get_result()->fetch_assoc();
         $totalPOs = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
 
         // KPI: Pending Phase Monthly Targets (not yet started/approved) — replaces old pending working plans KPI
-        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM phase_monthly_targets WHERE status IN ('Pending','Draft') OR status IS NULL");
+        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM phase_monthly_targets WHERE planning_status IN ('Draft','In Review')");
         $pendingPlans = $r3 ? (int)$r3->fetch_assoc()['c'] : 0;
 
         // KPI: Total DPR — now from phase_weekly_progress

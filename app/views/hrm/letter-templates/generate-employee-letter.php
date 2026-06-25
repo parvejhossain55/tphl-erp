@@ -1,3 +1,37 @@
+<style>
+@media (max-width: 767.98px) {
+    /* Stack Title and Add Button */
+    .card__title-wrap {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+    }
+    
+    .card__title-wrap a {
+        width: 100% !important;
+        text-align: center !important;
+    }
+
+    /* Side-by-side filter buttons on mobile */
+    .submit__btn {
+        display: flex !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+
+    .submit__btn button,
+    .submit__btn a {
+        flex: 1 !important;
+        margin: 0 !important;
+        text-align: center !important;
+        display: inline-flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        height: 42px !important; /* Force a clean and consistent height */
+        font-size: 14px !important;
+    }
+}
+</style>
 
 <!-- DEBUG: Show what's in letters array -->
 <?php if (!empty($letters)): ?>

@@ -1,3 +1,8 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) session_start();
+$sessionRole = (int)($_SESSION['user']['role_id'] ?? 0);
+$isReadOnly = !in_array($sessionRole, [17, 23]);
+?>
 <div class="pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div class="mb-4">
         <h4><?= htmlspecialchars($page_title) ?></h4>
@@ -18,8 +23,25 @@
 </div>
 
 <section class="section">
-    <div class="row justify-content-center">
-        <div class="col-lg-11">
+            <!-- ══════════ NEXT ACTION TRACKER ══════════ -->
+            <?php if (!empty($nextStepInfo)): ?>
+            <div class="card__wrapper shadow-sm mb-4" style="border: 1px solid #3b82f6; background: rgba(59, 130, 246, 0.03); border-radius: 14px;">
+              <div class="card__body p-3" style="display: flex; align-items: flex-start; gap: 14px;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: #3b82f6; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);">
+                  <i class="fal fa-arrow-alt-right-to-line" style="font-size: 14px;"></i>
+                </div>
+                <div>
+                  <div style="font-size: 11px; font-weight: 800; color: #067936; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px;">
+                    <i class="fal fa-spinner-third fa-spin me-1"></i> Next Step / Stuck At
+                  </div>
+                  <div style="font-size: 15px; font-weight: 800; line-height: 1.4;">
+                    <?= htmlspecialchars($nextStepInfo) ?>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <?php endif; ?>
+
             <div class="card__wrapper shadow-sm mb-4">
                 <div class="card__body p-4">
 
@@ -57,6 +79,11 @@
                     </div>
 
                     <!-- Approval Status Panel -->
+                    <?php
+                    $pmApproved   = !empty($pr['approved_by_id']);
+                    $qcApproved   = !empty($pr['qc_approved_by_id']);
+                    $mgmtApproved = !empty($pr['mgmt_approved_by_id']);
+                    ?>
                     <div class="rounded p-3 mb-3" style="background:<?= in_array($pr['status'], ['Approved','PO Issued']) ? 'rgba(16,185,129,.06)' : 'rgba(245,158,11,.05)' ?>;border:1px solid <?= in_array($pr['status'], ['Approved','PO Issued']) ? 'rgba(16,185,129,.2)' : 'rgba(245,158,11,.18)' ?>">
                         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                             <div class="d-flex align-items-center gap-3">
@@ -65,33 +92,56 @@
                                     color:<?= in_array($pr['status'], ['Approved','PO Issued']) ? '#059669' : '#d97706' ?>">
                                     <i class="fal <?= in_array($pr['status'], ['Approved','PO Issued']) ? 'fa-check-circle' : 'fa-clock' ?>"></i>
                                 </div>
-                                <div>
-                                    <div style="font-size:12px;font-weight:700">Approval Status</div>
-                                    <?php if (in_array($pr['status'], ['Approved','PO Issued']) && !empty($pr['approved_by_name'])): ?>
-                                        <div style="font-size:11px;font-weight:700;color:#059669">
-                                            <?= htmlspecialchars($pr['approved_by_name']) ?>
-                                        </div>
-                                        <?php if (!empty($pr['approved_by_role'])): ?>
-                                            <div style="font-size:10px;color:#6b7280;font-style:italic"><?= htmlspecialchars($pr['approved_by_role']) ?></div>
+                                <div style="display:flex; flex-direction:column; gap:6px;">
+                                    <div style="font-size:12px;font-weight:700">Approval Workflow Status</div>
+                                    
+                                    <!-- Stage 1 Status -->
+                                    <div style="font-size:11.5px;">
+                                        <strong>Stage 1 (PM Approval):</strong> 
+                                        <?php if ($pmApproved): ?>
+                                            <span style="color:#059669; font-weight:700;">✓ Approved</span> by <?= htmlspecialchars($pr['approved_by_name']) ?>
+                                            <?php if (!empty($pr['approved_at'])): ?>
+                                                <span class="text-muted small">(<?= date('d M Y, h:i A', strtotime($pr['approved_at'])) ?>)</span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($pr['management_note']) && empty($pr['qc_approved_by_id'])): ?>
+                                                <br><span class="text-muted small">Note: <?= htmlspecialchars($pr['management_note']) ?></span>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span style="color:#d97706; font-weight:700;">Pending</span>
                                         <?php endif; ?>
-                                        <?php if (!empty($pr['approved_at'])): ?>
-                                            <div style="font-size:10px;color:var(--text-muted,#6b7280)">
-                                                <?= date('d M Y, h:i A', strtotime($pr['approved_at'])) ?>
-                                            </div>
-                                        <?php endif; ?>
-                                    <?php elseif ($pr['status'] === 'Rejected' && !empty($pr['approved_by_name'])): ?>
-                                        <div style="font-size:11px;font-weight:700;color:#dc2626">
-                                            Rejected by: <?= htmlspecialchars($pr['approved_by_name']) ?>
-                                        </div>
-                                    <?php else: ?>
-                                        <div style="font-size:11px;color:var(--text-muted,#6b7280)">Awaiting approval</div>
-                                    <?php endif; ?>
+                                    </div>
 
-                                    <?php if (!empty($pr['management_note'])): ?>
-                                        <div style="font-size:11px; margin-top:5px;" class="text-muted">
-                                            <strong>Note:</strong> <?= htmlspecialchars($pr['management_note']) ?>
-                                        </div>
-                                    <?php endif; ?>
+                                    <!-- Stage 2 Status -->
+                                    <div style="font-size:11.5px;">
+                                        <strong>Stage 2 (Operation Head Approval):</strong> 
+                                        <?php if ($qcApproved): ?>
+                                            <span style="color:#059669; font-weight:700;">✓ Approved</span> by <?= htmlspecialchars($pr['qc_approved_by_name']) ?>
+                                            <?php if (!empty($pr['qc_approved_at'])): ?>
+                                                <span class="text-muted small">(<?= date('d M Y, h:i A', strtotime($pr['qc_approved_at'])) ?>)</span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($pr['qc_note'])): ?>
+                                                <br><span class="text-muted small">Note: <?= htmlspecialchars($pr['qc_note']) ?></span>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span style="color:#d97706; font-weight:700;">Pending</span>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <!-- Stage 3 Status -->
+                                    <div style="font-size:11.5px;">
+                                        <strong>Stage 3 (Management Approval):</strong> 
+                                        <?php if ($mgmtApproved): ?>
+                                            <span style="color:#059669; font-weight:700;">✓ Approved</span> by <?= htmlspecialchars($pr['mgmt_approved_by_name']) ?>
+                                            <?php if (!empty($pr['mgmt_approved_at'])): ?>
+                                                <span class="text-muted small">(<?= date('d M Y, h:i A', strtotime($pr['mgmt_approved_at'])) ?>)</span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($pr['management_note']) && !empty($pr['qc_approved_by_id'])): ?>
+                                                <br><span class="text-muted small">Note: <?= htmlspecialchars($pr['management_note']) ?></span>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span style="color:#d97706; font-weight:700;">Pending</span>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
                             <span style="font-size:10px;font-weight:700;padding:4px 12px;border-radius:20px;
@@ -149,15 +199,14 @@
                     <!-- Status Actions -->
                     <?php
                     $sessionRole = (int)($_SESSION['user']['role_id'] ?? 0);
-                    $isReadOnly  = in_array($sessionRole, [12, 15]); // Site Engineer and Project Manager are read-only
-                    $canApprove  = in_array($sessionRole, [3, 22]) && !$isReadOnly; // PM Head and Super Admin (exclude PM)
+                    $isCreator   = ($pr['created_by'] == $_SESSION['user']['id']);
                     ?>
                     <?php if ($pr['status'] === 'Draft'): ?>
                         <div class="mt-4 p-3 bg-light rounded d-flex justify-content-between align-items-center">
                             <span class="text-muted small">
                                 <i class="bi bi-info-circle me-1"></i> This PR is a Draft.
                             </span>
-                            <?php if (!$isReadOnly): ?>
+                            <?php if ($isCreator): ?>
                             <div class="d-flex gap-2">
                                 <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline">
                                     <input type="hidden" name="status" value="Submitted">
@@ -165,18 +214,6 @@
                                         <i class="bi bi-send me-1"></i> Submit
                                     </button>
                                 </form>
-                                <?php if ($canApprove): ?>
-                                <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline"
-                                       onsubmit="return confirm('Approve this Purchase Request?');">
-                                    <input type="hidden" name="status" value="Approved">
-                                    <div class="mb-2">
-                                        <textarea name="approval_note" class="form-control" rows="2" placeholder="Approval Note"></textarea>
-                                    </div>
-                                    <button type="button" onclick="confirmAction(this, 'Approve this Purchase Request?')" class="btn btn-success btn-sm w-100">
-                                        <i class="bi bi-check-circle me-1"></i> Approve
-                                    </button>
-                                </form>
-                                <?php endif; ?>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -184,21 +221,55 @@
                         <div class="mt-4 p-3 bg-light rounded d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <span class="text-muted small w-100 mb-2">
                                 <i class="bi bi-clock-history me-1"></i>
-                                <?php if ($canApprove): ?>
-                                    This PR is Submitted. Please review and Approve or Reject.
+                                <?php if (!$pmApproved): ?>
+                                    <strong>Stage 1 Approval:</strong> Awaiting PM Approval.
+                                    <?php if (in_array($sessionRole, [15, 22])): ?>
+                                        (Action required: Please review and Approve or Reject).
+                                    <?php endif; ?>
+                                <?php elseif (!$qcApproved): ?>
+                                    <strong>Stage 2 Approval:</strong> PM Approved. Awaiting Operation Head Approval.
+                                    <?php if ($sessionRole === 20): ?>
+                                        (Action required: Please review and Approve or Reject).
+                                    <?php endif; ?>
                                 <?php else: ?>
-                                    Awaiting approval.
+                                    <strong>Stage 3 Approval (Final):</strong> Operation Head Approved. Awaiting Management Final Approval.
+                                    <?php if ($sessionRole === 3): ?>
+                                        (Action required: Please review and finally Approve or Reject).
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </span>
-                            <?php if ($canApprove && !$isReadOnly): ?>
+
+                            <?php 
+                            $showForm = false;
+                            $pendingStage = 0;
+                            if (!$pmApproved) {
+                                $pendingStage = 1;
+                                if (in_array($sessionRole, [15, 22])) {
+                                    $showForm = true;
+                                }
+                            } elseif (!$qcApproved) {
+                                $pendingStage = 2;
+                                if ($sessionRole === 20) {
+                                    $showForm = true;
+                                }
+                            } elseif (!$mgmtApproved) {
+                                $pendingStage = 3;
+                                if ($sessionRole === 3) {
+                                    $showForm = true;
+                                }
+                            }
+                            ?>
+
+                            <?php if ($showForm): ?>
                             <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline w-100">
                                 <input type="hidden" name="status" id="pr_status_input" value="">
                                 <div class="mb-2 w-100">
                                     <textarea name="approval_note" class="form-control" rows="2" placeholder="Approval / Rejection Note"></textarea>
                                 </div>
                                 <div class="d-flex gap-2">
-                                    <button type="button" onclick="document.getElementById('pr_status_input').value='Approved'; confirmAction(this, 'Approve this PR?')" class="btn btn-success btn-sm">
-                                        <i class="bi bi-check-circle me-1"></i> Approve
+                                    <button type="button" onclick="document.getElementById('pr_status_input').value='Approved'; confirmAction(this, '<?= $pendingStage === 3 ? 'Finally approve this PR?' : ($pendingStage === 2 ? 'Approve Stage 2?' : 'Approve Stage 1?') ?>')" class="btn btn-success btn-sm">
+                                        <i class="bi bi-check-circle me-1"></i> 
+                                        <?= $pendingStage === 3 ? 'Final Approve' : ($pendingStage === 2 ? 'Approve Stage 2' : 'Approve Stage 1') ?>
                                     </button>
                                     <button type="button" onclick="document.getElementById('pr_status_input').value='Rejected'; confirmAction(this, 'Reject this PR?')" class="btn btn-danger btn-sm">
                                         <i class="bi bi-x-circle me-1"></i> Reject

@@ -981,20 +981,43 @@ $statusColor = [
                       <i class="bi bi-eye"></i> View
                     </a>
                     <?php if ($aprSt === 'Submitted'): ?>
-                    <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $apr['id'] ?>" method="POST" class="d-inline ms-1"
-                          onsubmit="return confirm('Approve PR-<?= $apr['id'] ?>?')">
-                      <input type="hidden" name="status" value="Approved">
-                      <button type="submit" class="btn btn-sm btn-success" style="font-size:11px">
-                        <i class="bi bi-check-circle"></i> Approve
-                      </button>
-                    </form>
-                    <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $apr['id'] ?>" method="POST" class="d-inline ms-1"
-                          onsubmit="return confirm('Reject PR-<?= $apr['id'] ?>?')">
-                      <input type="hidden" name="status" value="Rejected">
-                      <button type="submit" class="btn btn-sm btn-danger" style="font-size:11px">
-                        <i class="bi bi-x-circle"></i> Reject
-                      </button>
-                    </form>
+                        <?php 
+                        $showApproveBtn = false;
+                        $btnLabel = 'Approve';
+                        $pmApproved = !empty($apr['approved_by_id']);
+                        $qcApproved = !empty($apr['qc_approved_by_id']);
+                        $mgmtApproved = !empty($apr['mgmt_approved_by_id']);
+
+                        if (!$pmApproved) {
+                            if (in_array($sessionRoleId, [15, 22])) {
+                                $showApproveBtn = true;
+                                $btnLabel = 'Approve PM';
+                            }
+                        } elseif (!$qcApproved) {
+                            $showApproveBtn = false;
+                        } elseif (!$mgmtApproved) {
+                            if ($sessionRoleId === 3) {
+                                $showApproveBtn = true;
+                                $btnLabel = 'Final Approve';
+                            }
+                        }
+                        ?>
+                        <?php if ($showApproveBtn): ?>
+                        <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $apr['id'] ?>" method="POST" class="d-inline ms-1"
+                              onsubmit="return confirm('<?= $btnLabel ?> PR-<?= $apr['id'] ?>?')">
+                          <input type="hidden" name="status" value="Approved">
+                          <button type="submit" class="btn btn-sm btn-success" style="font-size:11px">
+                            <i class="bi bi-check-circle"></i> <?= $btnLabel ?>
+                          </button>
+                        </form>
+                        <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $apr['id'] ?>" method="POST" class="d-inline ms-1"
+                              onsubmit="return confirm('Reject PR-<?= $apr['id'] ?>?')">
+                          <input type="hidden" name="status" value="Rejected">
+                          <button type="submit" class="btn btn-sm btn-danger" style="font-size:11px">
+                            <i class="bi bi-x-circle"></i> Reject
+                          </button>
+                        </form>
+                        <?php endif; ?>
                     <?php endif; ?>
                   </td>
                 </tr>
@@ -1392,19 +1415,19 @@ $statusColor = [
     $pendingPOsForSE = $pendingPOsForSE ?? [];
     if (!empty($pendingPOsForSE)):
       ?>
-        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.03)">
+        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.03)">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="sec-title" style="margin-bottom:0">
-              <div class="sec-title-dot" style="background:var(--cd-green)"></div>
-              <i class="fal fa-hard-hat me-2" style="color:#059669"></i>
-              Pending Purchase Orders &mdash; SE Approval Required
+              <div class="sec-title-dot" style="background:var(--cd-orange)"></div>
+              <i class="fal fa-file-contract me-2" style="color:var(--cd-orange)"></i>
+              Pending Purchase Orders &mdash; Management Approval Required
               <span
-                style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(16,185,129,.12);color:#059669">
+                style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(245,158,11,.12);color:var(--cd-orange)">
                 <?= count($pendingPOsForSE) ?> Awaiting
               </span>
             </div>
-            <a href="<?= $base ?>/con-purchase-orders" style="font-size:11px;color:#059669;text-decoration:none">View All <i
-                class="fal fa-arrow-right ms-1"></i></a>
+            <a href="<?= $base ?>/con-purchase-orders" style="font-size:11px;color:var(--cd-orange);text-decoration:none">View
+              All <i class="fal fa-arrow-right ms-1"></i></a>
           </div>
           <div style="overflow-x:auto">
             <table class="proj-table">
@@ -1414,7 +1437,7 @@ $statusColor = [
                   <th>PO</th>
                   <th>Project</th>
                   <th>Order Date</th>
-                  <th>PM Status</th>
+                  <th>QC Status</th>
                   <th>Created By</th>
                   <th style="text-align:right">Action</th>
                 </tr>
@@ -1428,8 +1451,8 @@ $statusColor = [
                       <td style="font-size:11px;color:var(--text-muted)">
                         <?= !empty($po['order_date']) ? date('d M Y', strtotime($po['order_date'])) : '&mdash;' ?>
                       </td>
-                      <td><?php $pmOk = !empty($po['approved_by_pm']); ?><span
-                          style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:<?= $pmOk ? 'rgba(16,185,129,.12)' : ' rgba(239,68,68,.1)' ?>;color:<?= $pmOk ? '#059669' : '#dc2626' ?>"><?= $pmOk ? '&#10003; PM Approved' : '&#x23f3; PM Pending' ?></span>
+                      <td><?php $qcOk = !empty($po['qc_approved_by_id']); ?><span
+                          style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:<?= $qcOk ? 'rgba(16,185,129,.12)' : ' rgba(239,68,68,.1)' ?>;color:<?= $qcOk ? '#059669' : '#dc2626' ?>"><?= $qcOk ? '&#10003; QC Approved' : '&#x23f3; QC Pending' ?></span>
                       </td>
                       <td style="font-size:12px"><?= htmlspecialchars($po['created_by_name'] ?? '&mdash;') ?></td>
                       <td style="text-align:right"><a href="<?= $base ?>/con-purchase-order/<?= $po['id'] ?>"

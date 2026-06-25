@@ -80,6 +80,17 @@ class Con_QuotationController extends Controller
             'created_by'    => (int)($_SESSION['user']['id'] ?? 0),
         ];
 
+        // Prevent duplicate vendor quotation for the same PR
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS cnt FROM quotations WHERE request_id = ? AND vendor_id = ?");
+        $stmt->bind_param('ii', $data['request_id'], $data['vendor_id']);
+        $stmt->execute();
+        $resRow = $stmt->get_result()->fetch_assoc();
+        if ($resRow && $resRow['cnt'] > 0) {
+            setError('A quotation from this vendor has already been added for this Purchase Request. If you need to make changes, please edit the existing quotation.');
+            header("Location: {$GLOBALS['base_url']}/con-quotation-create/{$data['request_id']}");
+            exit;
+        }
+
         $materialIds = $_POST['material_id'] ?? [];
         $quantities  = $_POST['quantity']    ?? [];
         $unitPrices  = $_POST['unit_price']  ?? [];
@@ -179,6 +190,194 @@ class Con_QuotationController extends Controller
             setError('Failed to save CST selections.');
             header("Location: {$GLOBALS['base_url']}/con-quotation-compare/{$requestId}");
         }
+        exit;
+    }
+
+    // =========================================================================
+    // EDIT
+    // =========================================================================
+
+    public function edit($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if (!in_array($_SESSION['user']['role_id'] ?? 0, [17, 23])) {
+            setError('You do not have permission to edit records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
+        $quotation = $this->quotModel->find($id);
+        if (!$quotation) {
+            setError('Quotation not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
+
+        $requestId = $quotation['request_id'];
+        $pr = $this->prModel->find($requestId);
+        if (!$pr) {
+            setError('Purchase Request not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
+
+        // Check if PO is already generated
+        if ($pr['status'] === 'PO Issued') {
+            setError('Purchase Order has already been generated. You cannot edit this quotation.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$requestId}");
+            exit;
+        }
+
+        $prItems        = $this->prModel->getItems($requestId);
+        $quotationItems = $this->quotModel->getItems($id);
+        $vendors        = $this->vendorModel->getAll();
+        $existing       = $this->quotModel->getByRequest($requestId);
+
+        $this->view('phase2/quotations/create-quotation', [
+            'current_route'  => 'con-purchase-requests',
+            'page_title'     => 'Edit Vendor Quotation — PR #' . $requestId,
+            'pr'             => $pr,
+            'prItems'        => $prItems,
+            'quotation'      => $quotation,
+            'quotationItems' => $quotationItems,
+            'vendors'        => $vendors,
+            'existing'       => $existing,
+            'isEdit'         => true,
+        ]);
+    }
+
+    // =========================================================================
+    // UPDATE
+    // =========================================================================
+
+    public function update($quotationId)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if (!in_array($_SESSION['user']['role_id'] ?? 0, [17, 23])) {
+            setError('You do not have permission to edit records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
+        $quotation = $this->quotModel->find($quotationId);
+        if (!$quotation) {
+            setError('Quotation not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
+
+        $requestId = $quotation['request_id'];
+        $pr = $this->prModel->find($requestId);
+        if (!$pr) {
+            setError('Purchase Request not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
+
+        // Check if PO is already generated
+        if ($pr['status'] === 'PO Issued') {
+            setError('Purchase Order has already been generated. You cannot edit this quotation.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$requestId}");
+            exit;
+        }
+
+        // Handle attachment upload if any
+        $attachmentFile = uploadFile('attachment', 'vendor_quotation');
+
+        $data = [
+            'validity_date' => $_POST['validity_date'] ?? null,
+            'attachment'    => $attachmentFile, // null if no file uploaded
+            'created_by'    => (int)($_SESSION['user']['id'] ?? 0),
+        ];
+
+        // If no new attachment, keep the old one
+        if (empty($attachmentFile)) {
+            $data['attachment'] = $quotation['attachment'];
+        }
+
+        $materialIds = $_POST['material_id'] ?? [];
+        $quantities  = $_POST['quantity']    ?? [];
+        $unitPrices  = $_POST['unit_price']  ?? [];
+
+        $items = [];
+        foreach ($materialIds as $i => $mid) {
+            if (!empty($mid)) {
+                $items[] = [
+                    'material_id' => (int)$mid,
+                    'quantity'    => (float)($quantities[$i] ?? 0),
+                    'unit_price'  => (float)($unitPrices[$i] ?? 0),
+                ];
+            }
+        }
+
+        if (empty($items)) {
+            setError('No quotation items provided.');
+            header("Location: {$GLOBALS['base_url']}/con-quotation-edit/{$quotationId}");
+            exit;
+        }
+
+        $success = $this->quotModel->update($quotationId, $data, $items);
+        if ($success) {
+            setSuccess('Vendor quotation updated successfully.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$requestId}");
+        } else {
+            $errDetail = $this->quotModel->lastError ?? 'Unknown error';
+            setError('Failed to update quotation. DB Error: ' . $errDetail);
+            header("Location: {$GLOBALS['base_url']}/con-quotation-edit/{$quotationId}");
+        }
+        exit;
+    }
+
+    // =========================================================================
+    // DELETE
+    // =========================================================================
+
+    public function delete($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if (!in_array($_SESSION['user']['role_id'] ?? 0, [17, 23])) {
+            setError('You do not have permission to delete records in Construction Phase 2.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+            exit;
+        }
+
+        $quotation = $this->quotModel->find($id);
+        if (!$quotation) {
+            setError('Quotation not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
+
+        $requestId = $quotation['request_id'];
+        $pr = $this->prModel->find($requestId);
+        if (!$pr) {
+            setError('Purchase Request not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
+
+        // Check if PO is already generated
+        if ($pr['status'] === 'PO Issued') {
+            setError('Purchase Order has already been generated. You cannot delete this quotation.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$requestId}");
+            exit;
+        }
+
+        // Delete attachment file if exists
+        if (!empty($quotation['attachment'])) {
+            $filePath = dirname(__DIR__, 2) . '/public/uploads/vendor_quotation/' . $quotation['attachment'];
+            if (file_exists($filePath)) {
+                @unlink($filePath);
+            }
+        }
+
+        $success = $this->quotModel->delete($id);
+        if ($success) {
+            setSuccess('Vendor quotation deleted successfully.');
+        } else {
+            setError('Failed to delete quotation. DB Error: ' . ($this->quotModel->lastError ?? 'Unknown error'));
+        }
+        header("Location: {$GLOBALS['base_url']}/con-quotation-create/{$requestId}");
         exit;
     }
 }

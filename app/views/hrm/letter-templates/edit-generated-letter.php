@@ -1,3 +1,27 @@
+<style>
+@media (max-width: 767.98px) {
+    /* Side-by-side filter/action buttons on mobile */
+    .submit__btn {
+        display: flex !important;
+        gap: 10px !important;
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    .submit__btn button,
+    .submit__btn a {
+        flex: 1 !important;
+        margin: 0 !important;
+        text-align: center !important;
+        display: inline-flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        height: 42px !important; /* Force a clean and consistent height */
+        font-size: 14px !important;
+    }
+}
+</style>
+
 <div class="row">
     <div class="card__wrapper">
         <div class="col-xxl-12 col-xl-12 col-lg-12">

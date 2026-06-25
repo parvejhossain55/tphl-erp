@@ -24,44 +24,44 @@ $canModify = in_array($roleId, [1, 3, 14]);
 <!-- Stats Row -->
 <div class="row mb-4 align-items-stretch">
     <div class="col-xl-3 col-md-6 mb-3">
-        <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white;">
+        <div class="card border-0 shadow-sm h-100" ">
             <div class="card-body">
-                <h6 class="text-white-50">Total Lands Purchased</h6>
+                <h6 class="50">Total Lands Purchased</h6>
                 <h3 class="mb-0"><?= number_format((int)($stats['total_lands'] ?? 0)) ?></h3>
-                <div class="mt-2 text-white-50 small">
+                <div class="mt-2 50 small">
                     Area: <strong><?= number_format((float)($stats['total_area'] ?? 0), 2) ?> Dec/Katha</strong>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-xl-3 col-md-6 mb-3">
-        <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
+        <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
-                <h6 class="text-white-50">Registered & Cleared</h6>
+                <h6 class="50">Registered & Cleared</h6>
                 <h3 class="mb-0"><?= number_format((int)($stats['registered_count'] ?? 0)) ?></h3>
-                <div class="mt-2 text-white-50 small">
+                <div class="mt-2 50 small">
                     Cost: <strong>BDT <?= number_format((float)($stats['total_reg_cost'] ?? 0), 2) ?></strong>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-xl-3 col-md-6 mb-3">
-        <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f857a6 0%, #ff5858 100%); color: white;">
+        <div class="card border-0 shadow-sm h-100" >
             <div class="card-body">
-                <h6 class="text-white-50">Bayana Underway</h6>
+                <h6 class="50">Bayana Underway</h6>
                 <h3 class="mb-0"><?= number_format((int)($stats['bayana_count'] ?? 0)) ?></h3>
-                <div class="mt-2 text-white-50 small">
+                <div class="mt-2 50 small">
                     Paid: <strong>BDT <?= number_format((float)($stats['total_bayana_paid'] ?? 0), 2) ?></strong>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-xl-3 col-md-6 mb-3">
-        <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #3a7bd5 0%, #3a6073 100%); color: white;">
+        <div class="card border-0 shadow-sm h-100" >
             <div class="card-body">
-                <h6 class="text-white-50">Total Estimated Portfolio Value</h6>
+                <h6 class="50">Total Estimated Portfolio Value</h6>
                 <h3 class="mb-0">BDT <?= number_format((float)($stats['total_value'] ?? 0), 2) ?></h3>
-                <div class="mt-2 text-white-50 small">
+                <div class="mt-2 50 small">
                     Selected/Pending: <strong><?= number_format((int)($stats['selected_count'] ?? 0)) ?></strong>
                 </div>
             </div>

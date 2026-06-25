@@ -98,18 +98,6 @@ class MailService
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 // class MailService
 // {
 //     private $apiKey = "re_FybkVhb1_KTeF2JDqXDEadrgzXkCXP7dq";

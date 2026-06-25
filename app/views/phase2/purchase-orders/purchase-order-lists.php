@@ -45,7 +45,7 @@
                                     <?php
                                     $badge = match($po['status']) {
                                         'Issued'             => 'bg-info',
-                                        'PM Approved'        => 'bg-primary',
+                                        'QC Approved'        => 'bg-primary',
                                         'Approved'           => 'bg-success',
                                         'Partially Received' => 'bg-warning text-dark',
                                         'Fully Received'     => 'bg-success',
@@ -57,16 +57,16 @@
                                 </td>
                                 <td class="text-center">
                                     <?php
-                                    $pmOk = !empty($po['approved_by_pm']);
                                     $qcOk = !empty($po['qc_approved_by_id']);
-                                    $steps = ($pmOk ? 1 : 0) + ($qcOk ? 1 : 0);
+                                    $mgmtOk = !empty($po['mgmt_approved_by_id']);
+                                    $steps = ($qcOk ? 1 : 0) + ($mgmtOk ? 1 : 0);
                                     $apvColor = ($steps == 2) ? '#059669' : ($steps == 1 ? '#2563eb' : '#6b7280');
                                     ?>
                                     <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;
                                       background:rgba(0,0,0,.05);color:<?= $apvColor ?>">
                                       <?= $steps ?>/2
-                                      <?= $pmOk?'<span title="Management">PM✓</span>':'' ?>
                                       <?= $qcOk?'<span title="QC & Internal Audit">QC✓</span>':'' ?>
+                                      <?= $mgmtOk?'<span title="Management">MGMT✓</span>':'' ?>
                                     </span>
                                 </td>
                                 <td class="text-muted small"><?= date('d M Y', strtotime($po['order_date'])) ?></td>

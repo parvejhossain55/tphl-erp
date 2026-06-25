@@ -792,6 +792,7 @@ $routes['con-land-requisitions/delete'] = ['controller' => 'Phase2\LandRequisiti
 // Land Monthly Reports routes
 $routes['con-land-monthly-reports'] = ['controller' => 'Phase2\LandReportController', 'method' => 'index'];
 $routes['con-land-monthly-reports/generate'] = ['controller' => 'Phase2\LandReportController', 'method' => 'generate'];
+$routes['con-land-ledger'] = ['controller' => 'Phase2\LandReportController', 'method' => 'ledger'];
 
 // Fund Requisitions routes
 $routes['fund-requisitions'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'index'];
@@ -1050,6 +1051,9 @@ $routes['con-quotation-create/(\d+)']  = ['controller' => 'Phase2\Con_QuotationC
 $routes['con-quotation-store']         = ['controller' => 'Phase2\Con_QuotationController', 'method' => 'store'];
 $routes['con-quotation-compare/(\d+)'] = ['controller' => 'Phase2\Con_QuotationController', 'method' => 'compare'];
 $routes['con-quotation-select']        = ['controller' => 'Phase2\Con_QuotationController', 'method' => 'selectWinner'];
+$routes['con-quotation-edit/(\d+)']    = ['controller' => 'Phase2\Con_QuotationController', 'method' => 'edit'];
+$routes['con-quotation-update/(\d+)']  = ['controller' => 'Phase2\Con_QuotationController', 'method' => 'update'];
+$routes['con-quotation-delete/(\d+)']  = ['controller' => 'Phase2\Con_QuotationController', 'method' => 'delete'];
 
 // ── Purchase Orders ────────────────────────────────────────────────────────
 $routes['con-purchase-orders']         = ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'index'];

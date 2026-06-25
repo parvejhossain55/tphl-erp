@@ -721,6 +721,7 @@
             labels: labels,
             legend: {
                 position: 'right',
+                maxHeight: 280,
                 labels: {
                     colors: 'rgb(178,185,187)'
                 }
@@ -732,14 +733,35 @@
                     }
                 }
             },
-            responsive: [{
-                breakpoint: 768,
-                options: {
-                    legend: {
-                        position: 'bottom'
+            responsive: [
+                {
+                    breakpoint: 1599,
+                    options: {
+                        legend: {
+                            position: 'bottom',
+                            maxHeight: 100,
+                            labels: {
+                                colors: 'rgb(178,185,187)'
+                            }
+                        }
+                    }
+                },
+                {
+                    breakpoint: 767,
+                    options: {
+                        chart: {
+                            height: 480
+                        },
+                        legend: {
+                            position: 'bottom',
+                            maxHeight: 220,
+                            labels: {
+                                colors: 'rgb(178,185,187)'
+                            }
+                        }
                     }
                 }
-            }]
+            ]
         };
 
         new ApexCharts(document.querySelector("#deptPieChart"), options).render();

@@ -21,11 +21,11 @@ class ProjectWorkflowMailService
     // SMTP / OAuth config (same credentials as MailService.php)
     private $smtpHost     = 'smtp.gmail.com';
     private $smtpPort     = 587;
-    private $senderEmail  = 'info@dpremiumhomes.com';
+    private $senderEmail  = 'tech@dpremiumhomes.com';
     private $senderName   = 'TPHL ERP System';
-    private $clientId     = '893215055562-pbt3j7lg7ufqju370ltss46kh7pati3n.apps.googleusercontent.com';
-    private $clientSecret = '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';
-    private $refreshToken = '1//04tQCZJUfNcm7CgYIARAAGAQSNwF-L9IrFjuXh9BJ80IcIEKsg8h5m5TFRRQS6BQTt-wwIvtJKnUHd4sAtITIw8QJ0pgbijIOF0w';
+    private $clientId     = '684667519692-hcdp7rhi9r64d87g93eq1cagpgqurk35.apps.googleusercontent.com';
+    private $clientSecret = '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';
+    private $refreshToken = '1//041-wDvZzKIoVCgYIARAAGAQSNwF-L9IrP3uKc9BZMrTRHt9EHVR-PDRZdgog0Hk8uAOapqaf45h4Xkp8rkwzPTIY2Vhxt1DgIx4';
 
     public function __construct($db)
     {
@@ -444,8 +444,8 @@ class ProjectWorkflowMailService
         $pmId = (int)($project['pm_id'] ?? 0);
         $seId = (int)($project['site_engineer_id'] ?? 0);
 
-        // Get approvers: Management (3), PM Head (22), Procurement Head (20), assigned PM, assigned SE
-        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE (role_id IN (3, 20, 22) OR id IN (?, ?)) AND email IS NOT NULL AND email != ''");
+        // Get approvers: Management (3), QC (24), PM Head (22), Procurement Head (20), assigned PM, assigned SE
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE (role_id IN (3, 24, 20, 22) OR id IN (?, ?)) AND email IS NOT NULL AND email != ''");
         $stmt->bind_param('ii', $pmId, $seId);
         $stmt->execute();
         $approvers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -470,7 +470,7 @@ class ProjectWorkflowMailService
                 ctaLabel:    'Review & Approve PO',
                 ctaLink:     $base . "/con-purchase-order/{$poId}",
                 projectName: $projectName,
-                note:        'Please review the PO details before approving. The material receiving process cannot start until both SE and Top Management have approved.'
+                note:        'Please review the PO details before approving. The material receiving process cannot start until both QC & Internal Audit and Management have approved.'
             );
 
             $this->send($user['email'], $subject, $body);
@@ -510,6 +510,65 @@ class ProjectWorkflowMailService
     }
 
     /**
+     * PR SUBMITTED — Notify Management, PM, Purchase Head, Site Operator/Procurement, PM Head (role_id 3, 15, 17, 20, 22)
+     */
+    public function notifyOnPRSubmission(int $projectId, string $projectName, string $engineerName, string $requisitionMonth, int $prId): void
+    {
+        $base = $this->getBaseUrl();
+
+        // Get recipients: Management (3), PM (15), Purchase Head (17), Site Operator/Procurement (20), PM Head (22)
+        $stmt = $this->db->prepare("
+            SELECT id, full_name, email 
+            FROM users 
+            WHERE role_id IN (3, 15, 17, 20, 22) 
+              AND email IS NOT NULL 
+              AND email != ''
+        ");
+        $stmt->execute();
+        $recipients = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Deduplicate
+        $uniqueRecipients = [];
+        $seen = [];
+        foreach ($recipients as $r) {
+            if (!in_array($r['id'], $seen)) {
+                $seen[] = $r['id'];
+                $uniqueRecipients[] = $r;
+            }
+        }
+
+        $subject = "New Purchase Request Submitted: Requisition for {$requisitionMonth} — {$projectName}";
+
+        foreach ($uniqueRecipients as $user) {
+            // Build custom status indicator for PR submission
+            $stepHtml = "<div style='margin:20px 0;'>
+                <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
+                    <div style='width:28px;height:28px;border-radius:50%;background:#0284c7;color:#fff;
+                                text-align:center;line-height:28px;
+                                font-size:13px;font-weight:700;flex-shrink:0;'>&#9654;</div>
+                    <div style='font-size:13px;color:#0284c7;'>
+                        <strong>Status:</strong> 
+                        <span style='background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:4px;font-weight:bold;font-size:11px;'>Submitted</span>
+                    </div>
+                </div>
+            </div>";
+
+            $body = $this->buildHtml(
+                title:       "New Purchase Requisition Submitted",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "A new Purchase Requisition <strong>PR-{$prId}</strong> has been submitted by Site Engineer <strong>{$engineerName}</strong> for the month of <strong>{$requisitionMonth}</strong>.",
+                stepHtml:    $stepHtml,
+                ctaLabel:    'Review Purchase Request',
+                ctaLink:     $base . "/con-purchase-request/{$prId}",
+                projectName: $projectName,
+                note:        'Please review the request items and proceed with the necessary approval or quotation processing.'
+            );
+
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
      * PO REJECTED — Notify Procurement Head (20) & Site Engineer
      */
     public function notifyAfterPORejection(int $projectId, string $projectName, int $poId, string $remarks): void
@@ -530,7 +589,7 @@ class ProjectWorkflowMailService
             $body = $this->buildHtml(
                 title:       "Purchase Order Rejected",
                 greeting:    "Dear {$user['full_name']},",
-                message:     "Purchase Order <strong>#{$poId}</strong> for project <strong>{$projectName}</strong> has been rejected by Management/PM.<br><br><strong>Reason:</strong> {$remarks}",
+                message:     "Purchase Order <strong>#{$poId}</strong> for project <strong>{$projectName}</strong> has been rejected by QC/Management.<br><br><strong>Reason:</strong> {$remarks}",
                 stepHtml:    "",
                 ctaLabel:    'View Purchase Order',
                 ctaLink:     $base . "/con-purchase-order/{$poId}",
@@ -570,7 +629,7 @@ class ProjectWorkflowMailService
             $body = $this->buildHtml(
                 title:       "Action Required: Material Receiving (GRN)",
                 greeting:    "Dear {$user['full_name']},",
-                message:     "Purchase Order <strong>#{$poId}</strong> for project <strong>{$projectName}</strong> has been fully approved by Top Management and Site Engineer. It is now unlocked for material receiving.",
+                message:     "Purchase Order <strong>#{$poId}</strong> for project <strong>{$projectName}</strong> has been fully approved by QC & Internal Audit and Management. It is now unlocked for material receiving.",
                 stepHtml:    $stepHtml,
                 ctaLabel:    'Log Material Receiving (GRN)',
                 ctaLink:     $base . "/con-material-receiving-create/{$poId}",
@@ -1190,6 +1249,104 @@ class ProjectWorkflowMailService
      * Core send method using PHPMailer + Google XOAUTH2.
      * Modified to use async database queue to prevent UI blocking.
      */
+    /**
+     * Debug and test send BOQ submission email synchronously (no queue)
+     * prints results directly using echo / print_r
+     */
+    public function debugBOQMailSubmission(int $projectId, string $projectName, string $engineerName, string $requisitionMonth): void
+    {
+        // Get potential email recipients: role_id IN (3, 15, 17, 22)
+        // Exclude Admin (1)
+        $stmt = $this->db->prepare("
+            SELECT id, full_name, email, role_id 
+            FROM users 
+            WHERE role_id IN (3, 15, 17, 22)
+              AND role_id != 1
+              AND email IS NOT NULL 
+              AND email != ''
+        ");
+        $stmt->execute();
+        $recipients = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Deduplicate
+        $uniqueRecipients = [];
+        $seen = [];
+        foreach ($recipients as $r) {
+            if (!in_array($r['id'], $seen)) {
+                $seen[] = $r['id'];
+                $uniqueRecipients[] = $r;
+            }
+        }
+
+        echo "<h2>=== BOQ Email Submission Debug Mode ===</h2>";
+        echo "<p><strong>Project:</strong> {$projectName} (ID: {$projectId})</p>";
+        echo "<p><strong>Engineer:</strong> {$engineerName}</p>";
+        echo "<p><strong>Requisition Month:</strong> {$requisitionMonth}</p>";
+        echo "<p><strong>Total Recipients Found:</strong> " . count($uniqueRecipients) . "</p>";
+        echo "<hr>";
+
+        if (empty($uniqueRecipients)) {
+            echo "<p style='color:red;'>No valid recipients found with email addresses!</p>";
+            return;
+        }
+
+        // Initialize Google OAuth provider
+        $provider = new Google([
+            'clientId'     => $this->clientId,
+            'clientSecret' => $this->clientSecret,
+        ]);
+
+        foreach ($uniqueRecipients as $user) {
+            $subject = "⚡ [DEBUG] Approve BOQ / BOM — {$projectName}";
+            $body = $this->buildHtml(
+                title:       "Action Required: BOQ Approval (DEBUG TEST)",
+                greeting:    "Dear {$user['full_name']},",
+                message:     "A new <strong>Bill of Quantities (BOQ)</strong> is ready for project <strong>{$projectName}</strong> (Requisition Month: {$requisitionMonth}) and is awaiting approval.",
+                stepHtml:    "<p>This is a debug test mail.</p>",
+                ctaLabel:    'Review & Approve BOQ',
+                ctaLink:     $this->getBaseUrl() . "/con-boq-show/9999",
+                projectName: $projectName,
+                note:        'This email was sent in debug mode. No actual BOQ record was saved.'
+            );
+
+            echo "Sending to <strong>{$user['full_name']}</strong> (Role: {$user['role_id']}, Email: {$user['email']})... ";
+
+            try {
+                $mail = new PHPMailer(true);
+                $mail->isSMTP();
+                $mail->Host       = $this->smtpHost;
+                $mail->Port       = $this->smtpPort;
+                $mail->SMTPAuth   = true;
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                
+                $mail->AuthType = 'XOAUTH2';
+                $mail->setOAuth(new OAuth([
+                    'provider'     => $provider,
+                    'clientId'     => $this->clientId,
+                    'clientSecret' => $this->clientSecret,
+                    'refreshToken' => $this->refreshToken,
+                    'userName'     => $this->senderEmail,
+                ]));
+
+                $mail->setFrom($this->senderEmail, $this->senderName);
+                $mail->addAddress($user['email']);
+                $mail->isHTML(true);
+                $mail->Subject = $subject;
+                $mail->Body    = $body;
+                $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>'], "\n", $body));
+
+                $mail->send();
+                echo "<p style='color:green'>Email sent successfully to " . htmlspecialchars($user['email']) . "</p>";
+            } catch (\Throwable $th) {
+                echo "<p style='color:red'>Mail Sending Failed: " . htmlspecialchars($th->getMessage()) . "</p>";
+                error_log("Mail Sending Failed: " . $th->getMessage());
+            }
+            echo "<br>";
+        }
+
+        echo "<h3>Debug Finished. No database records were saved.</h3>";
+    }
+
     private function send(string $toEmail, string $subject, string $htmlBody): bool
     {
         try {

@@ -166,16 +166,49 @@ class Con_BOQController extends Controller
             'project_id'     => (int)($_POST['project_id']    ?? 0),
             'target_id'      => !empty($_POST['target_id'])    ? (int)$_POST['target_id']    : null,
             'design_type_id' => !empty($_POST['design_type_id']) ? (int)$_POST['design_type_id'] : null,
-            'version'        => trim($_POST['version']         ?? '1.0'),
+            'version'        => '1.0',
             'status'         => $_POST['status']               ?? 'Draft',
             'created_by'     => (int)($_SESSION['user']['id']  ?? 0),
         ];
 
-        if (!$data['project_id']) {
-            setError('Project is required.');
-            header("Location: {$GLOBALS['base_url']}/con-boq-create");
-            exit;
+        // ── EMAIL DEBUG INTERCEPT ────────────────────────────────────────────
+        require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+        $mailService = new \ProjectWorkflowMailService($this->db);
+        
+        // Get project info
+        $project = $this->projectModel->find($data['project_id']);
+        $projectName = $project ? $project['name'] : 'Unknown Project';
+        
+        // Get Site Engineer Name
+        $engineerName = $_SESSION['user']['full_name'] ?? 'Site Engineer';
+        
+        // Get Requisition Month
+        $requisitionMonth = date('F Y');
+        if ($data['target_id'] > 0) {
+            $targetStmt = $this->db->prepare("SELECT target_month FROM phase_monthly_targets WHERE id = ?");
+            $targetStmt->bind_param('i', $data['target_id']);
+            $targetStmt->execute();
+            $targetRow = $targetStmt->get_result()->fetch_assoc();
+            if ($targetRow && !empty($targetRow['target_month'])) {
+                $requisitionMonth = date('F Y', strtotime($targetRow['target_month']));
+            }
         }
+
+        // Execute synchronous test send and exit (no BOQ is saved in DB)
+        // $mailService->debugBOQMailSubmission(
+        //     (int)$data['project_id'],
+        //     $projectName,
+        //     $engineerName,
+        //     $requisitionMonth
+        // );
+        // exit;
+        // ─────────────────────────────────────────────────────────────────────
+
+        // if (!$data['project_id']) {
+        //     setError('Project is required.');
+        //     header("Location: {$GLOBALS['base_url']}/con-boq-create");
+        //     exit;
+        // }
 
         $boqId = $this->boqModel->createMaster($data);
         if ($boqId) {
@@ -275,8 +308,8 @@ class Con_BOQController extends Controller
         $createdBy  = (int)($boq['created_by'] ?? 0);
         $canApprove = in_array($currentRoleId, [1, 3, 15, 22]);
 
-        // Only PM (role 15) can edit even after approval
-        $canEdit = ($currentRoleId === 15);
+        // If Approved, no one can edit. Otherwise, PM (15) and others (excluding blocked list) can edit.
+        $canEdit = ($boq['status'] !== 'Approved' && !in_array($currentRoleId, [1, 3, 20, 22]));
 
         // Fetch creator info (name + designation)
         $creatorInfo = [];
@@ -296,7 +329,7 @@ class Con_BOQController extends Controller
         // Fetch linked Purchase Request details (if any)
         $stmtPr = $this->db->prepare("
             SELECT pr.id AS pr_id, pr.status AS pr_status, pr.created_at AS pr_created_at, pr.assigned_executive_id,
-                   exec.full_name AS executive_name
+                   pr.approved_by_id, exec.full_name AS executive_name
             FROM purchase_requests pr
             LEFT JOIN users exec ON exec.id = pr.assigned_executive_id
             WHERE pr.bom_id = ?
@@ -310,7 +343,16 @@ class Con_BOQController extends Controller
         $vprDetails = [];
         $totalPaid = 0.00;
         $vendors = [];
-        $nextStepInfo = 'Create Purchase Request';
+        $nextStepInfo = 'Awaiting Site Engineer to create Purchase Request.';
+        if (!$linkedPr) {
+            if ($boq['status'] === 'Draft') {
+                $nextStepInfo = 'Submit BOQ for review (Action required by Site Engineer / Creator)';
+            } elseif ($boq['status'] === 'Submitted') {
+                $nextStepInfo = 'Awaiting BOQ approval by Project Manager / Management';
+            } elseif ($boq['status'] === 'Rejected') {
+                $nextStepInfo = 'BOQ was Rejected. Need to revise & resubmit BOQ (Action required by Site Engineer / Creator)';
+            }
+        }
 
         if ($linkedPr) {
             // Find linked PO
@@ -466,7 +508,7 @@ class Con_BOQController extends Controller
 
     public function edit($id)
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -479,11 +521,9 @@ class Con_BOQController extends Controller
             exit;
         }
 
-        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-
-        // Role 15 (PM) can edit even approved BOQ — others cannot
-        if ($boq['status'] === 'Approved' && $roleId !== 15) {
-            setError('Cannot edit an Approved BOQ. Only Project Manager can edit approved BOQs.');
+        // Once approved, no one can edit
+        if ($boq['status'] === 'Approved') {
+            setError('Cannot edit an Approved BOQ.');
             header("Location: {$GLOBALS['base_url']}/con-boq-show/{$id}");
             exit;
         }
@@ -514,15 +554,29 @@ class Con_BOQController extends Controller
 
     public function update($id)
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
         }
 
+        $boq = $this->boqModel->find($id);
+        if (!$boq) {
+            setError('BOQ not found.');
+            header("Location: {$GLOBALS['base_url']}/con-boq");
+            exit;
+        }
+
+        if ($boq['status'] === 'Approved') {
+            setError('Cannot update an Approved BOQ.');
+            header("Location: {$GLOBALS['base_url']}/con-boq-show/{$id}");
+            exit;
+        }
+
         $data = [
             'project_id' => (int)($_POST['project_id'] ?? 0),
-            'version'    => trim($_POST['version'] ?? '1.0'),
+            'status'     => $_POST['status'] ?? 'Draft',
+            'version'    => '1.0',
         ];
 
         $this->boqModel->updateMaster($id, $data);
@@ -667,18 +721,18 @@ class Con_BOQController extends Controller
         // Migrated: now queries phase_monthly_targets via project_phases
         $stmt = $this->db->prepare("
             SELECT pmt.id,
-                   COALESCE(pmt.title, CONCAT(pp.phase_name,' - Month ',pmt.month_number)) AS target_title,
-                   YEAR(pmt.created_at)  AS year,
-                   pmt.month_number      AS month,
+                   CONCAT(pp.phase_name, ' - ', DATE_FORMAT(pmt.target_month, '%M %Y')) AS target_title,
+                   pmt.target_year       AS year,
+                   pmt.target_month_number AS month,
                    NULL                  AS week_number,
-                   pmt.target_percentage,
+                   pmt.total_target_weight_pct AS target_percentage,
                    NULL                  AS design_type_id,
                    NULL                  AS design_type_name,
                    (SELECT id FROM boq_master WHERE target_id = pmt.id LIMIT 1) AS boq_id
             FROM phase_monthly_targets pmt
             INNER JOIN project_phases pp ON pp.id = pmt.phase_id
             WHERE pp.project_id = ?
-            ORDER BY pp.phase_order ASC, pmt.month_number ASC");
+            ORDER BY pp.phase_order ASC, pmt.target_month_number ASC");
         $stmt->bind_param('i', $projectId);
         $stmt->execute();
         $targets = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);

@@ -28,22 +28,21 @@
                                       </div>
 
 
-                                      <div class="col-lg-6">
-                                          <div class="from__input-box">
-                                              <div class="form__input-title">
-                                                  <label for="user_id" class="form-label">Assigned Employee <span>*</span></label>
-                                              </div>
-                                              <div class="form__input">
-                                                  <select id="user_id" name="user_id" class="form-select " required>
-                                                      <?php foreach ($users as $user): ?>
-                                                          <option value="<?= $user['id'] ?>"><?= $user['full_name'] ?> - <?= $user['designation_name'] ?? 'N/A' ?></option>
-                                                      <?php endforeach; ?>
-                                                  </select>
-
-
-                                              </div>
-                                          </div>
-                                      </div>
+                                       <div class="col-lg-6">
+                                           <div class="from__input-box">
+                                               <div class="form__input-title">
+                                                   <label for="user_id" class="form-label">Assigned Employee <span>*</span></label>
+                                               </div>
+                                               <div class="form__input">
+                                                   <select id="user_id" name="user_id" class="form-select select2" required>
+                                                       <option value="">Select Employee</option>
+                                                       <?php foreach ($users as $user): ?>
+                                                           <option value="<?= $user['id'] ?>"><?= htmlspecialchars($user['full_name']) ?><?php if (!empty($user['employee_code'])): ?> (<?= htmlspecialchars($user['employee_code']) ?>)<?php endif; ?></option>
+                                                       <?php endforeach; ?>
+                                                   </select>
+                                               </div>
+                                           </div>
+                                       </div>
 
                                       <div class="col-md-6">
                                           <div class="from__input-box">

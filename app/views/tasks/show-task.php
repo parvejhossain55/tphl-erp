@@ -121,7 +121,7 @@
                             <ul class="user__list">
                                 <li>
                                     <div class="d-flex align-items-center gap-10 mb-15">
-                                        <img class="img-50 border-circle" src="<?= getImage('users', $task['assigned_photo']) ?>" alt="user image">
+                                        <img class="img-50 border-circle" src="<?= getImage('users', $task['assigned_photo']) ?>" alt="user image" style="width: 50px; height: 50px; object-fit: cover; object-position: top; border-radius: 50%;">
                                         <div class="profile-info">
                                             <h6 class="fw-bold mb-1"><?= htmlspecialchars($task['assigned_by_name'] ?? 'N/A') ?></h6>
                                             <p class="mb-0 text-primary fw-semibold" style="font-size: 0.85rem;"><?= htmlspecialchars($task['assigned_by_designation'] ?? 'N/A') ?></p>
@@ -154,7 +154,7 @@
                             <ul class="user__list">
                                 <li>
                                     <div class="d-flex align-items-center gap-10 mb-10">
-                                        <img class="img-50 border-circle" src="<?= getImage('users', $task['emp_photo']) ?>" alt="user image">
+                                        <img class="img-50 border-circle" src="<?= getImage('users', $task['emp_photo']) ?>" alt="user image" style="width: 50px; height: 50px; object-fit: cover; object-position: top; border-radius: 50%;">
                                         <div class="profile-info">
                                             <h6><?= $task['employee_name'] ?>.</h6>
                                             <p class="mb-0"><?= $task['employee_designation'] ?></p>

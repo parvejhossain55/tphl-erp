@@ -363,6 +363,25 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
   </div>
 </div>
 
+<!-- ══════════ NEXT ACTION TRACKER ══════════ -->
+<?php if (!empty($nextStepInfo)): ?>
+<div class="boq-panel" style="border: 1px solid #3b82f6; background: rgba(59, 130, 246, 0.03); margin-bottom: 22px; padding: 18px 22px; border-radius: 14px;">
+  <div style="display: flex; align-items: flex-start; gap: 14px;">
+    <div style="width: 32px; height: 32px; border-radius: 50%; background: #3b82f6; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);">
+      <i class="fal fa-arrow-alt-right-to-line" style="font-size: 14px;"></i>
+    </div>
+    <div>
+      <div style="font-size: 11px; font-weight: 800; color: #3b82f6; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px;">
+        <i class="fal fa-spinner-third fa-spin me-1"></i> Next Step / Stuck At
+      </div>
+      <div style="font-size: 15px; font-weight: 800; line-height: 1.4;">
+        <?= htmlspecialchars($nextStepInfo) ?>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
 <!-- ══════════ KPI GRID ══════════ -->
 <div class="boq-kpi-grid">
   <div class="boq-kpi">
@@ -504,7 +523,7 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
               <?php if ($totalPaid > 0): ?>
                 <span class="badge bg-success" style="font-size: 10px; padding: 4px 8px;"><i class="bi bi-wallet2 me-1"></i> Paid</span>
               <?php else: ?>
-                <span class="badge bg-warning text-dark" style="font-size: 10px; padding: 4px 8px;"><i class="bi bi-exclamation-circle me-1"></i> No Payments Disbursed</span>
+                <span class="badge bg-warning " style="font-size: 10px; padding: 4px 8px;"><i class="bi bi-exclamation-circle me-1"></i> No Payments Disbursed</span>
               <?php endif; ?>
             </div>
           </div>
@@ -527,7 +546,7 @@ $sc = $statusMap[$status] ?? $statusMap['Draft'];
           <div style="font-size: 11px; font-weight: 700; color: var(--clr-theme-primary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">
             Next Action / Stuck At
           </div>
-          <div style="font-size: 13.5px; font-weight: 700; color: #1f2937;">
+          <div style="font-size: 13.5px; font-weight: 700; ">
             <?= htmlspecialchars($nextStepInfo) ?>
           </div>
         </div>
@@ -717,7 +736,7 @@ if ($viewerRole === 12 && $status === 'Draft'):
               </td>
               <td style="font-size:11.5px;color:var(--text-muted)"><?= htmlspecialchars($item['unit']) ?></td>
               <td style="text-align:right;font-weight:700;color:#2563eb"><?= number_format($boqQty, 3) ?></td>
-              <td><?= !empty($item['required_date']) ? date('d M Y', strtotime($item['required_date'])) : '—' ?></td>
+              <td><?= (!empty($item['required_date']) && $item['required_date'] !== '0000-00-00') ? date('d M Y', strtotime($item['required_date'])) : '—' ?></td>
               <td style="text-align:right;color:#d97706;font-weight:600"><?= number_format($ordered, 3) ?></td>
               <td style="text-align:right;color:#059669;font-weight:700"><?= number_format($received, 3) ?></td>
               <td style="text-align:right;font-weight:800;color:<?= $remaining <= 0 ? '#dc2626' : '#374151' ?>">
