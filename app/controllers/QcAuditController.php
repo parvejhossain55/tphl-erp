@@ -73,7 +73,7 @@ class QcAuditController extends Controller
         $stats['material_pending'] = $matPending->fetch_assoc()['c'] ?? 0;
 
         // Purchase Orders to verify
-        $poPending = $this->db->query("SELECT COUNT(*) as c FROM purchase_orders WHERE status IN ('pending','submitted')");
+        $poPending = $this->db->query("SELECT COUNT(*) as c FROM purchase_orders WHERE status = 'Issued'");
         $stats['po_pending'] = $poPending ? ($poPending->fetch_assoc()['c'] ?? 0) : 0;
 
         // Monthly Advance Cash (this month)
@@ -233,12 +233,12 @@ class QcAuditController extends Controller
 
     public function pendingRequests()
     {
-        // 1. Pending Purchase Orders (PM Approved, awaiting QC)
+        // 1. Pending Purchase Orders (awaiting QC)
         $q1 = "SELECT po.id, po.created_at, p.name as project_name, 'Purchase Order' as type, po.status 
                FROM purchase_orders po
                JOIN purchase_requests pr ON pr.id = po.request_id
                LEFT JOIN projects p ON pr.project_id = p.id 
-               WHERE po.status = 'PM Approved'";
+               WHERE po.status = 'Issued'";
 
         // 3. Pending Vendor Payment Requests
         $q3 = "SELECT v.id, v.created_at, p.name as project_name, 'Vendor Payment' as type, v.status 
@@ -284,7 +284,6 @@ class QcAuditController extends Controller
 
                 if ($table) {
                     $qc_status = 'QC Approved';
-                    if ($type === 'Purchase Order') $qc_status = 'Approved'; // PO uses Fully Approved logic
 
                     $q = "UPDATE $table SET status = ?, qc_approved_by_id = ?, qc_note = ?, qc_approved_at = NOW() WHERE id = ?";
                     $stmt = $this->db->prepare($q);

@@ -376,7 +376,7 @@
         }
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 991px) {
         .form-body {
             padding: 0 12px 24px;
         }
@@ -389,12 +389,31 @@
             font-size: 1.3rem;
         }
 
+        .notice-bar {
+            padding: 12px 16px;
+        }
+
         .field-row {
             flex-direction: column;
         }
 
         .field-cell {
             border-right: none;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .field-cell:last-child {
+            border-bottom: none;
+        }
+
+        .recruit-row {
+            flex-direction: column;
+        }
+
+        .recruit-label-col {
+            border-right: none;
+            border-bottom: 1px solid var(--border);
+            width: 100%;
         }
 
         .recruit-checks {
@@ -404,6 +423,11 @@
         .recruit-option {
             border-right: none;
             border-bottom: 1px solid var(--border);
+            width: 100%;
+        }
+
+        .recruit-option:last-child {
+            border-bottom: none;
         }
 
         .approval-row {
@@ -412,5 +436,27 @@
 
         .approval-cell {
             border-right: none;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .approval-cell:last-child {
+            border-bottom: none;
+        }
+
+        .select2-container {
+            width: 100% !important;
+        }
+
+        .action-bar {
+            padding: 16px 12px;
+            flex-direction: column-reverse;
+            gap: 8px;
+        }
+
+        .action-bar .btn-print,
+        .action-bar .btn-reset {
+            width: 100%;
+            text-align: center;
+            margin: 0 !important;
         }
     }

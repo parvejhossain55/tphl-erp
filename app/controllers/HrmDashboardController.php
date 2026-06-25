@@ -75,7 +75,7 @@ class HrmDashboardController extends Controller
         // Max employee for progress bar calculation
 
         $departmentCount2 = count($departmentEmpCount);
-        $chartHeight = max(260, $departmentCount2 * 40); // minimum 260px, 1 dept ~ 40px
+        $chartHeight = 320; // Match left attendance chart height of 320px exactly for visual symmetry
         // Max employee for progress bar
         $maxEmployee = 0;
         $deptLabels = [];

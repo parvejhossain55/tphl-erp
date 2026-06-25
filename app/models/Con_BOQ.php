@@ -323,18 +323,41 @@ public function getRemainingBOQ($projectId, $boqId = null) {
     /** Update BOQ master header (project, version) */
     public function updateMaster($id, $data)
     {
-        $stmt = $this->db->prepare(
-            "UPDATE {$this->masterTable}
-             SET project_id = ?, version = ?
-             WHERE id = ? AND status IN ('Draft','Submitted')"
-        );
-        $stmt->bind_param(
-            'isi',
-            $data['project_id'],
-            $data['version'],
-            $id
-        );
-        return $stmt->execute() && $stmt->affected_rows >= 0;
+        $status = $data['status'] ?? 'Draft';
+        $projectId = (int)$data['project_id'];
+        $version = $data['version'] ?? '1.0';
+
+        if ($status === 'Approved') {
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $approvedBy = (int)($_SESSION['user']['id'] ?? 0);
+            $stmt = $this->db->prepare(
+                "UPDATE {$this->masterTable}
+                 SET project_id = ?, version = ?, status = ?, approved_by = ?, approved_at = NOW()
+                 WHERE id = ?"
+            );
+            $stmt->bind_param(
+                'issii',
+                $projectId,
+                $version,
+                $status,
+                $approvedBy,
+                $id
+            );
+        } else {
+            $stmt = $this->db->prepare(
+                "UPDATE {$this->masterTable}
+                 SET project_id = ?, version = ?, status = ?, approved_by = NULL, approved_at = NULL
+                 WHERE id = ?"
+            );
+            $stmt->bind_param(
+                'issi',
+                $projectId,
+                $version,
+                $status,
+                $id
+            );
+        }
+        return $stmt->execute();
     }
 
     /** Update BOQ status (Submit / Approve / Reject) */
@@ -378,7 +401,7 @@ public function getRemainingBOQ($projectId, $boqId = null) {
             $floorType = $item['floor_type'] ?? 'Typical_Floor';
             $floorNo = isset($item['floor_no']) && $item['floor_no'] !== '' ? (int)$item['floor_no'] : null;
             $stmt->bind_param(
-                'iisiidd',
+                'iisidds',
                 $boqId,
                 $item['material_id'],
                 $floorType,

@@ -1,3 +1,11 @@
+<?php
+$qiMap = [];
+if (!empty($isEdit) && !empty($quotationItems)) {
+    foreach ($quotationItems as $qi) {
+        $qiMap[$qi['material_id']] = $qi;
+    }
+}
+?>
 <div class="pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div class="mb-4">
         <h4><?= htmlspecialchars($page_title) ?></h4>
@@ -6,7 +14,7 @@
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-purchase-requests">Purchase Requests</a></li>
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-purchase-request/<?= $pr['id'] ?>">PR-<?= $pr['id'] ?></a></li>
-                <li class="breadcrumb-item active">Add Quotation</li>
+                <li class="breadcrumb-item active"><?= !empty($isEdit) ? 'Edit Quotation' : 'Add Quotation' ?></li>
             </ol>
         </nav>
     </div>
@@ -37,6 +45,9 @@
                                 <th>Valid Until</th>
                                 <th>Attachment</th>
                                 <th>Status</th>
+                                <?php if ($pr['status'] !== 'PO Issued'): ?>
+                                    <th>Action</th>
+                                <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
@@ -50,13 +61,23 @@
                                     <?php if (!empty($eq['attachment'])): ?>
                                         <a href="<?= $base_url ?>/public/uploads/vendor_quotation/<?= htmlspecialchars($eq['attachment']) ?>"
                                            target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2">
-                                            <i class="bi bi-paperclip me-1"></i>View
+                                             <i class="bi bi-paperclip me-1"></i>View
                                         </a>
                                     <?php else: ?>
                                         <span class="text-muted small">—</span>
                                     <?php endif; ?>
                                 </td>
                                 <td><span class="badge bg-info"><?= $eq['status'] ?></span></td>
+                                <?php if ($pr['status'] !== 'PO Issued'): ?>
+                                <td>
+                                    <a href="<?= $base_url ?>/con-quotation-edit/<?= $eq['id'] ?>" class="btn btn-sm btn-primary py-0 px-2 me-1">
+                                        <i class="bi bi-pencil-square"></i> Edit
+                                    </a>
+                                    <button class="btn btn-sm btn-danger py-0 px-2 delete-quot-btn" data-id="<?= $eq['id'] ?>">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </td>
+                                <?php endif; ?>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -65,31 +86,39 @@
             </div>
             <?php endif; ?>
 
-            <!-- Add New Quotation -->
+            <!-- Add/Edit Quotation Form -->
             <div class="card__wrapper shadow-sm">
                 <div class="card__header">
                     <h6 class="card__title mb-0">
-                        <i class="bi bi-receipt me-2"></i>Add New Vendor Quotation
+                        <i class="bi bi-receipt me-2"></i><?= !empty($isEdit) ? 'Edit Vendor Quotation' : 'Add New Vendor Quotation' ?>
                     </h6>
                 </div>
                 <div class="card__body p-4">
-                    <form action="<?= $base_url ?>/con-quotation-store" method="POST"
+                    <form action="<?= $base_url ?><?= !empty($isEdit) ? '/con-quotation-update/' . $quotation['id'] : '/con-quotation-store' ?>" method="POST"
                           id="quotationForm" enctype="multipart/form-data">
                         <input type="hidden" name="request_id" value="<?= $pr['id'] ?>">
 
                         <div class="row mb-4">
                             <div class="col-md-5">
                                 <label class="form-label fw-bold">Vendor <span class="text-danger">*</span></label>
-                                <select name="vendor_id" class="form-select" required>
-                                    <option value="">-- Select Vendor --</option>
-                                    <?php foreach ($vendors as $v): ?>
-                                        <option value="<?= $v['id'] ?>"><?= htmlspecialchars($v['name']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
+                                <?php if (!empty($isEdit)): ?>
+                                    <select class="form-select" disabled>
+                                        <option value="<?= $quotation['vendor_id'] ?>"><?= htmlspecialchars($quotation['vendor_name']) ?></option>
+                                    </select>
+                                    <input type="hidden" name="vendor_id" value="<?= $quotation['vendor_id'] ?>">
+                                <?php else: ?>
+                                    <select name="vendor_id" class="form-select" required>
+                                        <option value="">-- Select Vendor --</option>
+                                        <?php foreach ($vendors as $v): ?>
+                                            <option value="<?= $v['id'] ?>"><?= htmlspecialchars($v['name']) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                <?php endif; ?>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label fw-bold">Validity Date</label>
-                                <input type="date" name="validity_date" class="form-control" required>
+                                <input type="date" name="validity_date" class="form-control" required
+                                       value="<?= !empty($isEdit) ? htmlspecialchars($quotation['validity_date']) : '' ?>">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Project</label>
@@ -128,22 +157,31 @@
                                         <td>
                                             <input type="number" step="0.001" name="quantity[]"
                                                    class="form-control quot-qty" required min="0.001"
-                                                   value="<?= $item['quantity'] ?>">
+                                                   value="<?= !empty($isEdit) ? htmlspecialchars($qiMap[$item['material_id']]['quantity'] ?? 0) : $item['quantity'] ?>">
                                         </td>
                                         <td>
                                             <input type="number" step="0.01" name="unit_price[]"
                                                    class="form-control quot-price" required min="0"
-                                                   placeholder="0.00">
+                                                   placeholder="0.00"
+                                                   value="<?= !empty($isEdit) ? htmlspecialchars($qiMap[$item['material_id']]['unit_price'] ?? 0) : '' ?>">
                                         </td>
                                         <?php if ($idx === 0): ?>
                                         <td class="text-center align-middle" rowspan="<?= count($prItems) ?>"
                                             style="background:rgba(var(--clr-theme-primary-rgb),.04);vertical-align:middle">
                                             <input type="file" name="attachment" id="attachment"
-                                                   class="form-control form-control-sm"
+                                                   class="form-control form-control-sm mb-2"
                                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
                                             <div class="form-text text-center" style="font-size:10px">
                                                 PDF, Image, Word
                                             </div>
+                                            <?php if (!empty($isEdit) && !empty($quotation['attachment'])): ?>
+                                                <div class="mt-2 text-center">
+                                                    <a href="<?= $base_url ?>/public/uploads/vendor_quotation/<?= htmlspecialchars($quotation['attachment']) ?>"
+                                                       target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:11px">
+                                                        <i class="bi bi-paperclip"></i> Current file
+                                                    </a>
+                                                </div>
+                                            <?php endif; ?>
                                         </td>
                                         <?php endif; ?>
                                         <td class="text-end fw-bold quot-row-total">0.00</td>
@@ -165,7 +203,7 @@
                         <div class="mt-4 text-end">
                             <a href="<?= $base_url ?>/con-purchase-request/<?= $pr['id'] ?>" class="btn btn-secondary me-2">Cancel</a>
                             <button type="submit" class="btn btn-primary px-4 fw-bold">
-                                <i class="bi bi-save me-1"></i> Save Quotation
+                                <i class="bi bi-save me-1"></i> <?= !empty($isEdit) ? 'Update Quotation' : 'Save Quotation' ?>
                             </button>
                         </div>
                     </form>
@@ -199,6 +237,19 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target.classList.contains('quot-qty') || e.target.classList.contains('quot-price')) {
             recalc();
         }
+    });
+
+    // Run once on load to prefill totals in edit mode
+    recalc();
+
+    // Delete confirmation handler
+    document.querySelectorAll('.delete-quot-btn').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            var id = this.getAttribute('data-id');
+            if (confirm('Are you sure you want to delete this quotation? This will also reset any prepared comparative statements (CST) for this PR.')) {
+                window.location.href = '<?= $base_url ?>/con-quotation-delete/' + id;
+            }
+        });
     });
 });
 </script>

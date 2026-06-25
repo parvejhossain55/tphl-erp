@@ -57,7 +57,7 @@
 <div id="printArea">
     <div class="row">
 
-        <div class="card__wrapper p-0 w-100">
+        <div class="card__wrapper form-wrapper p-0 w-100">
 
             <!-- Header -->
             <div class="form-header">

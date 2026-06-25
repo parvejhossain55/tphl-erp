@@ -1050,6 +1050,9 @@ $routes['con-quotation-create/(\d+)']  = ['controller' => 'Phase2\Con_QuotationC
 $routes['con-quotation-store']         = ['controller' => 'Phase2\Con_QuotationController', 'method' => 'store'];
 $routes['con-quotation-compare/(\d+)'] = ['controller' => 'Phase2\Con_QuotationController', 'method' => 'compare'];
 $routes['con-quotation-select']        = ['controller' => 'Phase2\Con_QuotationController', 'method' => 'selectWinner'];
+$routes['con-quotation-edit/(\d+)']    = ['controller' => 'Phase2\Con_QuotationController', 'method' => 'edit'];
+$routes['con-quotation-update/(\d+)']  = ['controller' => 'Phase2\Con_QuotationController', 'method' => 'update'];
+$routes['con-quotation-delete/(\d+)']  = ['controller' => 'Phase2\Con_QuotationController', 'method' => 'delete'];
 
 // ── Purchase Orders ────────────────────────────────────────────────────────
 $routes['con-purchase-orders']         = ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'index'];

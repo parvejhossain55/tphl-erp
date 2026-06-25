@@ -3,6 +3,19 @@
     $page = 'Task Lists';
     $show_breadcrumb = true;
     ?>
+<style>
+@media (max-width: 991.98px) {
+    /* Make task action buttons equal width */
+    .task__btn {
+        gap: 10px !important;
+    }
+    .task__btn a {
+        flex: 1 !important;
+        text-align: center !important;
+    }
+}
+</style>
+
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
 
       <h4 class="mb-2 mb-md-0">
@@ -53,11 +66,11 @@
                       </div>
                   </div>
 
-                  <div class="task__team mb-20 d-flex justify-content-between">
+                  <div class="task__team mb-20 d-flex flex-column gap-3">
                       <div class="assign-by">
-                          <span class="task__meta-title mb-8">Assigned By:</span>
+                          <span class="task__meta-title d-block mb-1">Assigned By:</span>
                           <div class="d-flex align-items-center gap-2">
-                              <img class="img-36 border-circle" src="<?= getImage('users', $task['user_photo']) ?>" alt="image">
+                              <img class="img-36 border-circle" src="<?= getImage('users', $task['user_photo']) ?>" alt="image" style="width: 36px; height: 36px; object-fit: cover; object-position: top; border-radius: 50%;">
                               <div class="d-flex flex-column">
                                   <span class="fw-semibold">
                                       <?= $task['assigned_by_name'] ?>
@@ -70,27 +83,25 @@
                           </div>
                       </div>
                       <div class="assign-to">
-                          <span class="task__meta-title mb-8">Assigned To:</span>
+                          <span class="task__meta-title d-block mb-1">Assigned To:</span>
 
                           <div class="d-flex align-items-center gap-2">
                               <img
                                   class="img-36 border-circle"
                                   src="<?= getImage('users', $task['employee_photo']) ?>"
-                                  alt="image">
+                                  alt="image"
+                                  style="width: 36px; height: 36px; object-fit: cover; object-position: top; border-radius: 50%;">
 
-                              <div class="d-flex flex-column ">
+                              <div class="d-flex flex-column">
                                   <span class="fw-semibold">
                                       <?= $task['employee_name'] ?>
                                   </span>
-                                  <small class="text-muted ms-2">
+                                  <small class="text-muted">
                                       <?= $task['user_designation'] ?>
                                   </small>
                               </div>
                           </div>
                       </div>
-
-
-
                   </div>
                   <div class="task__progress">
                       <div class="d-flex justify-content-between mb-8">

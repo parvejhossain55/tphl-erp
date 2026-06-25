@@ -42,8 +42,8 @@
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/employee-dashboard.css">
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/holiday-calender.css">
     <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/hr-report.css">
-    <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/requisition.css">
-    <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/responsive-custom.css">
+    <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/requisition.css?v=1.0.1">
+    <link rel="stylesheet" href="<?= $GLOBALS['base_url'] ?>/assets/css/responsive-custom.css?v=1.0.1">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet"/>

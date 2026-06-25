@@ -32,7 +32,8 @@ class Con_PurchaseOrder extends Model
                     u.full_name AS created_by_name,
                     apv.full_name AS pm_approver_name,
                     apv_r.name    AS pm_approver_role,
-                    qc_u.full_name AS qc_approver_name
+                    qc_u.full_name AS qc_approver_name,
+                    mgmt_u.full_name AS mgmt_approver_name
              FROM {$this->table} po
              JOIN purchase_requests pr ON pr.id = po.request_id
              LEFT JOIN projects p ON p.id = pr.project_id
@@ -40,6 +41,7 @@ class Con_PurchaseOrder extends Model
              LEFT JOIN users apv ON apv.id = po.approved_by_pm
              LEFT JOIN roles apv_r ON apv_r.id = apv.role_id
              LEFT JOIN users qc_u ON qc_u.id = po.qc_approved_by_id
+             LEFT JOIN users mgmt_u ON mgmt_u.id = po.mgmt_approved_by_id
              WHERE po.id = ?";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {

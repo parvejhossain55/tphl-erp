@@ -281,3 +281,23 @@
     color: var(--clr-text-body, #f9fafb) !important;
     border-color: var(--clr-border-1, #374151) !important;
 }
+
+/* Guarantee a minimum height for TinyMCE editor container on mobile */
+@media (max-width: 767.98px) {
+    .tox-tinymce {
+        min-height: 380px !important;
+    }
+}
+
+/* Enable vertical resize for all textareas globally */
+textarea {
+    resize: vertical !important;
+}
+
+/* HRM Dashboard Department Wise Employees Pie Chart responsive height on mobile */
+@media (max-width: 767.98px) {
+    #deptPieChart {
+        height: 480px !important;
+    }
+}
+

@@ -135,6 +135,47 @@ $recentVendorPayments = $recentVendorPayments ?? [];
   </a>
 </div>
 
+<!-- PENDING PURCHASE REQUESTS FOR FINAL APPROVAL -->
+<?php if (!empty($prsForApproval)): ?>
+<div class="rd-panel">
+  <div class="rd-panel-title">
+    <div class="rd-dot" style="background:var(--op-amber)"></div>
+    Pending Purchase Requests for Final Approval
+    <span class="badge bg-warning text-dark ms-2" style="font-size: 11px;"><?= count($prsForApproval) ?></span>
+  </div>
+  <div class="table-responsive">
+    <table class="rd-table">
+      <thead>
+        <tr>
+          <th>#PR</th>
+          <th>Project</th>
+          <th>Items</th>
+          <th>Awaiting Final Approval Since</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($prsForApproval as $apr): ?>
+        <tr>
+          <td class="fw-bold" style="color:var(--clr-theme-primary)">PR-<?= $apr['id'] ?></td>
+          <td><strong><?= htmlspecialchars($apr['project_name'] ?? 'N/A') ?></strong></td>
+          <td>
+            <span class="badge bg-light text-dark border" style="font-size:10px"><?= (int)$apr['item_count'] ?> items</span>
+          </td>
+          <td class="text-muted" style="font-size:11.5px"><?= date('d M Y', strtotime($apr['created_at'])) ?></td>
+          <td class="text-end">
+            <a href="<?= $base ?>/con-purchase-request/<?= $apr['id'] ?>" class="btn btn-sm btn-primary py-1 px-3">
+              <i class="bi bi-shield-check"></i> View &amp; Act
+            </a>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
 <!-- PENDING WORK ORDERS FOR APPROVAL -->
 <?php if (!empty($pendingWorkOrders)): ?>
 <div class="rd-panel">

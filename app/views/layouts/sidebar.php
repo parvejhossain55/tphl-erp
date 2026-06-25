@@ -1713,7 +1713,7 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if (hasPermission('Purchase order')): ?>
+                <?php if (hasPermission('Purchase order') || ($_SESSION['user']['role_id'] ?? 0) == 12): ?>
                     <!-- Module 5: Procurement -->
                     <li
                         class="slide has-sub <?= isActive(['con-purchase-requests', 'con-purchase-request-create', 'con-purchase-orders', 'con-wastage', 'con-wastage-create'], $current_route) ? 'active' : '' ?>">

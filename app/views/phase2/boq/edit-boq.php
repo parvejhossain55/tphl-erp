@@ -57,8 +57,8 @@ if (!function_exists('buildFloorOptionsPhp')) {
                         <input type="hidden" name="boq_id" value="<?= $boq['id'] ?>">
 
                         <!-- Header Fields -->
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-5">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
                                 <label class="form-label fw-bold">Project <span class="text-danger">*</span></label>
                                 <select name="project_id" id="project_id" class="form-select" required>
                                     <option value="">-- Select Project --</option>
@@ -70,14 +70,14 @@ if (!function_exists('buildFloorOptionsPhp')) {
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-bold">Version</label>
-                                <input type="text" name="version" class="form-control"
-                                       value="<?= htmlspecialchars($boq['version']) ?>" required>
-                            </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="form-label fw-bold">Current Status</label>
-                                <input type="text" class="form-control" value="<?= $boq['status'] ?>" disabled>
+                                <select name="status" class="form-select" required>
+                                    <option value="Draft" <?= $boq['status'] === 'Draft' ? 'selected' : '' ?>>Draft</option>
+                                    <option value="Submitted" <?= $boq['status'] === 'Submitted' ? 'selected' : '' ?>>Submitted</option>
+                                    <option value="Approved" <?= $boq['status'] === 'Approved' ? 'selected' : '' ?>>Approved</option>
+                                    <option value="Rejected" <?= $boq['status'] === 'Rejected' ? 'selected' : '' ?>>Rejected</option>
+                                </select>
                             </div>
                         </div>
 
@@ -129,9 +129,9 @@ if (!function_exists('buildFloorOptionsPhp')) {
                                                 </div>
                                             </td>
                                             <td>
-                                                <input type="date" name="required_date[]"
-                                                       class="form-control boq-req-date" required
-                                                       value="<?= htmlspecialchars($item['required_date'] ?? '') ?>">
+                                                 <input type="date" name="required_date[]"
+                                                        class="form-control boq-req-date" required
+                                                        value="<?= (!empty($item['required_date']) && $item['required_date'] !== '0000-00-00') ? htmlspecialchars($item['required_date']) : '' ?>">
                                             </td>
                                             <td class="text-center">
                                                 <button type="button"

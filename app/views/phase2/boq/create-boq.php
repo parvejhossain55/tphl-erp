@@ -171,9 +171,8 @@ if ($phaseTarget) {
                     <input type="hidden" name="target_id"  id="target_id_hidden"  value="<?= $target_id ?: '' ?>">
                     <input type="hidden" name="design_type_id" value="">
 
-                    <!-- ── Row 1: Project + Status ── -->
                     <div class="row mb-3">
-                        <div class="col-md-5">
+                        <div class="col-md-6">
                             <label class="form-label fw-bold">Project <span class="text-danger">*</span></label>
                             <?php if ($phaseTarget): ?>
                                 <input type="hidden" name="project_id" value="<?= (int)$phaseTarget['project_id'] ?>">
@@ -192,10 +191,6 @@ if ($phaseTarget) {
                                     <?php endforeach; ?>
                                 </select>
                             <?php endif; ?>
-                        </div>
-                        <div class="col-md-3 d-none">
-                            <label class="form-label fw-bold">Version</label>
-                            <input type="text" name="version" class="form-control" value="1.0" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Initial Status</label>

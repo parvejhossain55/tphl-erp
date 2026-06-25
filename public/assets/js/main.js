@@ -509,7 +509,8 @@ function bd_settings_append($x) {
 		plugins: ['code', 'table', 'lists', 'anchor', 'autolink', "autosave", "charmap", "codesample", "directionality", "emoticons", "fullscreen", "help", "image", "importcss", "insertdatetime", "visualblocks", "visualchars", "wordcount", "accordion",],
 		link_default_target: '_blank',
 		quickbars_insert_toolbar: false,
-		height: "200"
+		height: "200",
+		resize: true
 	});
 	tinymce.init({
 		selector: '#tinymce_textarea_form',
@@ -517,6 +518,7 @@ function bd_settings_append($x) {
 		plugins: ['code', 'table', 'lists', 'anchor', 'autolink', "autosave", "charmap", "codesample", "directionality", "emoticons", "fullscreen", "help", "image", "importcss", "insertdatetime", "link", "media", "nonbreaking", "pagebreak", "preview", "quickbars", "save", "searchreplace"],
 		font_family_formats: 'Manrope=manrope,Andale Mono=andale mono,times; Arial=arial,helvetica,sans-serif; Arial Black=arial black,avant garde; Book Antiqua=book antiqua,palatino; Comic Sans MS=comic sans ms,sans-serif; Courier New=courier new,courier; Georgia=georgia,palatino; Helvetica=helvetica; Impact=impact,chicago; Symbol=symbol; Tahoma=tahoma,arial,helvetica,sans-serif; Terminal=terminal,monaco; Times New Roman=times new roman,times; Trebuchet MS=trebuchet ms,geneva; Verdana=verdana,geneva; Webdings=webdings; Wingdings=wingdings,zapf dingbats',
 		toolbar_mode: 'wrap',
+		resize: true
 	});
 	// tinymce.init({
 	// 	selector: '#tinymce_simple_textarea',
@@ -530,11 +532,12 @@ function bd_settings_append($x) {
 	tinymce.init({
     selector: '#tinymce_simple_textarea',
     toolbar: 'undo redo blockquote blocks bold italic alignleft aligncenter alignright outdent indent code anchor link restoredraft charmap codesample ltr rtl emoticons fullscreen help image insertdatetime lists media nonbreaking pagebreak preview save searchreplace template visualblocks visualchars wordcount accordion print',
-    toolbar_mode: 'wrap',
+    toolbar_mode: 'sliding',
     plugins: ['code', 'table', 'lists', 'anchor', 'autolink', "autosave", "charmap", "codesample", "directionality", "emoticons", "fullscreen", "help", "image", "importcss", "insertdatetime", "visualblocks", "visualchars", "wordcount", "accordion"],
     link_default_target: '_blank',
     quickbars_insert_toolbar: false,
     height: "300",
+    resize: true,
     
     //Prevent TinyMCE from converting quotes into entities
     entity_encoding: 'raw',

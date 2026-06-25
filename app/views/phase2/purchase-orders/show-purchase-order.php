@@ -3,15 +3,13 @@ $base_url     = $GLOBALS['base_url'];
 $po           = $po ?? [];
 $items        = $items ?? [];
 $pendingItems = $pendingItems ?? [];
-$seApproved   = $seApproved  ?? false;
-$pmApproved   = $pmApproved  ?? false;
-$qcApproved    = $qcApproved ?? false;
-$fullyApproved = $fullyApproved ?? false;
-$canApproveSE = $canApproveSE ?? false;
-$canApprovePM = $canApprovePM ?? false;
-$canApproveQC  = $canApproveQC ?? false;
-$currentRoleId = $currentRoleId ?? 0;
-$linkedBoq    = $linkedBoq ?? null;
+$qcApproved     = $qcApproved ?? false;
+$mgmtApproved   = $mgmtApproved ?? false;
+$fullyApproved  = $fullyApproved ?? false;
+$canApproveQC   = $canApproveQC ?? false;
+$canApproveMgmt = $canApproveMgmt ?? false;
+$currentRoleId  = $currentRoleId ?? 0;
+$linkedBoq      = $linkedBoq ?? null;
 
 $statusBadge = [
   'Issued'             => ['bg' => 'rgba(59,130,246,.15)',  'color' => '#2563eb', 'label' => 'Issued'],
@@ -19,7 +17,7 @@ $statusBadge = [
   'Partially Received' => ['bg' => 'rgba(245,158,11,.15)',  'color' => '#d97706', 'label' => 'Partially Received'],
   'Fully Received'     => ['bg' => 'rgba(16,185,129,.15)',  'color' => '#059669', 'label' => 'Fully Received'],
   'Cancelled'          => ['bg' => 'rgba(239,68,68,.15)',   'color' => '#dc2626', 'label' => 'Cancelled'],
-  'PM Approved'           => ['bg' => 'rgba(59,130,246,.15)',  'color' => '#2563eb', 'label' => 'PM Approved'],
+  'QC Approved'        => ['bg' => 'rgba(59,130,246,.15)',  'color' => '#2563eb', 'label' => 'QC Approved'],
 ];
 $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' => '#6b7280', 'label' => $po['status']];
 ?>
@@ -161,7 +159,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
           <i class="fal fa-circle"></i><?= $sb['label'] ?>
         </div>
         <div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.55)">
-          <?= $fullyApproved ? '✅ Fully Approved (PM + QC)' : ($pmApproved ? '⏳ Awaiting QC Approval' : '⏳ Awaiting PM Approval') ?>
+          <?= $fullyApproved ? '✅ Fully Approved (QC + Management)' : ($qcApproved ? '⏳ Awaiting Management Approval' : '⏳ Awaiting QC & Internal Audit Approval') ?>
         </div>
       </div>
     </div>
@@ -298,7 +296,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
           <i class="fal fa-lock" style="color:#d97706;font-size:20px"></i>
           <div>
             <div style="font-size:13px;font-weight:700;color:#d97706">Material Receiving Locked</div>
-            <div style="font-size:11px;color:var(--text-muted)">Waiting for Project Manager (PM) approval.</div>
+            <div style="font-size:11px;color:var(--text-muted)">Waiting for QC and Management approvals.</div>
           </div>
         </div>
       </div>
@@ -317,40 +315,10 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
         <span style="margin-left:auto;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;
           background:<?= $fullyApproved ? 'rgba(16,185,129,.12)' : 'rgba(245,158,11,.12)' ?>;
           color:<?= $fullyApproved ? '#059669' : '#d97706' ?>">
-          <?= ($pmApproved ? 1 : 0) + ($qcApproved ? 1 : 0) ?>/2 Done
+          <?= ($qcApproved ? 1 : 0) + ($mgmtApproved ? 1 : 0) ?>/2 Done
         </span>
       </div>
 
-
-      <!-- PM Step -->
-      <div class="po-apv-step" style="background:<?= $pmApproved ? 'rgba(16,185,129,.06)' : 'rgba(245,158,11,.05)' ?>;
-        border:1px solid <?= $pmApproved ? 'rgba(16,185,129,.2)' : 'rgba(245,158,11,.2)' ?>;margin-bottom:14px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div class="po-apv-icon" style="background:<?= $pmApproved ? 'rgba(16,185,129,.15)' : 'rgba(245,158,11,.1)' ?>;
-            color:<?= $pmApproved ? '#059669' : '#d97706' ?>">
-            <i class="fal <?= $pmApproved ? 'fa-check-circle' : 'fa-user-tie' ?>"></i>
-          </div>
-          <div>
-            <div style="font-size:12px;font-weight:700">Project Manager</div>
-            <?php if ($pmApproved && !empty($po['pm_approver_name'])): ?>
-              <div style="font-size:10px;font-weight:700;color:#059669"><?= htmlspecialchars($po['pm_approver_name']) ?></div>
-              <?php if (!empty($po['pm_approver_role'])): ?>
-                <div style="font-size:9px;color:#6b7280;font-style:italic"><?= htmlspecialchars($po['pm_approver_role']) ?></div>
-              <?php endif; ?>
-              <?php if (!empty($po['pm_approved_at'])): ?>
-                <div style="font-size:9px;color:var(--text-muted)"><?= date('d M Y, h:i A', strtotime($po['pm_approved_at'])) ?></div>
-              <?php endif; ?>
-            <?php else: ?>
-              <div style="font-size:10px;color:var(--text-muted)">Awaiting approval</div>
-            <?php endif; ?>
-          </div>
-        </div>
-        <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
-          background:<?= $pmApproved ? 'rgba(16,185,129,.12)' : 'rgba(245,158,11,.1)' ?>;
-          color:<?= $pmApproved ? '#059669' : '#d97706' ?>">
-          <?= $pmApproved ? '✓ Approved' : 'Pending' ?>
-        </span>
-      </div>
 
       <!-- QC & Internal Audit Step -->
       <div class="po-apv-step" style="background:<?= $qcApproved ? 'rgba(16,185,129,.06)' : 'rgba(245,158,11,.05)' ?>;
@@ -367,10 +335,11 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
               <?php if (!empty($po['qc_approved_at'])): ?>
                 <div style="font-size:9px;color:var(--text-muted)"><?= date('d M Y, h:i A', strtotime($po['qc_approved_at'])) ?></div>
               <?php endif; ?>
-            <?php elseif ($pmApproved): ?>
-              <div style="font-size:10px;color:var(--text-muted)">Awaiting QC approval</div>
+              <?php if (!empty($po['qc_note'])): ?>
+                <div style="font-size:10px;color:#555;font-style:italic;margin-top:2px">Note: <?= htmlspecialchars($po['qc_note']) ?></div>
+              <?php endif; ?>
             <?php else: ?>
-              <div style="font-size:10px;color:var(--text-muted)">Waiting for PM first</div>
+              <div style="font-size:10px;color:var(--text-muted)">Awaiting QC approval</div>
             <?php endif; ?>
           </div>
         </div>
@@ -378,6 +347,38 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
           background:<?= $qcApproved ? 'rgba(16,185,129,.12)' : 'rgba(245,158,11,.1)' ?>;
           color:<?= $qcApproved ? '#059669' : '#d97706' ?>">
           <?= $qcApproved ? '✓ Approved' : 'Pending' ?>
+        </span>
+      </div>
+
+      <!-- Management Step -->
+      <div class="po-apv-step" style="background:<?= $mgmtApproved ? 'rgba(16,185,129,.06)' : 'rgba(245,158,11,.05)' ?>;
+        border:1px solid <?= $mgmtApproved ? 'rgba(16,185,129,.2)' : 'rgba(245,158,11,.2)' ?>;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="po-apv-icon" style="background:<?= $mgmtApproved ? 'rgba(16,185,129,.15)' : 'rgba(245,158,11,.1)' ?>;
+            color:<?= $mgmtApproved ? '#059669' : '#d97706' ?>">
+            <i class="fal <?= $mgmtApproved ? 'fa-check-circle' : 'fa-user-tie' ?>"></i>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700">Management</div>
+            <?php if ($mgmtApproved && !empty($po['mgmt_approver_name'])): ?>
+              <div style="font-size:10px;font-weight:700;color:#059669"><?= htmlspecialchars($po['mgmt_approver_name']) ?></div>
+              <?php if (!empty($po['mgmt_approved_at'])): ?>
+                <div style="font-size:9px;color:var(--text-muted)"><?= date('d M Y, h:i A', strtotime($po['mgmt_approved_at'])) ?></div>
+              <?php endif; ?>
+              <?php if (!empty($po['mgmt_note'])): ?>
+                <div style="font-size:10px;color:#555;font-style:italic;margin-top:2px">Note: <?= htmlspecialchars($po['mgmt_note']) ?></div>
+              <?php endif; ?>
+            <?php elseif ($qcApproved): ?>
+              <div style="font-size:10px;color:var(--text-muted)">Awaiting Management approval</div>
+            <?php else: ?>
+              <div style="font-size:10px;color:var(--text-muted)">Waiting for QC first</div>
+            <?php endif; ?>
+          </div>
+        </div>
+        <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
+          background:<?= $mgmtApproved ? 'rgba(16,185,129,.12)' : 'rgba(245,158,11,.1)' ?>;
+          color:<?= $mgmtApproved ? '#059669' : '#d97706' ?>">
+          <?= $mgmtApproved ? '✓ Approved' : 'Pending' ?>
         </span>
       </div>
 
@@ -390,21 +391,44 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
         </div>
       <?php endif; ?>
 
-      <!-- Approve Action — PM -->
-      <?php if ($canApprovePM): ?>
-        <form action="<?= $base_url ?>/con-purchase-order-approve/<?= $po['id'] ?>" method="POST" id="pmApproveForm" style="margin-bottom:8px">
-          <button type="button" id="btnApprovePM"
+      <!-- Approve Action — QC -->
+      <?php if ($canApproveQC): ?>
+        <form action="<?= $base_url ?>/con-purchase-order-approve/<?= $po['id'] ?>" method="POST" id="qcApproveForm" style="margin-bottom:8px">
+          <div class="mb-2">
+            <textarea name="approval_note" class="form-control" rows="2" placeholder="QC Approval Note (optional)" style="font-size:12px;border-radius:10px"></textarea>
+          </div>
+          <button type="button" id="btnApproveQC"
             style="width:100%;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;border:none;
             border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer">
-            <i class="fal fa-user-tie me-2"></i>Approve as PM
+            <i class="fal fa-clipboard-check me-2"></i>Approve as QC
           </button>
         </form>
 
         <button type="button" class="btn btn-outline-danger w-100" style="border-radius:10px;font-size:12px;font-weight:700;padding:8px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
           <i class="fal fa-times-circle me-2"></i>Reject Order
         </button>
-        
-        <!-- Reject Modal -->
+      <?php endif; ?>
+
+      <!-- Approve Action — Management -->
+      <?php if ($canApproveMgmt): ?>
+        <form action="<?= $base_url ?>/con-purchase-order-approve/<?= $po['id'] ?>" method="POST" id="mgmtApproveForm" style="margin-bottom:8px">
+          <div class="mb-2">
+            <textarea name="approval_note" class="form-control" rows="2" placeholder="Management Approval Note (optional)" style="font-size:12px;border-radius:10px"></textarea>
+          </div>
+          <button type="button" id="btnApproveMgmt"
+            style="width:100%;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;
+            border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer">
+            <i class="fal fa-user-tie me-2"></i>Approve as Management
+          </button>
+        </form>
+
+        <button type="button" class="btn btn-outline-danger w-100" style="border-radius:10px;font-size:12px;font-weight:700;padding:8px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
+          <i class="fal fa-times-circle me-2"></i>Reject Order
+        </button>
+      <?php endif; ?>
+
+      <!-- Reject Modal -->
+      <?php if ($canApproveQC || $canApproveMgmt): ?>
         <div class="modal fade" id="rejectPoModal" tabindex="-1" aria-hidden="true">
           <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
@@ -428,20 +452,6 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
             </div>
           </div>
         </div>
-      <?php endif; ?>
-
-      <!-- Approve Action — QC -->
-      <?php if ($canApproveQC): ?>
-        <form action="<?= $base_url ?>/con-purchase-order-approve/<?= $po['id'] ?>" method="POST" id="qcApproveForm" style="margin-top:14px">
-          <div class="mb-2">
-            <textarea name="approval_note" class="form-control" rows="2" placeholder="QC Approval Note (optional)" style="font-size:12px;border-radius:10px"></textarea>
-          </div>
-          <button type="button" id="btnApproveQC"
-            style="width:100%;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;
-            border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer">
-            <i class="fal fa-clipboard-check me-2"></i>Approve as QC & Internal Audit
-          </button>
-        </form>
       <?php endif; ?>
     </div>
 
@@ -598,12 +608,12 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var pmBtn = document.getElementById('btnApprovePM');
-    if (pmBtn) {
-        pmBtn.addEventListener('click', function() {
+    var qcBtn = document.getElementById('btnApproveQC');
+    if (qcBtn) {
+        qcBtn.addEventListener('click', function() {
             Swal.fire({
-                title: 'Approve Purchase Order?',
-                text: 'This will mark the PO as PM Approved and forward it to QC & Internal Audit.',
+                title: 'QC Approval',
+                text: 'Approve this Purchase Order as QC & Internal Audit? This will forward it to Management.',
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#1d4ed8',
@@ -611,17 +621,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 confirmButtonText: 'Yes, Approve!'
             }).then(function(result) {
                 if (result.isConfirmed) {
-                    document.getElementById('pmApproveForm').submit();
+                    document.getElementById('qcApproveForm').submit();
                 }
             });
         });
     }
-    var qcBtn = document.getElementById('btnApproveQC');
-    if (qcBtn) {
-        qcBtn.addEventListener('click', function() {
+    var mgmtBtn = document.getElementById('btnApproveMgmt');
+    if (mgmtBtn) {
+        mgmtBtn.addEventListener('click', function() {
             Swal.fire({
-                title: 'QC Approval',
-                text: 'Approve this Purchase Order as QC & Internal Audit? This is the final approval step.',
+                title: 'Management Approval',
+                text: 'Approve this Purchase Order as Management? This is the final approval step.',
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#059669',
@@ -629,7 +639,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 confirmButtonText: 'Yes, Approve!'
             }).then(function(result) {
                 if (result.isConfirmed) {
-                    document.getElementById('qcApproveForm').submit();
+                    document.getElementById('mgmtApproveForm').submit();
                 }
             });
         });

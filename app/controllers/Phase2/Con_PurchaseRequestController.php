@@ -220,6 +220,53 @@ class Con_PurchaseRequestController extends Controller
 
         if ($result['success']) {
             setSuccess('Purchase Request created successfully.');
+
+            // Trigger email if submitted
+            if ($data['status'] === 'Submitted') {
+                try {
+                    $prId = (int)$result['id'];
+                    // 1. Get Project Name
+                    $projStmt = $this->db->prepare("SELECT name FROM projects WHERE id = ?");
+                    $projStmt->bind_param('i', $data['project_id']);
+                    $projStmt->execute();
+                    $projRow = $projStmt->get_result()->fetch_assoc();
+                    $projectName = $projRow ? $projRow['name'] : 'Unknown Project';
+
+                    // 2. Get Site Engineer Name
+                    $engineerName = $_SESSION['user']['full_name'] ?? 'Site Engineer';
+
+                    // 3. Get Requisition Month
+                    $requisitionMonth = date('F Y');
+                    if ($data['bom_id'] > 0) {
+                        $boqStmt = $this->db->prepare("
+                            SELECT pmt.target_month 
+                            FROM boq_master bm
+                            LEFT JOIN phase_monthly_targets pmt ON pmt.id = bm.target_id
+                            WHERE bm.id = ?
+                        ");
+                        $boqStmt->bind_param('i', $data['bom_id']);
+                        $boqStmt->execute();
+                        $boqRow = $boqStmt->get_result()->fetch_assoc();
+                        if ($boqRow && !empty($boqRow['target_month'])) {
+                            $requisitionMonth = date('F Y', strtotime($boqRow['target_month']));
+                        }
+                    }
+
+                    // 4. Send email
+                    require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+                    $mailService = new \ProjectWorkflowMailService($this->db);
+                    $mailService->notifyOnPRSubmission(
+                        (int)$data['project_id'],
+                        $projectName,
+                        $engineerName,
+                        $requisitionMonth,
+                        $prId
+                    );
+                } catch (\Throwable $e) {
+                    error_log("Failed to send PR submission email in store(): " . $e->getMessage());
+                }
+            }
+
             header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
         } else {
             $errMsg = implode(' | ', $result['errors']);
@@ -248,6 +295,126 @@ class Con_PurchaseRequestController extends Controller
         $quotModel  = new Con_Quotation($this->db);
         $quotations = $quotModel->getByRequest($id);
         $hasCST     = $quotModel->hasComparison($id);
+        // ── Determine next step / block info for PR ──────────────────────────
+        $nextStepInfo = '';
+        if ($pr['status'] === 'Draft') {
+            $nextStepInfo = 'Submit Purchase Request for review (Action required by Site Engineer / Creator).';
+        } elseif ($pr['status'] === 'Submitted') {
+            if (empty($pr['approved_by_id'])) {
+                $nextStepInfo = 'Purchase Request is submitted. Awaiting Stage 1 approval by PM (Project Manager).';
+            } elseif (empty($pr['qc_approved_by_id'])) {
+                $nextStepInfo = 'Stage 1 Approved by PM. Awaiting Stage 2 approval by Operation Head.';
+            } else {
+                $nextStepInfo = 'Stage 2 Approved by Operation Head. Awaiting final Stage 3 approval by Management.';
+            }
+        } elseif ($pr['status'] === 'Rejected') {
+            $nextStepInfo = 'Purchase Request was Rejected. Need to revise details or create a new PR.';
+        } elseif ($pr['status'] === 'Approved') {
+            if (empty($pr['assigned_executive_id'])) {
+                $nextStepInfo = 'Awaiting Purchase Executive assignment by Purchase Head or Admin.';
+            } else {
+                // Check if quotations count is at least 2
+                $stmtQuotes = $this->db->prepare("SELECT COUNT(id) AS count FROM quotations WHERE request_id = ?");
+                $stmtQuotes->bind_param('i', $id);
+                $stmtQuotes->execute();
+                $qCount = $stmtQuotes->get_result()->fetch_assoc()['count'] ?? 0;
+
+                if ($qCount < 2) {
+                    $nextStepInfo = 'Purchase Executive (' . htmlspecialchars($pr['assigned_executive_name'] ?? 'Assigned Executive') . ') is collecting quotations. Currently ' . $qCount . ' quote(s) collected. (Min. 2 required for CST)';
+                } else {
+                    // Check if CST winners are chosen
+                    $stmtWinners = $this->db->prepare("
+                        SELECT COUNT(ci.id) AS count 
+                        FROM comparison_items ci
+                        JOIN quotation_comparisons qc ON qc.id = ci.comparison_id
+                        WHERE qc.request_id = ? AND ci.is_selected = 1
+                    ");
+                    $stmtWinners->bind_param('i', $id);
+                    $stmtWinners->execute();
+                    $winCount = $stmtWinners->get_result()->fetch_assoc()['count'] ?? 0;
+
+                    if ($winCount == 0) {
+                        $nextStepInfo = 'CST Comparison in progress. Awaiting winning vendor selection.';
+                    } else {
+                        // Check if PO is generated
+                        $stmtPo = $this->db->prepare("
+                            SELECT po.id AS po_id, po.status AS po_status, po.approved_by_pm
+                            FROM purchase_orders po
+                            WHERE po.request_id = ?
+                            ORDER BY po.id DESC LIMIT 1
+                        ");
+                        $stmtPo->bind_param('i', $id);
+                        $stmtPo->execute();
+                        $linkedPo = $stmtPo->get_result()->fetch_assoc();
+
+                        if (!$linkedPo) {
+                            $nextStepInfo = 'CST winner selected. Awaiting Purchase Order generation.';
+                        } else {
+                            if ($linkedPo['po_status'] === 'Issued' || empty($linkedPo['approved_by_pm'])) {
+                                $nextStepInfo = 'Purchase Order generated. Awaiting approval by Management/Project Manager.';
+                            } elseif ($linkedPo['po_status'] === 'Approved') {
+                                // Check material receiving status
+                                $stmtRecv = $this->db->prepare("
+                                    SELECT 
+                                        COALESCE(SUM(pri.quantity), 0) AS total_req,
+                                        COALESCE((
+                                            SELECT SUM(mri.received_quantity)
+                                            FROM material_receiving_items mri
+                                            JOIN material_receiving mr ON mr.id = mri.receiving_id
+                                            JOIN purchase_orders po ON po.id = mr.purchase_order_id
+                                            WHERE po.request_id = ? AND mri.status = 'Accepted'
+                                        ), 0) AS total_recv
+                                    FROM purchase_request_items pri
+                                    WHERE pri.request_id = ?
+                                ");
+                                $stmtRecv->bind_param('ii', $id, $id);
+                                $stmtRecv->execute();
+                                $recvInfo = $stmtRecv->get_result()->fetch_assoc();
+                                $totalReq = (float)($recvInfo['total_req'] ?? 0);
+                                $totalRecv = (float)($recvInfo['total_recv'] ?? 0);
+
+                                if ($totalRecv <= 0) {
+                                    $nextStepInfo = 'Purchase Order approved. Awaiting material dispatch and receiving at site.';
+                                } elseif ($totalRecv < $totalReq) {
+                                    $nextStepInfo = 'Materials partially received at site (' . number_format($totalRecv, 2) . ' / ' . number_format($totalReq, 2) . '). Awaiting remaining delivery.';
+                                } else {
+                                    // Check VPR status
+                                    $stmtVpr = $this->db->prepare("
+                                        SELECT status FROM vendor_payment_requests WHERE purchase_order_id = ?
+                                    ");
+                                    $stmtVpr->bind_param('i', $linkedPo['po_id']);
+                                    $stmtVpr->execute();
+                                    $vprRows = $stmtVpr->get_result()->fetch_all(MYSQLI_ASSOC);
+
+                                    if (empty($vprRows)) {
+                                        $nextStepInfo = 'Materials fully received. Awaiting Vendor Payment Request submission.';
+                                    } else {
+                                        $pendingVpr = false;
+                                        $approvedVpr = false;
+                                        foreach ($vprRows as $v) {
+                                            if ($v['status'] === 'Submitted') {
+                                                $pendingVpr = true;
+                                            } elseif ($v['status'] === 'Approved' || $v['status'] === 'Partially_Paid') {
+                                                $approvedVpr = true;
+                                            }
+                                        }
+                                        if ($pendingVpr) {
+                                            $nextStepInfo = 'Vendor Payment Request submitted. Awaiting approval by Management.';
+                                        } elseif ($approvedVpr) {
+                                            $nextStepInfo = 'Vendor Payment Request approved. Awaiting payment disbursement by Accounts.';
+                                        } else {
+                                            $nextStepInfo = 'All vendor payments processed / fully paid.';
+                                        }
+                                    }
+                                }
+                            } elseif ($linkedPo['po_status'] === 'Cancelled') {
+                                $nextStepInfo = 'Purchase Order was Cancelled/Rejected. Need to check and regenerate PO.';
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         $this->view('phase2/purchase-requests/show-purchase-request', [
             'current_route' => 'con-purchase-requests',
@@ -256,6 +423,7 @@ class Con_PurchaseRequestController extends Controller
             'items'         => $items,
             'quotations'    => $quotations,
             'hasCST'        => $hasCST,
+            'nextStepInfo'  => $nextStepInfo,
         ]);
     }
 
@@ -275,16 +443,114 @@ class Con_PurchaseRequestController extends Controller
         }
 
         $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
         $note = trim($_POST['approval_note'] ?? '');
 
-        // Update status + track approver
-        $stmt = $this->db->prepare(
-            "UPDATE purchase_requests SET status = ?, approved_by_id = ?, approved_at = NOW(), management_note = ? WHERE id = ?"
-        );
-        $stmt->bind_param('sisi', $status, $userId, $note, $id);
+        // Fetch current PR to verify status and permissions
+        $pr = $this->prModel->find($id);
+        if (!$pr) {
+            setError('Purchase Request not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
 
-        if ($stmt->execute()) {
-            setSuccess("Purchase Request status updated to {$status}.");
+        $stmt = null;
+        $successMsg = '';
+
+        if ($status === 'Rejected') {
+            // Either PM/Management or Operation Head can reject
+            if (!in_array($userRole, [3, 15, 20, 22])) {
+                setError('You do not have permission to reject this request.');
+                header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+                exit;
+            }
+            if (empty($pr['approved_by_id'])) {
+                if (!in_array($userRole, [15, 22])) {
+                    setError('You do not have permission to reject at Stage 1.');
+                    header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+                    exit;
+                }
+                $stmt = $this->db->prepare(
+                    "UPDATE purchase_requests SET status = 'Rejected', approved_by_id = ?, approved_at = NOW(), management_note = ? WHERE id = ?"
+                );
+                $stmt->bind_param('isi', $userId, $note, $id);
+                $successMsg = "Purchase Request rejected by PM.";
+            } elseif (empty($pr['qc_approved_by_id'])) {
+                if ($userRole != 20) {
+                    setError('You do not have permission to reject at Stage 2.');
+                    header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+                    exit;
+                }
+                $stmt = $this->db->prepare(
+                    "UPDATE purchase_requests SET status = 'Rejected', qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ? WHERE id = ?"
+                );
+                $stmt->bind_param('isi', $userId, $note, $id);
+                $successMsg = "Purchase Request rejected by Operation Head.";
+            } elseif (empty($pr['mgmt_approved_by_id'])) {
+                if ($userRole != 3) {
+                    setError('You do not have permission to reject at Stage 3.');
+                    header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+                    exit;
+                }
+                $stmt = $this->db->prepare(
+                    "UPDATE purchase_requests SET status = 'Rejected', mgmt_approved_by_id = ?, mgmt_approved_at = NOW(), management_note = ? WHERE id = ?"
+                );
+                $stmt->bind_param('isi', $userId, $note, $id);
+                $successMsg = "Purchase Request rejected by Management.";
+            } else {
+                setError('This request has already been fully approved.');
+                header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+                exit;
+            }
+        } else { // status === 'Approved' (which means approving current stage)
+            // Stage 1: PM Approval (roles 15, 22)
+            if (empty($pr['approved_by_id'])) {
+                if (!in_array($userRole, [15, 22])) {
+                    setError('You do not have permission to perform Stage 1 (PM) Approval.');
+                    header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+                    exit;
+                }
+                $stmt = $this->db->prepare(
+                    "UPDATE purchase_requests SET approved_by_id = ?, approved_at = NOW(), management_note = ? WHERE id = ?"
+                );
+                $stmt->bind_param('isi', $userId, $note, $id);
+                $successMsg = "Purchase Request approved by PM. Awaiting Stage 2 (Operation Head) approval.";
+            }
+            // Stage 2: Operation Approval (role 20)
+            elseif (empty($pr['qc_approved_by_id'])) {
+                if ($userRole != 20) {
+                    setError('You do not have permission to perform Stage 2 (Operation) Approval.');
+                    header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+                    exit;
+                }
+                $stmt = $this->db->prepare(
+                    "UPDATE purchase_requests SET qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ? WHERE id = ?"
+                );
+                $stmt->bind_param('isi', $userId, $note, $id);
+                $successMsg = "Purchase Request approved by Operation Head. Awaiting Stage 3 (Management) final approval.";
+            }
+            // Stage 3: Management Approval (role 3)
+            elseif (empty($pr['mgmt_approved_by_id'])) {
+                if ($userRole != 3) {
+                    setError('You do not have permission to perform Stage 3 (Management) Approval.');
+                    header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+                    exit;
+                }
+                // Stage 3 (Final) approval: status becomes Approved
+                $stmt = $this->db->prepare(
+                    "UPDATE purchase_requests SET status = 'Approved', mgmt_approved_by_id = ?, mgmt_approved_at = NOW(), management_note = ? WHERE id = ?"
+                );
+                $stmt->bind_param('isi', $userId, $note, $id);
+                $successMsg = "Purchase Request finally approved by Management.";
+            } else {
+                setError('This request has already been fully approved.');
+                header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+                exit;
+            }
+        }
+
+        if ($stmt && $stmt->execute()) {
+            setSuccess($successMsg);
             
             // Trigger email if rejected
             if ($status === 'Rejected') {
@@ -394,9 +660,9 @@ class Con_PurchaseRequestController extends Controller
         // Migrated: phase_monthly_targets replaces target_fixed
         $stmtBoq = $this->db->prepare("
             SELECT bm.id, bm.version, bm.target_id, bm.design_type_id,
-                   COALESCE(pmt.title, CONCAT(pp.phase_name,' - Month ',pmt.month_number)) AS target_title,
-                   YEAR(pmt.created_at)  AS target_year,
-                   pmt.month_number      AS target_month,
+                   CONCAT(pp.phase_name, ' - ', DATE_FORMAT(pmt.target_month, '%M %Y')) AS target_title,
+                   pmt.target_year       AS target_year,
+                   pmt.target_month_number AS target_month,
                    NULL                  AS target_week,
                    dt.name AS design_type_name,
                    COUNT(bi.id) AS item_count

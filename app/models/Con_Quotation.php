@@ -241,4 +241,117 @@ class Con_Quotation extends Model
         $row = $stmt->get_result()->fetch_assoc();
         return ($row['cnt'] > 0);
     }
+
+    public function update($quotationId, $data, $items)
+    {
+        $this->lastError = null;
+        $this->db->begin_transaction();
+        try {
+            // Update quotation header
+            $stmt = $this->db->prepare(
+                "UPDATE {$this->table}
+                 SET validity_date = ?, attachment = ?, created_by = ?
+                 WHERE id = ?"
+            );
+            if (!$stmt) throw new \RuntimeException('Quotation header update prepare failed: ' . $this->db->error);
+
+            $stmt->bind_param('ssii',
+                $data['validity_date'],
+                $data['attachment'],
+                $data['created_by'],
+                $quotationId
+            );
+            if (!$stmt->execute()) throw new \RuntimeException('Quotation header update execute failed: ' . $stmt->error);
+
+            // Delete existing quotation items
+            $delStmt = $this->db->prepare("DELETE FROM {$this->itemTable} WHERE quotation_id = ?");
+            if (!$delStmt) throw new \RuntimeException('Quotation items delete prepare failed: ' . $this->db->error);
+            $delStmt->bind_param('i', $quotationId);
+            if (!$delStmt->execute()) throw new \RuntimeException('Quotation items delete execute failed: ' . $delStmt->error);
+
+            // Insert new quotation items
+            $itemStmt = $this->db->prepare(
+                "INSERT INTO {$this->itemTable}
+                     (quotation_id, material_id, quantity, unit_price, created_by)
+                 VALUES (?, ?, ?, ?, ?)"
+            );
+            if (!$itemStmt) throw new \RuntimeException('Quotation items insert prepare failed: ' . $this->db->error);
+
+            foreach ($items as $item) {
+                $itemStmt->bind_param('iiddi',
+                    $quotationId,
+                    $item['material_id'],
+                    $item['quantity'],
+                    $item['unit_price'],
+                    $data['created_by']
+                );
+                if (!$itemStmt->execute()) {
+                    throw new \RuntimeException('Item execute failed: ' . $itemStmt->error);
+                }
+            }
+
+            $this->db->commit();
+            return true;
+
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            $this->lastError = $e->getMessage();
+            error_log('[Con_Quotation::update] ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function delete($id)
+    {
+        $this->lastError = null;
+        $this->db->begin_transaction();
+        try {
+            // First fetch the quotation to find the request_id
+            $stmt = $this->db->prepare("SELECT request_id FROM {$this->table} WHERE id = ?");
+            if (!$stmt) throw new \RuntimeException('Fetch quotation prepare failed: ' . $this->db->error);
+            $stmt->bind_param('i', $id);
+            if (!$stmt->execute()) throw new \RuntimeException('Fetch quotation execute failed: ' . $stmt->error);
+            $quotation = $stmt->get_result()->fetch_assoc();
+            if (!$quotation) {
+                throw new \RuntimeException('Quotation not found.');
+            }
+            $requestId = $quotation['request_id'];
+
+            // Delete quotation items
+            $itemStmt = $this->db->prepare("DELETE FROM {$this->itemTable} WHERE quotation_id = ?");
+            if (!$itemStmt) throw new \RuntimeException('Quotation items delete prepare failed: ' . $this->db->error);
+            $itemStmt->bind_param('i', $id);
+            if (!$itemStmt->execute()) throw new \RuntimeException('Quotation items delete execute failed: ' . $itemStmt->error);
+
+            // Delete quotation comparison items and comparisons for this request
+            $compItemsStmt = $this->db->prepare(
+                "DELETE ci FROM comparison_items ci
+                 JOIN quotation_comparisons qc ON qc.id = ci.comparison_id
+                 WHERE qc.request_id = ?"
+            );
+            if (!$compItemsStmt) throw new \RuntimeException('Comparison items delete prepare failed: ' . $this->db->error);
+            $compItemsStmt->bind_param('i', $requestId);
+            if (!$compItemsStmt->execute()) throw new \RuntimeException('Comparison items delete execute failed: ' . $compItemsStmt->error);
+
+            $compStmt = $this->db->prepare("DELETE FROM quotation_comparisons WHERE request_id = ?");
+            if (!$compStmt) throw new \RuntimeException('Quotation comparisons delete prepare failed: ' . $this->db->error);
+            $compStmt->bind_param('i', $requestId);
+            if (!$compStmt->execute()) throw new \RuntimeException('Quotation comparisons delete execute failed: ' . $compStmt->error);
+
+            // Delete quotation itself
+            $quotStmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = ?");
+            if (!$quotStmt) throw new \RuntimeException('Quotation delete prepare failed: ' . $this->db->error);
+            $quotStmt->bind_param('i', $id);
+            if (!$quotStmt->execute()) throw new \RuntimeException('Quotation delete execute failed: ' . $quotStmt->error);
+
+            $this->db->commit();
+            return true;
+
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            $this->lastError = $e->getMessage();
+            error_log('[Con_Quotation::delete] ' . $e->getMessage());
+            return false;
+        }
+    }
 }

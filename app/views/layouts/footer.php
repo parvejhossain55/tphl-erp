@@ -150,7 +150,7 @@
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/rangeslider-script.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/jquery.barrating.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/rating-script.js"></script>
-        <script src="<?= $GLOBALS['base_url'] ?>/assets/js/main.js"></script>
+        <script src="<?= $GLOBALS['base_url'] ?>/assets/js/main.js?v=1.0.1"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/sidebar.js"></script>
 
         <!-- ✅ Global Delete Handler & Client-Side Error Logging -->
