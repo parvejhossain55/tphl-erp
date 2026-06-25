@@ -792,6 +792,7 @@ $routes['con-land-requisitions/delete'] = ['controller' => 'Phase2\LandRequisiti
 // Land Monthly Reports routes
 $routes['con-land-monthly-reports'] = ['controller' => 'Phase2\LandReportController', 'method' => 'index'];
 $routes['con-land-monthly-reports/generate'] = ['controller' => 'Phase2\LandReportController', 'method' => 'generate'];
+$routes['con-land-ledger'] = ['controller' => 'Phase2\LandReportController', 'method' => 'ledger'];
 
 // Fund Requisitions routes
 $routes['fund-requisitions'] = ['controller' => 'Phase2\FundRequisitionController', 'method' => 'index'];

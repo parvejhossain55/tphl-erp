@@ -556,8 +556,8 @@
 
             <div class="header-block header-right">
                 <div class="employee-row"><span class="pe-2">Employee: </span><?= htmlspecialchars($payslip['employee_name']) ?></div>
-                <div class="employee-row "><span class="pe-2">Designation: </span><?= htmlspecialchars($payslip['designation_name']) ?></div>
-                <div class="employee-row"><span class="pe-2">Department: </span><?= htmlspecialchars($payslip['department_name']) ?></div>
+                <div class="employee-row "><span class="pe-2">Designation: </span><?= htmlspecialchars($payslip['designation_name'] ?? "N/A") ?></div>
+                <div class="employee-row"><span class="pe-2">Department: </span><?= htmlspecialchars($payslip['department_name'] ?? "N/A") ?></div>
             </div>
         </div>
 

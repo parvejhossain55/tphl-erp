@@ -1498,9 +1498,9 @@
                 <!-- Pre-Construction — only show if user has at least one permission -->
                 <?php if (hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Project structure design') || hasPermission('Project Draft Design') || hasPermission('Project Drawing') || hasPermission('Soil tests') || hasPermission('Construction Management') || ($_SESSION['user']['role_id'] ?? 0) == 19): ?>
                     <li
-                        class="slide has-sub <?= isActive(['con-land-visibility-studies', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit', 'legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['con-land-visibility-studies', 'con-land-acquisitions', 'con-land-requisitions', 'con-land-ledger', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit', 'legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-land-visibility-studies', 'con-land-acquisitions', 'con-land-requisitions', 'con-land-monthly-reports', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit', 'legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['con-land-visibility-studies', 'con-land-acquisitions', 'con-land-requisitions', 'con-land-ledger', 'con-land-monthly-reports', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit', 'legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             <div class="side-menu__icon">
                                 <i class="bi bi-building"></i>
@@ -1525,6 +1525,11 @@
                                     class="slide <?= isActive(['con-land-requisitions', 'con-land-requisitions/create'], $current_route) ? 'active' : '' ?>">
                                     <a class="sidebar__menu-item <?= isActive(['con-land-requisitions', 'con-land-requisitions/create'], $current_route) ? 'active' : '' ?>"
                                         href="<?= $base_url ?>/con-land-requisitions">Land Requisitions</a>
+                                </li>
+                                <li
+                                    class="slide <?= isActive('con-land-ledger', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('con-land-ledger', $current_route) ?>"
+                                        href="<?= $base_url ?>/con-land-ledger">Land Ledger</a>
                                 </li>
                                 <li class="d-none slide <?= isActive('con-land-monthly-reports', $current_route) ?>">
                                     <a class="sidebar__menu-item <?= isActive('con-land-monthly-reports', $current_route) ?>"
