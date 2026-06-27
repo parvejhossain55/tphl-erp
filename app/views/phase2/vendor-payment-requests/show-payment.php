@@ -29,8 +29,13 @@ $isApproved = in_array($status, ['Approved', 'Partially_Paid']);
 $isRejected = ($status === 'Rejected');
 $isFullyPaid = in_array($status, ['Fully_Paid', 'Paid']);
 $canPayReq = $canProcessPayment && $isApproved && $dueAmount > 0;
-$canReject = ($canApproveReq && $isSubmitted) || ($canApproveReq && $isQCApproved);
 $showPaymentForm = $canPayReq;
+
+$netPayable = (float) ($request['net_payable'] ?? 0);
+$approvedAmtSoFar = (float)($request['approved_amount'] ?? 0);
+$unapprovedAmt = max(0, $netPayable - $approvedAmtSoFar);
+$canApproveReq = ($canApprove ?? false) && ($isSubmitted || $isQCApproved || ($isApproved && $unapprovedAmt > 0.01));
+$canReject = ($canApproveReq && $isSubmitted) || ($canApproveReq && $isQCApproved);
 
 // Payment type badge
 $typeBadge = match ($request['payment_type'] ?? 'Final') {
@@ -40,7 +45,6 @@ $typeBadge = match ($request['payment_type'] ?? 'Final') {
 };
 
 $penaltyAmt = (float) ($request['penalty_amount'] ?? 0);
-$netPayable = (float) ($request['net_payable'] ?? 0);
 $invoiceAmt = (float) ($request['invoice_amount'] ?? 0);
 $advancePaid = (float) ($advance_paid ?? 0);
 ?>
@@ -525,10 +529,10 @@ $advancePaid = (float) ($advance_paid ?? 0);
             </div>
 
             <!-- Approval Actions (Management) -->
-            <?php if ($canApproveReq && ($isSubmitted || $isQCApproved)): ?>
+            <?php if ($canApproveReq): ?>
                 <div class="card custom-card border-warning mb-3">
                     <div class="card-header bg-warning bg-opacity-10">
-                        <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Approval Action</h6>
+                        <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i><?= ($isApproved) ? 'Additional Approval Action' : 'Approval Action' ?></h6>
                     </div>
                     <div class="card-body">
                         <!-- Management Approval Form -->
@@ -536,25 +540,37 @@ $advancePaid = (float) ($advance_paid ?? 0);
                             id="approveVprForm" class="mb-3">
                             <input type="hidden" name="status" value="Approved">
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Approved Amount (৳)</label>
-                                <input type="number" name="approved_amount" id="approveAmtInput" class="form-control"
-                                    value="<?= number_format($netPayable, 2, '.', '') ?>" step="0.01" min="0.01" required>
-                                <small class="text-muted">Net payable: ৳ <?= number_format($netPayable, 2) ?></small>
+                                <?php if ($isApproved): ?>
+                                    <div class="alert alert-info py-2 px-3 mb-3 small">
+                                        Approved so far: <strong>৳ <?= number_format($approvedAmtSoFar, 2) ?></strong><br>
+                                        Remaining unapproved: <strong>৳ <?= number_format($unapprovedAmt, 2) ?></strong>
+                                    </div>
+                                    <label class="form-label fw-semibold">Approve Additional Amount (৳)</label>
+                                    <input type="number" name="approved_amount" id="approveAmtInput" class="form-control"
+                                        value="<?= number_format($unapprovedAmt, 2, '.', '') ?>" step="0.01" min="0.01" max="<?= number_format($unapprovedAmt, 2, '.', '') ?>" required>
+                                <?php else: ?>
+                                    <label class="form-label fw-semibold">Approved Amount (৳)</label>
+                                    <input type="number" name="approved_amount" id="approveAmtInput" class="form-control"
+                                        value="<?= number_format($netPayable, 2, '.', '') ?>" step="0.01" min="0.01" max="<?= number_format($netPayable, 2, '.', '') ?>" required>
+                                    <small class="text-muted">Net payable: ৳ <?= number_format($netPayable, 2) ?></small>
+                                <?php endif; ?>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Management Note (Optional)</label>
                                 <textarea name="approval_note" class="form-control" rows="2" placeholder="Leave a note..."></textarea>
                             </div>
                             <button type="button" id="approveVprBtn" class="btn btn-success w-100 fw-bold mb-2">
-                                <i class="bi bi-check-circle me-1"></i> Approve Payment
+                                <i class="bi bi-check-circle me-1"></i> <?= ($isApproved) ? 'Approve Additional' : 'Approve Payment' ?>
                             </button>
                         </form>
-                        <form action="<?= $base_url ?>/con-vendor-payment-reject/<?= $request['id'] ?>" method="POST"
-                            id="rejectVprForm">
-                            <button type="button" id="rejectVprBtn" class="btn btn-outline-danger w-100 btn-sm">
-                                <i class="bi bi-x-circle me-1"></i> Reject
-                            </button>
-                        </form>
+                        <?php if ($canReject): ?>
+                            <form action="<?= $base_url ?>/con-vendor-payment-reject/<?= $request['id'] ?>" method="POST"
+                                id="rejectVprForm">
+                                <button type="button" id="rejectVprBtn" class="btn btn-outline-danger w-100 btn-sm">
+                                    <i class="bi bi-x-circle me-1"></i> Reject
+                                </button>
+                            </form>
+                        <?php endif; ?>
                     </div>
                 </div>
             <?php endif; ?>

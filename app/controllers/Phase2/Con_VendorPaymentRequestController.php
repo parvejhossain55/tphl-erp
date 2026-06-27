@@ -70,10 +70,10 @@ class Con_VendorPaymentRequestController extends Controller
 
     public function index()
     {
-        // Roles 1 (Admin), 3 (Super Admin), 6 (Accounts) see ALL requests
+        // Roles 1 (Admin), 3 (Super Admin), 6 (Accounts), 22 (PM Head), 17 (Purchase Head) see ALL requests
         // Other roles only see their own requests
         $filterUserId = null;
-        if (!in_array($this->userRole, [1, 3, 6, 22]) && !$this->canApproveQC()) {
+        if (!in_array($this->userRole, [1, 3, 6, 22, 17]) && !$this->canApproveQC()) {
             $filterUserId = $this->userId;
         }
 
@@ -391,16 +391,34 @@ class Con_VendorPaymentRequestController extends Controller
                 header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
                 exit;
             }
-            if ($request['status'] !== 'Submitted' && $request['status'] !== 'QC Approved') {
-                setError('Payment request must be Submitted before management approval.');
+            if (!in_array($request['status'], ['Submitted', 'QC Approved', 'Approved', 'Partially_Paid'])) {
+                setError('Payment request status is invalid for approval.');
                 header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
                 exit;
             }
 
-            $approvedAmount = (float)($_POST['approved_amount'] ?? $request['net_payable']);
-            if ($approvedAmount <= 0) {
-                $approvedAmount = (float)$request['net_payable'];
+            $inputAmount = (float)($_POST['approved_amount'] ?? 0);
+            $approvedAmtSoFar = (float)($request['approved_amount'] ?? 0);
+            $netPayable = (float)($request['net_payable'] ?? 0);
+            $unapprovedAmt = max(0, $netPayable - $approvedAmtSoFar);
+
+            if ($inputAmount <= 0) {
+                $inputAmount = $unapprovedAmt;
             }
+
+            if ($request['status'] === 'Approved' || $request['status'] === 'Partially_Paid') {
+                $additionalApproved = $inputAmount;
+                if ($additionalApproved > $unapprovedAmt + 0.01) {
+                    $additionalApproved = $unapprovedAmt;
+                }
+                $approvedAmount = $approvedAmtSoFar + $additionalApproved;
+            } else {
+                $approvedAmount = $inputAmount;
+                if ($approvedAmount > $netPayable + 0.01) {
+                    $approvedAmount = $netPayable;
+                }
+            }
+
             $mgtNote = trim($_POST['approval_note'] ?? '');
 
             if ($this->model->approve($id, $this->userId, $approvedAmount)) {

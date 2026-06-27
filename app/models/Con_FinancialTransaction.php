@@ -264,7 +264,7 @@ class Con_FinancialTransaction extends Model
             );
         } elseif ($refType === 'vendor_payment') {
             $stmt = $this->db->prepare(
-                "SELECT COALESCE(approved_amount, net_payable) AS payable FROM vendor_payment_requests WHERE id = ?"
+                "SELECT net_payable AS payable FROM vendor_payment_requests WHERE id = ?"
             );
         } else {
             return 0;

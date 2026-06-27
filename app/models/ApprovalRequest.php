@@ -357,6 +357,30 @@ class ApprovalRequest extends Model
             default => 'pending',
         };
 
+        // Table-specific adjustments to match ENUM definitions in database
+        if ($sourceTable === 'vendor_payment_requests') {
+            $sourceStatus = match ($status) {
+                'partial', 'partially_approved' => 'Partially_Paid',
+                'approved' => 'Approved',
+                'rejected' => 'Rejected',
+                default => 'Submitted',
+            };
+        } elseif ($sourceTable === 'contractor_bill_requests') {
+            $sourceStatus = match ($status) {
+                'partial', 'partially_approved' => 'partially_paid',
+                'approved' => 'approved',
+                'rejected' => 'rejected',
+                default => 'submitted',
+            };
+        } elseif ($sourceTable === 'operational_fund_requests') {
+            $sourceStatus = match ($status) {
+                'partial', 'partially_approved' => 'partially_paid',
+                'approved' => 'approved',
+                'rejected' => 'rejected',
+                default => 'pending',
+            };
+        }
+
         $updateFields = [];
         $params = [];
         $types  = '';

@@ -211,7 +211,7 @@ $show_breadcrumb = true;
                 <div class="col-md-6 col-lg-4 mb-3">
                     <div class="info-box p-3 border rounded">
                         <label class="text-muted mb-1"><small>Block Size</small></label>
-                        <p class="mb-0 fw-bold"><?= $project['block_size'] ?? 'N/A' ?></p>
+                        <p class="mb-0 fw-bold"><?= $project['block_no'] ?? 'N/A' ?></p>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-4 mb-3">
