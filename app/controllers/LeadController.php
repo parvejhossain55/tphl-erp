@@ -786,7 +786,8 @@ class LeadController extends Controller
         }
 
         $fileTmp = $_FILES['csv_file']['tmp_name'];
-        $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
+        $fileName = $_FILES['csv_file']['name'];
+        $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
         if ($ext !== 'csv') {
             setError("Only CSV files allowed");
@@ -794,7 +795,97 @@ class LeadController extends Controller
             exit;
         }
 
-        if (($handle = fopen($fileTmp, "r")) !== false) {
+        // Move to temp location
+        $uploadDir = __DIR__ . '/../../public/uploads/csv_imports/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $tempName = 'leads_import_' . date('YmdHis') . '_' . uniqid() . '.csv';
+        $tempPath = $uploadDir . $tempName;
+
+        if (!move_uploaded_file($fileTmp, $tempPath)) {
+            setError("Failed to upload file.");
+            header("Location: {$GLOBALS['base_url']}/lead-lists");
+            exit;
+        }
+
+        if (($handle = fopen($tempPath, "r")) !== false) {
+            $header = fgetcsv($handle);
+            
+            // Clean BOM from first header if present
+            $header[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $header[0]);
+            $header = array_map(function ($value) {
+                return trim($value);
+            }, $header);
+
+            $duplicates = [];
+            $validCount = 0;
+            $rowIndex = 1; // start from row 1 (excluding header)
+
+            while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+                $rowIndex++;
+                if (count(array_filter($row)) === 0) continue; // skip empty rows
+                if (count($header) !== count($row)) continue;
+
+                $data = array_combine($header, $row);
+                $name = $data['full_name'] ?? '';
+                $phone = $data['phone'] ?? $data['phone_number'] ?? '';
+
+                if ($name && $phone) {
+                    $existing = $this->leadModel->findDuplicate($name, $phone);
+                    if ($existing) {
+                        $duplicates[] = [
+                            'csv_row' => $rowIndex,
+                            'csv_data' => $data,
+                            'db_data' => $existing
+                        ];
+                    } else {
+                        $validCount++;
+                    }
+                } else {
+                    $validCount++;
+                }
+            }
+            fclose($handle);
+
+            $_SESSION['leads_csv_import_file'] = $tempPath;
+            $_SESSION['leads_csv_import_filename'] = $fileName;
+            $_SESSION['ignored_csv_rows'] = [];
+
+            $this->view("sales-developments/leads/bulk-leads-import-preview", [
+                "current_route" => "bulk-leads-import-csv",
+                "page_title"    => "Leads CSV Import Preview - " . $fileName,
+                "duplicates"    => $duplicates,
+                "valid_count"   => $validCount,
+                "filename"      => $fileName
+            ]);
+        } else {
+            setError("Unable to read CSV file");
+            header("Location: {$GLOBALS['base_url']}/lead-lists");
+            exit;
+        }
+    }
+
+    public function executeCsvBulkLeads()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/lead-lists");
+            exit;
+        }
+
+        $tempFile = $_SESSION['leads_csv_import_file'] ?? null;
+        $ignoredRows = $_SESSION['ignored_csv_rows'] ?? [];
+
+        if (!$tempFile || !file_exists($tempFile)) {
+            setError("Import session expired or file not found. Please re-upload.");
+            header("Location: {$GLOBALS['base_url']}/lead-lists");
+            exit;
+        }
+
+        if (($handle = fopen($tempFile, "r")) !== false) {
             $header = fgetcsv($handle);
             
             // Clean BOM from first header if present
@@ -804,7 +895,12 @@ class LeadController extends Controller
             }, $header);
 
             $successCount = 0;
+            $rowIndex = 1;
+
             while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+                $rowIndex++;
+                if (in_array($rowIndex, $ignoredRows)) continue; // skipped by user
+                
                 if (count(array_filter($row)) === 0) continue; // skip empty rows
                 if (count($header) !== count($row)) continue;
 
@@ -816,7 +912,6 @@ class LeadController extends Controller
                 $data['created_by'] = $_SESSION['user']['id'] ?? null;
                 $data['uploaded_from'] = 'From Company csv'; // CSV bulk import tag
                 
-
                 try {
                     $this->leadModel->createFromCsvBulk($data);
                     $successCount++;
@@ -826,6 +921,12 @@ class LeadController extends Controller
                 }
             }
             fclose($handle);
+            
+            // cleanup
+            unlink($tempFile);
+            unset($_SESSION['leads_csv_import_file']);
+            unset($_SESSION['leads_csv_import_filename']);
+            unset($_SESSION['ignored_csv_rows']);
 
             setSuccess("$successCount Leads imported successfully from CSV");
             header("Location: {$GLOBALS['base_url']}/lead-lists");
@@ -833,6 +934,51 @@ class LeadController extends Controller
         } else {
             setError("Unable to read CSV file");
             header("Location: {$GLOBALS['base_url']}/lead-lists");
+            exit;
+        }
+    }
+
+    public function ignoreCsvLeadAjax()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $rowId = isset($_POST['row_id']) ? (int)$_POST['row_id'] : 0;
+            if ($rowId > 0) {
+                if (!isset($_SESSION['ignored_csv_rows'])) {
+                    $_SESSION['ignored_csv_rows'] = [];
+                }
+                if (!in_array($rowId, $_SESSION['ignored_csv_rows'])) {
+                    $_SESSION['ignored_csv_rows'][] = $rowId;
+                }
+                echo json_encode(['success' => true]);
+                exit;
+            }
+        }
+        echo json_encode(['success' => false, 'message' => 'Invalid row id']);
+        exit;
+    }
+
+    public function deleteLeadAjax()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            header('Content-Type: application/json');
+            $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+            
+            if ($id > 0) {
+                try {
+                    $deleted = $this->leadModel->softDelete($id);
+                    if ($deleted) {
+                        echo json_encode(['success' => true]);
+                        exit;
+                    }
+                } catch (\Exception $e) {
+                    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                    exit;
+                }
+            }
+            echo json_encode(['success' => false, 'message' => 'Invalid Lead ID']);
             exit;
         }
     }
