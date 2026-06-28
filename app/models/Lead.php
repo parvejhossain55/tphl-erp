@@ -9,6 +9,17 @@ class Lead extends Model
         return parent::__construct($db);
     }
 
+    public function findDuplicate($name, $phone)
+    {
+        $sql = "SELECT * FROM leads WHERE full_name = ? AND (phone_number = ? OR phone = ?) AND deleted_at IS NULL LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return null;
+        $stmt->bind_param("sss", $name, $phone, $phone);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_assoc() : null;
+    }
+
     public function getAll($period = null, $roleId = null, $teamId = null)
     {
         // Base query
