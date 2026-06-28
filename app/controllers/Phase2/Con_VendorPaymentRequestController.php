@@ -294,6 +294,21 @@ class Con_VendorPaymentRequestController extends Controller
             }
         }
 
+        // Fetch linked expense adjustments (Settlements)
+        $adjustments = [];
+        $stmtAdj = $this->db->prepare("
+            SELECT ea.*, u.full_name as requester_name 
+            FROM expense_adjustments ea 
+            JOIN users u ON ea.user_id = u.id 
+            WHERE ea.cashout_request_id = ? AND ea.parent_type = 'vendor'
+            ORDER BY ea.id DESC
+        ");
+        if ($stmtAdj) {
+            $stmtAdj->bind_param('i', $id);
+            $stmtAdj->execute();
+            $adjustments = $stmtAdj->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
         $this->view('phase2/vendor-payment-requests/show-payment', [
             'current_route'     => 'con-vendor-payment-requests',
             'page_title'        => 'Payment Request Details',
@@ -313,6 +328,7 @@ class Con_VendorPaymentRequestController extends Controller
             'banks'             => $banks,
             'documents'         => $documents,
             'poStocks'          => $poStocks,
+            'adjustments'       => $adjustments,
         ]);
     }
 
