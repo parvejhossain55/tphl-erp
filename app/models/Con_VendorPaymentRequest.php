@@ -224,18 +224,33 @@ class Con_VendorPaymentRequest extends Model
     public function approve($id, $userId, $approvedAmount = null)
     {
         $request = $this->find($id);
-        if (!$request || !in_array($request['status'], ['Submitted', 'QC Approved'])) return false;
+        if (!$request || !in_array($request['status'], ['Submitted', 'QC Approved', 'Approved', 'Partially_Paid'])) return false;
 
         if ($approvedAmount === null || $approvedAmount <= 0) {
             $approvedAmount = (float)($request['net_payable'] ?? 0);
         }
 
+        // Calculate total paid so far using Con_FinancialTransaction model
+        $txnModel = new \Con_FinancialTransaction($this->db);
+        $totalPaid = $txnModel->getTotalPaidForSource('vendor_payment', $id);
+
+        $netPayable = (float)($request['net_payable'] ?? 0);
+
+        // Determine VPR status based on payment history
+        $newStatus = 'Approved';
+        if ($totalPaid > 0) {
+            $newStatus = 'Partially_Paid';
+        }
+
+        // Due amount for Accounts is the approved amount minus what has been paid so far
+        $dueAmount = max(0, $approvedAmount - $totalPaid);
+
         $stmt = $this->db->prepare(
             "UPDATE {$this->table}
-             SET status = 'Approved', approved_amount = ?, approved_by = ?, due_amount = ?
-             WHERE id = ? AND status IN ('Submitted', 'QC Approved')"
+             SET status = ?, approved_amount = ?, approved_by = ?, due_amount = ?
+             WHERE id = ?"
         );
-        $stmt->bind_param('didi', $approvedAmount, $userId, $approvedAmount, $id);
+        $stmt->bind_param('sdidi', $newStatus, $approvedAmount, $userId, $dueAmount, $id);
         return $stmt->execute();
     }
 

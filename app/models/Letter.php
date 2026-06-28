@@ -24,6 +24,10 @@ class Letter extends Model
             ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
 
+        if (!$stmt) {
+            die("SQL Prepare Error (Create Letter): " . $this->db->error);
+        }
+
         // Types: 
         // employee_id (i), designation_id (i), department_id (i), 
         // letter_type (s), template_id (i), 
@@ -61,7 +65,11 @@ class Letter extends Model
             $data['status']
         );
 
-        return $stmt->execute();
+        if (!$stmt->execute()) {
+            die("SQL Execute Error (Create Letter): " . $stmt->error);
+        }
+
+        return true;
     }
 
     public function getAllWithDetails($designation_id = null, $letter_type = null)
@@ -134,6 +142,10 @@ class Letter extends Model
             WHERE id = ?
         ");
 
+        if (!$stmt) {
+            die("SQL Prepare Error (Update Letter): " . $this->db->error);
+        }
+
         $template_id = !empty($data['template_id']) ? (int)$data['template_id'] : null;
         $send_to_email = !empty($data['send_to_email']) ? (int)$data['send_to_email'] : 0;
         $id = (int)$id;
@@ -162,7 +174,11 @@ class Letter extends Model
             $id
         );
 
-        return $stmt->execute();
+        if (!$stmt->execute()) {
+            die("SQL Execute Error (Update Letter): " . $stmt->error);
+        }
+
+        return true;
     }
 
     public function delete($id)

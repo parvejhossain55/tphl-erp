@@ -53,13 +53,27 @@ $isExtra = $adj['adjustment_type'] == 'extra';
                                         <label class="text-muted mb-1 d-block">Status</label>
                                         <?php
                                             $badge = 'bg-secondary';
-                                            if ($adj['status'] == 'pending') $badge = 'bg-warning text-dark';
-                                            if ($adj['status'] == 'approved') $badge = 'bg-primary';
-                                            if ($adj['status'] == 'rejected') $badge = 'bg-danger';
-                                            if ($adj['status'] == 'partially_paid') $badge = 'bg-info';
-                                            if ($adj['status'] == 'fully_paid') $badge = 'bg-success';
+                                            $statusLabel = strtoupper(str_replace('_', ' ', $adj['status']));
+                                            
+                                            if ($adj['status'] == 'pending') {
+                                                $badge = 'bg-warning text-dark';
+                                                $statusLabel = 'AWAITING APPROVAL';
+                                            } elseif ($adj['status'] == 'approved' || $adj['status'] == 'partially_paid') {
+                                                if ($isExtra) {
+                                                    $badge = 'bg-info text-dark';
+                                                    $statusLabel = 'PENDING PAYMENT FROM ACCOUNTS';
+                                                } else {
+                                                    $badge = 'bg-warning text-dark';
+                                                    $statusLabel = 'PENDING ACCOUNTS VERIFICATION';
+                                                }
+                                            } elseif ($adj['status'] == 'rejected') {
+                                                $badge = 'bg-danger';
+                                            } elseif ($adj['status'] == 'fully_paid') {
+                                                $badge = 'bg-success';
+                                                $statusLabel = $isReturn ? 'VERIFIED & CLOSED BY ACCOUNTS' : 'SETTLED & PAID';
+                                            }
                                         ?>
-                                        <span class="badge <?= $badge ?> fs-6"><?= strtoupper(str_replace('_', ' ', $adj['status'])) ?></span>
+                                        <span class="badge <?= $badge ?> fs-6"><?= $statusLabel ?></span>
                                     </div>
                                     
                                     <div class="col-md-6 mb-3">
@@ -272,6 +286,18 @@ $isExtra = $adj['adjustment_type'] == 'extra';
                                         <div><strong>Due Amount:</strong> <span class="text-danger">TK.<?= number_format($adj['due_amount'], 2) ?></span></div>
                                     </div>
                                     
+                                    <!-- Custom Pending Status Notice -->
+                                    <div class="alert text-center border mb-3" style="background: rgba(13,110,253,.08); border-color: rgba(13,110,253,.3) !important;">
+                                        <i class="fa-light <?= $isReturn ? 'fa-wallet' : 'fa-hourglass-half' ?> fa-2x d-block mb-2 text-primary"></i>
+                                        <?php if ($isExtra): ?>
+                                            <strong>Pending Payment from Accounts</strong>
+                                            <div class="text-muted small mt-1">Management approved. Awaiting Accounts disbursement.</div>
+                                        <?php else: ?>
+                                            <strong>Pending Accounts Verification</strong>
+                                            <div class="text-muted small mt-1">Cash returned by requester. Awaiting Accounts officer verification and receive confirmation.</div>
+                                        <?php endif; ?>
+                                    </div>
+
                                     <?php if ($isAccounts && $adj['due_amount'] > 0): ?>
                                         <button class="btn btn-primary w-100 fw-bold" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
                                             <i class="fa-light fa-money-bill-transfer me-1"></i> 

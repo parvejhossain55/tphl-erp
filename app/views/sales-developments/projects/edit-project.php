@@ -186,6 +186,12 @@ if (!empty($project['floor_wise_unit_meta'])) {
 
                 <!-- Plot Info -->
                 <div class="col-xl-4">
+                    <label>Hover Text <span>(Optional)</span></label>
+                    <input type="text" name="hover_text" class="form-control"
+                        value="<?= $project['hover_text'] ?? '' ?>">
+                </div>
+                <!-- Plot Info -->
+                <div class="col-xl-4">
                     <label>Plot Size <span>(Optional)</span></label>
                     <input type="text" name="plot_size" class="form-control"
                         value="<?= $project['plot_size'] ?? '' ?>">

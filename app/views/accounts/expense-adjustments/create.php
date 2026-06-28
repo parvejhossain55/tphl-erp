@@ -27,6 +27,10 @@ $show_breadcrumb = true;
                         You do not have any approved cashout requests to adjust. (Debug Role: <?= $_SESSION['user']['role_id'] ?? 'null' ?>, Count: <?= count($userCashouts ?? []) ?>)
                     </div>
                 <?php else: ?>
+                <?php 
+                    $selectedParentType = $_GET['parent_type'] ?? '';
+                    $selectedRequestId = (int)($_GET['cashout_request_id'] ?? 0);
+                ?>
                 <form action="<?= $GLOBALS['base_url'] ?>/expense-adjustments/store" method="POST" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label class="form-label">Select Original Cashout Request <span class="text-danger">*</span></label>
@@ -38,8 +42,10 @@ $show_breadcrumb = true;
                                     if ($co['type'] == 'vendor') $prefix = 'VENDORREQ';
                                     if ($co['type'] == 'contractor') $prefix = 'CONTRACTORREQ';
                                     if ($co['type'] == 'purchase') $prefix = 'PURCHASEREQ';
+                                    
+                                    $isSelected = ($co['type'] == $selectedParentType && $co['id'] == $selectedRequestId);
                                 ?>
-                                <option value="<?= $co['type'] ?>:<?= $co['id'] ?>">
+                                <option value="<?= $co['type'] ?>:<?= $co['id'] ?>" <?= $isSelected ? 'selected' : '' ?>>
                                     <?= $prefix ?>-<?= $co['id'] ?> - <?= htmlspecialchars($co['purpose']) ?> (TK.<?= number_format($co['amount'], 2) ?>)
                                 </option>
                             <?php endforeach; ?>
@@ -70,7 +76,7 @@ $show_breadcrumb = true;
 
                     <div class="mb-3">
                         <label class="form-label">Title / Purpose <span class="text-danger">*</span></label>
-                        <input type="text" name="title" class="form-control" required placeholder="Brief title for this adjustment">
+                        <input type="text" name="title" class="form-control" required placeholder="Brief title for this adjustment" value="<?= ($selectedParentType === 'vendor') ? 'Vendor Payment Settlement for VPR-' . $selectedRequestId : '' ?>">
                     </div>
 
                     <div class="mb-3">

@@ -138,27 +138,29 @@ class LetterTemplateController extends Controller
         // final save data
         $saveData = [
             "employee_id" => $data['employee_id'],
-            "designation_id" => $employee['designation_id'], 
-            "department_id" => $employee['department_id'],   //  auto
+            "designation_id" => $employee['designation_id'] ?? null, 
+            "department_id" => $employee['department_id'] ?? null,   //  auto
             "letter_type" => $data['letter_type'],
-            "template_id" => $data['template_id'] ?? null,
+            "template_id" => (!empty($data['template_id'])) ? $data['template_id'] : null,
             "subject" => $data['subject'],
             "body" => $body,
             "letter_date" => $data['letter_date'],
-            "ref_number" => $data['ref_number'] ?? null,
-            "joining_date" => $data['joining_date'],
-            "effective_date" => $data['effective_date'] ?? null,
-            "current_salary" => $data['current_salary'] ?? null,
-            "revised_salary" => $data['revised_salary'] ?? null,
-            "new_designation" => $data['new_designation'] ?? null,
+            "ref_number" => ($data['ref_number'] !== '') ? $data['ref_number'] : null,
+            "joining_date" => ($data['joining_date'] !== '') ? $data['joining_date'] : null,
+            "effective_date" => (!empty($data['effective_date'])) ? $data['effective_date'] : null,
+            "current_salary" => ($data['current_salary'] !== '') ? $data['current_salary'] : null,
+            "revised_salary" => ($data['revised_salary'] !== '') ? $data['revised_salary'] : null,
+            "new_designation" => ($data['new_designation'] !== '') ? $data['new_designation'] : null,
             "signatory_name" => $data['signatory_name'],
             "signatory_title" => $data['signatory_title'],
-            "cc_email" => $data['cc_email'] ?? null,
-            "send_to_email" => $data['send_to_email'] ?? 0,
+            "cc_email" => ($data['cc_email'] !== '') ? $data['cc_email'] : null,
+            "send_to_email" => (!empty($data['send_to_email'])) ? (int)$data['send_to_email'] : 0,
             "status" => $data['letter_status']
         ];
 
-        $this->letterModel->create($saveData);
+        if (!$this->letterModel->create($saveData)) {
+            die("Database Error (Create Letter): " . $this->db->error);
+        }
 
         header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
     }
@@ -325,24 +327,26 @@ class LetterTemplateController extends Controller
             "designation_id" => $data['designation_id'],
             "department_id" => $data['department_id'],
             "letter_type" => $data['letter_type'],
-            "template_id" => $data['template_id'] ?? null,
+            "template_id" => (!empty($data['template_id'])) ? $data['template_id'] : null,
             "subject" => $data['subject'],
             "body" => $body,
             "letter_date" => $data['letter_date'],
-            "ref_number" => $data['ref_number'] ?? null,
-            "joining_date" => $data['joining_date'],
-            "effective_date" => $data['effective_date'] ?? null,
-            "current_salary" => $data['current_salary'] ?? null,
-            "revised_salary" => $data['revised_salary'] ?? null,
-            "new_designation" => $data['new_designation'] ?? null,
+            "ref_number" => ($data['ref_number'] !== '') ? $data['ref_number'] : null,
+            "joining_date" => ($data['joining_date'] !== '') ? $data['joining_date'] : null,
+            "effective_date" => (!empty($data['effective_date'])) ? $data['effective_date'] : null,
+            "current_salary" => ($data['current_salary'] !== '') ? $data['current_salary'] : null,
+            "revised_salary" => ($data['revised_salary'] !== '') ? $data['revised_salary'] : null,
+            "new_designation" => ($data['new_designation'] !== '') ? $data['new_designation'] : null,
             "signatory_name" => $data['signatory_name'],
             "signatory_title" => $data['signatory_title'],
-            "cc_email" => $data['cc_email'] ?? null,
-            "send_to_email" => $data['send_to_email'] ?? 0,
+            "cc_email" => ($data['cc_email'] !== '') ? $data['cc_email'] : null,
+            "send_to_email" => (!empty($data['send_to_email'])) ? (int)$data['send_to_email'] : 0,
             "status" => $data['letter_status']
         ];
 
-        $this->letterModel->update($id, $updateData);
+        if (!$this->letterModel->update($id, $updateData)) {
+            die("Database Error (Update Letter): " . $this->db->error);
+        }
 
         header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
     }

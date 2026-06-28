@@ -249,15 +249,16 @@ class Con_MaterialReceivingImportController extends Controller
                 }
 
                 // ── 3. purchase_orders ────────────────────────────────────
+                $vendorId = !empty($resolvedItems) ? (int)$resolvedItems[0]['vendor_id'] : 0;
                 $today = date('Y-m-d');
                 $stmt2 = $this->db->prepare(
                     "INSERT INTO purchase_orders
                         (request_id, created_by, status, order_date,
                          approved_by_pm, pm_approved_at,
-                         approved_by_se, se_approved_at)
-                     VALUES (?, ?, 'Fully Received', ?, ?, NOW(), ?, NOW())"
+                         approved_by_se, se_approved_at, vendor_id)
+                     VALUES (?, ?, 'Fully Received', ?, ?, NOW(), ?, NOW(), ?)"
                 );
-                $stmt2->bind_param('iisii', $prId, $createdById, $today, $approvedById, $approvedById);
+                $stmt2->bind_param('iisiiii', $prId, $createdById, $today, $approvedById, $approvedById, $vendorId);
                 $stmt2->execute();
                 $poId = $this->db->insert_id;
                 $summary['po']++;
