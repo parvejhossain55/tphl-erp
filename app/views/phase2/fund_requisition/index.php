@@ -672,6 +672,46 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
                     </div>
                 </div>
 
+                <!-- ============================================================
+                     SETTLEMENT SECTION (visible only when status = paid)
+                     ============================================================ -->
+                <div id="vSettlementContainer" class="d-none">
+                    <div class="card custom-card border mb-0">
+                        <div class="card-header justify-content-between align-items-center  bg-opacity-10">
+                            <div class="card-title fs-13 text-success fw-bold">
+                                <i class="bi bi-patch-check me-1"></i> Settlement & Accountability
+                            </div>
+                            <span class="badge" id="vSettleBadge">Pending</span>
+                        </div>
+                        <div class="card-body">
+                            <!-- Summary Strip -->
+                            <div class="row g-2 mb-3" id="vSettleSummary">
+                                <div class="col-md-4">
+                                    <div class="p-2 rounded  bg-opacity-10 text-center">
+                                        <small class="text-light d-block fs-11">Disbursed</small>
+                                        <strong class="text-success" id="vs_disbursed">৳ 0</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="p-2 rounded bg-primary bg-opacity-10 text-center">
+                                        <small class="text-light d-block fs-11">Total Spent</small>
+                                        <strong class="text-light" id="vs_spent">৳ 0</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="p-2 rounded bg-warning bg-opacity-10 text-center" id="vs_balance_card">
+                                        <small class="text-lightd-block fs-11">Balance</small>
+                                        <strong class="text-light" id="vs_balance">৳ 0</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Settlement Action Buttons -->
+                            <div id="vSettleActions"></div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Close</button>
@@ -818,6 +858,8 @@ function openViewModal(id) {
     document.getElementById('vAcctsNote').innerText = '—';
     
     document.getElementById('vExpensesContainer').classList.add('d-none');
+    document.getElementById('vSettlementContainer').classList.add('d-none');
+    document.getElementById('vSettleActions').innerHTML = '';
     
     var viewModal = new bootstrap.Modal(document.getElementById('viewRequisitionModal'));
     viewModal.show();
@@ -982,6 +1024,111 @@ function fetchModalExpensesData(id, startDate = '', endDate = '') {
                     Spent: BDT ${totalSpentGlobal.toLocaleString('en-US', {minimumFractionDigits: 2})} | 
                     Balance: BDT ${remaining.toLocaleString('en-US', {minimumFractionDigits: 2})}
                 `;
+
+                // ============================================================
+                // SETTLEMENT SECTION
+                // ============================================================
+                document.getElementById('vSettlementContainer').classList.remove('d-none');
+
+                var fmt = (n) => '৳ ' + parseFloat(n).toLocaleString('en-US', {minimumFractionDigits: 2});
+                document.getElementById('vs_disbursed').innerText = fmt(totalAmount);
+                document.getElementById('vs_spent').innerText = fmt(totalSpentGlobal);
+                document.getElementById('vs_balance').innerText = fmt(Math.max(0, remaining));
+
+                // Color balance card
+                var bCard = document.getElementById('vs_balance_card');
+                bCard.className = remaining > 0
+                    ? 'p-2 rounded bg-warning bg-opacity-10 text-center'
+                    : 'p-2 rounded bg-secondary bg-opacity-10 text-center';
+
+                var settleBadge = document.getElementById('vSettleBadge');
+                var settleStatus = req.settlement_status || 'pending';
+                var settleLabel = {pending: 'Pending', settled: 'Settled', extra_requested: 'Extra Fund Requested'}[settleStatus] || settleStatus;
+                var settleColor = {pending: 'bg-warning text-dark', settled: 'bg-success', extra_requested: 'bg-info text-dark'}[settleStatus] || 'bg-secondary';
+                settleBadge.className = 'badge ' + settleColor;
+                settleBadge.innerText = settleLabel;
+
+                var isOwner    = (req.requested_by == data.session_user_id);
+                var isAccounts = [1, 6].includes(data.session_role_id);
+                var isAdmin    = [1, 3].includes(data.session_role_id);
+                var isVerified = req.accounts_settlement_verified == 1;
+
+                var actionsHtml = '';
+
+                if (isVerified) {
+                    actionsHtml += `<div class="alert alert-success py-2 mb-2 fs-12">
+                        <i class="bi bi-check-circle-fill me-1"></i>
+                        Settlement fully verified by Accounts.
+                        ${req.accounts_verified_at ? '<small class="d-block text-muted">Verified on: ' + req.accounts_verified_at + '</small>' : ''}
+                    </div>`;
+                } else {
+                    // 1. Requester: mark as settled (all expenses logged)
+                    if ((isOwner || isAdmin) && settleStatus === 'pending') {
+                        actionsHtml += `
+                        <form action="<?= $GLOBALS['base_url'] ?>/fund-requisitions/settle/${req.id}" method="POST" class="d-inline me-1" onsubmit="return confirm('Mark this requisition as settled? All expenses should be logged before doing this.')">
+                            <button type="submit" class="btn btn-sm btn-success fw-semibold">
+                                <i class="bi bi-check2-circle me-1"></i> Mark as Settled
+                            </button>
+                        </form>`;
+                    }
+
+                    // 2. Requester: return balance (if balance > 0 and not yet returned)
+                    if ((isOwner || isAdmin) && remaining > 0 && req.balance_returned == 0) {
+                        actionsHtml += `
+                        <form action="<?= $GLOBALS['base_url'] ?>/fund-requisitions/balance-return/${req.id}" method="POST" class="d-inline me-1" onsubmit="return confirm('Confirm that you have returned BDT ' + ${remaining.toFixed(2)} + ' to Accounts?')">
+                            <button type="submit" class="btn btn-sm btn-outline-warning fw-semibold">
+                                <i class="bi bi-arrow-return-left me-1"></i> Return Balance (${fmt(remaining)})
+                            </button>
+                        </form>`;
+                    } else if (req.balance_returned == 1) {
+                        actionsHtml += `<span class="badge bg-info text-dark me-2"><i class="bi bi-check me-1"></i>Balance Returned</span>`;
+                    }
+
+                    // 3. Requester: request extra fund (if overspent)
+                    if ((isOwner || isAdmin) && remaining <= 0 && settleStatus !== 'extra_requested') {
+                        actionsHtml += `
+                        <button type="button" class="btn btn-sm btn-outline-danger fw-semibold me-1"
+                            onclick="openExtraFundForm(${req.id}, ${Math.abs(remaining)})">
+                            <i class="bi bi-plus-circle me-1"></i> Request Extra Fund
+                        </button>`;
+                    } else if (settleStatus === 'extra_requested') {
+                        actionsHtml += `<span class="badge bg-danger me-2">Extra Fund Requested</span>`;
+                    }
+
+                    // 4. Accounts: verify settlement
+                    if (isAccounts && (settleStatus === 'settled' || req.balance_returned == 1)) {
+                        actionsHtml += `
+                        <form action="<?= $GLOBALS['base_url'] ?>/fund-requisitions/verify-settle/${req.id}" method="POST" class="d-inline me-1" onsubmit="return confirm('Confirm settlement verification?')">
+                            <button type="submit" class="btn btn-sm btn-primary fw-semibold">
+                                <i class="bi bi-check2-all me-1"></i> Verify Settlement
+                            </button>
+                        </form>`;
+                    }
+                }
+
+                // Extra fund form placeholder
+                actionsHtml += `<div id="extraFundFormArea" class="mt-3 d-none">
+                    <form action="<?= $GLOBALS['base_url'] ?>/fund-requisitions/extra-fund/" id="extraFundForm" method="POST">
+                        <div class="row g-2">
+                            <div class="col-md-5">
+                                <label class="form-label fs-11 fw-semibold text-muted mb-1">Extra Amount Needed (৳)</label>
+                                <input type="number" name="extra_amount" class="form-control form-control-sm" step="0.01" min="0.01" required
+                                       placeholder="How much more is needed?">
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label fs-11 fw-semibold text-muted mb-1">Reason for Extra Fund</label>
+                                <input type="text" name="extra_reason" class="form-control form-control-sm" required
+                                       placeholder="Explain why extra funds are needed...">
+                            </div>
+                            <div class="col-12 text-end">
+                                <button type="button" class="btn btn-light btn-sm me-1" onclick="document.getElementById('extraFundFormArea').classList.add('d-none')">Cancel</button>
+                                <button type="submit" class="btn btn-danger btn-sm">Submit Extra Fund Request</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>`;
+
+                document.getElementById('vSettleActions').innerHTML = actionsHtml;
                 
                 var isOwnerOrAdmin = (req.requested_by == data.session_user_id || [1, 3].includes(data.session_role_id));
                 var formContainer = document.getElementById('vLogExpenseFormContainer');
@@ -1042,6 +1189,23 @@ function resetModalExpenses() {
 function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function openExtraFundForm(reqId, overspentAmount) {
+    var area = document.getElementById('extraFundFormArea');
+    if (!area) return;
+    area.classList.remove('d-none');
+    // Update the form action with correct req id
+    var form = document.getElementById('extraFundForm');
+    if (form) {
+        form.action = '<?= $GLOBALS["base_url"] ?>/fund-requisitions/extra-fund/' + reqId;
+    }
+    // Pre-fill extra amount with overspent value
+    var amtInput = area.querySelector('input[name="extra_amount"]');
+    if (amtInput && overspentAmount > 0) {
+        amtInput.value = overspentAmount.toFixed(2);
+    }
+    area.scrollIntoView({behavior: 'smooth', block: 'nearest'});
 }
 
 function toggleExpenseProjectInput() {
@@ -1197,11 +1361,11 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
         </td>
         <td class="no-print">
             <div class="btn-list">
-                <!-- View Details button (always available) -->
-                <button type="button" class="btn btn-icon btn-sm btn-info border" title="View Details & Log Expenses"
-                        onclick="openViewModal(<?= $req['id'] ?>)">
+                <!-- View Details button — goes to dedicated view page -->
+                <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions/view/<?= $req['id'] ?>"
+                   class="btn btn-icon btn-sm btn-info border" title="View Details & Log Expenses">
                     <i class="fa-solid fa-eye"></i>
-                </button>
+                </a>
 
                 <!-- Management Approval button (role 1, 3 for pending requisitions) -->
                 <?php if ($req['status'] === 'pending' && in_array($roleId, [1, 3])): ?>

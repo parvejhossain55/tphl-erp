@@ -308,6 +308,85 @@ $show_breadcrumb = true;
     </div>
 </div>
 
+<!-- =====================================================================
+     FUND REQUISITIONS PANEL (for Accounts)
+     ===================================================================== -->
+<div class="container-fluid mt-4">
+    <div class="card custom-card">
+        <div class="card-header justify-content-between align-items-center">
+            <div class="card-title fs-14 fw-bold">
+                <i class="fa-solid fa-file-invoice-dollar me-2 text-primary"></i>Fund Requisition Requests
+            </div>
+            <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions" class="btn btn-sm btn-light border fs-11">
+                View All <i class="fa-solid fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table text-nowrap table-hover mb-0 fs-12">
+                    <thead class="table-light">
+                        <tr>
+                            <th>REQ ID</th>
+                            <th>Date</th>
+                            <th>Requester</th>
+                            <th>Dept / Project</th>
+                            <th>Type</th>
+                            <th class="text-end">Amount</th>
+                            <th>Purpose</th>
+                            <th>Status</th>
+                            <th>Settlement</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php if (empty($fundRequisitions)): ?>
+                        <tr><td colspan="10" class="text-center text-muted py-4">No fund requisitions found.</td></tr>
+                    <?php else: ?>
+                        <?php foreach ($fundRequisitions as $fr):
+                            $frStatusColors = ['pending'=>'bg-warning text-dark','approved'=>'bg-info','paid'=>'bg-success','rejected'=>'bg-danger'];
+                            $frSClass = $frStatusColors[$fr['status']] ?? 'bg-secondary';
+                            $settleMap = ['pending'=>'bg-secondary','settled'=>'bg-success','extra_requested'=>'bg-danger'];
+                            $settleSt  = $settleMap[$fr['settlement_status'] ?? 'pending'] ?? 'bg-secondary';
+                        ?>
+                        <tr>
+                            <td class="fw-semibold">REQ-<?= $fr['id'] ?></td>
+                            <td><?= date('d M Y', strtotime($fr['created_at'])) ?></td>
+                            <td><?= htmlspecialchars($fr['requester_name'] ?? '---') ?></td>
+                            <td>
+                                <div><?= htmlspecialchars($fr['department_name'] ?? '---') ?></div>
+                                <small class="text-muted"><?= $fr['project_name'] ? htmlspecialchars($fr['project_name']) : 'Office' ?></small>
+                            </td>
+                            <td>
+                                <?php if ($fr['requisition_type'] === 'petty_cash'): ?>
+                                    <span class="badge bg-warning fs-10">Petty Cash</span>
+                                <?php else: ?>
+                                    <span class="badge bg-info fs-10">General</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-end fw-bold">&#2547; <?= number_format($fr['amount'], 2) ?></td>
+                            <td class="text-wrap" style="max-width:160px"><?= htmlspecialchars(mb_substr($fr['purpose'], 0, 60)) ?>...</td>
+                            <td><span class="badge <?= $frSClass ?> fs-10 text-capitalize"><?= htmlspecialchars($fr['status']) ?></span></td>
+                            <td>
+                                <?php if ($fr['status'] === 'paid'): ?>
+                                    <span class="badge <?= $settleSt ?> fs-10 text-capitalize"><?= $fr['settlement_status'] ?? 'pending' ?></span>
+                                <?php else: echo '---'; endif; ?>
+                            </td>
+                            <td>
+                                <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions/view/<?= $fr['id'] ?>"
+                                   class="btn btn-icon btn-sm btn-info border" title="View Details">
+                                    <i class="fa-solid fa-eye fs-11"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal for full description -->
 <div class="modal fade" id="descriptionModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">

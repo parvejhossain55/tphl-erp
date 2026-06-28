@@ -6,9 +6,10 @@ class Con_ContractorBill extends Model
 
     /**
      * Get all bills with relations + approved_by/payment_by names
-     * @param int|null $userId  If set, only show bills created by this user
+     * @param int|null $userId      If set, show bills created_by this user
+     * @param array    $projectIds  If set, also show bills for these project_ids (e.g. site engineer assigned projects)
      */
-    public function getAllWithRelations($userId = null)
+    public function getAllWithRelations($userId = null, array $projectIds = [])
     {
         $sql = "SELECT cbr.*,
                        oo.name  AS operator_name,
@@ -44,8 +45,19 @@ class Con_ContractorBill extends Model
                 LEFT JOIN project_phases pp ON pp.id = pwp.phase_id
                 LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id";
 
+        $conditions = [];
+
         if ($userId !== null) {
-            $sql .= " WHERE cbr.created_by = " . (int)$userId;
+            $conditions[] = "cbr.created_by = " . (int)$userId;
+        }
+
+        if (!empty($projectIds)) {
+            $safeIds = implode(',', array_map('intval', $projectIds));
+            $conditions[] = "cbr.project_id IN ($safeIds)";
+        }
+
+        if (!empty($conditions)) {
+            $sql .= " WHERE (" . implode(' OR ', $conditions) . ")";
         }
 
         $sql .= " GROUP BY cbr.id ORDER BY cbr.created_at DESC";

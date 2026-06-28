@@ -30,6 +30,14 @@ $isApproved      = in_array($status, ['approved', 'partially_paid']);
 $isRejected      = ($status === 'rejected');
 $isFullyPaid     = in_array($status, ['fully_paid', 'paid']);
 $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
+
+// Settlement variables
+$settlements           = $settlements ?? [];
+$totalPaidToContractor = $total_paid_to_contractor ?? 0;
+$currentUserId         = $current_user_id ?? null;
+// Site engineer can submit settlement when accounts has paid (any paid status)
+$billIsPaid            = in_array($status, ['approved', 'partially_paid', 'fully_paid', 'paid']);
+$canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
 ?>
 
 <!-- Header -->
@@ -193,6 +201,8 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                         <?php endif; ?>
                     </div>
                 </div>
+
+                
             </div>
 
             <?php if (!empty($bill['target_id'])): ?>
@@ -282,6 +292,46 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                                             <?php if (!empty($item['remarks_action'])): ?>
                                                 <small class="text-muted d-block text-wrap"><em><?= htmlspecialchars($item['remarks_action']) ?></em></small>
                                             <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($monthly_target_items)): ?>
+                    <div class="mt-4 border-top pt-3">
+                        <h6 class="fs-14 fw-semibold mb-2 text-dark"><i class="bi bi-calendar-check me-1 text-primary"></i>Monthly Target & Cumulative Progress</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead class="table-light text-muted small">
+                                    <tr>
+                                        <th>Work Item</th>
+                                        <th>Unit</th>
+                                        <th class="text-end">Monthly Target Qty</th>
+                                        <th class="text-end">Monthly Achieved Qty</th>
+                                        <th class="text-center">Overall Progress %</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($monthly_target_items as $mItem): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($mItem['work_item_name']) ?></td>
+                                        <td><?= htmlspecialchars($mItem['unit'] ?? '') ?></td>
+                                        <td class="text-end text-nowrap"><?= number_format($mItem['monthly_target_qty'] ?? 0, 2) ?></td>
+                                        <td class="text-end text-nowrap"><?= number_format($mItem['actual_qty'] ?? 0, 2) ?></td>
+                                        <td class="text-center">
+                                            <span class="badge bg-<?= $mItem['actual_progress_pct'] >= 100 ? 'success' : 'primary' ?>-transparent">
+                                                <?= number_format($mItem['actual_progress_pct'] ?? 0, 2) ?>%
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-<?= $mItem['status'] === 'Completed' ? 'success' : ($mItem['status'] === 'In Progress' ? 'info' : 'warning') ?>-transparent small">
+                                                <?= htmlspecialchars($mItem['status'] ?? 'Draft') ?>
+                                            </span>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -483,6 +533,277 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
     </div>
 </div>
 
+<!-- ============================================================
+     SETTLEMENT & ACCOUNTABILITY SECTION
+     ============================================================ -->
+<div class="container-fluid mt-3">
+    <div class="card custom-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="card-title mb-0">
+                <i class="bi bi-patch-check me-2 text-success"></i>
+                Contractor Settlement &amp; Labour Accountability
+            </h6>
+            <?php if ($canSubmitSettlement): ?>
+            <button class="btn btn-sm btn-success fw-bold" data-bs-toggle="modal" data-bs-target="#settlementModal">
+                <i class="bi bi-file-earmark-plus me-1"></i> Submit New Settlement
+            </button>
+            <?php endif; ?>
+        </div>
+        <div class="card-body">
+
+            <!-- Summary strip -->
+            <div class="row mb-3 g-2">
+                <div class="col-md-3">
+                    <div class="p-3 rounded bg-success bg-opacity-10 text-center">
+                        <small class="text-light d-block">Total Paid by Accounts</small>
+                        <strong class="text-light fs-5">৳ <?= number_format($totalPaid, 2) ?></strong>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-3 rounded bg-primary bg-opacity-10 text-center">
+                        <small class="text-light d-block">Paid to Contractor</small>
+                        <strong class="text-light fs-5">৳ <?= number_format($totalPaidToContractor, 2) ?></strong>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <?php $unsettled = max(0, $totalPaid - $totalPaidToContractor); ?>
+                    <div class="p-3 rounded <?= $unsettled > 0 ? 'bg-warning bg-opacity-15' : 'bg-secondary bg-opacity-10' ?> text-center">
+                        <small class="text-light d-block">Unsettled Balance</small>
+                        <strong class="<?= $unsettled > 0 ? 'text-light' : 'text-muted' ?> fs-5">৳ <?= number_format($unsettled, 2) ?></strong>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-3 rounded bg-info bg-opacity-10 text-center">
+                        <small class="text-light d-block">Settlements Submitted</small>
+                        <strong class="text-light fs-5"><?= count($settlements) ?></strong>
+                    </div>
+                </div>
+            </div>
+
+            <?php if (empty($settlements)): ?>
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-clipboard-x fs-2 d-block mb-2 text-secondary"></i>
+                    <?= $billIsPaid ? 'No settlements submitted yet. Click <strong>Submit New Settlement</strong> to start.' : 'Settlement can be submitted once accounts has processed payment.' ?>
+                </div>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Date</th>
+                                <th>Submitted By</th>
+                                <th class="text-end">Received (৳)</th>
+                                <th class="text-end">Paid to Contractor (৳)</th>
+                                <th class="text-end">Balance (৳)</th>
+                                <th class="text-center">Labour</th>
+                                <th>Method</th>
+                                <th class="text-center">Proof</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($settlements as $si => $sett):
+                                $settStatusColors = [
+                                    'submitted'         => 'warning text-dark',
+                                    'accounts_received' => 'info text-dark',
+                                    'verified'          => 'success',
+                                ];
+                                $settStatusLabels = [
+                                    'submitted'         => 'Submitted',
+                                    'accounts_received' => 'Balance Returned',
+                                    'verified'          => 'Verified',
+                                ];
+                                $settColor = $settStatusColors[$sett['status']] ?? 'secondary';
+                                $settLabel = $settStatusLabels[$sett['status']] ?? ucfirst($sett['status']);
+                                $proofList = !empty($sett['proof_images']) ? json_decode($sett['proof_images'], true) : [];
+                            ?>
+                            <tr>
+                                <td><?= $si + 1 ?></td>
+                                <td><?= date('d M Y', strtotime($sett['paid_date'])) ?></td>
+                                <td><?= htmlspecialchars($sett['submitted_by_name'] ?? '—') ?></td>
+                                <td class="text-end">৳ <?= number_format($sett['received_amount'], 2) ?></td>
+                                <td class="text-end fw-semibold text-success">৳ <?= number_format($sett['paid_amount'], 2) ?></td>
+                                <td class="text-end <?= $sett['balance_amount'] > 0 ? 'text-warning fw-semibold' : 'text-muted' ?>">
+                                    ৳ <?= number_format($sett['balance_amount'], 2) ?>
+                                </td>
+                                <td class="text-center"><?= (int)$sett['labour_count'] ?> pax</td>
+                                <td><?= htmlspecialchars($sett['payment_method'] ?? '—') ?></td>
+                                <td class="text-center">
+                                    <?php if (!empty($proofList)): ?>
+                                        <?php foreach ($proofList as $pi => $proof): ?>
+                                            <a href="<?= $base_url ?>/<?= htmlspecialchars($proof) ?>" target="_blank" class="btn btn-xs btn-outline-secondary me-1">
+                                                <i class="bi bi-image"></i> <?= $pi + 1 ?>
+                                            </a>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <span class="text-muted small">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-<?= $settColor ?>"><?= $settLabel ?></span>
+                                    <?php if ($sett['balance_verified']): ?>
+                                        <br><small class="text-success"><i class="bi bi-check-circle"></i> Accts Verified</small>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center">
+                                    <!-- Mark balance returned (submitter) -->
+                                    <?php if ($sett['balance_amount'] > 0 && !$sett['balance_returned'] && $sett['submitted_by'] == $currentUserId): ?>
+                                        <form action="<?= $base_url ?>/con-contractor-bill-balance-return/<?= $sett['id'] ?>" method="POST" class="d-inline">
+                                            <button type="submit" class="btn btn-xs btn-outline-warning"
+                                                onclick="return confirm('Mark ৳<?= number_format($sett['balance_amount'], 2) ?> as returned to accounts?')">
+                                                <i class="bi bi-arrow-return-left"></i> Return Balance
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
+                                    <!-- Accounts Verify -->
+                                    <?php if (!$sett['balance_verified'] && $canPayReq): ?>
+                                        <button class="btn btn-xs btn-outline-success mt-1"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#verifySettModal<?= $sett['id'] ?>">
+                                            <i class="bi bi-check2-all"></i> Verify
+                                        </button>
+                                    <?php elseif ($sett['balance_verified']): ?>
+                                        <small class="text-muted d-block"><?= date('d M Y', strtotime($sett['balance_verified_at'])) ?></small>
+                                    <?php endif; ?>
+                                    <!-- Note -->
+                                    <?php if (!empty($sett['work_note'])): ?>
+                                        <span class="d-block small text-muted fst-italic mt-1" title="<?= htmlspecialchars($sett['work_note']) ?>">
+                                            <i class="bi bi-chat-left-text"></i> Note
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     SETTLEMENT SUBMIT MODAL
+     ============================================================ -->
+<?php if ($canSubmitSettlement): ?>
+<div class="modal fade" id="settlementModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form action="<?= $base_url ?>/con-contractor-bill-settlement/<?= $bill['id'] ?>" method="POST" enctype="multipart/form-data">
+                <div class="modal-header bg-success bg-opacity-10">
+                    <h5 class="modal-title"><i class="bi bi-patch-check me-2"></i>Submit Contractor Settlement</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 small mb-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Record how much was paid to the contractor, how many labourers worked, and upload payment proof.
+                        If you received more than you paid, the balance will be calculated automatically.
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Amount Received from Accounts (৳) *</label>
+                            <input type="number" name="received_amount" class="form-control" step="0.01" min="0"
+                                   value="<?= number_format($totalPaid, 2, '.', '') ?>"
+                                   placeholder="Total received from accounts">
+                            <small class="text-muted">Total paid by accounts: ৳<?= number_format($totalPaid, 2) ?></small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Amount Paid to Contractor (৳) *</label>
+                            <input type="number" name="paid_amount" id="sett_paid_amount" class="form-control" step="0.01" min="0.01" required
+                                   placeholder="Actual amount paid to contractor">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Payment Date *</label>
+                            <input type="date" name="paid_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Payment Method *</label>
+                            <select name="payment_method" class="form-select" required>
+                                <option value="Cash">Cash</option>
+                                <option value="Cheque">Cheque</option>
+                                <option value="BankTransfer">Bank Transfer</option>
+                                <option value="MobileWallet">Mobile Wallet (bKash/Nagad)</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Reference / Voucher No.</label>
+                            <input type="text" name="reference_no" class="form-control" placeholder="Cheque / Transaction No.">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Number of Labourers</label>
+                            <input type="number" name="labour_count" class="form-control" min="0" value="0"
+                                   placeholder="How many labourers worked?">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold">Proof of Payment (Images/PDF) *</label>
+                            <input type="file" name="proof_images[]" class="form-control" multiple required
+                                   accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                            <small class="text-muted">JPG, PNG, PDF — Max 5MB each. You can select multiple files.</small>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold">Work Notes</label>
+                            <textarea name="work_note" class="form-control" rows="2"
+                                placeholder="Describe the work done, any issues, or observations..."></textarea>
+                        </div>
+                        <!-- Live balance preview -->
+                        <div class="col-md-12">
+                            <div id="sett_balance_preview" class="alert alert-warning py-2 d-none">
+                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                Balance remaining: <strong id="sett_balance_amt">৳ 0</strong> — you will be asked to return this to accounts.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success fw-bold">
+                        <i class="bi bi-check-circle me-1"></i> Submit Settlement
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- Verify Settlement Modals -->
+<?php foreach ($settlements as $sett): if ($sett['balance_verified'] || !$canPayReq) continue; ?>
+<div class="modal fade" id="verifySettModal<?= $sett['id'] ?>" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="<?= $base_url ?>/con-contractor-bill-settlement-verify/<?= $sett['id'] ?>" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-check2-all me-2"></i>Verify Settlement #<?= $sett['id'] ?></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-sm table-bordered">
+                        <tr><th>Received from Accounts</th><td>৳ <?= number_format($sett['received_amount'], 2) ?></td></tr>
+                        <tr><th>Paid to Contractor</th><td>৳ <?= number_format($sett['paid_amount'], 2) ?></td></tr>
+                        <tr><th>Balance Remaining</th><td class="fw-bold <?= $sett['balance_amount'] > 0 ? 'text-warning' : 'text-success' ?>">৳ <?= number_format($sett['balance_amount'], 2) ?></td></tr>
+                        <tr><th>Balance Returned?</th><td><?= $sett['balance_returned'] ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-warning text-dark">Not yet</span>' ?></td></tr>
+                        <tr><th>Labour Count</th><td><?= (int)$sett['labour_count'] ?> pax</td></tr>
+                        <tr><th>Submitted By</th><td><?= htmlspecialchars($sett['submitted_by_name'] ?? '—') ?></td></tr>
+                    </table>
+                    <label class="form-label fw-semibold mt-2">Accounts Verification Note</label>
+                    <textarea name="accounts_note" class="form-control" rows="2" placeholder="Optional note from accounts..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success fw-bold">
+                        <i class="bi bi-check-circle me-1"></i> Confirm Verified
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endforeach; ?>
+
 <!-- Add Payment Modal -->
 <?php if ($showPaymentForm): ?>
 <div class="modal fade" id="addPaymentModal" tabindex="-1" aria-hidden="true">
@@ -576,5 +897,31 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         toggleBankField();
     }
+});
+</script>
+
+<script>
+// Settlement modal: live balance calculation preview
+document.addEventListener('DOMContentLoaded', function () {
+    var paidInput    = document.getElementById('sett_paid_amount');
+    var preview      = document.getElementById('sett_balance_preview');
+    var balanceLabel = document.getElementById('sett_balance_amt');
+    var receivedInput = document.querySelector('#settlementModal input[name="received_amount"]');
+
+    function updateBalance() {
+        if (!paidInput || !preview || !balanceLabel) return;
+        var received = parseFloat(receivedInput ? receivedInput.value : 0) || 0;
+        var paid     = parseFloat(paidInput.value) || 0;
+        var balance  = Math.max(0, received - paid);
+        if (balance > 0) {
+            balanceLabel.textContent = '৳ ' + balance.toFixed(2);
+            preview.classList.remove('d-none');
+        } else {
+            preview.classList.add('d-none');
+        }
+    }
+
+    if (paidInput) paidInput.addEventListener('input', updateBalance);
+    if (receivedInput) receivedInput.addEventListener('input', updateBalance);
 });
 </script>

@@ -146,6 +146,31 @@ class Con_MonthlyTargetController extends Controller {
         $stmtFl->execute();
         $projectFloors = $stmtFl->get_result()->fetch_all(MYSQLI_ASSOC);
 
+        // Fetch approved or active Work Orders for this project
+        $woStmt = $this->db->prepare("
+            SELECT id, wo_number, title, contractor_id 
+            FROM con_work_orders 
+            WHERE project_id = ? AND status IN ('approved', 'active')
+            ORDER BY wo_number ASC
+        ");
+        $woStmt->bind_param('i', $target['project_id']);
+        $woStmt->execute();
+        $projectWorkOrders = $woStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Fetch Work Order Items for each Work Order
+        $woItemsByWo = [];
+        foreach ($projectWorkOrders as $wo) {
+            $itemStmt = $this->db->prepare("
+                SELECT id, description, quantity, rate, unit, phase_item_id
+                FROM con_work_order_items 
+                WHERE work_order_id = ?
+                ORDER BY sort_order ASC, id ASC
+            ");
+            $itemStmt->bind_param('i', $wo['id']);
+            $itemStmt->execute();
+            $woItemsByWo[$wo['id']] = $itemStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
         $this->view('phase2/monthly_targets/form', [
             'current_route'   => 'con-monthly-targets',
             'target'          => $target,
@@ -158,6 +183,8 @@ class Con_MonthlyTargetController extends Controller {
             'is_readonly'     => $isSiteEngineer,
             'projectFloors'   => $projectFloors,
             'dailyBreakdowns' => $dailyBreakdowns,
+            'projectWorkOrders'=> $projectWorkOrders,
+            'woItemsByWo'      => $woItemsByWo,
         ]);
     }
 
@@ -364,6 +391,8 @@ class Con_MonthlyTargetController extends Controller {
                 'end_date'            => $endDate,
                 'responsible_team'    => trim($_POST['responsible_team']   ?? ''),
                 'contractor_id'       => !empty($_POST['contractor_id']) ? (int)$_POST['contractor_id'] : null,
+                'work_order_id'       => !empty($_POST['work_order_id']) ? (int)$_POST['work_order_id'] : null,
+                'work_order_item_id'  => !empty($_POST['work_order_item_id']) ? (int)$_POST['work_order_item_id'] : null,
                 'priority'            => $_POST['priority'] ?? 'Medium',
                 'status'              => 'Draft',
                 'week_1_qty'          => $week1Qty,
@@ -615,6 +644,46 @@ class Con_MonthlyTargetController extends Controller {
         } catch (\Exception $e) {
             $this->jsonError($e->getMessage());
         }
+        exit;
+    }
+
+    public function ajaxGetWorkOrders() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $contractor_id = (int)($_GET['contractor_id'] ?? 0);
+        $project_id = (int)($_GET['project_id'] ?? 0);
+
+        if (!$contractor_id || !$project_id) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'work_orders' => []]);
+            exit;
+        }
+
+        // Fetch approved or active Work Orders for this contractor and project
+        $stmt = $this->db->prepare("
+            SELECT id, wo_number, title 
+            FROM con_work_orders 
+            WHERE contractor_id = ? AND project_id = ? AND status IN ('approved', 'active')
+            ORDER BY id DESC
+        ");
+        $stmt->bind_param('ii', $contractor_id, $project_id);
+        $stmt->execute();
+        $workOrders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Fetch Work Order Items for each Work Order
+        foreach ($workOrders as $k => $wo) {
+            $itemStmt = $this->db->prepare("
+                SELECT id, description, quantity, rate, unit, phase_item_id
+                FROM con_work_order_items 
+                WHERE work_order_id = ?
+                ORDER BY sort_order ASC, id ASC
+            ");
+            $itemStmt->bind_param('i', $wo['id']);
+            $itemStmt->execute();
+            $workOrders[$k]['items'] = $itemStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'work_orders' => $workOrders]);
         exit;
     }
 

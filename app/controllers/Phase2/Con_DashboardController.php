@@ -1698,7 +1698,7 @@ $project = $stmt->get_result()->fetch_assoc();
         $myProjects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
 
         // Migrated: recent phase monthly targets (formerly project_working_plans)
-        $rWP = $this->db->query("SELECT pmt.id, CONCAT(pp.phase_name, ' - ', DATE_FORMAT(pmt.target_month, '%M %Y')) AS work_description, p.name AS project_name FROM phase_monthly_targets pmt INNER JOIN project_phases pp ON pp.id = pmt.phase_id INNER JOIN projects p ON p.id = pp.project_id WHERE p.deleted_at IS NULL AND $filter ORDER BY pmt.id DESC LIMIT 5");
+        $rWP = $this->db->query("SELECT pmt.id, CONCAT(pp.phase_name, ' - ', DATE_FORMAT(pmt.target_month, '%M %Y')) AS work_name, p.name AS project_name, pmt.planning_status AS approved_status FROM phase_monthly_targets pmt INNER JOIN project_phases pp ON pp.id = pmt.phase_id INNER JOIN projects p ON p.id = pp.project_id WHERE p.deleted_at IS NULL AND $filter ORDER BY pmt.id DESC LIMIT 5");
         $recentWorkingPlans = $rWP ? $rWP->fetch_all(MYSQLI_ASSOC) : [];
 
         $rMI = $this->db->query("SELECT mi.*, p.name AS project_name, m.name AS material_name FROM con_material_issues mi JOIN projects p ON p.id = mi.project_id LEFT JOIN con_materials m ON m.id = mi.material_id WHERE p.deleted_at IS NULL AND $filter ORDER BY mi.id DESC LIMIT 5");

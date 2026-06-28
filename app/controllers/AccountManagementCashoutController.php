@@ -23,11 +23,30 @@ class AccountManagementCashoutController extends Controller
         $transactions = $this->cashoutModel->getAllTransactions();
         $statistics = $this->cashoutModel->getStatistics();
 
+        // Fund Requisitions for Accounts — show pending/approved/paid that need attention
+        $fundRequisitions = $this->db->query("
+            SELECT fr.*,
+                   p.name       AS project_name,
+                   d.name       AS department_name,
+                   u_req.full_name AS requester_name,
+                   u_app.full_name AS approved_by_name
+            FROM fund_requisitions fr
+            LEFT JOIN projects p    ON fr.project_id    = p.id
+            LEFT JOIN departments d ON fr.department_id = d.id
+            LEFT JOIN users u_req   ON fr.requested_by  = u_req.id
+            LEFT JOIN users u_app   ON fr.approved_by   = u_app.id
+            ORDER BY
+                FIELD(fr.status, 'approved', 'pending', 'paid', 'rejected'),
+                fr.id DESC
+            LIMIT 20
+        ")->fetch_all(MYSQLI_ASSOC);
+
         $this->view("accounts/cashout/management-cashout-list", [
-            "current_route" => "management-cash-out",
-            "page_title" => "Management Cash Out",
-            "transactions" => $transactions,
-            "statistics" => $statistics
+            "current_route"    => "management-cash-out",
+            "page_title"       => "Management Cash Out",
+            "transactions"     => $transactions,
+            "statistics"       => $statistics,
+            "fundRequisitions" => $fundRequisitions,
         ]);
     }
 

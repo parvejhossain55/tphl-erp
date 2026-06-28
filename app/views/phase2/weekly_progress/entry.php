@@ -800,6 +800,11 @@ if ($isPmOrAdmin && !empty($overachievedItems)):
                 <?php if (!empty($wi['contractor_name'])): ?>
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-top:2px">
                     <i class="bi bi-briefcase me-1"></i><?= htmlspecialchars($wi['contractor_name']) ?>
+                    <?php if (!empty($wi['work_order_number'])): ?>
+                        | <span class="text-primary" style="font-weight:600" title="<?= htmlspecialchars($wi['work_order_title'] ?? '') ?>">
+                            <i class="bi bi-file-earmark-text me-1"></i><?= htmlspecialchars($wi['work_order_number']) ?>
+                        </span>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
                 <?php
@@ -953,6 +958,11 @@ if ($isPmOrAdmin && !empty($overachievedItems)):
                 <?php if (!empty($wi['contractor_name'])): ?>
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-top:2px">
                     <i class="bi bi-briefcase me-1"></i><?= htmlspecialchars($wi['contractor_name']) ?>
+                    <?php if (!empty($wi['work_order_number'])): ?>
+                        | <span class="text-primary" style="font-weight:600" title="<?= htmlspecialchars($wi['work_order_title'] ?? '') ?>">
+                            <i class="bi bi-file-earmark-text me-1"></i><?= htmlspecialchars($wi['work_order_number']) ?>
+                        </span>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
                 <?php if (!empty($dq['work_type_name'])): ?>

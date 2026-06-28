@@ -205,6 +205,7 @@ document.getElementById('project_id').addEventListener('change', function () {
                     opt.textContent = '[' + t.year + '/W' + (t.week_number || 'Monthly') + '] '
                                     + t.target_title + ' — Gain: ' + t.gain_percentage + '%';
                     opt.dataset.gain = t.gain_percentage;
+                    opt.dataset.details = JSON.stringify(t.items_detail || []);
                     targetSel.appendChild(opt);
                 });
             }
@@ -224,12 +225,37 @@ document.getElementById('target_id').addEventListener('change', function () {
     if (this.value && opt.dataset.gain !== undefined) {
         infoBox.classList.remove('d-none', 'alert-warning', 'alert-success', 'alert-info');
         const gain = parseFloat(opt.dataset.gain);
+        
+        let detailsHtml = '';
+        if (opt.dataset.details) {
+            try {
+                const details = JSON.parse(opt.dataset.details);
+                if (details && details.length) {
+                    detailsHtml = '<div class="mt-2 border-top pt-2" style="border-top: 1px solid rgba(0,0,0,0.1) !important;"><table class="table table-sm table-borderless mb-0 text-dark" style="font-size:11.5px; width:100%; border-collapse:collapse;">';
+                    detailsHtml += '<thead><tr class="fw-bold" style="border-bottom:1px solid rgba(0,0,0,0.05);"><th style="padding:4px 0;">Work Item</th><th class="text-end" style="padding:4px 0;">Weekly Target</th><th class="text-end" style="padding:4px 0;">Weekly Achieved</th><th class="text-end" style="padding:4px 0;">Weekly Gain</th><th class="text-end" style="padding:4px 0;">Monthly Target Progress</th></tr></thead><tbody>';
+                    details.forEach(item => {
+                        const unit = item.target_mode === 'pct' ? '%' : '';
+                        detailsHtml += `<tr style="border-bottom:1px solid rgba(0,0,0,0.03);">
+                            <td class="text-light" style="padding:4px 0; font-weight:600;">${item.item_name}</td>
+                            <td class="text-end text-light" style="padding:4px 0;">${item.planned.toFixed(2)}${unit}</td>
+                            <td class="text-end  text-light" style="padding:4px 0; color:var(--primary); font-weight:600;">${item.achieved.toFixed(2)}${unit}</td>
+                            <td class="text-end text-light" style="padding:4px 0; font-weight:700; color:#3b82f6;">${item.weekly_pct.toFixed(1)}%</td>
+                            <td class="text-end text-light" style="padding:4px 0; color:#10b981; font-weight:700;">${item.cumulative_pct.toFixed(1)}%</td>
+                        </tr>`;
+                    });
+                    detailsHtml += '</tbody></table></div>';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
         if (gain > 0) {
             infoBox.classList.add('alert-success');
-            gainTxt.textContent = 'Gain ' + gain + '% — eligible for progress bill';
+            gainTxt.innerHTML = `<strong>Gain ${gain}%</strong> — eligible for progress bill.${detailsHtml}`;
         } else {
             infoBox.classList.add('alert-warning');
-            gainTxt.textContent = 'Gain 0% — Progress approval may be blocked';
+            gainTxt.innerHTML = `<strong>Gain 0%</strong> — Progress approval may be blocked.${detailsHtml}`;
         }
     } else {
         infoBox.classList.add('d-none');
@@ -246,6 +272,41 @@ document.getElementById('work_order_id').addEventListener('change', function () 
         return;
     }
     
+    // Refresh targets for this specific Work Order
+    const pid = document.getElementById('project_id').value;
+    const targetSel  = document.getElementById('target_id');
+    const infoBox    = document.getElementById('targetBudgetInfo');
+    const gainTxt    = document.getElementById('targetGainText');
+
+    targetSel.innerHTML = '<option value="">-- Loading targets for Work Order... --</option>';
+    targetSel.disabled  = true;
+    infoBox.classList.add('d-none');
+    gainTxt.textContent = '';
+
+    fetch(BASE_URL + '/con-ajax-project-targets?project_id=' + pid + '&work_order_id=' + woid)
+        .then(r => r.json())
+        .then(data => {
+            targetSel.innerHTML = '<option value="">(No linked target)</option>';
+            if (!data.targets || !data.targets.length) {
+                targetSel.innerHTML += '<option disabled>No approved targets for this Work Order</option>';
+            } else {
+                data.targets.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.textContent = '[' + t.year + '/W' + (t.week_number || 'Monthly') + '] '
+                                    + t.target_title + ' — Gain: ' + t.gain_percentage + '%';
+                    opt.dataset.gain = t.gain_percentage;
+                    opt.dataset.details = JSON.stringify(t.items_detail || []);
+                    targetSel.appendChild(opt);
+                });
+            }
+            targetSel.disabled = false;
+        })
+        .catch(() => {
+            targetSel.innerHTML = '<option value="">(Error loading targets)</option>';
+            targetSel.disabled  = false;
+        });
+
     woContent.innerHTML = '<div><span class="spinner-border spinner-border-sm text-primary me-2"></span>Loading details...</div>';
     woBox.classList.remove('d-none');
 

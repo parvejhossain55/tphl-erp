@@ -473,13 +473,18 @@ class Con_MonthlyTarget
                    wt.work_type_name,
                    dt.name AS design_type_name,
                    ppi.weight_pct AS sub_item_weight,
-                   c.name AS contractor_name
+                   c.name AS contractor_name,
+                   wo.wo_number AS work_order_number,
+                   wo.title AS work_order_title,
+                   woi.description AS work_order_item_desc
             FROM phase_monthly_target_items pmti
             INNER JOIN phase_monthly_targets pmt ON pmt.id = pmti.target_id
             LEFT JOIN project_phase_items ppi ON ppi.phase_id = pmt.phase_id AND ppi.item_name = pmti.work_item_name COLLATE utf8mb4_general_ci
             LEFT JOIN work_types  wt ON wt.id = pmti.work_type_id
             LEFT JOIN design_types dt ON dt.id = wt.design_type_id
             LEFT JOIN contractors c ON c.id = pmti.contractor_id
+            LEFT JOIN con_work_orders wo ON wo.id = pmti.work_order_id
+            LEFT JOIN con_work_order_items woi ON woi.id = pmti.work_order_item_id
             WHERE pmti.target_id = ?
             ORDER BY pmti.sort_order ASC, pmti.id ASC
         ");
@@ -503,12 +508,12 @@ class Con_MonthlyTarget
                 (target_id, work_type_id, work_item_name, phase_item_id, floor_type, floor_no, unit, target_mode,
                  monthly_target_qty, monthly_target_pct, actual_qty,
                  planned_progress_pct, actual_progress_pct,
-                 start_date, end_date, responsible_team, contractor_id,
+                 start_date, end_date, responsible_team, contractor_id, work_order_id, work_order_item_id,
                  priority, status,
                  week_1_qty, week_2_qty, week_3_qty, week_4_qty,
                  week_1_pct, week_2_pct, week_3_pct, week_4_pct,
                  recovery_notes, sort_order)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $nextSort = $this->nextSort((int) $d['target_id']);
 
@@ -555,6 +560,8 @@ class Con_MonthlyTarget
         $endDate = $d['end_date'] ?? null;
         $responsibleTeam = $d['responsible_team'] ?? null;
         $contractorId = !empty($d['contractor_id']) ? (int) $d['contractor_id'] : null;
+        $workOrderId = !empty($d['work_order_id']) ? (int) $d['work_order_id'] : null;
+        $workOrderItemId = !empty($d['work_order_item_id']) ? (int) $d['work_order_item_id'] : null;
         $priority = $d['priority'] ?? 'Medium';
         $status = $d['status'] ?? 'Draft';
 
@@ -579,7 +586,7 @@ class Con_MonthlyTarget
         }
 
         $stmt->bind_param(
-            'iisisissdddddsssissddddddddsi',
+            'iisisissdddddsssiiissddddddddsi',
             $d['target_id'],
             $workTypeId,
             $workItemName,
@@ -597,6 +604,8 @@ class Con_MonthlyTarget
             $endDate,
             $responsibleTeam,
             $contractorId,
+            $workOrderId,
+            $workOrderItemId,
             $priority,
             $status,
             $week1Qty,
@@ -644,6 +653,8 @@ class Con_MonthlyTarget
                     week_4_pct          = ?,
                     responsible_team    = ?,
                     contractor_id       = ?,
+                    work_order_id       = ?,
+                    work_order_item_id  = ?,
                     priority            = ?,
                     status              = ?,
                     recovery_notes      = ?
@@ -678,6 +689,8 @@ class Con_MonthlyTarget
 
                 $respTeam = $i['responsible_team'] ?? null;
                 $contractorId = (!empty($i['contractor_id']) && $i['contractor_id'] != '') ? (int) $i['contractor_id'] : null;
+                $workOrderId = (!empty($i['work_order_id']) && $i['work_order_id'] != '') ? (int) $i['work_order_id'] : null;
+                $workOrderItemId = (!empty($i['work_order_item_id']) && $i['work_order_item_id'] != '') ? (int) $i['work_order_item_id'] : null;
                 $prio = $i['priority'] ?? 'Medium';
                 $stat = $i['status'] ?? 'Draft';
                 $recNotes = !empty($i['recovery_notes']) ? trim($i['recovery_notes']) : null;
@@ -737,7 +750,7 @@ class Con_MonthlyTarget
                 }
 
                 $stmt->bind_param(
-                    'isisissdddddssddddddddsisssi',
+                    'isisissdddddssddddddddsiiisssi',
                     $wid,
                     $name,
                     $phaseItemId,
@@ -762,6 +775,8 @@ class Con_MonthlyTarget
                     $w4pct,
                     $respTeam,
                     $contractorId,
+                    $workOrderId,
+                    $workOrderItemId,
                     $prio,
                     $stat,
                     $recNotes,

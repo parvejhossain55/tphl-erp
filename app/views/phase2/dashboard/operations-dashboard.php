@@ -307,8 +307,17 @@ $recentVendorPayments = $recentVendorPayments ?? [];
           <?php foreach ($recentWorkingPlans as $wp): ?>
           <tr>
             <td style="font-size:11.5px;color:var(--text-muted)"><?= htmlspecialchars($wp['project_name'] ?? 'N/A') ?></td>
-            <td><strong><?= htmlspecialchars($wp['work_name'] ?? 'N/A') ?></strong></td>
-            <td><span class="badge bg-secondary"><?= htmlspecialchars($wp['approved_status'] ?: 'Draft') ?></span></td>
+            <td><strong><?= htmlspecialchars($wp['work_name'] ?? $wp['work_description'] ?? 'N/A') ?></strong></td>
+            <?php
+                $wpStatus = $wp['approved_status'] ?? 'Draft';
+                $wpBadge  = match(strtolower($wpStatus)) {
+                    'approved'   => 'success',
+                    'in review'  => 'info',
+                    'draft'      => 'secondary',
+                    default      => 'secondary',
+                };
+            ?>
+            <td><span class="badge bg-<?= $wpBadge ?>"><?= htmlspecialchars($wpStatus) ?></span></td>
           </tr>
           <?php endforeach; ?>
         </tbody>
