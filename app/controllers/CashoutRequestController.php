@@ -87,16 +87,37 @@ class CashoutRequestController extends Controller
         $projects   = $this->cashoutModel->getAllProjects();
         $offices    = $this->getUniqueOffices();
 
+        // Fund Requisitions for Accounts — ordered by urgency
+        $fundRequisitions = $this->db->query("
+            SELECT fr.*,
+                   p.name          AS project_name,
+                   d.name          AS department_name,
+                   u_req.full_name AS requester_name,
+                   u_app.full_name AS approved_by_name,
+                   u_paid.full_name AS paid_by_name
+            FROM fund_requisitions fr
+            LEFT JOIN projects p     ON fr.project_id    = p.id
+            LEFT JOIN departments d  ON fr.department_id = d.id
+            LEFT JOIN users u_req    ON fr.requested_by  = u_req.id
+            LEFT JOIN users u_app    ON fr.approved_by   = u_app.id
+            LEFT JOIN users u_paid   ON fr.paid_by       = u_paid.id
+            ORDER BY
+                FIELD(fr.status, 'approved', 'pending', 'paid', 'rejected'),
+                fr.id DESC
+            LIMIT 30
+        ")->fetch_all(MYSQLI_ASSOC);
+
         $this->view("accounts/cashout/admin-request-list", [
-            "current_route" => "admin-cashout-requests",
-            "page_title"    => "Cashout Requests Management",
-            "requests"      => $requests,
-            "statistics"    => $statistics,
-            "projects"      => $projects,
-            "offices"       => $offices,
-            "filters"       => $filters,
-            "isAdmin"       => true,
-            "userRole"      => $this->userRole
+            "current_route"    => "admin-cashout-requests",
+            "page_title"       => "Cashout Requests Management",
+            "requests"         => $requests,
+            "statistics"       => $statistics,
+            "projects"         => $projects,
+            "offices"          => $offices,
+            "filters"          => $filters,
+            "isAdmin"          => true,
+            "userRole"         => $this->userRole,
+            "fundRequisitions" => $fundRequisitions,
         ]);
     }
 
@@ -829,11 +850,34 @@ class CashoutRequestController extends Controller
 
         $requests = $this->cashoutModel->getAllRequests($filters);
 
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="cashout_requests_' . date('Y-m-d') . '.csv"');
+        // Fund Requisitions
+        $fundRequisitions = $this->db->query("
+            SELECT fr.*,
+                   p.name          AS project_name,
+                   d.name          AS department_name,
+                   u_req.full_name AS requester_name,
+                   u_app.full_name AS approved_by_name,
+                   u_paid.full_name AS paid_by_name
+            FROM fund_requisitions fr
+            LEFT JOIN projects p     ON fr.project_id    = p.id
+            LEFT JOIN departments d  ON fr.department_id = d.id
+            LEFT JOIN users u_req    ON fr.requested_by  = u_req.id
+            LEFT JOIN users u_app    ON fr.approved_by   = u_app.id
+            LEFT JOIN users u_paid   ON fr.paid_by       = u_paid.id
+            ORDER BY fr.id DESC
+        ")->fetch_all(MYSQLI_ASSOC);
+
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="cashout_and_fund_requisitions_' . date('Y-m-d') . '.csv"');
 
         $output = fopen('php://output', 'w');
+        // UTF-8 BOM for Excel compatibility
+        fputs($output, "\xEF\xBB\xBF");
 
+        // ============================================================
+        // SECTION 1: Cashout Requests
+        // ============================================================
+        fputcsv($output, ['=== CASHOUT REQUESTS ===']);
         fputcsv($output, [
             'ID', 'Requester', 'Project', 'Office', 'Purpose/Paid To',
             'Amount', 'Approved Amount', 'Due Amount', 'Description',
@@ -863,9 +907,48 @@ class CashoutRequestController extends Controller
             ]);
         }
 
+        // ============================================================
+        // SECTION 2: Fund Requisitions
+        // ============================================================
+        fputcsv($output, []); // blank separator row
+        fputcsv($output, ['=== FUND REQUISITIONS ===']);
+        fputcsv($output, [
+            'REQ ID', 'Date', 'Requester', 'Department', 'Project',
+            'Type', 'Category', 'Amount (BDT)', 'Purpose',
+            'Status', 'Approved By', 'Approved At',
+            'Payment Method', 'Paid By', 'Paid At',
+            'Settlement Status', 'Balance Returned', 'Accounts Verified',
+            'Accounts Verified At'
+        ]);
+
+        foreach ($fundRequisitions as $fr) {
+            fputcsv($output, [
+                'REQ-' . $fr['id'],
+                date('d M Y', strtotime($fr['created_at'])),
+                $fr['requester_name'] ?? 'N/A',
+                $fr['department_name'] ?? 'N/A',
+                $fr['project_name'] ?? 'Office General',
+                ucfirst(str_replace('_', ' ', $fr['requisition_type'] ?? '')),
+                $fr['category'] ?? 'N/A',
+                number_format((float)$fr['amount'], 2, '.', ''),
+                $fr['purpose'],
+                ucfirst($fr['status']),
+                $fr['approved_by_name'] ?? 'N/A',
+                !empty($fr['approved_at']) ? date('d M Y', strtotime($fr['approved_at'])) : 'N/A',
+                $fr['payment_method'] ?? 'N/A',
+                $fr['paid_by_name'] ?? 'N/A',
+                !empty($fr['paid_at']) ? date('d M Y', strtotime($fr['paid_at'])) : 'N/A',
+                ucfirst($fr['settlement_status'] ?? 'pending'),
+                !empty($fr['balance_returned']) ? 'Yes' : 'No',
+                !empty($fr['accounts_settlement_verified']) ? 'Yes' : 'No',
+                !empty($fr['accounts_verified_at']) ? date('d M Y', strtotime($fr['accounts_verified_at'])) : 'N/A',
+            ]);
+        }
+
         fclose($output);
         exit;
     }
+
 
     // Sync all requests with approval system
     public function syncAllRequests()

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 $sessionUserId = $sessionUserId ?? (int)($_SESSION['user']['id'] ?? 0);
 $sessionRoleId = $sessionRoleId ?? (int)($_SESSION['user']['role_id'] ?? 0);
 $base          = $GLOBALS['base_url'];
@@ -27,9 +27,70 @@ $settleBadgeMap = [
                 <li class="breadcrumb-item active">REQ-<?php echo $req['id']; ?></li>
             </ol></nav>
         </div>
-        <a href="<?php echo $base; ?>/fund-requisitions" class="btn btn-light btn-sm border">
-            <i class="fa-solid fa-arrow-left me-1"></i> Back to List
-        </a>
+        <div class="d-flex gap-2 no-print">
+            <button type="button" class="btn btn-light btn-sm border" onclick="window.print()">
+                <i class="fa-solid fa-print me-1"></i> Print
+            </button>
+            <a href="<?php echo $base; ?>/fund-requisitions" class="btn btn-light btn-sm border">
+                <i class="fa-solid fa-arrow-left me-1"></i> Back to List
+            </a>
+        </div>
+    </div>
+
+    <!-- PRINT-ONLY HEADER -->
+    <div class="print-only-header d-none">
+        <div class="text-center mb-3">
+            <h4 class="fw-bold mb-1">TPHL — Fund Requisition</h4>
+            <div class="fs-13 text-muted">REQ-<?php echo $req['id']; ?> &nbsp;|&nbsp;
+                Printed on: <span id="printDateTime"></span>
+            </div>
+            <hr>
+        </div>
+        <div class="row g-2 mb-2">
+            <div class="col-4">
+                <small class="text-muted d-block">Requested By</small>
+                <strong><?php echo htmlspecialchars($req['requester_name'] ?? '---'); ?></strong>
+            </div>
+            <div class="col-4">
+                <small class="text-muted d-block">Department</small>
+                <strong><?php echo htmlspecialchars($req['department_name'] ?? '---'); ?></strong>
+            </div>
+            <div class="col-4">
+                <small class="text-muted d-block">Project</small>
+                <strong><?php echo $req['project_name'] ? htmlspecialchars($req['project_name']) : 'Office General'; ?></strong>
+            </div>
+            <div class="col-4">
+                <small class="text-muted d-block">Type</small>
+                <strong><?php echo ucfirst(str_replace('_', ' ', $req['requisition_type'] ?? '')); ?> — <?php echo htmlspecialchars($req['category'] ?? ''); ?></strong>
+            </div>
+            <div class="col-4">
+                <small class="text-muted d-block">Amount Requested</small>
+                <strong>&#2547; <?php echo number_format($req['amount'], 2); ?></strong>
+            </div>
+            <div class="col-4">
+                <small class="text-muted d-block">Date</small>
+                <strong><?php echo date('d M Y', strtotime($req['created_at'])); ?></strong>
+            </div>
+            <div class="col-12">
+                <small class="text-muted d-block">Purpose</small>
+                <p class="mb-0"><?php echo nl2br(htmlspecialchars($req['purpose'])); ?></p>
+            </div>
+            <?php if ($req['status'] === 'paid'): ?>
+            <div class="col-4">
+                <small class="text-muted d-block">Status</small>
+                <strong>Paid via <?php echo htmlspecialchars($req['payment_method'] ?? 'Cash'); ?></strong>
+            </div>
+            <div class="col-4">
+                <small class="text-muted d-block">Total Spent</small>
+                <strong>&#2547; <?php echo number_format($totalSpent, 2); ?></strong>
+            </div>
+            <div class="col-4">
+                <small class="text-muted d-block">Balance</small>
+                <strong>&#2547; <?php echo number_format($balance, 2); ?></strong>
+            </div>
+            <?php endif; ?>
+        </div>
+        <hr>
     </div>
 
     <?php if (isset($_SESSION['success'])): ?>
@@ -45,7 +106,7 @@ $settleBadgeMap = [
         </div>
     <?php endif; ?>
 
-    <div class="row ">
+    <div class="row print-area">
         <div class="col-lg-4">
             <div class="card custom-card mb-3">
                 <div class="card-header">
@@ -372,3 +433,91 @@ $settleBadgeMap = [
     </form></div>
 </div>
 <?php endif; ?>
+
+<style>
+@media print {
+    /* Hide everything by default */
+    body * { visibility: hidden; }
+
+    /* Show the printable area */
+    .print-area, .print-area * { visibility: visible; }
+    .print-only-header, .print-only-header * { visibility: visible; display: block !important; }
+
+    /* Position for printing */
+    .print-only-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: white;
+        padding: 10px 20px;
+        z-index: 9999;
+    }
+    .print-area {
+        position: absolute;
+        top: 220px;
+        left: 0;
+        width: 100%;
+        padding: 10px 20px;
+    }
+
+    /* Hide non-print elements */
+    .no-print, .modal, .btn-close,
+    .page-header-breadcrumb { display: none !important; visibility: hidden !important; }
+
+    /* Clean table styles */
+    .table { width: 100% !important; border-collapse: collapse !important; }
+    .table th, .table td {
+        border: 1px solid #ccc !important;
+        padding: 6px 8px !important;
+        font-size: 11px !important;
+    }
+    .table thead th { background: #f0f0f0 !important; }
+
+    /* Card borders */
+    .card, .custom-card { border: 1px solid #ccc !important; box-shadow: none !important; margin-bottom: 10px !important; }
+    .card-header { background: #f5f5f5 !important; }
+
+    /* Remove Bootstrap bg colors for print */
+    .bg-success, .bg-info, .bg-warning, .bg-danger, .bg-primary, .bg-secondary,
+    .bg-success-transparent, .bg-info-transparent, .bg-warning-transparent, .bg-danger-transparent {
+        background: transparent !important;
+        border: 1px solid #999 !important;
+        color: #000 !important;
+    }
+
+    /* Page breaks */
+    .row { page-break-inside: avoid; }
+    @page { margin: 10mm; }
+}
+</style>
+
+<script>
+(function() {
+    function formatDate(d) {
+        var days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var day    = days[d.getDay()];
+        var date   = String(d.getDate()).padStart(2, '0');
+        var month  = months[d.getMonth()];
+        var year   = d.getFullYear();
+        var hours  = d.getHours();
+        var mins   = String(d.getMinutes()).padStart(2, '0');
+        var ampm   = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12 || 12;
+        return day + ', ' + date + ' ' + month + ' ' + year + ', ' + hours + ':' + mins + ' ' + ampm;
+    }
+
+    function setPrintDate() {
+        var el = document.getElementById('printDateTime');
+        if (el) el.textContent = formatDate(new Date());
+    }
+
+    if (window.matchMedia) {
+        var mql = window.matchMedia('print');
+        mql.addListener(function(m) { if (m.matches) setPrintDate(); });
+    }
+    window.onbeforeprint = setPrintDate;
+    document.addEventListener('DOMContentLoaded', setPrintDate);
+})();
+</script>

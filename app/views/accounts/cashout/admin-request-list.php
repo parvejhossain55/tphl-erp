@@ -63,14 +63,17 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
 
 <div class="row">
     <!-- Admin Header -->
-    <div class="col-xxl-12 mb-4">
+    <div class="col-xxl-12 mb-4 no-print">
         <div class="card__wrapper">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <h5 class="card__title mb-1">Cashout Requests Management</h5>
                     </strong> | Viewing All Requests</p>
                 </div>
-                <div class="text-end">
+                <div class="text-end no-print">
+                    <button type="button" class="btn btn-secondary me-2" onclick="window.print()">
+                        <i class="fa-light fa-print me-2"></i> Print
+                    </button>
                     <a href="<?= $GLOBALS['base_url'] ?>/cashout-csv-import-form" class="btn btn-success me-2">
                         <i class="fa-light fa-file-import me-2"></i> Import CSV
                     </a>
@@ -86,7 +89,7 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
     </div>
 
     <!-- Quick Stats -->
-    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6 no-print">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-1">
                 <div class="card__icon">
@@ -100,7 +103,7 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
         </div>
     </div>
 
-    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6 no-print">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-1">
                 <div class="card__icon">
@@ -128,7 +131,7 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
         </div>
     </div>
 
-    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-sm-6 no-print">
         <div class="card__wrapper">
             <div class="d-flex align-items-center gap-1">
                 <div class="card__icon">
@@ -425,12 +428,262 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
     </div>
 </div>
 
-<!-- Debug info (remove in production) -->
-<?php if (isset($debug) && $debug): ?>
-    <div style="position: fixed; bottom: 10px; right: 10px; background: #f8f9fa; padding: 10px; border: 1px solid #ccc; font-size: 12px;">
-        <strong>Debug Info:</strong><br>
-        User Role: <?= $userRole ?><br>
-        Current User ID: <?= $currentUserId ?><br>
-        Session: <?= print_r($_SESSION['user'] ?? [], true) ?>
+<!-- =====================================================================
+     FUND REQUISITION REQUESTS PANEL
+     ===================================================================== -->
+<div class="container-fluid mt-4 mb-4">
+    <div class="card custom-card">
+        <div class="card-header justify-content-between align-items-center flex-wrap gap-2">
+            <div class="card-title fs-14 fw-bold mb-0">
+                <i class="fa-solid fa-file-invoice-dollar me-2 text-primary"></i>
+                Fund Requisition Requests
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <!-- Quick stats -->
+                <?php
+                $frPending  = count(array_filter($fundRequisitions ?? [], fn($r) => $r['status'] === 'pending'));
+                $frApproved = count(array_filter($fundRequisitions ?? [], fn($r) => $r['status'] === 'approved'));
+                $frPaid     = count(array_filter($fundRequisitions ?? [], fn($r) => $r['status'] === 'paid'));
+                ?>
+                <?php if ($frApproved > 0): ?>
+                    <span class="badge bg-info fs-11"><?= $frApproved ?> Ready to Pay</span>
+                <?php endif; ?>
+                <?php if ($frPending > 0): ?>
+                    <span class="badge bg-warning text-dark fs-11"><?= $frPending ?> Pending Approval</span>
+                <?php endif; ?>
+                <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions" class="btn btn-sm btn-light border fs-11">
+                    View All <i class="fa-solid fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table text-nowrap table-hover mb-0 fs-12">
+                    <thead class="table-light">
+                        <tr>
+                            <th>REQ ID</th>
+                            <th>Date</th>
+                            <th>Requester</th>
+                            <th>Dept / Project</th>
+                            <th>Type</th>
+                            <th class="text-end">Amount</th>
+                            <th>Purpose</th>
+                            <th>Status</th>
+                            <th>Settlement</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php if (empty($fundRequisitions)): ?>
+                        <tr>
+                            <td colspan="10" class="text-center text-muted py-4">
+                                <i class="fa-light fa-inbox fa-2x mb-2 d-block"></i>
+                                No fund requisitions found.
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($fundRequisitions as $fr):
+                            $frStatusColors = [
+                                'pending'  => 'bg-warning text-dark',
+                                'approved' => 'bg-info',
+                                'paid'     => 'bg-success',
+                                'rejected' => 'bg-danger',
+                            ];
+                            $frSClass = $frStatusColors[$fr['status']] ?? 'bg-secondary';
+
+                            $settleMap  = [
+                                'pending'         => ['bg-secondary', 'Pending'],
+                                'settled'         => ['bg-success',   'Settled'],
+                                'extra_requested' => ['bg-danger',    'Extra Fund'],
+                            ];
+                            [$settleSt, $settleLabel] = $settleMap[$fr['settlement_status'] ?? 'pending'] ?? ['bg-secondary', '---'];
+
+                            $isSettleAlert = ($fr['status'] === 'paid'
+                                && ($fr['settlement_status'] ?? 'pending') === 'settled'
+                                && empty($fr['accounts_settlement_verified']));
+                        ?>
+                        <tr class="<?= $isSettleAlert ? 'table-warning' : '' ?>">
+                            <td class="fw-semibold">
+                                REQ-<?= $fr['id'] ?>
+                                <?php if ($isSettleAlert): ?>
+                                    <span class="badge bg-warning text-dark ms-1 fs-10">Verify!</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= date('d M Y', strtotime($fr['created_at'])) ?></td>
+                            <td>
+                                <div class="fw-semibold"><?= htmlspecialchars($fr['requester_name'] ?? '---') ?></div>
+                            </td>
+                            <td>
+                                <div><?= htmlspecialchars($fr['department_name'] ?? '---') ?></div>
+                                <small class="text-muted"><?= $fr['project_name'] ? htmlspecialchars($fr['project_name']) : 'Office General' ?></small>
+                            </td>
+                            <td>
+                                <?php if ($fr['requisition_type'] === 'petty_cash'): ?>
+                                    <span class="badge bg-warning fs-10">Petty Cash</span>
+                                <?php else: ?>
+                                    <span class="badge bg-info fs-10">General</span>
+                                <?php endif; ?>
+                                <div class="fs-10 text-muted"><?= htmlspecialchars($fr['category'] ?? '') ?></div>
+                            </td>
+                            <td class="text-end fw-bold">&#2547; <?= number_format($fr['amount'], 2) ?></td>
+                            <td class="text-wrap" style="max-width:160px">
+                                <?= htmlspecialchars(mb_substr($fr['purpose'], 0, 55)) ?><?= mb_strlen($fr['purpose']) > 55 ? '...' : '' ?>
+                            </td>
+                            <td>
+                                <span class="badge <?= $frSClass ?> fs-10 text-capitalize"><?= htmlspecialchars($fr['status']) ?></span>
+                                <?php if ($fr['status'] === 'paid' && !empty($fr['paid_by_name'])): ?>
+                                    <div class="fs-10 text-muted">via <?= htmlspecialchars($fr['payment_method'] ?? 'Cash') ?></div>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($fr['status'] === 'paid'): ?>
+                                    <span class="badge <?= $settleSt ?> fs-10"><?= $settleLabel ?></span>
+                                    <?php if (!empty($fr['accounts_settlement_verified'])): ?>
+                                        <i class="fa-solid fa-circle-check text-success ms-1" title="Verified by Accounts"></i>
+                                    <?php endif; ?>
+                                <?php else: echo '<span class="text-muted fs-11">---</span>'; endif; ?>
+                            </td>
+                            <td>
+                                <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions/view/<?= $fr['id'] ?>"
+                                   class="btn btn-icon btn-sm btn-info border" title="View Details & Settlement">
+                                    <i class="fa-solid fa-eye fs-11"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
-<?php endif; ?>
+</div>
+
+<!-- PRINT-ONLY HEADER -->
+<div class="print-only-header" style="display:none">
+    <div style="text-align:center; margin-bottom:10px;">
+        <h3 style="margin:0 0 4px">TPHL &mdash; Cashout Requests &amp; Fund Requisitions</h3>
+        <div style="font-size:12px; color:#444;">Printed on: <span id="printDateTime"></span></div>
+    </div>
+    <hr style="border:1px solid #ccc; margin:8px 0;">
+</div>
+
+<script>
+(function() {
+    function formatDate(d) {
+        var days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var day    = days[d.getDay()];
+        var date   = String(d.getDate()).padStart(2, '0');
+        var month  = months[d.getMonth()];
+        var year   = d.getFullYear();
+        var hours  = d.getHours();
+        var mins   = String(d.getMinutes()).padStart(2, '0');
+        var ampm   = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12 || 12;
+        return day + ', ' + date + ' ' + month + ' ' + year + ', ' + hours + ':' + mins + ' ' + ampm;
+    }
+
+    // Update date on every print trigger
+    function setPrintDate() {
+        var el = document.getElementById('printDateTime');
+        if (el) el.textContent = formatDate(new Date());
+    }
+
+    // Modern browsers
+    if (window.matchMedia) {
+        var mql = window.matchMedia('print');
+        mql.addListener(function(m) { if (m.matches) setPrintDate(); });
+    }
+    // Fallback for all browsers
+    window.onbeforeprint = setPrintDate;
+
+    // Also set immediately so Print button preview shows date
+    document.addEventListener('DOMContentLoaded', setPrintDate);
+})();
+</script>
+
+<style>
+@media print {
+    /* ── Hide the entire layout shell ─────────────────────── */
+    .app-sidebar,
+    .app__header__area,
+    .breadcrumb__area,
+    .app__header-area,
+    .main-sidebar-header,
+    .app__header-inner,
+    .sidebar-overlay,
+    nav.breadcrumb,
+    .breadcrumb__wrapper,
+    .topbar, .navbar,
+    /* page-level no-print markers */
+    .no-print,
+    .filter-card,
+    .modal, .modal-backdrop,
+    .btn-close,
+    .action-transaction-buttons {
+        display: none !important;
+        visibility: hidden !important;
+    }
+
+    /* ── Show print-only header ───────────────────────────── */
+    .print-only-header {
+        display: block !important;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        background: white;
+        padding: 8px 20px;
+        z-index: 9999;
+        border-bottom: 2px solid #333;
+    }
+
+    /* ── Reset body layout ────────────────────────────────── */
+    body {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: white !important;
+    }
+    .app__content, .main-content,
+    .container-fluid, .row {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        width: 100% !important;
+    }
+
+    /* Push content below the fixed print header */
+    .row:first-of-type { margin-top: 80px !important; }
+
+    /* ── Clean tables ─────────────────────────────────────── */
+    .table { width: 100% !important; border-collapse: collapse !important; }
+    .table th, .table td {
+        border: 1px solid #bbb !important;
+        padding: 5px 7px !important;
+        font-size: 10px !important;
+        color: #000 !important;
+    }
+    .table thead th { background: #eee !important; font-weight: bold; }
+
+    /* ── Clean cards ──────────────────────────────────────── */
+    .card, .custom-card, .card__wrapper {
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+        margin-bottom: 8px !important;
+        page-break-inside: avoid;
+    }
+    .card-header { background: #f5f5f5 !important; }
+
+    /* ── Flatten badge/status colors ──────────────────────── */
+    .badge, .status-badge {
+        background: transparent !important;
+        border: 1px solid #666 !important;
+        color: #000 !important;
+        font-size: 10px !important;
+    }
+
+    /* ── Hide action buttons inside table cells ───────────── */
+    td .btn, td a.btn { display: none !important; }
+
+    @page { margin: 8mm; size: A4 landscape; }
+}
+</style>
