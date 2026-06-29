@@ -330,6 +330,9 @@ $routes = [
     "delete-lead-permanent" => ["controller" => "DigitalMarketingController", "method" => "deletePermanent"],
     "delete-leads-permanent-multiple" => ["controller" => "DigitalMarketingController",   "method" => "deletePermanentMultiple"],
     "store-platform-budget" => ["controller" => "DigitalMarketingController", "method" => "storeBudget"],
+    "brochure-leads" => ["controller" => "DigitalMarketingController", "method" => "brochureLeads"],
+    "forms" => ["controller" => "DigitalMarketingController", "method" => "forms"],
+    "forms/(\d+)/responses" => ["controller" => "DigitalMarketingController", "method" => "formResponses"],
 
     // == access onboard clients ==
 

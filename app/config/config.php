@@ -19,6 +19,10 @@ if ($current_server == 1) {
         "db_ai_pass" => "ReadOnlyPass123!",
         // Google Gemini API Key
         "gemini_api_key" => "AQ.Ab8RN6KH-h0rRtsg0SIvPvY8GuHa6V3gx5VY0c3SC52cLSqybQ",
+        
+        // Premium Homes API Configuration
+        "premium_homes_api_url" => "https://premium-api.dvalleybd.com/api/erp",
+        "premium_homes_api_key" => "tphl_erp_key_9f8e7d6c5b4a392817065",
     ];
 }
 
@@ -42,6 +46,10 @@ if ($current_server == 2) {
 
         // Google Gemini API Key
         "gemini_api_key" => "AQ.Ab8RN6KH-h0rRtsg0SIvPvY8GuHa6V3gx5VY0c3SC52cLSqybQ",
+        
+        // Premium Homes API Configuration
+        "premium_homes_api_url" => "http://127.0.0.1:8000/api/erp",
+        "premium_homes_api_key" => "tphl_erp_key_9f8e7d6c5b4a392817065",
     ];
 }
 
@@ -60,6 +68,10 @@ if ($current_server == 3) {
 
         // Google Gemini API Key
         "gemini_api_key" => "AQ.Ab8RN6KH-h0rRtsg0SIvPvY8GuHa6V3gx5VY0c3SC52cLSqybQ",
+        
+        // Premium Homes API Configuration
+        "premium_homes_api_url" => "http://127.0.0.1:8000/api/erp",
+        "premium_homes_api_key" => "tphl_erp_key_9f8e7d6c5b4a392817065",
     ];
 }
 

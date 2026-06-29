@@ -475,6 +475,14 @@
                                 class="sidebar__menu-item <?= isActive('onboarding-clients', $current_route) ?>">Team
                                 Onboarding Clients</a>
                         </li>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/brochure-leads"
+                                class="sidebar__menu-item <?= isActive('brochure-leads', $current_route) ?>">Web Leads</a>
+                        </li>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/forms"
+                                class="sidebar__menu-item <?= isActive(['forms', 'form-responses'], $current_route) ?>">TPHL Form Leads</a>
+                        </li>
                     </ul>
                 <?php endif; ?>
 
