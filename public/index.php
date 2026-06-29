@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -247,6 +247,7 @@ $routes = [
     "create-letter-template" => ["controller" => "LetterTemplateController", "method" => "create"],
     "store-generate-letter" => ["controller" => "LetterTemplateController", "method" => "store"],
     "get-employee-info-ajax" => ["controller" => "LetterTemplateController", "method" => "getEmployeeInfo"],
+    "get-employee-salary" => ["controller" => "LetterTemplateController", "method" => "getEmployeeSalary"],
     "get-templates-for-type" => ["controller" => "LetterTemplateController", "method" => "getTemplatesForType"],
     "get-template" => ["controller" => "LetterTemplateController", "method" => "getTemplate"],
     "view-letter/(\d+)" => ["controller" => "LetterTemplateController", "method" => "viewLetter"],

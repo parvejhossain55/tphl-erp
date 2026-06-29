@@ -92,6 +92,7 @@
                                     <option value="increment"   <?= (isset($_GET['type']) && $_GET['type'] == 'increment')   ? 'selected' : '' ?>>Increment</option>
                                     <option value="experience"  <?= (isset($_GET['type']) && $_GET['type'] == 'experience')  ? 'selected' : '' ?>>Experience</option>
                                     <option value="noc"         <?= (isset($_GET['type']) && $_GET['type'] == 'noc')         ? 'selected' : '' ?>>NOC</option>
+                                    <option value="salary_certificate" <?= (isset($_GET['type']) && $_GET['type'] == 'salary_certificate') ? 'selected' : '' ?>>Salary Certificate</option>
                                 </select>
                             </div>
                         </div>
@@ -137,16 +138,18 @@
                                         <span class="badge 
                                             <?php
                                                 echo match($letter['letter_type']) {
-                                                    'appointment' => 'bg-primary',
-                                                    'joining'     => 'bg-success',
-                                                    'promotion'   => 'bg-info',
-                                                    'increment'   => 'bg-warning text-dark',
-                                                    'experience'  => 'bg-secondary',
-                                                    'noc'         => 'bg-dark',
-                                                    default       => 'bg-secondary',
+                                                    'appointment'        => 'bg-primary',
+                                                    'joining'            => 'bg-success',
+                                                    'promotion'          => 'bg-info',
+                                                    'increment'          => 'bg-warning text-dark',
+                                                    'experience'         => 'bg-secondary',
+                                                    'noc'                => 'bg-dark',
+                                                    'salary_certificate' => 'text-white',
+                                                    default              => 'bg-secondary',
                                                 };
-                                            ?>">
-                                            <?= ucfirst($letter['letter_type']) ?>
+                                            ?>"
+                                            <?= $letter['letter_type'] === 'salary_certificate' ? 'style="background:#0d7377;"' : '' ?>>
+                                            <?= ucwords(str_replace('_', ' ', $letter['letter_type'])) ?>
                                         </span>
                                     </td>
                                     <td><?= htmlspecialchars($letter['subject']) ?></td>
