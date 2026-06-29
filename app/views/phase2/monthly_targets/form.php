@@ -414,13 +414,25 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
             </div>
             <div class="mf-ctrl" style="flex:2;min-width:140px">
                 <label>Contractor</label>
-                <select id="wi_contractor_id" class="mf-sel">
+                <select id="wi_contractor_id" class="mf-sel" onchange="onContractorChange()">
                     <option value="">-- None --</option>
                     <?php foreach ($contractors as $c): ?>
                     <option value="<?= $c['id'] ?>" <?= ($target['contractor_id'] ?? 0) == $c['id'] ? 'selected' : '' ?>>
                         <?= htmlspecialchars($c['name']) ?>
                     </option>
                     <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="mf-ctrl" style="flex:2;min-width:140px">
+                <label>Work Order</label>
+                <select id="wi_work_order_id" class="mf-sel" onchange="onWorkOrderSelect()">
+                    <option value="">-- Select Work Order --</option>
+                </select>
+            </div>
+            <div class="mf-ctrl" style="flex:2;min-width:140px">
+                <label>Work Order Item</label>
+                <select id="wi_work_order_item_id" class="mf-sel" onchange="onWorkOrderItemSelect()">
+                    <option value="">-- Select Item --</option>
                 </select>
             </div>
             <div class="mf-ctrl" style="flex:2;min-width:140px">
@@ -520,6 +532,8 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
             <th>Mode</th>
             <th>Work Item</th>
             <th>Floor</th>
+            <th>Contractor</th>
+            <th>Work Order</th>
             <th>Unit</th>
             <th>Monthly Target</th>
             <th>Start Date</th>
@@ -569,6 +583,21 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
                 }
             }
             ?>
+        </td>
+        <td>
+            <?= htmlspecialchars($item['contractor_name'] ?? 'N/A') ?>
+        </td>
+        <td>
+            <?php if (!empty($item['work_order_number'])): ?>
+                <span class="text-primary" style="font-weight: 500; font-size: 11.5px;" title="<?= htmlspecialchars($item['work_order_title'] ?? '') ?>">
+                    <?= htmlspecialchars($item['work_order_number']) ?>
+                </span>
+                <?php if (!empty($item['work_order_item_desc'])): ?>
+                    <br><small class="text-muted" style="font-size: 10px;"><?= htmlspecialchars($item['work_order_item_desc']) ?></small>
+                <?php endif; ?>
+            <?php else: ?>
+                <span class="text-muted" style="font-size: 11px;">N/A</span>
+            <?php endif; ?>
         </td>
         <td><?= $mode === 'pct' ? '%' : htmlspecialchars($item['unit'] ?? '') ?></td>
         <td style="font-weight:600">
@@ -647,6 +676,8 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
             <th>Floor</th>
             <th class="d-none">Work Type <small style="font-weight:400;opacity:.7">(optional)</small></th>
             <th>Contractor</th>
+            <th>Work Order</th>
+            <th>Work Order Item</th>
             <th>Unit</th>
             <th>Monthly Qty / %</th>
             <th>Start Date</th>
@@ -704,13 +735,42 @@ table.mf-table input:focus,table.mf-table select:focus { outline:none;border-col
             </select>
         </td>
         <td>
-            <select name="items[<?= $i ?>][contractor_id]" style="min-width:120px">
+            <select name="items[<?= $i ?>][contractor_id]" id="items_<?= $i ?>_contractor_id" onchange="onGridContractorSelect(<?= $i ?>)" style="min-width:120px">
                 <option value="">-- None --</option>
                 <?php foreach ($contractors as $c): ?>
                 <option value="<?= $c['id'] ?>" <?= (($item['contractor_id'] ?? 0) == $c['id']) ? 'selected' : '' ?>>
                     <?= htmlspecialchars($c['name']) ?>
                 </option>
                 <?php endforeach; ?>
+            </select>
+        </td>
+        <td>
+            <select name="items[<?= $i ?>][work_order_id]" id="items_<?= $i ?>_work_order_id" onchange="onGridWorkOrderSelect(<?= $i ?>)" style="min-width:140px">
+                <option value="">-- None --</option>
+                <?php foreach ($projectWorkOrders as $wo): ?>
+                    <?php if (($item['contractor_id'] ?? 0) == $wo['contractor_id']): ?>
+                        <option value="<?= $wo['id'] ?>" <?= (($item['work_order_id'] ?? 0) == $wo['id']) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars(($wo['wo_number'] ? $wo['wo_number'] . ' - ' : '') . $wo['title']) ?>
+                        </option>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </select>
+        </td>
+        <td>
+            <select name="items[<?= $i ?>][work_order_item_id]" id="items_<?= $i ?>_work_order_item_id" style="min-width:140px">
+                <option value="">-- None --</option>
+                <?php 
+                $currentWoId = $item['work_order_id'] ?? 0;
+                if ($currentWoId && isset($woItemsByWo[$currentWoId])): 
+                    foreach ($woItemsByWo[$currentWoId] as $woItem): 
+                ?>
+                    <option value="<?= $woItem['id'] ?>" <?= (($item['work_order_item_id'] ?? 0) == $woItem['id']) ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($woItem['description']) ?>
+                    </option>
+                <?php 
+                    endforeach; 
+                endif; 
+                ?>
             </select>
         </td>
         <td>
@@ -984,6 +1044,8 @@ function addItem() {
     data.append('floor_tag', document.getElementById('wi_floor_tag').value);
     data.append('priority', document.getElementById('wi_priority').value);
     data.append('contractor_id', document.getElementById('wi_contractor_id').value);
+    data.append('work_order_id', document.getElementById('wi_work_order_id').value);
+    data.append('work_order_item_id', document.getElementById('wi_work_order_item_id').value);
     data.append('status', 'Draft');
     data.append('start_date', document.getElementById('wi_start_date').value);
     data.append('end_date', document.getElementById('wi_end_date').value);
@@ -1219,5 +1281,137 @@ function saveDailyGrid() {
         }
     })
     .catch(() => alert('Network error. Please try again.'));
+}
+
+// Pre-loaded Work Orders and Items
+var projectWorkOrders = <?= json_encode($projectWorkOrders ?? []) ?>;
+var woItemsByWo = <?= json_encode($woItemsByWo ?? []) ?>;
+var fetchedWorkOrders = [];
+
+function onContractorChange() {
+    var contractorId = document.getElementById('wi_contractor_id').value;
+    var projectId = '<?= $target['project_id'] ?>';
+    
+    var woSelect = document.getElementById('wi_work_order_id');
+    var woiSelect = document.getElementById('wi_work_order_item_id');
+    
+    // Clear dropdowns
+    woSelect.innerHTML = '<option value="">-- Select Work Order --</option>';
+    woiSelect.innerHTML = '<option value="">-- Select Item --</option>';
+    fetchedWorkOrders = [];
+
+    if (!contractorId) return;
+
+    fetch('<?= $base ?>/con-ajax-contractor-workorders?contractor_id=' + contractorId + '&project_id=' + projectId)
+        .then(r => r.json())
+        .then(res => {
+            if (res.success && res.work_orders) {
+                fetchedWorkOrders = res.work_orders;
+                res.work_orders.forEach(function(wo) {
+                    var opt = document.createElement('option');
+                    opt.value = wo.id;
+                    opt.text = (wo.wo_number ? wo.wo_number + ' - ' : '') + wo.title;
+                    woSelect.appendChild(opt);
+                });
+            }
+        })
+        .catch(err => console.error('Error fetching work orders:', err));
+}
+
+function onWorkOrderSelect() {
+    var woId = document.getElementById('wi_work_order_id').value;
+    var woiSelect = document.getElementById('wi_work_order_item_id');
+    woiSelect.innerHTML = '<option value="">-- Select Item --</option>';
+
+    if (!woId) return;
+
+    var selectedWo = fetchedWorkOrders.find(function(wo) {
+        return wo.id == woId;
+    });
+
+    if (selectedWo && selectedWo.items) {
+        selectedWo.items.forEach(function(item) {
+            var opt = document.createElement('option');
+            opt.value = item.id;
+            opt.text = item.description + ' (Qty: ' + item.quantity + ' ' + item.unit + ')';
+            opt.setAttribute('data-qty', item.quantity);
+            opt.setAttribute('data-unit', item.unit);
+            opt.setAttribute('data-phase-item-id', item.phase_item_id);
+            woiSelect.appendChild(opt);
+        });
+    }
+}
+
+function onWorkOrderItemSelect() {
+    var woiSelect = document.getElementById('wi_work_order_item_id');
+    var opt = woiSelect.options[woiSelect.selectedIndex];
+    if (!opt || !opt.value) return;
+
+    var qty = opt.getAttribute('data-qty');
+    var unit = opt.getAttribute('data-unit');
+    var phaseItemId = opt.getAttribute('data-phase-item-id');
+
+    // Auto-fill Unit and Target Qty if in Qty Mode
+    var unitInput = document.getElementById('wi_unit');
+    var qtyInput = document.getElementById('wi_qty');
+    if (unitInput && !unitInput.value) {
+        unitInput.value = unit;
+    }
+    if (qtyInput && (parseFloat(qtyInput.value) === 0 || !qtyInput.value)) {
+        qtyInput.value = qty;
+    }
+
+    // Auto-fill Sub-item name dropdown if phase_item_id matches
+    if (phaseItemId) {
+        var subItemSelect = document.getElementById('wi_name');
+        for (var i = 0; i < subItemSelect.options.length; i++) {
+            if (subItemSelect.options[i].getAttribute('data-id') == phaseItemId) {
+                subItemSelect.selectedIndex = i;
+                if (typeof onSubItemSelect === 'function') {
+                    onSubItemSelect();
+                }
+                break;
+            }
+        }
+    }
+}
+
+function onGridContractorSelect(i) {
+    var contractorId = document.getElementById('items_' + i + '_contractor_id').value;
+    var woSelect = document.getElementById('items_' + i + '_work_order_id');
+    var woiSelect = document.getElementById('items_' + i + '_work_order_item_id');
+
+    woSelect.innerHTML = '<option value="">-- None --</option>';
+    woiSelect.innerHTML = '<option value="">-- None --</option>';
+
+    if (!contractorId) return;
+
+    // Filter projectWorkOrders by contractorId
+    var filteredWos = projectWorkOrders.filter(function(wo) {
+        return wo.contractor_id == contractorId;
+    });
+
+    filteredWos.forEach(function(wo) {
+        var opt = document.createElement('option');
+        opt.value = wo.id;
+        opt.text = (wo.wo_number ? wo.wo_number + ' - ' : '') + wo.title;
+        woSelect.appendChild(opt);
+    });
+}
+
+function onGridWorkOrderSelect(i) {
+    var woSelect = document.getElementById('items_' + i + '_work_order_id');
+    var woiSelect = document.getElementById('items_' + i + '_work_order_item_id');
+    woiSelect.innerHTML = '<option value="">-- None --</option>';
+
+    var woId = woSelect.value;
+    if (!woId || !woItemsByWo[woId]) return;
+
+    woItemsByWo[woId].forEach(function(item) {
+        var opt = document.createElement('option');
+        opt.value = item.id;
+        opt.text = item.description;
+        woiSelect.appendChild(opt);
+    });
 }
 </script>

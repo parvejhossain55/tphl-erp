@@ -21,6 +21,7 @@ class Con_ContractorBillController extends Controller
     protected $targetModel;
     protected $mailService;
     protected $qcInspectionModel;
+    protected $settlementModel;
     protected $userRole;
     protected $userId;
 
@@ -32,9 +33,12 @@ class Con_ContractorBillController extends Controller
         $this->approvalModel = new ApprovalRequest($this->db);
         $this->txnModel      = new Con_FinancialTransaction($this->db);
         $this->mailService   = new AccountMailService($this->db);
-        
+
         require_once __DIR__ . '/../../models/Con_QCInspection.php';
         $this->qcInspectionModel = new \Con_QCInspection($this->db);
+
+        require_once __DIR__ . '/../../models/Con_ContractorBillSettlement.php';
+        $this->settlementModel = new \Con_ContractorBillSettlement($this->db);
 
         if (session_status() === PHP_SESSION_NONE) session_start();
         $this->userId   = $_SESSION['user']['id'] ?? null;
@@ -73,11 +77,33 @@ class Con_ContractorBillController extends Controller
     public function index()
     {
         $filterUserId = null;
+        $filterProjectIds = [];
+
         if (!in_array($this->userRole, [1, 3, 6, 22])) {
+            // Restricted role: show only bills they created
             $filterUserId = $this->userId;
+
+            // ALSO show all bills for projects they are assigned to
+            // (site_engineer_id, pm_id, operation_head_id, qc_id, etc.)
+            $projStmt = $this->db->prepare("
+                SELECT id FROM projects
+                WHERE site_engineer_id = ?
+                   OR pm_id             = ?
+                   OR operation_head_id = ?
+                   OR qc_id             = ?
+                   OR struct_engineer_id = ?
+                   OR draftsman_id       = ?
+            ");
+            $uid = $this->userId;
+            $projStmt->bind_param('iiiiii', $uid, $uid, $uid, $uid, $uid, $uid);
+            $projStmt->execute();
+            $projResult = $projStmt->get_result();
+            while ($row = $projResult->fetch_assoc()) {
+                $filterProjectIds[] = (int)$row['id'];
+            }
         }
 
-        $bills = $this->billModel->getAllWithRelations($filterUserId);
+        $bills = $this->billModel->getAllWithRelations($filterUserId, $filterProjectIds);
 
         $this->view('phase2/contractor-bills/bill-lists', [
             'current_route' => 'con-contractor-bills',
@@ -176,7 +202,7 @@ class Con_ContractorBillController extends Controller
 
         // Validate Target if selected (Strict Financial Limit for Progress Bills)
         if (!empty($data['target_id'])) {
-            $target = $this->findTarget($data['target_id']);
+            $target = $this->findTarget($data['target_id'], $data['work_order_id']);
             if ($target) {
                 $gainPct = (float)$target['gain_percentage'];
                 $targetPct = (float)$target['target_percentage'];
@@ -279,6 +305,7 @@ class Con_ContractorBillController extends Controller
 
         // Fetch weekly progress items for the target if linked
         $targetItems = [];
+        $monthlyTargetItems = [];
         if (!empty($bill['target_id'])) {
             $stmt = $this->db->prepare("
                 SELECT pwpi.*, pmti.work_item_name, pmti.unit, c.name AS contractor_name
@@ -290,23 +317,43 @@ class Con_ContractorBillController extends Controller
             $stmt->bind_param('i', $bill['target_id']);
             $stmt->execute();
             $targetItems = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+            // Fetch monthly target items
+            $stmtM = $this->db->prepare("
+                SELECT pmti.*, wt.work_type_name
+                FROM phase_monthly_target_items pmti
+                LEFT JOIN work_types wt ON wt.id = pmti.work_type_id
+                WHERE pmti.target_id = (SELECT target_id FROM phase_weekly_progress WHERE id = ? LIMIT 1)
+                ORDER BY pmti.sort_order ASC, pmti.id ASC
+            ");
+            $stmtM->bind_param('i', $bill['target_id']);
+            $stmtM->execute();
+            $monthlyTargetItems = $stmtM->get_result()->fetch_all(MYSQLI_ASSOC);
         }
 
+        // Load settlements for this bill
+        $settlements          = $this->settlementModel->getByBillId((int)$id);
+        $totalPaidToContractor = $this->settlementModel->getTotalPaidByBill((int)$id);
+
         $this->view('phase2/contractor-bills/show-bill', [
-            'current_route'     => 'con-contractor-bills',
-            'page_title'        => 'Contractor Bill Detail',
-            'bill'              => $bill,
-            'payments'          => $payments,
-            'total_paid'        => $totalPaid,
-            'due_amount'        => $dueAmount,
-            'payable_amount'    => $payableAmt,
-            'approval_request'  => $approvalReq,
-            'canApprove'        => $this->canApprove(),
-            'canApproveQC'      => $this->canApproveQC(),
-            'canProcessPayment' => $this->canProcessPayment(),
-            'userRole'          => $this->userRole,
-            'banks'             => $banks,
-            'target_items'      => $targetItems,
+            'current_route'           => 'con-contractor-bills',
+            'page_title'              => 'Contractor Bill Detail',
+            'bill'                    => $bill,
+            'payments'                => $payments,
+            'total_paid'              => $totalPaid,
+            'due_amount'              => $dueAmount,
+            'payable_amount'          => $payableAmt,
+            'approval_request'        => $approvalReq,
+            'canApprove'              => $this->canApprove(),
+            'canApproveQC'            => $this->canApproveQC(),
+            'canProcessPayment'       => $this->canProcessPayment(),
+            'userRole'                => $this->userRole,
+            'banks'                   => $banks,
+            'target_items'            => $targetItems,
+            'monthly_target_items'    => $monthlyTargetItems,
+            'settlements'             => $settlements,
+            'total_paid_to_contractor'=> $totalPaidToContractor,
+            'current_user_id'         => $this->userId,
         ]);
     }
 
@@ -664,7 +711,88 @@ class Con_ContractorBillController extends Controller
         return $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
     }
 
-    private function findTarget($targetId)
+    private function calculateWorkOrderGain(int $weeklyProgressId, int $workOrderId): float
+    {
+        // Fetch weekly progress details
+        $stmt = $this->db->prepare("
+            SELECT target_id, week_number 
+            FROM phase_weekly_progress 
+            WHERE id = ?
+        ");
+        $stmt->bind_param('i', $weeklyProgressId);
+        $stmt->execute();
+        $wp = $stmt->get_result()->fetch_assoc();
+        if (!$wp) return 0.0;
+
+        // Strategy:
+        // 1. Try to match via pwpi.work_order_id directly (if items are linked)
+        // 2. Fall back: match via Work Order Items' phase_item_id → monthly target items' work_item_name
+
+        $query = $this->db->prepare("
+            SELECT 
+                pmti.id AS pmti_id,
+                pmti.target_mode,
+                pmti.monthly_target_qty,
+                pmti.monthly_target_pct,
+                SUM(pwpi_prev.achieved_qty) AS cumulative_achieved_qty,
+                SUM(pwpi_prev.achieved_pct) AS cumulative_achieved_pct
+            FROM phase_weekly_progress_items pwpi
+            INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+            INNER JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
+            INNER JOIN phase_weekly_progress pwp_prev ON pwp_prev.target_id = pwp.target_id 
+                AND pwp_prev.week_number <= pwp.week_number
+            INNER JOIN phase_weekly_progress_items pwpi_prev ON pwpi_prev.weekly_progress_id = pwp_prev.id 
+                AND pwpi_prev.target_item_id = pwpi.target_item_id
+            WHERE pwpi.weekly_progress_id = ?
+              AND (
+                  pwpi.work_order_id = ?
+                  OR pmti.work_order_id = ?
+                  OR EXISTS (
+                      SELECT 1 FROM con_work_order_items woi
+                      INNER JOIN project_phase_items ppi ON ppi.id = woi.phase_item_id
+                      WHERE woi.work_order_id = ?
+                        AND (
+                            ppi.item_name = pmti.work_item_name COLLATE utf8mb4_general_ci
+                            OR pmti.work_item_name LIKE CONCAT(ppi.item_name COLLATE utf8mb4_general_ci, ' - %')
+                            OR pmti.work_item_name LIKE CONCAT(ppi.item_name COLLATE utf8mb4_general_ci, '%')
+                        )
+                  )
+              )
+            GROUP BY pmti.id
+        ");
+        $query->bind_param('iiii', $weeklyProgressId, $workOrderId, $workOrderId, $workOrderId);
+        $query->execute();
+        $items = $query->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        if (empty($items)) return 0.0;
+
+        $totalPctSum = 0.0;
+        $count = 0;
+
+        foreach ($items as $item) {
+            $mode = $item['target_mode'];
+            $itemPct = 0.0;
+            if ($mode === 'pct') {
+                $targetPct = (float)$item['monthly_target_pct'];
+                $achievedPct = (float)$item['cumulative_achieved_pct'];
+                if ($targetPct > 0) {
+                    $itemPct = ($achievedPct / $targetPct) * 100;
+                }
+            } else {
+                $targetQty = (float)$item['monthly_target_qty'];
+                $achievedQty = (float)$item['cumulative_achieved_qty'];
+                if ($targetQty > 0) {
+                    $itemPct = ($achievedQty / $targetQty) * 100;
+                }
+            }
+            $totalPctSum += min(100.0, $itemPct);
+            $count++;
+        }
+
+        return $count > 0 ? round($totalPctSum / $count, 2) : 0.0;
+    }
+
+    private function findTarget($targetId, $workOrderId = null)
     {
         $stmt = $this->db->prepare("
             SELECT pwp.id,
@@ -680,13 +808,90 @@ class Con_ContractorBillController extends Controller
         ");
         $stmt->bind_param('i', $targetId);
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
+        $target = $stmt->get_result()->fetch_assoc();
+        if ($target && $workOrderId) {
+            $target['gain_percentage'] = $this->calculateWorkOrderGain((int)$targetId, (int)$workOrderId);
+        }
+        return $target;
+    }
+
+    private function getWorkOrderTargetDetails(int $weeklyProgressId, int $workOrderId): array
+    {
+        $query = $this->db->prepare("
+            SELECT 
+                pmti.work_item_name,
+                pmti.target_mode,
+                pmti.monthly_target_qty,
+                pmti.monthly_target_pct,
+                pwpi.planned_qty,
+                pwpi.planned_pct,
+                pwpi.achieved_qty,
+                pwpi.achieved_pct,
+                pwpi.percent_complete,
+                SUM(pwpi_prev.achieved_qty) AS cumulative_achieved_qty,
+                SUM(pwpi_prev.achieved_pct) AS cumulative_achieved_pct
+            FROM phase_weekly_progress_items pwpi
+            INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+            INNER JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
+            INNER JOIN phase_weekly_progress pwp_prev ON pwp_prev.target_id = pwp.target_id 
+                AND pwp_prev.week_number <= pwp.week_number
+            INNER JOIN phase_weekly_progress_items pwpi_prev ON pwpi_prev.weekly_progress_id = pwp_prev.id 
+                AND pwpi_prev.target_item_id = pwpi.target_item_id
+            WHERE pwpi.weekly_progress_id = ?
+              AND (
+                  pwpi.work_order_id = ?
+                  OR pmti.work_order_id = ?
+                  OR EXISTS (
+                      SELECT 1 FROM con_work_order_items woi
+                      INNER JOIN project_phase_items ppi ON ppi.id = woi.phase_item_id
+                      WHERE woi.work_order_id = ?
+                        AND (
+                            ppi.item_name = pmti.work_item_name COLLATE utf8mb4_general_ci
+                            OR pmti.work_item_name LIKE CONCAT(ppi.item_name COLLATE utf8mb4_general_ci, ' - %')
+                            OR pmti.work_item_name LIKE CONCAT(ppi.item_name COLLATE utf8mb4_general_ci, '%')
+                        )
+                  )
+              )
+            GROUP BY pmti.id
+        ");
+        $query->bind_param('iiii', $weeklyProgressId, $workOrderId, $workOrderId, $workOrderId);
+        $query->execute();
+        $items = $query->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $details = [];
+        foreach ($items as $item) {
+            $mode = $item['target_mode'];
+            $cumPct = 0.0;
+            if ($mode === 'pct') {
+                $targetPct = (float)$item['monthly_target_pct'];
+                $achievedPct = (float)$item['cumulative_achieved_pct'];
+                if ($targetPct > 0) {
+                    $cumPct = ($achievedPct / $targetPct) * 100;
+                }
+            } else {
+                $targetQty = (float)$item['monthly_target_qty'];
+                $achievedQty = (float)$item['cumulative_achieved_qty'];
+                if ($targetQty > 0) {
+                    $cumPct = ($achievedQty / $targetQty) * 100;
+                }
+            }
+            $details[] = [
+                'item_name' => $item['work_item_name'],
+                'target_mode' => $item['target_mode'],
+                'planned' => $mode === 'pct' ? (float)$item['planned_pct'] : (float)$item['planned_qty'],
+                'achieved' => $mode === 'pct' ? (float)$item['achieved_pct'] : (float)$item['achieved_qty'],
+                'weekly_pct' => (float)$item['percent_complete'],
+                'cumulative_pct' => min(100.0, round($cumPct, 2)),
+            ];
+        }
+        return $details;
     }
 
     public function ajaxGetTargetsByProject()
     {
         header('Content-Type: application/json');
         $projectId = (int)($_GET['project_id'] ?? 0);
+        $workOrderId = (int)($_GET['work_order_id'] ?? 0);
         if (!$projectId) {
             echo json_encode(['targets' => []]);
             exit;
@@ -708,7 +913,131 @@ class Con_ContractorBillController extends Controller
         $stmt->execute();
         $targets = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
+        if ($workOrderId > 0) {
+            foreach ($targets as &$t) {
+                $t['gain_percentage'] = $this->calculateWorkOrderGain((int)$t['id'], $workOrderId);
+                $t['items_detail'] = $this->getWorkOrderTargetDetails((int)$t['id'], $workOrderId);
+            }
+        } else {
+            foreach ($targets as &$t) {
+                $t['items_detail'] = [];
+            }
+        }
+
         echo json_encode(['targets' => $targets]);
+        exit;
+    }
+
+    // =========================================================================
+    // SETTLEMENT — Site engineer accountability after payment
+    // =========================================================================
+
+    public function submitSettlement($billId)
+    {
+        $billId = (int)$billId;
+        $bill   = $this->billModel->findWithRelations($billId);
+        if (!$bill) {
+            setError('Bill not found.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+            exit;
+        }
+
+        // Validate required fields
+        $paidAmount  = (float)($_POST['paid_amount'] ?? 0);
+        $paidDate    = trim($_POST['paid_date'] ?? '');
+        $receivedAmt = (float)($_POST['received_amount'] ?? 0);
+        $labourCount = (int)($_POST['labour_count'] ?? 0);
+        $method      = trim($_POST['payment_method'] ?? 'Cash');
+        $refNo       = trim($_POST['reference_no'] ?? '');
+        $workNote    = trim($_POST['work_note'] ?? '');
+
+        if ($paidAmount <= 0 || empty($paidDate)) {
+            setError('Paid amount and date are required.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$billId}");
+            exit;
+        }
+
+        // Handle multiple proof image uploads
+        $proofPaths = [];
+        $uploadDir  = __DIR__ . '/../../../public/uploads/contractor-bill-settlements/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+
+        if (!empty($_FILES['proof_images']['name'][0])) {
+            foreach ($_FILES['proof_images']['name'] as $idx => $fname) {
+                if (empty($fname)) continue;
+                $ext      = strtolower(pathinfo($fname, PATHINFO_EXTENSION));
+                $allowed  = ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'];
+                if (!in_array($ext, $allowed)) continue;
+                if ($_FILES['proof_images']['size'][$idx] > 5 * 1024 * 1024) continue;
+                $newName = time() . '_' . $idx . '_' . basename($fname);
+                if (move_uploaded_file($_FILES['proof_images']['tmp_name'][$idx], $uploadDir . $newName)) {
+                    $proofPaths[] = 'uploads/contractor-bill-settlements/' . $newName;
+                }
+            }
+        }
+
+        $settId = $this->settlementModel->create([
+            'bill_id'        => $billId,
+            'project_id'     => $bill['project_id'],
+            'contractor_id'  => $bill['operator_id'],
+            'submitted_by'   => $this->userId,
+            'paid_amount'    => $paidAmount,
+            'paid_date'      => $paidDate,
+            'payment_method' => $method,
+            'reference_no'   => $refNo,
+            'labour_count'   => $labourCount,
+            'work_note'      => $workNote,
+            'proof_images'   => $proofPaths,
+            'received_amount'=> $receivedAmt,
+        ]);
+
+        if ($settId) {
+            setSuccess('Settlement submitted successfully! Accounts will verify it.');
+        } else {
+            setError('Failed to submit settlement. Please try again.');
+        }
+        header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$billId}");
+        exit;
+    }
+
+    public function markBalanceReturned($settlementId)
+    {
+        $settlementId = (int)$settlementId;
+        $sett = $this->settlementModel->find($settlementId);
+        if (!$sett) {
+            setError('Settlement not found.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+            exit;
+        }
+        $billId = (int)$sett['bill_id'];
+
+        if ($this->settlementModel->markBalanceReturned($settlementId)) {
+            setSuccess('Balance marked as returned to accounts.');
+        } else {
+            setError('Could not update. Already marked or not found.');
+        }
+        header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$billId}");
+        exit;
+    }
+
+    public function verifySettlement($settlementId)
+    {
+        $settlementId = (int)$settlementId;
+        $sett = $this->settlementModel->find($settlementId);
+        if (!$sett || !$this->canProcessPayment()) {
+            setError('Unauthorized or settlement not found.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+            exit;
+        }
+        $billId = (int)$sett['bill_id'];
+        $note   = trim($_POST['accounts_note'] ?? '');
+
+        if ($this->settlementModel->verify($settlementId, $this->userId, $note)) {
+            setSuccess('Settlement verified successfully.');
+        } else {
+            setError('Failed to verify settlement.');
+        }
+        header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$billId}");
         exit;
     }
 }

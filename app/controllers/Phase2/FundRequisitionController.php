@@ -19,11 +19,20 @@ class FundRequisitionController extends Controller {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Fetch queries based on role
         // Management (role 3), Admin (role 1), Accounts (role 6) see everything
         $where = "1=1";
         if (!in_array($roleId, [1, 3, 6])) {
-            $where = "fr.requested_by = $userId";
+            // Start with: own requisitions
+            $conditions = ["fr.requested_by = $userId"];
+
+            // Also include requisitions for projects they are assigned to
+            $assignedIds = $this->getAssignedProjectIds($userId);
+            if (!empty($assignedIds)) {
+                $idList = implode(',', $assignedIds);
+                $conditions[] = "fr.project_id IN ($idList)";
+            }
+
+            $where = '(' . implode(' OR ', $conditions) . ')';
         }
 
         $startDate = $_GET['start_date'] ?? '';
@@ -78,7 +87,15 @@ class FundRequisitionController extends Controller {
             $requests = $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
         }
 
-        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        // Projects for create form — restrict to assigned projects for site engineers
+        $assignedIds = isset($assignedIds) ? $assignedIds : $this->getAssignedProjectIds($userId);
+        if (!in_array($roleId, [1, 3, 6]) && !empty($assignedIds)) {
+            $idList = implode(',', $assignedIds);
+            $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND id IN ($idList) ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        } else {
+            $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        }
+
         $departments = $this->db->query("SELECT id, name FROM departments ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/fund_requisition/index', [
@@ -91,6 +108,100 @@ class FundRequisitionController extends Controller {
             'startDate' => $startDate,
             'endDate' => $endDate,
             'isDefaultLimit' => $isDefaultLimit
+        ]);
+    }
+
+    /**
+     * Returns an array of project IDs that a user is assigned to
+     * (site_engineer_id, pm_id, operation_head_id, qc_id, struct_engineer_id, draftsman_id).
+     */
+    private function getAssignedProjectIds(int $userId): array {
+        $stmt = $this->db->prepare("
+            SELECT id FROM projects
+            WHERE deleted_at IS NULL
+              AND (site_engineer_id   = ?
+                OR pm_id              = ?
+                OR operation_head_id  = ?
+                OR qc_id              = ?
+                OR struct_engineer_id = ?
+                OR draftsman_id       = ?)
+        ");
+        $stmt->bind_param('iiiiii', $userId, $userId, $userId, $userId, $userId, $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $ids = [];
+        while ($row = $result->fetch_assoc()) {
+            $ids[] = (int)$row['id'];
+        }
+        return $ids;
+    }
+
+    /**
+     * Full view page for a single fund requisition (not AJAX — renders a PHP view).
+     */
+    public function showPage($id) {
+        $id            = (int)$id;
+        $sessionUserId = (int)$_SESSION['user']['id'];
+        $sessionRoleId = (int)$_SESSION['user']['role_id'];
+
+        $sql = "
+            SELECT fr.*,
+                   p.name      AS project_name,
+                   d.name      AS department_name,
+                   u_req.full_name  AS requester_name,
+                   u_app.full_name  AS approved_by_name,
+                   u_paid.full_name AS paid_by_name
+            FROM fund_requisitions fr
+            LEFT JOIN projects p    ON fr.project_id    = p.id
+            LEFT JOIN departments d ON fr.department_id = d.id
+            LEFT JOIN users u_req   ON fr.requested_by  = u_req.id
+            LEFT JOIN users u_app   ON fr.approved_by   = u_app.id
+            LEFT JOIN users u_paid  ON fr.paid_by       = u_paid.id
+            WHERE fr.id = $id
+        ";
+        $req = $this->db->query($sql)->fetch_assoc();
+        if (!$req) {
+            setError('Requisition not found.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        // Expenses
+        $expenses = $this->db->query("
+            SELECT fre.*, p.name AS project_name, u.full_name AS creator_name
+            FROM fund_requisition_expenses fre
+            LEFT JOIN projects p ON fre.project_id = p.id
+            LEFT JOIN users u    ON fre.created_by = u.id
+            WHERE fre.fund_requisition_id = $id
+            ORDER BY fre.id DESC
+        ")->fetch_all(MYSQLI_ASSOC);
+
+        $totalSpent = array_sum(array_column($expenses, 'amount'));
+        $balance    = max(0, (float)$req['amount'] - $totalSpent);
+
+        // Projects dropdown — restrict for restricted roles
+        if (!in_array($sessionRoleId, [1, 3, 6])) {
+            $assignedIds = $this->getAssignedProjectIds($sessionUserId);
+            if (!empty($assignedIds)) {
+                $idList   = implode(',', $assignedIds);
+                $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND id IN ($idList) ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+            } else {
+                $projects = [];
+            }
+        } else {
+            $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        }
+
+        $this->view('phase2/fund_requisition/show', [
+            'current_route'  => 'fund-requisitions',
+            'page_title'     => 'Requisition Details — REQ-' . $id,
+            'req'            => $req,
+            'expenses'       => $expenses,
+            'projects'       => $projects,
+            'totalSpent'     => $totalSpent,
+            'balance'        => $balance,
+            'sessionUserId'  => $sessionUserId,
+            'sessionRoleId'  => $sessionRoleId,
         ]);
     }
 
@@ -363,18 +474,32 @@ class FundRequisitionController extends Controller {
         }
 
         // Fetch projects for the add expense form
-        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        // For restricted roles, only show their assigned projects in the dropdown
+        $sessionUserId  = (int)$_SESSION['user']['id'];
+        $sessionRoleId  = (int)$_SESSION['user']['role_id'];
+        if (!in_array($sessionRoleId, [1, 3, 6])) {
+            $assignedIds = $this->getAssignedProjectIds($sessionUserId);
+            if (!empty($assignedIds)) {
+                $idList   = implode(',', $assignedIds);
+                $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND id IN ($idList) ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+            } else {
+                $projects = [];
+            }
+        } else {
+            $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        }
 
         header('Content-Type: application/json');
         echo json_encode([
-            'success' => true,
-            'requisition' => $req,
-            'expenses' => $expenses,
-            'projects' => $projects,
-            'session_user_id' => (int)$_SESSION['user']['id'],
-            'session_role_id' => (int)$_SESSION['user']['role_id'],
-            'is_default_limit' => $isDefaultLimit,
-            'total_spent_global' => $totalSpentGlobal
+            'success'            => true,
+            'requisition'        => $req,
+            'expenses'           => $expenses,
+            'projects'           => $projects,
+            'session_user_id'    => (int)$_SESSION['user']['id'],
+            'session_role_id'    => (int)$_SESSION['user']['role_id'],
+            'is_default_limit'   => $isDefaultLimit,
+            'total_spent_global' => $totalSpentGlobal,
+            'balance_remaining'  => max(0, (float)$req['amount'] - $totalSpentGlobal),
         ]);
         exit;
     }
@@ -510,6 +635,172 @@ class FundRequisitionController extends Controller {
             setError("Unauthorized to delete this expense.");
         }
 
+        header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+        exit;
+    }
+
+    // =========================================================================
+    // SETTLEMENT METHODS
+    // =========================================================================
+
+    /**
+     * Requester marks the requisition as settled (all expenses logged).
+     */
+    public function submitSettlement($id) {
+        $id     = (int)$id;
+        $userId = (int)$_SESSION['user']['id'];
+        $roleId = (int)$_SESSION['user']['role_id'];
+
+        $req = $this->db->query("SELECT * FROM fund_requisitions WHERE id = $id")->fetch_assoc();
+        if (!$req || $req['status'] !== 'paid') {
+            setError('Settlement can only be submitted for paid requisitions.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+        if ($req['requested_by'] != $userId && !in_array($roleId, [1, 3])) {
+            setError('Only the requester or admin can submit settlement.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        $stmt = $this->db->prepare("
+            UPDATE fund_requisitions
+            SET settlement_status = 'settled', settled_at = NOW(), settled_by = ?
+            WHERE id = ? AND settlement_status = 'pending'
+        ");
+        $stmt->bind_param('ii', $userId, $id);
+        if ($stmt->execute() && $this->db->affected_rows > 0) {
+            setSuccess('Requisition marked as settled. Accounts will verify.');
+        } else {
+            setError('Could not submit settlement. It may have already been submitted.');
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+        exit;
+    }
+
+    /**
+     * Requester marks that they have returned the remaining balance to accounts.
+     */
+    public function markBalanceReturned($id) {
+        $id     = (int)$id;
+        $userId = (int)$_SESSION['user']['id'];
+        $roleId = (int)$_SESSION['user']['role_id'];
+
+        $req = $this->db->query("SELECT * FROM fund_requisitions WHERE id = $id")->fetch_assoc();
+        if (!$req) {
+            setError('Requisition not found.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+        if ($req['requested_by'] != $userId && !in_array($roleId, [1, 3])) {
+            setError('Unauthorized.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        $stmt = $this->db->prepare("
+            UPDATE fund_requisitions
+            SET balance_returned = 1, balance_returned_at = NOW()
+            WHERE id = ? AND balance_returned = 0
+        ");
+        $stmt->bind_param('i', $id);
+        if ($stmt->execute() && $this->db->affected_rows > 0) {
+            setSuccess('Balance return acknowledged. Accounts will verify.');
+        } else {
+            setError('Balance already marked as returned.');
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+        exit;
+    }
+
+    /**
+     * Accounts verifies the settlement (confirms everything is settled).
+     */
+    public function verifySettlement($id) {
+        $id     = (int)$id;
+        $userId = (int)$_SESSION['user']['id'];
+        $roleId = (int)$_SESSION['user']['role_id'];
+
+        if (!in_array($roleId, [1, 6])) {
+            setError('Only Accounts can verify settlements.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        $req = $this->db->query("SELECT * FROM fund_requisitions WHERE id = $id")->fetch_assoc();
+        if (!$req || $req['status'] !== 'paid') {
+            setError('Only paid requisitions can be verified.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        $stmt = $this->db->prepare("
+            UPDATE fund_requisitions
+            SET accounts_settlement_verified = 1,
+                accounts_verified_by = ?,
+                accounts_verified_at = NOW(),
+                settlement_status = 'settled'
+            WHERE id = ?
+        ");
+        $stmt->bind_param('ii', $userId, $id);
+        if ($stmt->execute()) {
+            setSuccess('Settlement verified successfully by Accounts.');
+        } else {
+            setError('Failed to verify settlement.');
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+        exit;
+    }
+
+    /**
+     * Requester submits an extra fund request when actual spend exceeds requisition amount.
+     * Creates a new linked requisition with parent_requisition_id set.
+     */
+    public function requestExtraFund($id) {
+        $id           = (int)$id;
+        $userId       = (int)$_SESSION['user']['id'];
+        $extraAmount  = (float)($_POST['extra_amount'] ?? 0);
+        $reason       = trim($_POST['extra_reason'] ?? '');
+
+        if ($extraAmount <= 0 || empty($reason)) {
+            setError('Extra amount and reason are required.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        $req = $this->db->query("SELECT * FROM fund_requisitions WHERE id = $id")->fetch_assoc();
+        if (!$req || $req['status'] !== 'paid') {
+            setError('Extra fund request is only allowed for paid requisitions.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        // Mark parent as extra_requested
+        $this->db->query("UPDATE fund_requisitions SET settlement_status = 'extra_requested' WHERE id = $id");
+
+        $stmt = $this->db->prepare("
+            INSERT INTO fund_requisitions
+            (department_id, project_id, requested_by, requisition_type, category,
+             amount, purpose, status, parent_requisition_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+        ");
+        $stmt->bind_param(
+            'iiisssdsi',
+            $req['department_id'],
+            $req['project_id'],
+            $userId,
+            $req['requisition_type'],
+            $req['category'],
+            $extraAmount,
+            $reason,
+            $id
+        );
+
+        if ($stmt->execute()) {
+            setSuccess('Extra fund request submitted. Awaiting management approval.');
+        } else {
+            setError('Failed to create extra fund request: ' . $this->db->error);
+        }
         header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
         exit;
     }

@@ -106,7 +106,9 @@ class Con_PhaseWeeklyProgress {
 
         // Fetch existing weekly progress items
         $wItemsStmt = $this->db->prepare("
-            SELECT id, target_item_id, planned_qty, achieved_qty, responsible_team, contractor_id FROM phase_weekly_progress_items WHERE weekly_progress_id = ?
+            SELECT id, target_item_id, planned_qty, achieved_qty, responsible_team, contractor_id, work_order_id, work_order_item_id 
+            FROM phase_weekly_progress_items 
+            WHERE weekly_progress_id = ?
         ");
         $wItemsStmt->bind_param('i', $sessionId);
         $wItemsStmt->execute();
@@ -119,13 +121,13 @@ class Con_PhaseWeeklyProgress {
  
         $insItem = $this->db->prepare("
             INSERT INTO phase_weekly_progress_items 
-                (weekly_progress_id, target_item_id, planned_qty, achieved_qty, percent_complete, responsible_team, contractor_id, status)
-            VALUES (?, ?, ?, 0.00, 0.00, ?, ?, 'Not Started')
+                (weekly_progress_id, target_item_id, planned_qty, achieved_qty, percent_complete, responsible_team, contractor_id, work_order_id, work_order_item_id, status)
+            VALUES (?, ?, ?, 0.00, 0.00, ?, ?, ?, ?, 'Not Started')
         ");
  
         $updItem = $this->db->prepare("
             UPDATE phase_weekly_progress_items 
-            SET planned_qty = ?, responsible_team = ?, contractor_id = ?
+            SET planned_qty = ?, responsible_team = ?, contractor_id = ?, work_order_id = ?, work_order_item_id = ?
             WHERE id = ?
         ");
  
@@ -154,16 +156,26 @@ class Con_PhaseWeeklyProgress {
             $team = $mi['responsible_team'] ?? '';
             $targetItemId = (int)$mi['id'];
             $contractorId = !empty($mi['contractor_id']) ? (int)$mi['contractor_id'] : null;
+            $workOrderId = !empty($mi['work_order_id']) ? (int)$mi['work_order_id'] : null;
+            $workOrderItemId = !empty($mi['work_order_item_id']) ? (int)$mi['work_order_item_id'] : null;
  
             if (isset($wItemsByTargetId[$targetItemId])) {
                 $existingWi = $wItemsByTargetId[$targetItemId];
                 $existingContrId = isset($existingWi['contractor_id']) && $existingWi['contractor_id'] !== null ? (int)$existingWi['contractor_id'] : null;
-                if ((float)$existingWi['planned_qty'] !== $plannedQty || $existingWi['responsible_team'] !== $team || $existingContrId !== $contractorId) {
-                    $updItem->bind_param('dsii', $plannedQty, $team, $contractorId, $existingWi['id']);
+                $existingWoId = isset($existingWi['work_order_id']) && $existingWi['work_order_id'] !== null ? (int)$existingWi['work_order_id'] : null;
+                $existingWoiId = isset($existingWi['work_order_item_id']) && $existingWi['work_order_item_id'] !== null ? (int)$existingWi['work_order_item_id'] : null;
+                if (
+                    (float)$existingWi['planned_qty'] !== $plannedQty || 
+                    $existingWi['responsible_team'] !== $team || 
+                    $existingContrId !== $contractorId ||
+                    $existingWoId !== $workOrderId ||
+                    $existingWoiId !== $workOrderItemId
+                ) {
+                    $updItem->bind_param('dsiiii', $plannedQty, $team, $contractorId, $workOrderId, $workOrderItemId, $existingWi['id']);
                     $updItem->execute();
                 }
             } else {
-                $insItem->bind_param('iidsi', $sessionId, $targetItemId, $plannedQty, $team, $contractorId);
+                $insItem->bind_param('iidsiii', $sessionId, $targetItemId, $plannedQty, $team, $contractorId, $workOrderId, $workOrderItemId);
                 $insItem->execute();
             }
         }
@@ -189,7 +201,10 @@ class Con_PhaseWeeklyProgress {
                    wt.work_type_name,
                    ppi.weight_pct           AS sub_item_weight,
                    ppi.id                   AS phase_item_id,
-                   c.name                   AS contractor_name
+                   c.name                   AS contractor_name,
+                   wo.wo_number             AS work_order_number,
+                   wo.title                 AS work_order_title,
+                   woi.description          AS work_order_item_desc
             FROM phase_weekly_progress_items pwpi
             INNER JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
             INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
@@ -201,6 +216,8 @@ class Con_PhaseWeeklyProgress {
                      OR pmti.work_item_name LIKE CONCAT(ppi.item_name COLLATE utf8mb4_general_ci, '%')
                  )
             LEFT JOIN contractors c ON c.id = pwpi.contractor_id
+            LEFT JOIN con_work_orders wo ON wo.id = pwpi.work_order_id
+            LEFT JOIN con_work_order_items woi ON woi.id = pwpi.work_order_item_id
             WHERE pwpi.weekly_progress_id = ?
             ORDER BY pmti.sort_order ASC, pwpi.id ASC
         ");

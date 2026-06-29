@@ -1019,9 +1019,9 @@
                     <!-- Construction Finance -->
                     <!-- ===================== -->
                     <li
-                        class="slide has-sub <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-pending-payments', 'con-land-requisitions'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-pending-payments', 'con-land-requisitions', 'fund-requisitions'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-pending-payments', 'con-land-requisitions'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['con-vendor-payment-requests', 'con-contractor-bills', 'con-transactions', 'con-pending-payments', 'con-land-requisitions', 'fund-requisitions'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-helmet-safety"></i></div>
                             <span class="sidebar__menu-label">Construction Finance</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -1055,6 +1055,12 @@
                                 <a href="<?= $base_url ?>/con-land-requisitions"
                                     class="sidebar__menu-item <?= isActive('con-land-requisitions', $current_route) ?>">
                                     <i class="bi bi-cash-coin me-1"></i> Land Requisitions
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('fund-requisitions', $current_route) ?>">
+                                <a href="<?= $base_url ?>/fund-requisitions"
+                                    class="sidebar__menu-item <?= isActive('fund-requisitions', $current_route) ?>">
+                                    <i class="fa-solid fa-file-invoice-dollar me-1"></i> Fund Requisitions
                                 </a>
                             </li>
                         </ul>
@@ -2161,13 +2167,6 @@
                         class="sidebar__menu-item <?= isActive('task-sheets', $current_route) ?>">
                         <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
                         <span class="sidebar__menu-label">My Task Sheets</span>
-                    </a>
-                </li>
-                <li class="slide <?= isActive('fund-requisitions', $current_route) ?>">
-                    <a href="<?= $base_url ?>/fund-requisitions"
-                        class="sidebar__menu-item <?= isActive('fund-requisitions', $current_route) ?>">
-                        <div class="side-menu__icon"><i class="fa-solid fa-wallet"></i></div>
-                        <span class="sidebar__menu-label">Fund Requisitions</span>
                     </a>
                 </li>
                 <?php if (hasPermission("task manage")): ?>

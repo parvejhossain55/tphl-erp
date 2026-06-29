@@ -166,6 +166,7 @@ DROP TABLE IF EXISTS project_floors;
 DROP TABLE IF EXISTS daily_target_pct_breakdown;
 DROP TABLE IF EXISTS user_activity_logs;
 DROP TABLE IF EXISTS login_attempts;
+DROP TABLE IF EXISTS con_contractor_bill_settlements;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

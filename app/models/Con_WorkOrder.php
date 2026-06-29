@@ -152,7 +152,14 @@ class Con_WorkOrder extends Model
                        tf.target_year         AS target_year,
                        tf.target_month_number AS target_month,
                        NULL            AS target_week,
-                       pp_draw.phase_name     AS drawing_phase_name
+                       pp_draw.phase_name     AS drawing_phase_name,
+                       (SELECT COALESCE(SUM(IF(approved_amount IS NOT NULL AND approved_amount > 0, approved_amount, bill_amount)), 0)
+                        FROM contractor_bill_requests
+                        WHERE work_order_id = wo.id AND status != 'rejected') AS billed_amount,
+                       (SELECT COALESCE(SUM(amount_paid), 0)
+                        FROM con_financial_transactions cft
+                        INNER JOIN contractor_bill_requests cbr ON cft.ref_id = cbr.id
+                        WHERE cft.ref_type = 'contractor_bill' AND cbr.work_order_id = wo.id) AS paid_amount
                 FROM {$this->table} wo
                 LEFT JOIN projects p                ON p.id  = wo.project_id
                 LEFT JOIN contractors c             ON c.id  = wo.contractor_id
