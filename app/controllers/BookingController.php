@@ -171,7 +171,8 @@ class BookingController extends Controller
         }
 
         $fileTmp = $_FILES['csv_file']['tmp_name'];
-        $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
+        $fileName = $_FILES['csv_file']['name'];
+        $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
         if ($ext !== 'csv') {
             setError("Only CSV files allowed");
@@ -179,19 +180,33 @@ class BookingController extends Controller
             exit;
         }
 
-        if (($handle = fopen($fileTmp, "r")) !== false) {
+        // Move to temp location
+        $uploadDir = __DIR__ . '/../../public/uploads/csv_imports/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $tempName = 'bookings_import_' . date('YmdHis') . '_' . uniqid() . '.csv';
+        $tempPath = $uploadDir . $tempName;
+
+        if (!move_uploaded_file($fileTmp, $tempPath)) {
+            setError("Failed to upload file.");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+
+        if (($handle = fopen($tempPath, "r")) !== false) {
             $header = fgetcsv($handle);
             $header[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $header[0]);
             $header = array_map(function ($value) { return trim($value); }, $header);
 
-            $successCount = 0;
+            $validCount = 0;
             
             $leadsCache    = [];
             $projectsCache = [];
             $flatsCache    = [];
             $usersCache    = [];
 
-            $errors      = [];
             $skippedRows = []; // structured for view table: [row, lead_phone, project, flat, reason]
             $rowNum      = 1;
 
@@ -199,7 +214,6 @@ class BookingController extends Controller
                 $rowNum++;
                 if (count(array_filter($row)) === 0) continue;
 
-                // Partial data for nicer error messages even on column-count mismatch
                 $partialData = (count($header) === count($row))
                     ? array_combine($header, $row)
                     : array_combine(array_slice($header, 0, count($row)), $row);
@@ -210,70 +224,48 @@ class BookingController extends Controller
 
                 if (count($header) !== count($row)) {
                     $reason = "Column mismatch (expected " . count($header) . ", got " . count($row) . ")";
-                    $errors[]      = "Row $rowNum: $reason";
                     $skippedRows[] = ['row' => $rowNum, 'lead_phone' => $errPhone, 'project' => $errProject, 'flat' => $errFlat, 'reason' => $reason];
                     continue;
                 }
 
                 $data      = $partialData;
-                $rowIssues = []; // collect all issues for this row before skipping
+                $rowIssues = [];
                 
-                // ═══════════════════════════════════════════════════════
-                // 1. Resolve lead_id from lead_phone
-                // ═══════════════════════════════════════════════════════
+                // 1. Resolve lead
                 $leadPhone = trim($data['lead_phone'] ?? '');
-                $leadId    = null;
                 if (empty($leadPhone)) {
                     $rowIssues[] = "lead_phone is empty";
                 } else {
-                    if (isset($leadsCache[$leadPhone])) {
-                        $leadId = $leadsCache[$leadPhone]['id'];
-                    } else {
-                        $stmt = $this->db->prepare("SELECT id, assigned_id FROM leads WHERE (phone = ? OR phone_number = ?) AND deleted_at IS NULL LIMIT 1");
+                    if (!isset($leadsCache[$leadPhone])) {
+                        $stmt = $this->db->prepare("SELECT id FROM leads WHERE (phone = ? OR phone_number = ?) AND deleted_at IS NULL LIMIT 1");
                         $stmt->bind_param("ss", $leadPhone, $leadPhone);
                         $stmt->execute();
                         $res = $stmt->get_result()->fetch_assoc();
                         if ($res) {
-                            $leadsCache[$leadPhone] = ['id' => $res['id'], 'assigned_id' => $res['assigned_id']];
-                            $leadId = $res['id'];
+                            $leadsCache[$leadPhone] = ['id' => $res['id']];
                         } else {
                             $rowIssues[] = "Lead not found for phone '$leadPhone'";
                         }
                     }
                 }
 
-                // ═══════════════════════════════════════════════════════
-                // 2. Resolve sales agent from email (sales_agent column)
-                // ═══════════════════════════════════════════════════════
+                // 2. Resolve sales agent
                 $salesAgentEmail = trim($data['sales_agent'] ?? '');
-                $salesById       = null;
-                $salesAgentOld   = null;
-
                 if (!empty($salesAgentEmail)) {
-                    if (isset($usersCache[$salesAgentEmail])) {
-                        $salesById = $usersCache[$salesAgentEmail];
-                    } else {
+                    if (!isset($usersCache[$salesAgentEmail])) {
                         $stmt = $this->db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
                         $stmt->bind_param("s", $salesAgentEmail);
                         $stmt->execute();
                         $res = $stmt->get_result()->fetch_assoc();
                         if ($res) {
-                            $salesById = $res['id'];
-                            $usersCache[$salesAgentEmail] = $salesById;
+                            $usersCache[$salesAgentEmail] = $res['id'];
                         } else {
                             $rowIssues[] = "Sales agent not found for email '$salesAgentEmail'";
                         }
                     }
-                } else {
-                    // Fall back to lead's assigned user
-                    if ($leadId && isset($leadsCache[$leadPhone])) {
-                        $salesById = $leadsCache[$leadPhone]['assigned_id'] ?? null;
-                    }
                 }
 
-                // ═══════════════════════════════════════════════════════
-                // 3. Resolve project_id from project_name
-                // ═══════════════════════════════════════════════════════
+                // 3. Resolve project
                 $projectName = trim($data['project_name'] ?? '');
                 $projectId   = null;
                 if (empty($projectName)) {
@@ -295,58 +287,237 @@ class BookingController extends Controller
                     }
                 }
 
-                // ═══════════════════════════════════════════════════════
-                // 4. Resolve flat_id from flat_name + project_id
-                // ═══════════════════════════════════════════════════════
+                // 4. Resolve flat
+                $flatName = trim($data['flat_name'] ?? '');
+                if (empty($flatName)) {
+                    $rowIssues[] = "flat_name is empty";
+                } elseif ($projectId) {
+                    $flatCacheKey = $projectId . '_' . $flatName;
+                    
+                    if (!isset($flatsCache[$flatCacheKey])) {
+                        $stmt = $this->db->prepare("SELECT id, is_booked, status FROM flats WHERE project_id = ? AND flat_name = ? AND deleted_at IS NULL LIMIT 1");
+                        $stmt->bind_param("is", $projectId, $flatName);
+                        $stmt->execute();
+                        $res = $stmt->get_result()->fetch_assoc();
+                        if ($res) {
+                            $flatsCache[$flatCacheKey] = [
+                                'id' => $res['id'],
+                                'is_booked' => $res['is_booked'],
+                                'status' => $res['status']
+                            ];
+                        } else {
+                            $flatsCache[$flatCacheKey] = null;
+                        }
+                    }
+
+                    if (isset($flatsCache[$flatCacheKey]) && $flatsCache[$flatCacheKey] !== null) {
+                        $flatData = $flatsCache[$flatCacheKey];
+                        if ($flatData['is_booked'] == 1 || $flatData['status'] === 'booked') {
+                            $rowIssues[] = "Flat '$flatName' is already booked";
+                        } else {
+                            // Valid flat found, mark in cache to prevent duplicate booking in same CSV
+                            $flatsCache[$flatCacheKey]['is_booked'] = 1;
+                            $flatsCache[$flatCacheKey]['status'] = 'booked';
+                        }
+                    } else {
+                        $rowIssues[] = "Flat '$flatName' not found in project '$projectName'";
+                    }
+                } else {
+                    $rowIssues[] = "Cannot lookup flat — project not resolved";
+                }
+
+                if (!empty($rowIssues)) {
+                    $reason = implode(' | ', $rowIssues);
+                    $skippedRows[] = ['row' => $rowNum, 'lead_phone' => $leadPhone ?: $errPhone, 'project' => $projectName ?: $errProject, 'flat' => $flatName ?: $errFlat, 'reason' => $reason];
+                    continue;
+                }
+
+                $validCount++;
+            }
+            fclose($handle);
+
+            $_SESSION['bookings_csv_import_file'] = $tempPath;
+            $_SESSION['bookings_csv_import_filename'] = $fileName;
+            
+            // Need to pass to view
+            $this->view("sales-developments/leads/bulk-bookings-import-preview", [
+                "current_route" => "bulk-bookings-import-csv",
+                "page_title"    => "Bookings CSV Import Preview - " . $fileName,
+                "skippedRows"   => $skippedRows,
+                "valid_count"   => $validCount,
+                "filename"      => $fileName
+            ]);
+
+        } else {
+            setError("Unable to read CSV file");
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit;
+        }
+    }
+
+    public function executeCsvBulkBookings()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/lead-lists");
+            exit;
+        }
+
+        $tempFile = $_SESSION['bookings_csv_import_file'] ?? null;
+
+        if (!$tempFile || !file_exists($tempFile)) {
+            setError("Import session expired or file not found. Please re-upload.");
+            header("Location: {$GLOBALS['base_url']}/lead-lists");
+            exit;
+        }
+
+        if (($handle = fopen($tempFile, "r")) !== false) {
+            $header = fgetcsv($handle);
+            $header[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $header[0]);
+            $header = array_map(function ($value) { return trim($value); }, $header);
+
+            $successCount = 0;
+            
+            $leadsCache    = [];
+            $projectsCache = [];
+            $flatsCache    = [];
+            $usersCache    = [];
+
+            $rowNum = 1;
+
+            while (($row = fgetcsv($handle, 2000, ",")) !== false) {
+                $rowNum++;
+                if (count(array_filter($row)) === 0) continue;
+                if (count($header) !== count($row)) continue;
+
+                $data = array_combine($header, $row);
+                
+                $rowIssues = [];
+                
+                // 1. Resolve lead
+                $leadPhone = trim($data['lead_phone'] ?? '');
+                $leadId = null;
+                if (empty($leadPhone)) {
+                    $rowIssues[] = "lead_phone is empty";
+                } else {
+                    if (isset($leadsCache[$leadPhone])) {
+                        $leadId = $leadsCache[$leadPhone]['id'];
+                    } else {
+                        $stmt = $this->db->prepare("SELECT id, assigned_id FROM leads WHERE (phone = ? OR phone_number = ?) AND deleted_at IS NULL LIMIT 1");
+                        $stmt->bind_param("ss", $leadPhone, $leadPhone);
+                        $stmt->execute();
+                        $res = $stmt->get_result()->fetch_assoc();
+                        if ($res) {
+                            $leadsCache[$leadPhone] = ['id' => $res['id'], 'assigned_id' => $res['assigned_id']];
+                            $leadId = $res['id'];
+                        } else {
+                            $rowIssues[] = "Lead not found";
+                        }
+                    }
+                }
+
+                // 2. Resolve sales agent
+                $salesAgentEmail = trim($data['sales_agent'] ?? '');
+                $salesById       = null;
+                if (!empty($salesAgentEmail)) {
+                    if (isset($usersCache[$salesAgentEmail])) {
+                        $salesById = $usersCache[$salesAgentEmail];
+                    } else {
+                        $stmt = $this->db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+                        $stmt->bind_param("s", $salesAgentEmail);
+                        $stmt->execute();
+                        $res = $stmt->get_result()->fetch_assoc();
+                        if ($res) {
+                            $salesById = $res['id'];
+                            $usersCache[$salesAgentEmail] = $salesById;
+                        } else {
+                            $rowIssues[] = "Sales agent not found";
+                        }
+                    }
+                } else {
+                    if ($leadId && isset($leadsCache[$leadPhone])) {
+                        $salesById = $leadsCache[$leadPhone]['assigned_id'] ?? null;
+                    }
+                }
+
+                // 3. Resolve project
+                $projectName = trim($data['project_name'] ?? '');
+                $projectId   = null;
+                if (empty($projectName)) {
+                    $rowIssues[] = "project_name is empty";
+                } else {
+                    if (isset($projectsCache[$projectName])) {
+                        $projectId = $projectsCache[$projectName];
+                    } else {
+                        $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
+                        $stmt->bind_param("s", $projectName);
+                        $stmt->execute();
+                        $res = $stmt->get_result()->fetch_assoc();
+                        if ($res) {
+                            $projectId = $res['id'];
+                            $projectsCache[$projectName] = $projectId;
+                        } else {
+                            $rowIssues[] = "Project not found";
+                        }
+                    }
+                }
+
+                // 4. Resolve flat
                 $flatName = trim($data['flat_name'] ?? '');
                 $flatId   = null;
                 if (empty($flatName)) {
                     $rowIssues[] = "flat_name is empty";
                 } elseif ($projectId) {
                     $flatCacheKey = $projectId . '_' . $flatName;
-                    if (isset($flatsCache[$flatCacheKey])) {
-                        $flatId = $flatsCache[$flatCacheKey];
-                    } else {
-                        $stmt = $this->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? AND deleted_at IS NULL LIMIT 1");
+                    
+                    if (!isset($flatsCache[$flatCacheKey])) {
+                        $stmt = $this->db->prepare("SELECT id, is_booked, status FROM flats WHERE project_id = ? AND flat_name = ? AND deleted_at IS NULL LIMIT 1");
                         $stmt->bind_param("is", $projectId, $flatName);
                         $stmt->execute();
                         $res = $stmt->get_result()->fetch_assoc();
                         if ($res) {
-                            $flatId = $res['id'];
-                            $flatsCache[$flatCacheKey] = $flatId;
+                            $flatsCache[$flatCacheKey] = [
+                                'id' => $res['id'],
+                                'is_booked' => $res['is_booked'],
+                                'status' => $res['status']
+                            ];
                         } else {
-                            $rowIssues[] = "Flat '$flatName' not found in project '$projectName'";
+                            $flatsCache[$flatCacheKey] = null;
                         }
                     }
-                } else {
-                    $rowIssues[] = "Cannot lookup flat — project not resolved";
+
+                    if (isset($flatsCache[$flatCacheKey]) && $flatsCache[$flatCacheKey] !== null) {
+                        $flatData = $flatsCache[$flatCacheKey];
+                        if ($flatData['is_booked'] == 1 || $flatData['status'] === 'booked') {
+                            $rowIssues[] = "Flat is already booked";
+                        } else {
+                            $flatId = $flatData['id'];
+                            // Mark as booked in cache to prevent duplicate processing
+                            $flatsCache[$flatCacheKey]['is_booked'] = 1;
+                            $flatsCache[$flatCacheKey]['status'] = 'booked';
+                        }
+                    } else {
+                        $rowIssues[] = "Flat not found";
+                    }
                 }
 
-                // ═══════════════════════════════════════════════════════
-                // If ANY required field is missing, skip with details
-                // ═══════════════════════════════════════════════════════
                 if (!empty($rowIssues)) {
-                    $reason = implode(' | ', $rowIssues);
-                    $errors[]      = "Row $rowNum: $reason";
-                    $skippedRows[] = ['row' => $rowNum, 'lead_phone' => $leadPhone ?: $errPhone, 'project' => $projectName ?: $errProject, 'flat' => $flatName ?: $errFlat, 'reason' => $reason];
-                    continue;
+                    continue; // Skip this row in execution, it was already shown as an error in preview
                 }
 
-                // All resolved — prepare data
                 $data['lead_id']        = $leadId;
                 $data['project_id']     = $projectId;
                 $data['flat_id']        = $flatId;
                 $data['sales_by_id']    = $salesById;
-                $data['sales_agent_old'] = $salesAgentOld;
+                $data['sales_agent_old'] = null;
                 $data['created_by']     = $_SESSION['user']['id'] ?? null;
                 $data['uploaded_from']  = 'From Company csv';
                 
-                // Approval status logic
                 if (!empty($data['approved_amount']) && (float)$data['approved_amount'] > 0) {
                     $data['approval_status'] = 'approved';
                 }
 
-                // Date formatting for booking_date
                 if (!empty($data['booking_date'])) {
                     $dateStr = str_replace('/', '-', $data['booking_date']);
                     $timestamp = strtotime($dateStr);
@@ -360,14 +531,12 @@ class BookingController extends Controller
                 try {
                     $bookingId = $this->bookingModel->createFromCsvBulk($data);
 
-                    // ── After successful insert: update leads.assigned_id ──
                     if ($salesById && $leadId) {
                         $stmtLead = $this->db->prepare("UPDATE leads SET assigned_id = ? WHERE id = ?");
                         $stmtLead->bind_param("ii", $salesById, $leadId);
                         $stmtLead->execute();
                     }
 
-                    // ── After successful insert: set flat is_booked = 1 and status = 'booked' ──
                     if ($flatId) {
                         $stmtFlat = $this->db->prepare("UPDATE flats SET is_booked = 1, status = 'booked' WHERE id = ?");
                         $stmtFlat->bind_param("i", $flatId);
@@ -376,43 +545,23 @@ class BookingController extends Controller
 
                     $successCount++;
                 } catch (Exception $e) {
-                    $reason = "DB Error - " . $e->getMessage();
-                    $errors[]      = "Row $rowNum: $reason";
-                    $skippedRows[] = ['row' => $rowNum, 'lead_phone' => $leadPhone, 'project' => $projectName, 'flat' => $flatName, 'reason' => $reason];
                     error_log("CSV Import Error: " . $e->getMessage());
                     continue;
                 }
             }
             fclose($handle);
+            
+            // cleanup
+            unlink($tempFile);
+            unset($_SESSION['bookings_csv_import_file']);
+            unset($_SESSION['bookings_csv_import_filename']);
 
-            // Store structured skipped rows in session for the view to render
-            $_SESSION['booking_csv_import_skipped'] = $skippedRows;
-
-            // ═══════════════════════════════════════════════════════
-            // Build detailed result message
-            // ═══════════════════════════════════════════════════════
-            $totalRows   = $rowNum - 1; // exclude header
-            $failedCount = count($skippedRows);
-
-            if ($successCount > 0) {
-                $msg = " $successCount / $totalRows Bookings imported successfully.";
-                if ($failedCount > 0) {
-                    $msg .= " ⚠️ $failedCount row(s) skipped — see details below.";
-                }
-                setSuccess($msg);
-            } else {
-                $msg = "❌ 0 / $totalRows Bookings imported.";
-                if ($failedCount > 0) {
-                    $msg .= " $failedCount error(s) — see details below.";
-                }
-                setError($msg);
-            }
-
-            header("Location: " . $_SERVER['HTTP_REFERER']);
+            setSuccess("$successCount Bookings imported successfully.");
+            header("Location: {$GLOBALS['base_url']}/lead-lists");
             exit;
         } else {
             setError("Unable to read CSV file");
-            header("Location: " . $_SERVER['HTTP_REFERER']);
+            header("Location: {$GLOBALS['base_url']}/lead-lists");
             exit;
         }
     }
