@@ -342,6 +342,7 @@ $routes = [
 
     "get-lead-booking-details/(\d+)" => ["controller" => "OnboardClientController", "method" => "getLeadBookingDetails"],
     "bulk-bookings-import-csv" => ["controller" => "BookingController", "method" => "importCsvBulkBookings"],
+    "bulk-bookings-import-execute" => ["controller" => "BookingController", "method" => "executeCsvBulkBookings"],
     "bulk-payments-import-csv" => ["controller" => "PaymentBookingController", "method" => "importCsvBulkPayments"],
     "assign-onboard-client" => ["controller" => "OnboardClientController", "method" => "assignMultipleLeads"],
 
