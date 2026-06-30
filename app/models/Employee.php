@@ -349,41 +349,41 @@ WHERE e.id = ?
         }
 
         $stmt->bind_param(
-            "ssddsssssssssiissssssssssssissssiii",
-            $data['employee_id'],      // s
-            $data['full_name'],        // s
-            $data['gross_salary'],     // d
-            $data['basic_salary'],     // d
-            $data['username'],         // s
-            $data['email'],            // s
-            $data['father_name'],      // s
-            $data['phone'],            // s
-            $data['emergency_contact'], // s
-            $data['qualification'],    // s
-            $data['experience'],       // s
-            $data['address'],          // s
-            $data['pass_num'],         // s
-            $data['department_id'],    // i
-            $data['designation_id'],   // i
-            $data['dob'],              // s
-            $data['joining_date'],     // s
-            $data['account_holder_name'], // s
-            $data['account_number'],      // s
-            $data['bank_name'],           // s
-            $data['branch_name'],         // s
-            $data['social_media1'],      // s
-            $data['social_media2'],      // s
-            $data['social_media3'],      // s
-            $finalPhoto,                  // s
-            $data['make_user'],           // i
-            $data['password'],            // s
-            $data['created_by'],          // i
-            $data['employee_type'],       // s
-            $data['employee_status'],     // s 
-            $data['responsibilities'],    // s
-            $data['team_id'],             // i
-            $data['is_sales_co_leader'],  // i
-            $id                           // i
+            "ssddsssssssssiissssssssssssisssiii",
+            $data['employee_id'],         // s  1
+            $data['full_name'],           // s  2
+            $data['gross_salary'],        // d  3
+            $data['basic_salary'],        // d  4
+            $data['username'],            // s  5
+            $data['email'],               // s  6
+            $data['father_name'],         // s  7
+            $data['phone'],               // s  8
+            $data['emergency_contact'],   // s  9
+            $data['qualification'],       // s  10
+            $data['experience'],          // s  11
+            $data['address'],             // s  12
+            $data['pass_num'],            // s  13
+            $data['department_id'],       // i  14
+            $data['designation_id'],      // i  15
+            $data['dob'],                 // s  16
+            $data['joining_date'],        // s  17
+            $data['account_holder_name'], // s  18
+            $data['account_number'],      // s  19
+            $data['bank_name'],           // s  20
+            $data['branch_name'],         // s  21
+            $data['social_media1'],       // s  22
+            $data['social_media2'],       // s  23
+            $data['social_media3'],       // s  24
+            $finalPhoto,                  // s  25
+            $data['make_user'],           // s  26
+            $data['password'],            // s  27
+            $data['created_by'],          // i  28
+            $data['employee_type'],       // s  29
+            $data['employee_status'],     // s  30
+            $data['responsibilities'],    // s  31
+            $data['team_id'],             // i  32
+            $data['is_sales_co_leader'],  // i  33
+            $id                           // i  34
         );
 
 
