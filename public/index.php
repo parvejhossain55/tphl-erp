@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -247,6 +247,7 @@ $routes = [
     "create-letter-template" => ["controller" => "LetterTemplateController", "method" => "create"],
     "store-generate-letter" => ["controller" => "LetterTemplateController", "method" => "store"],
     "get-employee-info-ajax" => ["controller" => "LetterTemplateController", "method" => "getEmployeeInfo"],
+    "get-employee-salary" => ["controller" => "LetterTemplateController", "method" => "getEmployeeSalary"],
     "get-templates-for-type" => ["controller" => "LetterTemplateController", "method" => "getTemplatesForType"],
     "get-template" => ["controller" => "LetterTemplateController", "method" => "getTemplate"],
     "view-letter/(\d+)" => ["controller" => "LetterTemplateController", "method" => "viewLetter"],
@@ -1016,6 +1017,24 @@ $routes['con-fund-request/(\d+)']      = ['controller' => 'Phase2\Con_FundReques
 $routes['con-fund-request-approve/(\d+)']  = ['controller' => 'Phase2\Con_FundRequestController', 'method' => 'approve'];
 $routes['con-fund-request-reject/(\d+)']   = ['controller' => 'Phase2\Con_FundRequestController', 'method' => 'reject'];
 $routes['con-fund-request-payment/(\d+)']  = ['controller' => 'Phase2\Con_FundRequestController', 'method' => 'addPayment'];
+
+// ─── Labor Requisitions ─────────────────────────────────────────────────────
+$routes['con-labor-requisitions']                     = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'index'];
+$routes['con-labor-requisition-create']               = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'create'];
+$routes['con-labor-requisition-store']                = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'store'];
+$routes['con-labor-requisition/(\d+)']               = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'show'];
+$routes['con-labor-req-pm-approve/(\d+)']            = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'pmApprove'];
+$routes['con-labor-req-pm-reject/(\d+)']             = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'pmReject'];
+$routes['con-labor-req-work-complete/(\d+)']         = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'markWorkComplete'];
+$routes['con-labor-req-payment-request/(\d+)']       = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'requestPayment'];
+$routes['con-labor-req-qc-approve/(\d+)']            = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'qcApprove'];
+$routes['con-labor-req-qc-reject/(\d+)']             = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'qcReject'];
+$routes['con-labor-req-pm-pay-approve/(\d+)']        = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'pmPaymentApprove'];
+$routes['con-labor-req-pm-pay-reject/(\d+)']         = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'pmPaymentReject'];
+$routes['con-labor-req-mgmt-approve/(\d+)']          = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'managementApprove'];
+$routes['con-labor-req-mgmt-reject/(\d+)']           = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'managementReject'];
+$routes['con-labor-req-mark-paid/(\d+)']             = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'markPaid'];
+$routes['con-labor-req-mgmt-approve-remaining/(\d+)'] = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'mgmtApproveRemaining'];
 
 // â”€â”€ Materials / Inventory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $routes['con-materials']               = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'index'];

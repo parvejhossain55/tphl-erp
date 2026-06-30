@@ -1,4 +1,4 @@
-<!-- TCPDF Compatible Layout -->
+<!-- TCPDF Compatible Layout (header/logo rendered by controller) -->
 <style>
     .letter-body {
         font-family: helvetica;
@@ -6,47 +6,16 @@
         color: #333;
         line-height: 1.6;
     }
-    .company-name {
-        color: #006400;
-        font-size: 18pt;
-        font-weight: bold;
-    }
-    .company-info {
-        font-size: 9pt;
-        color: #555;
-    }
-    .ref-date {
-        margin-top: 20px;
-        margin-bottom: 30px;
-    }
     .subject {
         font-weight: bold;
         text-decoration: underline;
-        margin-bottom: 25px;
+        margin-bottom: 20px;
         font-size: 12pt;
     }
-    .signature {
-        margin-top: 40px;
-    }
+    .signature { margin-top: 40px; }
 </style>
 
 <div class="letter-container">
-    <!-- Header Table -->
-    <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-            <td width="30%">
-                <img src="<?= realpath('public/assets/images/logo/tphl_logo.png') ?>" width="140">
-            </td>
-            <td width="70%" align="right">
-                <span class="company-name">The Premium Homes Ltd.</span><br>
-                <span class="company-info">
-                    Corporate Office: 123 Business Avenue, Dhaka, Bangladesh<br>
-                    Phone: +880 1234 567890 | Email: hr@tphl.com.bd<br>
-                    Web: www.tphl.com.bd
-                </span>
-            </td>
-        </tr>
-    </table>
 
     <hr style="color: #006400; height: 1px;">
 

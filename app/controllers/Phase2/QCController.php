@@ -40,7 +40,7 @@ class QCController extends Controller
     {
         $userId = $_SESSION['user']['id'] ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
-        if (in_array($roleId, [1, 3, 22])) return '1=1';
+        if (in_array($roleId, [1, 3, 13, 22, 24, 25])) return '1=1';
         return "({$alias}.pm_id = {$userId} OR {$alias}.site_engineer_id = {$userId} OR {$alias}.landman_id = {$userId} OR {$alias}.struct_engineer_id = {$userId} OR {$alias}.operation_head_id = {$userId} OR {$alias}.draftsman_id = {$userId} OR {$alias}.architect_id = {$userId} OR {$alias}.estimator_id = {$userId} OR {$alias}.qc_id = {$userId} OR {$alias}.operator_id = {$userId} OR {$alias}.created_by = {$userId})";
     }
 
@@ -203,6 +203,20 @@ class QCController extends Controller
         ");
         $draftDrawings = $rDrawings ? $rDrawings->fetch_all(MYSQLI_ASSOC) : [];
 
+        // ── Pending Labor Requisitions (QC needs to approve payment_requested) ──
+        $rPendingLaborReq = $this->db->query("
+            SELECT lr.id, lr.requisition_no, lr.status, lr.requisition_date,
+                   lr.labor_count, lr.per_labor_rate, lr.working_days, lr.total_amount,
+                   lr.purpose, lr.labor_type,
+                   p.name AS project_name,
+                   u.full_name AS requested_by_name
+            FROM con_labor_requisitions lr
+            LEFT JOIN projects p ON p.id = lr.project_id
+            LEFT JOIN users u ON u.id = lr.requested_by
+            WHERE lr.status = 'payment_requested'
+            ORDER BY lr.created_at DESC LIMIT 20");
+        $pendingLaborReqQC = $rPendingLaborReq ? $rPendingLaborReq->fetch_all(MYSQLI_ASSOC) : [];
+
         $this->view('phase2/qc/qc-dashboard', [
             'architectEngineering'   => $architectEngineering,
             'draftDrawings'          => $draftDrawings,
@@ -223,6 +237,7 @@ class QCController extends Controller
             'totalInspections'       => $totalInspections,
             'totalMaterialTests'     => $totalMaterialTests,
             'pendingWeeklyCount'     => $pendingWeeklyCount,
+            'pendingLaborReqQC'      => $pendingLaborReqQC,
         ]);
     }
 
