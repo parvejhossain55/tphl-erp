@@ -488,4 +488,53 @@ public function deleteBudget($id)
     header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
     exit;
 }
+
+    // =========================================================================
+    // External API Integration (Brochure Leads & Forms)
+    // =========================================================================
+
+    public function brochureLeads()
+    {
+        global $config;
+
+        $projects = [];
+        // Removed 'WHERE deleted_at IS NULL' so historical/deleted properties can still be resolved by name.
+        $stmt = $this->db->query("SELECT id, name FROM projects");
+        if ($stmt) {
+            while ($row = $stmt->fetch_assoc()) {
+                $projects[$row['id']] = $row['name'];
+            }
+        }
+
+        return $this->view("digital-marketing-team/brochure-leads", [
+            "current_route" => "brochure-leads",
+            "page_title"    => "Brochure Leads",
+            "api_url"       => $config['premium_homes_api_url'] ?? '',
+            "api_key"       => $config['premium_homes_api_key'] ?? '',
+            "projects"      => $projects,
+        ]);
+    }
+
+    public function forms()
+    {
+        global $config;
+        return $this->view("digital-marketing-team/forms", [
+            "current_route" => "forms",
+            "page_title"    => "TPHL Form Leads",
+            "api_url"       => $config['premium_homes_api_url'] ?? '',
+            "api_key"       => $config['premium_homes_api_key'] ?? '',
+        ]);
+    }
+
+    public function formResponses($id)
+    {
+        global $config;
+        return $this->view("digital-marketing-team/form-responses", [
+            "current_route" => "form-responses",
+            "page_title"    => "Form Responses",
+            "api_url"       => $config['premium_homes_api_url'] ?? '',
+            "api_key"       => $config['premium_homes_api_key'] ?? '',
+            "form_id"       => (int)$id,
+        ]);
+    }
 }
