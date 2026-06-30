@@ -829,6 +829,97 @@ $statusColor = [
       </div>
     <?php endif; ?>
 
+    <!-- ══════════════════════ PENDING LABOR REQUISITIONS ══════════════════════ -->
+    <?php if (!empty($pendingLaborRequisitions ?? [])): ?>
+      <div class="con-panel card__wrapper mb-4" style="border-color:rgba(253,126,20,.4);background:rgba(253,126,20,.04)">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="sec-title" style="margin-bottom:0">
+            <div class="sec-title-dot" style="background:#fd7e14"></div>
+            <i class="fa-solid fa-hard-hat me-2" style="color:#fd7e14"></i>
+            Pending Labor Requisitions
+            <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
+              background:rgba(253,126,20,.12);color:#fd7e14">
+              <?= count($pendingLaborRequisitions) ?> Action Required
+            </span>
+          </div>
+          <a href="<?= $base ?>/con-labor-requisitions" style="font-size:11px;color:#fd7e14;text-decoration:none">View All
+            <i class="fal fa-arrow-right ms-1"></i>
+          </a>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="proj-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Req. No</th>
+                <th>Project</th>
+                <th>Labor</th>
+                <th style="text-align:right">Amount</th>
+                <th>Requested By</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th style="text-align:right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php
+              $lrStatusLabel = [
+                'pending'              => ['label'=>'Pending PM',     'bg'=>'rgba(255,193,7,.15)',  'color'=>'#856404'],
+                'payment_requested'    => ['label'=>'QC Review',      'bg'=>'rgba(32,201,151,.15)', 'color'=>'#0d6952'],
+                'qc_approved'          => ['label'=>'PM Verify',      'bg'=>'rgba(102,16,242,.15)','color'=>'#5a0fc8'],
+                'pm_payment_approved'  => ['label'=>'Mgmt Approve',   'bg'=>'rgba(40,167,69,.15)', 'color'=>'#155724'],
+                'management_approved'  => ['label'=>'Ready to Pay',   'bg'=>'rgba(13,110,253,.15)','color'=>'#0a3622'],
+              ];
+              foreach ($pendingLaborRequisitions as $lri => $lr):
+                $lrSt = $lrStatusLabel[$lr['status']] ?? ['label'=>$lr['status'],'bg'=>'rgba(108,117,125,.15)','color'=>'#495057'];
+              ?>
+              <tr>
+                <td style="font-size:11px;color:var(--text-muted)"><?= $lri + 1 ?></td>
+                <td>
+                  <a href="<?= $base ?>/con-labor-requisition/<?= $lr['id'] ?>"
+                     style="font-weight:700;font-size:13px;color:var(--clr-theme-primary);text-decoration:none">
+                    <?= htmlspecialchars($lr['requisition_no']) ?>
+                  </a>
+                </td>
+                <td><div style="font-size:12px;font-weight:600"><?= htmlspecialchars($lr['project_name'] ?? '---') ?></div></td>
+                <td>
+                  <span style="font-weight:700"><?= $lr['labor_count'] ?></span>
+                  <span style="font-size:11px;color:var(--text-muted)"> <?= htmlspecialchars($lr['labor_type']) ?></span>
+                </td>
+                <td style="text-align:right;font-weight:700;color:#28a745">
+                  ৳ <?= number_format($lr['total_amount'], 0) ?>
+                </td>
+                <td style="font-size:12px"><?= htmlspecialchars($lr['requested_by_name'] ?? '---') ?></td>
+                <td style="font-size:11px;color:var(--text-muted)"><?= date('d M Y', strtotime($lr['requisition_date'])) ?></td>
+                <td>
+                  <span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;
+                    background:<?= $lrSt['bg'] ?>;color:<?= $lrSt['color'] ?>">
+                    <?= $lrSt['label'] ?>
+                  </span>
+                </td>
+                <td style="text-align:right">
+                  <?php if ($lr['status'] === 'qc_approved'): ?>
+                    <a href="<?= $base ?>/con-labor-requisition/<?= $lr['id'] ?>"
+                       class="btn btn-sm" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;
+                       background:#6610f2;color:#fff;border:none">
+                      <i class="fal fa-user-check me-1"></i> PM Verify
+                    </a>
+                  <?php else: ?>
+                    <a href="<?= $base ?>/con-labor-requisition/<?= $lr['id'] ?>"
+                       class="btn btn-sm" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;
+                       background:#fd7e14;color:#fff;border:none">
+                      <i class="fal fa-eye me-1"></i> Review
+                    </a>
+                  <?php endif; ?>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <?php endif; ?>
+
     <!-- ══════════════════════ PENDING INITIAL BUDGET APPROVALS ══════════════════════ -->
     <?php if (!empty($pendingInitialBudgets)): ?>
       <div class="con-panel card__wrapper mb-4" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03)">

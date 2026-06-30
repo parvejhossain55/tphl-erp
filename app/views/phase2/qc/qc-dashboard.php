@@ -356,6 +356,74 @@ $pendingGRNsQC = $pendingGRNsQC ?? [];
 </div>
 
 <?php
+$pendingLaborReqQC = $pendingLaborReqQC ?? [];
+?>
+<!-- ══ Pending Labor Requisitions — QC Approval ══ -->
+<div class="rd-panel" style="border-color:rgba(253,126,20,.35);background:rgba(253,126,20,.04);margin-top:4px">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="rd-panel-title" style="margin-bottom:0">
+      <div class="rd-dot" style="background:#fd7e14"></div>
+      <i class="fa-solid fa-hard-hat me-2" style="color:#fd7e14"></i>
+      Pending Labor Requisitions — QC Payment Approval
+      <span style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;
+        background:rgba(253,126,20,.15);color:#c65e00">
+        <?= count($pendingLaborReqQC) ?> Awaiting
+      </span>
+    </div>
+    <a href="<?= $base ?>/con-labor-requisitions" style="font-size:11px;color:#fd7e14;text-decoration:none">View All <i class="fal fa-arrow-right ms-1"></i></a>
+  </div>
+  <div style="overflow-x:auto">
+    <?php if (!empty($pendingLaborReqQC)): ?>
+    <table class="rd-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Req. No</th>
+          <th>Project</th>
+          <th>Labor</th>
+          <th style="text-align:right">Amount (৳)</th>
+          <th>Requested By</th>
+          <th>Date</th>
+          <th style="text-align:right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($pendingLaborReqQC as $lri => $lr): ?>
+        <tr>
+          <td style="font-size:11px;color:var(--text-muted)"><?= $lri + 1 ?></td>
+          <td style="font-weight:800;color:#fd7e14">
+            <a href="<?= $base ?>/con-labor-requisition/<?= $lr['id'] ?>" style="color:#fd7e14;text-decoration:none">
+              <?= htmlspecialchars($lr['requisition_no']) ?>
+            </a>
+          </td>
+          <td style="font-weight:700"><?= htmlspecialchars($lr['project_name'] ?? '—') ?></td>
+          <td>
+            <span style="font-weight:700"><?= $lr['labor_count'] ?></span>
+            <span style="font-size:11px;color:var(--text-muted)"> <?= htmlspecialchars($lr['labor_type']) ?></span>
+          </td>
+          <td style="text-align:right;font-weight:700;color:#28a745">
+            <?= number_format($lr['total_amount'], 0) ?>
+          </td>
+          <td style="font-size:12px"><?= htmlspecialchars($lr['requested_by_name'] ?? '—') ?></td>
+          <td style="font-size:11px;color:var(--text-muted)"><?= date('d M Y', strtotime($lr['requisition_date'])) ?></td>
+          <td style="text-align:right">
+            <a href="<?= $base ?>/con-labor-requisition/<?= $lr['id'] ?>"
+               class="btn btn-sm"
+               style="font-size:11px;padding:4px 12px;background:linear-gradient(135deg,#fd7e14,#e8690a);color:#fff;border-radius:6px;text-decoration:none">
+              <i class="fal fa-check-circle me-1"></i> Review &amp; Approve
+            </a>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+    <?php else: ?>
+    <div class="empty-msg"><i class="fa-solid fa-hard-hat fa-2x" style="opacity:.3;display:block;margin-bottom:8px"></i>No pending labor requisitions awaiting QC approval.</div>
+    <?php endif; ?>
+  </div>
+</div>
+
+<?php
 $pendingWeeklyReportsQC = $pendingWeeklyReportsQC ?? [];
 ?>
 <div class="rd-panel" style="border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.03);margin-top:4px">

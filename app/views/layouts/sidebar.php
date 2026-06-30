@@ -1075,6 +1075,38 @@
                         </a>
                     </li>
 
+                    <!-- ====== Labor Payment Approvals ====== -->
+                    <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 6])): ?>
+                    <li class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['con-labor-requisitions', 'con-labor-requisition'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
+                            <span class="sidebar__menu-label">Labor Pay Approval</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-labor-requisitions?status=management_approved"
+                                    class="sidebar__menu-item <?= (isActive('con-labor-requisitions', $current_route) && ($_GET['status'] ?? '') === 'management_approved') ? 'active' : '' ?>">
+                                    <i class="bi bi-clock-history me-1"></i> Pending Payments
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-labor-requisitions?status=paid"
+                                    class="sidebar__menu-item">
+                                    <i class="bi bi-check2-circle me-1"></i> Paid History
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-labor-requisitions"
+                                    class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ? 'active' : '' ?>">
+                                    <i class="bi bi-list-ul me-1"></i> All Requisitions
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <?php endif; ?>
+
                 <?php endif ?>
                 <!--END Accounts CATEGORY -->
 
@@ -1941,6 +1973,16 @@
                                 </a>
                             </li>
 
+                            <!-- Labor Requisition shortcut inside Bills menu -->
+                            <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 13, 15, 22, 24, 25])): ?>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-labor-requisitions"
+                                    class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
+                                    <i class="fa-solid fa-hard-hat me-1"></i> Labor Requisitions
+                                </a>
+                            </li>
+                            <?php endif; ?>
+
                             <!-- <li class="slide">
                             <a href="<= $base_url ?>/con-fund-requests" class="sidebar__menu-item <?= isActive('con-fund-requests', $current_route) ?>">
                                 <i class="bi bi-cash-coin me-1"></i> Fund Requests
@@ -1954,6 +1996,35 @@
                         </ul>
                     </li>
                 <?php endif; ?>
+
+                <!-- ====== Labor Requisitions ====== -->
+                <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 13, 15, 22, 24, 25])): ?>
+                    <li class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
+                            <span class="sidebar__menu-label">Labor Requisition</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-labor-requisitions"
+                                    class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
+                                    <i class="bi bi-list-ul me-1"></i> All Requisitions
+                                </a>
+                            </li>
+                            <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 12, 22])): ?>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/con-labor-requisition-create"
+                                    class="sidebar__menu-item <?= isActive('con-labor-requisition-create', $current_route) ?>">
+                                    <i class="bi bi-plus-circle me-1"></i> + New Requisition
+                                </a>
+                            </li>
+                            <?php endif; ?>
+                        </ul>
+                    </li>
+                <?php endif; ?>
+
                 <!-- ══ Weekly Progress Reports (Phase-Based) ════════════════════ -->
                 <?php if (hasPermission('Construction Management') || hasPermission('site engineer dashboard') || hasPermission('QC Dashboard') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])): ?>
                     <li class="d-none slide <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">

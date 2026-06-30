@@ -496,6 +496,38 @@ class Con_DashboardController extends Controller
             $pendingContractorBills = $rCB ? $rCB->fetch_all(MYSQLI_ASSOC) : [];
         }
 
+        // ── Pending Labor Requisitions (role-based) ───────────────────────────
+        $pendingLaborRequisitions = [];
+        // PM sees status=pending, QC sees payment_requested, PM again for qc_approved,
+        // Management sees pm_payment_approved, Accounts sees management_approved
+        $laborStatusMap = [
+            12  => ['pending'],                      // Site Engineer — sees their own submitted
+            22  => ['pending', 'qc_approved'],       // PM Head — initial approve + PM payment verify
+            15  => ['pending', 'qc_approved'],       // Project Manager — initial approve + PM payment verify
+            13  => ['payment_requested'],            // Quality Controller (QC)
+            24  => ['payment_requested'],            // QC & Internal Audit Head
+            25  => ['payment_requested'],            // QC & Internal Audit Executive
+            3   => ['pm_payment_approved'],          // Management
+            6   => ['management_approved'],          // Accounts
+            1   => ['pending','payment_requested','qc_approved','pm_payment_approved','management_approved'],
+        ];
+        if (isset($laborStatusMap[$userRole])) {
+            $laborStatusSql = "'" . implode("','", $laborStatusMap[$userRole]) . "'";
+            $laborProjFilter = $selectedProjectId ? " AND lr.project_id = $selectedProjectId " : "";
+            $rLR = $this->db->query("
+                SELECT lr.id, lr.requisition_no, lr.status, lr.requisition_date,
+                       lr.labor_count, lr.per_labor_rate, lr.working_days, lr.total_amount, lr.labor_type,
+                       p.name AS project_name, u.full_name AS requested_by_name
+                FROM con_labor_requisitions lr
+                LEFT JOIN projects p ON p.id = lr.project_id
+                LEFT JOIN users u    ON u.id = lr.requested_by
+                WHERE lr.status IN ($laborStatusSql)
+                $laborProjFilter
+                ORDER BY lr.created_at DESC LIMIT 10
+            ");
+            $pendingLaborRequisitions = $rLR ? $rLR->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
         // Fetch all target plans set for this month across all projects
         $curMonth = (int)date('n');
         $curYear  = (int)date('Y');
@@ -541,19 +573,20 @@ class Con_DashboardController extends Controller
             'pendingWeeklyReportsPM'  => $pendingWeeklyReportsPM,
             'pendingIncidents'        => $pendingIncidents,
             'pendingLogs'             => $pendingLogs,
-            'pendingReturns'          => $pendingReturns,
-            'pendingWorkOrders'       => $pendingWorkOrders,
-            'pendingBudgetExtends'    => $pendingBudgetExtends,
-            'weekTargetNotifications' => $weekTargetNotifications,
-            'labDueNotifications'     => $labDueNotifications,
-            'currentWeek'             => $curWeek,
-            'currentMonth'            => $curMonth,
-            'currentYear'             => $curYear,
-            'recentBills'             => $recentBills,
-            'recentFunds'             => $recentFunds,
-            'recentMaterialIssues'    => $recentMaterialIssues,
-            'prsForApproval'          => $prsForApproval,
-            'thisMonthTargets'        => $thisMonthTargets,
+            'pendingReturns'              => $pendingReturns,
+            'pendingWorkOrders'           => $pendingWorkOrders,
+            'pendingBudgetExtends'        => $pendingBudgetExtends,
+            'pendingLaborRequisitions'    => $pendingLaborRequisitions,
+            'weekTargetNotifications'     => $weekTargetNotifications,
+            'labDueNotifications'         => $labDueNotifications,
+            'currentWeek'                 => $curWeek,
+            'currentMonth'               => $curMonth,
+            'currentYear'                => $curYear,
+            'recentBills'                => $recentBills,
+            'recentFunds'                => $recentFunds,
+            'recentMaterialIssues'       => $recentMaterialIssues,
+            'prsForApproval'             => $prsForApproval,
+            'thisMonthTargets'           => $thisMonthTargets,
         ]);
     }
 

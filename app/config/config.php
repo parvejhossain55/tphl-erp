@@ -4,7 +4,7 @@
 // 2 = Project staging Server
 // 3 = Production Server
 
-$current_server = 1; 
+$current_server = 2; 
 // Local Development Server
 
 if ($current_server == 1) {
