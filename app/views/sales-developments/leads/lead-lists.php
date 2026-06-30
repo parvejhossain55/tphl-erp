@@ -231,7 +231,7 @@ unset($_SESSION['booking_csv_import_skipped']); // clear after reading
                 </div>
             </form>
         </div>
-        <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 5): ?>
+        <?php if ((isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [5, 9])) || isSalesCoLeader()): ?>
             <div class="col-md-6">
                 <div id="assignCard"
                     class="card__wrapper shadow-sm p-3 my-2"
