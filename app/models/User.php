@@ -560,20 +560,25 @@ public function getUsersByTeamAndRole($teamId)
     public function getByEmail($email)
     {
         $stmt = $this->db->prepare(
-            "SELECT u.*, LOWER(r.name) AS role_name ,des.name AS designation_name , des.id as designation_id, dept.name AS department_name , dept.id AS department_id
-         FROM users u 
-         LEFT JOIN roles r ON u.role_id = r.id
-         LEFT JOIN designations des ON u.designation_id = des.id
-            LEFT JOIN departments dept ON des.department_id = dept.id
-         WHERE u.email = ?"
+            "SELECT u.*, LOWER(r.name) AS role_name, des.name AS designation_name, des.id as designation_id,
+                    dept.name AS department_name, dept.id AS department_id,
+                    e.id AS employee_db_id,
+                    e.is_sales_co_leader,
+                    e.team_id AS emp_team_id
+             FROM users u
+             LEFT JOIN roles r ON u.role_id = r.id
+             LEFT JOIN designations des ON u.designation_id = des.id
+             LEFT JOIN departments dept ON des.department_id = dept.id
+             LEFT JOIN employees e ON e.user_id = u.id
+             WHERE u.email = ?"
         );
 
         if (!$stmt) {
             error_log("getByEmail prepare failed: " . $this->db->error);
-            // Fallback: query without departments join
+            // Fallback: query without employees join
             $stmt = $this->db->prepare(
                 "SELECT u.*, LOWER(r.name) AS role_name, des.name AS designation_name, des.id as designation_id
-                 FROM users u 
+                 FROM users u
                  LEFT JOIN roles r ON u.role_id = r.id
                  LEFT JOIN designations des ON u.designation_id = des.id
                  WHERE u.email = ?"

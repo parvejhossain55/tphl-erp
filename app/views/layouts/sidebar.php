@@ -384,6 +384,15 @@
                             <a href="<?= $base_url ?>/my-dashboard"
                                 class="sidebar__menu-item <?= isActive('my-dashboard', $current_route) ?>">My Dashboard</a>
                         </li>
+                        <?php if (isSalesCoLeader()): ?>
+                        <!-- Co-Leader: Lead List Access (team_id wise) -->
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/lead-lists"
+                                class="sidebar__menu-item <?= isActive('lead-lists', $current_route) ?>">
+                                <i class="fa-solid fa-list-check me-1"></i> Lead List
+                            </a>
+                        </li>
+                        <?php endif; ?>
                         <li class="slide">
                             <a href="<?= $base_url ?>/my-all-assigned-leads"
                                 class="sidebar__menu-item <?= isActive('my-all-assigned-leads', $current_route) ?>">My All
@@ -1010,8 +1019,7 @@
 
                             <li class="slide <?= isActive('admin-cashout-requests', $current_route) ?>">
                                 <a href="<?= $base_url ?>/admin-cashout-requests"
-                                    class="sidebar__menu-item <?= isActive('admin-cashout-requests', $current_route) ?>">Cashout
-                                    Requests</a>
+                                    class="sidebar__menu-item <?= isActive('admin-cashout-requests', $current_route) ?>"> Cashout Reports And Approve</a>
                             </li>
 
                             <li class="slide <?= isActive('expense-adjustments', $current_route) ?>">

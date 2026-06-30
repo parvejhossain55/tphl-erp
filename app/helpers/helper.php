@@ -348,7 +348,7 @@ function redirectByRole()
             $url = "{$GLOBALS['base_url']}/employee-dashboard";
             break;
 
-        case 5: // Sales
+        case 5: // Sales manager as sales team leader
             $url = "{$GLOBALS['base_url']}/sales-dashboard";
             break;
 
@@ -364,10 +364,10 @@ function redirectByRole()
         case 7: // Client Cash In
             $url = "{$GLOBALS['base_url']}/ced-dashboard";
             break;
-        case 8: // Accounts
+        case 8: // sales executive
             $url = "{$GLOBALS['base_url']}/my-dashboard";
             break;
-        case 9: // sales
+        case 9: // sales team header 
             $url = "{$GLOBALS['base_url']}/sales-team-head-dashboard";
             break;
             // case 11: // whatsapp
@@ -564,6 +564,18 @@ function hasPermission($permissionNames)
     return false;
 }
 
+/**
+ * Check if the currently logged-in user is a Sales Co-Leader.
+ * A co-leader gets lead-list access and can assign leads within their team_id,
+ * regardless of role_id. This is set via employees.is_sales_co_leader = 1.
+ */
+function isSalesCoLeader(): bool
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    return (int)($_SESSION['user']['is_sales_co_leader'] ?? 0) === 1;
+}
 
 
 function hasAllPermissions(array $requiredPermissions): bool

@@ -163,8 +163,8 @@ class Employee extends Model
             account_holder_name, account_number, bank_name, branch_name,
             social_media1, social_media2, social_media3,
             photo, make_user, password, created_by,
-            employee_type, employee_status,workplace, responsibilities,team_id
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            employee_type, employee_status, workplace, responsibilities, team_id, is_sales_co_leader
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
         $dob = !empty($data['dob']) ? $data['dob'] : null;
@@ -175,7 +175,7 @@ class Employee extends Model
             : '';
 
         $stmt->bind_param(
-            "sssdssssssssssiissssssssssisissssi",
+            "sssdssssssssssiissssssssssisisssiii",
             $data['employee_id'],
             $data['full_name'],
             $data['gross_salary'],
@@ -209,7 +209,8 @@ class Employee extends Model
             $data['employee_status'],
             $data['workplace'],
             $data['responsibilities'],
-            $data['team_id']
+            $data['team_id'],
+            $data['is_sales_co_leader']
         );
 
         if (!$stmt->execute()) {
@@ -336,7 +337,8 @@ WHERE e.id = ?
         employee_type = ?,
         employee_status = ?,
         responsibilities = ?,
-        team_id = ?
+        team_id = ?,
+        is_sales_co_leader = ?
     WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -347,7 +349,7 @@ WHERE e.id = ?
         }
 
         $stmt->bind_param(
-            "ssddsssssssssiissssssssssssisssii",
+            "ssddsssssssssiissssssssssssissssiii",
             $data['employee_id'],      // s
             $data['full_name'],        // s
             $data['gross_salary'],     // d
@@ -380,6 +382,7 @@ WHERE e.id = ?
             $data['employee_status'],     // s 
             $data['responsibilities'],    // s
             $data['team_id'],             // i
+            $data['is_sales_co_leader'],  // i
             $id                           // i
         );
 

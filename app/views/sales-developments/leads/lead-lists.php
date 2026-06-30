@@ -510,6 +510,13 @@ unset($_SESSION['booking_csv_import_skipped']); // clear after reading
                                     <span class="lead-name text-truncate"><?= $lead['full_name'] ?></span>
                                 </div>
                                 <div class="lead-phone text-truncate small"><?= $lead['phone'] ?></div>
+                                <?php $mAddr = !empty($lead['address']) ? $lead['address'] : ($lead['city'] ?? ''); ?>
+                                <?php if ($mAddr): ?>
+                                <div class="mt-1">
+                                    <i class="bi bi-geo-alt-fill text-muted me-1" style="font-size:11px"></i>
+                                    <span class="fs-11 text-muted"><?= htmlspecialchars($mAddr) ?></span>
+                                </div>
+                                <?php endif; ?>
                             </div>
 
                             <!-- 3 Dot Dropdown as Action Button -->
@@ -1008,6 +1015,7 @@ document.addEventListener('DOMContentLoaded', function () {
                   <span class="lead-name text-truncate">${name}</span>
                 </div>
                 <div class="lead-phone text-truncate small">${lead.phone || ''}</div>
+                ${lead.address ? `<div class="mt-1"><i class="bi bi-geo-alt-fill text-muted me-1" style="font-size:11px"></i><span class="fs-11 text-muted">${lead.address.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span></div>` : ''}
               </div>
               <div class="dropdown">
                 <button class="action-dot-btn" type="button" data-bs-toggle="dropdown">
