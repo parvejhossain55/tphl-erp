@@ -31,8 +31,9 @@ class LeadController extends Controller
         // $assignedUsers = $this->userModel->getAllRoleUser();
         $userRoleId = $_SESSION['user']['role_id'] ?? null;
         $userTeamId = $_SESSION['user']['team_id'] ?? null;
+        $isCoLeader = isSalesCoLeader();
 
-        if (in_array($userRoleId, [5, 9])) {
+        if (in_array($userRoleId, [5, 9]) || $isCoLeader) {
 
             if (!empty($userTeamId)) {
                 // team wise users
@@ -67,10 +68,12 @@ class LeadController extends Controller
         $offset = ($currentPage - 1) * $limit;
 
         // Get total count for pagination
-        $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date);
+        // Co-leader gets team-scoped data same as role_id=5 (Sales Manager)
+        $effectiveRoleId = ($isCoLeader && !in_array($userRoleId, [1, 3, 5, 9])) ? 5 : $userRoleId;
+        $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date);
 
         // Fetch paginated records
-        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date, $limit, $offset);
+        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, $limit, $offset);
 
         $totalPages = ceil($leadCounts / $limit);
 
@@ -213,16 +216,18 @@ class LeadController extends Controller
 
         $userRoleId = $_SESSION['user']['role_id'] ?? null;
         $userTeamId = $_SESSION['user']['team_id'] ?? null;
+        // Co-leader gets same team-scoped access as Sales Manager (role_id=5)
+        $effectiveRoleId = (isSalesCoLeader() && !in_array($userRoleId, [1, 3, 5, 9])) ? 5 : $userRoleId;
 
-        $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date);
+        $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date);
 
         if (!empty($search)) {
-            $filteredRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date, $search);
+            $filteredRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, $search);
         } else {
             $filteredRecords = $totalRecords;
         }
 
-        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $userRoleId, $userTeamId, $assigned, $assigned_user, $date, $length, $start, $search);
+        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, $length, $start, $search);
 
         // FIXED: শুধু current page এর lead IDs দিয়ে count করা হচ্ছে
         $leadIds = array_column($leads, 'id');
@@ -238,6 +243,7 @@ class LeadController extends Controller
                     'id'               => $lead['id'],
                     'full_name'        => $lead['full_name'] ?? '',
                     'phone'            => $lead['phone_number'] ?? $lead['phone'] ?? '',
+                    'address'          => !empty($lead['address']) ? $lead['address'] : ($lead['city'] ?? ''),
                     'campaign_name'    => $lead['campaign_name'] ?? $lead['project_name'] ?? '-',
                     'last_lead_action' => $lead['last_lead_action'] ?? '',
                     'next_follow_up'   => $lead['next_follow_up_date'] ?? '',
@@ -324,7 +330,7 @@ class LeadController extends Controller
             $row[] = $noteHtml;
 
             $actionHtml = '';
-            if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9])) {
+            if ((isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9])) || isSalesCoLeader()) {
                 $fu_count = !empty($followUpCounts[$lead['id']]) ? '<span class="action-badge">' . $followUpCounts[$lead['id']] . '</span>' : '';
                 $bk_count = !empty($bookingCount[$lead['id']]) ? '<span class="action-badge">' . $bookingCount[$lead['id']] . '</span>' : '';
                 $bk_text = !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking';

@@ -132,6 +132,7 @@ class EmployeeController extends Controller
                 'employee_status' => $_POST['employee_status'],
                 'responsibilities' => $_POST['responsibilities'],
                 'team_id' => (int)($_POST['team_id'] ?? 0),
+                'is_sales_co_leader' => (int)($_POST['is_sales_co_leader'] ?? 0),
             ];
 
             $photoInputName = 'photo';
@@ -332,6 +333,7 @@ class EmployeeController extends Controller
             'employee_status'      => $_POST['employee_status'],
             'responsibilities'     => $_POST['responsibilities'],
             'team_id'              => (int)($_POST['team_id'] ?? 0),
+            'is_sales_co_leader'   => (int)($_POST['is_sales_co_leader'] ?? 0),
             'make_user'            => $makeUser,
             'password'             => $hashedPassword
         ];

@@ -276,6 +276,15 @@
                            </div>
                        </div>
 
+                       <!-- Address -->
+                       <?php $mAddr = !empty($lead['address']) ? $lead['address'] : ($lead['city'] ?? ''); ?>
+                       <?php if ($mAddr): ?>
+                       <div class="mt-1">
+                           <i class="bi bi-geo-alt-fill text-muted me-1" style="font-size:11px"></i>
+                           <span class="fs-11 text-muted"><?= htmlspecialchars($mAddr) ?></span>
+                       </div>
+                       <?php endif; ?>
+
                        <!-- Status -->
                        <div class="mt-2">
                            <label class="d-block mb-1">Call Status</label>

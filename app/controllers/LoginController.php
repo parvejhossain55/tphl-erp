@@ -88,13 +88,14 @@ class LoginController extends Controller
                             "user_name" => $user['user_name'],
                             "email" => $user['email'],
                             "role_id" => $user['role_id'],
-                            "team_id" => $user['team_id'] ?? null,
+                            "team_id" => $user['emp_team_id'] ?? $user['team_id'] ?? null,
                             "employee_id" => $user['employee_id'] ?? null,
                             "role_name" => strtolower($user['role_name'] ?? ''),
                             "designation_name" => strtolower($user['designation_name'] ?? ''),
                             "department_name" => strtolower($user['department_name'] ?? ''),
                             "department_id" => $user['department_id'] ?? null,
                             "designation_id" => $user['designation_id'] ?? null,
+                            "is_sales_co_leader" => (int)($user['is_sales_co_leader'] ?? 0),
                         ];
 
                         $_SESSION['user']['permissions'] =

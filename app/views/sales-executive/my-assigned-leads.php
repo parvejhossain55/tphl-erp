@@ -654,6 +654,13 @@
                     <div class="flex-grow-1 overflow-hidden">
                         <span class="lead-name text-truncate"><?= $lead['full_name'] ?></span>
                         <div class="lead-phone text-truncate small"><?= $lead['phone'] ??  $lead['phone_number']  ?></div>
+                        <?php $mAddr = !empty($lead['address']) ? $lead['address'] : ($lead['city'] ?? ''); ?>
+                        <?php if ($mAddr): ?>
+                        <div class="mt-1">
+                            <i class="bi bi-geo-alt-fill text-muted me-1" style="font-size:11px"></i>
+                            <span class="fs-11 text-muted"><?= htmlspecialchars($mAddr) ?></span>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
 

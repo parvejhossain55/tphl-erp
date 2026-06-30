@@ -364,6 +364,23 @@
                              </div>
                          </div>
 
+                         <!-- Is Sales Co-Leader -->
+                         <div class="col-lg-12">
+                             <div class="from__input-box">
+                                 <div class="form__input-title">
+                                     <label class="form-label">Is Sales Co-Leader? <span class="text-muted fs-11">(Can view & assign team leads)</span></label>
+                                 </div>
+                                 <div class="form__input d-flex gap-4 pt-1">
+                                     <label class="d-flex align-items-center gap-2">
+                                         <input type="radio" name="is_sales_co_leader" value="1"> Yes
+                                     </label>
+                                     <label class="d-flex align-items-center gap-2">
+                                         <input type="radio" name="is_sales_co_leader" value="0" checked> No
+                                     </label>
+                                 </div>
+                             </div>
+                         </div>
+
                          <div class="col-lg-12">
                              <div class="form__input-box">
                                  <div class="form__input-box">
