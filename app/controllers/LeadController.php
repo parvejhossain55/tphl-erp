@@ -269,6 +269,11 @@ class LeadController extends Controller
             $row[] = $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '';
 
             $row[] = '<strong>' . htmlspecialchars($lead['full_name'] ?? '') . '</strong>';
+
+            // Address column (fallback to city)
+            $addr = !empty($lead['address']) ? $lead['address'] : ($lead['city'] ?? '—');
+            $row[] = '<span class="fs-12">' . htmlspecialchars($addr) . '</span>';
+
             $row[] = '<span class="bd-badge bg-success" style="white-space: nowrap;">' . htmlspecialchars($lead['uploaded_from'] ?? '') . '</span>';
 
             $phone = $lead['phone_number'] ?? $lead['phone'];

@@ -24,7 +24,7 @@ $statusLabel = [
     'management_approved'  => 'Management Approved',
     'partially_paid'       => 'Partially Paid',
     'paid'                 => 'Paid by Accounts',
-    'labor_disbursed'      => '✅ Labour Paid & Confirmed',
+    'labor_disbursed'      => ' Labour Paid & Confirmed',
     'rejected'             => 'Rejected',
 ];
 
@@ -58,12 +58,12 @@ $steps = [
 <div class="container-fluid">
     <div class="d-flex align-items-center justify-content-between my-4 page-header-breadcrumb">
         <div>
-            <h1 class="page-title fw-semibold fs-18 mb-0">
+            <h3 class="page-title fw-semibold fs-18 mb-0">
                 <?php echo htmlspecialchars($req['requisition_no']); ?>
                 <span class="badge <?php echo $statusBadge[$st] ?? 'bg-secondary'; ?> fs-11 ms-2 align-middle">
                     <?php echo $statusLabel[$st] ?? $st; ?>
                 </span>
-            </h1>
+            </h3>
             <nav><ol class="breadcrumb mb-0 mt-1">
                 <li class="breadcrumb-item"><a href="<?php echo $base; ?>/con-labor-requisitions">Labor Requisitions</a></li>
                 <li class="breadcrumb-item active"><?php echo $req['requisition_no']; ?></li>
@@ -481,7 +481,7 @@ $steps = [
             <div class="card custom-card mb-3" style="border:2px solid #28a745!important;background:linear-gradient(135deg,rgba(40,167,69,.06),rgba(40,167,69,.02))">
                 <div class="card-header" style="background:rgba(40,167,69,.12)">
                     <div class="card-title fs-14 text-success fw-bold">
-                        <i class="fa-solid fa-circle-check me-2 fs-16"></i> ✅ Payment Fully Settled
+                        <i class="fa-solid fa-circle-check me-2 fs-16"></i> Payment Fully Settled
                     </div>
                 </div>
                 <div class="card-body">
@@ -540,6 +540,9 @@ $steps = [
 
             <!-- ✅ Labour Disbursed Confirmation Card -->
             <?php if ($st === 'labor_disbursed'): ?>
+            <?php
+                $logsSum = !empty($paymentLogs) ? array_sum(array_column($paymentLogs, 'paid_amount')) : (float)($req['total_paid'] ?? $req['approved_amount'] ?? 0);
+            ?>
             <div class="card custom-card mb-3" style="border:2px solid #28a745!important;background:linear-gradient(135deg,rgba(40,167,69,.08),rgba(40,167,69,.02))">
                 <div class="card-header" style="background:rgba(40,167,69,.15)">
                     <div class="card-title fs-14 text-success fw-bold">
@@ -547,36 +550,77 @@ $steps = [
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3 mb-3 text-center">
-                        <div class="col-4">
-                            <div class="fs-11 text-muted fw-semibold">Total Paid (Accounts)</div>
-                            <div class="fw-bold fs-16 text-success">৳ <?= number_format((float)($req['total_paid'] ?? 0), 2) ?></div>
+
+                    <!-- Section 1: Accounts Payment -->
+                    <div class="mb-3 pb-3" style="border-bottom:1px dashed #dee2e6">
+                        <div class="fs-12 fw-semibold text-muted mb-2"><i class="fa-solid fa-building me-1"></i> Accounts Payment</div>
+                        <div class="row g-2 text-center">
+                            <div class="col-4 p-2 rounded" style="background:rgba(40,167,69,.1)">
+                                <div class="fs-11 text-muted fw-semibold">Total Paid</div>
+                                <div class="fw-bold fs-15 text-success">৳ <?= number_format($logsSum, 2) ?></div>
+                            </div>
+                            <div class="col-4 p-2 rounded" style="background:rgba(13,110,253,.08)">
+                                <div class="fs-11 text-muted fw-semibold">Paid By</div>
+                                <div class="fw-semibold fs-12"><?= htmlspecialchars($req['paid_by_name'] ?? '—') ?></div>
+                            </div>
+                            <div class="col-4 p-2 rounded" style="background:rgba(13,110,253,.08)">
+                                <div class="fs-11 text-muted fw-semibold">Payment Date</div>
+                                <div class="fw-semibold fs-12"><?= !empty($req['payment_date']) ? date('d M Y', strtotime($req['payment_date'])) : '—' ?></div>
+                            </div>
                         </div>
-                        <div class="col-4">
-                            <div class="fs-11 text-muted fw-semibold">Disbursed By (SE)</div>
-                            <div class="fw-semibold fs-13"><?= htmlspecialchars($req['paid_by_name'] ?? '—') ?></div>
+                        <?php if (!empty($paymentLogs)): ?>
+                        <div class="d-flex gap-2 flex-wrap mt-2">
+                            <?php foreach ($paymentLogs as $log): if (empty($log['proof_image'])) continue; ?>
+                            <?php $pext = strtolower(pathinfo($log['proof_image'], PATHINFO_EXTENSION)); ?>
+                            <?php if (in_array($pext, ['jpg','jpeg','png','gif'])): ?>
+                                <a href="/<?= htmlspecialchars($log['proof_image']) ?>" target="_blank" title="৳<?= number_format($log['paid_amount'],0) ?>">
+                                    <img src="/<?= htmlspecialchars($log['proof_image']) ?>" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:2px solid #28a745">
+                                </a>
+                            <?php else: ?>
+                                <a href="/<?= htmlspecialchars($log['proof_image']) ?>" target="_blank" class="btn btn-sm btn-outline-success fs-11">
+                                    <i class="fa-solid fa-file-pdf me-1"></i> Receipt
+                                </a>
+                            <?php endif; ?>
+                            <?php endforeach; ?>
                         </div>
-                        <div class="col-4">
-                            <div class="fs-11 text-muted fw-semibold">Disbursed On</div>
-                            <div class="fw-semibold fs-13"><?= !empty($req['labor_disbursed_at']) ? date('d M Y', strtotime($req['labor_disbursed_at'])) : '—' ?></div>
-                        </div>
+                        <?php endif; ?>
                     </div>
-                    <?php if (!empty($req['labor_disbursement_note'])): ?>
-                    <div class="fs-12 text-muted mb-2"><strong>Note:</strong> <?= htmlspecialchars($req['labor_disbursement_note']) ?></div>
-                    <?php endif; ?>
-                    <?php if (!empty($req['labor_disbursement_proof'])): ?>
-                    <?php $dext = strtolower(pathinfo($req['labor_disbursement_proof'], PATHINFO_EXTENSION)); ?>
-                    <div class="fs-12 text-muted mb-2 fw-semibold"><i class="fa-solid fa-image me-1"></i>Disbursement Proof:</div>
-                    <?php if (in_array($dext, ['jpg','jpeg','png','gif'])): ?>
-                        <a href="/<?= htmlspecialchars($req['labor_disbursement_proof']) ?>" target="_blank">
-                            <img src="/<?= htmlspecialchars($req['labor_disbursement_proof']) ?>" style="max-width:200px;max-height:150px;object-fit:cover;border-radius:8px;border:2px solid #28a745" alt="disbursement proof">
-                        </a>
-                    <?php else: ?>
-                        <a href="/<?= htmlspecialchars($req['labor_disbursement_proof']) ?>" target="_blank" class="btn btn-sm btn-outline-success">
-                            <i class="fa-solid fa-file-pdf me-1"></i> View Disbursement Proof
-                        </a>
-                    <?php endif; ?>
-                    <?php endif; ?>
+
+                    <!-- Section 2: SE Disbursement -->
+                    <div>
+                        <div class="fs-12 fw-semibold text-muted mb-2"><i class="fa-solid fa-user-hard-hat me-1"></i> Site Engineer Disbursement</div>
+                        <div class="row g-2 text-center mb-2">
+                            <div class="col-4 p-2 rounded" style="background:rgba(40,167,69,.1)">
+                                <div class="fs-11 text-muted fw-semibold">Disbursed By (SE)</div>
+                                <div class="fw-semibold fs-12"><?= htmlspecialchars($req['labor_disbursed_by_name'] ?? '—') ?></div>
+                            </div>
+                            <div class="col-4 p-2 rounded" style="background:rgba(40,167,69,.08)">
+                                <div class="fs-11 text-muted fw-semibold">Disbursed On</div>
+                                <div class="fw-semibold fs-12"><?= !empty($req['labor_disbursed_at']) ? date('d M Y', strtotime($req['labor_disbursed_at'])) : '—' ?></div>
+                            </div>
+                            <div class="col-4 p-2 rounded" style="background:rgba(40,167,69,.08)">
+                                <div class="fs-11 text-muted fw-semibold">Labourers</div>
+                                <div class="fw-bold fs-15 text-success"><?= $req['labor_count'] ?> জন</div>
+                            </div>
+                        </div>
+                        <?php if (!empty($req['labor_disbursement_note'])): ?>
+                        <div class="fs-12 text-muted mb-2"><i class="fa-solid fa-note-sticky me-1"></i> <strong>Note:</strong> <?= htmlspecialchars($req['labor_disbursement_note']) ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($req['labor_disbursement_proof'])): ?>
+                        <?php $dext = strtolower(pathinfo($req['labor_disbursement_proof'], PATHINFO_EXTENSION)); ?>
+                        <div class="fs-12 text-muted mb-2 fw-semibold"><i class="fa-solid fa-image me-1"></i>Disbursement Proof:</div>
+                        <?php if (in_array($dext, ['jpg','jpeg','png','gif'])): ?>
+                            <a href="/<?= htmlspecialchars($req['labor_disbursement_proof']) ?>" target="_blank">
+                                <img src="/<?= htmlspecialchars($req['labor_disbursement_proof']) ?>" style="max-width:200px;max-height:150px;object-fit:cover;border-radius:8px;border:2px solid #28a745" alt="disbursement proof">
+                            </a>
+                        <?php else: ?>
+                            <a href="/<?= htmlspecialchars($req['labor_disbursement_proof']) ?>" target="_blank" class="btn btn-sm btn-outline-success">
+                                <i class="fa-solid fa-file-pdf me-1"></i> View Disbursement Proof
+                            </a>
+                        <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+
                 </div>
             </div>
             <?php endif; ?>

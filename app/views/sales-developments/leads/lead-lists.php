@@ -292,6 +292,7 @@ unset($_SESSION['booking_csv_import_skipped']); // clear after reading
                                 </th><!-- non-sticky first column -->
                                 <th>Lead Date</th>
                                 <th>Lead Name</th>
+                                <th>Address</th>
                                 <th>Lead Uploaded</th>
                                 <th>Phone</th>
                                 <th>Project Campaign</th>
@@ -899,7 +900,7 @@ document.addEventListener('DOMContentLoaded', function () {
             order      : [],
             columnDefs : [
                 { targets: 0, orderable: false },
-                { targets: 8, orderable: false }
+                { targets: 9, orderable: false }
             ],
             drawCallback: function () {
                 // After each page draw: re-sync checkbox states

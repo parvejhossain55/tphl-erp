@@ -18,6 +18,7 @@ $statusBadge = [
     'management_approved'  => 'bg-success',
     'partially_paid'       => 'bg-warning text-dark',
     'paid'                 => 'bg-success',
+    'labor_disbursed'      => 'bg-success',
     'rejected'             => 'bg-danger',
 ];
 $statusLabel = [
@@ -30,6 +31,7 @@ $statusLabel = [
     'management_approved'  => '👔 Mgmt Approved',
     'partially_paid'       => '⏳ Partially Paid',
     'paid'                 => '💰 Paid',
+    'labor_disbursed'      => '✅ Labour Disbursed',
     'rejected'             => '❌ Rejected',
 ];
 ?>
