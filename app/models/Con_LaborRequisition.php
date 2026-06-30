@@ -291,4 +291,24 @@ class Con_LaborRequisition extends Model
         $r = $stmt->get_result();
         return $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
     }
+
+    /**
+     * SE confirms they have disbursed the cash to labourers.
+     * Accepts proof image path and note. Status → 'labor_disbursed'.
+     */
+    public function markLaborDisbursed($id, $userId, $proof = null, $note = null)
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET status = 'labor_disbursed',
+                 labor_disbursed_by = ?,
+                 labor_disbursed_at = NOW(),
+                 labor_disbursement_proof = ?,
+                 labor_disbursement_note = ?,
+                 updated_at = NOW()
+             WHERE id = ? AND status = 'paid'"
+        );
+        $stmt->bind_param('issi', $userId, $proof, $note, $id);
+        return $stmt->execute();
+    }
 }

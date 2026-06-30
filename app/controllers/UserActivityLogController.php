@@ -138,4 +138,156 @@ class UserActivityLogController extends Controller
             "perPage"          => $perPage
         ]);
     }
+
+    // ── AJAX: Get employees by department ────────────────────────────────────
+    public function employeesByDept()
+    {
+        header('Content-Type: application/json');
+
+        $deptId = isset($_GET['dept_id']) && $_GET['dept_id'] !== ''
+            ? (int)$_GET['dept_id'] : null;
+
+        if ($deptId === null) {
+            echo json_encode([]);
+            exit;
+        }
+
+        $sql = "
+            SELECT DISTINCT u.id, u.full_name, u.email, e.employee_id
+            FROM users u
+            LEFT JOIN designations des ON des.id = u.designation_id
+            LEFT JOIN departments dept ON dept.id = des.department_id
+            LEFT JOIN employees e  ON e.id = u.employee_id
+            WHERE des.department_id = ?
+            ORDER BY u.full_name ASC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('i', $deptId);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        echo json_encode($result);
+        exit;
+    }
+
+    // ── AJAX: Employee time summary ───────────────────────────────────────────
+    public function employeeSummary()
+    {
+        header('Content-Type: application/json');
+
+        $userId = isset($_GET['user_id']) && $_GET['user_id'] !== ''
+            ? (int)$_GET['user_id'] : null;
+
+        if ($userId === null) {
+            echo json_encode(['error' => 'user_id required']);
+            exit;
+        }
+
+        $dateFrom = isset($_GET['date_from']) && $_GET['date_from'] !== ''
+            ? $_GET['date_from'] : null;
+        $dateTo = isset($_GET['date_to']) && $_GET['date_to'] !== ''
+            ? $_GET['date_to'] : null;
+
+        // ── Overall summary ──────────────────────────────────────────────────
+        $sqlSummary = "
+            SELECT
+                u.full_name,
+                u.email,
+                COALESCE(dept.name, 'Unknown')  AS department_name,
+                COALESCE(des.name,  '—')         AS designation_name,
+                COUNT(ual.id)                    AS total_sessions,
+                COALESCE(SUM(
+                    TIMESTAMPDIFF(MINUTE, ual.login_time, ual.last_active_time)
+                ), 0)                            AS total_minutes
+            FROM user_activity_logs ual
+            JOIN users u ON u.id = ual.user_id
+            LEFT JOIN designations des  ON des.id  = u.designation_id
+            LEFT JOIN departments  dept ON dept.id = des.department_id
+            WHERE ual.user_id = ?
+        ";
+
+        $params     = [$userId];
+        $paramTypes = 'i';
+
+        if ($dateFrom) {
+            $sqlSummary .= " AND DATE(ual.login_time) >= ?";
+            $params[]    = $dateFrom;
+            $paramTypes .= 's';
+        }
+        if ($dateTo) {
+            $sqlSummary .= " AND DATE(ual.login_time) <= ?";
+            $params[]    = $dateTo;
+            $paramTypes .= 's';
+        }
+
+        $sqlSummary .= " GROUP BY u.id, u.full_name, u.email, dept.name, des.name";
+
+        $stmt = $this->db->prepare($sqlSummary);
+        $stmt->bind_param($paramTypes, ...$params);
+        $stmt->execute();
+        $summary = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$summary) {
+            echo json_encode(['error' => 'No data found']);
+            exit;
+        }
+
+        // ── Date-wise breakdown ──────────────────────────────────────────────
+        $sqlDaily = "
+            SELECT
+                DATE(ual.login_time)             AS log_date,
+                COUNT(ual.id)                    AS sessions,
+                MIN(ual.login_time)              AS first_login,
+                MAX(ual.last_active_time)        AS last_active,
+                COALESCE(SUM(
+                    TIMESTAMPDIFF(MINUTE, ual.login_time, ual.last_active_time)
+                ), 0)                            AS active_minutes
+            FROM user_activity_logs ual
+            WHERE ual.user_id = ?
+        ";
+
+        $params2     = [$userId];
+        $paramTypes2 = 'i';
+
+        if ($dateFrom) {
+            $sqlDaily   .= " AND DATE(ual.login_time) >= ?";
+            $params2[]   = $dateFrom;
+            $paramTypes2 .= 's';
+        }
+        if ($dateTo) {
+            $sqlDaily   .= " AND DATE(ual.login_time) <= ?";
+            $params2[]   = $dateTo;
+            $paramTypes2 .= 's';
+        }
+
+        $sqlDaily .= " GROUP BY DATE(ual.login_time) ORDER BY log_date DESC";
+
+        $stmt2 = $this->db->prepare($sqlDaily);
+        $stmt2->bind_param($paramTypes2, ...$params2);
+        $stmt2->execute();
+        $daily = $stmt2->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt2->close();
+
+        $totalMins = (int)$summary['total_minutes'];
+        $sessions  = (int)$summary['total_sessions'];
+
+        echo json_encode([
+            'employee' => [
+                'full_name'        => $summary['full_name'],
+                'email'            => $summary['email'],
+                'department_name'  => $summary['department_name'],
+                'designation_name' => $summary['designation_name'],
+            ],
+            'total_sessions' => $sessions,
+            'total_minutes'  => $totalMins,
+            'total_hours'    => intdiv($totalMins, 60),
+            'total_mins_rem' => $totalMins % 60,
+            'avg_minutes'    => $sessions > 0 ? intdiv($totalMins, $sessions) : 0,
+            'daily'          => $daily,
+        ]);
+        exit;
+    }
 }

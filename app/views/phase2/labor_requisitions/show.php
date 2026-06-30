@@ -11,6 +11,7 @@ $statusBadge = [
     'management_approved'  => 'bg-success',
     'partially_paid'       => 'bg-orange text-white',
     'paid'                 => 'bg-success',
+    'labor_disbursed'      => 'bg-success',
     'rejected'             => 'bg-danger',
 ];
 $statusLabel = [
@@ -22,7 +23,8 @@ $statusLabel = [
     'pm_payment_approved'  => 'PM Payment Verified',
     'management_approved'  => 'Management Approved',
     'partially_paid'       => 'Partially Paid',
-    'paid'                 => 'Paid',
+    'paid'                 => 'Paid by Accounts',
+    'labor_disbursed'      => '✅ Labour Paid & Confirmed',
     'rejected'             => 'Rejected',
 ];
 
@@ -517,6 +519,64 @@ $steps = [
                         <?php endforeach; ?>
                     </div>
                     <?php endif; ?>
+
+                    <!-- SE: Confirm Disbursement Button (only when status=paid) -->
+                    <?php if ($isSE): ?>
+                    <hr class="my-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div>
+                            <div class="fs-12 text-muted">Accounts-এর কাছ থেকে টাকা পেয়েছেন?</div>
+                            <div class="fs-11 text-muted">Labour-দের payment দিলে নিচের button click করুন এবং proof upload করুন।</div>
+                        </div>
+                        <button class="btn btn-sm fw-semibold text-nowrap" style="background:#0d6efd;color:#fff;min-width:180px" data-bs-toggle="modal" data-bs-target="#disbursementModal">
+                            <i class="fa-solid fa-hand-holding-dollar me-1"></i> Confirm Labour Payment
+                        </button>
+                    </div>
+                    <?php endif; ?>
+
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- ✅ Labour Disbursed Confirmation Card -->
+            <?php if ($st === 'labor_disbursed'): ?>
+            <div class="card custom-card mb-3" style="border:2px solid #28a745!important;background:linear-gradient(135deg,rgba(40,167,69,.08),rgba(40,167,69,.02))">
+                <div class="card-header" style="background:rgba(40,167,69,.15)">
+                    <div class="card-title fs-14 text-success fw-bold">
+                        <i class="fa-solid fa-users-check me-2 fs-16"></i> ✅ Labour Payment Fully Disbursed
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-3 text-center">
+                        <div class="col-4">
+                            <div class="fs-11 text-muted fw-semibold">Total Paid (Accounts)</div>
+                            <div class="fw-bold fs-16 text-success">৳ <?= number_format((float)($req['total_paid'] ?? 0), 2) ?></div>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-11 text-muted fw-semibold">Disbursed By (SE)</div>
+                            <div class="fw-semibold fs-13"><?= htmlspecialchars($req['paid_by_name'] ?? '—') ?></div>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-11 text-muted fw-semibold">Disbursed On</div>
+                            <div class="fw-semibold fs-13"><?= !empty($req['labor_disbursed_at']) ? date('d M Y', strtotime($req['labor_disbursed_at'])) : '—' ?></div>
+                        </div>
+                    </div>
+                    <?php if (!empty($req['labor_disbursement_note'])): ?>
+                    <div class="fs-12 text-muted mb-2"><strong>Note:</strong> <?= htmlspecialchars($req['labor_disbursement_note']) ?></div>
+                    <?php endif; ?>
+                    <?php if (!empty($req['labor_disbursement_proof'])): ?>
+                    <?php $dext = strtolower(pathinfo($req['labor_disbursement_proof'], PATHINFO_EXTENSION)); ?>
+                    <div class="fs-12 text-muted mb-2 fw-semibold"><i class="fa-solid fa-image me-1"></i>Disbursement Proof:</div>
+                    <?php if (in_array($dext, ['jpg','jpeg','png','gif'])): ?>
+                        <a href="/<?= htmlspecialchars($req['labor_disbursement_proof']) ?>" target="_blank">
+                            <img src="/<?= htmlspecialchars($req['labor_disbursement_proof']) ?>" style="max-width:200px;max-height:150px;object-fit:cover;border-radius:8px;border:2px solid #28a745" alt="disbursement proof">
+                        </a>
+                    <?php else: ?>
+                        <a href="/<?= htmlspecialchars($req['labor_disbursement_proof']) ?>" target="_blank" class="btn btn-sm btn-outline-success">
+                            <i class="fa-solid fa-file-pdf me-1"></i> View Disbursement Proof
+                        </a>
+                    <?php endif; ?>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php endif; ?>
@@ -773,6 +833,42 @@ $remainingAmt = max(0, $approvedAmt - $totalPaidAmt);
                 <div class="mb-3"><label class="form-label">Note (Optional)</label><textarea name="management_note" class="form-control" rows="2"></textarea></div>
             </div>
             <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-sm fw-semibold" style="background:#fd7e14;color:#fff">Approve Remaining</button></div>
+        </div>
+    </form></div>
+</div>
+<?php endif; ?>
+
+<!-- SE: Labour Disbursement Confirmation Modal -->
+<?php if ($st === 'paid' && $isSE): ?>
+<div class="modal fade" id="disbursementModal" tabindex="-1">
+    <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-labor-disbursed/<?php echo $req['id']; ?>" method="POST" enctype="multipart/form-data">
+        <div class="modal-content">
+            <div class="modal-header bg-primary bg-opacity-10">
+                <h5 class="modal-title text-primary"><i class="fa-solid fa-hand-holding-dollar me-2"></i>Confirm Labour Payment Disbursement</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info py-2 fs-12 mb-3">
+                    <strong><?= $req['labor_count'] ?> জন Labour</strong>-কে মোট
+                    <strong>৳ <?= number_format((float)($req['total_paid'] ?? $req['approved_amount'] ?? 0), 2) ?></strong>
+                    payment দিয়েছেন বলে confirm করছেন।
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Payment Proof / Receipt <span class="text-danger">*</span></label>
+                    <input type="file" name="disbursement_proof" class="form-control" accept="image/*,.pdf" required>
+                    <div class="form-text">Labour payment-এর ছবি, receipt বা acknowledgment upload করুন</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Note (Optional)</label>
+                    <textarea name="disbursement_note" class="form-control" rows="2" placeholder="e.g. Cash paid to all labourers on site..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm fw-semibold">
+                    <i class="fa-solid fa-check me-1"></i> Confirm Disbursement
+                </button>
+            </div>
         </div>
     </form></div>
 </div>
