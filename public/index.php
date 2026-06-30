@@ -98,6 +98,9 @@ $routes = [
     "delete-user" => ["controller" => "UserController", "method" => "delete"],
     // User Activity Log (Admin / Management only)
     "user-activity-log" => ["controller" => "UserActivityLogController", "method" => "index"],
+    "user-activity-log/employees-by-dept" => ["controller" => "UserActivityLogController", "method" => "employeesByDept"],
+    "user-activity-log/employee-summary"  => ["controller" => "UserActivityLogController", "method" => "employeeSummary"],
+
     "my-dashboard" => ["controller" => "UserDashboardController", "method" => "dashboard"],
     "today-leads" => ["controller" => "UserDashboardController", "method" => "todayLead"],
     "update-call-status" => ["controller" => "UserDashboardController", "method" => "updateCallStatus"],
@@ -1036,8 +1039,9 @@ $routes['con-labor-req-pm-pay-approve/(\d+)']        = ['controller' => 'Phase2\
 $routes['con-labor-req-pm-pay-reject/(\d+)']         = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'pmPaymentReject'];
 $routes['con-labor-req-mgmt-approve/(\d+)']          = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'managementApprove'];
 $routes['con-labor-req-mgmt-reject/(\d+)']           = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'managementReject'];
-$routes['con-labor-req-mark-paid/(\d+)']             = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'markPaid'];
-$routes['con-labor-req-mgmt-approve-remaining/(\d+)'] = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'mgmtApproveRemaining'];
+$routes['con-labor-req-mark-paid/(\d+)']              = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'markPaid'];
+$routes['con-labor-req-mgmt-approve-remaining/(\d+)']  = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'mgmtApproveRemaining'];
+$routes['con-labor-req-labor-disbursed/(\d+)']         = ['controller' => 'Phase2\\Con_LaborRequisitionController', 'method' => 'markLaborDisbursed'];
 
 // â”€â”€ Materials / Inventory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $routes['con-materials']               = ['controller' => 'Phase2\Con_MaterialController', 'method' => 'index'];

@@ -331,4 +331,40 @@ class Con_LaborRequisitionController extends Controller
         header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisition/' . $id);
         exit;
     }
+
+    // =========================================================================
+    // SE: CONFIRM LABOUR DISBURSEMENT
+    // =========================================================================
+    public function markLaborDisbursed($id)
+    {
+        if (!$this->isSiteEngineer()) {
+            $_SESSION['error'] = 'Access denied.';
+            $this->back($id);
+        }
+
+        // Handle proof image upload
+        $proof = null;
+        if (!empty($_FILES['disbursement_proof']['name'])) {
+            $uploadDir = 'public/uploads/labor_disbursement_proofs/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $ext     = strtolower(pathinfo($_FILES['disbursement_proof']['name'], PATHINFO_EXTENSION));
+            $allowed = ['jpg', 'jpeg', 'png', 'gif', 'pdf'];
+            if (in_array($ext, $allowed)) {
+                $name = 'DISB-' . (int)$id . '-' . time() . '.' . $ext;
+                if (move_uploaded_file($_FILES['disbursement_proof']['tmp_name'], $uploadDir . $name)) {
+                    $proof = $uploadDir . $name;
+                }
+            }
+        }
+
+        $note   = trim($_POST['disbursement_note'] ?? '');
+        $result = $this->model->markLaborDisbursed((int)$id, $this->userId, $proof, $note);
+
+        if ($result) {
+            $_SESSION['success'] = '✅ Labour payment disbursement confirmed successfully!';
+        } else {
+            $_SESSION['error'] = 'Could not confirm disbursement. Requisition may not be in paid status.';
+        }
+        $this->back($id);
+    }
 }
