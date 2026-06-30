@@ -22,6 +22,7 @@
                                        <th style="min-width:60px;">S/L</th>
                                        <th style="min-width: 120px;">Lead Date</th>
                                        <th style="min-width: 160px;">Lead Name</th>
+                                       <th style="min-width: 140px;">Address</th>
                                        <th style="min-width: 180px;">Project Campaign</th>
                                        <th style="min-width: 200px;">Last Follow Up Project</th>
                                        <th style="min-width: 160px;">Change Client Action</th>
@@ -59,6 +60,11 @@
                                                 }
                                                 ?>
                                                <a href="https://wa.me/<?= $phone ?>" target="_blank"><?= $phone ?></a>
+                                           </td>
+
+                                           <!-- Address -->
+                                           <td>
+                                               <span class="fs-12"><?= htmlspecialchars(!empty($lead['address']) ? $lead['address'] : ($lead['city'] ?? '—')) ?></span>
                                            </td>
 
                                            <!-- Project Campaign -->

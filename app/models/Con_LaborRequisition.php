@@ -58,7 +58,8 @@ class Con_LaborRequisition extends Model
                        u_qc.full_name       AS qc_approved_by_name,
                        u_pmp.full_name      AS pm_payment_approved_by_name,
                        u_mgmt.full_name     AS management_approved_by_name,
-                       u_paid.full_name     AS paid_by_name
+                       u_paid.full_name     AS paid_by_name,
+                       u_disb.full_name     AS labor_disbursed_by_name
                 FROM {$this->table} lr
                 LEFT JOIN projects p              ON p.id   = lr.project_id
                 LEFT JOIN project_phases ph       ON ph.id  = lr.phase_id
@@ -68,6 +69,7 @@ class Con_LaborRequisition extends Model
                 LEFT JOIN users u_pmp             ON u_pmp.id  = lr.pm_payment_approved_by
                 LEFT JOIN users u_mgmt            ON u_mgmt.id = lr.management_approved_by
                 LEFT JOIN users u_paid            ON u_paid.id = lr.paid_by
+                LEFT JOIN users u_disb            ON u_disb.id = lr.labor_disbursed_by
                 WHERE lr.id = ?";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $id);

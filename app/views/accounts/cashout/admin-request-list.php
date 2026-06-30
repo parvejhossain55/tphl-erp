@@ -407,6 +407,80 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
+
+                                <!-- Labour Requisition Payment Rows -->
+                                <?php foreach ($labourPayments ?? [] as $lr):
+                                    $lpStatusColors = [
+                                        'management_approved' => 'bg-primary',
+                                        'partially_paid'      => 'bg-warning text-dark',
+                                        'paid'                => 'bg-success',
+                                        'labor_disbursed'     => 'bg-success',
+                                    ];
+                                    $lpStatusLabels = [
+                                        'management_approved' => 'Ready to Pay',
+                                        'partially_paid'      => 'Partially Paid',
+                                        'paid'                => 'Paid',
+                                        'labor_disbursed'     => 'Disbursed',
+                                    ];
+                                    $lpSClass   = $lpStatusColors[$lr['status']] ?? 'bg-secondary';
+                                    $lpLabel    = $lpStatusLabels[$lr['status']] ?? ucfirst($lr['status']);
+                                    $paidAmt    = (float)($lr['total_paid'] > 0 ? $lr['total_paid'] : ($lr['paid_amount'] ?? 0));
+                                    $approvedAmt= (float)($lr['approved_amount'] ?? $lr['total_amount'] ?? 0);
+                                    $dueAmt     = max(0, $approvedAmt - $paidAmt);
+                                ?>
+                                <tr style="border-left: 3px solid #ffc107;">
+                                    <td>
+                                        <span class="badge bg-warning text-dark">Labour Pay</span>
+                                        <div class="fs-10 text-muted"><?= htmlspecialchars($lr['requisition_no']) ?></div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div>
+                                                <strong><?= htmlspecialchars($lr['requested_by_name'] ?? '—') ?></strong>
+                                                <br><small class="text-muted">Site Engineer</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width:200px" title="<?= htmlspecialchars($lr['purpose'] ?? '') ?>">
+                                            <?= htmlspecialchars($lr['labor_type'] ?? '') ?> — <?= $lr['labor_count'] ?> Labour
+                                            <div class="fs-10 text-muted"><?= htmlspecialchars($lr['project_name'] ?? '') ?></div>
+                                        </div>
+                                    </td>
+                                    <td><strong class="text-primary">TK.<?= number_format((float)($lr['total_amount'] ?? 0), 2) ?></strong></td>
+                                    <td>
+                                        <?php if ($approvedAmt > 0): ?>
+                                            <strong class="text-success">TK.<?= number_format($approvedAmt, 2) ?></strong>
+                                        <?php else: echo '<span class="text-muted">—</span>'; endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($dueAmt > 0): ?>
+                                            <span class="text-danger fw-bold">TK.<?= number_format($dueAmt, 2) ?></span>
+                                        <?php else: ?>
+                                            <span class="text-success fw-bold">Settled</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <span class="badge <?= $lpSClass ?> fs-10"><?= $lpLabel ?></span>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($lr['paid_by_name'])): ?>
+                                            <small><?= htmlspecialchars($lr['paid_by_name']) ?></small><br>
+                                            <small class="text-muted"><?= !empty($lr['payment_date']) ? date('d M, Y', strtotime($lr['payment_date'])) : '' ?></small>
+                                        <?php else: echo '<span class="text-muted">—</span>'; endif; ?>
+                                    </td>
+                                    <td><small class="text-muted"><?= date('d M, Y', strtotime($lr['requisition_date'])) ?></small></td>
+                                    <td>
+                                        <div class="d-flex gap-1">
+                                            <a href="<?= $GLOBALS['base_url'] ?>/con-labor-requisition/<?= $lr['id'] ?>"
+                                               class="btn btn-sm btn-info" title="View Labour Requisition">
+                                                <i class="fa-light fa-eye"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+
                             <?php else: ?>
                                 <tr>
                                     <td colspan="9" class="text-center py-4">
@@ -546,6 +620,140 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                             <td>
                                 <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions/view/<?= $fr['id'] ?>"
                                    class="btn btn-icon btn-sm btn-info border" title="View Details & Settlement">
+                                    <i class="fa-solid fa-eye fs-11"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =====================================================================
+     LABOUR CASHOUT PAYMENTS PANEL
+     ===================================================================== -->
+<div class="container-fluid mt-4 mb-4">
+    <div class="card custom-card">
+        <div class="card-header justify-content-between align-items-center flex-wrap gap-2">
+            <div class="card-title fs-14 fw-bold mb-0">
+                <i class="fa-solid fa-hard-hat me-2 text-warning"></i>
+                Labour Cashout Payments (Site Engineers)
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <?php
+                $lpPending  = count(array_filter($labourPayments ?? [], fn($r) => $r['status'] === 'management_approved'));
+                $lpPaid     = count(array_filter($labourPayments ?? [], fn($r) => $r['status'] === 'paid'));
+                $lpDisb     = count(array_filter($labourPayments ?? [], fn($r) => $r['status'] === 'labor_disbursed'));
+                $lpPartial  = count(array_filter($labourPayments ?? [], fn($r) => $r['status'] === 'partially_paid'));
+                ?>
+                <?php if ($lpPending > 0): ?>
+                    <span class="badge bg-primary fs-11"><?= $lpPending ?> Ready to Pay</span>
+                <?php endif; ?>
+                <?php if ($lpPartial > 0): ?>
+                    <span class="badge bg-warning text-dark fs-11"><?= $lpPartial ?> Partial</span>
+                <?php endif; ?>
+                <?php if ($lpPaid > 0): ?>
+                    <span class="badge bg-success fs-11"><?= $lpPaid ?> Paid</span>
+                <?php endif; ?>
+                <?php if ($lpDisb > 0): ?>
+                    <span class="badge bg-success fs-11"><?= $lpDisb ?> Disbursed</span>
+                <?php endif; ?>
+                <a href="<?= $GLOBALS['base_url'] ?>/con-labor-requisitions" class="btn btn-sm btn-light border fs-11">
+                    View All <i class="fa-solid fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table text-nowrap table-hover mb-0 fs-12">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Req No</th>
+                            <th>Date</th>
+                            <th>Site Engineer</th>
+                            <th>Project / Phase</th>
+                            <th>Labourers</th>
+                            <th class="text-end">Approved</th>
+                            <th class="text-end">Paid (Accounts)</th>
+                            <th>Accounts Officer</th>
+                            <th>SE Disbursed</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php if (empty($labourPayments)): ?>
+                        <tr>
+                            <td colspan="11" class="text-center text-muted py-4">
+                                <i class="fa-light fa-inbox fa-2x mb-2 d-block"></i>
+                                No labour payment records found.
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($labourPayments as $lr):
+                            $lpStatusColors = [
+                                'management_approved' => 'bg-primary',
+                                'partially_paid'      => 'bg-warning text-dark',
+                                'paid'                => 'bg-success',
+                                'labor_disbursed'     => 'bg-success',
+                            ];
+                            $lpStatusLabels = [
+                                'management_approved' => '💳 Ready to Pay',
+                                'partially_paid'      => '⏳ Partial',
+                                'paid'                => '💰 Paid',
+                                'labor_disbursed'     => ' Disbursed',
+                            ];
+                            $lpSClass = $lpStatusColors[$lr['status']] ?? 'bg-secondary';
+                            $lpLabel  = $lpStatusLabels[$lr['status']] ?? ucfirst($lr['status']);
+                            $paidAmt  = (float)($lr['total_paid'] > 0 ? $lr['total_paid'] : $lr['paid_amount'] ?? 0);
+                        ?>
+                        <tr>
+                            <td class="fw-semibold"><?= htmlspecialchars($lr['requisition_no']) ?></td>
+                            <td><?= date('d M Y', strtotime($lr['requisition_date'])) ?></td>
+                            <td>
+                                <div class="fw-semibold"><?= htmlspecialchars($lr['requested_by_name'] ?? '—') ?></div>
+                                <div class="fs-10 text-muted"><?= htmlspecialchars($lr['labor_type'] ?? '') ?></div>
+                            </td>
+                            <td>
+                                <div><?= htmlspecialchars($lr['project_name'] ?? '—') ?></div>
+                                <small class="text-muted"><?= htmlspecialchars($lr['phase_name'] ?? '') ?></small>
+                            </td>
+                            <td class="text-center">
+                                <span class="fw-bold"><?= $lr['labor_count'] ?></span>
+                                <div class="fs-10 text-muted">× ৳<?= number_format($lr['per_labor_rate'],0) ?> × <?= $lr['working_days'] ?>d</div>
+                            </td>
+                            <td class="text-end fw-bold text-success">
+                                ৳ <?= number_format((float)($lr['approved_amount'] ?? $lr['total_amount']), 2) ?>
+                            </td>
+                            <td class="text-end fw-bold <?= $paidAmt > 0 ? 'text-primary' : 'text-muted' ?>">
+                                <?= $paidAmt > 0 ? '৳ ' . number_format($paidAmt, 2) : '—' ?>
+                            </td>
+                            <td>
+                                <?php if (!empty($lr['paid_by_name'])): ?>
+                                <div class="fw-semibold"><?= htmlspecialchars($lr['paid_by_name']) ?></div>
+                                <div class="fs-10 text-muted"><?= !empty($lr['payment_date']) ? date('d M Y', strtotime($lr['payment_date'])) : '' ?></div>
+                                <?php else: echo '<span class="text-muted">—</span>'; endif; ?>
+                            </td>
+                            <td>
+                                <?php if (!empty($lr['labor_disbursed_by_name'])): ?>
+                                    <span class="badge bg-success-transparent text-success fs-10">
+                                        <i class="fa-solid fa-check me-1"></i><?= htmlspecialchars($lr['labor_disbursed_by_name']) ?>
+                                    </span>
+                                    <div class="fs-10 text-muted"><?= !empty($lr['labor_disbursed_at']) ? date('d M Y', strtotime($lr['labor_disbursed_at'])) : '' ?></div>
+                                <?php else: ?>
+                                    <span class="text-muted fs-11">Pending SE</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <span class="badge <?= $lpSClass ?> fs-10"><?= $lpLabel ?></span>
+                            </td>
+                            <td>
+                                <a href="<?= $GLOBALS['base_url'] ?>/con-labor-requisition/<?= $lr['id'] ?>"
+                                   class="btn btn-icon btn-sm btn-info border" title="View Labour Requisition">
                                     <i class="fa-solid fa-eye fs-11"></i>
                                 </a>
                             </td>
