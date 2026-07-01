@@ -864,6 +864,7 @@ $routes['delete-soil-test']                     = ['controller' => 'Phase2\SoilT
 
 // â”€â”€ Dashboard + Project Detail + AJAX Tab Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $routes['con-dashboard']           = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'index'];
+$routes['api/con-dashboard/projects-progress'] = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'ajaxProjectProgress'];
 $routes['con-projects']            = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectsList'];
 $routes['con-project/(\d+)']       = ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectDetail'];
 

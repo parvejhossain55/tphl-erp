@@ -2364,9 +2364,21 @@ $statusColor = [
       <!-- Project Progress Overview -->
       <div class="col-12 col-xl-8 mb-4 mb-xl-0">
         <div class="con-panel card__wrapper h-100">
-          <div class="sec-title">
-            <div class="sec-title-dot" style="background:var(--cd-blue)"></div>
-            Project Progress Overview
+          <div class="d-flex justify-content-between align-items-center mb-3" style="flex-wrap: wrap; gap: 10px;">
+            <div class="sec-title" style="margin-bottom:0">
+              <div class="sec-title-dot" style="background:var(--cd-blue)"></div>
+              Project Progress Overview
+            </div>
+            <div>
+              <select id="card-project-filter" class="form-select form-select-sm" onchange="filterCardProjects(this.value)" style="width: 220px; font-size: 12px; border-radius: 8px; padding: 5px 10px; border: 1px solid rgba(0,0,0,.12); outline: none; background-color: var(--card-bg, #fff); color: var(--text-color, #333); font-weight: 600;">
+                <option value="">All Projects</option>
+                <?php foreach ($projects as $proj): ?>
+                  <option value="<?= $proj['id'] ?>" <?= (isset($selectedProjId) && $selectedProjId == $proj['id']) ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($proj['name']) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
           </div>
           <?php if (empty($filteredProjects)): ?>
               <div class="empty-state">
@@ -2387,8 +2399,10 @@ $statusColor = [
                               <th style="width: 2%; text-align: center;"></th>
                           </tr>
                       </thead>
-                      <tbody>
-                          <?php foreach ($filteredProjects as $pr):
+                      <tbody id="project-progress-rows">
+                          <?php 
+                          $initialFiltered = array_slice($filteredProjects, 0, 10);
+                          foreach ($initialFiltered as $pr):
                               $actual_pct = (float)($pr['overall_project_actual'] ?? $pr['progress_pct'] ?? 0.0);
                               $planned_pct = (float)($pr['overall_project_planned'] ?? $pr['planned_progress_pct'] ?? 0.0);
                               $pct = round($actual_pct, 1);
@@ -2719,6 +2733,87 @@ $statusColor = [
                   </table>
               </div>
           <?php endif; ?>
+
+          <div id="project-progress-pagination" class="d-flex justify-content-between align-items-center mt-3 pt-2" style="font-size:12px;border-top:1px solid rgba(0,0,0,.05); <?= empty($filteredProjects) ? 'display: none !important;' : '' ?>">
+            <span id="proj-page-info" style="color:var(--text-muted)">Showing 1-<?= min(10, count($filteredProjects)) ?> of <?= count($filteredProjects) ?> projects</span>
+            <div class="btn-group">
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="proj-prev-btn" disabled onclick="changeProjPage(-1)" style="padding: 2px 8px; font-size: 11px;">Previous</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary ms-1" id="proj-next-btn" <?= count($filteredProjects) <= 10 ? 'disabled' : '' ?> onclick="changeProjPage(1)" style="padding: 2px 8px; font-size: 11px;">Next</button>
+            </div>
+          </div>
+
+          <script>
+          let currentProjPage = 1;
+          let currentProjLimit = 10;
+          let currentProjTotal = <?= count($filteredProjects) ?>;
+          let currentProjPages = Math.ceil(currentProjTotal / currentProjLimit);
+          let activeFilterProjId = '<?= htmlspecialchars($selectedProjId ?? "") ?>';
+
+          function loadCardProjects(page, projId) {
+              if (page < 1) return;
+              
+              const listContainer = document.getElementById('project-progress-rows');
+              listContainer.style.opacity = '0.5';
+              
+              let url = `<?= $base ?>/api/con-dashboard/projects-progress?page=${page}`;
+              if (projId) {
+                  url += `&project_id=${projId}`;
+              }
+              
+              fetch(url)
+                  .then(response => response.json())
+                  .then(data => {
+                      listContainer.innerHTML = data.html;
+                      listContainer.style.opacity = '1';
+                      
+                      currentProjPage = data.page;
+                      currentProjTotal = data.totalProjects;
+                      currentProjPages = data.totalPages;
+                      activeFilterProjId = projId;
+                      
+                      // Update page info
+                      const start = currentProjTotal > 0 ? (currentProjPage - 1) * currentProjLimit + 1 : 0;
+                      const end = Math.min(currentProjPage * currentProjLimit, currentProjTotal);
+                      
+                      const paginationContainer = document.getElementById('project-progress-pagination');
+                      if (currentProjTotal === 0) {
+                          paginationContainer.style.display = 'none';
+                      } else {
+                          paginationContainer.style.display = 'flex';
+                          document.getElementById('proj-page-info').textContent = `Showing ${start}-${end} of ${currentProjTotal} projects`;
+                          
+                          // Enable/disable buttons
+                          document.getElementById('proj-prev-btn').disabled = (currentProjPage === 1 || currentProjPages <= 1);
+                          document.getElementById('proj-next-btn').disabled = (currentProjPage === currentProjPages || currentProjPages <= 1);
+                      }
+                      
+                      // Re-initialize Bootstrap popovers
+                      if (typeof bootstrap !== 'undefined' && bootstrap.Popover) {
+                          const popoverTriggerList = [].slice.call(listContainer.querySelectorAll('[data-bs-toggle="popover"]'));
+                          popoverTriggerList.map(function (popoverTriggerEl) {
+                              return new bootstrap.Popover(popoverTriggerEl, {
+                                  html: true,
+                                  trigger: 'hover'
+                              });
+                          });
+                      }
+                  })
+                  .catch(error => {
+                      console.error('Error fetching paginated projects:', error);
+                      listContainer.style.opacity = '1';
+                  });
+          }
+
+          function changeProjPage(direction) {
+              const newPage = currentProjPage + direction;
+              if (newPage < 1 || newPage > currentProjPages) return;
+              loadCardProjects(newPage, activeFilterProjId);
+          }
+
+          function filterCardProjects(projId) {
+              loadCardProjects(1, projId);
+          }
+          </script>
         </div>
       </div>
 

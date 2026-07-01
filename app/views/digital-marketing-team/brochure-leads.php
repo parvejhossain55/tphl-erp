@@ -249,6 +249,8 @@
                             
                             if (key === 'property_id') {
                                 newRow['property_name'] = projectsMap[row[key]] || (row[key] ? `ID: ${row[key]}` : 'N/A');
+                            } else if (key === 'created_at') {
+                                newRow['created_at'] = row[key] ? new Date(row[key]).toLocaleString() : '';
                             } else {
                                 newRow[key] = row[key];
                             }

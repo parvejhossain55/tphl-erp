@@ -280,7 +280,8 @@
                                 <th style="min-width: 160px;" class="text-center">Communtication Type</th>
                                 <th style="min-width: 160px;" class="text-center">Lead Status</th>
                                 <th style="min-width: 130px;" class="text-center">Follow Up Status</th>
-                                <th style="min-width: 250px;" class="text-center">Communicate Note</th>
+                                <th style="min-width: 250px;" class="text-center">First Call Note</th>
+                                <th style="min-width: 250px;" class="text-center">Last Follow Up Note</th>
                                 <th style="min-width: 140px;">Next Follow-Up</th>
                                 <th style="min-width: 180px;">Action</th>
                             </tr>
@@ -514,15 +515,26 @@
                                         </span>
                                     </td>
 
+                                    <!-- First Call Note -->
+                                    <td class="note-cell">
+                                        <div class="note-wrapper" style="display: flex; gap: 5px; align-items: center;">
+                                            <textarea
+                                                class="call-note"
+                                                data-id="<?= $lead['id'] ?>"
+                                                placeholder="Write call note..."
+                                                style="min-height: 38px; max-height: 38px; font-size: 0.8rem; padding: 5px 8px; border: 1px solid #ddd; border-radius: 5px; resize: none; flex: 1;"><?= htmlspecialchars($lead['call_note'] ?? '') ?></textarea>
+                                            <button type="button" class="btn btn-success btn-sm note-save-btn" data-id="<?= $lead['id'] ?>" style="padding: 5px 10px; font-size: 0.75rem; height: 38px;">Save</button>
+                                        </div>
+                                    </td>
+
                                     <!-- Interactive Note -->
                                     <td class="note-cell">
                                         <div class="note-wrapper">
                                             <textarea
-                                                class="call-note"
-                                                data-id="<?= $lead['id'] ?>"
+                                                class="last-followup-note"
                                                 placeholder="No follow-up note yet..."
                                                 readonly
-                                                style="background:#f8f9fa; cursor:default;"><?= htmlspecialchars($lead['last_follow_up_note'] ?? '') ?></textarea>
+                                                style="background:#f8f9fa; cursor:default; min-height: 38px; max-height: 38px; font-size: 0.8rem; padding: 5px 8px; border: 1px solid #ddd; border-radius: 5px; resize: none; flex: 1;"><?= htmlspecialchars($lead['last_follow_up_note'] ?? '') ?></textarea>
                                         </div>
                                     </td>
 
@@ -796,9 +808,18 @@
                     </span>
                 </div>
 
-                <!-- Last Follow-up Communicate Note (read-only) -->
+                <!-- First Call Note (editable) -->
                 <div class="mt-2">
-                    <label class="info-label d-block mb-1">Communicate Note</label>
+                    <label class="info-label d-block mb-1">First Call Note</label>
+                    <textarea class="form-control call-note" data-id="<?= $lead['id'] ?>"
+                        placeholder="Write call note..."
+                        style="font-size:12px;"><?= htmlspecialchars($lead['call_note'] ?? '') ?></textarea>
+                    <button type="button" class="btn btn-sm btn-success mt-1 note-save-btn" data-id="<?= $lead['id'] ?>">Save</button>
+                </div>
+
+                <!-- Last Follow-up Note (read-only) -->
+                <div class="mt-2">
+                    <label class="info-label d-block mb-1">Last Follow Up Note</label>
                     <textarea class="form-control" rows="2"
                         placeholder="No follow-up note yet..."
                         readonly
@@ -930,44 +951,50 @@
 </script>
 <!-- assigned user select  -->
 <script>
-    document.getElementById('assignUserBtn').addEventListener('click', function() {
-        const userId = document.getElementById('assignUserSelect').value;
-        const selectedLeads = [];
+    const assignUserBtn = document.getElementById('assignUserBtn');
+    if (assignUserBtn) {
+        assignUserBtn.addEventListener('click', function() {
+            const userId = document.getElementById('assignUserSelect').value;
+            const selectedLeads = [];
 
-        document.querySelectorAll('.selectedId:checked').forEach(cb => {
-            const tr = cb.closest('tr');
-            if (tr) selectedLeads.push(tr.dataset.id || tr.querySelector('.selectedId').dataset.id);
+            document.querySelectorAll('.selectedId:checked').forEach(cb => {
+                const tr = cb.closest('tr');
+                if (tr) selectedLeads.push(tr.dataset.id || tr.querySelector('.selectedId').dataset.id);
+            });
+
+            // If nothing selected, just return
+            if (!userId || selectedLeads.length === 0) {
+                return; // no alert
+            }
+
+            // Create a form dynamically and submit
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '<?= $base_url ?>/assign-multiple-leads';
+
+            const inputUser = document.createElement('input');
+            inputUser.type = 'hidden';
+            inputUser.name = 'user_id';
+            inputUser.value = userId;
+            form.appendChild(inputUser);
+
+            const inputLeads = document.createElement('input');
+            inputLeads.type = 'hidden';
+            inputLeads.name = 'lead_ids';
+            inputLeads.value = selectedLeads.join(',');
+            form.appendChild(inputLeads);
+
+            document.body.appendChild(form);
+            form.submit();
         });
-
-        // If nothing selected, just return
-        if (!userId || selectedLeads.length === 0) {
-            return; // no alert
-        }
-
-        // Create a form dynamically and submit
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '<?= $base_url ?>/assign-multiple-leads';
-
-        const inputUser = document.createElement('input');
-        inputUser.type = 'hidden';
-        inputUser.name = 'user_id';
-        inputUser.value = userId;
-        form.appendChild(inputUser);
-
-        const inputLeads = document.createElement('input');
-        inputLeads.type = 'hidden';
-        inputLeads.name = 'lead_ids';
-        inputLeads.value = selectedLeads.join(',');
-        form.appendChild(inputLeads);
-
-        document.body.appendChild(form);
-        form.submit();
-    });
+    }
 </script>
 
 
 <script>
+    if (typeof base_url === 'undefined') {
+        var base_url = "<?= $GLOBALS['base_url'] ?>";
+    }
     const selectAll = document.getElementById('selectAllLeads');
     const assignCard = document.getElementById('assignCard');
 
@@ -1050,7 +1077,7 @@
     document.querySelectorAll('.note-save-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const leadId = this.dataset.id;
-            const textarea = document.querySelector('.call-note[data-id="' + leadId + '"]');
+            const textarea = this.parentElement.querySelector('.call-note');
             saveNote(leadId, textarea.value, textarea);
         });
     });
