@@ -259,7 +259,7 @@
                     const flattenedData = selectedData.map(r => {
                         const flat = {
                             id: r.id,
-                            created_at: r.created_at
+                            created_at: r.created_at ? new Date(r.created_at).toLocaleString() : ''
                         };
                         if (r.response_json) {
                             dynamicKeys.forEach(k => {

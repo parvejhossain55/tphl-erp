@@ -715,8 +715,13 @@ class Con_DashboardController extends Controller
         return $s;
     }
 
-    private function getProjectsWithProgress(): array
+    private function getProjectsWithProgress($limit = null, $offset = null, $projectId = null): array
     {
+        $projFilterPart = "";
+        if ($projectId !== null) {
+            $projFilterPart = " AND p.id = " . (int)$projectId;
+        }
+
         $sql = "
             SELECT  p.id,
                     p.name,
@@ -749,8 +754,12 @@ class Con_DashboardController extends Controller
                 SELECT project_id, SUM(amount_paid) AS total_spent
                 FROM con_financial_transactions GROUP BY project_id
             ) spent ON spent.project_id = p.id
-            WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . "
+            WHERE p.deleted_at IS NULL AND " . $this->getProjectRoleFilter('p') . $projFilterPart . "
             ORDER BY p.id DESC";
+
+        if ($limit !== null && $offset !== null) {
+            $sql .= " LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
+        }
 
         $result = $this->db->query($sql);
         $projects = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
@@ -3283,5 +3292,404 @@ $project = $stmt->get_result()->fetch_assoc();
         }
 
         return $result;
+    }
+
+    private function bnNum($number) {
+        return (string)$number;
+    }
+
+    private function bnMonth($dateStr) {
+        if (empty($dateStr)) return '';
+        $bengaliMonths = [
+          'January' => 'জানুয়ারি', 'February' => 'ফেব্রুয়ারি', 'March' => 'মার্চ',
+          'April' => 'এপ্রিল', 'May' => 'মে', 'June' => 'জুন',
+          'July' => 'জুলাই', 'August' => 'আগস্ট', 'September' => 'সেপ্টেম্বর',
+          'October' => 'অক্টোবর', 'November' => 'নভেম্বর', 'December' => 'ডিসেম্বর'
+        ];
+        $engMonth = date('F', strtotime($dateStr));
+        return $bengaliMonths[$engMonth] ?? '';
+    }
+
+    private function fmtPct($n)
+    {
+        $n = (float)$n;
+        if ($n <= 0) return '0.0%';
+        if ($n < 0.1) return number_format($n, 3) . '%';
+        return number_format($n, 1) . '%';
+    }
+
+    private function fmtBDT($n)
+    {
+        $n = (float) $n;
+        if ($n >= 10000000)
+            return '৳' . number_format($n / 10000000, 2) . ' Cr';
+        if ($n >= 100000)
+            return '৳' . number_format($n / 100000, 2) . ' L';
+        if ($n >= 1000)
+            return '৳' . number_format($n / 1000, 1) . 'K';
+        return '৳' . number_format($n, 0);
+    }
+
+    public function ajaxProjectProgress()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        if ($page < 1) $page = 1;
+        $limit = 10;
+        $offset = ($page - 1) * $limit;
+
+        $selectedProjId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+
+        $roleFilter = $this->getProjectRoleFilter('p');
+        $projFilterPart = $selectedProjId ? " AND p.id = $selectedProjId" : "";
+        $countQuery = "SELECT COUNT(*) AS total FROM projects p WHERE p.deleted_at IS NULL AND {$roleFilter} {$projFilterPart}";
+        $rCount = $this->db->query($countQuery);
+        $totalProjects = $rCount ? (int)$rCount->fetch_assoc()['total'] : 0;
+        $totalPages = ceil($totalProjects / $limit);
+
+        $projects = $this->getProjectsWithProgress($limit, $offset, $selectedProjId);
+
+        $html = '';
+        if (empty($projects)) {
+            $html .= '<tr>
+                        <td colspan="7" class="empty-state" style="text-align: center; padding: 30px;">
+                            <div class="empty-state-icon"><i class="fal fa-chart-bar"></i></div>
+                            <div class="empty-state-text" style="color:var(--text-muted)">No projects found</div>
+                        </td>
+                      </tr>';
+        } else {
+            $base = $GLOBALS['base_url'];
+            foreach ($projects as $pr) {
+                $actual_pct = (float)($pr['overall_project_actual'] ?? $pr['progress_pct'] ?? 0.0);
+                $planned_pct = (float)($pr['overall_project_planned'] ?? $pr['planned_progress_pct'] ?? 0.0);
+                $pct = round($actual_pct, 1);
+                $plPct = round($planned_pct, 1);
+
+                if ($pr['project_status'] === 'Completed') {
+                    $status = 'Completed';
+                } elseif ($pr['project_status'] === 'Planning' || ($actual_pct == 0 && $planned_pct == 0)) {
+                    $status = 'Planning';
+                } else {
+                    $gap = $planned_pct - $actual_pct;
+                    if ($gap <= 5) {
+                        $status = 'On Track';
+                    } elseif ($gap <= 15) {
+                        $status = 'At Risk';
+                    } else {
+                        $status = 'Delayed';
+                    }
+                }
+
+                $isPhaseBased = ($pr['workflow_version'] ?? '') === 'phase_based';
+
+                $statusClass = 'status-planning';
+                if ($status === 'On Track') $statusClass = 'status-ontrack';
+                elseif ($status === 'At Risk') $statusClass = 'status-atrisk';
+                elseif ($status === 'Delayed') $statusClass = 'status-delayed';
+                elseif ($status === 'Completed') $statusClass = 'status-completed';
+
+                $detailUrl = ($isPhaseBased) 
+                    ? $base . '/con-project-timeline/' . $pr['id'] 
+                    : $base . '/con-project/' . $pr['id'];
+
+                $budgetPct = $pr['total_budget'] > 0 ? round(($pr['total_spent'] / $pr['total_budget']) * 100) : 0;
+
+                $plaLines = [];
+                $actLines = [];
+                if (!empty($pr['phases'])) {
+                    foreach ($pr['phases'] as $phase) {
+                        if ((float)$phase['total_boq'] > 0) {
+                            $phName = $phase['phase_name'];
+                            $phWeight = (float)$phase['phase_weight'];
+                            
+                            $targetMonthBn = 'জুনের';
+                            if (!empty($phase['target_month'])) {
+                                $bnMonth = $this->bnMonth($phase['target_month']);
+                                $targetMonthBn = ($bnMonth === 'জুন') ? 'জুনের' : $bnMonth . ' মাসের';
+                            }
+                            
+                            $phPlannedVal = (float)$phase['phase_planned_weighted_pct'];
+                            $phPlannedContrib = $phPlannedVal * ($phWeight / 100);
+                            if ($phPlannedVal > 0) {
+                                $bnWeight = $this->bnNum(round($phWeight, 1));
+                                $bnPlanned = $this->bnNum(round($phPlannedVal, 1));
+                                $bnPlannedContrib = $this->bnNum(round($phPlannedContrib, 1));
+                                $plaLines[] = "{$phName} ফেজের {$targetMonthBn} নিজস্ব প্ল্যান ({$bnPlanned}%) × প্রজেক্টে এই ফেজের গুরুত্ব ({$bnWeight}%) = {$bnPlannedContrib}%";
+                            }
+                            
+                            $phActualVal = (float)$phase['phase_actual_weighted_pct'];
+                            $phActualContrib = $phActualVal * ($phWeight / 100);
+                            if ($phActualVal > 0) {
+                                $bnWeight = $this->bnNum(round($phWeight, 1));
+                                $bnActual = $this->bnNum(round($phActualVal, 2));
+                                $bnActualContrib = $this->bnNum(round($phActualContrib, 2));
+                                $actLines[] = "{$phName} ফেজের {$targetMonthBn} নিজস্ব প্রকৃত অগ্রগতি ({$bnActual}%) × প্রজেক্টে এই ফেজের গুরুত্ব ({$bnWeight}%) = {$bnActualContrib}%";
+                            }
+                        }
+                    }
+                }
+
+                $formattedPla = ($planned_pct > 0 && $planned_pct < 0.1) ? number_format($planned_pct, 3) : number_format($planned_pct, 1);
+                $formattedAct = ($actual_pct > 0 && $actual_pct < 0.1) ? number_format($actual_pct, 3) : number_format($actual_pct, 1);
+
+                $plaPopoverContent = "<strong>ℹ️ সামগ্রিক পরিকল্পিত অগ্রগতি (Overall Planned):</strong><br/>"
+                                   . (empty($plaLines) ? "কোনো পরিকল্পিত অগ্রগতি নেই।" : "হিসাব: " . implode(" + ", $plaLines) . " = " . $this->bnNum($formattedPla) . "% (পুরো প্রজেক্টের সাপেক্ষে)");
+                                   
+                $actPopoverContent = "<strong>ℹ️ সামগ্রিক প্রকৃত অগ্রগতি (Overall Actual):</strong><br/>"
+                                   . (empty($actLines) ? "কোনো প্রকৃত অগ্রগতি নেই।" : "হিসাব: " . implode(" + ", $actLines) . " = " . $this->bnNum($formattedAct) . "% (পুরো প্রজেক্টের সাপেক্ষে)");
+
+                $currentPhaseName = 'N/A';
+                $currentPhaseSub = 'No active phases';
+                if (!empty($pr['phases'])) {
+                    $totalPhases = count($pr['phases']);
+                    $currentPhaseIdx = 1;
+                    foreach ($pr['phases'] as $idx => $phase) {
+                        if ((float)$phase['phase_actual_pct'] < 100) {
+                            $currentPhaseName = $phase['phase_name'];
+                            $currentPhaseIdx = $idx + 1;
+                            break;
+                        }
+                    }
+                    if ($currentPhaseName === 'N/A') {
+                        $lastPhase = end($pr['phases']);
+                        $currentPhaseName = $lastPhase['phase_name'];
+                        $currentPhaseIdx = $totalPhases;
+                    }
+                    $currentPhaseSub = "Phase " . $currentPhaseIdx . " of " . $totalPhases;
+                }
+
+                $colors = ['#4f46e5', '#0891b2', '#0d9488', '#ea580c', '#e11d48', '#2563eb'];
+                $gradColor = $colors[$pr['id'] % count($colors)];
+
+                $thumbnailHtml = '';
+                if (!empty($pr['image'])) {
+                    $thumbnailHtml = '<div style="width: 42px; height: 42px; border-radius: 8px; overflow: hidden; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                                        <img src="' . getImage('projects', $pr['image']) . '" alt="' . htmlspecialchars($pr['name']) . '" style="width: 100%; height: 100%; object-fit: cover;">
+                                      </div>';
+                } else {
+                    $thumbnailHtml = '<div style="width: 42px; height: 42px; border-radius: 8px; background: linear-gradient(135deg, ' . $gradColor . ', ' . $gradColor . 'dd); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                                        <i class="fa-solid fa-building"></i>
+                                      </div>';
+                }
+
+                $phaseEyeBtn = '';
+                if (!empty($pr['phases'])) {
+                    $phaseEyeBtn = '<button onclick="event.stopPropagation(); togglePhaseItems(\'phases-breakdown-' . $pr['id'] . '\', this.querySelector(\'i\'))" 
+                                            style="border: none; background: transparent; padding: 4px; color: #94a3b8; cursor: pointer; transition: color 0.15s; outline: none;">
+                                        <i class="fa-solid fa-eye" style="font-size: 13px;"></i>
+                                    </button>';
+                } else {
+                    $phaseEyeBtn = '<span style="width: 19px; display: inline-block;"></span>';
+                }
+
+                $handoverHtml = 'Timeline unset';
+                if ($pr['expected_handover_date']) {
+                    $diff = time() - strtotime($pr['expected_handover_date']);
+                    $months = abs(round($diff / (60 * 60 * 24 * 30)));
+                    if ($diff < 0) {
+                        $handoverHtml = "In $months m";
+                    } else {
+                        $handoverHtml = "$months m ago";
+                    }
+                }
+
+                $phaseBreakdownHtml = '';
+                if (!empty($pr['phases'])) {
+                    $phaseBreakdownRows = '';
+                    foreach ($pr['phases'] as $phase) {
+                        $phWeight = (float)$phase['phase_weight'];
+                        $phaseActualProgress = (float)$phase['phase_actual_pct'];
+                        $phaseContribution = (float)$phase['phase_contribution'];
+
+                        $totalApprovedVal = (float)$phase['total_approved_qty'];
+                        $totalBOQVal = (float)$phase['total_boq'];
+                        
+                        $phaseProgressTooltip = "<strong>ℹ️ ফেজের নিজস্ব অগ্রগতি (Phase Internal Progress):</strong><br/>"
+                                              . "সূত্র: (অনুমোদিত কাজের ভলিউম ÷ মোট ফেজ BOQ) × ১০০<br/>"
+                                              . "হিসাব: (" . $this->bnNum(number_format($totalApprovedVal)) . " CFT ÷ " . $this->bnNum(number_format($totalBOQVal)) . " CFT) × ১০০ = " . $this->bnNum(number_format(round($phaseActualProgress, 1), 1)) . "%";
+
+                        $phaseProgressVal2 = number_format($phaseActualProgress, 2); 
+                        $phaseWeightVal = number_format($phWeight, 1); 
+                        $phaseContributionVal = number_format($phaseContribution, 2); 
+                        
+                        $phaseContributionTooltip = "<strong>ℹ️ প্রজেক্টে এই ফেজের অবদান (Project Contribution):</strong><br/>"
+                                                  . "সূত্র: ফেজের বর্তমান প্রগ্রেস (" . $this->bnNum($phaseProgressVal2) . "%) × (ফেজ ওয়েট " . $this->bnNum($phaseWeightVal) . " ÷ ১০০) = " . $this->bnNum($phaseContributionVal) . "%";
+
+                        $subitemsToggle = '';
+                        if (!empty($phase['items'])) {
+                            $subitemsToggle = '<i class="fa-solid fa-chevron-right phase-toggle-icon" 
+                                               onclick="event.stopPropagation(); togglePhaseItems(\'subitems-' . $pr['id'] . '-' . $phase['phase_id'] . '\', this)" 
+                                               style="cursor: pointer; font-size: 9px; width: 12px; color: #198754; transition: transform 0.15s; display: inline-block;"></i>';
+                        } else {
+                            $subitemsToggle = '<span style="width: 12px; display: inline-block;"></span>';
+                        }
+
+                        $subitemsHtml = '';
+                        if (!empty($phase['items'])) {
+                            $subitemsRows = '';
+                            foreach ($phase['items'] as $item) {
+                                $itemWeight = (float)$item['item_weight'];
+                                $itemActualPct = (float)$item['item_actual_pct'];
+                                $itemProjWeight = ($itemWeight / 100) * $phWeight;
+                                $itemActWeightVal = ($itemActualPct / 100) * $itemProjWeight;
+
+                                $qtyUsageHtml = '';
+                                if (!empty($item['qty_usage_text'])) {
+                                    $qtyUsageHtml = ' &middot; <span style="color: #64748b; font-weight: 500;">' . htmlspecialchars($item['qty_usage_text']) . '</span>';
+                                }
+
+                                $subitemsRows .= '
+                                    <div class="subitem-progress-row" style="display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 16px;">
+                                        <div style="font-size: 11.5px; font-weight: 600; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="' . htmlspecialchars($item['item_name']) . '">
+                                            ↳ ' . htmlspecialchars($item['item_name']) . '
+                                        </div>
+                                        <div style="width: 100%;">
+                                            <div style="font-size: 8px; font-weight: 700; display: flex; justify-content: space-between; margin-bottom: 1px;">
+                                                <span style="color:#6366f1">Item Weight: ' . number_format($itemProjWeight, 2) . '%</span>
+                                                <span style="color:#198754">
+                                                    Progress: ' . number_format($itemActualPct, 1) . '% (' . number_format($itemActWeightVal, 2) . '% project wt)' . $qtyUsageHtml . '
+                                                </span>
+                                            </div>
+                                            <div class="prog-bar-container" style="height: 4px; background: #e2e8f0; position: relative;">
+                                                <div class="prog-bar-fill-planned" style="width: ' . $itemProjWeight . '%; height: 100%; background: #6366f1; opacity: 0.15; position: absolute; left: 0;"></div>
+                                                <div class="prog-bar-fill-actual" style="width: ' . $itemActWeightVal . '%; height: 100%; background: ' . ($itemActualPct >= 100 ? '#198754' : '#f59e0b') . '; position: absolute; left: 0;"></div>
+                                            </div>
+                                        </div>
+                                    </div>';
+                            }
+                            $subitemsHtml = '<div id="subitems-' . $pr['id'] . '-' . $phase['phase_id'] . '" class="phase-items-container" style="display: none; flex-direction: column; gap: 8px; margin-left: 24px; border-left: 2px solid #e2e8f0; padding-left: 14px; margin-top: 4px; margin-bottom: 4px;">' . $subitemsRows . '</div>';
+                        }
+
+                        $phaseNameAction = '';
+                        if (!empty($phase['items'])) {
+                            $phaseNameAction = 'cursor: pointer;';
+                        }
+
+                        $phaseBreakdownRows .= '
+                            <div class="phase-progress-row" style="display: grid; grid-template-columns: 200px 1fr; align-items: center; gap: 16px;">
+                                <div style="font-size: 12px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                                     ' . $subitemsToggle . '
+                                     <span style="' . $phaseNameAction . '" 
+                                           onclick="event.stopPropagation(); ' . (!empty($phase['items']) ? 'togglePhaseItems(\'subitems-' . $pr['id'] . '-' . $phase['phase_id'] . '\', this.previousElementSibling)' : '') . '">
+                                         ' . htmlspecialchars($phase['phase_name']) . '
+                                     </span>
+                                </div>
+                                <div style="width: 100%;">
+                                    <div style="font-size: 9px; font-weight: 800; display: flex; justify-content: space-between; margin-bottom: 2px;">
+                                        <span style="color:#6366f1">Phase Weight: ' . number_format($phWeight, 1) . '%</span>
+                                        <span style="color:#198754; display: flex; align-items: center; gap: 4px;">
+                                             Contribution: ' . number_format($phaseContribution, 2) . '% 
+                                             <span style="font-size: 9px; cursor: pointer; color: #94a3b8;" data-bs-toggle="popover" data-bs-content="' . htmlspecialchars($phaseContributionTooltip) . '" onclick="event.stopPropagation();">ℹ️</span>
+                                             (' . number_format($phaseActualProgress, 1) . '% complete)
+                                             <span style="font-size: 9px; cursor: pointer; color: #94a3b8;" data-bs-toggle="popover" data-bs-content="' . htmlspecialchars($phaseProgressTooltip) . '" onclick="event.stopPropagation();">ℹ️</span>
+                                        </span>
+                                    </div>
+                                    <div class="prog-bar-container" style="height: 6px; background: #e2e8f0; position: relative;">
+                                        <div class="prog-bar-fill-planned" style="width: ' . $phWeight . '%; height: 100%; background: #6366f1; opacity: 0.15; position: absolute; left: 0;"></div>
+                                        <div class="prog-bar-fill-actual" style="width: ' . $phaseContribution . '%; height: 100%; background: ' . ($phaseActualProgress >= 100 ? '#198754' : '#f59e0b') . '; position: absolute; left: 0;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            ' . $subitemsHtml;
+                    }
+
+                    $phaseBreakdownHtml = '
+                        <tr id="phases-breakdown-' . $pr['id'] . '" class="phase-items-container" style="display: none; background: #fafbfc;">
+                            <td colspan="7" style="padding: 18px 24px; border-bottom: 1px solid rgba(0,0,0,0.05);">
+                                <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-folder-open text-primary"></i> Phase Progress Breakdown for ' . htmlspecialchars($pr['name']) . '
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 12px;">
+                                    ' . $phaseBreakdownRows . '
+                                </div>
+                            </td>
+                        </tr>';
+                }
+
+                $html .= '
+                  <tr class="project-row" onclick="window.location.href=\'' . $detailUrl . '\'" style="cursor: pointer;">
+                      <td style="padding: 14px 16px; vertical-align: middle;">
+                          <div style="display: flex; align-items: center; gap: 12px;">
+                              ' . $phaseEyeBtn . '
+                              ' . $thumbnailHtml . '
+                              <div>
+                                  <a href="' . $detailUrl . '" class="proj-title" style="font-size: 13px; font-weight: 700; text-decoration: none; display: block;">' . htmlspecialchars($pr['name']) . '</a>
+                                  <div class="proj-loc" style="font-size: 11px;  margin-top: 2px; display: flex; align-items: center; gap: 4px;">
+                                      <i class="fa-solid fa-location-dot" style="font-size: 10px;"></i>
+                                      ' . htmlspecialchars($pr['location_name'] ?: 'N/A') . '
+                                  </div>
+                              </div>
+                          </div>
+                      </td>
+                      <td style="padding: 14px 16px; vertical-align: middle;">
+                          <div style="font-weight: 700; color: #1e293b; font-size: 13px;">' . htmlspecialchars($currentPhaseName) . '</div>
+                          <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">' . $currentPhaseSub . '</div>
+                      </td>
+                      <td style="padding: 14px 16px; vertical-align: middle; min-width: 180px;">
+                          <div class="prog-compare-wrap" style="display: flex; flex-direction: column; gap: 6px;">
+                              <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                                  <span style="font-size: 10px; font-weight: 700; color: #94a3b8; min-width: 24px;">Pla</span>
+                                  <div class="prog-bar-container" style="height: 6px; flex: 1; background: #f1f5f9;">
+                                      <div class="prog-bar-fill-planned" style="width: ' . min(100, $planned_pct) . '%; height: 100%; background: #6366f1; opacity: 0.85;"></div>
+                                  </div>
+                                  <span style="font-size: 11px; font-weight: 800; color: #6366f1; min-width: 32px; text-align: right; display: flex; align-items: center; gap: 4px;">
+                                      ' . $this->fmtPct($planned_pct) . '
+                                      <span style="font-size: 10px; cursor: pointer; color: #94a3b8;" data-bs-toggle="popover" data-bs-content="' . htmlspecialchars($plaPopoverContent) . '" onclick="event.stopPropagation();">ℹ️</span>
+                                  </span>
+                              </div>
+                              <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                                  <span style="font-size: 10px; font-weight: 700; color: #94a3b8; min-width: 24px;">Act</span>
+                                  <div class="prog-bar-container" style="height: 6px; flex: 1; background: #f1f5f9;">
+                                      <div class="prog-bar-fill-actual" style="width: ' . min(100, $actual_pct) . '%; height: 100%; background: #198754;"></div>
+                                  </div>
+                                  <span style="font-size: 11px; font-weight: 800; color: #198754; min-width: 32px; text-align: right; display: flex; align-items: center; gap: 4px;">
+                                      ' . $this->fmtPct($actual_pct) . '
+                                      <span style="font-size: 10px; cursor: pointer; color: #94a3b8;" data-bs-toggle="popover" data-bs-content="' . htmlspecialchars($actPopoverContent) . '" onclick="event.stopPropagation();">ℹ️</span>
+                                  </span>
+                              </div>
+                          </div>
+                      </td>
+                      <td style="padding: 14px 16px; vertical-align: middle;">
+                          <span class="status-pill ' . $statusClass . '">
+                              <span class="status-pill-dot"></span>
+                              ' . $status . '
+                          </span>
+                      </td>
+                      <td style="padding: 14px 16px; vertical-align: middle;">
+                          <div style="font-weight: 700; color: #1e293b; font-size: 13px;">
+                              ' . ($pr['expected_handover_date'] ? date('M Y', strtotime($pr['expected_handover_date'])) : 'N/A') . '
+                          </div>
+                          <div style="font-size:11px; color: #94a3b8; margin-top:2px">
+                              ' . $handoverHtml . '
+                          </div>
+                      </td>
+                      <td style="padding: 14px 16px; vertical-align: middle;">
+                          <div style="font-weight: 700; color: #1e293b; font-size: 13px;">' . $this->fmtBDT($pr['total_spent']) . '</div>
+                          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px;">
+                              <div class="prog-bar-container" style="height: 4px; flex: 1; background: #f1f5f9;">
+                                  <div class="prog-bar-fill-actual" style="width: ' . min(100, $budgetPct) . '%; height: 100%; background: ' . ($budgetPct > 90 ? '#ef4444' : '#198754') . ';"></div>
+                              </div>
+                              <span style="font-size: 10px; font-weight: 700; color: #64748b; min-width: 26px; text-align: right;">' . $budgetPct . '%</span>
+                          </div>
+                      </td>
+                      <td style="padding: 14px 16px; vertical-align: middle; text-align: center;">
+                          <button style="border: none; background: transparent; color: #94a3b8; cursor: pointer; padding: 4px; font-size: 14px; outline: none;" 
+                                  onclick="event.stopPropagation(); window.location.href=\'' . $detailUrl . '\'">
+                              <i class="fa-solid fa-ellipsis-vertical"></i>
+                          </button>
+                      </td>
+                  </tr>
+                  ' . $phaseBreakdownHtml;
+            }
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'html' => $html,
+            'page' => $page,
+            'totalPages' => $totalPages,
+            'totalProjects' => $totalProjects
+        ]);
+        exit;
     }
 }
