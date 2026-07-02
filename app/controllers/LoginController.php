@@ -61,47 +61,52 @@ class LoginController extends Controller
                     $user = $this->userModel->getByEmail($email);
 
                     if ($user && password_verify($password, $user['password'])) {
-                        // Clear login attempts for this IP / email upon successful login
-                        $stmtClear = $this->db->prepare("DELETE FROM login_attempts WHERE ip_address = ? OR username = ?");
-                        $stmtClear->bind_param("ss", $ip, $email);
-                        $stmtClear->execute();
-                        $stmtClear->close();
+                        // Check if employee status is inactive, resigned, or terminated
+                        if (!empty($user['employee_status']) && in_array(strtolower($user['employee_status']), ['inactive', 'resigned', 'terminated'])) {
+                            $message = "Your employee status is " . ucfirst($user['employee_status']) . ". Access denied!";
+                        } else {
+                            // Clear login attempts for this IP / email upon successful login
+                            $stmtClear = $this->db->prepare("DELETE FROM login_attempts WHERE ip_address = ? OR username = ?");
+                            $stmtClear->bind_param("ss", $ip, $email);
+                            $stmtClear->execute();
+                            $stmtClear->close();
 
-                        // Garbage collection: Delete logs older than 1 hour
-                        $this->db->query("DELETE FROM login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+                            // Garbage collection: Delete logs older than 1 hour
+                            $this->db->query("DELETE FROM login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)");
 
-                        session_regenerate_id(true);
+                            session_regenerate_id(true);
 
-                        // Log user activity session
-                        $userId = $user['id'];
-                        $sessionId = session_id();
-                        $currentTime = date('Y-m-d H:i:s');
-                        $stmtAct = $this->db->prepare("INSERT INTO user_activity_logs (user_id, login_time, last_active_time, session_id) VALUES (?, ?, ?, ?)");
-                        $stmtAct->bind_param("isss", $userId, $currentTime, $currentTime, $sessionId);
-                        $stmtAct->execute();
-                        $_SESSION['activity_log_id'] = $stmtAct->insert_id;
-                        $stmtAct->close();
+                            // Log user activity session
+                            $userId = $user['id'];
+                            $sessionId = session_id();
+                            $currentTime = date('Y-m-d H:i:s');
+                            $stmtAct = $this->db->prepare("INSERT INTO user_activity_logs (user_id, login_time, last_active_time, session_id) VALUES (?, ?, ?, ?)");
+                            $stmtAct->bind_param("isss", $userId, $currentTime, $currentTime, $sessionId);
+                            $stmtAct->execute();
+                            $_SESSION['activity_log_id'] = $stmtAct->insert_id;
+                            $stmtAct->close();
 
-                        $_SESSION['user'] = [
-                            "id" => $user['id'],
-                            "full_name" => $user['full_name'],
-                            "user_name" => $user['user_name'],
-                            "email" => $user['email'],
-                            "role_id" => $user['role_id'],
-                            "team_id" => $user['emp_team_id'] ?? $user['team_id'] ?? null,
-                            "employee_id" => $user['employee_id'] ?? null,
-                            "role_name" => strtolower($user['role_name'] ?? ''),
-                            "designation_name" => strtolower($user['designation_name'] ?? ''),
-                            "department_name" => strtolower($user['department_name'] ?? ''),
-                            "department_id" => $user['department_id'] ?? null,
-                            "designation_id" => $user['designation_id'] ?? null,
-                            "is_sales_co_leader" => (int)($user['is_sales_co_leader'] ?? 0),
-                        ];
+                            $_SESSION['user'] = [
+                                "id" => $user['id'],
+                                "full_name" => $user['full_name'],
+                                "user_name" => $user['user_name'],
+                                "email" => $user['email'],
+                                "role_id" => $user['role_id'],
+                                "team_id" => $user['emp_team_id'] ?? $user['team_id'] ?? null,
+                                "employee_id" => $user['employee_id'] ?? null,
+                                "role_name" => strtolower($user['role_name'] ?? ''),
+                                "designation_name" => strtolower($user['designation_name'] ?? ''),
+                                "department_name" => strtolower($user['department_name'] ?? ''),
+                                "department_id" => $user['department_id'] ?? null,
+                                "designation_id" => $user['designation_id'] ?? null,
+                                "is_sales_co_leader" => (int)($user['is_sales_co_leader'] ?? 0),
+                            ];
 
-                        $_SESSION['user']['permissions'] =
-                            $this->userModel->getPermissionsByRole($user['role_id']);
+                            $_SESSION['user']['permissions'] =
+                                $this->userModel->getPermissionsByRole($user['role_id']);
 
-                        redirectByRole();
+                            redirectByRole();
+                        }
                     } else {
                         // Failed login attempt: Log details
                         $stmtLog = $this->db->prepare("INSERT INTO login_attempts (ip_address, username) VALUES (?, ?)");

@@ -691,6 +691,18 @@
             </select>
           </div>
 
+          <!-- From Date -->
+          <div class="col-md-2 col-6">
+            <label class="form-label small text-muted fw-semibold">From Date</label>
+            <input type="date" name="from_date" class="form-control form-control-sm" value="<?= htmlspecialchars($from_date ?? '') ?>">
+          </div>
+
+          <!-- To Date -->
+          <div class="col-md-2 col-6">
+            <label class="form-label small text-muted fw-semibold">To Date</label>
+            <input type="date" name="to_date" class="form-control form-control-sm" value="<?= htmlspecialchars($to_date ?? '') ?>">
+          </div>
+
           <!-- Sort -->
           <div class="col-md-2 col-6">
             <label class="form-label small text-muted fw-semibold">Sort</label>
@@ -875,6 +887,8 @@
     sort           : "<?= htmlspecialchars($_GET['sort']           ?? 'newest') ?>",
     contact_status : "<?= htmlspecialchars($_GET['contact_status'] ?? '') ?>",
     duplicates_only: "<?= isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1' ? '1' : '' ?>",
+    from_date      : "<?= htmlspecialchars($_GET['from_date']      ?? '') ?>",
+    to_date        : "<?= htmlspecialchars($_GET['to_date']        ?? '') ?>",
   };
 
   let dmCurrentPage = 1;
