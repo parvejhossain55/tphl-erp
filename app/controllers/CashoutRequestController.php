@@ -107,6 +107,24 @@ class CashoutRequestController extends Controller
             LIMIT 30
         ")->fetch_all(MYSQLI_ASSOC);
 
+        $labourQuery = $this->db->query("
+            SELECT lr.*,
+                   p.name            AS project_name,
+                   ph.phase_name     AS phase_name,
+                   u_se.full_name    AS requested_by_name,
+                   u_acc.full_name   AS paid_by_name,
+                   u_disb.full_name  AS labor_disbursed_by_name
+            FROM con_labor_requisitions lr
+            LEFT JOIN projects p      ON p.id   = lr.project_id
+            LEFT JOIN project_phases ph ON ph.id = lr.phase_id
+            LEFT JOIN users u_se      ON u_se.id  = lr.requested_by
+            LEFT JOIN users u_acc     ON u_acc.id = lr.paid_by
+            LEFT JOIN users u_disb    ON u_disb.id = lr.labor_disbursed_by
+            WHERE lr.status IN ('paid','labor_disbursed','partially_paid','management_approved')
+            ORDER BY lr.updated_at DESC
+            LIMIT 50
+        ");
+
         $this->view("accounts/cashout/admin-request-list", [
             "current_route"    => "admin-cashout-requests",
             "page_title"       => "Cashout Requests Management",
@@ -118,23 +136,7 @@ class CashoutRequestController extends Controller
             "isAdmin"          => true,
             "userRole"         => $this->userRole,
             "fundRequisitions" => $fundRequisitions,
-            "labourPayments"   => $this->db->query("
-                SELECT lr.*,
-                       p.name            AS project_name,
-                       ph.phase_name     AS phase_name,
-                       u_se.full_name    AS requested_by_name,
-                       u_acc.full_name   AS paid_by_name,
-                       u_disb.full_name  AS labor_disbursed_by_name
-                FROM con_labor_requisitions lr
-                LEFT JOIN projects p      ON p.id   = lr.project_id
-                LEFT JOIN project_phases ph ON ph.id = lr.phase_id
-                LEFT JOIN users u_se      ON u_se.id  = lr.requested_by
-                LEFT JOIN users u_acc     ON u_acc.id = lr.paid_by
-                LEFT JOIN users u_disb    ON u_disb.id = lr.labor_disbursed_by
-                WHERE lr.status IN ('paid','labor_disbursed','partially_paid','management_approved')
-                ORDER BY lr.updated_at DESC
-                LIMIT 50
-            ")->fetch_all(MYSQLI_ASSOC),
+            "labourPayments"   => $labourQuery ? $labourQuery->fetch_all(MYSQLI_ASSOC) : [],
         ]);
     }
 

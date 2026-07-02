@@ -548,17 +548,49 @@
            });
 
            function saveNote(leadId, note, el) {
-               fetch('<?= $base_url ?>/update-call-notes', {
-                       method: 'POST',
-                       headers: {
-                           'Content-Type': 'application/x-www-form-urlencoded'
-                       },
-                       body: 'lead_id=' + encodeURIComponent(leadId) + '&call_note=' + encodeURIComponent(note)
-                   })
-                   .then(res => res.text())
-                   .then(() => {
-                       el.style.borderColor = '#198754'; // success hint
-                       setTimeout(() => el.style.borderColor = '#ddd', 800);
-                   });
-           }
+                const url = (typeof base_url !== 'undefined' ? base_url : window.base_url || "<?= $GLOBALS['base_url'] ?>") + '/update-call-notes';
+                fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: 'lead_id=' + encodeURIComponent(leadId) + '&call_note=' + encodeURIComponent(note)
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            el.style.borderColor = '#198754'; // success hint
+                            setTimeout(() => el.style.borderColor = '#ddd', 800);
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Note saved successfully!',
+                                    toast: true,
+                                    position: 'top-end',
+                                    showConfirmButton: false,
+                                    timer: 2000,
+                                    timerProgressBar: true
+                                });
+                            }
+                        } else {
+                            throw new Error(data.error || 'Server returned failure');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error saving note:', err);
+                        el.style.borderColor = '#dc3545'; // error hint
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Failed to save note!',
+                                text: err.message,
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 3000,
+                                timerProgressBar: true
+                            });
+                        }
+                    });
+            }
        </script>
