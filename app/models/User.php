@@ -564,7 +564,8 @@ public function getUsersByTeamAndRole($teamId)
                     dept.name AS department_name, dept.id AS department_id,
                     e.id AS employee_db_id,
                     e.is_sales_co_leader,
-                    e.team_id AS emp_team_id
+                    e.team_id AS emp_team_id,
+                    e.employee_status
              FROM users u
              LEFT JOIN roles r ON u.role_id = r.id
              LEFT JOIN designations des ON u.designation_id = des.id

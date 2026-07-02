@@ -25,6 +25,8 @@ class DigitalMarketingController extends Controller
     $dateAge        = $_GET['date_age']      ?? 'all';
     $sortOrder      = $_GET['sort']           ?? 'newest';
     $duplicatesOnly = isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1';
+    $fromDate       = $_GET['from_date']     ?? '';
+    $toDate         = $_GET['to_date']       ?? '';
 
     $currentMonthFilter = $_GET['budget_month'] ?? date('Y-m') . '-01';
     if (strlen($currentMonthFilter) === 7) {
@@ -78,7 +80,7 @@ class DigitalMarketingController extends Controller
     $duplicateLeadsCount = $dupStmt ? (int)($dupStmt->fetch_assoc()['total'] ?? 0) : 0;
 
     // Total lead count
-    $totalLeads = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge);
+    $totalLeads = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate);
 
     // Contacted / Not Contacted summary counts (From Campaign only)
     $cStmt = $this->db->prepare("
@@ -129,6 +131,8 @@ class DigitalMarketingController extends Controller
         "date_age"            => $dateAge,
         "sort_order"          => $sortOrder,
         "duplicates_only"     => $duplicatesOnly,
+        "from_date"           => $fromDate,
+        "to_date"             => $toDate,
     ]);
 }
 public function storeBudget()
@@ -222,9 +226,11 @@ public function deleteBudget($id)
         $sortOrder           = $_GET['sort']           ?? 'newest';
         $duplicatesOnly      = isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1';
         $contactStatusFilter = $_GET['contact_status'] ?? '';
+        $fromDate            = $_GET['from_date']     ?? '';
+        $toDate              = $_GET['to_date']       ?? '';
 
         // Only load summary counts (not full lead list) — AJAX will fetch leads per page
-        $totalLeads    = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge);
+        $totalLeads    = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate);
         $contactedCount    = 0;
         $notContactedCount = 0;
 
@@ -283,6 +289,8 @@ public function deleteBudget($id)
             "sort_order"           => $sortOrder,
             "duplicates_only"      => $duplicatesOnly,
             "contact_status_filter"=> $contactStatusFilter,
+            "from_date"            => $fromDate,
+            "to_date"              => $toDate,
             "totalContacted"       => $contactedCount,
             "totalNotContacted"    => $notContactedCount,
             "totalLeads"           => $totalLeads,
@@ -316,13 +324,15 @@ public function deleteBudget($id)
         $duplicatesOnly = !empty($_GET['duplicates_only']);
         $search         = trim($_GET['search'] ?? '');
         $search         = $search === '' ? null : $search;
+        $fromDate       = $_GET['from_date']              ?? '';
+        $toDate         = $_GET['to_date']                ?? '';
 
         // Total count (pre-filter: no contact_status/duplicates which are post-DB)
-        $total = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, $search);
+        $total = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, $search, $fromDate, $toDate);
 
         // Fetch paginated leads
         $leads = $this->leadModel->getMarketingLeadsPaginated(
-            $teamId, $dateAge, $sortOrder, $perPage, $offset, $search
+            $teamId, $dateAge, $sortOrder, $perPage, $offset, $search, $fromDate, $toDate
         );
 
         // Phone freq map for duplicate marking

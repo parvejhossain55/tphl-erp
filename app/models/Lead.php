@@ -1249,7 +1249,7 @@ class Lead extends Model
     /**
      * Count marketing leads for AJAX pagination (mirrors getMarketingLeadsFlexible filters)
      */
-    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null)
+    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null, $fromDate = '', $toDate = '')
     {
         $sql = "SELECT COUNT(*) AS total FROM leads l WHERE l.deleted_at IS NULL AND l.uploaded_from = 'From Campaign'";
 
@@ -1262,7 +1262,20 @@ class Lead extends Model
             $types   .= "i";
         }
 
-        if ($dateFilter === 'today') {
+        if (!empty($fromDate) && !empty($toDate)) {
+            $sql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+            $params[] = $fromDate;
+            $params[] = $toDate;
+            $types   .= "ss";
+        } elseif (!empty($fromDate)) {
+            $sql .= " AND DATE(l.created_at) >= ?";
+            $params[] = $fromDate;
+            $types   .= "s";
+        } elseif (!empty($toDate)) {
+            $sql .= " AND DATE(l.created_at) <= ?";
+            $params[] = $toDate;
+            $types   .= "s";
+        } elseif ($dateFilter === 'today') {
             $sql .= " AND DATE(l.created_at) = CURDATE()";
         } elseif ($dateFilter === 'old') {
             $sql .= " AND DATE(l.created_at) < CURDATE()";
@@ -1287,7 +1300,7 @@ class Lead extends Model
     /**
      * Paginated marketing leads for AJAX (same contact_status logic, adds LIMIT/OFFSET + search)
      */
-    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null)
+    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null, $fromDate = '', $toDate = '')
     {
         $sql = "
         SELECT
@@ -1344,7 +1357,20 @@ class Lead extends Model
             $types   .= "i";
         }
 
-        if ($dateFilter === 'today') {
+        if (!empty($fromDate) && !empty($toDate)) {
+            $sql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+            $params[] = $fromDate;
+            $params[] = $toDate;
+            $types   .= "ss";
+        } elseif (!empty($fromDate)) {
+            $sql .= " AND DATE(l.created_at) >= ?";
+            $params[] = $fromDate;
+            $types   .= "s";
+        } elseif (!empty($toDate)) {
+            $sql .= " AND DATE(l.created_at) <= ?";
+            $params[] = $toDate;
+            $types   .= "s";
+        } elseif ($dateFilter === 'today') {
             $sql .= " AND DATE(l.created_at) = CURDATE()";
         } elseif ($dateFilter === 'old') {
             $sql .= " AND DATE(l.created_at) < CURDATE()";

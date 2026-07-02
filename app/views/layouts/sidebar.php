@@ -882,7 +882,7 @@
 
 
                 <!--Start CED  -->
-                <?php if (hasPermission("CED Manage") && !$isManagement): ?>
+                <?php if (hasPermission("CED Manage") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
                     <!--CED CATEGORY -->
                     <li class="sidebar__menu-category">
 
