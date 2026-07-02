@@ -350,12 +350,21 @@ class UserDashboardController extends Controller
 
     public function updateCallNote()
     {
-        $id = $_POST['lead_id'];
+        $id = (int)$_POST['lead_id'];
         $note = $this->db->real_escape_string($_POST['call_note']);
 
-        $this->db->query(
+        $result = $this->db->query(
             "UPDATE leads SET call_note='$note' WHERE id=$id"
         );
+        
+        header('Content-Type: application/json');
+        if ($result) {
+            echo json_encode(['success' => true]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $this->db->error]);
+        }
+        exit;
     }
 
     public function todayFollowUp()
