@@ -426,9 +426,9 @@
                                     $status = $lead['communication_type'] ?? 'Not Select';
 
                                     $statusClass = '';
-                                    if ($status == 'WA Messaging') {
+                                    if (in_array($status, ['WA Messaging', 'WA Conversion', 'Wa Call', 'Imo Massage', 'Imo Call', 'Phone Call', 'Phone Massage'])) {
                                         $statusClass = 'bg-received';
-                                    } elseif ($status == 'WA Conversion') {
+                                    } elseif (in_array($status, ['Invalid Number', 'No Wa /No Imo', 'Number Off'])) {
                                         $statusClass = 'bg-not-received';
                                     }
                                     ?>
@@ -438,8 +438,15 @@
                                             data-id="<?= $lead['id'] ?>">
                                             <option value="">Select type</option>
                                             <option value="WA Messaging" <?= $status == 'WA Messaging' ? 'selected' : '' ?>>WA Messaging</option>
-                                            <option value="WA Conversion" <?= $status == 'WA Conversion' ? 'selected' : '' ?>>WA conversation</option>
-
+                                            <option value="WA Conversion" <?= $status == 'WA Conversion' ? 'selected' : '' ?>>WA Conversion</option>
+                                            <option value="Wa Call" <?= $status == 'Wa Call' ? 'selected' : '' ?>>Wa Call</option>
+                                            <option value="Imo Massage" <?= $status == 'Imo Massage' ? 'selected' : '' ?>>Imo Massage</option>
+                                            <option value="Imo Call" <?= $status == 'Imo Call' ? 'selected' : '' ?>>Imo Call</option>
+                                            <option value="Phone Call" <?= $status == 'Phone Call' ? 'selected' : '' ?>>Phone Call</option>
+                                            <option value="Phone Massage" <?= $status == 'Phone Massage' ? 'selected' : '' ?>>Phone Massage</option>
+                                            <option value="Invalid Number" <?= $status == 'Invalid Number' ? 'selected' : '' ?>>Invalid Number</option>
+                                            <option value="No Wa /No Imo" <?= $status == 'No Wa /No Imo' ? 'selected' : '' ?>>No Wa /No Imo</option>
+                                            <option value="Number Off" <?= $status == 'Number Off' ? 'selected' : '' ?>>Number Off</option>
                                         </select>
                                     </td>
                                     <?php

@@ -998,12 +998,12 @@
                         </ul>
                     </li>
 
-                    <?php if (!$isManagement): ?>
+                    <?php if (!$isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
                     <li
                         class="slide has-sub <?= isActive(['create-cashout-request', 'admin-cashout-requests', 'expense-adjustments'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
                             class="sidebar__menu-item <?= isActive(['create-cashout-request', 'admin-cashout-requests', 'expense-adjustments'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"> <i class="fa-solid fa-money-bill-trend-down"></i></div>
+                            <div class="side-menu__icon"> <i class="fa-solid fa-money-bill-trend-up"></i></div>
                             <span class="sidebar__menu-label">Manage Cash Out</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
@@ -1011,11 +1011,13 @@
                         <ul class="sidebar-menu child2" style="display:block;">
 
 
+                            <?php if (($_SESSION['user']['role_id'] ?? 0) != 3): ?>
                             <li class="slide <?= isActive('create-cashout-request', $current_route) ?>">
                                 <a href="<?= $base_url ?>/create-cashout-request"
                                     class="sidebar__menu-item <?= isActive('create-cashout-request', $current_route) ?>">Create
                                     Cashout Request </a>
                             </li>
+                            <?php endif; ?>
 
                             <li class="slide <?= isActive('admin-cashout-requests', $current_route) ?>">
                                 <a href="<?= $base_url ?>/admin-cashout-requests"

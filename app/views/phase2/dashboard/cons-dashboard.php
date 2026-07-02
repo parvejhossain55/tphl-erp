@@ -570,11 +570,7 @@ $statusColor = [
         text-decoration:none;display:inline-flex;align-items:center;gap:6px">
             <i class="fal fa-file-alt"></i>Estimates
           </a>
-          <a href="<?= $base ?>/con-working-plans" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
-        color:#fff;border-radius:10px;padding:7px 18px;font-size:12px;font-weight:700;
-        text-decoration:none;display:inline-flex;align-items:center;gap:6px">
-            <i class="fal fa-calendar-alt"></i>Work Plans
-          </a>
+        
           <a href="<?= $base ?>/con-projects" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
         color:#fff;border-radius:10px;padding:7px 18px;font-size:12px;font-weight:700;
         text-decoration:none;display:inline-flex;align-items:center;gap:6px">
