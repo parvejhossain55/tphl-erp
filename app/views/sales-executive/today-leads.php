@@ -132,17 +132,30 @@
                                            </td>
 
                                            <!-- Communication Type -->
-                                           <?php
-                                            $commType = $lead['communication_type'] ?? 'Not Select';
-                                            $commClass = $commType == 'WA Messaging' ? 'bg-received' : ($commType == 'WA Conversion' ? 'bg-not-received' : '');
-                                            ?>
-                                           <td class="call-status-cell">
-                                               <select class="communication-status <?= $commClass ?> form-select form-control" data-id="<?= $lead['id'] ?>">
-                                                   <option value="">Select type</option>
-                                                   <option value="WA Messaging" <?= $commType == 'WA Messaging'  ? 'selected' : '' ?>>WA Messaging</option>
-                                                   <option value="WA Conversion" <?= $commType == 'WA Conversion' ? 'selected' : '' ?>>WA conversation</option>
-                                               </select>
-                                           </td>
+                                            <?php
+                                             $commType = $lead['communication_type'] ?? 'Not Select';
+                                             $commClass = '';
+                                             if (in_array($commType, ['WA Messaging', 'WA Conversion', 'Wa Call', 'Imo Massage', 'Imo Call', 'Phone Call', 'Phone Massage'])) {
+                                                 $commClass = 'bg-received';
+                                             } elseif (in_array($commType, ['Invalid Number', 'No Wa /No Imo', 'Number Off'])) {
+                                                 $commClass = 'bg-not-received';
+                                             }
+                                             ?>
+                                            <td class="call-status-cell">
+                                                <select class="communication-status <?= $commClass ?> form-select form-control" data-id="<?= $lead['id'] ?>">
+                                                    <option value="">Select type</option>
+                                                    <option value="WA Messaging" <?= $commType == 'WA Messaging'  ? 'selected' : '' ?>>WA Messaging</option>
+                                                    <option value="WA Conversion" <?= $commType == 'WA Conversion' ? 'selected' : '' ?>>WA Conversion</option>
+                                                    <option value="Wa Call" <?= $commType == 'Wa Call' ? 'selected' : '' ?>>Wa Call</option>
+                                                    <option value="Imo Massage" <?= $commType == 'Imo Massage' ? 'selected' : '' ?>>Imo Massage</option>
+                                                    <option value="Imo Call" <?= $commType == 'Imo Call' ? 'selected' : '' ?>>Imo Call</option>
+                                                    <option value="Phone Call" <?= $commType == 'Phone Call' ? 'selected' : '' ?>>Phone Call</option>
+                                                    <option value="Phone Massage" <?= $commType == 'Phone Massage' ? 'selected' : '' ?>>Phone Massage</option>
+                                                    <option value="Invalid Number" <?= $commType == 'Invalid Number' ? 'selected' : '' ?>>Invalid Number</option>
+                                                    <option value="No Wa /No Imo" <?= $commType == 'No Wa /No Imo' ? 'selected' : '' ?>>No Wa /No Imo</option>
+                                                    <option value="Number Off" <?= $commType == 'Number Off' ? 'selected' : '' ?>>Number Off</option>
+                                                </select>
+                                            </td>
 
                                            <!-- Lead Status -->
                                            <?php

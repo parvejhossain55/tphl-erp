@@ -83,7 +83,7 @@ class DigitalMarketingController extends Controller
     $totalLeads = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate);
 
     // Contacted / Not Contacted summary counts (From Campaign only)
-    $cStmt = $this->db->prepare("
+    $cSql = "
         SELECT
             SUM(CASE
                 WHEN EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
@@ -103,9 +103,44 @@ class DigitalMarketingController extends Controller
         FROM leads l
         WHERE l.deleted_at IS NULL
           AND l.uploaded_from = 'From Campaign'
-        " . ($teamId ? 'AND l.team_id = ?' : '')
-    );
-    if ($teamId) { $cStmt->bind_param('i', $teamId); }
+    ";
+
+    $cParams = [];
+    $cTypes  = "";
+
+    if ($teamId) {
+        $cSql .= " AND l.team_id = ?";
+        $cParams[] = $teamId;
+        $cTypes   .= "i";
+    }
+
+    if (!empty($fromDate) && !empty($toDate)) {
+        $cSql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+        $cParams[] = $fromDate;
+        $cParams[] = $toDate;
+        $cTypes   .= "ss";
+    } elseif (!empty($fromDate)) {
+        $cSql .= " AND DATE(l.created_at) >= ?";
+        $cParams[] = $fromDate;
+        $cTypes   .= "s";
+    } elseif (!empty($toDate)) {
+        $cSql .= " AND DATE(l.created_at) <= ?";
+        $cParams[] = $toDate;
+        $cTypes   .= "s";
+    } elseif ($dateAge === 'today') {
+        $cSql .= " AND DATE(l.created_at) = CURDATE()";
+    } elseif ($dateAge === 'old') {
+        $cSql .= " AND DATE(l.created_at) < CURDATE()";
+    } elseif ($dateAge === '7days') {
+        $cSql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+    } elseif ($dateAge === '15days') {
+        $cSql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 15 DAY)";
+    }
+
+    $cStmt = $this->db->prepare($cSql);
+    if (!empty($cParams)) {
+        $cStmt->bind_param($cTypes, ...$cParams);
+    }
     $cStmt->execute();
     $cCounts           = $cStmt->get_result()->fetch_assoc();
     $totalContacted    = (int)($cCounts['contacted']    ?? 0);
@@ -235,7 +270,7 @@ public function deleteBudget($id)
         $notContactedCount = 0;
 
         // Quick counts for the summary cards via a lightweight query
-        $stmt = $this->db->prepare("
+        $cSql = "
             SELECT
                 SUM(CASE
                     WHEN EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
@@ -255,10 +290,43 @@ public function deleteBudget($id)
             FROM leads l
             WHERE l.deleted_at IS NULL
               AND l.uploaded_from = 'From Campaign'
-            " . ($teamId ? 'AND l.team_id = ?' : '')
-        );
+        ";
+
+        $cParams = [];
+        $cTypes  = "";
+
         if ($teamId) {
-            $stmt->bind_param('i', $teamId);
+            $cSql .= " AND l.team_id = ?";
+            $cParams[] = $teamId;
+            $cTypes   .= "i";
+        }
+
+        if (!empty($fromDate) && !empty($toDate)) {
+            $cSql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+            $cParams[] = $fromDate;
+            $cParams[] = $toDate;
+            $cTypes   .= "ss";
+        } elseif (!empty($fromDate)) {
+            $cSql .= " AND DATE(l.created_at) >= ?";
+            $cParams[] = $fromDate;
+            $cTypes   .= "s";
+        } elseif (!empty($toDate)) {
+            $cSql .= " AND DATE(l.created_at) <= ?";
+            $cParams[] = $toDate;
+            $cTypes   .= "s";
+        } elseif ($dateAge === 'today') {
+            $cSql .= " AND DATE(l.created_at) = CURDATE()";
+        } elseif ($dateAge === 'old') {
+            $cSql .= " AND DATE(l.created_at) < CURDATE()";
+        } elseif ($dateAge === '7days') {
+            $cSql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+        } elseif ($dateAge === '15days') {
+            $cSql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 15 DAY)";
+        }
+
+        $stmt = $this->db->prepare($cSql);
+        if (!empty($cParams)) {
+            $stmt->bind_param($cTypes, ...$cParams);
         }
         $stmt->execute();
         $counts = $stmt->get_result()->fetch_assoc();

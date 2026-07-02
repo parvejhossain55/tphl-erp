@@ -1279,6 +1279,8 @@ class Lead extends Model
             $sql .= " AND DATE(l.created_at) = CURDATE()";
         } elseif ($dateFilter === 'old') {
             $sql .= " AND DATE(l.created_at) < CURDATE()";
+        } elseif ($dateFilter === '7days') {
+            $sql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
         } elseif ($dateFilter === '15days') {
             $sql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 15 DAY)";
         }
@@ -1374,6 +1376,8 @@ class Lead extends Model
             $sql .= " AND DATE(l.created_at) = CURDATE()";
         } elseif ($dateFilter === 'old') {
             $sql .= " AND DATE(l.created_at) < CURDATE()";
+        } elseif ($dateFilter === '7days') {
+            $sql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
         } elseif ($dateFilter === '15days') {
             $sql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 15 DAY)";
         }
