@@ -382,9 +382,29 @@ class LeadController extends Controller
         $assignedDate = $_POST['assigned_date'] ?? date('Y-m-d');
         $assignedBy   = $_SESSION['user']['id'] ?? 0;
 
+        // Build redirect URL preserving page + filters
+        $redirectPage = (int)($_POST['redirect_page'] ?? 1);
+        if ($redirectPage < 1) $redirectPage = 1;
+
+        $filterKeys = ['year','month','date','assigned_user','last_action','assigned','q'];
+        $queryParts = [];
+        foreach ($filterKeys as $key) {
+            $val = $_POST['redirect_' . $key] ?? '';
+            if ($val !== '') {
+                $queryParts[] = urlencode($key) . '=' . urlencode($val);
+            }
+        }
+        // DataTables uses start= parameter for server-side pagination
+        // We pass page= and let the DataTables init handle it via URL
+        if ($redirectPage > 1) {
+            $queryParts[] = 'page=' . $redirectPage;
+        }
+        $queryString  = $queryParts ? '?' . implode('&', $queryParts) : '';
+        $redirectUrl  = $GLOBALS['base_url'] . '/lead-lists' . $queryString;
+
         if (!$userId || !$leadIds) {
             setError("Please select user and leads!");
-            header("Location: " . $GLOBALS['base_url'] . "/lead-lists");
+            header("Location: " . $redirectUrl);
             exit;
         }
 
@@ -393,7 +413,7 @@ class LeadController extends Controller
 
         if (empty($ids)) {
             setError("Invalid lead selection!");
-            header("Location: " . $GLOBALS['base_url'] . "/lead-lists");
+            header("Location: " . $redirectUrl);
             exit;
         }
 
@@ -419,7 +439,7 @@ class LeadController extends Controller
         $userName = $result ? ($result->fetch_assoc()['full_name'] ?? '') : '';
 
         setSuccess("Leads assigned successfully to $userName!");
-        header("Location: " . $GLOBALS['base_url'] . "/lead-lists");
+        header("Location: " . $redirectUrl);
         exit;
     }
 

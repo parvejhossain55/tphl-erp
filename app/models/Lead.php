@@ -1308,10 +1308,11 @@ class Lead extends Model
         SELECT
             l.id, l.full_name, l.phone_number, l.email, l.job_title,
             l.platform, l.campaign_name, l.lead_type, l.call_note,
-            l.created_at,
+            l.created_at, l.assigned_id,
             ls.name  AS source_name,
             p.name   AS project_name,
             t.name   AS team_name,
+            au.full_name AS assigned_user_name,
             (SELECT u2.full_name
              FROM users u2
              INNER JOIN employees e2 ON u2.id = e2.user_id
@@ -1338,6 +1339,7 @@ class Lead extends Model
         LEFT JOIN lead_sources ls ON l.source_type_id = ls.id
         LEFT JOIN projects     p  ON l.project_id = p.id
         LEFT JOIN teams        t  ON l.team_id    = t.id
+        LEFT JOIN users        au ON l.assigned_id = au.id
         LEFT JOIN (
             SELECT lf1.lead_id, lf1.follow_up_type
             FROM lead_follow_ups lf1

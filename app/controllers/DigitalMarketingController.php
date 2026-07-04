@@ -333,14 +333,26 @@ public function deleteBudget($id)
         $contactedCount    = (int)($counts['contacted']     ?? 0);
         $notContactedCount = (int)($counts['not_contacted'] ?? 0);
 
-        // Duplicate count (lightweight)
+        // Duplicate count — same phone_number OR same email = duplicate
         $dupStmt = $this->db->query("
-            SELECT COUNT(*) AS total FROM (
-                SELECT phone_number FROM leads
-                WHERE deleted_at IS NULL AND phone_number IS NOT NULL AND phone_number != ''
-                  AND uploaded_from = 'From Campaign'
-                GROUP BY phone_number HAVING COUNT(*) > 1
-            ) dupes
+            SELECT COUNT(DISTINCT id) AS total FROM leads
+            WHERE deleted_at IS NULL
+              AND uploaded_from = 'From Campaign'
+              AND (
+                  (phone_number IS NOT NULL AND phone_number != '' AND phone_number IN (
+                      SELECT phone_number FROM leads
+                      WHERE deleted_at IS NULL AND phone_number IS NOT NULL AND phone_number != ''
+                        AND uploaded_from = 'From Campaign'
+                      GROUP BY phone_number HAVING COUNT(*) > 1
+                  ))
+                  OR
+                  (email IS NOT NULL AND email != '' AND email IN (
+                      SELECT email FROM leads
+                      WHERE deleted_at IS NULL AND email IS NOT NULL AND email != ''
+                        AND uploaded_from = 'From Campaign'
+                      GROUP BY email HAVING COUNT(*) > 1
+                  ))
+              )
         ");
         $duplicateLeadsCount = $dupStmt ? (int)($dupStmt->fetch_assoc()['total'] ?? 0) : 0;
 
@@ -403,11 +415,56 @@ public function deleteBudget($id)
             $teamId, $dateAge, $sortOrder, $perPage, $offset, $search, $fromDate, $toDate
         );
 
-        // Phone freq map for duplicate marking
-        $phoneFreq = [];
-        foreach ($leads as $l) {
-            $p = $l['phone_number'] ?? '';
-            if (!empty($p)) $phoneFreq[$p] = ($phoneFreq[$p] ?? 0) + 1;
+        // ── Duplicate detection: phone_number OR email appears > 1 time in leads table ──
+        $duplicateLeadIds = []; // lead IDs that are duplicates
+        if (!empty($leads)) {
+            $phones = array_filter(array_unique(array_column($leads, 'phone_number')));
+            $emails = array_filter(array_unique(array_column($leads, 'email')));
+
+            // Phones that appear > 1 in DB
+            $dupPhones = [];
+            if (!empty($phones)) {
+                $in   = implode(',', array_fill(0, count($phones), '?'));
+                $typs = str_repeat('s', count($phones));
+                $st   = $this->db->prepare(
+                    "SELECT phone_number FROM leads
+                     WHERE phone_number IN ($in) AND deleted_at IS NULL
+                     GROUP BY phone_number HAVING COUNT(*) > 1"
+                );
+                if ($st) {
+                    $st->bind_param($typs, ...array_values($phones));
+                    $st->execute();
+                    $r = $st->get_result();
+                    while ($row = $r->fetch_assoc()) $dupPhones[$row['phone_number']] = true;
+                }
+            }
+
+            // Emails that appear > 1 in DB
+            $dupEmails = [];
+            if (!empty($emails)) {
+                $in   = implode(',', array_fill(0, count($emails), '?'));
+                $typs = str_repeat('s', count($emails));
+                $st   = $this->db->prepare(
+                    "SELECT email FROM leads
+                     WHERE email IN ($in) AND deleted_at IS NULL
+                     GROUP BY email HAVING COUNT(*) > 1"
+                );
+                if ($st) {
+                    $st->bind_param($typs, ...array_values($emails));
+                    $st->execute();
+                    $r = $st->get_result();
+                    while ($row = $r->fetch_assoc()) $dupEmails[$row['email']] = true;
+                }
+            }
+
+            // Mark which leads on current page are duplicates
+            foreach ($leads as $l) {
+                $lp = trim($l['phone_number'] ?? '');
+                $le = trim($l['email'] ?? '');
+                if ((!empty($lp) && isset($dupPhones[$lp])) || (!empty($le) && isset($dupEmails[$le]))) {
+                    $duplicateLeadIds[$l['id']] = true;
+                }
+            }
         }
 
         // Post-filter: contact_status
@@ -417,19 +474,19 @@ public function deleteBudget($id)
             $leads = array_values(array_filter($leads, fn($l) => ($l['contact_status'] ?? '') !== 'Contacted'));
         }
 
-        // Post-filter: duplicates only
+        // Post-filter: duplicates only (phone OR email appears > 1 in DB)
         if ($duplicatesOnly) {
-            $leads = array_values(array_filter($leads, function ($l) use ($phoneFreq) {
-                $p = $l['phone_number'] ?? '';
-                return !empty($p) && ($phoneFreq[$p] ?? 0) > 1;
+            $leads = array_values(array_filter($leads, function ($l) use ($duplicateLeadIds) {
+                return isset($duplicateLeadIds[$l['id']]);
             }));
         }
 
         // Build HTML rows
         $rows = [];
         foreach ($leads as $lead) {
-            $p           = $lead['phone_number'] ?? '';
-            $isDuplicate = !empty($p) && isset($phoneFreq[$p]) && $phoneFreq[$p] > 1;
+            $p           = trim($lead['phone_number'] ?? '');
+            $isDuplicate = isset($duplicateLeadIds[$lead['id']]);
+
             $cs          = $lead['contact_status'] ?? 'Not Contacted';
             $leadType    = $lead['lead_type'] ?? '';
             $fuCount     = (int)($lead['follow_up_count'] ?? 0);
@@ -463,6 +520,23 @@ public function deleteBudget($id)
 
             $phoneHtml = '<span class="' . ($isDuplicate ? 'text-danger fw-bold' : 'text-muted') . '">' . htmlspecialchars($p ?: 'N/A') . '</span>';
 
+            // Assigned To cell — show name + duplicate badge if applicable
+            $assignedName = htmlspecialchars($lead['assigned_user_name'] ?? '');
+            if (!empty($assignedName)) {
+                $dupBadge = $isDuplicate
+                    ? ' <span class="badge bg-danger ms-1" style="font-size:.65rem;">Duplicate</span>'
+                    : '';
+                $assignedToHtml = '<div class="d-flex align-items-center gap-1 flex-wrap">'
+                    . '<span class="fw-semibold text-dark" style="font-size:.82rem;">' . $assignedName . '</span>'
+                    . $dupBadge
+                    . '</div>';
+            } else {
+                $notAssignedDup = $isDuplicate
+                    ? '<span class="badge bg-danger ms-1" style="font-size:.65rem;">Duplicate</span>'
+                    : '';
+                $assignedToHtml = '<span class="text-muted" style="font-size:.78rem;">Not Assigned</span>' . $notAssignedDup;
+            }
+
             $rows[] = [
                 'id'            => $lead['id'],
                 'checkbox'      => '<input type="checkbox" class="rowCheckbox" value="' . $lead['id'] . '">',
@@ -474,6 +548,7 @@ public function deleteBudget($id)
                 'platform'      => '<span class="badge bg-info-soft text-info mb-1 d-inline-block">' . htmlspecialchars($lead['platform'] ?? 'N/A') . '</span><div class="small text-muted">' . htmlspecialchars($lead['campaign_name'] ?? 'N/A') . '</div>',
                 'team'          => htmlspecialchars($lead['team_name'] ?? 'N/A'),
                 'sales_lead'    => '<div class="fw-bold text-primary">' . htmlspecialchars($lead['sales_team_lead_name'] ?? 'Not Assigned') . '</div>',
+                'assigned_to'   => $assignedToHtml,
                 'upload_date'   => '<div class="fw-semibold">' . date('M d, Y', strtotime($lead['created_at'])) . '</div><small class="text-muted">' . date('h:i A', strtotime($lead['created_at'])) . '</small>',
                 'action'        => '<button type="button" class="btn btn-sm btn-outline-danger removeBtnCust cursor" data-name="' . htmlspecialchars($lead['full_name'] ?? 'N/A') . '" data-action="delete-lead-permanent" data-id="' . $lead['id'] . '"><i class="bi bi-trash me-1"></i>Delete</button>',
             ];
@@ -508,23 +583,20 @@ public function deleteBudget($id)
     public function deletePermanent()
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $_SESSION['error'] = "Invalid Request";
-            header("Location:{$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
-            exit;
+            $this->sendDeleteResponse(false, "Invalid Request", null);
         }
 
-        $id = (int)($_POST['id'] ?? 0);
+        $id           = (int)($_POST['id'] ?? 0);
+        $redirectPage = max(1, (int)($_POST['redirect_page'] ?? 1));
+        $isAjax       = !empty($_POST['ajax']);
 
         if ($id <= 0) {
-            $_SESSION['error'] = "Invalid Lead ID";
-            header("Location:{$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
-            exit;
+            $this->sendDeleteResponse($isAjax, "Invalid Lead ID", null, $redirectPage);
         }
 
         try {
-            $leadDelete = $this->leadModel->permanentDelete($id);
-
-            if ($leadDelete) {
+            $ok = $this->leadModel->permanentDelete($id);
+            if ($ok) {
                 $_SESSION['success'] = "Lead permanently deleted successfully!";
             } else {
                 $_SESSION['error'] = "Something went wrong while deleting.";
@@ -533,39 +605,55 @@ public function deleteBudget($id)
             $_SESSION['error'] = "Error: " . $th->getMessage();
         }
 
-        header("Location:{$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
-        exit;
+        $this->sendDeleteResponse($isAjax, null, "Lead deleted successfully!", $redirectPage);
     }
 
     public function deletePermanentMultiple()
-{
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        $_SESSION['error'] = "Invalid Request";
-        header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
-        exit;
-    }
-
-    $ids = $_POST['ids'] ?? [];
-
-    if (empty($ids)) {
-        $_SESSION['error'] = "No leads selected";
-        header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
-        exit;
-    }
-
-    try {
-        foreach ($ids as $id) {
-            $this->leadModel->permanentDelete((int)$id);
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $_SESSION['error'] = "Invalid Request";
+            header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+            exit;
         }
 
-        $_SESSION['success'] = "Selected leads deleted successfully!";
-    } catch (\Throwable $th) {
-        $_SESSION['error'] = "Error: " . $th->getMessage();
+        $ids          = $_POST['ids'] ?? [];
+        $redirectPage = max(1, (int)($_POST['redirect_page'] ?? 1));
+        $isAjax       = !empty($_POST['ajax']);
+
+        if (empty($ids)) {
+            $_SESSION['error'] = "No leads selected";
+            $this->sendDeleteResponse($isAjax, "No leads selected", null, $redirectPage);
+        }
+
+        try {
+            foreach ($ids as $id) {
+                $this->leadModel->permanentDelete((int)$id);
+            }
+            $_SESSION['success'] = "Selected leads deleted successfully!";
+        } catch (\Throwable $th) {
+            $_SESSION['error'] = "Error: " . $th->getMessage();
+        }
+
+        $this->sendDeleteResponse($isAjax, null, "Leads deleted!", $redirectPage);
     }
 
-    header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
-    exit;
-}
+    private function sendDeleteResponse(bool $isAjax, ?string $error, ?string $success, int $page = 1): void
+    {
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            if ($error) {
+                echo json_encode(['ok' => false, 'message' => $error]);
+            } else {
+                echo json_encode(['ok' => true, 'message' => $success]);
+            }
+            exit;
+        }
+        // Regular redirect — preserve page
+        $query = $page > 1 ? '?page=' . $page : '';
+        header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard{$query}");
+        exit;
+    }
+
 
     // =========================================================================
     // External API Integration (Brochure Leads & Forms)

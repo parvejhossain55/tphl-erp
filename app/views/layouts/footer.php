@@ -256,6 +256,27 @@
                             postUrl: baseUrl + '/' + action
                         });
 
+                        // Special AJAX handling for DM executive dashboard delete
+                        // to preserve current page position
+                        if (action === 'delete-lead-permanent') {
+                            var fd = new FormData();
+                            fd.append('id',   itemId);
+                            fd.append('ajax', '1');
+                            var curPage = (typeof dmCurrentPage !== 'undefined') ? dmCurrentPage : 1;
+                            fd.append('redirect_page', curPage);
+                            fetch(baseUrl + '/' + action, { method: 'POST', body: fd })
+                                .then(function(r) { return r.json(); })
+                                .then(function(data) {
+                                    if (data.ok && typeof dmLoadLeads === 'function') {
+                                        dmLoadLeads(curPage);
+                                    } else if (!data.ok) {
+                                        alert(data.message || 'Delete failed.');
+                                    }
+                                })
+                                .catch(function() { alert('Delete failed. Please try again.'); });
+                            return;
+                        }
+
                         var form = document.createElement('form');
                         form.method = 'POST';
                         form.action = baseUrl + '/' + action;
