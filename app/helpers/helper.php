@@ -307,11 +307,25 @@ function checkLogin()
         session_start();
     }
 
+    // Detect AJAX request
+    $isAjax = (
+        (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+        || (!empty($_POST['ajax']))
+        || (!empty($_GET['ajax']))
+        || strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false
+    );
+
     $maxLifetime = 60 * 60 * 24; // 1 day
 
     if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY']) > $maxLifetime) {
         session_unset();
         session_destroy();
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            http_response_code(401);
+            echo json_encode(['success' => false, 'error' => 'session_expired', 'message' => 'Session expired. Please login again.']);
+            exit;
+        }
         header("Location: " . $GLOBALS['base_url'] . "/admin-login");
         exit;
     }
@@ -319,6 +333,12 @@ function checkLogin()
     $_SESSION['LAST_ACTIVITY'] = time();
 
     if (!isset($_SESSION['user'])) {
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            http_response_code(401);
+            echo json_encode(['success' => false, 'error' => 'unauthenticated', 'message' => 'Please login to continue.']);
+            exit;
+        }
         header("Location: " . $GLOBALS['base_url'] . "/admin-login");
         exit;
     }

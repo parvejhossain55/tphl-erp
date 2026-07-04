@@ -415,24 +415,109 @@ class UserDashboardController extends Controller
             session_start();
         }
 
-        $userId = $_SESSION['user']['id'] ?? 0;
-        $bookingCount = $this->bookingModel->getBookingCountByLead();
+        $userId     = $_SESSION['user']['id']     ?? 0;
+        $userTeamId = $_SESSION['user']['team_id'] ?? null;
+        $bookingCount   = $this->bookingModel->getBookingCountByLead();
         $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
-        $year  = $_GET['year']  ?? null;
-        $month = $_GET['month'] ?? null;
-        $lastAction = $_GET['last_action'] ?? null;
+        $year        = $_GET['year']        ?? null;
+        $month       = $_GET['month']       ?? null;
+        $lastAction  = $_GET['last_action'] ?? null;
         $call_status = $_GET['call_status'] ?? null;
         $myAssignedClients = $this->leadModel
             ->getAllMyLeads($userId, $year, $month, $lastAction, $call_status);
 
+        // ── Duplicate Leads Detection ──────────────────────────────────────────
+        // Pool: ALL leads in my team that are assigned (any member)
+        // Find: same phone/email appearing in OTHER assigned_ids (any team)
+        // Show: all rows with that phone/email so full picture is visible
+        $duplicateGroups = [];
+        $duplicateCount  = 0;
+
+        if ($userTeamId) {
+            $dupSql = "
+                SELECT
+                    l.id,
+                    l.full_name,
+                    l.phone_number,
+                    l.email,
+                    l.team_id,
+                    t.name        AS team_name,
+                    l.assigned_id,
+                    u.full_name   AS assigned_to_name,
+                    l.updated_at  AS assigned_date,
+                    IF(l.team_id = ?, 1, 0) AS is_mine
+                FROM leads l
+                LEFT JOIN users u ON l.assigned_id = u.id
+                LEFT JOIN teams t ON l.team_id = t.id
+                WHERE l.deleted_at IS NULL
+                  AND l.assigned_id IS NOT NULL
+                  AND (
+                      (l.phone_number IS NOT NULL AND l.phone_number != '' AND l.phone_number IN (
+                          SELECT phone_number FROM leads
+                          WHERE deleted_at IS NULL
+                            AND assigned_id IS NOT NULL
+                            AND team_id = ?
+                            AND phone_number IS NOT NULL AND phone_number != ''
+                      ))
+                      OR
+                      (l.email IS NOT NULL AND l.email != '' AND l.email IN (
+                          SELECT email FROM leads
+                          WHERE deleted_at IS NULL
+                            AND assigned_id IS NOT NULL
+                            AND team_id = ?
+                            AND email IS NOT NULL AND email != ''
+                      ))
+                  )
+                ORDER BY COALESCE(l.phone_number, l.email), is_mine DESC, l.updated_at DESC
+            ";
+
+            $dupStmt = $this->db->prepare($dupSql);
+            if ($dupStmt) {
+                $dupStmt->bind_param('iii', $userTeamId, $userTeamId, $userTeamId);
+                $dupStmt->execute();
+                $dupResult = $dupStmt->get_result();
+                $allDups   = [];
+                while ($row = $dupResult->fetch_assoc()) {
+                    $allDups[] = $row;
+                }
+                $dupStmt->close();
+
+                // Group by phone_number or email
+                $grouped = [];
+                foreach ($allDups as $row) {
+                    $key = !empty($row['phone_number'])
+                        ? 'p:' . $row['phone_number']
+                        : (!empty($row['email']) ? 'e:' . $row['email'] : 'id:' . $row['id']);
+                    $grouped[$key][] = $row;
+                }
+
+                // Only keep groups with >1 unique assigned_id (real duplicate)
+                foreach ($grouped as $key => $rows) {
+                    $uniqueAssignees = array_unique(array_column($rows, 'assigned_id'));
+                    if (count($uniqueAssignees) > 1) {
+                        $duplicateGroups[] = [
+                            'key'       => $key,
+                            'label'     => $rows[0]['phone_number'] ?: ($rows[0]['email'] ?? ''),
+                            'name'      => $rows[0]['full_name'],
+                            'team_name' => $rows[0]['team_name'],
+                            'rows'      => $rows,
+                        ];
+                        $duplicateCount++;
+                    }
+                }
+            }
+        }
+
         $this->view('sales-executive/my-assigned-leads', [
-            'page_title' => 'My Assigned Leads',
-            'myAllleads' => $myAssignedClients,
-            'current_page' => 'my-all-assigned-leads',
-            'bookingCount' => $bookingCount,
-            'followUpCounts' => $followUpCounts,
-            'selectedAction' => $lastAction,
-            'selectedCallStatus' => $call_status,
+            'page_title'          => 'My Assigned Leads',
+            'myAllleads'          => $myAssignedClients,
+            'current_page'        => 'my-all-assigned-leads',
+            'bookingCount'        => $bookingCount,
+            'followUpCounts'      => $followUpCounts,
+            'selectedAction'      => $lastAction,
+            'selectedCallStatus'  => $call_status,
+            'duplicateGroups'     => $duplicateGroups,
+            'duplicateCount'      => $duplicateCount,
         ]);
     }
     public function myUpcomingFollowLeads()
