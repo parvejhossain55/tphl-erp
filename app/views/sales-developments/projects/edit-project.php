@@ -25,6 +25,34 @@ if (!empty($project['floor_wise_unit_meta'])) {
                         value="<?= htmlspecialchars($project['name'] ?? '') ?>">
                 </div>
 
+                <!-- Category -->
+                <div class="col-xl-4">
+                    <label>Project Category</label>
+                    <select name="category_id" id="projectCategorySelect" class="form-control">
+                        <option value="">— Select Category —</option>
+                        <?php foreach ($categories ?? [] as $cat): ?>
+                        <option value="<?= $cat['id'] ?>"
+                                data-incentive="<?= number_format((float)$cat['incentive_percentage'], 2) ?>"
+                                <?= ($project['category_id'] ?? null) == $cat['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($cat['name']) ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Incentive % (auto-filled from category) -->
+                <div class="col-xl-2">
+                    <label>Incentive %</label>
+                    <div class="input-group">
+                        <input type="number" name="incentive_percentage" id="projectIncentiveInput"
+                               class="form-control" step="0.01" min="0" max="100"
+                               value="<?= htmlspecialchars($project['incentive_percentage'] ?? '') ?>"
+                               placeholder="0.00" readonly style="background:#f8f9fa;">
+                        <span class="input-group-text">%</span>
+                    </div>
+                    <small class="text-muted" style="font-size:.72rem;">Auto from category</small>
+                </div>
+
                 <!-- Location -->
                 <div class="col-xl-6">
                     <label>Location *</label>
@@ -600,4 +628,14 @@ if (!empty($project['floor_wise_unit_meta'])) {
             }
         });
     });
+
+    // Category → auto-fill incentive %
+    var catSel = document.getElementById('projectCategorySelect');
+    var incInput = document.getElementById('projectIncentiveInput');
+    if (catSel && incInput) {
+        catSel.addEventListener('change', function () {
+            var opt = this.options[this.selectedIndex];
+            incInput.value = opt ? (opt.getAttribute('data-incentive') || '') : '';
+        });
+    }
 </script>

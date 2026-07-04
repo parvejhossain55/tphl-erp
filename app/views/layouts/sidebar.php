@@ -15,7 +15,7 @@
     // Only hide create/edit/delete UI for truly view-only construction roles
     // Roles 3 (Director) and 22 (PM Head) are APPROVERS — they need to see Action columns
     $conReadOnlyRoles = []; // Currently no role is fully restricted — footer.php handles role 20
-
+    
     // Check if the current user belongs to Management (Admin or Super Admin)
     $isManagement = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3]);
 
@@ -70,32 +70,32 @@
                         </li>
 
                         <?php if (!$isManagement): ?>
-                        <!-- Location -->
-                        <li class="slide ">
-                            <a href="<?= $base_url ?>/location-lists"
-                                class="sidebar__menu-item <?= isActive('location-lists', $current_route) ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-location-dot"></i></div>
-                                <span class="sidebar__menu-label">Location Manage</span>
-                            </a>
-                        </li>
+                            <!-- Location -->
+                            <li class="slide ">
+                                <a href="<?= $base_url ?>/location-lists"
+                                    class="sidebar__menu-item <?= isActive('location-lists', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-location-dot"></i></div>
+                                    <span class="sidebar__menu-label">Location Manage</span>
+                                </a>
+                            </li>
 
-                        <!-- Amenities -->
-                        <li class="slide ">
-                            <a href="<?= $base_url ?>/amenities"
-                                class="sidebar__menu-item <?= isActive(['amenities', 'create-amenity', 'edit-amenity'], $current_route) ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-spa"></i></div>
-                                <span class="sidebar__menu-label">Amenities Manage</span>
-                            </a>
-                        </li>
+                            <!-- Amenities -->
+                            <li class="slide ">
+                                <a href="<?= $base_url ?>/amenities"
+                                    class="sidebar__menu-item <?= isActive(['amenities', 'create-amenity', 'edit-amenity'], $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-spa"></i></div>
+                                    <span class="sidebar__menu-label">Amenities Manage</span>
+                                </a>
+                            </li>
 
-                        <!-- Community -->
-                        <li class="slide">
-                            <a href="<?= $base_url ?>/community-lists"
-                                class="sidebar__menu-item  <?= isActive('community-lists', $current_route) ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-people-group"></i></div>
-                                <span class="sidebar__menu-label">Community Lists</span>
-                            </a>
-                        </li>
+                            <!-- Community -->
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/community-lists"
+                                    class="sidebar__menu-item  <?= isActive('community-lists', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-people-group"></i></div>
+                                    <span class="sidebar__menu-label">Community Lists</span>
+                                </a>
+                            </li>
 
                         <?php endif; ?>
                         <!-- Lead & Booking -->
@@ -109,10 +109,10 @@
                             </a>
                             <ul class="sidebar-menu child2" style="display:block;">
                                 <?php if (!$isManagement): ?>
-                                <li class="slide">
-                                    <a href="<?= $base_url ?>/create-lead"
-                                        class="sidebar__menu-item <?= isActive('create-lead', $current_route) ?>">Add Lead</a>
-                                </li>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/create-lead"
+                                            class="sidebar__menu-item <?= isActive('create-lead', $current_route) ?>">Add Lead</a>
+                                    </li>
                                 <?php endif; ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/lead-lists"
@@ -124,41 +124,41 @@
                                         All Assigned Leads </a>
                                 </li>
                                 <?php if (!$isManagement): ?>
-                                <li class="slide">
-                                    <a href="<?= $base_url ?>/today-leads"
-                                        class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">
-                                        Today Leads Assigned
-                                    </a>
-                                </li>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/today-leads"
+                                            class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">
+                                            Today Leads Assigned
+                                        </a>
+                                    </li>
                                 <?php endif; ?>
                                 <?php if (!$isManagement): ?>
-                                <li class="slide">
-                                    <a href="<?= $base_url ?>/today-follow-up"
-                                        class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today
-                                        Follow Up <span class="badge bg-primary ms-2"><?= $todayCount ?></span> </a>
-                                </li>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/today-follow-up"
+                                            class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today
+                                            Follow Up <span class="badge bg-primary ms-2"><?= $todayCount ?></span> </a>
+                                    </li>
                                 <?php endif; ?>
                                 <?php if (!$isManagement): ?>
-                                <li class="slide">
-                                    <a href="<?= $base_url ?>/upcoming-follow-up"
-                                        class="sidebar__menu-item <?= isActive('overdue-next-followup', $current_route) ?>">
-                                        Upcoming Follow Up<span class="ms-2 badge bg-warning"><?= $upcomingCount ?></span></a>
-                                </li>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/upcoming-follow-up"
+                                            class="sidebar__menu-item <?= isActive('overdue-next-followup', $current_route) ?>">
+                                            Upcoming Follow Up<span class="ms-2 badge bg-warning"><?= $upcomingCount ?></span></a>
+                                    </li>
                                 <?php endif; ?>
 
                                 <?php if (!$isManagement): ?>
-                                <li class="slide">
-                                    <a href="<?= $base_url ?>/my-onboarding-projects"
-                                        class="sidebar__menu-item <?= isActive('my-onboarding-projects', $current_route) ?>">My
-                                        Onboarding Projects </a>
-                                </li>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/my-onboarding-projects"
+                                            class="sidebar__menu-item <?= isActive('my-onboarding-projects', $current_route) ?>">My
+                                            Onboarding Projects </a>
+                                    </li>
                                 <?php endif; ?>
                                 <?php if (!$isManagement): ?>
-                                <li class="slide">
-                                    <a href="<?= $base_url ?>/onboarding-clients"
-                                        class="sidebar__menu-item <?= isActive('onboarding-clients', $current_route) ?>">All
-                                        Onboarding Clients</a>
-                                </li>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/onboarding-clients"
+                                            class="sidebar__menu-item <?= isActive('onboarding-clients', $current_route) ?>">All
+                                            Onboarding Clients</a>
+                                    </li>
                                 <?php endif; ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/client-refunds"
@@ -171,26 +171,33 @@
 
                     <!-- Project Manage -->
                     <li
-                        class="slide has-sub <?= isActive(['create-project', 'project-lists'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['create-project', 'project-lists', 'project-category-lists', 'create-project-category'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['create-project', 'project-lists'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['create-project', 'project-lists', 'project-category-lists', 'create-project-category'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-building"></i></div>
                             <span class="sidebar__menu-label">Project Manage</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
                         <ul class="sidebar-menu child2" style="display:block;">
                             <?php if (!$isManagement): ?>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/create-project"
-                                    class="sidebar__menu-item <?= isActive('create-project', $current_route) ?>">Add
-                                    Project</a>
-                            </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/project-category-lists"
+                                        class="sidebar__menu-item <?= isActive(['project-category-lists', 'create-project-category'], $current_route) ?>">
+                                        Project Categories
+                                    </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/create-project"
+                                        class="sidebar__menu-item <?= isActive('create-project', $current_route) ?>">Add
+                                        Project</a>
+                                </li>
                             <?php endif; ?>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/project-lists"
                                     class="sidebar__menu-item <?= isActive('project-lists', $current_route) ?>">Project
                                     List</a>
                             </li>
+
                         </ul>
                     </li>
 
@@ -206,10 +213,10 @@
                             </a>
                             <ul class="sidebar-menu child2" style="display:block;">
                                 <?php if (!$isManagement): ?>
-                                <li class="slide child2">
-                                    <a href="<?= $base_url ?>/create-flat"
-                                        class="sidebar__menu-item <?= isActive('create-flat', $current_route) ?>">Add Flat</a>
-                                </li>
+                                    <li class="slide child2">
+                                        <a href="<?= $base_url ?>/create-flat"
+                                            class="sidebar__menu-item <?= isActive('create-flat', $current_route) ?>">Add Flat</a>
+                                    </li>
                                 <?php endif; ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/flat-lists"
@@ -227,25 +234,25 @@
                         </li>
 
                         <?php if (!$isManagement): ?>
-                        <!-- Executive Team  -->
-                        <!--target set-sales-target show here for sales executiive team  -->
-                        <li class="slide ">
-                            <a href="<?= $base_url ?>/sales-executive-teams"
-                                class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
-                                <span class="sidebar__menu-label">Sales Executive Team</span>
-                            </a>
-                        </li>
+                            <!-- Executive Team  -->
+                            <!--target set-sales-target show here for sales executiive team  -->
+                            <li class="slide ">
+                                <a href="<?= $base_url ?>/sales-executive-teams"
+                                    class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                                    <span class="sidebar__menu-label">Sales Executive Team</span>
+                                </a>
+                            </li>
 
 
 
-                        <li class="slide ">
-                            <a href="<?= $base_url ?>/contact-lists"
-                                class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
-                                <span class="sidebar__menu-label">Contact Lists</span>
-                            </a>
-                        </li>
+                            <li class="slide ">
+                                <a href="<?= $base_url ?>/contact-lists"
+                                    class="sidebar__menu-item <?= isActive('contact-lists', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                                    <span class="sidebar__menu-label">Contact Lists</span>
+                                </a>
+                            </li>
                         <?php endif; ?>
                     <?php endif; ?>
 
@@ -385,13 +392,13 @@
                                 class="sidebar__menu-item <?= isActive('my-dashboard', $current_route) ?>">My Dashboard</a>
                         </li>
                         <?php if (isSalesCoLeader()): ?>
-                        <!-- Co-Leader: Lead List Access (team_id wise) -->
-                        <li class="slide">
-                            <a href="<?= $base_url ?>/lead-lists"
-                                class="sidebar__menu-item <?= isActive('lead-lists', $current_route) ?>">
-                                <i class="fa-solid fa-list-check me-1"></i> Lead List
-                            </a>
-                        </li>
+                            <!-- Co-Leader: Lead List Access (team_id wise) -->
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/lead-lists"
+                                    class="sidebar__menu-item <?= isActive('lead-lists', $current_route) ?>">
+                                    <i class="fa-solid fa-list-check me-1"></i> Lead List
+                                </a>
+                            </li>
                         <?php endif; ?>
                         <li class="slide">
                             <a href="<?= $base_url ?>/my-all-assigned-leads"
@@ -490,7 +497,8 @@
                         </li>
                         <li class="slide">
                             <a href="<?= $base_url ?>/forms"
-                                class="sidebar__menu-item <?= isActive(['forms', 'form-responses'], $current_route) ?>">TPHL Form Leads</a>
+                                class="sidebar__menu-item <?= isActive(['forms', 'form-responses'], $current_route) ?>">TPHL
+                                Form Leads</a>
                         </li>
                     </ul>
                 <?php endif; ?>
@@ -609,14 +617,14 @@
                         </a>
                     </li>
                     <?php if (!$isManagement): ?>
-                    <!-- Teams Manage -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/teams"
-                            class="sidebar__menu-item <?= isActive('teams', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-users-gear"></i></div>
-                            <span class="sidebar__menu-label">Sales Teams Add</span>
-                        </a>
-                    </li>
+                        <!-- Teams Manage -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/teams"
+                                class="sidebar__menu-item <?= isActive('teams', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-users-gear"></i></div>
+                                <span class="sidebar__menu-label">Sales Teams Add</span>
+                            </a>
+                        </li>
                     <?php endif; ?>
                     <!-- Location -->
                     <li class="slide ">
@@ -629,156 +637,156 @@
                     </li>
 
                     <?php if (!$isManagement): ?>
-                    <!-- department -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/departments"
-                            class="sidebar__menu-item <?= isActive('departments', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-building"></i></div>
-                            <span class="sidebar__menu-label">Department Lists</span>
-                        </a>
-                    </li>
-                    <!-- designation -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/designations"
-                            class="sidebar__menu-item <?= isActive('designations', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
-                            <span class="sidebar__menu-label">Designation Lists</span>
-                        </a>
-                    </li>
-                    <!-- designation -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/holiday-lists"
-                            class="sidebar__menu-item <?= isActive('holiday-lists', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
-                            <span class="sidebar__menu-label">Holiday Manage</span>
-                        </a>
-                    </li>
-                    <!-- Day Off Manage -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/day-off"
-                            class="sidebar__menu-item <?= isActive('day-off', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
-                            <span class="sidebar__menu-label">Day Off Manage</span>
-                        </a>
-                    </li>
-                    <li class="slide">
-                        <a href="<?= $base_url ?>/generate-letter"
-                            class="sidebar__menu-item <?= isActive('generate-letter', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
-                            <span class="sidebar__menu-label">Generate Employee Letter</span>
-                        </a>
-                        <a href="<?= $base_url ?>/letter-templates"
-                            class="d-none sidebar__menu-item <?= isActive('letter-templates', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
-                            <span class="sidebar__menu-label">Generate Template</span>
-                        </a>
-                    </li>
-                    <li class="slide has-sub <?= isActive(['create-attendance', 'attendance-list'], $current_route) ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['create-attendance', 'attendance-list'], $current_route) ? 'active' : '' ?>">
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
-                            <span class="sidebar__menu-label">Attendance Manage</span>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide <?= isActive('create-attendance', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('create-attendance', $current_route) ?>"
-                                    href="<?= $base_url ?>/create-attendance">Add Attendance</a>
+                        <!-- department -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/departments"
+                                class="sidebar__menu-item <?= isActive('departments', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-building"></i></div>
+                                <span class="sidebar__menu-label">Department Lists</span>
+                            </a>
+                        </li>
+                        <!-- designation -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/designations"
+                                class="sidebar__menu-item <?= isActive('designations', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
+                                <span class="sidebar__menu-label">Designation Lists</span>
+                            </a>
+                        </li>
+                        <!-- designation -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/holiday-lists"
+                                class="sidebar__menu-item <?= isActive('holiday-lists', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
+                                <span class="sidebar__menu-label">Holiday Manage</span>
+                            </a>
+                        </li>
+                        <!-- Day Off Manage -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/day-off"
+                                class="sidebar__menu-item <?= isActive('day-off', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
+                                <span class="sidebar__menu-label">Day Off Manage</span>
+                            </a>
+                        </li>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/generate-letter"
+                                class="sidebar__menu-item <?= isActive('generate-letter', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
+                                <span class="sidebar__menu-label">Generate Employee Letter</span>
+                            </a>
+                            <a href="<?= $base_url ?>/letter-templates"
+                                class="d-none sidebar__menu-item <?= isActive('letter-templates', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
+                                <span class="sidebar__menu-label">Generate Template</span>
+                            </a>
+                        </li>
+                        <li class="slide has-sub <?= isActive(['create-attendance', 'attendance-list'], $current_route) ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['create-attendance', 'attendance-list'], $current_route) ? 'active' : '' ?>">
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                                <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                                <span class="sidebar__menu-label">Attendance Manage</span>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <li class="slide <?= isActive('create-attendance', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('create-attendance', $current_route) ?>"
+                                        href="<?= $base_url ?>/create-attendance">Add Attendance</a>
+                                </li>
+                                <li class="slide <?= isActive('attendance-list', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('attendance-list', $current_route) ?>"
+                                        href="<?= $base_url ?>/attendance-list">Attendance List</a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="slide has-sub <?= isActive(['leave-types', 'leave-lists'], $current_route) ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['leave-types', 'leave-lists'], $current_route) ? 'active' : '' ?>">
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                                <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                                <span class="sidebar__menu-label">Leave Manage</span>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <li class="slide <?= isActive('leave-types', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('leave-types', $current_route) ?>"
+                                        href="<?= $base_url ?>/leave-types">Add Leave Type</a>
+                                </li>
+                                <li class="slide <?= isActive('leave-lists', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>"
+                                        href="<?= $base_url ?>/leave-lists">Employee Leave Request</a>
+                                </li>
+
+                            </ul>
+                        </li>
+
+
+                        <li class="sidebar__menu-category d-none">
+                            <span class="category-name">Report</span>
+                        </li>
+
+                        <ul class="sidebar-menu child2 d-none" style="display:block;">
+                            <li class="slide <?= isActive('daily-attendance-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('daily-attendance-report', $current_route) ?>"
+                                    href="<?= $base_url ?>/daily-attendance-report">Dept. Wise Attendance Report</a>
                             </li>
-                            <li class="slide <?= isActive('attendance-list', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('attendance-list', $current_route) ?>"
-                                    href="<?= $base_url ?>/attendance-list">Attendance List</a>
+                            <li class="slide <?= isActive('leave-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('leave-report', $current_route) ?>"
+                                    href="<?= $base_url ?>/leave-report">Leave Report</a>
+                            </li>
+                            <li class="slide <?= isActive('absent-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('absent-report', $current_route) ?>"
+                                    href="<?= $base_url ?>/absent-report">Absent Report</a>
+                            </li>
+                            <li class="slide <?= isActive('daily-late-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('daily-late-report', $current_route) ?>"
+                                    href="<?= $base_url ?>/daily-late-report"> Daily Late Report</a>
+                            </li>
+                            <li class="slide <?= isActive('mobile-punch-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('mobile-punch-report', $current_route) ?>"
+                                    href="<?= $base_url ?>/mobile-punch-report"> Mobile Punch Report</a>
                             </li>
                         </ul>
-                    </li>
+                        <li class="sidebar__menu-category d-none">
+                            <span class="category-name">All Report </span>
+                        </li>
 
-                    <li class="slide has-sub <?= isActive(['leave-types', 'leave-lists'], $current_route) ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['leave-types', 'leave-lists'], $current_route) ? 'active' : '' ?>">
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
-                            <span class="sidebar__menu-label">Leave Manage</span>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide <?= isActive('leave-types', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('leave-types', $current_route) ?>"
-                                    href="<?= $base_url ?>/leave-types">Add Leave Type</a>
+                        <ul class="sidebar-menu child2 d-none" style="display:block;">
+                            <li class="slide <?= isActive('department-kpi', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('department-kpi', $current_route) ?>"
+                                    href="<?= $base_url ?>/department-kpi">Performance Report</a>
                             </li>
-                            <li class="slide <?= isActive('leave-lists', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('leave-lists', $current_route) ?>"
-                                    href="<?= $base_url ?>/leave-lists">Employee Leave Request</a>
+                            <li class="slide <?= isActive('job-card-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('job-card-report', $current_route) ?>"
+                                    href="<?= $base_url ?>/job-card-report">Attendance (Job Card)</a>
+                            </li>
+                            <li class="slide <?= isActive('hrm-daily-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('hrm-daily-report', $current_route) ?>"
+                                    href="<?= $base_url ?>/hrm-daily-report">Daily Punch Report</a>
+                            </li>
+                            <li class="slide <?= isActive('hrm-monthly-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('hrm-monthly-report', $current_route) ?>"
+                                    href="<?= $base_url ?>/hrm-monthly-report">Monthly Report</a>
+                            </li>
+                            <li class="slide <?= isActive('dept-wise-report', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('dept-wise-report', $current_route) ?>"
+                                    href="<?= $base_url ?>/dept-wise-report"> Department Wise</a>
                             </li>
 
                         </ul>
-                    </li>
-
-
-                    <li class="sidebar__menu-category d-none">
-                        <span class="category-name">Report</span>
-                    </li>
-
-                    <ul class="sidebar-menu child2 d-none" style="display:block;">
-                        <li class="slide <?= isActive('daily-attendance-report', $current_route) ?>">
-                            <a class="sidebar__menu-item <?= isActive('daily-attendance-report', $current_route) ?>"
-                                href="<?= $base_url ?>/daily-attendance-report">Dept. Wise Attendance Report</a>
-                        </li>
-                        <li class="slide <?= isActive('leave-report', $current_route) ?>">
-                            <a class="sidebar__menu-item <?= isActive('leave-report', $current_route) ?>"
-                                href="<?= $base_url ?>/leave-report">Leave Report</a>
-                        </li>
-                        <li class="slide <?= isActive('absent-report', $current_route) ?>">
-                            <a class="sidebar__menu-item <?= isActive('absent-report', $current_route) ?>"
-                                href="<?= $base_url ?>/absent-report">Absent Report</a>
-                        </li>
-                        <li class="slide <?= isActive('daily-late-report', $current_route) ?>">
-                            <a class="sidebar__menu-item <?= isActive('daily-late-report', $current_route) ?>"
-                                href="<?= $base_url ?>/daily-late-report"> Daily Late Report</a>
-                        </li>
-                        <li class="slide <?= isActive('mobile-punch-report', $current_route) ?>">
-                            <a class="sidebar__menu-item <?= isActive('mobile-punch-report', $current_route) ?>"
-                                href="<?= $base_url ?>/mobile-punch-report"> Mobile Punch Report</a>
-                        </li>
-                    </ul>
-                    <li class="sidebar__menu-category d-none">
-                        <span class="category-name">All Report </span>
-                    </li>
-
-                    <ul class="sidebar-menu child2 d-none" style="display:block;">
-                        <li class="slide <?= isActive('department-kpi', $current_route) ?>">
-                            <a class="sidebar__menu-item <?= isActive('department-kpi', $current_route) ?>"
-                                href="<?= $base_url ?>/department-kpi">Performance Report</a>
-                        </li>
-                        <li class="slide <?= isActive('job-card-report', $current_route) ?>">
-                            <a class="sidebar__menu-item <?= isActive('job-card-report', $current_route) ?>"
-                                href="<?= $base_url ?>/job-card-report">Attendance (Job Card)</a>
-                        </li>
-                        <li class="slide <?= isActive('hrm-daily-report', $current_route) ?>">
-                            <a class="sidebar__menu-item <?= isActive('hrm-daily-report', $current_route) ?>"
-                                href="<?= $base_url ?>/hrm-daily-report">Daily Punch Report</a>
-                        </li>
-                        <li class="slide <?= isActive('hrm-monthly-report', $current_route) ?>">
-                            <a class="sidebar__menu-item <?= isActive('hrm-monthly-report', $current_route) ?>"
-                                href="<?= $base_url ?>/hrm-monthly-report">Monthly Report</a>
-                        </li>
-                        <li class="slide <?= isActive('dept-wise-report', $current_route) ?>">
-                            <a class="sidebar__menu-item <?= isActive('dept-wise-report', $current_route) ?>"
-                                href="<?= $base_url ?>/dept-wise-report"> Department Wise</a>
-                        </li>
-
-                    </ul>
 
                     <?php endif; ?>
                     <!-- User Activity Log — Admin / Management only -->
                     <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
-                    <li class="slide <?= isActive('user-activity-log', $current_route) ?>">
-                        <a href="<?= $base_url ?>/user-activity-log"
-                            class="sidebar__menu-item <?= isActive('user-activity-log', $current_route) ?>">
-                            <div class="side-menu__icon">
-                                <i class="fa-solid fa-user-clock"></i>
-                            </div>
-                            <span class="sidebar__menu-label">User Activity Log</span>
-                        </a>
-                    </li>
+                        <li class="slide <?= isActive('user-activity-log', $current_route) ?>">
+                            <a href="<?= $base_url ?>/user-activity-log"
+                                class="sidebar__menu-item <?= isActive('user-activity-log', $current_route) ?>">
+                                <div class="side-menu__icon">
+                                    <i class="fa-solid fa-user-clock"></i>
+                                </div>
+                                <span class="sidebar__menu-label">User Activity Log</span>
+                            </a>
+                        </li>
                     <?php endif; ?>
 
                 <?php endif; ?>
@@ -963,13 +971,13 @@
                         </a>
                     </li>
                     <?php if (!$isManagement): ?>
-                    <li class="slide <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
-                        <a href="<?= $GLOBALS['base_url'] ?>/con-wastage"
-                            class="sidebar__menu-item <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fal fa-recycle"></i></div>
-                            <span class="sidebar__menu-label">Wastage Management</span>
-                        </a>
-                    </li>
+                        <li class="slide <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
+                            <a href="<?= $GLOBALS['base_url'] ?>/con-wastage"
+                                class="sidebar__menu-item <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fal fa-recycle"></i></div>
+                                <span class="sidebar__menu-label">Wastage Management</span>
+                            </a>
+                        </li>
 
 
                     <?php endif; ?>
@@ -999,38 +1007,39 @@
                     </li>
 
                     <?php if (!$isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
-                    <li
-                        class="slide has-sub <?= isActive(['create-cashout-request', 'admin-cashout-requests', 'expense-adjustments'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['create-cashout-request', 'admin-cashout-requests', 'expense-adjustments'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"> <i class="fa-solid fa-money-bill-trend-up"></i></div>
-                            <span class="sidebar__menu-label">Manage Cash Out</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
+                        <li
+                            class="slide has-sub <?= isActive(['create-cashout-request', 'admin-cashout-requests', 'expense-adjustments'], $current_route) ? 'active' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['create-cashout-request', 'admin-cashout-requests', 'expense-adjustments'], $current_route) ? 'menu-open active' : '' ?>">
+                                <div class="side-menu__icon"> <i class="fa-solid fa-money-bill-trend-up"></i></div>
+                                <span class="sidebar__menu-label">Manage Cash Out</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
 
-                        <ul class="sidebar-menu child2" style="display:block;">
+                            <ul class="sidebar-menu child2" style="display:block;">
 
 
-                            <?php if (($_SESSION['user']['role_id'] ?? 0) != 3): ?>
-                            <li class="slide <?= isActive('create-cashout-request', $current_route) ?>">
-                                <a href="<?= $base_url ?>/create-cashout-request"
-                                    class="sidebar__menu-item <?= isActive('create-cashout-request', $current_route) ?>">Create
-                                    Cashout Request </a>
-                            </li>
-                            <?php endif; ?>
+                                <?php if (($_SESSION['user']['role_id'] ?? 0) != 3): ?>
+                                    <li class="slide <?= isActive('create-cashout-request', $current_route) ?>">
+                                        <a href="<?= $base_url ?>/create-cashout-request"
+                                            class="sidebar__menu-item <?= isActive('create-cashout-request', $current_route) ?>">Create
+                                            Cashout Request </a>
+                                    </li>
+                                <?php endif; ?>
 
-                            <li class="slide <?= isActive('admin-cashout-requests', $current_route) ?>">
-                                <a href="<?= $base_url ?>/admin-cashout-requests"
-                                    class="sidebar__menu-item <?= isActive('admin-cashout-requests', $current_route) ?>"> Cashout Reports And Approve</a>
-                            </li>
+                                <li class="slide <?= isActive('admin-cashout-requests', $current_route) ?>">
+                                    <a href="<?= $base_url ?>/admin-cashout-requests"
+                                        class="sidebar__menu-item <?= isActive('admin-cashout-requests', $current_route) ?>">
+                                        Cashout Reports And Approve</a>
+                                </li>
 
-                            <li class="slide <?= isActive('expense-adjustments', $current_route) ?>">
-                                <a href="<?= $base_url ?>/expense-adjustments"
-                                    class="sidebar__menu-item <?= isActive('expense-adjustments', $current_route) ?>">Expense
-                                    Adjustments</a>
-                            </li>
-                        </ul>
-                    </li>
+                                <li class="slide <?= isActive('expense-adjustments', $current_route) ?>">
+                                    <a href="<?= $base_url ?>/expense-adjustments"
+                                        class="sidebar__menu-item <?= isActive('expense-adjustments', $current_route) ?>">Expense
+                                        Adjustments</a>
+                                </li>
+                            </ul>
+                        </li>
 
                     <?php endif; ?>
                     <!-- ===================== -->
@@ -1094,35 +1103,35 @@
                     </li>
 
                     <!-- ====== Labor Payment Approvals ====== -->
-                    <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 6])): ?>
-                    <li class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-labor-requisitions', 'con-labor-requisition'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
-                            <span class="sidebar__menu-label">Labor Pay Approval</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-labor-requisitions?status=management_approved"
-                                    class="sidebar__menu-item <?= (isActive('con-labor-requisitions', $current_route) && ($_GET['status'] ?? '') === 'management_approved') ? 'active' : '' ?>">
-                                    <i class="bi bi-clock-history me-1"></i> Pending Payments
-                                </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-labor-requisitions?status=paid"
-                                    class="sidebar__menu-item">
-                                    <i class="bi bi-check2-circle me-1"></i> Paid History
-                                </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-labor-requisitions"
-                                    class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ? 'active' : '' ?>">
-                                    <i class="bi bi-list-ul me-1"></i> All Requisitions
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
+                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 6])): ?>
+                        <li
+                            class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition'], $current_route) ? 'active' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['con-labor-requisitions', 'con-labor-requisition'], $current_route) ? 'menu-open active' : '' ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
+                                <span class="sidebar__menu-label">Labor Pay Approval</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/con-labor-requisitions?status=management_approved"
+                                        class="sidebar__menu-item <?= (isActive('con-labor-requisitions', $current_route) && ($_GET['status'] ?? '') === 'management_approved') ? 'active' : '' ?>">
+                                        <i class="bi bi-clock-history me-1"></i> Pending Payments
+                                    </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/con-labor-requisitions?status=paid" class="sidebar__menu-item">
+                                        <i class="bi bi-check2-circle me-1"></i> Paid History
+                                    </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/con-labor-requisitions"
+                                        class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ? 'active' : '' ?>">
+                                        <i class="bi bi-list-ul me-1"></i> All Requisitions
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
                     <?php endif; ?>
 
                 <?php endif ?>
@@ -1582,8 +1591,7 @@
                                     <a class="sidebar__menu-item <?= isActive(['con-land-requisitions', 'con-land-requisitions/create'], $current_route) ? 'active' : '' ?>"
                                         href="<?= $base_url ?>/con-land-requisitions">Land Requisitions</a>
                                 </li>
-                                <li
-                                    class="slide <?= isActive('con-land-ledger', $current_route) ?>">
+                                <li class="slide <?= isActive('con-land-ledger', $current_route) ?>">
                                     <a class="sidebar__menu-item <?= isActive('con-land-ledger', $current_route) ?>"
                                         href="<?= $base_url ?>/con-land-ledger">Land Ledger</a>
                                 </li>
@@ -1992,13 +2000,13 @@
                             </li>
 
                             <!-- Labor Requisition shortcut inside Bills menu -->
-                            <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 13, 15, 22, 24, 25])): ?>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-labor-requisitions"
-                                    class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
-                                    <i class="fa-solid fa-hard-hat me-1"></i> Labor Requisitions
-                                </a>
-                            </li>
+                            <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 13, 15, 22, 24, 25])): ?>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/con-labor-requisitions"
+                                        class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
+                                        <i class="fa-solid fa-hard-hat me-1"></i> Labor Requisitions
+                                    </a>
+                                </li>
                             <?php endif; ?>
 
                             <!-- <li class="slide">
@@ -2016,8 +2024,9 @@
                 <?php endif; ?>
 
                 <!-- ====== Labor Requisitions ====== -->
-                <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 13, 15, 22, 24, 25])): ?>
-                    <li class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'active' : '' ?>">
+                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 13, 15, 22, 24, 25])): ?>
+                    <li
+                        class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
                             class="sidebar__menu-item <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
@@ -2031,13 +2040,13 @@
                                     <i class="bi bi-list-ul me-1"></i> All Requisitions
                                 </a>
                             </li>
-                            <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 12, 22])): ?>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-labor-requisition-create"
-                                    class="sidebar__menu-item <?= isActive('con-labor-requisition-create', $current_route) ?>">
-                                    <i class="bi bi-plus-circle me-1"></i> + New Requisition
-                                </a>
-                            </li>
+                            <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 12, 22])): ?>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/con-labor-requisition-create"
+                                        class="sidebar__menu-item <?= isActive('con-labor-requisition-create', $current_route) ?>">
+                                        <i class="bi bi-plus-circle me-1"></i> + New Requisition
+                                    </a>
+                                </li>
                             <?php endif; ?>
                         </ul>
                     </li>

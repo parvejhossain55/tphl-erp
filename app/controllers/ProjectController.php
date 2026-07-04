@@ -9,14 +9,16 @@ class ProjectController extends Controller
     protected $locationModel;
     protected $communityModel;
     protected $projectModel;
+    protected $projectCategoryModel;
 
     public function __construct($db)
     {
         $this->db = $db;
 
-        $this->locationModel  = new Location($this->db);
-        $this->communityModel = new Community($this->db);
-        $this->projectModel   = new Project($this->db);
+        $this->locationModel         = new Location($this->db);
+        $this->communityModel        = new Community($this->db);
+        $this->projectModel          = new Project($this->db);
+        $this->projectCategoryModel  = new ProjectCategory($this->db);
     }
 
     /* =========================
@@ -45,6 +47,7 @@ class ProjectController extends Controller
         $locations   = $this->locationModel->getAll();
         $communities = $this->communityModel->getAll();
         $teamUsers   = $this->getTeamUsersByRole();
+        $categories  = $this->projectCategoryModel->getAll();
 
         $this->view("sales-developments/projects/create-project", [
             "current_route"   => "create-project",
@@ -54,6 +57,7 @@ class ProjectController extends Controller
             "locations"       => $locations,
             "communities"     => $communities,
             "teamUsers"       => $teamUsers,
+            "categories"      => $categories,
         ]);
     }
 
@@ -77,6 +81,8 @@ class ProjectController extends Controller
             'slug'              => $slug,
             'location_id'       => $_POST['location_id'] ?? null,
             'community_id'      => $_POST['community_id'] ?? null,
+            'category_id'       => !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null,
+            'incentive_percentage' => !empty($_POST['incentive_percentage']) ? (float)$_POST['incentive_percentage'] : null,
             'building_type'     => $_POST['building_type'] ?? null,
             'total_share'       => $_POST['total_share'] ?? null,
             'unit_per_floor'    => $_POST['unit_per_floor'] ?? null,
@@ -195,6 +201,7 @@ class ProjectController extends Controller
         $locations   = $this->locationModel->getAll();
         $communities = $this->communityModel->getAll();
         $teamUsers   = $this->getTeamUsersByRole();
+        $categories  = $this->projectCategoryModel->getAll();
 
         $this->view("sales-developments/projects/edit-project", [
             "current_route"   => "project-lists",
@@ -204,6 +211,7 @@ class ProjectController extends Controller
             "project"         => $project,
             "show_breadcrumb" => true,
             "teamUsers"       => $teamUsers,
+            "categories"      => $categories,
         ]);
     }
 
@@ -216,6 +224,8 @@ class ProjectController extends Controller
             'name' => $_POST['name'] ?? null,
             'location_id' => $_POST['location_id'] ?? null,
             'community_id' => $_POST['community_id'] ?? null,
+            'category_id'  => !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null,
+            'incentive_percentage' => !empty($_POST['incentive_percentage']) ? (float)$_POST['incentive_percentage'] : null,
             'building_type' => $_POST['building_type'] ?? null,
             'total_share' => $_POST['total_share'] ?? null,
             'unit_per_floor' => $_POST['unit_per_floor'] ?? null,

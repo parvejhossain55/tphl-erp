@@ -431,6 +431,13 @@ $routes = [
     "update-project/(\d+)" => ["controller" => "ProjectController", "method" => "update"],
     "delete-project" => ["controller" => "ProjectController", "method" => "delete"],
     "bulk-projects-import-csv" => ["controller" => "ProjectController", "method" => "importCsvBulkProjects"],
+    // project categories
+    "project-category-lists"         => ["controller" => "ProjectCategoryController", "method" => "index"],
+    "create-project-category"        => ["controller" => "ProjectCategoryController", "method" => "create"],
+    "store-project-category"         => ["controller" => "ProjectCategoryController", "method" => "store"],
+    "edit-project-category/(\d+)"   => ["controller" => "ProjectCategoryController", "method" => "edit"],
+    "update-project-category/(\d+)" => ["controller" => "ProjectCategoryController", "method" => "update"],
+    "delete-project-category"        => ["controller" => "ProjectCategoryController", "method" => "delete"],
 
     //flat
     "flat-lists" => ["controller" => "FlatController", "method" => "index"],

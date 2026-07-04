@@ -97,10 +97,10 @@ class Project extends Model
             ? (float)$data['plot_size']
             : null;
         // ======================
-        // Insert Query (Total 35 Columns)
-        // ======================
+        // Insert Query
         $sql = "INSERT INTO projects (
-                name, slug, location_id, community_id, building_type, 
+                name, slug, location_id, community_id, category_id, incentive_percentage,
+                building_type, 
                 total_share, unit_per_floor, floor_wise_unit_meta, types, image, 
                 image2, image3, front_road, price_range, hover_text, 
                 plot_size, plot_no, block_no, brochure_link, description, 
@@ -111,7 +111,7 @@ class Project extends Model
                 pm_id, site_engineer_id, landman_id, struct_engineer_id,
                 draftsman_id, architect_id, estimator_id, qc_id, operator_id,
                 purchase_user_id, under_construction
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         $stmt = $this->db->prepare($sql);
 
@@ -121,69 +121,60 @@ class Project extends Model
             return false;
         }
 
-        // bindTypes: 47 total
-        $bindTypes = "ssiisiissssssssd" . "ssssisssssiiiiiiiisd" . "iiiiiiiiiii";
-
-        $pm_id             = !empty($data['pm_id']) ? (int)$data['pm_id'] : null;
-        $site_engineer_id  = !empty($data['site_engineer_id']) ? (int)$data['site_engineer_id'] : null;
-        $landman_id        = !empty($data['landman_id']) ? (int)$data['landman_id'] : null;
-        $struct_engineer_id = !empty($data['struct_engineer_id']) ? (int)$data['struct_engineer_id'] : null;
-        $draftsman_id      = !empty($data['draftsman_id']) ? (int)$data['draftsman_id'] : null;
-        $architect_id      = !empty($data['architect_id']) ? (int)$data['architect_id'] : null;
-        $estimator_id      = !empty($data['estimator_id']) ? (int)$data['estimator_id'] : null;
-        $qc_id             = !empty($data['qc_id']) ? (int)$data['qc_id'] : null;
-        $operator_id       = !empty($data['operator_id']) ? (int)$data['operator_id'] : null;
-        $purchase_user_id  = !empty($data['purchase_user_id']) ? (int)$data['purchase_user_id'] : null;
+        $category_id          = !empty($data['category_id']) ? (int)$data['category_id'] : null;
+        $incentive_percentage = !empty($data['incentive_percentage']) ? (float)$data['incentive_percentage'] : null;
 
         $stmt->bind_param(
-            $bindTypes,
-            $data['name'],                  // 1
-            $data['slug'],                  // 2
-            $location_id,                   // 3 (i)
-            $community_id,                  // 4 (i)
-            $data['building_type'],         // 5
-            $total_share,                   // 6 (i)
-            $unit_per_floor,                // 7 (i)
-            $data['floor_wise_unit_meta'],  // 8
-            $data['types'],                 // 9
-            $image,                         // 10
-            $image2,                        // 11
-            $image3,                        // 12
-            $data['front_road'],            // 13
-            $price_range,                   // 14
-            $data['hover_text'],            // 15
-            $plot_size,                     // 16 (d - float/null)
-            $data['plot_no'],               // 17
-            $data['block_no'],              // 18
-            $data['brochure_link'],         // 19
-            $data['description'],           // 20
-            $apartment_count,               // 21 (i)
-            $data['amenities_details'],     // 22
-            $amenities_image,               // 23
-            $map_image,                     // 24
-            $data['map_link'],              // 25
-            $data['project_map_location'],  // 26
-            $passenger_lift,                // 27 (i)
-            $cargo_lift,                    // 28 (i)
-            $created_by,                    // 29 (i)
-            $rooftop_gardening,             // 30 (i)
-            $swimming_pool,                 // 31 (i)
-            $convention,                    // 32 (i)
-            $electricity_backup,            // 33 (i)
-            $car_parking,                   // 34 (i)
-            $data['project_sale_status'],   // 35 (s)
-            $data['service_charge_per_emi'], // 36 (d)
-            $pm_id,                         // 37 (i)
-            $site_engineer_id,              // 38 (i)
-            $landman_id,                    // 39 (i)
-            $struct_engineer_id,            // 40 (i)
-            $draftsman_id,                  // 41 (i)
-            $architect_id,                  // 43 (i)
-            $estimator_id,                  // 44 (i)
-            $qc_id,                         // 45 (i)
-            $operator_id,                   // 46 (i)
-            $purchase_user_id,              // 47 (i)
-            $under_construction             // 48 (i)
+            "ssiiiidsiissssssdsssisssssiiiiiiiiisdiiiiiiiiiii",
+            $data['name'],                   // 1
+            $data['slug'],                   // 2
+            $location_id,                    // 3 (i)
+            $community_id,                   // 4 (i)
+            $category_id,                    // 5 (i)
+            $incentive_percentage,           // 6 (d)
+            $data['building_type'],          // 7
+            $total_share,                    // 8 (i)
+            $unit_per_floor,                 // 9 (i)
+            $data['floor_wise_unit_meta'],   // 10
+            $data['types'],                  // 11
+            $image,                          // 12
+            $image2,                         // 13
+            $image3,                         // 14
+            $data['front_road'],             // 15
+            $price_range,                    // 16
+            $data['hover_text'],             // 17
+            $plot_size,                      // 18 (d)
+            $data['plot_no'],                // 19
+            $data['block_no'],               // 20
+            $data['brochure_link'],          // 21
+            $data['description'],            // 22
+            $apartment_count,                // 23 (i)
+            $data['amenities_details'],      // 24
+            $amenities_image,                // 25
+            $map_image,                      // 26
+            $data['map_link'],               // 27
+            $data['project_map_location'],   // 28
+            $passenger_lift,                 // 29 (i)
+            $cargo_lift,                     // 30 (i)
+            $created_by,                     // 31 (i)
+            $rooftop_gardening,              // 32 (i)
+            $swimming_pool,                  // 33 (i)
+            $convention,                     // 34 (i)
+            $electricity_backup,             // 35 (i)
+            $car_parking,                    // 36 (i)
+            $data['project_sale_status'],    // 37 (s)
+            $data['service_charge_per_emi'], // 38 (d)
+            $pm_id,                          // 39 (i)
+            $site_engineer_id,               // 40 (i)
+            $landman_id,                     // 41 (i)
+            $struct_engineer_id,             // 42 (i)
+            $draftsman_id,                   // 43 (i)
+            $architect_id,                   // 44 (i)
+            $estimator_id,                   // 45 (i)
+            $qc_id,                          // 46 (i)
+            $operator_id,                    // 47 (i)
+            $purchase_user_id,               // 48 (i)
+            $under_construction              // 49 (i)
         );
 
         $result = $stmt->execute();
@@ -322,7 +313,9 @@ class Project extends Model
         name = ?, 
         slug = ?, 
         location_id = ?, 
-        community_id = ?, 
+        community_id = ?,
+        category_id = ?,
+        incentive_percentage = ?,
         plot_no = ?, 
         block_no = ?, 
         building_type = ?,
@@ -385,13 +378,17 @@ class Project extends Model
         $operator_id       = !empty($data['operator_id']) ? (int)$data['operator_id'] : null;
         $purchase_user_id  = !empty($data['purchase_user_id']) ? (int)$data['purchase_user_id'] : null;
         $under_construction = isset($data['under_construction']) ? (int)$data['under_construction'] : 0;
-// updated undercons
+        $category_id        = !empty($data['category_id']) ? (int)$data['category_id'] : null;
+        $incentive_percentage = !empty($data['incentive_percentage']) ? (float)$data['incentive_percentage'] : null;
+
         $stmt->bind_param(
-            "ssiisssiissssdssissssssiiiisssiisssd" . "iiiiiiiiiiii",
+            "ssiidsssiissssdssissssssiiiisssiisssd" . "iiiiiiiiiiii",
             $data['name'],
             $data['slug'],
             $data['location_id'],
             $data['community_id'],
+            $category_id,
+            $incentive_percentage,
             $data['plot_no'],
             $data['block_no'],
             $data['building_type'],
