@@ -30,7 +30,7 @@
                                        <th style="min-width: 160px;" class="text-center">Communication Type</th>
                                        <th style="min-width: 160px;" class="text-center">Lead Status</th>
                                        <th style="min-width: 130px;" class="text-center">Follow Up Status</th>
-                                       <th style="min-width: 250px;" class="text-center">First Call Note</th>
+                                       <th style="min-width: 250px;" class="text-center">Instant Call Note</th>
                                        <th style="min-width: 250px;" class="text-center">Last Follow Up Note</th>
                                        <th style="min-width: 140px;">Next Follow-Up</th>
                                        <th style="min-width: 180px;">Action</th>

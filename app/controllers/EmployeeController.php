@@ -26,6 +26,7 @@ class EmployeeController extends Controller
     {
         $searchTerm = $_GET['q'] ?? '';
         $departmentFilter = $_GET['department_id'] ?? '';
+        $teamFilter = $_GET['team_id'] ?? '';
 
 
         $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
@@ -33,24 +34,31 @@ class EmployeeController extends Controller
         $offset = ($currentPage - 1) * $perPage;
 
         // Total employee count with filters
-        $totalEmployees = $this->employeeModel->countAll($searchTerm, $departmentFilter);
+        $totalEmployees = $this->employeeModel->countAll($searchTerm, $departmentFilter, $teamFilter);
         $totalPages = ceil($totalEmployees / $perPage);
 
         // Get paginated employees with search & department filter
-        $employees = $this->employeeModel->getPaginated($perPage, $offset, $searchTerm, $departmentFilter);
+        $employees = $this->employeeModel->getPaginated($perPage, $offset, $searchTerm, $departmentFilter, $teamFilter);
 
         // Departments for filter dropdown
         $departments = $this->departmentModel->getAll();
 
+        // Teams for filter dropdown
+        $teams = $this->teamsModel->getAll();
+
         $this->view("hrm/employees/employees", [
-            "current_route"   => "employee-lists",
-            "page_title"      => "Employee List",
-            "currentPage"     => $currentPage,
-            "totalPages"      => $totalPages,
-            "employees"       => $employees,
-            "departments"     => $departments,
-            "searchTerm"      => $searchTerm,
-            "selectedDepartment" => $departmentFilter
+            "current_route"      => "employee-lists",
+            "page_title"         => "Employee List",
+            "currentPage"        => $currentPage,
+            "totalPages"         => $totalPages,
+            "totalEmployees"     => $totalEmployees,
+            "perPage"            => $perPage,
+            "employees"          => $employees,
+            "departments"        => $departments,
+            "teams"              => $teams,
+            "searchTerm"         => $searchTerm,
+            "selectedDepartment" => $departmentFilter,
+            "selectedTeam"       => $teamFilter
         ]);
     }
 

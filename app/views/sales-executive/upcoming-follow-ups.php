@@ -21,6 +21,7 @@
                          <th>Last Decussion Note</th>
                          <th>Next Action</th>
                          <th>Upcoming Follow Up Date</th>
+                         <th>Action</th>
 
                      </tr>
                  </thead>
@@ -37,11 +38,18 @@
                                  <td><?= htmlspecialchars($followUp['discussion_note'] ?? 'N/A') ?></td>
                                  <td><?= htmlspecialchars($followUp['next_action'] ?? 'N/A') ?></td>
                                    <td><?= !empty($followUp['next_follow_up_date']) ? date('d M, Y', strtotime($followUp['next_follow_up_date'])) : 'N/A' ?></td>
+                                 <td>
+                                     <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $followUp['lead_id'] ?>"
+                                         class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+                                         <i class="bi bi-telephone-forward"></i>
+                                         <span>Follow Up</span>
+                                     </a>
+                                 </td>
                              </tr>
                          <?php endforeach; ?>
                      <?php else: ?>
                          <tr>
-                             <td colspan="7" class="text-center py-4">
+                             <td colspan="9" class="text-center py-4">
                                  <div class="text-muted">No follow-ups found</div>
                              </td>
                          </tr>

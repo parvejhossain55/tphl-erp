@@ -280,7 +280,7 @@
                                 <th style="min-width: 160px;" class="text-center">Communtication Type</th>
                                 <th style="min-width: 160px;" class="text-center">Lead Status</th>
                                 <th style="min-width: 130px;" class="text-center">Follow Up Status</th>
-                                <th style="min-width: 250px;" class="text-center">First Call Note</th>
+                                <th style="min-width: 250px;" class="text-center">Instant Call Note</th>
                                 <th style="min-width: 250px;" class="text-center">Last Follow Up Note</th>
                                 <th style="min-width: 140px;">Next Follow-Up</th>
                                 <th style="min-width: 180px;">Action</th>
@@ -338,15 +338,11 @@
                                                     data-bs-toggle="modal"
                                                     data-bs-target="#viewProjectCampaignName">
                                                     View
-
-
-
                                                 </button>
                                             <?php endif; ?>
                                         </div>
                                     </td>
                                     <td>
-
                                         <?php if (!empty($lead['project_name'])): ?>
                                             <div class="bd-badge-custom">
                                                 <div class="fw-bold"><?= htmlspecialchars($lead['project_name']) ?></div>
@@ -362,7 +358,6 @@
                                     </td>
                                     <!-- New Last Action Update Button -->
                                     <td>
-
                                         <form method="POST"
                                             action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>"
                                             class="m-0 p-0">

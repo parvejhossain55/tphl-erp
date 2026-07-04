@@ -20,7 +20,7 @@ $show_breadcrumb = true;
 
 
         <!-- Department Filter -->
-        <div class="col-xxl-3 col-md-6 col-12">
+        <div class="col-xxl-2 col-md-6 col-12">
             <div class="card__wrapper">
                 <div class="from__input-box">
                     <select class="form-control" name="department_id">
@@ -36,8 +36,25 @@ $show_breadcrumb = true;
             </div>
         </div>
 
+        <!-- Team Filter -->
+        <div class="col-xxl-2 col-md-6 col-12">
+            <div class="card__wrapper">
+                <div class="from__input-box">
+                    <select class="form-control" name="team_id">
+                        <option value="">All Teams</option>
+                        <?php foreach ($teams as $team): ?>
+                            <option value="<?= $team['id'] ?>"
+                                <?= ($selectedTeam ?? '') == $team['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($team['name']) ?>
+                            </option>
+                        <?php endforeach ?>
+                    </select>
+                </div>
+            </div>
+        </div>
+
         <!-- Submit -->
-        <div class="col-xxl-6 col-12">
+        <div class="col-xxl-5 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-stretch gap-15">
 
@@ -122,12 +139,43 @@ $show_breadcrumb = true;
     <?php endforeach ?>
 
 
+    <!-- Count Info + Pagination -->
+    <?php
+        $currentPageCount = count($employees);
+        $startRecord = $totalEmployees > 0 ? (($currentPage - 1) * $perPage) + 1 : 0;
+        $endRecord   = min($startRecord + $currentPageCount - 1, $totalEmployees);
+    ?>
+    <div class="row mt-4 mb-2 align-items-center">
+        <div class="col-12">
+            <div class="card__wrapper py-2 px-3">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-people-fill text-primary fs-5"></i>
+                        <span class="fw-semibold">
+                            Showing
+                            <span class="text-primary fw-bold"><?= $startRecord ?></span>
+                            –
+                            <span class="text-primary fw-bold"><?= $endRecord ?></span>
+                            of
+                            <span class="text-success fw-bold"><?= $totalEmployees ?></span>
+                            employees
+                        </span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 text-muted" style="font-size: 13px;">
+                        <i class="bi bi-file-earmark-person"></i>
+                        Page <strong><?= $currentPage ?></strong> of <strong><?= $totalPages ?></strong>
+                        &nbsp;|&nbsp;
+                        <strong><?= $currentPageCount ?></strong> shown on this page
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Pagination -->
-    <div class="row my-4">
+    <div class="row mb-4">
         <div class="col-12 d-flex justify-content-center">
             <?= paginateLinksSecondary($base_url . "/employee-lists", $currentPage, $totalPages); ?>
-
-
         </div>
     </div>
 </div>
