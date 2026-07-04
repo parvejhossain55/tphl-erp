@@ -739,8 +739,13 @@
               <div class="d-flex align-items-center justify-content-between px-2 py-2 rounded"
                 style="background:#fff5f5; border:1px solid #f5c2c7;">
 
-                <div class="small text-danger fw-semibold">
-                  <i class="bi bi-exclamation-circle me-1"></i>Total Duplicates Lead
+                <div>
+                  <div class="small text-danger fw-semibold">
+                    <i class="bi bi-exclamation-circle me-1"></i>Total Duplicates Lead
+                  </div>
+                  <div style="font-size:.65rem; color:#999; margin-top:1px;">
+                    by Phone &amp; Email
+                  </div>
                 </div>
 
                 <span class="badge bg-danger">
@@ -817,12 +822,13 @@
                   <th>Platform &amp; Campaign</th>
                   <th>Team Name</th>
                   <th>Sales Team Lead</th>
+                  <th>Assigned To</th>
                   <th class="pe-4 text-end">Upload Date</th>
                   <th class="pe-4 text-center">Action</th>
                 </tr>
               </thead>
               <tbody id="dmLeadTbody">
-                <tr><td colspan="11" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></td></tr>
+                <tr><td colspan="12" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></td></tr>
               </tbody>
             </table>
 
@@ -899,7 +905,7 @@
   function dmLoadLeads(page = 1) {
     dmCurrentPage = page;
     const tbody   = document.getElementById('dmLeadTbody');
-    tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
 
     const params = new URLSearchParams({
       ...dmFilters,
@@ -925,7 +931,7 @@
 
         // Render rows
         if (!data.rows || data.rows.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="11" class="text-center py-5"><i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i><div class="text-muted">No leads found.</div></td></tr>';
+          tbody.innerHTML = '<tr><td colspan="12" class="text-center py-5"><i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i><div class="text-muted">No leads found.</div></td></tr>';
           document.getElementById('dmPaginationInfo').textContent = '';
           document.getElementById('dmPagination').innerHTML = '';
           return;
@@ -942,6 +948,7 @@
             <td>${row.platform}</td>
             <td>${row.team}</td>
             <td>${row.sales_lead}</td>
+            <td>${row.assigned_to}</td>
             <td class="pe-4 text-end">${row.upload_date}</td>
             <td class="pe-4 text-center">${row.action}</td>
           </tr>
@@ -979,12 +986,15 @@
         addBtn('»', totalPages, page === totalPages);
       })
       .catch(() => {
-        tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-danger">Failed to load leads. Please refresh.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center py-4 text-danger">Failed to load leads. Please refresh.</td></tr>';
       });
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    dmLoadLeads(1);
+    // Start from URL ?page= if present (e.g., after redirect)
+    const _urlP = new URLSearchParams(window.location.search);
+    const _startPage = parseInt(_urlP.get('page') || '1', 10);
+    dmLoadLeads(_startPage > 1 ? _startPage : 1);
 
     // Per page change
     document.getElementById('dmPerPage').addEventListener('change', function () {
@@ -1006,21 +1016,53 @@
       document.querySelectorAll('#dmLeadTbody .rowCheckbox').forEach(cb => cb.checked = this.checked);
     });
 
-    // Bulk delete
+    // Individual delete (AJAX — stays on current page)
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest('.removeBtnCust');
+      if (!btn) return;
+      e.preventDefault();
+      const leadId   = btn.getAttribute('data-id');
+      const leadName = btn.getAttribute('data-name');
+      if (!confirm(`Are you sure you want to permanently delete "${leadName}"?`)) return;
+
+      const fd = new FormData();
+      fd.append('id',            leadId);
+      fd.append('redirect_page', dmCurrentPage);
+      fd.append('ajax',          '1');
+
+      fetch(`${base_url}/delete-lead-permanent`, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok) {
+            dmLoadLeads(dmCurrentPage); // reload same page
+          } else {
+            alert(data.message || 'Delete failed.');
+          }
+        })
+        .catch(() => alert('Delete failed. Please try again.'));
+    });
+
+    // Bulk delete (AJAX — stays on current page)
     document.getElementById('bulkDeleteBtn').addEventListener('click', function () {
       const selected = [...document.querySelectorAll('#dmLeadTbody .rowCheckbox:checked')].map(cb => cb.value);
       if (!selected.length) { alert('Please select at least one lead'); return; }
       if (!confirm('Are you sure you want to delete selected leads?')) return;
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = `${base_url}/delete-leads-permanent-multiple`;
-      selected.forEach(id => {
-        const inp = document.createElement('input');
-        inp.type = 'hidden'; inp.name = 'ids[]'; inp.value = id;
-        form.appendChild(inp);
-      });
-      document.body.appendChild(form);
-      form.submit();
+
+      const fd = new FormData();
+      selected.forEach(id => fd.append('ids[]', id));
+      fd.append('redirect_page', dmCurrentPage);
+      fd.append('ajax',          '1');
+
+      fetch(`${base_url}/delete-leads-permanent-multiple`, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok) {
+            dmLoadLeads(dmCurrentPage); // reload same page
+          } else {
+            alert(data.message || 'Delete failed.');
+          }
+        })
+        .catch(() => alert('Delete failed. Please try again.'));
     });
 
     // Prevent page reload when Import CSV clicked

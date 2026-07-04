@@ -819,9 +819,28 @@ document.addEventListener('DOMContentLoaded', function () {
             inp.type = 'hidden'; inp.name = name; inp.value = val;
             form.appendChild(inp);
         };
+        // Capture current page from DataTables or URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentPage = urlParams.get('page') || '1';
+        // Also try to get DataTables current page start
+        let dtPage = 1;
+        try {
+            const dtTable = $('#serverSideLeadTable').DataTable();
+            const pageInfo = dtTable.page.info();
+            dtPage = pageInfo.page + 1; // DataTables is 0-indexed
+        } catch(e) {}
+        const finalPage = dtPage > 1 ? dtPage : currentPage;
+
         addHidden('user_id',       userId);
         addHidden('lead_ids',      selectedLeads.join(','));
         addHidden('assigned_date', assignedDate);
+        addHidden('redirect_page', finalPage);
+        // Also preserve all current GET filters
+        const filterParams = ['year','month','date','assigned_user','last_action','assigned','q'];
+        filterParams.forEach(p => {
+            const v = urlParams.get(p);
+            if (v) addHidden('redirect_' + p, v);
+        });
         document.body.appendChild(form);
         form.submit();
     }
@@ -899,13 +918,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const urlParams = new URLSearchParams(window.location.search);
         const ajaxUrl   = base_url + '/leads-ajax-data?' + urlParams.toString();
 
+        // Restore page position from URL ?page= parameter
+        const pageFromUrl   = parseInt(urlParams.get('page') || '1', 10);
+        const pageLength    = 10; // must match server perPage
+        const displayStart  = (pageFromUrl > 1) ? (pageFromUrl - 1) * pageLength : 0;
+
         const dtTable = $('#serverSideLeadTable').DataTable({
-            serverSide : true,
-            processing : true,
-            ajax       : { url: ajaxUrl, type: 'POST' },
-            lengthMenu : [[10, 25, 50, 100], [10, 25, 50, 100]],
-            order      : [],
-            columnDefs : [
+            serverSide   : true,
+            processing   : true,
+            ajax         : { url: ajaxUrl, type: 'POST' },
+            lengthMenu   : [[10, 25, 50, 100], [10, 25, 50, 100]],
+            displayStart : displayStart,
+            order        : [],
+            columnDefs   : [
                 { targets: 0, orderable: false },
                 { targets: 9, orderable: false }
             ],
