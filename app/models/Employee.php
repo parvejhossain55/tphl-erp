@@ -8,7 +8,7 @@ class Employee extends Model
     {
         return parent::__construct($db);
     }
-    public function getPaginated($limit, $offset, $search = '', $department_id = '')
+    public function getPaginated($limit, $offset, $search = '', $department_id = '', $team_id = '')
     {
         $sql = "SELECT e.*, 
                    desg.name AS designation_name, 
@@ -41,6 +41,12 @@ class Employee extends Model
         if ($department_id) {
             $sql .= " AND e.department_id = ?";
             $params[] = $department_id;
+            $types .= "i";
+        }
+
+        if ($team_id) {
+            $sql .= " AND e.team_id = ?";
+            $params[] = $team_id;
             $types .= "i";
         }
 
@@ -115,7 +121,7 @@ class Employee extends Model
     }
 
 
-    public function countAll($search = '', $department_id = 'employeePhoto')
+    public function countAll($search = '', $department_id = '', $team_id = '')
     {
         $sql = "SELECT COUNT(*) as total FROM employees WHERE 1";
         $params = [];
@@ -135,6 +141,12 @@ class Employee extends Model
         if ($department_id) {
             $sql .= " AND department_id = ?";
             $params[] = $department_id;
+            $types .= "i";
+        }
+
+        if ($team_id) {
+            $sql .= " AND team_id = ?";
+            $params[] = $team_id;
             $types .= "i";
         }
 

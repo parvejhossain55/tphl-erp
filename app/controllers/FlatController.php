@@ -98,14 +98,14 @@ class FlatController extends Controller
             
             // Format type badge
             if (($flat['unit_type'] ?? 'residential') === 'commercial') {
-                $typeBadge = '<span class="bd-badge bg-warning text-dark"><i class="bi bi-shop me-1"></i> Shop</span>';
+                $typeBadge = '<span class="bd-badge bg-warning "><i class="bi bi-shop me-1"></i> Shop</span>';
             } else {
                 $typeBadge = '<span class="bd-badge bg-primary"><i class="bi bi-building me-1"></i> Flat</span>';
             }
 
             // Format service charge
             if (($flat['unit_type'] ?? 'residential') === 'commercial' && !empty($flat['shop_service_charge'])) {
-                $serviceCharge = '<span class="bd-badge bg-info text-dark">' . (int)$flat['shop_service_charge'] . '%</span>';
+                $serviceCharge = '<span class="bd-badge bg-info ">' . (int)$flat['shop_service_charge'] . '%</span>';
             } else {
                 $serviceCharge = '<span class="text-muted">—</span>';
             }
@@ -115,7 +115,7 @@ class FlatController extends Controller
             if ($statusVal === 'sold') {
                 $statusBadge = '<span class="bd-badge bg-danger">Sold</span>';
             } elseif ($statusVal === 'booked') {
-                $statusBadge = '<span class="bd-badge bg-warning text-dark">Booked</span>';
+                $statusBadge = '<span class="bd-badge bg-warning ">Booked</span>';
             } else {
                 $statusBadge = '<span class="bd-badge bg-success">Available</span>';
             }

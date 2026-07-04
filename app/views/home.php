@@ -373,7 +373,7 @@ $hasTransactions = !empty($recentTransactions);
                     <!-- AI Banner with cute robot avatar (no background as requested) -->
                     <div class="mb-3 d-flex align-items-center justify-content-between position-relative" style="background: transparent; border: none; padding: 12px 0;">
                         <div style="flex: 1; z-index: 1;">
-                            <h5 class="fw-bold mb-1 text-dark" style="font-size: 15px; font-weight: 700; letter-spacing: -0.3px;">Hi Management! 👋</h5>
+                            <h5 class="fw-bold mb-1 " style="font-size: 15px; font-weight: 700; letter-spacing: -0.3px;">Hi Management! 👋</h5>
                             <p class="mb-0 text-muted" style="font-size: 11.5px; line-height: 1.45;">I've analyzed your business data and found some key insights.</p>
                         </div>
                         <div style="width: 75px; height: 75px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; z-index: 1; margin-left: 10px;">
@@ -389,7 +389,7 @@ $hasTransactions = !empty($recentTransactions);
                                 <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 28px; height: 28px; background: rgba(var(--clr-theme-primary-rgb), 0.08); color: var(--clr-theme-primary); font-size: 13px;">
                                     <i class="fa-light fa-sparkles"></i>
                                 </span>
-                                <span class="fw-bold mb-0 text-dark" style="font-size: 13px; letter-spacing: 0.3px;">Key Insights</span>
+                                <span class="fw-bold mb-0 " style="font-size: 13px; letter-spacing: 0.3px;">Key Insights</span>
                             </div>
                             
                             <!-- Insight List -->
@@ -401,7 +401,7 @@ $hasTransactions = !empty($recentTransactions);
                                             <i class="fa-light fa-building"></i>
                                         </div>
                                         <div class="flex-grow-1">
-                                            <div class="text-dark" style="font-size: 12.5px; font-weight: 600; line-height: 1.3;">
+                                            <div class="" style="font-size: 12.5px; font-weight: 600; line-height: 1.3;">
                                                 Total flats booked: <strong style="color: var(--clr-theme-primary);"><?= $totalFlatsBooking ?? 0 ?></strong>
                                             </div>
                                             <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">Based on overall sales inventory data.</div>
@@ -417,7 +417,7 @@ $hasTransactions = !empty($recentTransactions);
                                             <i class="fa-light fa-helmet-safety"></i>
                                         </div>
                                         <div class="flex-grow-1">
-                                            <div class="text-dark" style="font-size: 12.5px; font-weight: 600; line-height: 1.3;">
+                                            <div class="" style="font-size: 12.5px; font-weight: 600; line-height: 1.3;">
                                                 Construction in progress: <strong style="color: #f59e0b;"><?= $constructionProjectsCount ?? 0 ?></strong> projects
                                             </div>
                                             <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">Active phases currently under development.</div>
@@ -433,7 +433,7 @@ $hasTransactions = !empty($recentTransactions);
                                             <i class="fa-light fa-wallet"></i>
                                         </div>
                                         <div class="flex-grow-1">
-                                            <div class="text-dark" style="font-size: 12.5px; font-weight: 600; line-height: 1.3;">
+                                            <div class="" style="font-size: 12.5px; font-weight: 600; line-height: 1.3;">
                                                 Net Cashflow: <strong style="color: #10b981;">৳<?= format_bdt(($overviewStats['total_cashin'] ?? 0) - ($overviewStats['total_cashout'] ?? 0)) ?></strong>
                                             </div>
                                             <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">Cash In: ৳<?= format_bdt($overviewStats['total_cashin'] ?? 0) ?> | Cash Out: ৳<?= format_bdt($overviewStats['total_cashout'] ?? 0) ?></div>
@@ -513,7 +513,7 @@ $hasTransactions = !empty($recentTransactions);
                                             <small class="text-muted d-block"><?= htmlspecialchars($req['title']) ?></small>
                                             <small class="text-muted">Requested: <?= date('d M Y', strtotime($req['created_at'])) ?></small>
                                         </div>
-                                        <span class="badge bg-warning text-dark"><?= ucfirst($req['status']) ?></span>
+                                        <span class="badge bg-warning "><?= ucfirst($req['status']) ?></span>
                                     </div>
 
                                     <div class="mb-2">
