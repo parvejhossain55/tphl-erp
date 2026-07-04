@@ -184,6 +184,35 @@
 
 <!-- Stats Grid -->
 <div class="row  mb-4 align-items-stretch">
+    <!-- Duplicate Assigned Leads Card (Team-based) -->
+    <?php if (!empty($duplicateGroups)): ?>
+    <div class="col-12 mb-3">
+        <div class="alert alert-danger border-0 shadow-sm mb-0 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2"
+             style="background:linear-gradient(135deg,#fff5f5,#ffe0e0);border-left:4px solid #dc3545 !important;border-radius:10px;">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center"
+                     style="width:42px;height:42px;background:#dc3545;flex-shrink:0;">
+                    <i class="bi bi-exclamation-triangle-fill text-white" style="font-size:1.1rem;"></i>
+                </div>
+                <div>
+                    <div class="fw-bold text-danger" style="font-size:.95rem;">
+                        &#9888; Duplicate Leads &mdash; In Your Team &amp; Also in Other Teams
+                    </div>
+                    <div class="text-muted" style="font-size:.78rem;">
+                        <strong><?= $duplicateCount ?></strong> leads from your team are also assigned in
+                        <span class="fw-semibold text-danger">other teams</span> or
+                        <span class="fw-semibold text-danger">other members</span>
+                        &nbsp;&middot;&nbsp; by Phone &amp; Email
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-danger btn-sm px-3" data-bs-toggle="modal" data-bs-target="#dupAssignedModal">
+                <i class="bi bi-eye me-1"></i> View Details
+            </button>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Desktop View: Filters and Table -->
     <div class="desktop-only">
         <!-- Filters -->
@@ -1098,9 +1127,17 @@
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
-                body: 'lead_id=' + encodeURIComponent(leadId) + '&call_note=' + encodeURIComponent(note)
+                body: 'lead_id=' + encodeURIComponent(leadId) + '&call_note=' + encodeURIComponent(note) + '&ajax=1'
             })
-            .then(res => res.json())
+            .then(res => {
+                if (res.status === 401) {
+                    // Session expired
+                    return res.json().then(data => {
+                        throw new Error(data.message || 'Session expired. Please login again.');
+                    });
+                }
+                return res.json();
+            })
             .then(data => {
                 if (data.success) {
                     el.style.borderColor = '#198754'; // success hint
@@ -1123,16 +1160,24 @@
             .catch(err => {
                 console.error('Error saving note:', err);
                 el.style.borderColor = '#dc3545'; // error hint
+
+                const isSessionErr = err.message && (err.message.toLowerCase().includes('session') || err.message.toLowerCase().includes('login'));
+
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
-                        icon: 'error',
-                        title: 'Failed to save note!',
+                        icon: isSessionErr ? 'warning' : 'error',
+                        title: isSessionErr ? 'Session Expired!' : 'Failed to save note!',
                         text: err.message,
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 3000,
-                        timerProgressBar: true
+                        toast: !isSessionErr,
+                        position: isSessionErr ? 'center' : 'top-end',
+                        showConfirmButton: isSessionErr,
+                        confirmButtonText: isSessionErr ? 'Login Again' : undefined,
+                        timer: isSessionErr ? undefined : 3000,
+                        timerProgressBar: !isSessionErr
+                    }).then(result => {
+                        if (isSessionErr && result.isConfirmed) {
+                            window.location.href = (typeof base_url !== 'undefined' ? base_url : '') + '/admin-login';
+                        }
                     });
                 }
             });
@@ -1149,3 +1194,169 @@
         });
     });
 </script>
+
+<!-- ══ Duplicate Assigned Leads Modal (Team-scoped) ════════════════════════════════════════════════════ -->
+<?php if (!empty($duplicateGroups)): ?>
+<div class="modal fade" id="dupAssignedModal" tabindex="-1" aria-labelledby="dupAssignedModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content" style="border-radius:14px;overflow:hidden;">
+
+      <!-- Header -->
+      <div class="modal-header" style="background:linear-gradient(135deg,#dc3545,#b02a37);color:#fff;">
+        <div>
+          <h5 class="modal-title fw-bold mb-0" id="dupAssignedModalLabel">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>Duplicate Assigned Leads
+          </h5>
+          <small style="opacity:.85;font-size:.78rem;">
+            Leads in your team that are also assigned in other teams or to other members
+          </small>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="modal-body pb-0 pt-3" style="background:#fafafa;">
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+          <label class="fw-semibold small text-muted mb-0">Filter by Assigned Member:</label>
+          <select id="dupMemberFilter" class="form-select form-select-sm" style="max-width:240px;">
+            <option value="">All Members</option>
+            <?php
+              $allAssignees = [];
+              foreach ($duplicateGroups as $grp) {
+                  foreach ($grp['rows'] as $r) {
+                      $name = $r['assigned_to_name'] ?? 'Unknown';
+                      $allAssignees[$name] = true;
+                  }
+              }
+              ksort($allAssignees);
+              foreach (array_keys($allAssignees) as $aName):
+            ?>
+            <option value="<?= htmlspecialchars($aName) ?>"><?= htmlspecialchars($aName) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <span class="badge bg-danger rounded-pill ms-auto"><?= $duplicateCount ?> Total Leads</span>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body pt-2">
+        <div id="dupGroupsContainer">
+        <?php foreach ($duplicateGroups as $gi => $grp): ?>
+          <div class="dup-group mb-4"
+               data-members="<?= htmlspecialchars(implode('|', array_column($grp['rows'], 'assigned_to_name'))) ?>">
+
+            <!-- Group Header -->
+            <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+              <span class="badge bg-danger rounded-pill" style="font-size:.7rem;">
+                <?= count($grp['rows']) ?> lead<?= count($grp['rows']) > 1 ? 's' : '' ?>
+              </span>
+              <span class="fw-bold text-dark" style="font-size:.9rem;">
+                <?= htmlspecialchars($grp['name']) ?>
+              </span>
+              <?php if (!empty($grp['label'])): ?>
+              <span class="text-muted small">— <?= htmlspecialchars($grp['label']) ?></span>
+              <?php endif; ?>
+              <?php if (!empty($grp['team_name'])): ?>
+              <span class="badge ms-1" style="background:#e8f4fd;color:#0369a1;border:1px solid #bae6fd;font-size:.7rem;">
+                <i class="bi bi-people-fill me-1"></i><?= htmlspecialchars($grp['team_name']) ?>
+              </span>
+              <?php endif; ?>
+            </div>
+
+            <!-- Assignments table -->
+            <div class="table-responsive rounded shadow-sm border">
+              <table class="table table-sm mb-0" style="font-size:.82rem;">
+                <thead style="background:#f8d7da;">
+                  <tr>
+                    <th class="ps-3">#</th>
+                    <th>Lead Name</th>
+                    <th>Phone / Email</th>
+                    <th>Assigned To (Member)</th>
+                    <th>Team</th>
+                    <th>Assigned Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($grp['rows'] as $ri => $r): ?>
+                  <tr class="dup-row <?= ($r['is_mine'] ?? 0) ? 'table-success' : '' ?>"
+                      data-member="<?= htmlspecialchars($r['assigned_to_name'] ?? '') ?>">
+                    <td class="ps-3 text-muted"><?= $ri + 1 ?></td>
+                    <td class="fw-semibold">
+                      <?= htmlspecialchars($r['full_name'] ?? 'N/A') ?>
+                      <?php if ($r['is_mine'] ?? 0): ?>
+                        <span class="badge ms-1" style="background:#d1fae5;color:#065f46;border:1px solid #a7f3d0;font-size:.65rem;">
+                          <i class="bi bi-people-fill me-1"></i>My Team
+                        </span>
+                      <?php endif; ?>
+                    </td>
+                    <td>
+                      <?php if (!empty($r['phone_number'])): ?>
+                        <div><i class="bi bi-telephone-fill text-muted me-1" style="font-size:.75rem;"></i><?= htmlspecialchars($r['phone_number']) ?></div>
+                      <?php endif; ?>
+                      <?php if (!empty($r['email'])): ?>
+                        <div class="text-muted small"><i class="bi bi-envelope me-1"></i><?= htmlspecialchars($r['email']) ?></div>
+                      <?php endif; ?>
+                    </td>
+                    <td>
+                      <span class="badge rounded-pill d-inline-flex align-items-center gap-1"
+                            style="background:#e7f3ff;color:#0d6efd;border:1px solid #b6d4fe;font-size:.75rem;padding:.3rem .65rem;">
+                        <i class="bi bi-person-fill"></i>
+                        <?= htmlspecialchars($r['assigned_to_name'] ?? 'Unknown') ?>
+                      </span>
+                    </td>
+                    <td>
+                      <?php if (!empty($r['team_name'])): ?>
+                      <span class="badge" style="background:#e8f4fd;color:#0369a1;border:1px solid #bae6fd;font-size:.72rem;">
+                        <i class="bi bi-people-fill me-1"></i><?= htmlspecialchars($r['team_name']) ?>
+                      </span>
+                      <?php else: ?><span class="text-muted">—</span><?php endif; ?>
+                    </td>
+                    <td class="text-muted">
+                      <?php if (!empty($r['assigned_date'])): ?>
+                        <div class="fw-semibold text-dark" style="font-size:.8rem;"><?= date('M d, Y', strtotime($r['assigned_date'])) ?></div>
+                        <small class="text-muted"><?= date('h:i A', strtotime($r['assigned_date'])) ?></small>
+                      <?php else: ?>—<?php endif; ?>
+                    </td>
+                  </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <?php endforeach; ?>
+
+        <!-- Empty state -->
+        <div id="dupNoResult" class="text-center py-5 d-none">
+          <i class="bi bi-person-x fs-2 text-muted d-block mb-2"></i>
+          <div class="text-muted">No duplicate leads found for selected member.</div>
+        </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="background:#f8f9fa;">
+        <small class="text-muted me-auto">Leads in your team also found in other teams or assigned to other members</small>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var filterEl = document.getElementById('dupMemberFilter');
+    if (!filterEl) return;
+    filterEl.addEventListener('change', function () {
+        var selected = this.value.toLowerCase();
+        var anyVisible = false;
+        document.querySelectorAll('.dup-group').forEach(function (grp) {
+            var members = (grp.getAttribute('data-members') || '').toLowerCase();
+            var show = !selected || members.includes(selected);
+            grp.style.display = show ? '' : 'none';
+            if (show) anyVisible = true;
+        });
+        var noRes = document.getElementById('dupNoResult');
+        if (noRes) noRes.classList.toggle('d-none', anyVisible);
+    });
+});
+</script>
+<?php endif; ?>

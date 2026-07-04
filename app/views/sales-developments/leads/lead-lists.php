@@ -101,6 +101,34 @@ unset($_SESSION['booking_csv_import_skipped']); // clear after reading
     </div>
 
 
+    <!-- Duplicate Leads Alert Card -->
+    <?php if (!empty($dupGroups)): ?>
+    <div class="col-12 mt-3">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 rounded shadow-sm"
+             style="background:linear-gradient(135deg,#fff5f5,#ffe0e0);border-left:4px solid #dc3545;">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                     style="width:40px;height:40px;background:#dc3545;">
+                    <i class="bi bi-exclamation-triangle-fill text-white"></i>
+                </div>
+                <div>
+                    <div class="fw-bold text-danger" style="font-size:.92rem;">
+                        &#9888; Duplicate Leads Detected
+                    </div>
+                    <div class="text-muted" style="font-size:.76rem;">
+                        <strong><?= $dupCount ?></strong> leads from your team (assigned to you)
+                        also exist in other assignments &nbsp;&middot;&nbsp;
+                        <span class="text-danger fw-semibold">by Phone &amp; Email</span>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-danger btn-sm px-3" data-bs-toggle="modal" data-bs-target="#leadDupModal">
+                <i class="bi bi-eye me-1"></i> View Details
+            </button>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Desktop View: Filters and Table -->
     <div class="desktop-only">
         <!-- Filters -->
@@ -1219,3 +1247,155 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
 </div>
 
+<!-- ══ Lead Lists — Duplicate Leads Modal ══════════════════════════════════ -->
+<?php if (!empty($dupGroups)): ?>
+<div class="modal fade" id="leadDupModal" tabindex="-1" aria-labelledby="leadDupModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content" style="border-radius:14px;overflow:hidden;">
+
+      <!-- Header -->
+      <div class="modal-header" style="background:linear-gradient(135deg,#dc3545,#b02a37);color:#fff;">
+        <div>
+          <h5 class="modal-title fw-bold mb-0" id="leadDupModalLabel">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>Duplicate Lead Assignments
+          </h5>
+          <small style="opacity:.85;font-size:.78rem;">
+            My team leads (assigned to me) whose phone/email also exists in other assignments
+          </small>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="modal-body pb-0 pt-3" style="background:#fafafa;">
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+          <label class="fw-semibold small text-muted mb-0">Filter by Assigned Member:</label>
+          <select id="leadDupMemberFilter" class="form-select form-select-sm" style="max-width:240px;">
+            <option value="">All Members</option>
+            <?php
+              $ldAllAssignees = [];
+              foreach ($dupGroups as $grp) {
+                  foreach ($grp['rows'] as $r) {
+                      $n = $r['assigned_to_name'] ?? 'Unknown';
+                      $ldAllAssignees[$n] = true;
+                  }
+              }
+              ksort($ldAllAssignees);
+              foreach (array_keys($ldAllAssignees) as $aName):
+            ?>
+            <option value="<?= htmlspecialchars($aName) ?>"><?= htmlspecialchars($aName) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <span class="badge bg-danger rounded-pill ms-auto"><?= $dupCount ?> Total Leads</span>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body pt-2">
+        <div id="leadDupContainer">
+        <?php foreach ($dupGroups as $grp): ?>
+          <div class="ld-dup-group mb-4"
+               data-members="<?= htmlspecialchars(implode('|', array_column($grp['rows'], 'assigned_to_name'))) ?>">
+
+            <!-- Group header -->
+            <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+              <span class="badge bg-danger rounded-pill" style="font-size:.7rem;">
+                <?= count($grp['rows']) ?> assignment<?= count($grp['rows']) > 1 ? 's' : '' ?>
+              </span>
+              <span class="fw-bold text-dark" style="font-size:.9rem;">
+                <?= htmlspecialchars($grp['name']) ?>
+              </span>
+              <?php if (!empty($grp['label'])): ?>
+              <span class="text-muted small">&mdash; <?= htmlspecialchars($grp['label']) ?></span>
+              <?php endif; ?>
+            </div>
+
+            <!-- Assignment table -->
+            <div class="table-responsive rounded border shadow-sm">
+              <table class="table table-sm mb-0" style="font-size:.82rem;">
+                <thead style="background:#f8d7da;">
+                  <tr>
+                    <th class="ps-3">#</th>
+                    <th>Lead Name</th>
+                    <th>Phone / Email</th>
+                    <th>Assigned To (Member)</th>
+                    <th>Team</th>
+                    <th>Assigned Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($grp['rows'] as $ri => $r): ?>
+                  <tr class="ld-dup-row" data-member="<?= htmlspecialchars($r['assigned_to_name'] ?? '') ?>">
+                    <td class="ps-3 text-muted"><?= $ri + 1 ?></td>
+                    <td class="fw-semibold"><?= htmlspecialchars($r['full_name'] ?? 'N/A') ?></td>
+                    <td>
+                      <?php if (!empty($r['phone_number'])): ?>
+                        <div><i class="bi bi-telephone-fill text-muted me-1" style="font-size:.73rem;"></i><?= htmlspecialchars($r['phone_number']) ?></div>
+                      <?php endif; ?>
+                      <?php if (!empty($r['email'])): ?>
+                        <div class="text-muted small"><i class="bi bi-envelope me-1"></i><?= htmlspecialchars($r['email']) ?></div>
+                      <?php endif; ?>
+                    </td>
+                    <td>
+                      <span class="badge rounded-pill d-inline-flex align-items-center gap-1"
+                            style="background:#e7f3ff;color:#0d6efd;border:1px solid #b6d4fe;font-size:.75rem;padding:.3rem .6rem;">
+                        <i class="bi bi-person-fill"></i>
+                        <?= htmlspecialchars($r['assigned_to_name'] ?? 'Unknown') ?>
+                      </span>
+                    </td>
+                    <td>
+                      <?php if (!empty($r['team_name'])): ?>
+                      <span class="badge" style="background:#e8f4fd;color:#0369a1;border:1px solid #bae6fd;font-size:.72rem;">
+                        <i class="bi bi-people-fill me-1"></i><?= htmlspecialchars($r['team_name']) ?>
+                      </span>
+                      <?php else: ?><span class="text-muted">&mdash;</span><?php endif; ?>
+                    </td>
+                    <td class="text-muted">
+                      <?php if (!empty($r['assigned_date'])): ?>
+                        <div class="fw-semibold text-dark" style="font-size:.8rem;"><?= date('M d, Y', strtotime($r['assigned_date'])) ?></div>
+                        <small><?= date('h:i A', strtotime($r['assigned_date'])) ?></small>
+                      <?php else: ?>&mdash;<?php endif; ?>
+                    </td>
+                  </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <?php endforeach; ?>
+
+        <!-- Empty state -->
+        <div id="leadDupNoResult" class="text-center py-5 d-none">
+          <i class="bi bi-person-x fs-2 text-muted d-block mb-2"></i>
+          <div class="text-muted">No duplicate leads found for selected member.</div>
+        </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="background:#f8f9fa;">
+        <small class="text-muted me-auto">Showing leads from your team that are also assigned elsewhere</small>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var filterEl = document.getElementById('leadDupMemberFilter');
+    if (!filterEl) return;
+    filterEl.addEventListener('change', function () {
+        var selected = this.value.toLowerCase();
+        var anyVisible = false;
+        document.querySelectorAll('.ld-dup-group').forEach(function (grp) {
+            var members = (grp.getAttribute('data-members') || '').toLowerCase();
+            var show = !selected || members.includes(selected);
+            grp.style.display = show ? '' : 'none';
+            if (show) anyVisible = true;
+        });
+        var noRes = document.getElementById('leadDupNoResult');
+        if (noRes) noRes.classList.toggle('d-none', anyVisible);
+    });
+});
+</script>
+<?php endif; ?>

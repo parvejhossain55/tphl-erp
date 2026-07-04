@@ -31,6 +31,7 @@ class LeadController extends Controller
         // $assignedUsers = $this->userModel->getAllRoleUser();
         $userRoleId = $_SESSION['user']['role_id'] ?? null;
         $userTeamId = $_SESSION['user']['team_id'] ?? null;
+        $userId     = $_SESSION['user']['id']      ?? null;
         $isCoLeader = isSalesCoLeader();
 
         if (in_array($userRoleId, [5, 9]) || $isCoLeader) {
@@ -110,6 +111,87 @@ class LeadController extends Controller
         //  Conversion Rate
         $conversionRate = $leadCounts > 0 ? ($totalBookingCount / $leadCounts) * 100 : 0;
         $totalHotLeads = $this->leadModel->getTotalHotLeads();
+
+        // ── Duplicate Leads Detection ─────────────────────────────────────────
+        // My team leads assigned to me whose phone/email also appears in OTHER assigned_ids
+        $dupGroups  = [];
+        $dupCount   = 0;
+
+        if ($userTeamId && $userId) {
+            $dupSql = "
+                SELECT
+                    l.id,
+                    l.full_name,
+                    l.phone_number,
+                    l.email,
+                    l.assigned_id,
+                    l.team_id,
+                    u.full_name  AS assigned_to_name,
+                    t.name       AS team_name,
+                    l.updated_at AS assigned_date
+                FROM leads l
+                LEFT JOIN users u ON l.assigned_id = u.id
+                LEFT JOIN teams t ON l.team_id = t.id
+                WHERE l.deleted_at IS NULL
+                  AND l.assigned_id IS NOT NULL
+                  AND (
+                      (l.phone_number IS NOT NULL AND l.phone_number != '' AND l.phone_number IN (
+                          SELECT phone_number FROM leads
+                          WHERE deleted_at IS NULL
+                            AND assigned_id IS NOT NULL
+                            AND phone_number IS NOT NULL AND phone_number != ''
+                            AND team_id = ?
+                            AND assigned_id = ?
+                      ))
+                      OR
+                      (l.email IS NOT NULL AND l.email != '' AND l.email IN (
+                          SELECT email FROM leads
+                          WHERE deleted_at IS NULL
+                            AND assigned_id IS NOT NULL
+                            AND email IS NOT NULL AND email != ''
+                            AND team_id = ?
+                            AND assigned_id = ?
+                      ))
+                  )
+                ORDER BY COALESCE(l.phone_number, l.email), l.updated_at DESC
+            ";
+
+            $dupStmt = $this->db->prepare($dupSql);
+            if ($dupStmt) {
+                $dupStmt->bind_param('iiii', $userTeamId, $userId, $userTeamId, $userId);
+                $dupStmt->execute();
+                $dupResult = $dupStmt->get_result();
+                $allDups   = [];
+                while ($row = $dupResult->fetch_assoc()) {
+                    $allDups[] = $row;
+                }
+                $dupStmt->close();
+
+                // Group by phone_number or email
+                $grouped = [];
+                foreach ($allDups as $row) {
+                    $key = !empty($row['phone_number'])
+                        ? 'p:' . $row['phone_number']
+                        : (!empty($row['email']) ? 'e:' . $row['email'] : 'id:' . $row['id']);
+                    $grouped[$key][] = $row;
+                }
+
+                // Only keep groups with more than 1 unique assigned_id
+                foreach ($grouped as $key => $rows) {
+                    $uniqueAssignees = array_unique(array_column($rows, 'assigned_id'));
+                    if (count($uniqueAssignees) > 1) {
+                        $dupGroups[] = [
+                            'key'       => $key,
+                            'label'     => $rows[0]['phone_number'] ?: ($rows[0]['email'] ?? ''),
+                            'name'      => $rows[0]['full_name'],
+                            'rows'      => $rows,
+                        ];
+                        $dupCount += count($rows);
+                    }
+                }
+            }
+        }
+
         $this->view("sales-developments/leads/lead-lists", [
             "current_route" => "lead-lists",
             "page_title" => "Lead List",
@@ -133,6 +215,8 @@ class LeadController extends Controller
             "currentPage" => $currentPage,
             "totalPages" => $totalPages,
             "paginationRoute" => $paginationRoute,
+            "dupGroups"  => $dupGroups,
+            "dupCount"   => $dupCount,
         ]);
     }
 
