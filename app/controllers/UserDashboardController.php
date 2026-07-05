@@ -433,7 +433,8 @@ class UserDashboardController extends Controller
         $duplicateGroups = [];
         $duplicateCount  = 0;
 
-        if ($userTeamId) {
+        if ($userId) {
+            $teamIdForQuery = $userTeamId ?: 0;
             $dupSql = "
                 SELECT
                     l.id,
@@ -442,29 +443,32 @@ class UserDashboardController extends Controller
                     l.email,
                     l.team_id,
                     t.name        AS team_name,
+                    proj.name     AS project_name,
+                    l.campaign_name,
                     l.assigned_id,
                     u.full_name   AS assigned_to_name,
                     l.updated_at  AS assigned_date,
                     IF(l.team_id = ?, 1, 0) AS is_mine
                 FROM leads l
                 LEFT JOIN users u ON l.assigned_id = u.id
+                LEFT JOIN employees emp ON emp.user_id = u.id
                 LEFT JOIN teams t ON l.team_id = t.id
+                LEFT JOIN projects proj ON l.project_id = proj.id
                 WHERE l.deleted_at IS NULL
                   AND l.assigned_id IS NOT NULL
+                  AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
                   AND (
                       (l.phone_number IS NOT NULL AND l.phone_number != '' AND l.phone_number IN (
                           SELECT phone_number FROM leads
                           WHERE deleted_at IS NULL
-                            AND assigned_id IS NOT NULL
-                            AND team_id = ?
+                            AND assigned_id = ?
                             AND phone_number IS NOT NULL AND phone_number != ''
                       ))
                       OR
                       (l.email IS NOT NULL AND l.email != '' AND l.email IN (
                           SELECT email FROM leads
                           WHERE deleted_at IS NULL
-                            AND assigned_id IS NOT NULL
-                            AND team_id = ?
+                            AND assigned_id = ?
                             AND email IS NOT NULL AND email != ''
                       ))
                   )
@@ -473,7 +477,7 @@ class UserDashboardController extends Controller
 
             $dupStmt = $this->db->prepare($dupSql);
             if ($dupStmt) {
-                $dupStmt->bind_param('iii', $userTeamId, $userTeamId, $userTeamId);
+                $dupStmt->bind_param('iii', $teamIdForQuery, $userId, $userId);
                 $dupStmt->execute();
                 $dupResult = $dupStmt->get_result();
                 $allDups   = [];

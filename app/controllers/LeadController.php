@@ -128,29 +128,38 @@ class LeadController extends Controller
                     l.team_id,
                     u.full_name  AS assigned_to_name,
                     t.name       AS team_name,
+                    proj.name    AS project_name,
+                    l.campaign_name,
                     l.updated_at AS assigned_date
                 FROM leads l
                 LEFT JOIN users u ON l.assigned_id = u.id
+                LEFT JOIN employees emp ON emp.user_id = u.id
                 LEFT JOIN teams t ON l.team_id = t.id
+                LEFT JOIN projects proj ON l.project_id = proj.id
                 WHERE l.deleted_at IS NULL
                   AND l.assigned_id IS NOT NULL
+                  AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
                   AND (
                       (l.phone_number IS NOT NULL AND l.phone_number != '' AND l.phone_number IN (
-                          SELECT phone_number FROM leads
-                          WHERE deleted_at IS NULL
-                            AND assigned_id IS NOT NULL
-                            AND phone_number IS NOT NULL AND phone_number != ''
-                            AND team_id = ?
-                            AND assigned_id = ?
+                          SELECT l2.phone_number FROM leads l2
+                          LEFT JOIN users u2 ON l2.assigned_id = u2.id
+                          LEFT JOIN employees emp2 ON emp2.user_id = u2.id
+                          WHERE l2.deleted_at IS NULL
+                            AND l2.assigned_id IS NOT NULL
+                            AND l2.phone_number IS NOT NULL AND l2.phone_number != ''
+                            AND l2.team_id = ?
+                            AND (emp2.employee_status IS NULL OR emp2.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
                       ))
                       OR
                       (l.email IS NOT NULL AND l.email != '' AND l.email IN (
-                          SELECT email FROM leads
-                          WHERE deleted_at IS NULL
-                            AND assigned_id IS NOT NULL
-                            AND email IS NOT NULL AND email != ''
-                            AND team_id = ?
-                            AND assigned_id = ?
+                          SELECT l2.email FROM leads l2
+                          LEFT JOIN users u2 ON l2.assigned_id = u2.id
+                          LEFT JOIN employees emp2 ON emp2.user_id = u2.id
+                          WHERE l2.deleted_at IS NULL
+                            AND l2.assigned_id IS NOT NULL
+                            AND l2.email IS NOT NULL AND l2.email != ''
+                            AND l2.team_id = ?
+                            AND (emp2.employee_status IS NULL OR emp2.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
                       ))
                   )
                 ORDER BY COALESCE(l.phone_number, l.email), l.updated_at DESC
@@ -158,7 +167,7 @@ class LeadController extends Controller
 
             $dupStmt = $this->db->prepare($dupSql);
             if ($dupStmt) {
-                $dupStmt->bind_param('iiii', $userTeamId, $userId, $userTeamId, $userId);
+                $dupStmt->bind_param('ii', $userTeamId, $userTeamId);
                 $dupStmt->execute();
                 $dupResult = $dupStmt->get_result();
                 $allDups   = [];
@@ -459,12 +468,81 @@ class LeadController extends Controller
         exit;
     }
 
+    public function checkLeadsDuplicates()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+        
+        $leadIds = $_POST['lead_ids'] ?? '';
+        if (!$leadIds) {
+            echo json_encode(['has_duplicates' => false]);
+            exit;
+        }
+        
+        $ids = array_filter(array_map('intval', explode(',', $leadIds)));
+        if (empty($ids)) {
+            echo json_encode(['has_duplicates' => false]);
+            exit;
+        }
+        
+        $idsStr = implode(',', $ids);
+        
+        // Find which of these leads have matching phone/email already assigned to other active users
+        $sql = "
+            SELECT 
+                l.id AS current_lead_id,
+                l.full_name AS current_lead_name,
+                COALESCE(l.phone_number, l.phone) AS phone,
+                l.email,
+                orig.assigned_id AS original_assignee_id,
+                u.full_name AS original_assignee_name,
+                t.name AS original_team_name
+            FROM leads l
+            JOIN leads orig ON (
+                (orig.phone_number IS NOT NULL AND orig.phone_number != '' AND (orig.phone_number = l.phone_number OR orig.phone_number = l.phone))
+                OR (orig.phone IS NOT NULL AND orig.phone != '' AND (orig.phone = l.phone_number OR orig.phone = l.phone))
+                OR (orig.email IS NOT NULL AND orig.email != '' AND orig.email = l.email)
+            )
+            JOIN users u ON orig.assigned_id = u.id
+            JOIN employees emp ON emp.user_id = u.id
+            LEFT JOIN teams t ON orig.team_id = t.id
+            WHERE l.id IN ($idsStr)
+              AND orig.id NOT IN ($idsStr)
+              AND orig.deleted_at IS NULL
+              AND orig.assigned_id IS NOT NULL
+              AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+            ORDER BY orig.created_at ASC
+        ";
+        
+        $res = $this->db->query($sql);
+        $duplicates = [];
+        
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $duplicates[] = $row;
+            }
+        }
+        
+        if (!empty($duplicates)) {
+            echo json_encode([
+                'has_duplicates' => true,
+                'duplicates' => $duplicates
+            ]);
+        } else {
+            echo json_encode([
+                'has_duplicates' => false
+            ]);
+        }
+        exit;
+    }
+
     public function assignMultipleLeads()
     {
         $userId      = (int)($_POST['user_id'] ?? 0);
         $leadIds     = $_POST['lead_ids'] ?? '';
         $assignedDate = $_POST['assigned_date'] ?? date('Y-m-d');
         $assignedBy   = $_SESSION['user']['id'] ?? 0;
+        $routeMode    = $_POST['route_mode'] ?? 'new';
 
         // Build redirect URL preserving page + filters
         $redirectPage = (int)($_POST['redirect_page'] ?? 1);
@@ -478,8 +556,6 @@ class LeadController extends Controller
                 $queryParts[] = urlencode($key) . '=' . urlencode($val);
             }
         }
-        // DataTables uses start= parameter for server-side pagination
-        // We pass page= and let the DataTables init handle it via URL
         if ($redirectPage > 1) {
             $queryParts[] = 'page=' . $redirectPage;
         }
@@ -506,23 +582,73 @@ class LeadController extends Controller
         // Final assigned datetime
         $assignedAt = $assignedDate . ' ' . date('H:i:s');
 
-        //  Update with assigned_at + assigned_by
-        $sql = "
-        UPDATE leads 
-        SET 
-            assigned_id = $userId,
-            assigned_at = '$assignedAt',
-            created_by = $assignedBy
-        WHERE id IN ($idsStr)
-    ";
+        if ($routeMode === 'existing') {
+            // Reassign duplicates to their existing owners, and others to the selected userId
+            foreach ($ids as $leadId) {
+                // Fetch lead details (phone, email)
+                $leadDetailsStmt = $this->db->prepare("SELECT phone_number, phone, email, team_id FROM leads WHERE id = ?");
+                $leadDetailsStmt->bind_param("i", $leadId);
+                $leadDetailsStmt->execute();
+                $leadObj = $leadDetailsStmt->get_result()->fetch_assoc();
+                
+                $leadPhone = $leadObj['phone_number'] ?? $leadObj['phone'] ?? '';
+                $leadEmail = $leadObj['email'] ?? '';
+                
+                $firstAssignee = $this->leadModel->findFirstAssignee($leadPhone, $leadEmail);
+                
+                if ($firstAssignee) {
+                    $targetUid = $firstAssignee['assigned_id'];
+                    $targetTid = $firstAssignee['team_id'];
+                } else {
+                    $targetUid = $userId;
+                    // Get team_id of selected user
+                    $userTeamStmt = $this->db->prepare("SELECT team_id FROM employees WHERE user_id = ? LIMIT 1");
+                    $userTeamStmt->bind_param("i", $userId);
+                    $userTeamStmt->execute();
+                    $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
+                    $targetTid = $userTeamRes ? (int)$userTeamRes['team_id'] : $leadObj['team_id'];
+                }
+                
+                $stmtUpdate = $this->db->prepare("
+                    UPDATE leads 
+                    SET assigned_id = ?, team_id = ?, assigned_at = ?, created_by = ? 
+                    WHERE id = ?
+                ");
+                $stmtUpdate->bind_param("iisii", $targetUid, $targetTid, $assignedAt, $assignedBy, $leadId);
+                $stmtUpdate->execute();
+            }
+        } else {
+            // Get team_id of selected user
+            $userTeamStmt = $this->db->prepare("SELECT team_id FROM employees WHERE user_id = ? LIMIT 1");
+            $userTeamStmt->bind_param("i", $userId);
+            $userTeamStmt->execute();
+            $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
+            $userTeamId = $userTeamRes ? (int)$userTeamRes['team_id'] : null;
 
-        $this->db->query($sql);
+            // Update leads
+            if ($userTeamId !== null) {
+                $stmtUpdate = $this->db->prepare("
+                    UPDATE leads 
+                    SET assigned_id = ?, team_id = ?, assigned_at = ?, created_by = ? 
+                    WHERE id IN ($idsStr)
+                ");
+                $stmtUpdate->bind_param("iisi", $userId, $userTeamId, $assignedAt, $assignedBy);
+            } else {
+                $stmtUpdate = $this->db->prepare("
+                    UPDATE leads 
+                    SET assigned_id = ?, assigned_at = ?, created_by = ? 
+                    WHERE id IN ($idsStr)
+                ");
+                $stmtUpdate->bind_param("isi", $userId, $assignedAt, $assignedBy);
+            }
+            $stmtUpdate->execute();
+        }
 
         // Get user name
         $result = $this->db->query("SELECT full_name FROM users WHERE id=$userId");
         $userName = $result ? ($result->fetch_assoc()['full_name'] ?? '') : '';
 
-        setSuccess("Leads assigned successfully to $userName!");
+        setSuccess("Leads assigned successfully!");
         header("Location: " . $redirectUrl);
         exit;
     }
@@ -820,8 +946,9 @@ class LeadController extends Controller
             return;
         }
 
-        // FORM থেকে team_id
+        // FORM থেকে team_id & project_id
         $team_id = $_POST['team_id'] ?? null;
+        $project_id = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
 
         if (!$team_id) {
             setError("Please select a team");
@@ -868,6 +995,7 @@ class LeadController extends Controller
                 $data['status'] = 'active';
                 $data['visibility'] = $data['visibility'] ?? 'public';
                 $data['team_id'] = (int)$team_id;
+                $data['project_id'] = $project_id;
                 $data['created_by'] = $_SESSION['user']['id'] ?? null;
 
                 try {

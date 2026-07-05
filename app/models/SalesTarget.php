@@ -298,6 +298,7 @@ public function getExecutiveBookingStats($type = 'monthly')
                 IFNULL(b.total_booking_money, 0) AS total_booking_money,
                 IFNULL(b.total_registration_money, 0) AS total_registration_money
             FROM users u
+            LEFT JOIN employees emp ON emp.user_id = u.id
             LEFT JOIN (
                 SELECT sales_user_id, SUM(booking_target) AS total_target
                 FROM sales_targets
@@ -334,6 +335,7 @@ public function getExecutiveBookingStats($type = 'monthly')
                 GROUP BY lb.sales_by_id
             ) b ON b.sales_by_id = u.id
             WHERE u.role_id IN (5,8)
+              AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
             ORDER BY u.full_name ASC
         ";
     }
@@ -349,6 +351,7 @@ public function getExecutiveBookingStats($type = 'monthly')
                 IFNULL(b.total_booking_money, 0) AS total_booking_money,
                 IFNULL(b.total_registration_money, 0) AS total_registration_money
             FROM users u
+            LEFT JOIN employees emp ON emp.user_id = u.id
             LEFT JOIN sales_targets st 
                 ON st.sales_user_id = u.id
                 AND $targetCondition
@@ -384,6 +387,7 @@ public function getExecutiveBookingStats($type = 'monthly')
                 GROUP BY lb.sales_by_id
             ) b ON b.sales_by_id = u.id
             WHERE u.role_id IN (5,8)
+              AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
             ORDER BY u.full_name ASC
         ";
     }

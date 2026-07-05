@@ -846,7 +846,7 @@
 </div>
 
 <!-- CSV Import Modal -->
-<div class="modal fade" id="importCsvModal" tabindex="-1">
+<div class="modal fade" id="importCsvModal">
   <div class="modal-dialog modal-dialog-centered modal-md">
     <div class="modal-content">
       <div class="modal-header">
@@ -866,6 +866,17 @@
               <?php foreach ($teams as $team): ?>
                 <option value="<?= $team['id'] ?>">
                   <?= htmlspecialchars($team['name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Select Project</label>
+            <select name="project_id" class="form-select select2-no-scroll" data-placeholder="-- Select Project (Optional) --">
+              <option value="">-- Select Project (Optional) --</option>
+              <?php foreach ($projects as $project): ?>
+                <option value="<?= $project['id'] ?>">
+                  <?= htmlspecialchars($project['name']) ?>
                 </option>
               <?php endforeach; ?>
             </select>

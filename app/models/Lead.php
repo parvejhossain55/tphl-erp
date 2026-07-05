@@ -30,7 +30,9 @@ class Lead extends Model
             u.full_name AS agent_name
         FROM leads AS l
         LEFT JOIN users AS u ON l.assigned_id = u.id
+        LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
         WHERE l.deleted_at IS NULL
+          AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
     ";
 
         $params = [];
@@ -120,7 +122,10 @@ class Lead extends Model
 
     public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $search = null)
     {
-        $sql = "SELECT COUNT(l.id) AS total_count FROM leads AS l WHERE l.deleted_at IS NULL";
+        $sql = "SELECT COUNT(l.id) AS total_count FROM leads AS l 
+                LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
+                WHERE l.deleted_at IS NULL
+                  AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
 
         $params = [];
         $types  = "";
@@ -212,6 +217,7 @@ class Lead extends Model
         lf.next_follow_up_date
     FROM leads AS l
     LEFT JOIN users AS u ON l.assigned_id = u.id
+    LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
     LEFT JOIN (
         SELECT lf1.lead_id, lf1.next_action, lf1.follow_up_type, lf1.next_follow_up_date
         FROM lead_follow_ups lf1
@@ -230,6 +236,7 @@ class Lead extends Model
     ) lb ON lb.lead_id = l.id
     LEFT JOIN projects AS p ON lb.project_id = p.id
     WHERE l.deleted_at IS NULL
+      AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
     ";
 
         //  IMPORTANT: declare first
@@ -725,6 +732,15 @@ class Lead extends Model
 
     public function create($data)
     {
+        // Auto-assign duplicates to the first owner
+        if (empty($data['assigned_id'])) {
+            $firstAssignee = $this->findFirstAssignee($data['phone_number'] ?? $data['phone'] ?? null, $data['email'] ?? null);
+            if ($firstAssignee) {
+                $data['assigned_id'] = $firstAssignee['assigned_id'];
+                $data['team_id']     = $firstAssignee['team_id'];
+            }
+        }
+
         $stmt = $this->db->prepare("INSERT INTO leads (
         campaign_name,
         platform,
@@ -894,8 +910,17 @@ class Lead extends Model
     /**
      * Update lead
      */
-    public function createFromCsvBulk($data)
+    public function createFromCsvBulk(&$data)
     {
+        // Auto-assign duplicates to the first owner
+        if (empty($data['assigned_id'])) {
+            $firstAssignee = $this->findFirstAssignee($data['phone'] ?? $data['phone_number'] ?? null, $data['email'] ?? null);
+            if ($firstAssignee) {
+                $data['assigned_id'] = $firstAssignee['assigned_id'];
+                $data['team_id']     = $firstAssignee['team_id'];
+            }
+        }
+
         $sql = "INSERT INTO leads (
             full_name, job_title, company_name, phone, alt_phone_number, email, 
             lead_image, lead_name_bn, father_name_bn, mother_name_bn, profession_bn, 
@@ -1605,5 +1630,62 @@ class Lead extends Model
         $result = $stmt->get_result();
         
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    public function findFirstAssignee($phoneNumber, $email)
+    {
+        $phoneNumber = trim($phoneNumber ?? '');
+        $email = trim($email ?? '');
+        
+        if (empty($phoneNumber) && empty($email)) {
+            return null;
+        }
+        
+        $sql = "
+            SELECT l.assigned_id, l.team_id 
+            FROM leads l
+            JOIN users u ON l.assigned_id = u.id
+            JOIN employees emp ON emp.user_id = u.id
+            WHERE l.deleted_at IS NULL 
+              AND l.assigned_id IS NOT NULL 
+              AND u.role_id IS NOT NULL 
+              AND u.role_id != 0 
+              AND u.role_id != ''
+              AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+        ";
+        
+        $params = [];
+        $types = "";
+        
+        if (!empty($phoneNumber) && !empty($email)) {
+            $sql .= " AND (l.phone_number = ? OR l.phone = ? OR l.email = ?)";
+            $params[] = $phoneNumber;
+            $params[] = $phoneNumber;
+            $params[] = $email;
+            $types .= "sss";
+        } elseif (!empty($phoneNumber)) {
+            $sql .= " AND (l.phone_number = ? OR l.phone = ?)";
+            $params[] = $phoneNumber;
+            $params[] = $phoneNumber;
+            $types .= "ss";
+        } else {
+            $sql .= " AND l.email = ?";
+            $params[] = $email;
+            $types .= "s";
+        }
+        
+        $sql .= " ORDER BY l.created_at ASC LIMIT 1";
+        
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return null;
+        }
+        
+        $stmt->bind_param($types, ...$params);
+        if (!$stmt->execute()) {
+            return null;
+        }
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_assoc() : null;
     }
 }

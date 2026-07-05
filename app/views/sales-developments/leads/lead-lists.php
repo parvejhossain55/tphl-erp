@@ -838,7 +838,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ── Submit assignment form ─────────────────────────────────────────
-    function submitAssignForm(userId, selectedLeads, assignedDate) {
+    function submitAssignForm(userId, selectedLeads, assignedDate, routeMode = 'new') {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '<?= $GLOBALS['base_url'] ?>/assign-multiple-leads';
@@ -863,6 +863,7 @@ document.addEventListener('DOMContentLoaded', function () {
         addHidden('lead_ids',      selectedLeads.join(','));
         addHidden('assigned_date', assignedDate);
         addHidden('redirect_page', finalPage);
+        addHidden('route_mode',    routeMode);
         // Also preserve all current GET filters
         const filterParams = ['year','month','date','assigned_user','last_action','assigned','q'];
         filterParams.forEach(p => {
@@ -881,7 +882,49 @@ document.addEventListener('DOMContentLoaded', function () {
             const assignedDate = document.getElementById('assignedDate').value;
             const leads        = Array.from(selectedLeadsSet);
             if (!userId || leads.length === 0) { alert('Select leads and a user.'); return; }
-            submitAssignForm(userId, leads, assignedDate);
+            
+            // Check for duplicates via AJAX first
+            const fd = new FormData();
+            fd.append('lead_ids', leads.join(','));
+            
+            fetch(base_url + '/check-leads-duplicates', { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.has_duplicates) {
+                        let dupInfo = data.duplicates.map(d => 
+                            `• <strong>${d.current_lead_name}</strong> is already assigned to <strong>${d.original_assignee_name}</strong> (${d.original_team_name || 'No Team'})`
+                        ).join('<br>');
+                        
+                        Swal.fire({
+                            title: 'Duplicate Leads Detected',
+                            html: `<div class="text-start mb-3" style="font-size:0.85rem;">
+                                    Some of the selected leads are already assigned:<br><br>
+                                    ${dupInfo}<br><br>
+                                    Would you like to assign them to their <strong>Existing Executive</strong> or proceed with the <strong>New Executive</strong>?
+                                   </div>`,
+                            icon: 'warning',
+                            showCancelButton: true,
+                            showDenyButton: true,
+                            confirmButtonText: 'Existing Executive',
+                            denyButtonText: 'New Executive',
+                            cancelButtonText: 'Cancel',
+                            confirmButtonColor: '#198754',
+                            denyButtonColor: '#0d6efd',
+                            cancelButtonColor: '#6c757d'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                submitAssignForm(userId, leads, assignedDate, 'existing');
+                            } else if (result.isDenied) {
+                                submitAssignForm(userId, leads, assignedDate, 'new');
+                            }
+                        });
+                    } else {
+                        submitAssignForm(userId, leads, assignedDate, 'new');
+                    }
+                })
+                .catch(() => {
+                    submitAssignForm(userId, leads, assignedDate, 'new');
+                });
         });
     }
 
@@ -893,7 +936,49 @@ document.addEventListener('DOMContentLoaded', function () {
             const assignedDate = document.getElementById('assignedDateMobile').value;
             const leads        = Array.from(selectedLeadsSet);
             if (!userId || leads.length === 0) { alert('Select leads and a user.'); return; }
-            submitAssignForm(userId, leads, assignedDate);
+            
+            // Check for duplicates via AJAX first
+            const fd = new FormData();
+            fd.append('lead_ids', leads.join(','));
+            
+            fetch(base_url + '/check-leads-duplicates', { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.has_duplicates) {
+                        let dupInfo = data.duplicates.map(d => 
+                            `• <strong>${d.current_lead_name}</strong> is already assigned to <strong>${d.original_assignee_name}</strong> (${d.original_team_name || 'No Team'})`
+                        ).join('<br>');
+                        
+                        Swal.fire({
+                            title: 'Duplicate Leads Detected',
+                            html: `<div class="text-start mb-3" style="font-size:0.85rem;">
+                                    Some of the selected leads are already assigned:<br><br>
+                                    ${dupInfo}<br><br>
+                                    Would you like to assign them to their <strong>Existing Executive</strong> or proceed with the <strong>New Executive</strong>?
+                                   </div>`,
+                            icon: 'warning',
+                            showCancelButton: true,
+                            showDenyButton: true,
+                            confirmButtonText: 'Existing Executive',
+                            denyButtonText: 'New Executive',
+                            cancelButtonText: 'Cancel',
+                            confirmButtonColor: '#198754',
+                            denyButtonColor: '#0d6efd',
+                            cancelButtonColor: '#6c757d'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                submitAssignForm(userId, leads, assignedDate, 'existing');
+                            } else if (result.isDenied) {
+                                submitAssignForm(userId, leads, assignedDate, 'new');
+                            }
+                        });
+                    } else {
+                        submitAssignForm(userId, leads, assignedDate, 'new');
+                    }
+                })
+                .catch(() => {
+                    submitAssignForm(userId, leads, assignedDate, 'new');
+                });
         });
     }
 
@@ -1317,6 +1402,7 @@ document.addEventListener('DOMContentLoaded', function () {
                   <tr>
                     <th class="ps-3">#</th>
                     <th>Lead Name</th>
+                    <th>Campaign / Project</th>
                     <th>Phone / Email</th>
                     <th>Assigned To (Member)</th>
                     <th>Team</th>
@@ -1328,6 +1414,18 @@ document.addEventListener('DOMContentLoaded', function () {
                   <tr class="ld-dup-row" data-member="<?= htmlspecialchars($r['assigned_to_name'] ?? '') ?>">
                     <td class="ps-3 text-muted"><?= $ri + 1 ?></td>
                     <td class="fw-semibold"><?= htmlspecialchars($r['full_name'] ?? 'N/A') ?></td>
+                    <td>
+                      <div class="mb-1">
+                        <span class="badge" style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;font-size:.72rem;">
+                          <i class="bi bi-building me-1"></i>Project: <?= htmlspecialchars($r['project_name'] ?? 'No Project') ?>
+                        </span>
+                      </div>
+                      <div>
+                        <span class="badge" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:.72rem;">
+                          <i class="bi bi-megaphone me-1"></i>Campaign: <?= htmlspecialchars($r['campaign_name'] ?? 'N/A') ?>
+                        </span>
+                      </div>
+                    </td>
                     <td>
                       <?php if (!empty($r['phone_number'])): ?>
                         <div><i class="bi bi-telephone-fill text-muted me-1" style="font-size:.73rem;"></i><?= htmlspecialchars($r['phone_number']) ?></div>
