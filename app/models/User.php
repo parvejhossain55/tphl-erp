@@ -628,16 +628,18 @@ public function getUsersByTeamAndRole($teamId)
 
 public function countSalesTeams($roleId = null, $teamId = null)
 {
-    $sql = "SELECT COUNT(*) as total 
-            FROM users 
-            WHERE role_id IN (5, 8)";
+    $sql = "SELECT COUNT(u.id) as total 
+            FROM users u
+            LEFT JOIN employees e ON e.user_id = u.id
+            WHERE u.role_id IN (5, 8)
+              AND (e.employee_status IS NULL OR e.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
 
     $params = [];
     $types  = "";
 
     // Case 1: Role 5 or 9 AND has team → filter by team
     if (in_array($roleId, [5, 9]) && !empty($teamId)) {
-        $sql .= " AND team_id = ?";
+        $sql .= " AND u.team_id = ?";
         $params[] = $teamId;
         $types .= "i";
     }
@@ -678,7 +680,8 @@ public function getSalesTeams($roleId = null, $teamId = null, $userId = null)
             LEFT JOIN designations d ON d.id = u.designation_id
             LEFT JOIN teams t ON t.id = u.team_id
             LEFT JOIN roles r ON r.id = u.role_id
-            WHERE u.role_id IN (5, 8)";
+            WHERE u.role_id IN (5, 8)
+              AND (e.employee_status IS NULL OR e.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
 
     $params = [];
     $types  = "";

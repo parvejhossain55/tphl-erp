@@ -324,6 +324,7 @@ $routes = [
 
     "lead-delete" => ["controller" => "LeadController", "method" => "delete"],
     "assign-multiple-leads" => ["controller" => "LeadController", "method" => "assignMultipleLeads"],
+    "check-leads-duplicates" => ["controller" => "LeadController", "method" => "checkLeadsDuplicates"],
 
 
     // upload Csv From Csv Digital Marketing

@@ -1270,6 +1270,7 @@
                   <tr>
                     <th class="ps-3">#</th>
                     <th>Lead Name</th>
+                    <th>Campaign / Project</th>
                     <th>Phone / Email</th>
                     <th>Assigned To (Member)</th>
                     <th>Team</th>
@@ -1288,6 +1289,18 @@
                           <i class="bi bi-people-fill me-1"></i>My Team
                         </span>
                       <?php endif; ?>
+                    </td>
+                    <td>
+                      <div class="mb-1">
+                        <span class="badge" style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;font-size:.72rem;">
+                          <i class="bi bi-building me-1"></i>Project: <?= htmlspecialchars($r['project_name'] ?? 'No Project') ?>
+                        </span>
+                      </div>
+                      <div>
+                        <span class="badge" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-size:.72rem;">
+                          <i class="bi bi-megaphone me-1"></i>Campaign: <?= htmlspecialchars($r['campaign_name'] ?? 'N/A') ?>
+                        </span>
+                      </div>
                     </td>
                     <td>
                       <?php if (!empty($r['phone_number'])): ?>

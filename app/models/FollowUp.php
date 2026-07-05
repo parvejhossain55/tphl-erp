@@ -350,6 +350,7 @@ class FollowUp extends Model
     WHERE DATE(f.next_follow_up_date) = '$today'
     AND f.deleted_at IS NULL
     AND f.status = 'pending'
+    AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
     ";
 
         if (!empty($teamId)) {
