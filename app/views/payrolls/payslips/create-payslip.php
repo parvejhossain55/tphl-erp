@@ -190,10 +190,10 @@
 
       // Save localStorage
       function collectPayslipData() {
-          const employeeSelect = document.getElementById('employeeSelect');
-          if (!employeeSelect.value) return;
+          const $employeeSelect = $('#employeeSelect');
+          if (!$employeeSelect.val()) return;
 
-          const selected = employeeSelect.selectedOptions[0];
+          const $selected = $employeeSelect.find(':selected');
 
           const earnings = {};
           const deductions = {};
@@ -211,9 +211,9 @@
           const paydate = document.getElementById('paydate').value;
 
           const data = {
-              employee_id: employeeSelect.value,
-              designation: selected.dataset.designation || null,
-              designation_id: selected.dataset.designationId || null,
+              employee_id: $employeeSelect.val(),
+              designation: $selected.attr('data-designation') || null,
+              designation_id: $selected.attr('data-designation-id') || null,
               basic_salary: document.getElementById('basicSalary').value,
               total_earning: document.getElementById('totalEarningInput').value,
               total_deduction: document.getElementById('totalDeductionInput').value,
@@ -294,14 +294,15 @@
           input.addEventListener('input', calculateNetSalary);
       });
 
-      document.getElementById('employeeSelect').addEventListener('change', () => {
-          const selected = document.getElementById('employeeSelect').selectedOptions[0];
-          document.getElementById('designation').value = selected.dataset.designation || '';
-          document.getElementById('emp_id').value = selected.dataset.empid || '';
-          document.getElementById('email').value = selected.dataset.email || '';
-          document.getElementById('basicSalary').value = selected.dataset.basicSalary || 0;
+      $('#employeeSelect').on('change', function() {
+          const $selected = $(this).find('option:selected');
+          if (!$selected.length) return;
+          document.getElementById('designation').value = $selected.attr('data-designation') || '';
+          document.getElementById('emp_id').value = $selected.attr('data-empid') || '';
+          document.getElementById('email').value = $selected.attr('data-email') || '';
+          document.getElementById('basicSalary').value = $selected.attr('data-basic-salary') || 0;
           // ✅ NEW: Gross Salary set
-          document.getElementById('grossSalary').value = selected.dataset.grossSalary || 0;
+          document.getElementById('grossSalary').value = $selected.attr('data-gross-salary') || 0;
 
           calculateNetSalary();
       });

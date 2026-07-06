@@ -1645,7 +1645,7 @@ class Lead extends Model
             SELECT l.assigned_id, l.team_id 
             FROM leads l
             JOIN users u ON l.assigned_id = u.id
-            JOIN employees emp ON emp.user_id = u.id
+            LEFT JOIN employees emp ON emp.user_id = u.id
             WHERE l.deleted_at IS NULL 
               AND l.assigned_id IS NOT NULL 
               AND u.role_id IS NOT NULL 
