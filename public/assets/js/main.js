@@ -1188,11 +1188,15 @@ function bd_settings_append($x) {
 		],
 	});
 
-	$('.multiple_tables').DataTable({
-		lengthMenu: [
-			[10, 25, 50, -1],
-			[10, 25, 50, 'All']
-		]
+	$('.multiple_tables').each(function () {
+		// Skip tables that will be initialized with custom settings (page-specific)
+		if ($(this).data('dt-custom')) return;
+		$(this).DataTable({
+			lengthMenu: [
+				[10, 25, 50, -1],
+				[10, 25, 50, 'All']
+			]
+		});
 	});
 
 	$('#complexHeaders').DataTable();

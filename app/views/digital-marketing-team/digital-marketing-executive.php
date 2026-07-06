@@ -814,6 +814,7 @@
               <thead class="py-3">
                 <tr>
                   <th class="text-center"><input type="checkbox" id="selectAll"></th>
+                  <th class="text-center" style="width:42px">#</th>
                   <th class="ps-4">Lead Name</th>
                   <th>Contact Info</th>
                   <th class="text-center">Follow Up</th>
@@ -828,7 +829,7 @@
                 </tr>
               </thead>
               <tbody id="dmLeadTbody">
-                <tr><td colspan="12" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></td></tr>
+                <tr><td colspan="13" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></td></tr>
               </tbody>
             </table>
 
@@ -909,14 +910,14 @@
   };
 
   let dmCurrentPage = 1;
-  let dmPerPage     = 10;
+  let dmPerPage     = 30;
   let dmSearchTimer = null;
   let dmSearchVal   = '';
 
   function dmLoadLeads(page = 1) {
     dmCurrentPage = page;
     const tbody   = document.getElementById('dmLeadTbody');
-    tbody.innerHTML = '<tr><td colspan="12" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
 
     const params = new URLSearchParams({
       ...dmFilters,
@@ -929,7 +930,7 @@
       .then(r => r.json())
       .then(data => {
         if (data.error) {
-          tbody.innerHTML = `<tr><td colspan="11" class="text-center py-4 text-danger">${data.error}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="13" class="text-center py-4 text-danger">${data.error}</td></tr>`;
           return;
         }
 
@@ -942,15 +943,17 @@
 
         // Render rows
         if (!data.rows || data.rows.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="12" class="text-center py-5"><i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i><div class="text-muted">No leads found.</div></td></tr>';
+          tbody.innerHTML = '<tr><td colspan="13" class="text-center py-5"><i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i><div class="text-muted">No leads found.</div></td></tr>';
           document.getElementById('dmPaginationInfo').textContent = '';
           document.getElementById('dmPagination').innerHTML = '';
           return;
         }
 
-        tbody.innerHTML = data.rows.map(row => `
+        const startIndex = (page - 1) * dmPerPage;
+        tbody.innerHTML = data.rows.map((row, i) => `
           <tr>
             <td class="text-center">${row.checkbox}</td>
+            <td class="text-center text-muted" style="font-size:.8rem;font-weight:600">${startIndex + i + 1}</td>
             <td class="ps-4">${row.name}</td>
             <td>${row.contact}</td>
             <td class="text-center">${row.follow_up}</td>
@@ -997,7 +1000,7 @@
         addBtn('»', totalPages, page === totalPages);
       })
       .catch(() => {
-        tbody.innerHTML = '<tr><td colspan="12" class="text-center py-4 text-danger">Failed to load leads. Please refresh.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="text-center py-4 text-danger">Failed to load leads. Please refresh.</td></tr>';
       });
   }
 

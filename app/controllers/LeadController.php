@@ -292,7 +292,8 @@ class LeadController extends Controller
 
         $draw = isset($_POST['draw']) ? (int)$_POST['draw'] : 1;
         $start = isset($_POST['start']) ? (int)$_POST['start'] : 0;
-        $length = isset($_POST['length']) ? (int)$_POST['length'] : 10;
+        // lead-lists page load
+        $length = isset($_POST['length']) ? (int)$_POST['length'] : 25;
         $search = isset($_POST['search']['value']) ? $_POST['search']['value'] : null;
 
         // Get filters from GET

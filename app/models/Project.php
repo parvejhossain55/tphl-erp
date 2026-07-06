@@ -382,7 +382,7 @@ class Project extends Model
         $incentive_percentage = !empty($data['incentive_percentage']) ? (float)$data['incentive_percentage'] : null;
 
         $stmt->bind_param(
-            "ssiidsssiissssdssissssssiiiisssiisssd" . "iiiiiiiiiiii",
+            "ssiiidsssisssssdssissssiiiissssssssssdiiiiiiiiiiii",
             $data['name'],
             $data['slug'],
             $data['location_id'],

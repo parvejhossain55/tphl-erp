@@ -1274,9 +1274,29 @@ class Lead extends Model
     /**
      * Count marketing leads for AJAX pagination (mirrors getMarketingLeadsFlexible filters)
      */
-    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null, $fromDate = '', $toDate = '')
+    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false)
     {
         $sql = "SELECT COUNT(*) AS total FROM leads l WHERE l.deleted_at IS NULL AND l.uploaded_from = 'From Campaign'";
+
+        // DB-level duplicate filter
+        if ($duplicatesOnly) {
+            $sql .= "
+              AND (
+                (l.phone_number IS NOT NULL AND l.phone_number != '' AND l.phone_number IN (
+                    SELECT phone_number FROM leads
+                    WHERE deleted_at IS NULL AND phone_number IS NOT NULL AND phone_number != ''
+                      AND uploaded_from = 'From Campaign'
+                    GROUP BY phone_number HAVING COUNT(*) > 1
+                ))
+                OR
+                (l.email IS NOT NULL AND l.email != '' AND l.email IN (
+                    SELECT email FROM leads
+                    WHERE deleted_at IS NULL AND email IS NOT NULL AND email != ''
+                      AND uploaded_from = 'From Campaign'
+                    GROUP BY email HAVING COUNT(*) > 1
+                ))
+              )";
+        }
 
         $params = [];
         $types  = "";
@@ -1327,7 +1347,7 @@ class Lead extends Model
     /**
      * Paginated marketing leads for AJAX (same contact_status logic, adds LIMIT/OFFSET + search)
      */
-    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null, $fromDate = '', $toDate = '')
+    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false)
     {
         $sql = "
         SELECT
@@ -1379,6 +1399,26 @@ class Lead extends Model
 
         $params = [];
         $types  = "";
+
+        // DB-level duplicate filter
+        if ($duplicatesOnly) {
+            $sql .= "
+              AND (
+                (l.phone_number IS NOT NULL AND l.phone_number != '' AND l.phone_number IN (
+                    SELECT phone_number FROM leads
+                    WHERE deleted_at IS NULL AND phone_number IS NOT NULL AND phone_number != ''
+                      AND uploaded_from = 'From Campaign'
+                    GROUP BY phone_number HAVING COUNT(*) > 1
+                ))
+                OR
+                (l.email IS NOT NULL AND l.email != '' AND l.email IN (
+                    SELECT email FROM leads
+                    WHERE deleted_at IS NULL AND email IS NOT NULL AND email != ''
+                      AND uploaded_from = 'From Campaign'
+                    GROUP BY email HAVING COUNT(*) > 1
+                ))
+              )";
+        }
 
         if ($teamId) {
             $sql .= " AND l.team_id = ?";
@@ -1645,7 +1685,7 @@ class Lead extends Model
             SELECT l.assigned_id, l.team_id 
             FROM leads l
             JOIN users u ON l.assigned_id = u.id
-            JOIN employees emp ON emp.user_id = u.id
+            LEFT JOIN employees emp ON emp.user_id = u.id
             WHERE l.deleted_at IS NULL 
               AND l.assigned_id IS NOT NULL 
               AND u.role_id IS NOT NULL 

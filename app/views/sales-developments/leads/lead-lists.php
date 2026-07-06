@@ -1033,14 +1033,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Restore page position from URL ?page= parameter
         const pageFromUrl   = parseInt(urlParams.get('page') || '1', 10);
-        const pageLength    = 10; // must match server perPage
+        const pageLength    = 25; // must match server perPage
         const displayStart  = (pageFromUrl > 1) ? (pageFromUrl - 1) * pageLength : 0;
 
         const dtTable = $('#serverSideLeadTable').DataTable({
             serverSide   : true,
             processing   : true,
             ajax         : { url: ajaxUrl, type: 'POST' },
-            lengthMenu   : [[10, 25, 50, 100], [10, 25, 50, 100]],
+            lengthMenu   : [[25, 50, 100, 200], [25, 50, 100, 200]],
             displayStart : displayStart,
             order        : [],
             columnDefs   : [
