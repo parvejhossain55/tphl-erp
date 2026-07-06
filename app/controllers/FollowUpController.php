@@ -24,6 +24,14 @@ class FollowUpController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        // Save where the user came from so we can redirect back after creating a follow-up
+        // Only save if referer is NOT the follow-up page itself (avoids overwriting on page refresh)
+        $referer = $_SERVER['HTTP_REFERER'] ?? '';
+        $followUpUrl = $GLOBALS['base_url'] . '/follow-up-leads';
+        if (!empty($referer) && strpos($referer, $followUpUrl) === false) {
+            $_SESSION['follow_up_return_url'] = $referer;
+        }
+
         $leads = $this->leadModel->getAll(); // for the table/list
         $followUpLeads = [];
 
@@ -146,9 +154,20 @@ public function store()
     } else {
         setError("Failed to create follow-up!");
     }
+
+    // Redirect back to the page the user originally came from
+    // (stored in session when follow-up page was loaded)
+    if (!empty($_SESSION['follow_up_return_url'])) {
+        $returnUrl = $_SESSION['follow_up_return_url'];
+        unset($_SESSION['follow_up_return_url']); // clear after use
+        header("Location: " . $returnUrl);
+        exit;
+    }
+    // Fallback: go to follow-up-leads page
     header("Location: {$GLOBALS['base_url']}/follow-up-leads/{$leadId}");
     exit;
 }
+
 
     public function update()
     {

@@ -291,7 +291,7 @@
         <div class="col-xxl-12">
             <div class="card__wrapper">
                 <div class="table__wrapper table-responsive">
-                    <table class="table no-border-table mb-20 multiple_tables">
+                    <table id="assignedLeadsTable" data-dt-custom="1" class="table no-border-table mb-20 multiple_tables">
                         <thead>
                             <tr class="table__title table__sort">
                                 <th style="min-width:60px;">
@@ -1373,3 +1373,5 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 <?php endif; ?>
+
+

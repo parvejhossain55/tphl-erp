@@ -59,8 +59,8 @@ $show_breadcrumb = true;
                     </div> -->
                     <!-- Flat -->
                     <div class="col-lg-6">
-                        <label class="form__input-title">Flat / Unit *</label>
-                        <select id="flatSelect" name="flat_id" class="form-select " data-live-search="true">
+                        <label class="form__input-title">Flat / Unit</label>
+                        <select id="flatSelect" name="flat_id" class="form-select" data-live-search="true">
 
                             <option value="">Select Flat</option>
                         </select>
@@ -106,8 +106,8 @@ $show_breadcrumb = true;
                     </div>
                     <!-- Lead Status -->
                     <div class="col-lg-6">
-                        <label class="form__input-title">Lead Status*</label>
-                        <select name="lead_status" id="create_lead_status" class="form-select" required>
+                        <label class="form__input-title">Lead Status</label>
+                        <select name="lead_status" id="create_lead_status" class="form-select">
                             <option value="">Select Status</option>
                             <?php
                             $statuses = [
@@ -136,8 +136,8 @@ $show_breadcrumb = true;
 
                     <!-- Follow Up Status -->
                     <div class="col-lg-6">
-                        <label class="form__input-title">Follow Up Status*</label>
-                        <select name="status" class="form-select" required>
+                        <label class="form__input-title">Follow Up Status</label>
+                        <select name="status" class="form-select">
                             <option value="">Select Status</option>
                             <option value="pending">Pending</option>
                             <option value="completed">Completed</option>
@@ -158,14 +158,14 @@ $show_breadcrumb = true;
 
                     <!-- Discussion Note -->
                     <div class="col-lg-6">
-                        <label class="form__input-title">Discussion Note</label>
-                        <textarea name="discussion_note" class="form-control" rows="3"></textarea>
+                        <label class="form__input-title">Discussion Note*</label>
+                        <textarea name="discussion_note" class="form-control" rows="3" required></textarea>
                     </div>
 
                     <!-- Next Follow Up Date -->
                     <div class="col-lg-6">
-                        <label class="form__input-title">Next Follow Up Date</label>
-                        <input type="date" name="next_follow_up_date" class="form-control">
+                        <label class="form__input-title">Next Follow Up Date*</label>
+                        <input type="date" name="next_follow_up_date" class="form-control" required>
                     </div>
 
                     <!-- Next Action -->

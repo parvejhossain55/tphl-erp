@@ -186,39 +186,90 @@
       </div>
   </div>
   <script>
+  // jQuery and Select2 are loaded in footer — use window.load to run AFTER them
+  window.addEventListener('load', function () {
+
       const STORAGE_KEY = 'payslip_data';
 
-      // Save localStorage
+      // ── Apply employee data from the selected <option> ──────────────────────
+      function applyEmployeeData(selectEl) {
+          const selected = selectEl.options[selectEl.selectedIndex];
+          if (!selected || !selected.value) return;
+
+          document.getElementById('designation').value    = selected.getAttribute('data-designation')    || '';
+          document.getElementById('designation_id').value = selected.getAttribute('data-designation-id') || '';
+          document.getElementById('emp_id').value         = selected.getAttribute('data-empid')          || '';
+          document.getElementById('email').value          = selected.getAttribute('data-email')          || '';
+          document.getElementById('basicSalary').value    = selected.getAttribute('data-basic-salary')   || 0;
+          document.getElementById('grossSalary').value    = selected.getAttribute('data-gross-salary')   || 0;
+
+          calculateNetSalary();
+      }
+
+      // ── Listen for employee select change (Select2 + native fallback) ───────
+      const empSelectEl = document.getElementById('employeeSelect');
+      if (typeof $ !== 'undefined' && $.fn.select2) {
+          // Select2 is available — use select2:select event
+          $(empSelectEl).on('select2:select select2:unselect change', function () {
+              applyEmployeeData(this);
+          });
+      } else {
+          // Fallback to native change event
+          empSelectEl.addEventListener('change', function () {
+              applyEmployeeData(this);
+          });
+      }
+
+      // ── Calculate totals ─────────────────────────────────────────────────────
+      function calculateNetSalary() {
+          let totalEarning   = 0;
+          let totalDeduction = 0;
+
+          document.querySelectorAll('.earning').forEach(inp  => totalEarning   += Number(inp.value  || 0));
+          document.querySelectorAll('.deduction').forEach(inp => totalDeduction += Number(inp.value || 0));
+
+          document.getElementById('totalEarningInput').value       = totalEarning.toFixed(2);
+          document.getElementById('totalDeductionInput').value     = totalDeduction.toFixed(2);
+          document.getElementById('totalEarningText').textContent  = totalEarning.toFixed(2);
+          document.getElementById('totalDeductionText').textContent = totalDeduction.toFixed(2);
+          document.getElementById('netSalaryText').textContent     = (totalEarning - totalDeduction).toFixed(2);
+
+          collectPayslipData();
+      }
+
+      // ── Collect & save to localStorage ───────────────────────────────────────
       function collectPayslipData() {
-          const $employeeSelect = $('#employeeSelect');
-          if (!$employeeSelect.val()) return;
+          const selectEl = document.getElementById('employeeSelect');
+          if (!selectEl.value) return;
 
-          const $selected = $employeeSelect.find(':selected');
+          const selected = selectEl.options[selectEl.selectedIndex];
+          const earnings    = {};
+          const deductions  = {};
 
-          const earnings = {};
-          const deductions = {};
-
-          document.querySelectorAll('.earning[name]').forEach(input => {
-              const id = input.name.match(/\d+/)?.[0];
-              if (id) earnings[id] = parseFloat(input.value || 0);
+          document.querySelectorAll('.earning[name]').forEach(inp => {
+              const id = inp.name.match(/\d+/)?.[0];
+              if (id) earnings[id] = parseFloat(inp.value || 0);
           });
 
-          document.querySelectorAll('.deduction[name]').forEach(input => {
-              const id = input.name.match(/\d+/)?.[0];
-              if (id) deductions[id] = parseFloat(input.value || 0);
+          document.querySelectorAll('.deduction[name]').forEach(inp => {
+              const id = inp.name.match(/\d+/)?.[0];
+              if (id) deductions[id] = parseFloat(inp.value || 0);
           });
 
           const paydate = document.getElementById('paydate').value;
 
           const data = {
-              employee_id: $employeeSelect.val(),
-              designation: $selected.attr('data-designation') || null,
-              designation_id: $selected.attr('data-designation-id') || null,
-              basic_salary: document.getElementById('basicSalary').value,
-              total_earning: document.getElementById('totalEarningInput').value,
-              total_deduction: document.getElementById('totalDeductionInput').value,
-              gross_salary: document.getElementById('grossSalary').value,
-              net_salary: (parseFloat(document.getElementById('totalEarningInput').value) - parseFloat(document.getElementById('totalDeductionInput').value)).toFixed(2),
+              employee_id:      selectEl.value,
+              designation:      selected ? (selected.getAttribute('data-designation')    || null) : null,
+              designation_id:   selected ? (selected.getAttribute('data-designation-id') || null) : null,
+              basic_salary:     document.getElementById('basicSalary').value,
+              gross_salary:     document.getElementById('grossSalary').value,
+              total_earning:    document.getElementById('totalEarningInput').value,
+              total_deduction:  document.getElementById('totalDeductionInput').value,
+              net_salary:       (
+                  parseFloat(document.getElementById('totalEarningInput').value) -
+                  parseFloat(document.getElementById('totalDeductionInput').value)
+              ).toFixed(2),
               earnings,
               deductions,
               paydate
@@ -227,93 +278,68 @@
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
           document.getElementById('payslipPayload').value = JSON.stringify(data);
 
-          // Update display month
+          // Update display month text
           if (paydate) {
               const d = new Date(paydate);
-              document.getElementById('paydateText').textContent = d.toLocaleDateString('en-US', {
-                  month: 'long',
-                  year: 'numeric',
-                  day: 'numeric'
-              });
-          }
-          if (paydate) {
-              const d = new Date(paydate);
-              document.getElementById('paydateText2').textContent = d.toLocaleDateString('en-US', {
-                  month: 'long',
-                  year: 'numeric',
-                  day: 'numeric'
-              });
+              const formatted = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric', day: 'numeric' });
+              const t1 = document.getElementById('paydateText');
+              const t2 = document.getElementById('paydateText2');
+              if (t1) t1.textContent = formatted;
+              if (t2) t2.textContent = formatted;
           }
       }
 
-      // Restore localStorage
+      // ── Restore from localStorage on page load ───────────────────────────────
       function restorePayslipData() {
           const saved = localStorage.getItem(STORAGE_KEY);
           if (!saved) return;
 
-          const data = JSON.parse(saved);
+          const data     = JSON.parse(saved);
+          const selectEl = document.getElementById('employeeSelect');
 
-          document.getElementById('employeeSelect').value = data.employee_id;
-          document.getElementById('employeeSelect').dispatchEvent(new Event('change'));
+          selectEl.value = data.employee_id;
 
-          document.getElementById('basicSalary').value = data.basic_salary || 0;
-          document.getElementById('paydate').value = data.paydate || new Date().toISOString().slice(0, 10);
+          // Trigger select2 update if available
+          if (typeof $ !== 'undefined' && $.fn.select2) {
+              $(selectEl).trigger('change');
+          }
+          applyEmployeeData(selectEl);
 
-          Object.entries(data.earnings || {}).forEach(([id, amount]) => {
-              const input = document.querySelector(`input[name="earning[${id}]"]`);
-              if (input) input.value = amount;
+          // Override salary fields from saved data (in case DB value differs)
+          document.getElementById('basicSalary').value = data.basic_salary  || 0;
+          document.getElementById('grossSalary').value = data.gross_salary  || 0;
+          document.getElementById('paydate').value     = data.paydate       || new Date().toISOString().slice(0, 10);
+
+          Object.entries(data.earnings   || {}).forEach(([id, amt]) => {
+              const inp = document.querySelector(`input[name="earning[${id}]"]`);
+              if (inp) inp.value = amt;
           });
-
-          Object.entries(data.deductions || {}).forEach(([id, amount]) => {
-              const input = document.querySelector(`input[name="deduction[${id}]"]`);
-              if (input) input.value = amount;
+          Object.entries(data.deductions || {}).forEach(([id, amt]) => {
+              const inp = document.querySelector(`input[name="deduction[${id}]"]`);
+              if (inp) inp.value = amt;
           });
 
           calculateNetSalary();
       }
 
-      // Calculate totals
-      function calculateNetSalary() {
-          let totalEarning = 0;
-          let totalDeduction = 0;
-
-          document.querySelectorAll('.earning').forEach(input => totalEarning += Number(input.value || 0));
-          document.querySelectorAll('.deduction').forEach(input => totalDeduction += Number(input.value || 0));
-
-          document.getElementById('totalEarningInput').value = totalEarning.toFixed(2);
-          document.getElementById('totalDeductionInput').value = totalDeduction.toFixed(2);
-          document.getElementById('totalEarningText').textContent = totalEarning.toFixed(2);
-          document.getElementById('totalDeductionText').textContent = totalDeduction.toFixed(2);
-          document.getElementById('netSalaryText').textContent = (totalEarning - totalDeduction).toFixed(2);
-
-          collectPayslipData();
-      }
-
-      // Event listeners
-      document.querySelectorAll('.earning, .deduction').forEach(input => {
-          input.addEventListener('input', calculateNetSalary);
+      // ── Bind earning/deduction inputs ────────────────────────────────────────
+      document.querySelectorAll('.earning, .deduction').forEach(inp => {
+          inp.addEventListener('input', calculateNetSalary);
       });
 
-      $('#employeeSelect').on('change', function() {
-          const $selected = $(this).find('option:selected');
-          if (!$selected.length) return;
-          document.getElementById('designation').value = $selected.attr('data-designation') || '';
-          document.getElementById('emp_id').value = $selected.attr('data-empid') || '';
-          document.getElementById('email').value = $selected.attr('data-email') || '';
-          document.getElementById('basicSalary').value = $selected.attr('data-basic-salary') || 0;
-          // ✅ NEW: Gross Salary set
-          document.getElementById('grossSalary').value = $selected.attr('data-gross-salary') || 0;
-
-          calculateNetSalary();
-      });
-
+      // ── Paydate change ───────────────────────────────────────────────────────
       document.getElementById('paydate').addEventListener('change', collectPayslipData);
 
-      document.getElementById('payslipForm').addEventListener('submit', e => {
+      // ── Form submit — ensure payload is up to date ───────────────────────────
+      document.getElementById('payslipForm').addEventListener('submit', () => {
           const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
           document.getElementById('payslipPayload').value = JSON.stringify(data);
       });
 
-      // Init
-      document.addEventListener('DOMContentLoaded', restorePayslipData);
+      // ── Init ─────────────────────────────────────────────────────────────────
+      restorePayslipData();
+  });
   </script>
+
+
+

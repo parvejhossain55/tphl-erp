@@ -409,12 +409,12 @@ public function deleteBudget($id)
         $fromDate       = $_GET['from_date']              ?? '';
         $toDate         = $_GET['to_date']                ?? '';
 
-        // Total count (pre-filter: no contact_status/duplicates which are post-DB)
-        $total = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, $search, $fromDate, $toDate);
+        // Total count — include duplicatesOnly for correct pagination total
+        $total = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, $search, $fromDate, $toDate, $duplicatesOnly);
 
-        // Fetch paginated leads
+        // Fetch paginated leads — duplicate filter applied at DB level
         $leads = $this->leadModel->getMarketingLeadsPaginated(
-            $teamId, $dateAge, $sortOrder, $perPage, $offset, $search, $fromDate, $toDate
+            $teamId, $dateAge, $sortOrder, $perPage, $offset, $search, $fromDate, $toDate, $duplicatesOnly
         );
 
         // ── Duplicate detection: phone_number OR email appears > 1 time in leads table ──
@@ -469,19 +469,14 @@ public function deleteBudget($id)
             }
         }
 
-        // Post-filter: contact_status
+        // Post-filter: contact_status only
         if ($contactStatus === 'contacted') {
             $leads = array_values(array_filter($leads, fn($l) => ($l['contact_status'] ?? '') === 'Contacted'));
         } elseif ($contactStatus === 'not_contacted') {
             $leads = array_values(array_filter($leads, fn($l) => ($l['contact_status'] ?? '') !== 'Contacted'));
         }
 
-        // Post-filter: duplicates only (phone OR email appears > 1 in DB)
-        if ($duplicatesOnly) {
-            $leads = array_values(array_filter($leads, function ($l) use ($duplicateLeadIds) {
-                return isset($duplicateLeadIds[$l['id']]);
-            }));
-        }
+        // Note: duplicates_only is now handled at DB level (above), no post-filter needed
 
         // Build HTML rows
         $rows = [];

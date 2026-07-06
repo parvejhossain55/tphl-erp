@@ -522,6 +522,15 @@ class UserDashboardController extends Controller
             'selectedCallStatus'  => $call_status,
             'duplicateGroups'     => $duplicateGroups,
             'duplicateCount'      => $duplicateCount,
+            'page_script'         => "
+                // Runs after main.js — override DataTable to 25 per page
+                $('#assignedLeadsTable').DataTable().destroy();
+                $('#assignedLeadsTable').DataTable({
+                    pageLength : 25,
+                    lengthMenu : [[25, 50, 100, -1], [25, 50, 100, 'All']],
+                    order      : []
+                });
+            ",
         ]);
     }
     public function myUpcomingFollowLeads()
