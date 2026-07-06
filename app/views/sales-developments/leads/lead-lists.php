@@ -41,9 +41,30 @@ unset($_SESSION['booking_csv_import_skipped']); // clear after reading
 </div>
 <?php endif; ?>
 <!-- Stats Grid -->
-<div class="row  mb-4 align-items-stretch">
+<?php
+// Find the selected executive's name for display
+$filteredExecName = '';
+if (!empty($selectedAssignedUser)) {
+    foreach (($assignedUsers ?? []) as $u) {
+        if ($u['id'] == $selectedAssignedUser) {
+            $filteredExecName = $u['full_name'] ?? '';
+            break;
+        }
+    }
+}
+?>
+<?php if (!empty($filteredExecName)): ?>
+<div class="d-flex align-items-center gap-2 mb-2">
+    <span class="badge rounded-pill text-bg-primary" style="font-size:0.8rem; padding:6px 14px;">
+        <i class="fa-solid fa-filter me-1"></i>
+        Filtered for: <strong><?= htmlspecialchars($filteredExecName) ?></strong>
+    </span>
+    <span class="text-muted small">Stats below are specific to this sales executive</span>
+</div>
+<?php endif; ?>
+<div class="row mb-4 align-items-stretch">
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
-        <div class="card__wrapper stat-card">
+        <div class="card__wrapper stat-card <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>">
             <div class="stat-label">Total Leads</div>
             <div class="stat-value"><?= $leadCounts ?></div>
             <div class="stat-change positive d-none">
@@ -55,8 +76,8 @@ unset($_SESSION['booking_csv_import_skipped']); // clear after reading
         </div>
     </div>
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
-        <div class="card__wrapper stat-card">
-            <div class="stat-label">Total Booked</div>
+        <div class="card__wrapper stat-card <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>">
+            <div class="stat-label">Total Booked <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
             <div class="stat-value"><?= $totalBookingCount ?></div>
             <div class="stat-change positive d-none">
                 <i class="bi bi-arrow-up"></i> 3.1%
@@ -64,8 +85,8 @@ unset($_SESSION['booking_csv_import_skipped']); // clear after reading
         </div>
     </div>
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
-        <div class="card__wrapper stat-card">
-            <div class="stat-label">Today Follow-Up</div>
+        <div class="card__wrapper stat-card <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>">
+            <div class="stat-label">Today Follow-Up <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
             <div class="stat-value"><?= $totalTodayFollowUps ?></div>
             <div class="stat-change positive d-none">
                 <i class="bi bi-arrow-up"></i> 1.2%
@@ -73,8 +94,8 @@ unset($_SESSION['booking_csv_import_skipped']); // clear after reading
         </div>
     </div>
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
-        <div class="card__wrapper stat-card">
-            <div class="stat-label">Pending Follow-Ups</div>
+        <div class="card__wrapper stat-card <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>">
+            <div class="stat-label">Pending Follow-Ups <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
             <div class="stat-value"><?= $totalTodayPendingFollowUps ?></div>
             <div class="stat-change negative d-none">
                 <i class="bi bi-arrow-down"></i> 12.5%
@@ -82,17 +103,17 @@ unset($_SESSION['booking_csv_import_skipped']); // clear after reading
         </div>
     </div>
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
-        <div class="card__wrapper stat-card">
-            <div class="stat-label">Conversion Rate</div>
+        <div class="card__wrapper stat-card <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>">
+            <div class="stat-label">Conversion Rate <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
             <div class="stat-value"><?= format_bdt($conversionRate ?? 0) ?>%</div>
-            <div class="stat-change positive">
+            <div class="stat-change positive <?= empty($filteredExecName) ? '' : 'd-none' ?>">
                 <i class="bi bi-arrow-up"></i> 8.4%
             </div>
         </div>
     </div>
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
-        <div class="card__wrapper stat-card">
-            <div class="stat-label">Hot Leads</div>
+        <div class="card__wrapper stat-card <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>">
+            <div class="stat-label">Hot Leads <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
             <div class="stat-value"><?= $totalHotLeads ?></div>
             <div class="stat-change positive d-none">
                 <i class="bi bi-arrow-up"></i> 2.5%
@@ -292,13 +313,11 @@ unset($_SESSION['booking_csv_import_skipped']); // clear after reading
                         <button id="assignUserBtn" class="btn btn-primary btn-sm px-3">
                             <i class="fa-solid fa-user-plus me-1"></i> Assign Leads
                         </button>
-
                         <span id="assignFeedback"
                             class="text-success fw-bold"
                             style="display:none;">
                             Leads assigned successfully!
                         </span>
-
                     </div>
                 </div>
             </div>

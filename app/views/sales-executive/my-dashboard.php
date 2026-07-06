@@ -105,6 +105,44 @@
     .info-box strong {
         color: #667eea;
     }
+
+    /* ── Clickable card navigation ── */
+    a.stat-card-link {
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        border-radius: 15px;
+    }
+    a.stat-card-link .stat-card {
+        position: relative;
+        border: 1.5px solid transparent !important;
+        transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    a.stat-card-link:hover .stat-card {
+        transform: translateY(-6px);
+        box-shadow: 0 14px 30px rgba(102,126,234,0.18) !important;
+        border-color: rgba(102,126,234,0.35) !important;
+    }
+    a.stat-card-link .card-nav-arrow {
+        position: absolute;
+        top: 10px; right: 12px;
+        font-size: 0.65rem;
+        color: #bbb;
+        opacity: 0;
+        transition: opacity 0.2s, transform 0.2s;
+    }
+    a.stat-card-link:hover .card-nav-arrow {
+        opacity: 1;
+        transform: translateX(3px);
+    }
+    .card-hint {
+        font-size: 10px;
+        color: #a0aec0;
+        display: block;
+        margin-top: 2px;
+        transition: color 0.2s;
+    }
+    a.stat-card-link:hover .card-hint { color: #667eea; }
 </style>
 
 <!-- Dashboard Header -->
@@ -123,83 +161,104 @@
     <div class="row g-20 mb-4 align-items-stretch">
         <!-- Pending Tasks -->
         <div class="col-12 col-sm-6 col-lg-3">
-            <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="stat-label mb-2"><i class="fa-regular fa-clock me-1"></i> Pending Tasks</p>
-                        <h2 class="stat-value text-primary"><?= $pendingTasks ?></h2>
+            <a href="<?= $GLOBALS['base_url'] ?>/task-dashboard" class="stat-card-link">
+                <div class="card__wrapper stat-card shadow-sm">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="stat-label mb-2"><i class="fa-regular fa-clock me-1"></i> Pending Tasks</p>
+                            <h2 class="stat-value text-primary"><?= $pendingTasks ?></h2>
+                            <span class="card-hint">View all tasks →</span>
+                        </div>
+                        <div class="card__icon"><span><i class="fa-solid fa-clock"></i></span></div>
                     </div>
-                    <div class="card__icon"><span><i class="fa-solid fa-clock"></i></span></div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Today Leads Assigned -->
         <div class="col-12 col-sm-6 col-lg-3">
-            <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="stat-label mb-2"><i class="fa-solid fa-user-plus me-1"></i> Today Leads Assigned</p>
-                        <h2 class="stat-value text-success"><?= $todayLeadsCount ?? 0 ?></h2>
+            <a href="<?= $GLOBALS['base_url'] ?>/today-leads" class="stat-card-link">
+                <div class="card__wrapper stat-card shadow-sm">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="stat-label mb-2"><i class="fa-solid fa-user-plus me-1"></i> Today Leads Assigned</p>
+                            <h2 class="stat-value text-success"><?= $todayLeadsCount ?? 0 ?></h2>
+                            <span class="card-hint">View today's leads →</span>
+                        </div>
+                        <div class="card__icon"><span><i class="fa-solid fa-user-plus"></i></span></div>
                     </div>
-                    <div class="card__icon"><span><i class="fa-solid fa-user-plus"></i></span></div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Today FollowUp Due -->
         <div class="col-12 col-sm-6 col-lg-3">
-            <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="stat-label mb-2"><i class="fa-solid fa-calendar-check me-1"></i> Today FollowUp Due
-                        </p>
-                        <h2 class="stat-value text-info"><?= $todayFollowUp ?? 0 ?></h2>
+            <a href="<?= $GLOBALS['base_url'] ?>/today-follow-up" class="stat-card-link">
+                <div class="card__wrapper stat-card shadow-sm">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="stat-label mb-2"><i class="fa-solid fa-calendar-check me-1"></i> Today FollowUp Due</p>
+                            <h2 class="stat-value text-info"><?= $todayFollowUp ?? 0 ?></h2>
+                            <span class="card-hint">View today's follow-ups →</span>
+                        </div>
+                        <div class="card__icon"><span><i class="fa-solid fa-calendar-check"></i></span></div>
                     </div>
-                    <div class="card__icon"><span><i class="fa-solid fa-calendar-check"></i></span></div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Today Follow Up Complete -->
         <div class="col-12 col-sm-6 col-lg-3">
-            <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="stat-label mb-2"><i class="fa-solid fa-check-circle me-1"></i> Today Follow Up
-                            Complete</p>
-                        <h2 class="stat-value text-info"><?= $todayFollowUpComplete ?? 0 ?></h2>
+            <a href="<?= $GLOBALS['base_url'] ?>/my-onboarding-projects" class="stat-card-link">
+                <div class="card__wrapper stat-card shadow-sm">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="stat-label mb-2"><i class="fa-solid fa-check-circle me-1"></i> Today Follow Up Complete</p>
+                            <h2 class="stat-value text-info"><?= $todayFollowUpComplete ?? 0 ?></h2>
+                            <span class="card-hint">View completed follow-ups →</span>
+                        </div>
+                        <div class="card__icon"><span><i class="fa-solid fa-check-circle"></i></span></div>
                     </div>
-                    <div class="card__icon"><span><i class="fa-solid fa-check-circle"></i></span></div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- My Total Sale -->
         <div class="col-12 col-sm-6 col-lg-3">
-            <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="stat-label mb-2"><i class="fa-solid fa-bangladeshi-taka-sign me-1"></i> My Total Sale
-                        </p>
-                        <h2 class="stat-value text-info"><?= $myTotalShareSold['total_flats'] ?></h2>
+            <a href="<?= $GLOBALS['base_url'] ?>/my-onboarding-projects" class="stat-card-link">
+                <div class="card__wrapper stat-card shadow-sm">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="stat-label mb-2"><i class="fa-solid fa-bangladeshi-taka-sign me-1"></i> My Total Sale</p>
+                            <h2 class="stat-value text-info"><?= $myTotalShareSold['total_flats'] ?></h2>
+                            <span class="card-hint">View all bookings →</span>
+                        </div>
+                        <div class="card__icon"><span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span></div>
                     </div>
-                    <div class="card__icon"><span><i class="fa-solid fa-bangladeshi-taka-sign"></i></span></div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Total Leads Assigned -->
         <div class="col-12 col-sm-6 col-lg-3">
-            <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="stat-label mb-2"><i class="fa-solid fa-users me-1"></i> Total Leads Assigned</p>
-                        <h2 class="stat-value text-info"><?= $getAllLeadsCount ?></h2>
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads" class="stat-card-link">
+                <div class="card__wrapper stat-card shadow-sm">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="stat-label mb-2"><i class="fa-solid fa-users me-1"></i> Total Leads Assigned</p>
+                            <h2 class="stat-value text-info"><?= $getAllLeadsCount ?></h2>
+                            <span class="card-hint">View all assigned leads →</span>
+                        </div>
+                        <div class="card__icon"><span><i class="fa-solid fa-users"></i></span></div>
                     </div>
-                    <div class="card__icon"><span><i class="fa-solid fa-users"></i></span></div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Monthly Site Visit Target -->
@@ -251,42 +310,53 @@
 
         <!-- Monthly Booking Target Complete -->
         <div class="col-12 col-sm-6 col-lg-3">
-            <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="stat-label mb-2"><i class="fa-solid fa-check me-1"></i> Monthly Booking Target
-                            Complete</p>
-                        <h2 class="stat-value text-info"><?= $monthlyBookingComplete ?></h2>
+            <a href="<?= $GLOBALS['base_url'] ?>/my-onboarding-projects" class="stat-card-link">
+                <div class="card__wrapper stat-card shadow-sm">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="stat-label mb-2"><i class="fa-solid fa-check me-1"></i> Monthly Booking Target Complete</p>
+                            <h2 class="stat-value text-info"><?= $monthlyBookingComplete ?></h2>
+                            <span class="card-hint">View booking records →</span>
+                        </div>
+                        <div class="card__icon"><span><i class="fa-solid fa-check"></i></span></div>
                     </div>
-                    <div class="card__icon"><span><i class="fa-solid fa-check"></i></span></div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Deal Lost -->
         <div class="col-12 col-sm-6 col-lg-3">
-            <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="stat-label mb-2"><i class="fa-solid fa-xmark me-1"></i> Deal Lost</p>
-                        <h2 class="stat-value text-info"><?= $dealsLostAll ?></h2>
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?last_action=Deal+Lost" class="stat-card-link">
+                <div class="card__wrapper stat-card shadow-sm">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="stat-label mb-2"><i class="fa-solid fa-xmark me-1"></i> Deal Lost</p>
+                            <h2 class="stat-value text-danger"><?= $dealsLostAll ?></h2>
+                            <span class="card-hint">View lost deals →</span>
+                        </div>
+                        <div class="card__icon"><span><i class="fa-solid fa-xmark"></i></span></div>
                     </div>
-                    <div class="card__icon"><span><i class="fa-solid fa-xmark"></i></span></div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Deal Win -->
         <div class="col-12 col-sm-6 col-lg-3">
-            <div class="card__wrapper stat-card shadow-sm">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="stat-label mb-2"><i class="fa-solid fa-check-double me-1"></i> Deal Win</p>
-                        <h2 class="stat-value text-info"><?= $dealsWinAll ?></h2>
+            <a href="<?= $GLOBALS['base_url'] ?>/lead-bookings" class="stat-card-link">
+                <div class="card__wrapper stat-card shadow-sm">
+                    <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="stat-label mb-2"><i class="fa-solid fa-check-double me-1"></i> Deal Win</p>
+                            <h2 class="stat-value text-success"><?= $dealsWinAll ?></h2>
+                            <span class="card-hint">View won deals →</span>
+                        </div>
+                        <div class="card__icon"><span><i class="fa-solid fa-check-double"></i></span></div>
                     </div>
-                    <div class="card__icon"><span><i class="fa-solid fa-check-double"></i></span></div>
                 </div>
-            </div>
+            </a>
         </div>
     </div>
 

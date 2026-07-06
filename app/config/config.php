@@ -27,7 +27,7 @@ if ($current_server == 1) {
 }
 
 
-// CREATE USER 'tphl_read_only'@'localhost' IDENTIFIED BY 'ReadOnlyPass123!';
+// CREATE USER 'tphl_read_only'@'localhost' IDENT IFIED BY 'ReadOnlyPass123!';
 // GRANT SELECT ON `tphl_db`.* TO 'tphl_read_only'@'localhost';
 // FLUSH PRIVILEGES;
 
@@ -36,6 +36,7 @@ if ($current_server == 1) {
 if ($current_server == 2) {
     return [
           "db_host" => "localhost",
+
         "db_user" => "erp_staging_user",
         "db_pass" => "erp_staging_db@#5672dhKL%sd10",
         "db_name" => "erp_staging_db",
