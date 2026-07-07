@@ -1430,7 +1430,8 @@ class Lead extends Model
     {
         $sql = "
         SELECT
-            l.id, l.full_name, l.phone_number, l.email, l.job_title,
+            l.id, l.full_name, l.phone_number, l.email, l.job_title, l.designation,
+            l.company, l.company_name, l.when_is_the_best_time_to_contact_you,
             l.platform, l.campaign_name, l.lead_type, l.call_note,
             l.created_at, l.assigned_id,
             ls.name  AS source_name,

@@ -357,10 +357,11 @@ $activeCard = $_GET['filter_card'] ?? '';
                                     S/L
                                 </th><!-- non-sticky first column -->
                                 <th>Lead Date</th>
-                                <th>Lead Name</th>
-                                <th>Address</th>
+                                <th>Lead Name & Job title/Company</th>
+                                <th>Address & City</th>
                                 <th>Lead Uploaded</th>
                                 <th>Phone</th>
+                                <th>Best Time to Contact</th>
                                 <th>Project Campaign</th>
                                 <th>Status</th>
                                 <th>Next Follow-Up</th>
@@ -586,8 +587,23 @@ $activeCard = $_GET['filter_card'] ?? '';
                                     <input type="checkbox" class="selectedIdMobile me-1" data-id="<?= $lead['id'] ?>">
                                     <span class="lead-name text-truncate"><?= $lead['full_name'] ?></span>
                                 </div>
+                                <?php
+                                $jt = !empty($lead['job_title']) ? $lead['job_title'] : (!empty($lead['designation']) ? $lead['designation'] : '');
+                                $co = !empty($lead['company_name']) ? $lead['company_name'] : (!empty($lead['company']) ? $lead['company'] : '');
+                                if ($jt !== '' || $co !== ''):
+                                ?>
+                                <div class="text-muted small mt-1">
+                                    <i class="bi bi-briefcase me-1"></i>
+                                    <?= htmlspecialchars($jt) ?><?= ($jt !== '' && $co !== '') ? ' at ' : '' ?><strong><?= htmlspecialchars($co) ?></strong>
+                                </div>
+                                <?php endif; ?>
+                                <?php if (!empty($lead['when_is_the_best_time_to_contact_you'])): ?>
+                                <div class="text-info small mt-1">
+                                    <i class="bi bi-clock me-1"></i>Best Contact Time: <?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you']) ?>
+                                </div>
+                                <?php endif; ?>
                                 <div class="lead-phone text-truncate small"><?= $lead['phone'] ?></div>
-                                <?php $mAddr = !empty($lead['address']) ? $lead['address'] : ($lead['city'] ?? ''); ?>
+                                <?php $mAddr = trim(($lead['address'] ?? '') . (!empty($lead['address']) && !empty($lead['city']) ? ', ' : '') . ($lead['city'] ?? '')); ?>
                                 <?php if ($mAddr): ?>
                                 <div class="mt-1">
                                     <i class="bi bi-geo-alt-fill text-muted me-1" style="font-size:11px"></i>
@@ -1094,7 +1110,8 @@ document.addEventListener('DOMContentLoaded', function () {
             order        : [],
             columnDefs   : [
                 { targets: 0, orderable: false },
-                { targets: 9, orderable: false }
+                { targets: 10, orderable: false },
+                { targets: 11, orderable: false }
             ],
             drawCallback: function () {
                 // After each page draw: re-sync checkbox states
@@ -1192,6 +1209,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const name    = lead.full_name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
         const project = (lead.campaign_name || '-').substring(0, 20);
 
+        const jt = lead.job_title || lead.designation || '';
+        const co = lead.company_name || lead.company || '';
+        let jobCompanyStr = '';
+        if (jt || co) {
+            jobCompanyStr = `<div class="text-muted small mt-1"><i class="bi bi-briefcase me-1"></i>${jt.replace(/</g,'&lt;').replace(/>/g,'&gt;')}${jt && co ? ' at ' : ''}<strong>${co.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</strong></div>`;
+        }
+        let bestTimeStr = '';
+        if (lead.when_is_the_best_time_to_contact_you) {
+            bestTimeStr = `<div class="text-info small mt-1"><i class="bi bi-clock me-1"></i>Best Contact Time: ${lead.when_is_the_best_time_to_contact_you.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`;
+        }
+
         return `
         <div class="col-12 col-sm-6">
           <div class="lead-card h-100" data-id="${lead.id}">
@@ -1201,6 +1229,8 @@ document.addEventListener('DOMContentLoaded', function () {
                   <input type="checkbox" class="selectedIdMobile me-1" data-id="${lead.id}">
                   <span class="lead-name text-truncate">${name}</span>
                 </div>
+                ${jobCompanyStr}
+                ${bestTimeStr}
                 <div class="lead-phone text-truncate small">${lead.phone || ''}</div>
                 ${lead.address ? `<div class="mt-1"><i class="bi bi-geo-alt-fill text-muted me-1" style="font-size:11px"></i><span class="fs-11 text-muted">${lead.address.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span></div>` : ''}
               </div>
