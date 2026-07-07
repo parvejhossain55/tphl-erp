@@ -8,5 +8,20 @@
         "phpmailer/phpmailer": "^7.0",
         "league/oauth2-client": "^2.9",
         "league/oauth2-google": "^5.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Phase2\\": "app/controllers/Phase2/",
+            "ai\\": "app/ai/",
+            "": [
+                "app/core/",
+                "app/models/",
+                "app/controllers/",
+                "app/services/",
+                "app/helpers/",
+                "app/ai/",
+                "app/"
+            ]
+        }
     }
 }
