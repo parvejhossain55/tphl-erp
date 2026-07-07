@@ -845,7 +845,6 @@
   <?php endif; ?>
 
 </div>
-
 <!-- CSV Import Modal -->
 <div class="modal fade" id="importCsvModal">
   <div class="modal-dialog modal-dialog-centered modal-md">
@@ -893,7 +892,6 @@
     </div>
   </div>
 </div>
-
 <!-- Bootstrap 5 JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -933,7 +931,6 @@
           tbody.innerHTML = `<tr><td colspan="13" class="text-center py-4 text-danger">${data.error}</td></tr>`;
           return;
         }
-
         // Header text
         const headerLabels = { 'today':'Today\'s Uploaded Leads', 'old':'Old Uploaded Leads', '7days':'Recent Leads (Last 7 Days)', '15days':'Recent Leads (Last 15 Days)', 'all':'All Uploaded Leads' };
         let headerText = headerLabels[dmFilters.date_age] || 'Uploaded Leads';
