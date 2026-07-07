@@ -67,7 +67,7 @@ CREATE TABLE `amenities` (
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -739,7 +739,7 @@ CREATE TABLE `con_contractor_bill_settlements` (
   PRIMARY KEY (`id`),
   KEY `idx_bill_id` (`bill_id`),
   KEY `idx_project_id` (`project_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1678,7 +1678,7 @@ CREATE TABLE `daily_target_pct_breakdown` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_item_week_day` (`target_item_id`,`week_number`,`day_number`),
   CONSTRAINT `daily_target_pct_breakdown_ibfk_1` FOREIGN KEY (`target_item_id`) REFERENCES `phase_monthly_target_items` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3980,7 +3980,7 @@ CREATE TABLE `phase_target_item_work_types` (
   KEY `fk_ptiwt_work_type` (`work_type_id`),
   CONSTRAINT `fk_ptiwt_target_item` FOREIGN KEY (`target_item_id`) REFERENCES `phase_monthly_target_items` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_ptiwt_work_type` FOREIGN KEY (`work_type_id`) REFERENCES `work_types` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --

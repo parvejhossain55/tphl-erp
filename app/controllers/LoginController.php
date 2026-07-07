@@ -67,9 +67,11 @@ class LoginController extends Controller
                         } else {
                             // Clear login attempts for this IP / email upon successful login
                             $stmtClear = $this->db->prepare("DELETE FROM login_attempts WHERE ip_address = ? OR username = ?");
-                            $stmtClear->bind_param("ss", $ip, $email);
-                            $stmtClear->execute();
-                            $stmtClear->close();
+                            if ($stmtClear !== false) {
+                                $stmtClear->bind_param("ss", $ip, $email);
+                                $stmtClear->execute();
+                                $stmtClear->close();
+                            }
 
                             // Garbage collection: Delete logs older than 1 hour
                             $this->db->query("DELETE FROM login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)");
@@ -81,10 +83,12 @@ class LoginController extends Controller
                             $sessionId = session_id();
                             $currentTime = date('Y-m-d H:i:s');
                             $stmtAct = $this->db->prepare("INSERT INTO user_activity_logs (user_id, login_time, last_active_time, session_id) VALUES (?, ?, ?, ?)");
-                            $stmtAct->bind_param("isss", $userId, $currentTime, $currentTime, $sessionId);
-                            $stmtAct->execute();
-                            $_SESSION['activity_log_id'] = $stmtAct->insert_id;
-                            $stmtAct->close();
+                            if ($stmtAct !== false) {
+                                $stmtAct->bind_param("isss", $userId, $currentTime, $currentTime, $sessionId);
+                                $stmtAct->execute();
+                                $_SESSION['activity_log_id'] = $stmtAct->insert_id;
+                                $stmtAct->close();
+                            }
 
                             $_SESSION['user'] = [
                                 "id" => $user['id'],
@@ -110,9 +114,11 @@ class LoginController extends Controller
                     } else {
                         // Failed login attempt: Log details
                         $stmtLog = $this->db->prepare("INSERT INTO login_attempts (ip_address, username) VALUES (?, ?)");
-                        $stmtLog->bind_param("ss", $ip, $email);
-                        $stmtLog->execute();
-                        $stmtLog->close();
+                        if ($stmtLog !== false) {
+                            $stmtLog->bind_param("ss", $ip, $email);
+                            $stmtLog->execute();
+                            $stmtLog->close();
+                        }
 
                         $message = "Invalid Email or Password!";
                     }
@@ -138,9 +144,11 @@ class LoginController extends Controller
             $currentTime = date('Y-m-d H:i:s');
             
             $stmt = $this->db->prepare("UPDATE user_activity_logs SET last_active_time = ? WHERE id = ?");
-            $stmt->bind_param("si", $currentTime, $logId);
-            $stmt->execute();
-            $stmt->close();
+            if ($stmt !== false) {
+                $stmt->bind_param("si", $currentTime, $logId);
+                $stmt->execute();
+                $stmt->close();
+            }
             
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success']);
@@ -163,17 +171,21 @@ class LoginController extends Controller
             $logId = (int)$_SESSION['activity_log_id'];
             $currentTime = date('Y-m-d H:i:s');
             $stmtActClose = $this->db->prepare("UPDATE user_activity_logs SET last_active_time = ? WHERE id = ?");
-            $stmtActClose->bind_param("si", $currentTime, $logId);
-            $stmtActClose->execute();
-            $stmtActClose->close();
+            if ($stmtActClose !== false) {
+                $stmtActClose->bind_param("si", $currentTime, $logId);
+                $stmtActClose->execute();
+                $stmtActClose->close();
+            }
         }
 
         if (isset($_SESSION['user']['id'])) {
             $userId = $_SESSION['user']['id'];
             $stmt = $this->db->prepare("UPDATE users SET last_logout = NOW() WHERE id = ?");
-            $stmt->bind_param("i", $userId);
-            $stmt->execute();
-            $stmt->close();
+            if ($stmt !== false) {
+                $stmt->bind_param("i", $userId);
+                $stmt->execute();
+                $stmt->close();
+            }
         }
 
         // Destroy session

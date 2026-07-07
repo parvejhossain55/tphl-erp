@@ -1,181 +1,13 @@
 <?php
 function uploadImage($input, $module = 'general', $mode = 'original',  $width = 300,   $height = 300)
 {
-    // 1. File check
-    if (!isset($_FILES[$input]) || $_FILES[$input]['error'] !== UPLOAD_ERR_OK) {
-        return null;
-    }
-
-    // 2. Allowed extensions
-    $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    $ext = strtolower(pathinfo($_FILES[$input]['name'], PATHINFO_EXTENSION));
-
-    if (!in_array($ext, $allowed)) {
-        return null;
-    }
-
-    // 3. Upload path
-    $uploadPath = dirname(__DIR__, 2) . "/public/uploads/{$module}/";
-    if (!is_dir($uploadPath)) {
-        if (!mkdir($uploadPath, 0777, true)) {
-            error_log("[uploadImage] Failed to create upload directory: " . $uploadPath);
-        }
-    }
-
-    // 4. File name
-    $fileName = uniqid($module . '_') . '.' . $ext;
-    $target = $uploadPath . $fileName;
-
-    // ======================
-    // ORIGINAL MODE
-    // ======================
-    if ($mode === 'original') {
-        return move_uploaded_file($_FILES[$input]['tmp_name'], $target)
-            ? $fileName
-            : null;
-    }
-
-    // ======================
-    // FIXED MODE (Safe with fallbacks)
-    // ======================
-    // GD not available → fallback
-    if (!extension_loaded('gd')) {
-        return move_uploaded_file($_FILES[$input]['tmp_name'], $target)
-            ? $fileName
-            : null;
-    }
-
-    // Create source image
-    $src = null;
-    switch ($ext) {
-        case 'jpg':
-        case 'jpeg':
-            $src = @imagecreatefromjpeg($_FILES[$input]['tmp_name']);
-            break;
-        case 'png':
-            $src = @imagecreatefrompng($_FILES[$input]['tmp_name']);
-            break;
-        case 'gif':
-            $src = @imagecreatefromgif($_FILES[$input]['tmp_name']);
-            break;
-        case 'webp':
-            if (function_exists('imagecreatefromwebp')) {
-                $src = @imagecreatefromwebp($_FILES[$input]['tmp_name']);
-            } else {
-                return move_uploaded_file($_FILES[$input]['tmp_name'], $target)
-                    ? $fileName
-                    : null;
-            }
-            break;
-        default:
-            return null;
-    }
-
-    if (!$src) {
-        error_log("[uploadImage] Failed to create source image using GD for input '{$input}'. Falling back to original move_uploaded_file.");
-        return move_uploaded_file($_FILES[$input]['tmp_name'], $target)
-            ? $fileName
-            : null;
-    }
-
-    // Destination canvas
-    $dst = imagecreatetruecolor($width, $height);
-    if (!$dst) {
-        imagedestroy($src);
-        return move_uploaded_file($_FILES[$input]['tmp_name'], $target)
-            ? $fileName
-            : null;
-    }
-
-    // Transparency support
-    if (in_array($ext, ['png', 'gif', 'webp'])) {
-        imagealphablending($dst, false);
-        imagesavealpha($dst, true);
-        $transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
-        if ($transparent !== false) {
-            imagefilledrectangle($dst, 0, 0, $width, $height, $transparent);
-        }
-    }
-
-    // Resize
-    $imgSize = getimagesize($_FILES[$input]['tmp_name']);
-    if ($imgSize) {
-        [$w, $h] = $imgSize;
-        
-        $target_ratio = $width / $height;
-        $src_ratio = $w / $h;
-        
-        if ($src_ratio > $target_ratio) {
-            // Source is wider
-            $crop_h = $h;
-            $crop_w = (int)($h * $target_ratio);
-            $src_x = (int)(($w - $crop_w) / 2);
-            $src_y = 0;
-        } else {
-            // Source is taller
-            $crop_w = $w;
-            $crop_h = (int)($w / $target_ratio);
-            $src_x = 0;
-            // Crop from the top (y=0) to keep the head/face visible in portrait photos
-            $src_y = 0;
-        }
-        
-        imagecopyresampled($dst, $src, 0, 0, $src_x, $src_y, $width, $height, $crop_w, $crop_h);
-    } else {
-        imagedestroy($src);
-        imagedestroy($dst);
-        return move_uploaded_file($_FILES[$input]['tmp_name'], $target)
-            ? $fileName
-            : null;
-    }
-
-    // Save image and check status
-    $saved = false;
-    switch ($ext) {
-        case 'jpg':
-        case 'jpeg':
-            $saved = @imagejpeg($dst, $target, 90);
-            break;
-        case 'png':
-            $saved = @imagepng($dst, $target);
-            break;
-        case 'gif':
-            $saved = @imagegif($dst, $target);
-            break;
-        case 'webp':
-            if (function_exists('imagewebp')) {
-                $saved = @imagewebp($dst, $target, 90);
-            }
-            break;
-    }
-
-    imagedestroy($src);
-    imagedestroy($dst);
-
-    // If saving via GD failed, fallback to original move_uploaded_file
-    if (!$saved) {
-        error_log("[uploadImage] GD saving failed for target '{$target}'. Falling back to original move_uploaded_file.");
-        return move_uploaded_file($_FILES[$input]['tmp_name'], $target)
-            ? $fileName
-            : null;
-    }
-
-    return $fileName;
+    return ImageUploader::upload($input, $module, $mode, $width, $height);
 }
 
 
 function getImage($module, $filename)
 {
-    if (!$filename) {
-        return $GLOBALS['base_url'] . '/public/assets/images/avatar/avatar.png';
-    }
-
-    $filePath = dirname(__DIR__, 2) . "/public/uploads/{$module}/{$filename}";
-    if (!file_exists($filePath)) {
-        return $GLOBALS['base_url'] . '/public/assets/images/avatar/avatar.png';
-    }
-
-    return $GLOBALS['base_url'] . "/public/uploads/{$module}/{$filename}";
+    return ImageUploader::get($module, $filename);
 }
 
 /**
@@ -187,18 +19,7 @@ function getImage($module, $filename)
  */
 function getProjectImage($filename)
 {
-    $placeholder = $GLOBALS['base_url'] . '/public/assets/images/project-placeholder.png';
-
-    if (!$filename) {
-        return ['url' => $placeholder, 'missing' => true];
-    }
-
-    $filePath = dirname(__DIR__, 2) . "/public/uploads/projects/{$filename}";
-    if (!file_exists($filePath)) {
-        return ['url' => $placeholder, 'missing' => true];
-    }
-
-    return ['url' => $GLOBALS['base_url'] . "/public/uploads/projects/{$filename}", 'missing' => false];
+    return ImageUploader::getProject($filename);
 }
 
 
@@ -211,27 +32,7 @@ function getProjectImage($filename)
  */
 function uploadFile($input, $module = 'general')
 {
-    // No file uploaded or upload error → skip silently
-    if (!isset($_FILES[$input]) || $_FILES[$input]['error'] !== UPLOAD_ERR_OK) {
-        return null;
-    }
-
-    $allowed = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'doc', 'docx', 'xlsx', 'xls'];
-    $ext     = strtolower(pathinfo($_FILES[$input]['name'], PATHINFO_EXTENSION));
-
-    if (!in_array($ext, $allowed)) {
-        return null;
-    }
-
-    $uploadPath = dirname(__DIR__, 2) . "/public/uploads/{$module}/";
-    if (!is_dir($uploadPath)) {
-        mkdir($uploadPath, 0777, true);
-    }
-
-    $fileName = uniqid($module . '_') . '.' . $ext;
-    $target   = $uploadPath . $fileName;
-
-    return move_uploaded_file($_FILES[$input]['tmp_name'], $target) ? $fileName : null;
+    return ImageUploader::uploadFile($input, $module);
 }
 
 
@@ -244,10 +45,7 @@ function uploadFile($input, $module = 'general')
  */
 function getFileUrl($module, $filename)
 {
-    if (!$filename) {
-        return null;
-    }
-    return $GLOBALS['base_url'] . "/public/uploads/{$module}/{$filename}";
+    return ImageUploader::getFileUrl($module, $filename);
 }
 
 
@@ -657,60 +455,14 @@ function prepareUserData($postData, $isFromEmployee = false)
 
 function getUserProfileImage($user)
 {
-    $default = $GLOBALS['base_url'] . '/public/assets/images/avatar/avatar.png';
-
-    if (!empty($user['employee_id']) && !empty($user['employee_photo'])) {
-        $img = getImage('employees', $user['employee_photo']);
-        return $img ?: $default;
-    }
-
-    if (!empty($user['photo'])) {
-        $img = getImage('users', $user['photo']);
-        return $img ?: $default;
-    }
-
-    return $default;
+    return ImageUploader::getUserProfile($user);
 }
 
 
 
 function getLoggedInUserImage()
 {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-    $default = $GLOBALS['base_url'] . '/public/assets/images/avatar/avatar.png';
-
-    $userId = $_SESSION['user']['id'] ?? null;
-    if (!$userId) {
-        return $default;
-    }
-
-    $db = $GLOBALS['db'];
-
-    // Fetch user + employee photo
-    $stmt = $db->prepare("
-        SELECT 
-            u.photo AS user_photo,
-            e.photo AS employee_photo,
-            e.id AS employee_id
-        FROM users u
-        LEFT JOIN employees e ON e.user_id = u.id
-        WHERE u.id = ?
-        LIMIT 1
-    ");
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
-    $row = $stmt->get_result()->fetch_assoc();
-
-    // Priority: employee photo first, then user photo, then default
-    if (!empty($row['employee_photo'])) {
-        return getImage('employees', $row['employee_photo']);
-    } elseif (!empty($row['user_photo'])) {
-        return getImage('users', $row['user_photo']);
-    }
-
-    return $default;
+    return ImageUploader::getLoggedInUser();
 }
 
 // sweet alert 
@@ -871,15 +623,7 @@ function getSetting($key, $default = null)
 
 function calculateReadTime($content, $wpm = 180)
 {
-    if (empty($content)) {
-        return '1 min read';
-    }
-
-    $text = trim(strip_tags((string) $content));
-    $wordCount = preg_match_all('/\p{Bengali}+/u', $text);
-    $minutes = max(1, ceil($wordCount / $wpm));
-
-    return $minutes . ' min read';
+    return FormatHelper::calculateReadTime($content, $wpm);
 }
 
 
@@ -906,50 +650,27 @@ function getFlatRulesArray()
 }
 if (!function_exists('amountInWords')) {
     function amountInWords($amount)
-    {
-        if ($amount === null || $amount === '') {
-            return '';
-        }
-
-        $amount = round((float)$amount);
-
-        if (!class_exists('NumberFormatter')) {
-            return '';
-        }
-
-        $formatter = new NumberFormatter("en", NumberFormatter::SPELLOUT);
-        $words = ucwords($formatter->format($amount));
-
-        return $words . " Taka Only";
-    }
+{
+    return FormatHelper::amountInWords($amount);
+}
 }
 
 // truncate text to N characters
 function truncateText($text, $limit = 50)
 {
-    $text = strip_tags($text); // remove HTML
-    if (strlen($text) > $limit) {
-        return substr($text, 0, $limit) . '...';
-    }
-    return $text;
+    return FormatHelper::truncateText($text, $limit);
 }
 
 
 function formatDate($date)
 {
-    if (!$date || $date === '0000-00-00' || strtotime($date) === false) {
-        return ''; // or "No Schedule" directly
-    }
-    return date('d F, Y', strtotime($date));
+    return FormatHelper::formatDate($date);
 }
 
 // formant time
 function formatPunchTime($time)
 {
-    if (!$time || $time == '0000-00-00 00:00:00') {
-        return '-';
-    }
-    return date('H:i', strtotime($time));
+    return FormatHelper::formatPunchTime($time);
 }
 
 
@@ -957,24 +678,7 @@ function formatPunchTime($time)
 
 function format_bdt($number)
 {
-    // Step 1: round to 2 decimal places
-    $number = round((float)$number, 2);
-
-    // Step 2: split integer & decimal
-    $parts = explode('.', number_format($number, 2, '.', ''));
-    $integer = $parts[0];
-    $decimal = '.' . $parts[1];
-
-    // Step 3: BDT comma formatting
-    $last3 = substr($integer, -3);
-    $rest  = substr($integer, 0, -3);
-
-    if ($rest != '') {
-        $rest = preg_replace("/\B(?=(\d{2})+(?!\d))/", ",", $rest);
-        return $rest . ',' . $last3 . $decimal;
-    }
-
-    return $last3 . $decimal;
+    return FormatHelper::formatBdt($number);
 }
 
 // video url create 
@@ -1257,100 +961,13 @@ function generateVerificationCode($length = 6)
 // upload webp image
 function uploadProjectImage($inputName, $quality = 75, $maxWidth = 1000)
 {
-    // 1. Check file
-    if (!isset($_FILES[$inputName]) || $_FILES[$inputName]['error'] !== UPLOAD_ERR_OK) {
-        return null;
-    }
-
-    $tmpPath = $_FILES[$inputName]['tmp_name'];
-
-    // 2. Folder (project specific)
-    $uploadDir = dirname(__DIR__, 2) . "/public/uploads/projects/";
-
-    if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0777, true);
-    }
-
-    // 3. File name (always webp)
-    $fileName = uniqid('project_') . '.webp';
-    $destination = $uploadDir . $fileName;
-
-    // 4. Get image info
-    $imageInfo = getimagesize($tmpPath);
-    if (!$imageInfo) return null;
-
-    $mime = $imageInfo['mime'];
-
-    // 5. Create source image
-    switch ($mime) {
-        case 'image/jpeg':
-            $src = imagecreatefromjpeg($tmpPath);
-            break;
-
-        case 'image/png':
-            $src = imagecreatefrompng($tmpPath);
-            imagepalettetotruecolor($src);
-            imagealphablending($src, true);
-            imagesavealpha($src, true);
-            break;
-
-        case 'image/gif':
-            $src = imagecreatefromgif($tmpPath);
-            break;
-
-        case 'image/webp':
-            $src = imagecreatefromwebp($tmpPath);
-            break;
-
-        default:
-            return null;
-    }
-
-    if (!$src) return null;
-
-    // 6. Resize (keep ratio)
-    $width  = imagesx($src);
-    $height = imagesy($src);
-
-    // যদি image already ছোট হয় → resize না
-    if ($width > $maxWidth) {
-        $newWidth  = $maxWidth;
-        $newHeight = ($height / $width) * $newWidth;
-
-        $dst = imagecreatetruecolor($newWidth, $newHeight);
-
-        // transparency support
-        imagealphablending($dst, false);
-        imagesavealpha($dst, true);
-
-        imagecopyresampled($dst, $src, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-    } else {
-        $dst = $src; // no resize
-    }
-
-    // 7. Convert to WebP
-    imagewebp($dst, $destination, $quality);
-
-    // 8. Clean memory
-    imagedestroy($src);
-    if ($dst !== $src) {
-        imagedestroy($dst);
-    }
-
-    return $fileName;
+    return ImageUploader::uploadProject($inputName, $quality, $maxWidth);
 }
 
 if (!function_exists('cpFmt')) {
     function cpFmt($n)
-    {
-        $n = (float) $n;
-        if ($n >= 10000000)
-            return '৳' . number_format($n / 10000000, 2) . ' Cr';
-        if ($n >= 100000)
-            return '৳' . number_format($n / 100000, 2) . ' L';
-        if ($n >= 1000)
-            return '৳' . number_format($n / 1000, 1) . 'K';
-        return '৳' . number_format($n, 0);
-    }
+{
+    return FormatHelper::cpFmt($n);
+}
 }
 
