@@ -820,7 +820,7 @@
                   <th class="text-center">Follow Up</th>
                   <th>Contact Status</th>
                   <th>Lead Type</th>
-                  <th>Platform &amp; Campaign</th>
+                  <th>Platform &amp; Campaign Project</th>
                   <th>Team Name</th>
                   <th>Sales Team Lead</th>
                   <th>Assigned To</th>
