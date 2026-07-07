@@ -152,4 +152,17 @@ return [
     'expense-adjustments/approve' => ['controller' => 'ExpenseAdjustmentController', 'method' => 'approve'],
     'expense-adjustments/reject' => ['controller' => 'ExpenseAdjustmentController', 'method' => 'reject'],
     'expense-adjustments/add-payment' => ['controller' => 'ExpenseAdjustmentController', 'method' => 'addPayment'],
+
+    // =========================================================================
+    // Controller: ApiController (REST endpoints for AI and Client)
+    // =========================================================================
+    'api/pending-approvals' => ['controller' => 'ApiController', 'method' => 'pendingApprovals'],
+    'api/project-timeline-progress/(\d+)' => ['controller' => 'ApiController', 'method' => 'projectTimelineProgress'],
+    'api/site-engineer-performance' => ['controller' => 'ApiController', 'method' => 'siteEngineerPerformance'],
+    'api/project-stock-levels/(\d+)' => ['controller' => 'ApiController', 'method' => 'projectStockLevels'],
+    'api/sales-executive-performance' => ['controller' => 'ApiController', 'method' => 'salesExecutivePerformance'],
+    'api/flat-inventory-summary' => ['controller' => 'ApiController', 'method' => 'flatInventorySummary'],
+    'api/flat-inventory-summary/(\d+)' => ['controller' => 'ApiController', 'method' => 'flatInventorySummary'],
+    'api/financial-summary' => ['controller' => 'ApiController', 'method' => 'financialSummary'],
 ];
+

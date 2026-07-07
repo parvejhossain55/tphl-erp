@@ -1,0 +1,4 @@
+2026-07-07 08:51:18 - Class "ai\AiDataService" not found
+2026-07-07 10:30:49 - Class "ai\AiDataService" not found
+2026-07-07 10:38:49 - Class "ai\AiDataService" not found
+2026-07-07 10:50:17 - Invalid API response from Gemini: {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"args\" at 'contents[37].parts[0].function_call': Proto field is not repeating, cannot start list.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com\/google.rpc.BadRequest","fieldViolations":[{"field":"contents[37].parts[0].function_call","description":"Invalid JSON payload received. Unknown name \"args\" at 'contents[37].parts[0].function_call': Proto field is not repeating, cannot start list."}]}]}}

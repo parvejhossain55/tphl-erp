@@ -534,6 +534,17 @@ public function deleteBudget($id)
                 $assignedToHtml = '<span class="text-muted" style="font-size:.78rem;">Not Assigned</span>' . $notAssignedDup;
             }
 
+            $campProj = '';
+            if (!empty($lead['project_name'])) {
+                $campProj .= $lead['project_name'];
+            }
+            if (!empty($lead['campaign_name'])) {
+                $campProj .= ($campProj !== '' ? ' - ' : '') . $lead['campaign_name'];
+            }
+            if ($campProj === '') {
+                $campProj = 'N/A';
+            }
+
             $rows[] = [
                 'id'            => $lead['id'],
                 'checkbox'      => '<input type="checkbox" class="rowCheckbox" value="' . $lead['id'] . '">',
@@ -542,7 +553,7 @@ public function deleteBudget($id)
                 'follow_up'     => $fuBadge,
                 'contact_status'=> $csBadge,
                 'lead_type'     => $ltBadge,
-                'platform'      => '<span class="badge bg-info-soft text-info mb-1 d-inline-block">' . htmlspecialchars($lead['platform'] ?? 'N/A') . '</span><div class="small text-muted">' . htmlspecialchars($lead['campaign_name'] ?? 'N/A') . '</div>',
+                'platform'      => '<span class="badge bg-info-soft text-info mb-1 d-inline-block">' . htmlspecialchars($lead['platform'] ?? 'N/A') . '</span><div class="small text-muted">' . htmlspecialchars($campProj) . '</div>',
                 'team'          => htmlspecialchars($lead['team_name'] ?? 'N/A'),
                 'sales_lead'    => '<div class="fw-bold text-primary">' . htmlspecialchars($lead['sales_team_lead_name'] ?? 'Not Assigned') . '</div>',
                 'assigned_to'   => $assignedToHtml,

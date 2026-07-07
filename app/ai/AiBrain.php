@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/helpers/SqlValidator.php';
 
 use SqlValidator;
 use DbSchemaHelper;
+use AiDataService;
 
 class AiBrain {
 
@@ -136,6 +137,63 @@ class AiBrain {
                             ],
                             "required" => ["query"]
                         ]
+                    ],
+                    [
+                        "name" => "get_pending_approvals",
+                        "description" => "Get list of all pending approval requests in the ERP (petty cash, contractor bills, vendor payments, cashout, and land fund requisitions)."
+                    ],
+                    [
+                        "name" => "get_project_progress_details",
+                        "description" => "Get calculated project completion percentage, remaining progress, current active phase, and timeline start/end dates for a project.",
+                        "parameters" => [
+                            "type" => "OBJECT",
+                            "properties" => [
+                                "project_id" => [
+                                    "type" => "INTEGER",
+                                    "description" => "The ID of the project."
+                                ]
+                            ],
+                            "required" => ["project_id"]
+                        ]
+                    ],
+                    [
+                        "name" => "get_site_engineer_performance",
+                        "description" => "Get summary of reports submitted and approved per site engineer."
+                    ],
+                    [
+                        "name" => "get_project_stock_levels",
+                        "description" => "Get list of material names, stock quantities, units, and warehouses for a project.",
+                        "parameters" => [
+                            "type" => "OBJECT",
+                            "properties" => [
+                                "project_id" => [
+                                    "type" => "INTEGER",
+                                    "description" => "The ID of the project."
+                                ]
+                            ],
+                            "required" => ["project_id"]
+                        ]
+                    ],
+                    [
+                        "name" => "get_sales_performance",
+                        "description" => "Get bookings count, discount value, total revenue, and performance of sales executives."
+                    ],
+                    [
+                        "name" => "get_flat_inventory_summary",
+                        "description" => "Get sold vs available flat counts, sold values, and available inventory values. Can be filtered by project_id.",
+                        "parameters" => [
+                            "type" => "OBJECT",
+                            "properties" => [
+                                "project_id" => [
+                                    "type" => "INTEGER",
+                                    "description" => "Optional project ID to filter by."
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        "name" => "get_financial_summary",
+                        "description" => "Get company-wide cashflow overview (total cash in, total cash out, and net cashflow)."
                     ]
                 ]
             ]
@@ -166,6 +224,22 @@ class AiBrain {
 
         // Loop up to 5 times to allow recursive/multi-turn tool calls
         for ($iteration = 0; $iteration < 5; $iteration++) {
+            // Clean up empty functionCall args in history to avoid Gemini API validation issues
+            foreach ($contents as &$content) {
+                if (isset($content['parts'])) {
+                    foreach ($content['parts'] as &$part) {
+                        if (isset($part['functionCall']) && (empty($part['functionCall']['args']) || is_array($part['functionCall']['args']))) {
+                            // If it's an array and empty, force to stdClass to serialize as {}
+                            if (is_array($part['functionCall']['args']) && count($part['functionCall']['args']) === 0) {
+                                $part['functionCall']['args'] = new \stdClass();
+                            }
+                        }
+                    }
+                    unset($part);
+                }
+            }
+            unset($content);
+
             $response = self::postCurl($url, [
                 "contents" => $contents,
                 "systemInstruction" => $systemInstruction,
@@ -193,10 +267,13 @@ class AiBrain {
                 $functionName = $functionCall['name'];
                 $args = $functionCall['args'];
 
+                $dbResult = [];
+                $validCall = false;
+
                 if ($functionName === 'run_database_query' && isset($args['query'])) {
                     $sqlQuery = $args['query'];
-                    $dbResult = [];
                     $logData .= "GENERATED SQL: " . $sqlQuery . PHP_EOL;
+                    $validCall = true;
 
                     try {
                         // Validate SQL query using our SqlValidator security layer
@@ -216,8 +293,32 @@ class AiBrain {
                     } catch (\Throwable $e) {
                         $dbResult = ["error" => $e->getMessage()];
                     }
+                } elseif ($functionName === 'get_pending_approvals') {
+                    $dbResult = AiDataService::getPendingApprovals($dbConnection);
+                    $validCall = true;
+                } elseif ($functionName === 'get_project_progress_details' && isset($args['project_id'])) {
+                    $dbResult = AiDataService::getProjectTimelineAndProgress($dbConnection, (int)$args['project_id']);
+                    $validCall = true;
+                } elseif ($functionName === 'get_site_engineer_performance') {
+                    $dbResult = AiDataService::getSiteEngineerPerformance($dbConnection);
+                    $validCall = true;
+                } elseif ($functionName === 'get_project_stock_levels' && isset($args['project_id'])) {
+                    $dbResult = AiDataService::getProjectStockMaterials($dbConnection, (int)$args['project_id']);
+                    $validCall = true;
+                } elseif ($functionName === 'get_sales_performance') {
+                    $dbResult = AiDataService::getSalesExecutivePerformance($dbConnection);
+                    $validCall = true;
+                } elseif ($functionName === 'get_flat_inventory_summary') {
+                    $pid = isset($args['project_id']) ? (int)$args['project_id'] : null;
+                    $dbResult = AiDataService::getFlatSalesInventorySummary($dbConnection, $pid);
+                    $validCall = true;
+                } elseif ($functionName === 'get_financial_summary') {
+                    $dbResult = AiDataService::getCompanyFinancialSummary($dbConnection);
+                    $validCall = true;
+                }
 
-                    $logData .= "SQL RESULT: " . json_encode($dbResult) . PHP_EOL;
+                if ($validCall) {
+                    $logData .= "TOOL RESULT: " . json_encode($dbResult) . PHP_EOL;
 
                     // Feed back to Gemini
                     $contents[] = $candidate['content']; // Append assistant function call request to history
@@ -226,7 +327,7 @@ class AiBrain {
                         "parts" => [
                             [
                                 "functionResponse" => [
-                                    "name" => "run_database_query",
+                                    "name" => $functionName,
                                     "response" => ["result" => $dbResult]
                                 ]
                             ]

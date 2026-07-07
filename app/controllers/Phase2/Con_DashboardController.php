@@ -1721,6 +1721,8 @@ $project = $stmt->get_result()->fetch_assoc();
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $isAdmin = in_array($roleId, [1, 3, 15, 22]);
 
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+
         $filter = $this->getProjectRoleFilter('p');
 
         $r1 = $this->db->query("SELECT COUNT(*) AS c FROM projects p WHERE p.deleted_at IS NULL AND $filter");

@@ -52,6 +52,21 @@ if (!empty($selectedAssignedUser)) {
         }
     }
 }
+
+// Helper function to build stat card link
+if (!function_exists('getStatCardLink')) {
+    function getStatCardLink($cardType) {
+        $params = $_GET;
+        if ($cardType === 'total_leads') {
+            unset($params['filter_card']);
+        } else {
+            $params['filter_card'] = $cardType;
+        }
+        unset($params['page'], $params['url']);
+        return $GLOBALS['base_url'] . '/lead-lists' . ($params ? '?' . http_build_query($params) : '');
+    }
+}
+$activeCard = $_GET['filter_card'] ?? '';
 ?>
 <?php if (!empty($filteredExecName)): ?>
 <div class="d-flex align-items-center gap-2 mb-2">
@@ -64,7 +79,7 @@ if (!empty($selectedAssignedUser)) {
 <?php endif; ?>
 <div class="row mb-4 align-items-stretch">
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
-        <div class="card__wrapper stat-card <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>">
+        <a href="<?= getStatCardLink('total_leads') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= empty($activeCard) ? 'border: 2px solid #10b981 !important; background-color: #f0fdf4;' : '' ?>">
             <div class="stat-label">Total Leads</div>
             <div class="stat-value"><?= $leadCounts ?></div>
             <div class="stat-change positive d-none">
@@ -73,34 +88,34 @@ if (!empty($selectedAssignedUser)) {
                     <?= abs($leadsPercentChange) ?>%
                 </span>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
-        <div class="card__wrapper stat-card <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>">
+        <a href="<?= getStatCardLink('total_booked') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= $activeCard === 'total_booked' ? 'border: 2px solid #10b981 !important; background-color: #f0fdf4;' : '' ?>">
             <div class="stat-label">Total Booked <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
             <div class="stat-value"><?= $totalBookingCount ?></div>
             <div class="stat-change positive d-none">
                 <i class="bi bi-arrow-up"></i> 3.1%
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
-        <div class="card__wrapper stat-card <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>">
+        <a href="<?= getStatCardLink('today_follow_up') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= $activeCard === 'today_follow_up' ? 'border: 2px solid #10b981 !important; background-color: #f0fdf4;' : '' ?>">
             <div class="stat-label">Today Follow-Up <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
             <div class="stat-value"><?= $totalTodayFollowUps ?></div>
             <div class="stat-change positive d-none">
                 <i class="bi bi-arrow-up"></i> 1.2%
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
-        <div class="card__wrapper stat-card <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>">
+        <a href="<?= getStatCardLink('pending_follow_ups') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= $activeCard === 'pending_follow_ups' ? 'border: 2px solid #10b981 !important; background-color: #f0fdf4;' : '' ?>">
             <div class="stat-label">Pending Follow-Ups <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
             <div class="stat-value"><?= $totalTodayPendingFollowUps ?></div>
             <div class="stat-change negative d-none">
                 <i class="bi bi-arrow-down"></i> 12.5%
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
         <div class="card__wrapper stat-card <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>">
@@ -112,13 +127,13 @@ if (!empty($selectedAssignedUser)) {
         </div>
     </div>
     <div class="col-6 col-md-6 col-lg-4 col-xl-2">
-        <div class="card__wrapper stat-card <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>">
+        <a href="<?= getStatCardLink('hot_leads') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= $activeCard === 'hot_leads' ? 'border: 2px solid #10b981 !important; background-color: #f0fdf4;' : '' ?>">
             <div class="stat-label">Hot Leads <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
             <div class="stat-value"><?= $totalHotLeads ?></div>
             <div class="stat-change positive d-none">
                 <i class="bi bi-arrow-up"></i> 2.5%
             </div>
-        </div>
+        </a>
     </div>
 
 
@@ -222,8 +237,12 @@ if (!empty($selectedAssignedUser)) {
                         </select>
                     </div>
                     <div class="col-auto col-sm-6 col-md-auto">
-                        <input type="date" name="date" class="form-control form-control-sm"
-                            value="<?= $_GET['date'] ?? '' ?>">
+                        <input type="date" name="from_date" class="form-control form-control-sm"
+                            value="<?= $_GET['from_date'] ?? '' ?>" title="From Date">
+                    </div>
+                    <div class="col-auto col-sm-6 col-md-auto">
+                        <input type="date" name="to_date" class="form-control form-control-sm"
+                            value="<?= $_GET['to_date'] ?? '' ?>" title="To Date">
                     </div>
 
                     <!-- Last Action Select -->
@@ -440,11 +459,22 @@ if (!empty($selectedAssignedUser)) {
                         <?php endforeach; ?>
                     </select>
 
-                    <!-- Date -->
+
+                    <!-- From Date -->
                     <input type="date"
-                        name="date"
+                        name="from_date"
                         class="form-control form-control-sm"
-                        value="<?= $_GET['date'] ?? '' ?>">
+                        value="<?= $_GET['from_date'] ?? '' ?>"
+                        title="From Date"
+                        placeholder="From Date">
+
+                    <!-- To Date -->
+                    <input type="date"
+                        name="to_date"
+                        class="form-control form-control-sm"
+                        value="<?= $_GET['to_date'] ?? '' ?>"
+                        title="To Date"
+                        placeholder="To Date">
 
                     <!-- Assigned User -->
                     <select class="form-select form-select-sm select2" name="assigned_user">
@@ -543,8 +573,8 @@ if (!empty($selectedAssignedUser)) {
             <?php foreach ($leads as $key => $lead): ?>
                 <?php
                 $displayName = !empty($lead['campaign_name'])
-                    ? $lead['campaign_name']
-                    : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
+                    ? $lead['project_name']
+                    : (!empty($lead['campaign_name']) ? $lead['project_name'] : '-');
                 $plainText = strip_tags($displayName);
                 ?>
                 <div class="col-12 col-sm-6">
@@ -884,7 +914,7 @@ document.addEventListener('DOMContentLoaded', function () {
         addHidden('redirect_page', finalPage);
         addHidden('route_mode',    routeMode);
         // Also preserve all current GET filters
-        const filterParams = ['year','month','date','assigned_user','last_action','assigned','q'];
+        const filterParams = ['year','month','assigned_user','last_action','assigned','q','from_date','to_date'];
         filterParams.forEach(p => {
             const v = urlParams.get(p);
             if (v) addHidden('redirect_' + p, v);

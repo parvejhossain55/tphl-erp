@@ -53,6 +53,9 @@ class LeadController extends Controller
         $lastAction = $_GET['last_action'] ?? null;
         $assigned   = $_GET['assigned']    ?? null; // new filter for assigned leads
         $assigned_user = $_GET['assigned_user'] ?? null; // new filter for assigned user
+        $from_date = $_GET['from_date'] ?? null;
+        $to_date   = $_GET['to_date']   ?? null;
+        $filter_card = $_GET['filter_card'] ?? null;
         $owners = $this->userModel->getAll();
 
         $bookingCount = $this->leadBookedModel->getBookingCountByLead();
@@ -60,8 +63,6 @@ class LeadController extends Controller
         $totalTodayFollowUps = array_sum($todayFollowUp);
         $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
         $paymentCount = (new PaymentLeadBooking($this->db))->getpaymentCount();
-
-
 
         $limit = 50;
         $currentPage = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -71,10 +72,10 @@ class LeadController extends Controller
         // Get total count for pagination
         // Co-leader gets team-scoped data same as role_id=5 (Sales Manager)
         $effectiveRoleId = ($isCoLeader && !in_array($userRoleId, [1, 3, 5, 9])) ? 5 : $userRoleId;
-        $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date);
+        $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card);
 
         // Fetch paginated records
-        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, $limit, $offset);
+        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, $limit, $offset, null, $from_date, $to_date, $filter_card);
 
         $totalPages = ceil($leadCounts / $limit);
 
@@ -391,6 +392,9 @@ class LeadController extends Controller
         $assigned   = $_GET['assigned']    ?? null;
         $assigned_user = $_GET['assigned_user'] ?? null;
         $date = $_GET['date'] ?? null;
+        $from_date = $_GET['from_date'] ?? null;
+        $to_date   = $_GET['to_date']   ?? null;
+        $filter_card = $_GET['filter_card'] ?? null;
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -401,15 +405,15 @@ class LeadController extends Controller
         // Co-leader gets same team-scoped access as Sales Manager (role_id=5)
         $effectiveRoleId = (isSalesCoLeader() && !in_array($userRoleId, [1, 3, 5, 9])) ? 5 : $userRoleId;
 
-        $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date);
+        $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card);
 
         if (!empty($search)) {
-            $filteredRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, $search);
+            $filteredRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, $search, $from_date, $to_date, $filter_card);
         } else {
             $filteredRecords = $totalRecords;
         }
 
-        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, $length, $start, $search);
+        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, $length, $start, $search, $from_date, $to_date, $filter_card);
 
         // FIXED: শুধু current page এর lead IDs দিয়ে count করা হচ্ছে
         $leadIds = array_column($leads, 'id');
@@ -426,7 +430,7 @@ class LeadController extends Controller
                     'full_name'        => $lead['full_name'] ?? '',
                     'phone'            => $lead['phone_number'] ?? $lead['phone'] ?? '',
                     'address'          => !empty($lead['address']) ? $lead['address'] : ($lead['city'] ?? ''),
-                    'campaign_name'    => $lead['campaign_name'] ?? $lead['project_name'] ?? '-',
+                    'campaign_name'    => (!empty($lead['project_name']) ? $lead['project_name'] . (!empty($lead['campaign_name']) ? ' - ' . $lead['campaign_name'] : '') : ($lead['campaign_name'] ?? '-')),
                     'last_lead_action' => $lead['last_lead_action'] ?? '',
                     'next_follow_up'   => $lead['next_follow_up_date'] ?? '',
                     'agent_name'       => $lead['agent_name'] ?? '',
@@ -468,7 +472,16 @@ class LeadController extends Controller
             $clean_phone = preg_replace('/[^0-9]/', '', $phone ?? '');
             $row[] = '<a href="https://wa.me/' . $clean_phone . '" target="_blank">' . htmlspecialchars($phone ?? '') . '</a>';
 
-            $displayName = !empty($lead['campaign_name']) ? $lead['campaign_name'] : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
+            $displayName = '';
+            if (!empty($lead['project_name'])) {
+                $displayName .= $lead['project_name'];
+            }
+            if (!empty($lead['campaign_name'])) {
+                $displayName .= ($displayName !== '' ? ' - ' : '') . $lead['campaign_name'];
+            }
+            if ($displayName === '') {
+                $displayName = '-';
+            }
             $plainText = strip_tags($displayName);
             $truncatedDisplayName = (mb_strlen($plainText) > 15) ? mb_substr($plainText, 0, 15) . '...' : $displayName;
             $campaignHtml = '<div class="d-flex align-items-center gap-2 flex-nowrap">
@@ -637,7 +650,7 @@ class LeadController extends Controller
         $redirectPage = (int)($_POST['redirect_page'] ?? 1);
         if ($redirectPage < 1) $redirectPage = 1;
 
-        $filterKeys = ['year','month','date','assigned_user','last_action','assigned','q'];
+        $filterKeys = ['year','month','date','assigned_user','last_action','assigned','q','from_date','to_date'];
         $queryParts = [];
         foreach ($filterKeys as $key) {
             $val = $_POST['redirect_' . $key] ?? '';
