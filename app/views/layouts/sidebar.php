@@ -118,11 +118,13 @@
                                     <a href="<?= $base_url ?>/lead-lists"
                                         class="sidebar__menu-item <?= isActive('lead-lists', $current_route) ?>">Lead List</a>
                                 </li>
-                                <li class="slide">
-                                    <a href="<?= $base_url ?>/my-all-assigned-leads"
-                                        class="sidebar__menu-item <?= isActive('my-all-assigned-leads', $current_route) ?>">My
-                                        All Assigned Leads </a>
-                                </li>
+                                <?php if (!$isManagement): ?>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/my-all-assigned-leads"
+                                            class="sidebar__menu-item <?= isActive('my-all-assigned-leads', $current_route) ?>">My
+                                            All Assigned Leads </a>
+                                    </li>
+                                <?php endif; ?>
                                 <?php if (!$isManagement): ?>
                                     <li class="slide">
                                         <a href="<?= $base_url ?>/today-leads"

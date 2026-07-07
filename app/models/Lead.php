@@ -120,7 +120,7 @@ class Lead extends Model
     }
 
 
-    public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $search = null)
+    public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $search = null, $from_date = null, $to_date = null, $filter_card = null)
     {
         $sql = "SELECT COUNT(l.id) AS total_count FROM leads AS l 
                 LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
@@ -137,8 +137,21 @@ class Lead extends Model
             $types .= "i";
         }
 
-        // Date filter
-        if (!empty($date)) {
+        // Date range filter
+        if (!empty($from_date) && !empty($to_date)) {
+            $sql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types .= "ss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND DATE(l.created_at) >= ?";
+            $params[] = $from_date;
+            $types .= "s";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND DATE(l.created_at) <= ?";
+            $params[] = $to_date;
+            $types .= "s";
+        } elseif (!empty($date)) {
             $sql .= " AND DATE(l.created_at) = ?";
             $params[] = $date;
             $types .= "s";
@@ -190,6 +203,32 @@ class Lead extends Model
             $types .= "sss";
         }
 
+        // Quick Filter Card
+        if (!empty($filter_card)) {
+            if ($filter_card === 'total_booked') {
+                $sql .= " AND l.last_lead_action = 'booked'";
+            } elseif ($filter_card === 'today_follow_up') {
+                $sql .= " AND EXISTS (
+                    SELECT 1 FROM lead_follow_ups lf_sub
+                    WHERE lf_sub.lead_id = l.id
+                      AND lf_sub.deleted_at IS NULL
+                      AND lf_sub.next_follow_up_date >= CURDATE()
+                      AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
+                )";
+            } elseif ($filter_card === 'pending_follow_ups') {
+                $sql .= " AND EXISTS (
+                    SELECT 1 FROM lead_follow_ups lf_sub
+                    WHERE lf_sub.lead_id = l.id
+                      AND lf_sub.deleted_at IS NULL
+                      AND lf_sub.next_follow_up_date >= CURDATE()
+                      AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
+                      AND lf_sub.status = 'pending'
+                )";
+            } elseif ($filter_card === 'hot_leads') {
+                $sql .= " AND l.lead_type = 'Hot'";
+            }
+        }
+
         $stmt = $this->db->prepare($sql);
         if (!empty($params)) {
             $stmt->bind_param($types, ...$params);
@@ -204,14 +243,14 @@ class Lead extends Model
         return $row ? (int)$row['total_count'] : 0;
     }
 
-    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $limit = null, $offset = null, $search = null)
+    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $limit = null, $offset = null, $search = null, $from_date = null, $to_date = null, $filter_card = null)
     {
         // Optimized query: server e large dataset (3000+) handle korte
         // Correlated subquery replace kora hoyeche simpler LEFT JOIN diye
         $sql = "SELECT 
         l.*,
         u.full_name AS agent_name,
-        p.name AS project_name,
+        COALESCE(p.name, lp.name) AS project_name,
         lf.next_action,
         lf.follow_up_type,
         lf.next_follow_up_date
@@ -235,6 +274,7 @@ class Lead extends Model
         )
     ) lb ON lb.lead_id = l.id
     LEFT JOIN projects AS p ON lb.project_id = p.id
+    LEFT JOIN projects AS lp ON l.project_id = lp.id
     WHERE l.deleted_at IS NULL
       AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
     ";
@@ -250,8 +290,21 @@ class Lead extends Model
             $types .= "i";
         }
 
-        // Date filter (priority)
-        if (!empty($date)) {
+        // Date range filter
+        if (!empty($from_date) && !empty($to_date)) {
+            $sql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types .= "ss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND DATE(l.created_at) >= ?";
+            $params[] = $from_date;
+            $types .= "s";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND DATE(l.created_at) <= ?";
+            $params[] = $to_date;
+            $types .= "s";
+        } elseif (!empty($date)) {
             $sql .= " AND DATE(l.created_at) = ?";
             $params[] = $date;
             $types .= "s";
@@ -288,11 +341,11 @@ class Lead extends Model
             }
         }
         // Assigned User filter
-      if (isset($assigned_user) && $assigned_user !== '') {
-    $sql .= " AND l.assigned_id = ?";
-    $params[] = $assigned_user;
-    $types .= "i";
-}
+        if (isset($assigned_user) && $assigned_user !== '') {
+            $sql .= " AND l.assigned_id = ?";
+            $params[] = $assigned_user;
+            $types .= "i";
+        }
 
         // Search Filter
         if (!empty($search)) {
@@ -302,6 +355,32 @@ class Lead extends Model
             $params[] = $searchParam;
             $params[] = $searchParam;
             $types .= "sss";
+        }
+
+        // Quick Filter Card
+        if (!empty($filter_card)) {
+            if ($filter_card === 'total_booked') {
+                $sql .= " AND l.last_lead_action = 'booked'";
+            } elseif ($filter_card === 'today_follow_up') {
+                $sql .= " AND EXISTS (
+                    SELECT 1 FROM lead_follow_ups lf_sub
+                    WHERE lf_sub.lead_id = l.id
+                      AND lf_sub.deleted_at IS NULL
+                      AND lf_sub.next_follow_up_date >= CURDATE()
+                      AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
+                )";
+            } elseif ($filter_card === 'pending_follow_ups') {
+                $sql .= " AND EXISTS (
+                    SELECT 1 FROM lead_follow_ups lf_sub
+                    WHERE lf_sub.lead_id = l.id
+                      AND lf_sub.deleted_at IS NULL
+                      AND lf_sub.next_follow_up_date >= CURDATE()
+                      AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
+                      AND lf_sub.status = 'pending'
+                )";
+            } elseif ($filter_card === 'hot_leads') {
+                $sql .= " AND l.lead_type = 'Hot'";
+            }
         }
 
 
