@@ -429,7 +429,7 @@ class LeadController extends Controller
                     'id'               => $lead['id'],
                     'full_name'        => $lead['full_name'] ?? '',
                     'phone'            => $lead['phone_number'] ?? $lead['phone'] ?? '',
-                    'address'          => !empty($lead['address']) ? $lead['address'] : ($lead['city'] ?? ''),
+                    'address'          => trim(($lead['address'] ?? '') . (!empty($lead['address']) && !empty($lead['city']) ? ', ' : '') . ($lead['city'] ?? '')),
                     'campaign_name'    => (!empty($lead['project_name']) ? $lead['project_name'] . (!empty($lead['campaign_name']) ? ' - ' . $lead['campaign_name'] : '') : ($lead['campaign_name'] ?? '-')),
                     'last_lead_action' => $lead['last_lead_action'] ?? '',
                     'next_follow_up'   => $lead['next_follow_up_date'] ?? '',
@@ -437,6 +437,11 @@ class LeadController extends Controller
                     'follow_up_count'  => $followUpCounts[$lead['id']] ?? 0,
                     'booking_count'    => $bookingCounts[$lead['id']] ?? 0,
                     'created_at'       => $lead['created_at'] ?? '',
+                    'company'          => $lead['company'] ?? '',
+                    'company_name'     => $lead['company_name'] ?? '',
+                    'job_title'        => $lead['job_title'] ?? '',
+                    'designation'      => $lead['designation'] ?? '',
+                    'when_is_the_best_time_to_contact_you' => $lead['when_is_the_best_time_to_contact_you'] ?? '',
                 ];
             }
             echo json_encode([
@@ -460,17 +465,34 @@ class LeadController extends Controller
 
             $row[] = $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '';
 
-            $row[] = '<strong>' . htmlspecialchars($lead['full_name'] ?? '') . '</strong>';
+            $jobCompanyStr = '';
+            $jt = !empty($lead['job_title']) ? $lead['job_title'] : (!empty($lead['designation']) ? $lead['designation'] : '');
+            $co = !empty($lead['company_name']) ? $lead['company_name'] : (!empty($lead['company']) ? $lead['company'] : '');
+            if ($jt !== '' || $co !== '') {
+                $jobCompanyStr = '<div class="text-muted fs-11 mt-1">';
+                if ($jt !== '') {
+                    $jobCompanyStr .= '<i class="bi bi-briefcase me-1"></i>' . htmlspecialchars($jt);
+                }
+                if ($co !== '') {
+                    $jobCompanyStr .= ($jt !== '' ? ' at ' : '') . '<strong>' . htmlspecialchars($co) . '</strong>';
+                }
+                $jobCompanyStr .= '</div>';
+            }
 
-            // Address column (fallback to city)
-            $addr = !empty($lead['address']) ? $lead['address'] : ($lead['city'] ?? '—');
-            $row[] = '<span class="fs-12">' . htmlspecialchars($addr) . '</span>';
+            $row[] = '<strong>' . htmlspecialchars($lead['full_name'] ?? '') . '</strong>' . $jobCompanyStr;
+
+            // Address & City column
+            $addr = trim(($lead['address'] ?? '') . (!empty($lead['address']) && !empty($lead['city']) ? ', ' : '') . ($lead['city'] ?? ''));
+            $row[] = '<span class="fs-12">' . htmlspecialchars($addr !== '' ? $addr : '—') . '</span>';
 
             $row[] = '<span class="bd-badge bg-success" style="white-space: nowrap;">' . htmlspecialchars($lead['uploaded_from'] ?? '') . '</span>';
 
             $phone = $lead['phone_number'] ?? $lead['phone'];
             $clean_phone = preg_replace('/[^0-9]/', '', $phone ?? '');
             $row[] = '<a href="https://wa.me/' . $clean_phone . '" target="_blank">' . htmlspecialchars($phone ?? '') . '</a>';
+
+            // Best Time to Contact
+            $row[] = htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? '—');
 
             $displayName = '';
             if (!empty($lead['project_name'])) {

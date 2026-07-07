@@ -299,8 +299,9 @@
                                     S/L
                                 </th>
                                 <th style="min-width: 120px;">Lead Date</th>
-                                <th style="min-width: 160px;">Lead Name</th>
-                                <th style="min-width: 140px;">Address</th>
+                                <th style="min-width: 160px;">Lead Name $ Job /Company name</th>
+                                <th style="min-width: 150px;">Best Time to Contact</th>
+                                <th style="min-width: 140px;">Address & City</th>
                                 <th style="min-width: 180px;">Project Campaign</th>
 
                                 <th style="min-width: 200px;">Last Follow Up Project</th>
@@ -323,25 +324,42 @@
                                         <?= $key + 1 ?>
                                     </td>
                                     <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
-                                    <td><strong><?= $lead['full_name'] ?? '' ?></strong>
-                                        <?php
-                                        $phone = $lead['phone_number'] ?? $lead['phone'] ?? '';
-                                        $phone = preg_replace('/[^0-9]/', '', $phone);
+                                     <td>
+                                         <strong><?= htmlspecialchars($lead['full_name'] ?? '') ?></strong>
+                                         <?php
+                                         $phone = $lead['phone_number'] ?? $lead['phone'] ?? '';
+                                         $phone = preg_replace('/[^0-9]/', '', $phone);
 
-                                        if (substr($phone, 0, 2) === '01') {
-                                            $phone = '880' . substr($phone, 1);
-                                        }
-                                        ?>
+                                         if (substr($phone, 0, 2) === '01') {
+                                             $phone = '880' . substr($phone, 1);
+                                         }
+                                         ?>
+                                         <div class="mt-1">
+                                             <a href="https://wa.me/<?= $phone ?>" target="_blank">
+                                                 <?= htmlspecialchars($lead['phone_number'] ?? $lead['phone'] ?? '') ?>
+                                             </a>
+                                         </div>
+                                         <?php
+                                         $jt = !empty($lead['job_title']) ? $lead['job_title'] : (!empty($lead['designation']) ? $lead['designation'] : '');
+                                         $co = !empty($lead['company_name']) ? $lead['company_name'] : (!empty($lead['company']) ? $lead['company'] : '');
+                                         if ($jt !== '' || $co !== ''):
+                                         ?>
+                                         <div class="text-muted fs-11 mt-1">
+                                             <i class="bi bi-briefcase me-1"></i>
+                                             <?= htmlspecialchars($jt) ?><?= ($jt !== '' && $co !== '') ? ' at ' : '' ?><strong><?= htmlspecialchars($co) ?></strong>
+                                         </div>
+                                         <?php endif; ?>
+                                     </td>
+                                     <!-- Best Time to Contact -->
+                                     <td>
+                                         <?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? '—') ?>
+                                     </td>
 
-                                        <a href="https://wa.me/<?= $phone ?>" target="_blank">
-                                            <?= $phone ?>
-                                        </a>
-                                    </td>
-
-                                    <!-- Address -->
-                                    <td>
-                                        <span class="fs-12"><?= htmlspecialchars(!empty($lead['address']) ? $lead['address'] : ($lead['city'] ?? '—')) ?></span>
-                                    </td>
+                                     <!-- Address & City -->
+                                     <td>
+                                         <?php $addr = trim(($lead['address'] ?? '') . (!empty($lead['address']) && !empty($lead['city']) ? ', ' : '') . ($lead['city'] ?? '')); ?>
+                                         <span class="fs-12"><?= htmlspecialchars($addr !== '' ? $addr : '—') ?></span>
+                                     </td>
 
                                     <?php
                                     $displayName = !empty($lead['campaign_name'])
@@ -695,9 +713,24 @@
             <div class="lead-card  mb-3" data-id="<?= $lead['id'] ?>">
                 <div class="lead-card-header d-flex justify-content-between align-items-start gap-1">
                     <div class="flex-grow-1 overflow-hidden">
-                        <span class="lead-name text-truncate"><?= $lead['full_name'] ?></span>
+                        <span class="lead-name text-truncate"><?= htmlspecialchars($lead['full_name'] ?? '') ?></span>
+                        <?php
+                        $jt = !empty($lead['job_title']) ? $lead['job_title'] : (!empty($lead['designation']) ? $lead['designation'] : '');
+                        $co = !empty($lead['company_name']) ? $lead['company_name'] : (!empty($lead['company']) ? $lead['company'] : '');
+                        if ($jt !== '' || $co !== ''):
+                        ?>
+                        <div class="text-muted small mt-1">
+                            <i class="bi bi-briefcase me-1"></i>
+                            <?= htmlspecialchars($jt) ?><?= ($jt !== '' && $co !== '') ? ' at ' : '' ?><strong><?= htmlspecialchars($co) ?></strong>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($lead['when_is_the_best_time_to_contact_you'])): ?>
+                        <div class="text-info small mt-1">
+                            <i class="bi bi-clock me-1"></i>Best Contact Time: <?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you']) ?>
+                        </div>
+                        <?php endif; ?>
                         <div class="lead-phone text-truncate small"><?= $lead['phone'] ??  $lead['phone_number']  ?></div>
-                        <?php $mAddr = !empty($lead['address']) ? $lead['address'] : ($lead['city'] ?? ''); ?>
+                        <?php $mAddr = trim(($lead['address'] ?? '') . (!empty($lead['address']) && !empty($lead['city']) ? ', ' : '') . ($lead['city'] ?? '')); ?>
                         <?php if ($mAddr): ?>
                         <div class="mt-1">
                             <i class="bi bi-geo-alt-fill text-muted me-1" style="font-size:11px"></i>
@@ -1374,4 +1407,4 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 <?php endif; ?>
 
-
+

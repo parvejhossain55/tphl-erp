@@ -545,10 +545,21 @@ public function deleteBudget($id)
                 $campProj = 'N/A';
             }
 
+            $jt = !empty($lead['job_title']) ? $lead['job_title'] : (!empty($lead['designation']) ? $lead['designation'] : '');
+            $co = !empty($lead['company_name']) ? $lead['company_name'] : (!empty($lead['company']) ? $lead['company'] : '');
+            $jobCompanyStr = '';
+            if ($jt !== '' || $co !== '') {
+                $jobCompanyStr = '<div class="text-muted" style="font-size: .75rem;"><i class="bi bi-briefcase me-1"></i>' . htmlspecialchars($jt);
+                if ($co !== '') {
+                    $jobCompanyStr .= ($jt !== '' ? ' at ' : '') . '<strong>' . htmlspecialchars($co) . '</strong>';
+                }
+                $jobCompanyStr .= '</div>';
+            }
             $rows[] = [
                 'id'            => $lead['id'],
                 'checkbox'      => '<input type="checkbox" class="rowCheckbox" value="' . $lead['id'] . '">',
-                'name'          => '<div class="fw-bold text-dark">' . htmlspecialchars($lead['full_name'] ?? 'N/A') . '</div><small class="text-muted">' . htmlspecialchars($lead['job_title'] ?? 'N/A') . '</small>',
+                'name'          => '<div class="fw-bold text-dark">' . htmlspecialchars($lead['full_name'] ?? 'N/A') . '</div>' . $jobCompanyStr,
+                'best_time_to_contact' => htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? '—'),
                 'contact'       => '<div class="d-flex flex-column"><span><i class="bi bi-telephone text-muted me-2"></i>' . $phoneHtml . '</span><small class="text-muted"><i class="bi bi-envelope me-2"></i>' . htmlspecialchars($lead['email'] ?? 'N/A') . '</small></div>',
                 'follow_up'     => $fuBadge,
                 'contact_status'=> $csBadge,
