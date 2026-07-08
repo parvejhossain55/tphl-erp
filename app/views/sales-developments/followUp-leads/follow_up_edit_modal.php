@@ -85,7 +85,7 @@
                                 <option value="visit">Visit (Legacy)</option>
                                 <option value="meeting">Meeting (Legacy)</option>
                                 <option value="whatsapp">WhatsApp (Legacy)</option>
-                                <option value="email">Email (Legacy)</option>
+                                <option value="Email">Email (Legacy)</option>
                             </select>
                         </div>
                         
