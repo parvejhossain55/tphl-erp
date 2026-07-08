@@ -16,10 +16,10 @@ $show_breadcrumb = true;
             <?php
             $currentYear = date('Y');
             $startYear   = $currentYear - 10;
-            $selectedYear = $slectedYear ?? '';
+            $selectedYear = $_GET['year'] ?? '';
             ?>
             <!-- Year Select -->
-            <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
+            <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-12">
                 <div class="card__wrapper h-100">
                     <div class="from__input-box">
                         <select class="form-control" name="year">
@@ -57,7 +57,7 @@ $show_breadcrumb = true;
             ?>
 
             <!-- Month Select -->
-            <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-12">
+            <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-12">
                 <div class="card__wrapper h-100">
                     <div class="from__input-box">
                         <select class="form-control" name="month">
@@ -74,8 +74,24 @@ $show_breadcrumb = true;
                 </div>
             </div>
 
+            <!-- Project Select -->
+            <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-12">
+                <div class="card__wrapper h-100">
+                    <div class="from__input-box">
+                        <select class="form-control" name="project_id">
+                            <option value="">Project Select</option>
+                            <?php foreach ($projects as $project): ?>
+                                <option value="<?= $project['id'] ?>" <?= ($selected_project_id ?? '') == $project['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($project['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <!-- Buttons -->
-            <div class="col-xxl-4 col-xl-12 col-lg-12 col-md-12 col-12">
+            <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-12">
                 <div class="card__wrapper h-100">
                     <div class="d-flex flex-column flex-sm-row gap-2">
                         <button type="submit" class="btn btn-secondary w-100 ">
@@ -106,6 +122,7 @@ $show_breadcrumb = true;
                             <!-- <th>Alt Phone</th> -->
                             <th>Email</th>
                             <th>Project</th>
+                            <th>Sales Executive</th>
                             <th>Unit/ Share</th>
                             <th>Share Price</th>
                             <th>Booking Money</th>
@@ -127,6 +144,9 @@ $show_breadcrumb = true;
 
                                 <td>
                                     <?= $lead['project_name'] ?>
+                                </td>
+                                <td>
+                                    <?= htmlspecialchars($lead['sales_agent_display'] ?? 'N/A') ?>
                                 </td>
                                 <td>
                                     <?= $lead['flat_name'] ?> - <span><?= $lead['sqft'] ?></span>
@@ -178,7 +198,7 @@ $show_breadcrumb = true;
                 <?php
                 $currentYear = date('Y');
                 $startYear = $currentYear - 10;
-                $selectedYear = $slectedYear ?? '';
+                $selectedYear = $_GET['year'] ?? '';
                 ?>
                 <select class="form-select form-select-sm flex-grow-1" name="year">
                     <option value="">Year</option>
@@ -203,10 +223,20 @@ $show_breadcrumb = true;
                     <?php endforeach; ?>
                 </select>
 
+                <!-- Project Select -->
+                <select class="form-select form-select-sm flex-grow-1" name="project_id">
+                    <option value="">Project Select</option>
+                    <?php foreach ($projects as $project): ?>
+                        <option value="<?= $project['id'] ?>" <?= ($selected_project_id ?? '') == $project['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($project['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+
                 <!-- Action Buttons -->
                 <div class="d-flex gap-2 flex-wrap w-100">
                     <button type="submit" class="btn btn-outline-secondary btn-sm flex-grow-1">Search</button>
-                    <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-primary btn-sm flex-grow-1">Reset</a>
+                    <a href="<?= $GLOBALS['base_url'] ?>/onboarding-clients" class="btn btn-primary btn-sm flex-grow-1">Reset</a>
                 </div>
             </div>
         </form>
@@ -229,9 +259,10 @@ $show_breadcrumb = true;
                 <span class="d-flex align-items-center gap-1"><i class="bi bi-envelope"></i> <?= $lead['email'] ?? '-' ?></span>
             </div>
 
-            <!-- Project & Flat -->
+            <!-- Project & Flat & Sales Agent -->
             <div class="d-flex flex-column gap-1 mb-2">
                 <span class="text-truncate"><i class="bi bi-building me-1"></i> <?= $lead['project_name'] ?? '-' ?></span>
+                <span class="text-truncate"><i class="bi bi-person me-1"></i> Sales Executive: <?= htmlspecialchars($lead['sales_agent_display'] ?? 'N/A') ?></span>
                 <span class="text-truncate"><i class="bi bi-house me-1"></i> <?= $lead['flat_name'] ?? '-' ?> - <?= $lead['sqft'] ?? '' ?></span>
             </div>
 

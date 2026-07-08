@@ -418,13 +418,18 @@ class UserDashboardController extends Controller
         $userId     = $_SESSION['user']['id']     ?? 0;
         $userTeamId = $_SESSION['user']['team_id'] ?? null;
         $bookingCount   = $this->bookingModel->getBookingCountByLead();
-        $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
+        $followUpModel  = new FollowUp($this->db);
+        $followUpCounts = $followUpModel->getFollowUpCountByLead();
         $year        = $_GET['year']        ?? null;
         $month       = $_GET['month']       ?? null;
         $lastAction  = $_GET['last_action'] ?? null;
         $call_status = $_GET['call_status'] ?? null;
+
+        $onlyMissingFollowup = isset($_GET['filter']) && $_GET['filter'] === 'missing_followup';
         $myAssignedClients = $this->leadModel
-            ->getAllMyLeads($userId, $year, $month, $lastAction, $call_status);
+            ->getAllMyLeads($userId, $year, $month, $lastAction, $call_status, $onlyMissingFollowup);
+
+        $missingFollowUpCount = $followUpModel->getMissingFollowUpCount($userId);
 
         // ── Duplicate Leads Detection ──────────────────────────────────────────
         // Pool: ALL leads in my team that are assigned (any member)
@@ -522,6 +527,8 @@ class UserDashboardController extends Controller
             'selectedCallStatus'  => $call_status,
             'duplicateGroups'     => $duplicateGroups,
             'duplicateCount'      => $duplicateCount,
+            'missingFollowUpCount'=> $missingFollowUpCount,
+            'isFilterMissing'     => $onlyMissingFollowup,
             'page_script'         => "
                 // Runs after main.js — override DataTable to 25 per page
                 $('#assignedLeadsTable').DataTable().destroy();

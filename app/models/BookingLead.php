@@ -36,7 +36,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
 
 
-    public function getAllOnboardClientBooking($year = null, $month = null)
+    public function getAllOnboardClientBooking($year = null, $month = null, $project_id = null)
     {
         $sql = "SELECT 
                 lb.*, 
@@ -53,13 +53,15 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 IFNULL(lp_sum.payment_method, '') AS payment_method,
                 IFNULL(lp_sum.booking_money, 0) AS booking_money,
                 IFNULL(lp_sum.registration_money, 0) AS registration_money,
-                IFNULL(lp_sum.amount, 0) AS amount
+                IFNULL(lp_sum.amount, 0) AS amount,
+                COALESCE(u_sales.full_name, lb.sales_agent_old) AS sales_agent_display
             FROM lead_bookings lb
             LEFT JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN flats f ON lb.flat_id = f.id
             LEFT JOIN projects p ON f.project_id = p.id
             LEFT JOIN users u1 ON lb.created_by = u1.id
-            LEFT JOIN (
+            LEFT JOIN users u_sales ON lb.sales_by_id = u_sales.id
+            INNER JOIN (
                 SELECT 
                     booking_id,
                     MAX(payment_method) AS payment_method,
@@ -68,6 +70,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                     SUM(CASE WHEN payment_type = 'registration' THEN IFNULL(amount, 0) ELSE 0 END) AS registration_money,
                     SUM(IFNULL(amount, 0)) AS amount
                 FROM lead_payments
+                WHERE payment_status = 'paid'
                 GROUP BY booking_id
             ) AS lp_sum ON lp_sum.booking_id = lb.id
             WHERE lb.deleted_at IS NULL
@@ -86,6 +89,12 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         if (!empty($month)) {
             $sql .= " AND MONTH(lb.booking_date) = ?";
             $params[] = (int)$month;
+            $types   .= "i";
+        }
+
+        if (!empty($project_id)) {
+            $sql .= " AND lb.project_id = ?";
+            $params[] = (int)$project_id;
             $types   .= "i";
         }
 
