@@ -913,7 +913,7 @@ class Lead extends Model
 
         // Bind parameters (CSV first, then existing)
         $stmt->bind_param(
-            "ssssssssssssssssssiisisisisssssssssii",
+            "ssssssssssssssssssiisisiisssssssssii",
             $campaign_name,
             $platform,
             $which_apartment_size_are_you_interested_in,
@@ -1445,6 +1445,7 @@ class Lead extends Model
             l.created_at, l.assigned_id,
             ls.name  AS source_name,
             p.name   AS project_name,
+            lpc.name AS project_category_name,
             t.name   AS team_name,
             au.full_name AS assigned_user_name,
             (SELECT u2.full_name
@@ -1472,6 +1473,7 @@ class Lead extends Model
         FROM leads l
         LEFT JOIN lead_sources ls ON l.source_type_id = ls.id
         LEFT JOIN projects     p  ON l.project_id = p.id
+        LEFT JOIN project_categories lpc ON l.project_category_id = lpc.id
         LEFT JOIN teams        t  ON l.team_id    = t.id
         LEFT JOIN users        au ON l.assigned_id = au.id
         LEFT JOIN (
@@ -1573,6 +1575,7 @@ class Lead extends Model
             l.*,
             ls.name AS source_name,
             p.name AS project_name,
+            lpc.name AS project_category_name,
             t.name AS team_name,
             (SELECT u.full_name 
              FROM users u 
@@ -1607,6 +1610,7 @@ class Lead extends Model
         FROM leads l
         LEFT JOIN lead_sources ls ON l.source_type_id = ls.id
         LEFT JOIN projects p ON l.project_id = p.id
+        LEFT JOIN project_categories lpc ON l.project_category_id = lpc.id
         LEFT JOIN teams t ON l.team_id = t.id
         LEFT JOIN (
             SELECT lf1.lead_id, lf1.follow_up_type, lf1.created_at
