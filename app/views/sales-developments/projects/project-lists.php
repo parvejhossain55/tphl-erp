@@ -38,6 +38,7 @@ $show_breadcrumb = true;
                             <th class="th_1">Name</th>
                             <th>Location</th>
                             <th>Community</th>
+                            <th>Category</th>
                             <th>Building Type</th>
                             <th>Total Share</th>
                             <th>Unit Per Floor</th>
@@ -56,6 +57,7 @@ $show_breadcrumb = true;
                                 </td>
                                 <td><?= htmlspecialchars($project['location_name'] ?? '') ?></td>
                                 <td><?= htmlspecialchars($project['community_name'] ?? '') ?> </td>
+                                <td><?= htmlspecialchars($project['category_name'] ?? 'N/A') ?></td>
                                 <td><?= htmlspecialchars($project['building_type'] ?? 'N/A') ?></td>
                                 <td><?= htmlspecialchars($project['total_share'] ?? 0) ?></td>
                                 <td><?= htmlspecialchars($project['unit_per_floor'] ?? 0) ?></td>

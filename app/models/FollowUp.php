@@ -47,10 +47,14 @@ class FollowUp extends Model
         // OPTIONAL FIELD HANDLING
         // ==============================
         $flat_id = !empty($data['flat_id']) ? (int)$data['flat_id'] : null;
+        $follow_up_time = !empty($data['follow_up_time']) ? $data['follow_up_time'] : null;
 
         // ==============================
-        // VALIDATE next_action AGAINST ENUM
+        // VALIDATE status & next_action AGAINST ENUM
         // ==============================
+        $allowedStatuses = ['pending', 'completed', 'missed', 'canceled'];
+        $status = in_array($data['status'] ?? '', $allowedStatuses) ? $data['status'] : 'pending';
+
         $allowedNextActions = ['site visit', 'booking', 'call_back', 'take_time'];
         $next_action = in_array($data['next_action'], $allowedNextActions) ? $data['next_action'] : null;
 
@@ -79,9 +83,9 @@ class FollowUp extends Model
             $data['project_id'],
             $flat_id,
             $follow_up_date,
-            $data['follow_up_time'],
+            $follow_up_time,
             $follow_up_type,
-            $data['status'],
+            $status,
             $data['discussion_note'],
             $next_follow_up_date,
             $next_action,
@@ -170,6 +174,11 @@ class FollowUp extends Model
             $follow_up_type = 'Email';
         }
 
+        $allowedStatuses = ['pending', 'completed', 'missed', 'canceled'];
+        $status = in_array($data['status'] ?? '', $allowedStatuses) ? $data['status'] : 'pending';
+
+        $follow_up_time = !empty($data['follow_up_time']) ? $data['follow_up_time'] : null;
+
         $stmt = $this->db->prepare("
         UPDATE lead_follow_ups SET
             lead_id = ?,
@@ -196,9 +205,9 @@ class FollowUp extends Model
             $data['lead_id'],
             $data['flat_id'],   // NULL or valid flats.id
             $data['follow_up_date'],
-            $data['follow_up_time'],
+            $follow_up_time,
             $follow_up_type,
-            $data['status'],
+            $status,
             $data['discussion_note'],
             $data['next_follow_up_date'],
             $data['next_action'],

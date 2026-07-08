@@ -251,6 +251,7 @@ class Lead extends Model
         l.*,
         u.full_name AS agent_name,
         COALESCE(p.name, lp.name) AS project_name,
+        lpc.name AS project_category_name,
         lf.next_action,
         lf.follow_up_type,
         lf.next_follow_up_date
@@ -275,6 +276,7 @@ class Lead extends Model
     ) lb ON lb.lead_id = l.id
     LEFT JOIN projects AS p ON lb.project_id = p.id
     LEFT JOIN projects AS lp ON l.project_id = lp.id
+    LEFT JOIN project_categories AS lpc ON l.project_category_id = lpc.id
     WHERE l.deleted_at IS NULL
       AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
     ";
@@ -505,12 +507,14 @@ class Lead extends Model
         SELECT 
             l.*,
             p.name AS project_name,
+            lpc.name AS project_category_name,
             lf.status AS last_follow_up_status,
             lf.discussion_note AS last_follow_up_note,
             lf.next_follow_up_date,
             lf.follow_up_type
         FROM leads AS l
         LEFT JOIN projects AS p ON l.project_id = p.id
+        LEFT JOIN project_categories AS lpc ON l.project_category_id = lpc.id
         LEFT JOIN (
             SELECT t1.*
             FROM lead_follow_ups t1
@@ -556,6 +560,7 @@ class Lead extends Model
         lf.status AS last_follow_up_status,
         lf.discussion_note AS last_follow_up_note,
         p.name AS project_name,
+        lpc.name AS project_category_name,
         f.flat_name,
         lf.next_follow_up_date
     FROM leads
@@ -571,6 +576,7 @@ class Lead extends Model
     ) lf ON lf.lead_id = leads.id
     LEFT JOIN projects AS p ON lf.project_id = p.id
     LEFT JOIN flats AS f ON lf.flat_id = f.id
+    LEFT JOIN project_categories AS lpc ON leads.project_category_id = lpc.id
     WHERE leads.assigned_id = ?";
 
         $params = [$userId];
@@ -845,6 +851,7 @@ class Lead extends Model
         pref_location_id,
         designation,
         project_id,
+        project_category_id,
         pref_flat_size,
         communication_type,
         tags,
@@ -855,7 +862,7 @@ class Lead extends Model
         lead_type,
         company_name,
         team_id,
-        created_by ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?,?)");
+        created_by ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         if (!$stmt) {
             setError("Prepare failed: " . $this->db->error);
@@ -891,6 +898,7 @@ class Lead extends Model
         $pref_location_id = $data['pref_location_id'] ?? null;
         $designation = $data['designation'] ?? null;
         $project_id = $data['project_id'] ?? null;
+        $project_category_id = $data['project_category_id'] ?? null;
         $pref_flat_size = $data['pref_flat_size'] ?? null;
         $communication_type = $data['communication_type'] ?? null;
         $tags = $data['tags'] ?? null;
@@ -905,7 +913,7 @@ class Lead extends Model
 
         // Bind parameters (CSV first, then existing)
         $stmt->bind_param(
-            "ssssssssssssssssssiisisisssssssssii",
+            "ssssssssssssssssssiisisisisssssssssii",
             $campaign_name,
             $platform,
             $which_apartment_size_are_you_interested_in,
@@ -930,6 +938,7 @@ class Lead extends Model
             $pref_location_id,
             $designation,
             $project_id,
+            $project_category_id,
             $pref_flat_size,
             $communication_type,
             $tags,

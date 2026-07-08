@@ -116,6 +116,12 @@ $show_breadcrumb = true;
                 </div>
                 <div class="col-md-6 col-lg-4 mb-3">
                     <div class="info-box p-3 border rounded">
+                        <label class="text-muted mb-1"><small>Category</small></label>
+                        <p class="mb-0 fw-bold"><?= $project['category_name'] ?? 'N/A' ?></p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="info-box p-3 border rounded">
                         <label class="text-muted mb-1"><small>Building Type</small></label>
                         <p class="mb-0 fw-bold"><?= $project['building_type'] ?? 'N/A' ?></p>
                     </div>

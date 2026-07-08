@@ -425,12 +425,16 @@ class LeadController extends Controller
         if (!empty($_GET['mobile'])) {
             $mobileData = [];
             foreach ($leads as $lead) {
+                $campName = (!empty($lead['project_name']) ? $lead['project_name'] . (!empty($lead['campaign_name']) ? ' - ' . $lead['campaign_name'] : '') : ($lead['campaign_name'] ?? '-'));
+                if (!empty($lead['project_category_name'])) {
+                    $campName .= ' (' . $lead['project_category_name'] . ')';
+                }
                 $mobileData[] = [
                     'id'               => $lead['id'],
                     'full_name'        => $lead['full_name'] ?? '',
                     'phone'            => $lead['phone_number'] ?? $lead['phone'] ?? '',
                     'address'          => trim(($lead['address'] ?? '') . (!empty($lead['address']) && !empty($lead['city']) ? ', ' : '') . ($lead['city'] ?? '')),
-                    'campaign_name'    => (!empty($lead['project_name']) ? $lead['project_name'] . (!empty($lead['campaign_name']) ? ' - ' . $lead['campaign_name'] : '') : ($lead['campaign_name'] ?? '-')),
+                    'campaign_name'    => $campName,
                     'last_lead_action' => $lead['last_lead_action'] ?? '',
                     'next_follow_up'   => $lead['next_follow_up_date'] ?? '',
                     'agent_name'       => $lead['agent_name'] ?? '',
@@ -500,6 +504,9 @@ class LeadController extends Controller
             }
             if (!empty($lead['campaign_name'])) {
                 $displayName .= ($displayName !== '' ? ' - ' : '') . $lead['campaign_name'];
+            }
+            if (!empty($lead['project_category_name'])) {
+                $displayName .= ($displayName !== '' ? ' ' : '') . '(' . $lead['project_category_name'] . ')';
             }
             if ($displayName === '') {
                 $displayName = '-';
@@ -1070,9 +1077,9 @@ class LeadController extends Controller
             return;
         }
 
-        // FORM থেকে team_id & project_id
+        // FORM থেকে team_id & project_category_id
         $team_id = $_POST['team_id'] ?? null;
-        $project_id = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
+        $project_category_id = !empty($_POST['project_category_id']) ? (int)$_POST['project_category_id'] : null;
 
         if (!$team_id) {
             setError("Please select a team");
@@ -1119,7 +1126,7 @@ class LeadController extends Controller
                 $data['status'] = 'active';
                 $data['visibility'] = $data['visibility'] ?? 'public';
                 $data['team_id'] = (int)$team_id;
-                $data['project_id'] = $project_id;
+                $data['project_category_id'] = $project_category_id;
                 $data['created_by'] = $_SESSION['user']['id'] ?? null;
 
                 try {
