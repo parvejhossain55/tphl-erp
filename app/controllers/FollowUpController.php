@@ -152,7 +152,12 @@ public function store()
     if ($created) {
         setSuccess("Follow-up created successfully!");
     } else {
-        setError("Failed to create follow-up!");
+        $dbError = $_SESSION['flash_error'] ?? '';
+        if (!empty($dbError)) {
+            setError("Failed to create follow-up! DB Error: " . $dbError);
+        } else {
+            setError("Failed to create follow-up!");
+        }
     }
 
     // Redirect back to the page the user originally came from
@@ -205,7 +210,12 @@ public function store()
         if ($this->followUpModel->update($followUpData)) {
             setSuccess("Follow-up updated successfully!");
         } else {
-            setError("Failed to update follow-up!");
+            $dbError = $_SESSION['flash_error'] ?? '';
+            if (!empty($dbError)) {
+                setError("Failed to update follow-up! DB Error: " . $dbError);
+            } else {
+                setError("Failed to update follow-up!");
+            }
         }
         $leadId = $_POST['lead_id'];
         header("Location: {$GLOBALS['base_url']}/follow-up-leads/{$leadId}");

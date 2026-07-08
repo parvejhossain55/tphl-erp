@@ -54,6 +54,11 @@ class FollowUp extends Model
         $allowedNextActions = ['site visit', 'booking', 'call_back', 'take_time'];
         $next_action = in_array($data['next_action'], $allowedNextActions) ? $data['next_action'] : null;
 
+        $follow_up_type = $data['follow_up_type'] ?? null;
+        if ($follow_up_type === 'email') {
+            $follow_up_type = 'Email';
+        }
+
         // ==============================
         // PREPARE QUERY
         // ==============================
@@ -75,7 +80,7 @@ class FollowUp extends Model
             $flat_id,
             $follow_up_date,
             $data['follow_up_time'],
-            $data['follow_up_type'],
+            $follow_up_type,
             $data['status'],
             $data['discussion_note'],
             $next_follow_up_date,
@@ -160,6 +165,11 @@ class FollowUp extends Model
     // Update follow-up by ID
     public function update($data)
     {
+        $follow_up_type = $data['follow_up_type'] ?? null;
+        if ($follow_up_type === 'email') {
+            $follow_up_type = 'Email';
+        }
+
         $stmt = $this->db->prepare("
         UPDATE lead_follow_ups SET
             lead_id = ?,
@@ -187,7 +197,7 @@ class FollowUp extends Model
             $data['flat_id'],   // NULL or valid flats.id
             $data['follow_up_date'],
             $data['follow_up_time'],
-            $data['follow_up_type'],
+            $follow_up_type,
             $data['status'],
             $data['discussion_note'],
             $data['next_follow_up_date'],
