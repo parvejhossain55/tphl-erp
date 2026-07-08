@@ -535,8 +535,8 @@ public function deleteBudget($id)
             }
 
             $campProj = '';
-            if (!empty($lead['project_name'])) {
-                $campProj .= $lead['project_name'];
+            if (!empty($lead['project_category_name'])) {
+                $campProj .= $lead['project_category_name'];
             }
             if (!empty($lead['campaign_name'])) {
                 $campProj .= ($campProj !== '' ? ' - ' : '') . $lead['campaign_name'];
