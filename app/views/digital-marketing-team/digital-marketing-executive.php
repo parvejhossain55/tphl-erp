@@ -872,12 +872,12 @@
             </select>
           </div>
           <div class="mb-3">
-            <label class="form-label">Select Project</label>
-            <select name="project_id" class="form-select select2-no-scroll" data-placeholder="-- Select Project (Optional) --">
-              <option value="">-- Select Project (Optional) --</option>
-              <?php foreach ($projects as $project): ?>
-                <option value="<?= $project['id'] ?>">
-                  <?= htmlspecialchars($project['name']) ?>
+            <label class="form-label">Select Project Category</label>
+            <select name="project_category_id" class="form-select select2-no-scroll" data-placeholder="-- Select Category (Optional) --">
+              <option value="">-- Select Category (Optional) --</option>
+              <?php foreach ($categories as $category): ?>
+                <option value="<?= $category['id'] ?>">
+                  <?= htmlspecialchars($category['name']) ?>
                 </option>
               <?php endforeach; ?>
             </select>

@@ -18,10 +18,12 @@ class Project extends Model
         SELECT 
             p.*,
             l.name AS location_name,
-            c.name AS community_name
+            c.name AS community_name,
+            pc.name AS category_name
         FROM projects AS p
         LEFT JOIN locations AS l ON p.location_id = l.id
         LEFT JOIN communities AS c ON p.community_id = c.id
+        LEFT JOIN project_categories AS pc ON p.category_id = pc.id
         WHERE p.deleted_at IS NULL
         ORDER BY p.id DESC
     ");
@@ -263,10 +265,12 @@ class Project extends Model
         SELECT 
             p.*, 
             l.name AS location_name, 
-            c.name AS community_name
+            c.name AS community_name,
+            pc.name AS category_name
         FROM projects AS p
         LEFT JOIN locations AS l ON p.location_id = l.id
         LEFT JOIN communities AS c ON p.community_id = c.id
+        LEFT JOIN project_categories AS pc ON p.category_id = pc.id
         WHERE p.id = ?
     ");
 

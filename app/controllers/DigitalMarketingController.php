@@ -355,13 +355,13 @@ public function deleteBudget($id)
               )
         ");
         $duplicateLeadsCount = $dupStmt ? (int)($dupStmt->fetch_assoc()['total'] ?? 0) : 0;
-        $projects = (new Project($this->db))->getAll();
+        $categories = (new ProjectCategory($this->db))->getAll();
 
         return $this->view("digital-marketing-team/digital-marketing-executive", [
             "current_route"        => "digital-marketing-executive-dashboard",
             "page_title"           => "Digital Marketing Executive Dashboard",
             "teams"                => $teams,
-            "projects"             => $projects,
+            "categories"           => $categories,
             "stats"                => $stats,
             "leads"                => [], // AJAX loads leads now
             "selected_team_id"     => $teamId,
