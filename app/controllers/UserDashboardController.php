@@ -428,11 +428,6 @@ class UserDashboardController extends Controller
         $call_status = $_GET['call_status'] ?? null;
 
         $onlyMissingFollowup = isset($_GET['filter']) && $_GET['filter'] === 'missing_followup';
-        
-        // DEBUG LOGS
-        $logFile = 'c:/xampp/htdocs/TPHL-ERP/logs/controller_debug.log';
-        $logMsg = date('Y-m-d H:i:s') . " - URL: " . $_SERVER['REQUEST_URI'] . " - Session User: " . json_encode($_SESSION['user'] ?? []) . " - GET: " . json_encode($_GET) . " - onlyMissingFollowup: " . ($onlyMissingFollowup ? 'TRUE' : 'FALSE') . "\n";
-        file_put_contents($logFile, $logMsg, FILE_APPEND);
 
         $myAssignedClients = $this->leadModel
             ->getAllMyLeads($userId, $year, $month, $lastAction, $call_status, $onlyMissingFollowup);

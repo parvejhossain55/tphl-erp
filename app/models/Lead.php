@@ -607,7 +607,7 @@ class Lead extends Model
 
         if ($only_missing_followup) {
             $sql .= " AND lf.next_follow_up_date IS NOT NULL
-                      AND lf.next_follow_up_date <> '0000-00-00'
+                      AND lf.next_follow_up_date > '1000-01-01'
                       AND lf.next_follow_up_date <> ''
                       AND DATE(lf.next_follow_up_date) <= CURDATE()
                       AND lf.deleted_at IS NULL";
