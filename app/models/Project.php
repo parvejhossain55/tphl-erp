@@ -127,7 +127,7 @@ class Project extends Model
         $incentive_percentage = !empty($data['incentive_percentage']) ? (float)$data['incentive_percentage'] : null;
 
         $stmt->bind_param(
-            "ssiiiidsiissssssdsssisssssiiiiiiiiisdiiiiiiiiiii",
+            "ssiiidsiissssssssdssssisssssiiiiiiiisdiiiiiiiiiii",
             $data['name'],                   // 1
             $data['slug'],                   // 2
             $location_id,                    // 3 (i)
@@ -540,5 +540,23 @@ class Project extends Model
         }
 
         return array_values($projects); // return numeric array
+    }
+
+    /* =========================
+       Get Projects with Active Bookings (Sold/Booked)
+    ========================== */
+    public function getProjectsWithActiveBookings()
+    {
+        $sql = "SELECT DISTINCT p.id, p.name 
+                FROM projects p
+                INNER JOIN lead_bookings lb ON lb.project_id = p.id
+                INNER JOIN lead_payments lp ON lp.booking_id = lb.id
+                WHERE lb.deleted_at IS NULL 
+                  AND lb.booking_status IN ('booked', 'completed')
+                  AND lp.payment_status = 'paid'
+                  AND p.deleted_at IS NULL
+                ORDER BY p.name ASC";
+        $result = $this->db->query($sql);
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 }

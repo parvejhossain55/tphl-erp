@@ -170,6 +170,59 @@
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
         }
     }
+
+    /* Stat Card Styles */
+    .stat-card {
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border: none;
+    }
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin: 0.5rem 0;
+    }
+    .stat-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #718096;
+    }
+    a.stat-card-link {
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        border-radius: 15px;
+    }
+    a.stat-card-link .stat-card {
+        position: relative;
+        border: 1.5px solid transparent !important;
+        transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    a.stat-card-link:hover .stat-card {
+        transform: translateY(-6px);
+        box-shadow: 0 14px 30px rgba(220,53,69,0.18) !important;
+    }
+    a.stat-card-link .card-nav-arrow {
+        position: absolute;
+        top: 10px; right: 12px;
+        font-size: 0.65rem;
+        color: #bbb;
+        opacity: 0;
+        transition: opacity 0.2s, transform 0.2s;
+    }
+    a.stat-card-link:hover .card-nav-arrow {
+        opacity: 1;
+        transform: translateX(3px);
+    }
+    .card-hint {
+        font-size: 10px;
+        color: #a0aec0;
+        display: block;
+        margin-top: 2px;
+    }
 </style>
 
 <!-- Breadcrumb -->
@@ -184,10 +237,27 @@
 
 <!-- Stats Grid -->
 <div class="row  mb-4 align-items-stretch">
+    <!-- Missing Follow-ups Stats Card -->
+    <div class="col-12 col-md-4 mb-3">
+        <a href="?filter=missing_followup" class="stat-card-link">
+            <div class="card__wrapper stat-card shadow-sm <?= ($isFilterMissing ?? false) ? 'border-danger' : '' ?>" style="background: linear-gradient(135deg, #fff5f5 0%, #ffe3e3 100%); border: 1.5px solid <?= ($isFilterMissing ?? false) ? '#dc3545' : '#fecaca' ?> !important; min-height: 110px;">
+                <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-danger"></i></span>
+                <div class="card-body d-flex justify-content-between align-items-center p-3">
+                    <div>
+                        <p class="stat-label mb-2 text-danger"><i class="fa-solid fa-bell-slash me-1"></i> Missing Follow-Ups (Today)</p>
+                        <h2 class="stat-value text-danger mb-1" style="font-size: 2rem; font-weight: 800;"><?= $missingFollowUpCount ?? 0 ?></h2>
+                        <span class="card-hint text-danger" style="font-size: 11px;">Click to view missing follow-ups →</span>
+                    </div>
+                    <div class="card__icon text-danger" style="opacity: 0.15; font-size: 2rem;"><i class="fa-solid fa-bell-slash"></i></div>
+                </div>
+            </div>
+        </a>
+    </div>
+
     <!-- Duplicate Assigned Leads Card (Team-based) -->
     <?php if (!empty($duplicateGroups)): ?>
-    <div class="col-12 mb-3">
-        <div class="alert alert-danger border-0 shadow-sm mb-0 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2"
+    <div class="col-12 col-md-8 mb-3">
+        <div class="alert alert-danger border-0 shadow-sm mb-0 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2 h-100"
              style="background:linear-gradient(135deg,#fff5f5,#ffe0e0);border-left:4px solid #dc3545 !important;border-radius:10px;">
             <div class="d-flex align-items-center gap-3">
                 <div class="rounded-circle d-flex align-items-center justify-content-center"
@@ -209,6 +279,23 @@
             <button class="btn btn-danger btn-sm px-3" data-bs-toggle="modal" data-bs-target="#dupAssignedModal">
                 <i class="bi bi-eye me-1"></i> View Details
             </button>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Active Filter Warning Alert -->
+    <?php if ($isFilterMissing ?? false): ?>
+    <div class="col-12 mb-3">
+        <div class="alert alert-warning border-0 shadow-sm mb-0 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2"
+             style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border-left:4px solid #d97706 !important;border-radius:10px;">
+            <div class="d-flex align-items-center gap-3">
+                <i class="bi bi-funnel-fill text-warning fs-4"></i>
+                <div>
+                    <div class="fw-bold text-warning-emphasis">Showing Missing Follow-Ups Only</div>
+                    <div class="text-muted small">Showing leads scheduled for today where no follow-up has been logged.</div>
+                </div>
+            </div>
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads" class="btn btn-warning btn-sm">Show All Leads</a>
         </div>
     </div>
     <?php endif; ?>

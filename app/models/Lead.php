@@ -552,7 +552,7 @@ class Lead extends Model
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
-    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $call_status = null)
+    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $call_status = null, $only_missing_followup = false)
     {
         $sql = "SELECT leads.*, 
         lf.next_action,
@@ -603,6 +603,22 @@ class Lead extends Model
                 $sql .= " AND leads.call_status = ?";
                 $params[] = $call_status;
                 $types .= "s";
+        }
+
+        if ($only_missing_followup) {
+            $sql .= " AND EXISTS (
+                SELECT 1 FROM lead_follow_ups f_miss
+                WHERE f_miss.lead_id = leads.id
+                  AND DATE(f_miss.next_follow_up_date) <= CURDATE()
+                  AND f_miss.deleted_at IS NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM lead_follow_ups f_check
+                      WHERE f_check.lead_id = f_miss.lead_id
+                        AND f_check.follow_up_date >= DATE(f_miss.next_follow_up_date)
+                        AND f_check.id <> f_miss.id
+                        AND f_check.deleted_at IS NULL
+                  )
+            )";
         }
 
         // Try sorting by created_at instead

@@ -667,6 +667,25 @@ function formatDate($date)
     return FormatHelper::formatDate($date);
 }
 
+function normalizeDateYear($date)
+{
+    if (empty($date)) {
+        return $date;
+    }
+    $timestamp = strtotime($date);
+    if ($timestamp === false) {
+        return $date;
+    }
+    $year = (int)date('Y', $timestamp);
+    if ($year < 100) {
+        $month = date('m', $timestamp);
+        $day = date('d', $timestamp);
+        $correctedYear = 2000 + $year;
+        return "$correctedYear-$month-$day";
+    }
+    return date('Y-m-d', $timestamp);
+}
+
 // formant time
 function formatPunchTime($time)
 {

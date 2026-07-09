@@ -36,11 +36,11 @@ class FollowUp extends Model
         // DATE FORMAT FIX
         // ==============================
         $follow_up_date = !empty($data['follow_up_date'])
-            ? date('Y-m-d', strtotime($data['follow_up_date']))
+            ? normalizeDateYear($data['follow_up_date'])
             : date('Y-m-d'); // fallback: today (follow_up_date is NOT NULL in DB)
 
         $next_follow_up_date = !empty($data['next_follow_up_date'])
-            ? date('Y-m-d', strtotime($data['next_follow_up_date']))
+            ? normalizeDateYear($data['next_follow_up_date'])
             : null;
 
         // ==============================
@@ -200,16 +200,19 @@ class FollowUp extends Model
             setError($this->db->error);
             return false;
         }
+        $norm_follow_up_date = !empty($data['follow_up_date']) ? normalizeDateYear($data['follow_up_date']) : null;
+        $norm_next_follow_up_date = !empty($data['next_follow_up_date']) ? normalizeDateYear($data['next_follow_up_date']) : null;
+
         $stmt->bind_param(
             "iisssssssissi",
             $data['lead_id'],
             $data['flat_id'],   // NULL or valid flats.id
-            $data['follow_up_date'],
+            $norm_follow_up_date,
             $follow_up_time,
             $follow_up_type,
             $status,
             $data['discussion_note'],
-            $data['next_follow_up_date'],
+            $norm_next_follow_up_date,
             $data['next_action'],
             $data['follow_up_agent_id'],
             $data['lead_status'],
@@ -543,5 +546,33 @@ class FollowUp extends Model
 
         // Ensure we return array even if empty
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    public function getMissingFollowUpCount(int $userId)
+    {
+        $today = date('Y-m-d');
+        $sql = "
+            SELECT COUNT(DISTINCT f.lead_id) as total
+            FROM lead_follow_ups f
+            INNER JOIN leads l ON f.lead_id = l.id
+            WHERE DATE(f.next_follow_up_date) <= ?
+              AND l.assigned_id = ?
+              AND f.deleted_at IS NULL
+              AND l.deleted_at IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 
+                  FROM lead_follow_ups f2
+                  WHERE f2.lead_id = f.lead_id
+                    AND f2.follow_up_date >= DATE(f.next_follow_up_date)
+                    AND f2.id <> f.id
+                    AND f2.deleted_at IS NULL
+              )
+        ";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return 0;
+        $stmt->bind_param("si", $today, $userId);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        return (int)($result['total'] ?? 0);
     }
 }

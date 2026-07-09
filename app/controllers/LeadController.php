@@ -790,7 +790,8 @@ class LeadController extends Controller
     {
         $year  = $_GET['year']  ?? null;
         $month = $_GET['month'] ?? null;
-        $leads = $this->leadBookedModel->getAllOnboardClientBooking($year, $month);
+        $project_id = $_GET['project_id'] ?? null;
+        $leads = $this->leadBookedModel->getAllOnboardClientBooking($year, $month, $project_id);
         $leadCounts = count($leads);
         $bookingCount = $this->leadBookedModel->getBookingCountByLead();
         $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
@@ -801,6 +802,7 @@ class LeadController extends Controller
             session_start();
         }
 
+        $projects = $this->projectModel->getProjectsWithActiveBookings();
 
         $this->view("sales-developments/leads/onboard-clients", [
             "current_route" => "onboarding-clients",
@@ -811,7 +813,8 @@ class LeadController extends Controller
             "leadCounts" => $leadCounts,
             "totalTodayFollowUps" => $totalTodayFollowUps,
             "leads" => $leads,
-
+            "projects" => $projects,
+            "selected_project_id" => $project_id,
         ]);
     }
 
