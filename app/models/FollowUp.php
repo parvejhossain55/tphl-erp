@@ -362,13 +362,14 @@ class FollowUp extends Model
            CONCAT(fl.flat_name, ' - ', fl.id) AS flat_name,
            usr.full_name AS created_by_name,
            fl.price_value,
-           COALESCE(CONCAT(usr.full_name,' - ','ID-',usr.id), 'Not assigned') AS assigned_with_name
+           COALESCE(CONCAT(usr.full_name,' - ', COALESCE(emp_creator.employee_id, CONCAT('ID-', usr.id))), 'Not assigned') AS assigned_with_name
     FROM lead_follow_ups f
     LEFT JOIN leads l ON f.lead_id = l.id
     LEFT JOIN projects p ON f.project_id = p.id
     LEFT JOIN flats fl ON f.flat_id = fl.id
     LEFT JOIN users usr ON f.created_by = usr.id
     LEFT JOIN employees emp ON f.assigned_with = emp.id
+    LEFT JOIN employees emp_creator ON usr.id = emp_creator.user_id
     WHERE DATE(f.next_follow_up_date) = '$today'
     AND f.deleted_at IS NULL
     AND f.status = 'pending'

@@ -34,8 +34,7 @@ class LeadController extends Controller
         $userId     = $_SESSION['user']['id']      ?? null;
         $isCoLeader = isSalesCoLeader();
 
-        if (in_array($userRoleId, [5, 9]) || $isCoLeader) {
-
+        if (in_array($userRoleId, [5]) || $isCoLeader) {
             if (!empty($userTeamId)) {
                 // team wise users
                 $assignedUsers = $this->userModel->getUsersByTeamAndRole($userTeamId);
@@ -44,7 +43,7 @@ class LeadController extends Controller
                 $assignedUsers = $this->userModel->getAllRoleUser();
             }
         } else {
-            // admin / others
+            // admin / role 9 / others
             $assignedUsers = $this->userModel->getAllRoleUser();
         }
         $date = $_GET['date'] ?? null;
@@ -56,6 +55,19 @@ class LeadController extends Controller
         $from_date = $_GET['from_date'] ?? null;
         $to_date   = $_GET['to_date']   ?? null;
         $filter_card = $_GET['filter_card'] ?? null;
+        
+        $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int)$_GET['team_id'] : null;
+        $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+        $filterCategoryId = isset($_GET['project_category_id']) && $_GET['project_category_id'] !== '' ? (int)$_GET['project_category_id'] : null;
+        $filterCountry = isset($_GET['filter_country']) && $_GET['filter_country'] !== '' ? $_GET['filter_country'] : null;
+
+        // Determine team restriction: role 9 sees all by default, but can filter.
+        if (in_array($userRoleId, [1, 3, 9])) {
+            $teamIdForQuery = $filterTeamId;
+        } else {
+            $teamIdForQuery = $userTeamId;
+        }
+
         $owners = $this->userModel->getAll();
 
         $bookingCount = $this->leadBookedModel->getBookingCountByLead();
@@ -72,12 +84,18 @@ class LeadController extends Controller
         // Get total count for pagination
         // Co-leader gets team-scoped data same as role_id=5 (Sales Manager)
         $effectiveRoleId = ($isCoLeader && !in_array($userRoleId, [1, 3, 5, 9])) ? 5 : $userRoleId;
-        $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card);
+        $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry);
 
         // Fetch paginated records
-        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, $limit, $offset, null, $from_date, $to_date, $filter_card);
+        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $limit, $offset, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry);
 
         $totalPages = ceil($leadCounts / $limit);
+
+        // Fetch dropdown options for views
+        $teams = $this->teamsModel->getAll();
+        $projects = $this->projectModel->getAll();
+        $categories = (new ProjectCategory($this->db))->getAll();
+        $countries = $this->leadModel->getDistinctCountries();
 
         // Build pagination route query string (excluding 'page')
         $queryArr = $_GET;
@@ -315,6 +333,14 @@ class LeadController extends Controller
             "paginationRoute" => $paginationRoute,
             "dupGroups"  => $dupGroups,
             "dupCount"   => $dupCount,
+            "teams"      => $teams,
+            "projects"   => $projects,
+            "categories" => $categories,
+            "countries"  => $countries,
+            "selectedTeam" => $filterTeamId,
+            "selectedProject" => $filterProjectId,
+            "selectedCategory" => $filterCategoryId,
+            "selectedCountry" => $filterCountry,
         ]);
     }
 
@@ -402,18 +428,31 @@ class LeadController extends Controller
 
         $userRoleId = $_SESSION['user']['role_id'] ?? null;
         $userTeamId = $_SESSION['user']['team_id'] ?? null;
+        
+        $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int)$_GET['team_id'] : null;
+        $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+        $filterCategoryId = isset($_GET['project_category_id']) && $_GET['project_category_id'] !== '' ? (int)$_GET['project_category_id'] : null;
+        $filterCountry = isset($_GET['filter_country']) && $_GET['filter_country'] !== '' ? $_GET['filter_country'] : null;
+
+        // Determine team restriction: role 9 sees all by default, but can filter.
+        if (in_array($userRoleId, [1, 3, 9])) {
+            $teamIdForQuery = $filterTeamId;
+        } else {
+            $teamIdForQuery = $userTeamId;
+        }
+
         // Co-leader gets same team-scoped access as Sales Manager (role_id=5)
         $effectiveRoleId = (isSalesCoLeader() && !in_array($userRoleId, [1, 3, 5, 9])) ? 5 : $userRoleId;
 
-        $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card);
+        $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry);
 
         if (!empty($search)) {
-            $filteredRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, $search, $from_date, $to_date, $filter_card);
+            $filteredRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $search, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry);
         } else {
             $filteredRecords = $totalRecords;
         }
 
-        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $userTeamId, $assigned, $assigned_user, $date, $length, $start, $search, $from_date, $to_date, $filter_card);
+        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $length, $start, $search, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry);
 
         // FIXED: শুধু current page এর lead IDs দিয়ে count করা হচ্ছে
         $leadIds = array_column($leads, 'id');
@@ -1124,13 +1163,13 @@ class LeadController extends Controller
 
                 $data = array_combine($header, $row);
 
-                // default / required fields
                 $data['source_type_id'] = (int)($data['source_type_id'] ?? 0);
                 $data['status'] = 'active';
                 $data['visibility'] = $data['visibility'] ?? 'public';
                 $data['team_id'] = (int)$team_id;
                 $data['project_category_id'] = $project_category_id;
                 $data['created_by'] = $_SESSION['user']['id'] ?? null;
+                $data['country'] = $data['country'] ?? null;
 
                 try {
                     $this->leadModel->create($data);

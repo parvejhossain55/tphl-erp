@@ -87,7 +87,13 @@
 
                                             <!-- Address & City -->
                                             <td>
-                                                <?php $addr = trim(($lead['address'] ?? '') . (!empty($lead['address']) && !empty($lead['city']) ? ', ' : '') . ($lead['city'] ?? '')); ?>
+                                                <?php 
+                                                $addrParts = [];
+                                                if (!empty($lead['country'])) $addrParts[] = trim($lead['country']);
+                                                if (!empty($lead['address'])) $addrParts[] = trim($lead['address']);
+                                                if (!empty($lead['city'])) $addrParts[] = trim($lead['city']);
+                                                $addr = implode(', ', $addrParts);
+                                                ?>
                                                 <span class="fs-12"><?= htmlspecialchars($addr !== '' ? $addr : '—') ?></span>
                                             </td>
 
@@ -342,7 +348,13 @@
                         <?php endif; ?>
 
                         <!-- Address & City -->
-                        <?php $mAddr = trim(($lead['address'] ?? '') . (!empty($lead['address']) && !empty($lead['city']) ? ', ' : '') . ($lead['city'] ?? '')); ?>
+                        <?php 
+                        $addrParts = [];
+                        if (!empty($lead['country'])) $addrParts[] = trim($lead['country']);
+                        if (!empty($lead['address'])) $addrParts[] = trim($lead['address']);
+                        if (!empty($lead['city'])) $addrParts[] = trim($lead['city']);
+                        $mAddr = implode(', ', $addrParts);
+                        ?>
                         <?php if ($mAddr): ?>
                         <div class="mt-1">
                             <i class="bi bi-geo-alt-fill text-muted me-1" style="font-size:11px"></i>

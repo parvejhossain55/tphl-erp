@@ -555,12 +555,26 @@ public function deleteBudget($id)
                 }
                 $jobCompanyStr .= '</div>';
             }
+            $parts = [];
+            
+            if (!empty($lead['address'])) {
+                $parts[] = htmlspecialchars($lead['address']);
+            }
+            if (!empty($lead['country'])) {
+                $parts[] = htmlspecialchars($lead['country']);
+            }
+            if (!empty($lead['city'])) {
+                $parts[] = htmlspecialchars($lead['city']);
+            }
+            $countryAddressStr = !empty($parts) ? implode(', ', $parts) : '—';
+
             $rows[] = [
                 'id'            => $lead['id'],
                 'checkbox'      => '<input type="checkbox" class="rowCheckbox" value="' . $lead['id'] . '">',
                 'name'          => '<div class="fw-bold text-dark">' . htmlspecialchars($lead['full_name'] ?? 'N/A') . '</div>' . $jobCompanyStr,
                 'best_time_to_contact' => htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? '—'),
                 'contact'       => '<div class="d-flex flex-column"><span><i class="bi bi-telephone text-muted me-2"></i>' . $phoneHtml . '</span><small class="text-muted"><i class="bi bi-envelope me-2"></i>' . htmlspecialchars($lead['email'] ?? 'N/A') . '</small></div>',
+                'country_address' => '<div class="text-muted" style="font-size: .8rem;">' . $countryAddressStr . '</div>',
                 'follow_up'     => $fuBadge,
                 'contact_status'=> $csBadge,
                 'lead_type'     => $ltBadge,

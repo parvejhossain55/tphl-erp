@@ -425,4 +425,12 @@ class EmpAttendanceController extends Controller
             exit;
         }
     }
+
+    public function attendanceDashboardView()
+    {
+        $this->view("hrm/attendances/external-attendance", [
+            "current_route" => "hrm-attendance-dashboard",
+            "page_title"    => "Tipsoi Attendance Dashboard"
+        ]);
+    }
 }

@@ -120,7 +120,7 @@ class Lead extends Model
     }
 
 
-    public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $search = null, $from_date = null, $to_date = null, $filter_card = null)
+    public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null)
     {
         $sql = "SELECT COUNT(l.id) AS total_count FROM leads AS l 
                 LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
@@ -229,6 +229,39 @@ class Lead extends Model
             }
         }
 
+        if (!empty($projectId)) {
+            $sql .= " AND l.project_id = ?";
+            $params[] = $projectId;
+            $types .= "i";
+        }
+        if (!empty($projectCategoryId)) {
+            $sql .= " AND l.project_category_id = ?";
+            $params[] = $projectCategoryId;
+            $types .= "i";
+        }
+        if (!empty($country)) {
+            $synonyms = [$country];
+            if (strcasecmp($country, 'UAE') === 0 || strcasecmp($country, 'United Arab Emirates') === 0) {
+                $synonyms = ['UAE', 'United Arab Emirates'];
+            } elseif (strcasecmp($country, 'USA') === 0 || strcasecmp($country, 'United States') === 0) {
+                $synonyms = ['USA', 'United States'];
+            } elseif (strcasecmp($country, 'UK') === 0 || strcasecmp($country, 'United Kingdom') === 0) {
+                $synonyms = ['UK', 'United Kingdom'];
+            }
+
+            $conds = [];
+            foreach ($synonyms as $syn) {
+                $conds[] = "l.country = ?";
+                $conds[] = "l.city = ?";
+                $conds[] = "l.city LIKE ?";
+                $params[] = $syn;
+                $params[] = $syn;
+                $params[] = "%" . $syn . "%";
+                $types .= "sss";
+            }
+            $sql .= " AND (" . implode(" OR ", $conds) . ")";
+        }
+
         $stmt = $this->db->prepare($sql);
         if (!empty($params)) {
             $stmt->bind_param($types, ...$params);
@@ -243,7 +276,7 @@ class Lead extends Model
         return $row ? (int)$row['total_count'] : 0;
     }
 
-    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $limit = null, $offset = null, $search = null, $from_date = null, $to_date = null, $filter_card = null)
+    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $limit = null, $offset = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null)
     {
         // Optimized query: server e large dataset (3000+) handle korte
         // Correlated subquery replace kora hoyeche simpler LEFT JOIN diye
@@ -386,6 +419,39 @@ class Lead extends Model
         }
 
 
+
+        if (!empty($projectId)) {
+            $sql .= " AND l.project_id = ?";
+            $params[] = $projectId;
+            $types .= "i";
+        }
+        if (!empty($projectCategoryId)) {
+            $sql .= " AND l.project_category_id = ?";
+            $params[] = $projectCategoryId;
+            $types .= "i";
+        }
+        if (!empty($country)) {
+            $synonyms = [$country];
+            if (strcasecmp($country, 'UAE') === 0 || strcasecmp($country, 'United Arab Emirates') === 0) {
+                $synonyms = ['UAE', 'United Arab Emirates'];
+            } elseif (strcasecmp($country, 'USA') === 0 || strcasecmp($country, 'United States') === 0) {
+                $synonyms = ['USA', 'United States'];
+            } elseif (strcasecmp($country, 'UK') === 0 || strcasecmp($country, 'United Kingdom') === 0) {
+                $synonyms = ['UK', 'United Kingdom'];
+            }
+
+            $conds = [];
+            foreach ($synonyms as $syn) {
+                $conds[] = "l.country = ?";
+                $conds[] = "l.city = ?";
+                $conds[] = "l.city LIKE ?";
+                $params[] = $syn;
+                $params[] = $syn;
+                $params[] = "%" . $syn . "%";
+                $types .= "sss";
+            }
+            $sql .= " AND (" . implode(" OR ", $conds) . ")";
+        }
 
         //  Order by created_at DESC for latest leads first
         $sql .= " ORDER BY l.created_at DESC, l.id DESC";
@@ -869,7 +935,8 @@ class Lead extends Model
         lead_type,
         company_name,
         team_id,
-        created_by ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        created_by,
+        country ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         if (!$stmt) {
             setError("Prepare failed: " . $this->db->error);
@@ -917,10 +984,11 @@ class Lead extends Model
         $company_name = $data['company_name'] ?? null;
         $team_id = $data['team_id'] ?? null;
         $created_by = $data['created_by'] ?? null;
+        $country = $data['country'] ?? null;
 
         // Bind parameters (CSV first, then existing)
         $stmt->bind_param(
-            "ssssssssssssssssssiisisiisssssssssii",
+            "ssssssssssssssssssiisisiisssssssssiis",
             $campaign_name,
             $platform,
             $which_apartment_size_are_you_interested_in,
@@ -956,7 +1024,8 @@ class Lead extends Model
             $lead_type,
             $company_name,
             $team_id,
-            $created_by
+            $created_by,
+            $country
         );
 
         if ($stmt->execute()) {
@@ -1449,7 +1518,7 @@ class Lead extends Model
             l.id, l.full_name, l.phone_number, l.email, l.job_title, l.designation,
             l.company, l.company_name, l.when_is_the_best_time_to_contact_you,
             l.platform, l.campaign_name, l.lead_type, l.call_note,
-            l.created_at, l.assigned_id,
+            l.created_at, l.assigned_id, l.country, l.address, l.city,
             ls.name  AS source_name,
             p.name   AS project_name,
             lpc.name AS project_category_name,
@@ -1829,5 +1898,49 @@ class Lead extends Model
         }
         $res = $stmt->get_result();
         return $res ? $res->fetch_assoc() : null;
+    }
+
+    public function getDistinctCountries()
+    {
+        $countries = [];
+
+        // 1. Fetch from country column
+        $res1 = $this->db->query("SELECT DISTINCT country FROM leads WHERE country IS NOT NULL AND TRIM(country) != ''");
+        if ($res1) {
+            while ($row = $res1->fetch_assoc()) {
+                $countries[] = trim($row['country']);
+            }
+        }
+
+        // 2. Fetch from city column
+        $knownCountries = [
+            'Bangladesh', 'Saudi Arabia', 'UAE', 'United Arab Emirates', 'Qatar', 
+            'Oman', 'Kuwait', 'Bahrain', 'Singapore', 'Malaysia', 'USA', 'United States', 
+            'UK', 'United Kingdom', 'Canada', 'Australia', 'Italy', 'Portugal', 'France', 'Spain'
+        ];
+
+        $res2 = $this->db->query("SELECT DISTINCT city FROM leads WHERE city IS NOT NULL AND TRIM(city) != ''");
+        if ($res2) {
+            while ($row = $res2->fetch_assoc()) {
+                $cityVal = trim($row['city']);
+                foreach ($knownCountries as $kc) {
+                    if (stripos($cityVal, $kc) !== false) {
+                        $stdCountry = $kc;
+                        if (in_array(strtolower($kc), ['uae', 'united arab emirates'])) {
+                            $stdCountry = 'UAE';
+                        } elseif (in_array(strtolower($kc), ['usa', 'united states'])) {
+                            $stdCountry = 'USA';
+                        } elseif (in_array(strtolower($kc), ['uk', 'united kingdom'])) {
+                            $stdCountry = 'UK';
+                        }
+                        $countries[] = $stdCountry;
+                    }
+                }
+            }
+        }
+
+        $countries = array_filter(array_unique($countries));
+        sort($countries);
+        return $countries;
     }
 }

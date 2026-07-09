@@ -168,18 +168,20 @@ $activeCard = $_GET['filter_card'] ?? '';
     <!-- Desktop View: Filters and Table -->
     <div class="desktop-only">
         <!-- Filters -->
-        <div class="filters">
+        <div class="filters card__wrapper mb-4 p-3 bg-white rounded shadow-sm">
             <form action="" method="get">
-                <div class="row g-2 align-items-center flex-wrap">
-
+                <!-- Line 1 -->
+                <div class="row  align-items-end">
+                    
                     <!-- Year Select -->
-                    <div class="col-auto col-sm-6 col-md-auto">
+                    <div class="col-6 col-md-2">
+                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Year</label>
                         <?php
                         $currentYear = date('Y');
                         $startYear   = $currentYear - 10;
-                        $selectedYear = $slectedYear ?? '';
+                        $selectedYear = $selectedYear ?? '';
                         ?>
-                        <select class="form-control" name="year">
+                        <select class="form-select form-select-sm" name="year">
                             <option value="">Year Select</option>
                             <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
                                 <option value="<?= $year ?>" <?= $selectedYear == $year ? 'selected' : '' ?>>
@@ -190,25 +192,17 @@ $activeCard = $_GET['filter_card'] ?? '';
                     </div>
 
                     <!-- Month Select -->
-                    <?php
-                    $months = [
-                        1 => 'January',
-                        2 => 'February',
-                        3 => 'March',
-                        4 => 'April',
-                        5 => 'May',
-                        6 => 'June',
-                        7 => 'July',
-                        8 => 'August',
-                        9 => 'September',
-                        10 => 'October',
-                        11 => 'November',
-                        12 => 'December'
-                    ];
-                    $selectedMonth = $_GET['month'] ?? '';
-                    ?>
-                    <div class="col-auto col-sm-6 col-md-auto">
-                        <select class="form-control" name="month">
+                    <div class="col-6 col-md-2">
+                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Month</label>
+                        <?php
+                        $months = [
+                            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+                            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+                            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+                        ];
+                        $selectedMonth = $_GET['month'] ?? '';
+                        ?>
+                        <select class="form-select form-select-sm" name="month">
                             <option value="">Month Select</option>
                             <?php foreach ($months as $id => $name): ?>
                                 <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>>
@@ -218,15 +212,91 @@ $activeCard = $_GET['filter_card'] ?? '';
                         </select>
                     </div>
 
-                    <!-- Hidden Project Select (optional) -->
-                    <div class="col-auto col-sm-6 col-md-auto d-none">
-                        <select class="form-select form-select-sm filter-select">
-                            <option>Project: All Projects</option>
-                            <option>Green Valley</option>
-                            <option>Oceanview Residences</option>
+                    <!-- From Date -->
+                    <div class="col-6 col-md-2">
+                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">From Date</label>
+                        <input type="date" name="from_date" class="form-control form-control-sm"
+                            value="<?= $_GET['from_date'] ?? '' ?>">
+                    </div>
+
+                    <!-- To Date -->
+                    <div class="col-6 col-md-2">
+                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">To Date</label>
+                        <input type="date" name="to_date" class="form-control form-control-sm"
+                            value="<?= $_GET['to_date'] ?? '' ?>">
+                    </div>
+
+                    <!-- Team Filter -->
+                    <?php 
+                    $sessionUserRoleId = $_SESSION['user']['role_id'] ?? null;
+                    if (in_array($sessionUserRoleId, [1, 3, 9]) && !empty($teams)): 
+                    ?>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Team</label>
+                        <select class="form-select form-select-sm filter-select select2" name="team_id">
+                            <option value="">Select Team</option>
+                            <?php foreach ($teams as $t): ?>
+                                <option value="<?= $t['id'] ?>" <?= ($selectedTeam ?? '') == $t['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($t['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-auto col-sm-6 col-md-auto ">
+                    <?php endif; ?>
+
+                    <!-- Project Filter -->
+                    <?php if (!empty($projects)): ?>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Project</label>
+                        <select class="form-select form-select-sm filter-select select2" name="project_id">
+                            <option value="">Select Project</option>
+                            <?php foreach ($projects as $p): ?>
+                                <option value="<?= $p['id'] ?>" <?= ($selectedProject ?? '') == $p['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($p['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php endif; ?>
+
+                </div>
+
+                <!-- Line 2 -->
+                <div class="row  mt-1 align-items-end">
+
+                    <!-- Category Filter -->
+                    <?php if (!empty($categories)): ?>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Category</label>
+                        <select class="form-select form-select-sm filter-select select2" name="project_category_id">
+                            <option value="">Select Category</option>
+                            <?php foreach ($categories as $cat): ?>
+                                <option value="<?= $cat['id'] ?>" <?= ($selectedCategory ?? '') == $cat['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($cat['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Country Filter -->
+                    <?php if (!empty($countries)): ?>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Country</label>
+                        <select class="form-select form-select-sm filter-select select2" name="filter_country">
+                            <option value="">Select Country</option>
+                            <?php foreach ($countries as $c): ?>
+                                <option value="<?= htmlspecialchars($c) ?>" <?= ($selectedCountry ?? '') == $c ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($c) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Sales Executive Filter -->
+                    <div class="col-6 col-md-2">
+                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Sales Executive</label>
                         <select class="form-select form-select-sm filter-select select2" name="assigned_user">
                             <option value="">Select Sales Executive</option>
                             <?php foreach ($assignedUsers as $user): ?>
@@ -236,17 +306,10 @@ $activeCard = $_GET['filter_card'] ?? '';
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-auto col-sm-6 col-md-auto">
-                        <input type="date" name="from_date" class="form-control form-control-sm"
-                            value="<?= $_GET['from_date'] ?? '' ?>" title="From Date">
-                    </div>
-                    <div class="col-auto col-sm-6 col-md-auto">
-                        <input type="date" name="to_date" class="form-control form-control-sm"
-                            value="<?= $_GET['to_date'] ?? '' ?>" title="To Date">
-                    </div>
 
                     <!-- Last Action Select -->
-                    <div class="col-auto col-sm-6 col-md-auto">
+                    <div class="col-6 col-md-2">
+                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Status</label>
                         <select class="form-select form-select-sm filter-select" name="last_action">
                             <option value="">Status: All</option>
                             <option value="new" <?= ($selectedAction ?? '') == 'new' ? 'selected' : '' ?>>New</option>
@@ -256,8 +319,10 @@ $activeCard = $_GET['filter_card'] ?? '';
                             <option value="cancel" <?= ($selectedAction ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
                         </select>
                     </div>
+
                     <!-- Assigned Filter -->
-                    <div class="col-auto col-sm-6 col-md-auto">
+                    <div class="col-6 col-md-2">
+                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Assigned</label>
                         <select class="form-select form-select-sm filter-select" name="assigned">
                             <option value="">Assigned: All</option>
                             <option value="assigned" <?= ($selectedAssigned ?? '') == 'assigned'   ? 'selected' : '' ?>>
@@ -269,33 +334,35 @@ $activeCard = $_GET['filter_card'] ?? '';
                         </select>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div class="col-auto ms-auto d-flex gap-2 flex-wrap">
-                        <button type="submit" class="btn btn-outline-secondary btn-sm flex-grow-1 py-1">
-                            Search
+                </div>
+
+                <!-- Action Buttons Row -->
+                <div class="row mt-3">
+                    <div class="col-12 d-flex justify-content-end gap-2 flex-wrap">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm px-3 py-1.5">
+                            <i class="bi bi-search me-1"></i> Search
                         </button>
-                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-primary btn-sm">
-                            Reset
+                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-primary btn-sm px-3 py-1.5">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
                         </a>
 
                         <!-- Import CSV button outside form submit -->
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="importCsvBtn" data-bs-toggle="modal" data-bs-target="#importCsvModal">
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-3" id="importCsvBtn" data-bs-toggle="modal" data-bs-target="#importCsvModal">
                             Import Leads CSV
                         </button>
                         
-                        <button type="button" class="btn btn-outline-info btn-sm" id="importBookingsCsvBtn" data-bs-toggle="modal" data-bs-target="#importBookingsCsvModal">
+                        <button type="button" class="btn btn-outline-info btn-sm px-3" id="importBookingsCsvBtn" data-bs-toggle="modal" data-bs-target="#importBookingsCsvModal">
                             Import Bookings CSV
                         </button>
 
-                        <button type="button" class="btn btn-outline-success btn-sm" id="importPaymentsCsvBtn" data-bs-toggle="modal" data-bs-target="#importPaymentsCsvModal">
+                        <button type="button" class="btn btn-outline-success btn-sm px-3" id="importPaymentsCsvBtn" data-bs-toggle="modal" data-bs-target="#importPaymentsCsvModal">
                             Import Payments CSV
                         </button>
 
-                        <a href="<?= $GLOBALS['base_url'] ?>/create-lead" class="btn btn-primary btn-sm">
+                        <a href="<?= $GLOBALS['base_url'] ?>/create-lead" class="btn btn-primary btn-sm px-3">
                             <i class="bi bi-plus-lg"></i> Add Lead
                         </a>
                     </div>
-
                 </div>
             </form>
         </div>
@@ -570,7 +637,7 @@ $activeCard = $_GET['filter_card'] ?? '';
             </div>
         </div>
 
-        <div class="row g-3" id="mobileLeadCards">
+        <div class="row " id="mobileLeadCards">
             <?php foreach ($leads as $key => $lead): ?>
                 <?php
                 $displayName = !empty($lead['campaign_name'])
@@ -603,7 +670,13 @@ $activeCard = $_GET['filter_card'] ?? '';
                                 </div>
                                 <?php endif; ?>
                                 <div class="lead-phone text-truncate small"><?= $lead['phone'] ?></div>
-                                <?php $mAddr = trim(($lead['address'] ?? '') . (!empty($lead['address']) && !empty($lead['city']) ? ', ' : '') . ($lead['city'] ?? '')); ?>
+                                <?php 
+                                $addrParts = [];
+                                if (!empty($lead['country'])) $addrParts[] = trim($lead['country']);
+                                if (!empty($lead['address'])) $addrParts[] = trim($lead['address']);
+                                if (!empty($lead['city'])) $addrParts[] = trim($lead['city']);
+                                $mAddr = implode(', ', $addrParts);
+                                ?>
                                 <?php if ($mAddr): ?>
                                 <div class="mt-1">
                                     <i class="bi bi-geo-alt-fill text-muted me-1" style="font-size:11px"></i>

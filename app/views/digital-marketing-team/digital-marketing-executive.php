@@ -655,6 +655,7 @@
             <li><i class="bi bi-dot"></i><strong>company_name</strong></li>
             <li><i class="bi bi-dot"></i><strong>phone_number</strong></li>
             <li><i class="bi bi-dot"></i><strong>city</strong></li>
+            <li><i class="bi bi-dot"></i><strong>country</strong></li>
           </ul>
         </div>
       </div>
@@ -818,6 +819,7 @@
                   <th class="ps-4">Lead Name & Job/Company name</th>
                   <th>Best Time to Contact</th>
                   <th>Contact Info</th>
+                  <th>Address & Country </th>
                   <th class="text-center">Follow Up</th>
                   <th>Contact Status</th>
                   <th>Lead Type</th>
@@ -830,7 +832,7 @@
                 </tr>
               </thead>
               <tbody id="dmLeadTbody">
-                <tr><td colspan="14" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></td></tr>
+                <tr><td colspan="15" class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></td></tr>
               </tbody>
             </table>
 
@@ -916,7 +918,7 @@
   function dmLoadLeads(page = 1) {
     dmCurrentPage = page;
     const tbody   = document.getElementById('dmLeadTbody');
-    tbody.innerHTML = '<tr><td colspan="14" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="15" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
 
     const params = new URLSearchParams({
       ...dmFilters,
@@ -929,7 +931,7 @@
       .then(r => r.json())
       .then(data => {
         if (data.error) {
-          tbody.innerHTML = `<tr><td colspan="14" class="text-center py-4 text-danger">${data.error}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="15" class="text-center py-4 text-danger">${data.error}</td></tr>`;
           return;
         }
         // Header text
@@ -941,7 +943,7 @@
 
         // Render rows
         if (!data.rows || data.rows.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="14" class="text-center py-5"><i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i><div class="text-muted">No leads found.</div></td></tr>';
+          tbody.innerHTML = '<tr><td colspan="15" class="text-center py-5"><i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i><div class="text-muted">No leads found.</div></td></tr>';
           document.getElementById('dmPaginationInfo').textContent = '';
           document.getElementById('dmPagination').innerHTML = '';
           return;
@@ -955,6 +957,7 @@
             <td class="ps-4">${row.name}</td>
             <td>${row.best_time_to_contact}</td>
             <td>${row.contact}</td>
+            <td>${row.country_address || '—'}</td>
             <td class="text-center">${row.follow_up}</td>
             <td>${row.contact_status}</td>
             <td>${row.lead_type}</td>
