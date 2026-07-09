@@ -13,7 +13,6 @@ if ($current_server == 1) {
         "db_user" => "root",
         "db_pass" => "",
         "db_name" => "tphl_db",
-
         // AI Assistant Read-Only database connection
         "db_ai_user" => "tphl_read_only",
         "db_ai_pass" => "ReadOnlyPass123!",
@@ -25,11 +24,11 @@ if ($current_server == 1) {
         "premium_homes_api_key" => "tphl_erp_key_9f8e7d6c5b4a392817065",
     ];
 }
-///////////////////////////
 
 // CREATE USER 'tphl_read_only'@'localhost' IDENT IFIED BY 'ReadOnlyPass123!';
 // GRANT SELECT ON `tphl_db`.* TO 'tphl_read_only'@'localhost';
 // FLUSH PRIVILEGES;
+///////////////////////////
 
 if ($current_server == 2) {
     return [
