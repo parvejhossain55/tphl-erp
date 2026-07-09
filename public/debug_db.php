@@ -23,7 +23,6 @@ $sql1 = "
     FROM lead_follow_ups f
     WHERE f.next_follow_up_date IS NOT NULL
     AND f.next_follow_up_date > '1000-01-01'
-    AND f.next_follow_up_date <> ''
     AND f.next_follow_up_date < ?
     AND f.status = 'pending'
     AND f.assigned_with = ?
@@ -59,7 +58,6 @@ $sql2 = "
     WHERE l.assigned_id = ?
       AND lf.next_follow_up_date IS NOT NULL
       AND lf.next_follow_up_date > '1000-01-01'
-      AND lf.next_follow_up_date <> ''
       AND DATE(lf.next_follow_up_date) <= ?
       AND l.deleted_at IS NULL
 ";
