@@ -534,4 +534,14 @@ class EmployeeController extends Controller
             echo "<h3 style='color:red'>Failed to delete employee</h3>";
         }
     }
+
+
+
+    public function externalEmployeesView()
+    {
+        $this->view("hrm/employees/external-employees", [
+            "current_route" => "hrm-external-employees",
+            "page_title"    => "Tipsoi Employees"
+        ]);
+    }
 }

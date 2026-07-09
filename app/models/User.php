@@ -60,8 +60,7 @@ class User extends Model
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    // for sales team Head
-    public function getPaginatedWithSales($limit, $offset, $search = '', $role = '')
+    public function getPaginatedWithSales($limit, $offset, $search = '', $role = '', $teamId = null)
     {
         $sql = "SELECT
                 u.*,
@@ -69,9 +68,11 @@ class User extends Model
                 e.photo AS employee_photo,
                 e.make_user,
                 d.name AS designation_name,
-                r.name AS role_name
+                r.name AS role_name,
+                t.name AS team_name,
+                (SELECT COUNT(*) FROM leads l WHERE l.assigned_id = u.id AND l.deleted_at IS NULL) AS total_assigned_leads
             " . $this->baseUserQuery() . "
-            WHERE u.role_id IN (5, 8)";
+            WHERE (u.role_id IN (5, 8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))";
 
         $params = [];
         $types = "";
@@ -85,6 +86,12 @@ class User extends Model
         if ($role) {
             $sql .= " AND u.role_id = ?";
             $params[] = $role;
+            $types .= "i";
+        }
+
+        if ($teamId) {
+            $sql .= " AND u.team_id = ?";
+            $params[] = $teamId;
             $types .= "i";
         }
 
@@ -109,13 +116,13 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
                 d.name AS designation_name,
                 r.name AS role_name
             " . $this->baseUserQuery() . "
-            WHERE u.role_id IN (5,8)"; // important change
+            WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))"; // important change
 
     $params = [];
     $types = "";
 
     // 🔥 TEAM FILTER LOGIC
-    if ($roleId == 5 && !empty($teamId)) {
+    if (in_array($roleId, [5, 9]) && !empty($teamId)) {
         $sql .= " AND u.team_id = ?";
         $params[] = $teamId;
         $types .= "i";
@@ -147,7 +154,7 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
-    public function countAllForSales($search = '', $role = '')
+    public function countAllForSales($search = '', $role = '', $teamId = null)
     {
         $sql = "SELECT COUNT(*) as total FROM users u WHERE 1";
 
@@ -155,7 +162,7 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
         $types = "";
 
         if (!$role) {
-            $sql .= " AND u.role_id IN (5, 8)";
+            $sql .= " AND (u.role_id IN (5, 8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))";
         }
 
         if ($search) {
@@ -170,6 +177,12 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
             $types .= "i";
         }
 
+        if ($teamId) {
+            $sql .= " AND u.team_id = ?";
+            $params[] = $teamId;
+            $types .= "i";
+        }
+
         $stmt = $this->db->prepare($sql);
         if ($params) {
             $stmt->bind_param($types, ...$params);
@@ -180,12 +193,12 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
     }
    public function countAllForSalesExecutive($search = '', $roleId = null, $teamId = null)
 {
-    $sql = "SELECT COUNT(*) as total FROM users u WHERE u.role_id IN (5,8)";
+    $sql = "SELECT COUNT(*) as total FROM users u WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))";
 
     $params = [];
     $types = "";
 
-    if ($roleId == 5 && !empty($teamId)) {
+    if (in_array($roleId, [5, 9]) && !empty($teamId)) {
         $sql .= " AND u.team_id = ?";
         $params[] = $teamId;
         $types .= "i";
@@ -282,7 +295,7 @@ public function getUsersByTeamAndRole($teamId)
             LEFT JOIN teams t ON t.id = u.team_id
             LEFT JOIN roles r ON r.id = u.role_id
             WHERE u.team_id = ? 
-            AND u.role_id IN (5, 8)";
+            AND (u.role_id IN (5, 8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))";
 
     $stmt = $this->db->prepare($sql);
     $stmt->bind_param("i", $teamId);
@@ -631,7 +644,7 @@ public function countSalesTeams($roleId = null, $teamId = null)
     $sql = "SELECT COUNT(u.id) as total 
             FROM users u
             LEFT JOIN employees e ON e.user_id = u.id
-            WHERE u.role_id IN (5, 8)
+            WHERE (u.role_id IN (5, 8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
               AND (e.employee_status IS NULL OR e.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
 
     $params = [];
@@ -680,18 +693,18 @@ public function getSalesTeams($roleId = null, $teamId = null, $userId = null)
             LEFT JOIN designations d ON d.id = u.designation_id
             LEFT JOIN teams t ON t.id = u.team_id
             LEFT JOIN roles r ON r.id = u.role_id
-            WHERE u.role_id IN (5, 8)
+            WHERE (u.role_id IN (5, 8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
               AND (e.employee_status IS NULL OR e.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
 
     $params = [];
     $types  = "";
 
     // 🔥 Role ভিত্তিক filter
- if (in_array($roleId, [5, 8]) && !empty($teamId)) {
-    $sql .= " AND u.team_id = ?";
-    $params[] = $teamId;
-    $types .= "i";
-}
+    if (in_array($roleId, [5, 8, 9]) && !empty($teamId)) {
+        $sql .= " AND u.team_id = ?";
+        $params[] = $teamId;
+        $types .= "i";
+    }
     elseif ($roleId == 8) {
         // Manager → শুধু নিজের team
         $sql .= " AND u.team_id = ?";

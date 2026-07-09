@@ -334,7 +334,7 @@ public function getExecutiveBookingStats($type = 'monthly')
                   " . ($type === 'yearly' ? "AND YEAR(lb.booking_date) = YEAR(CURDATE())" : "") . "
                 GROUP BY lb.sales_by_id
             ) b ON b.sales_by_id = u.id
-            WHERE u.role_id IN (5,8)
+            WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
               AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
             ORDER BY u.full_name ASC
         ";
@@ -386,7 +386,7 @@ public function getExecutiveBookingStats($type = 'monthly')
                   AND lb.sales_by_id IS NOT NULL
                 GROUP BY lb.sales_by_id
             ) b ON b.sales_by_id = u.id
-            WHERE u.role_id IN (5,8)
+            WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
               AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
             ORDER BY u.full_name ASC
         ";
@@ -631,7 +631,7 @@ public function getExecutiveFullStats($executiveId = null, $startMonth = null, $
                   AND lb.sales_by_id IS NOT NULL
                 GROUP BY lb.sales_by_id
             ) b ON b.sales_by_id = u.id
-            WHERE u.role_id IN (5,8)
+            WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
             ORDER BY u.full_name ASC
         ";
         $stmt = $this->db->prepare($sql);

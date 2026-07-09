@@ -74,6 +74,7 @@
                                 <option value="Messenger Call">Messenger Call</option>
                                 <option value="Messenger Conversesion">Messenger Conversesion</option>
                                 <option value="WA Conversesion">WA Conversesion</option>
+                                <option value="WhatsApp Message">WhatsApp Message</option>
                                 <option value="Imo Message">Imo Message</option>
                                 <option value="Phone Massaging">Phone Massaging</option>
                                 <option value="Email">Email</option>
@@ -127,8 +128,8 @@
 
                         <!-- Next Follow Up Date -->
                         <div class="col-lg-6">
-                            <label class="form-label">Next Follow Up Date*</label>
-                            <input type="date" name="next_follow_up_date" class="form-control" required>
+                            <label class="form-label">Next Follow Up Date</label>
+                            <input type="date" name="next_follow_up_date" class="form-control">
                         </div>
 
                         <!-- Next Action -->

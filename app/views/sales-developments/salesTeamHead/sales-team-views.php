@@ -21,15 +21,15 @@ $show_breadcrumb = false;
             </div>
         </div>
 
-        <!-- Role Filter -->
+        <!-- Team Filter -->
         <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4">
             <div class="card__wrapper">
                 <div class="from__input-box">
-                    <select class="form-control" name="role">
-                        <option value="">All Roles</option>
-                        <?php foreach ($roles as $role): ?>
-                            <option value="<?= $role['id'] ?>" <?= (isset($selectedRole) && $selectedRole == $role['id']) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($role['name']) ?>
+                    <select class="form-control" name="team_id">
+                        <option value="">All Teams</option>
+                        <?php foreach ($teams as $team): ?>
+                            <option value="<?= $team['id'] ?>" <?= (isset($selectedTeam) && $selectedTeam == $team['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($team['name']) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -71,29 +71,9 @@ $show_breadcrumb = false;
                                 <h4 class="mb-8"><?= htmlspecialchars($user['full_name'] ?: "No Name") ?></h4>
                                 <p class="mb-0"><?= htmlspecialchars($user['designation_name'] ?: "No Designation") ?></p>
                                 <p class="mb-0"><?= htmlspecialchars($user['email'] ?: "No email") ?></p>
-                                <p class="mb-2"> <span class="fw-semibold fs-6 pe-1">Role:</span><?= htmlspecialchars($user['role_name'] ?: "No role ") ?></p>
-                            </div>
-                            <div class="common-social mb-20">
-                                <a href="<?= $user['media_link1'] ?>"><i class="fa-brands fa-facebook-f"></i></a>
-                                <a href="<?= $user['media_link1'] ?>"><i class="fa-brands fa-linkedin-in"></i></a>
-                                <a href="tel:<?= htmlspecialchars($user['phone']) ?>" title="Call">
-                                    <i class="fa-solid fa-phone"></i>
-                                </a>
-                            </div>
-                            <div class="employee__btn">
-                                <div class="d-flex align-items-center justify-content-center gap-10">
-
-                                    <a class="btn btn-outline-theme-border"
-                                        href="<?= $base_url ?>/user-profile/<?= $user['id'] ?>">View</a>
-                                    <a class="d-none btn btn-outline-theme-border"
-                                        href="<?= $base_url ?>/edit-user/<?= $user['id'] ?>">Edit</a>
-                                    <button class="d-none removeBtnCust btn btn-outline-theme-border delete"
-                                        data-id="<?= $user['id'] ?>"
-                                        data-name="<?= $user['full_name'] ?>"
-                                        data-action="delete-user">
-                                        Delete
-                                    </button>
-                                </div>
+                                <p class="mb-0"> <span class="fw-semibold fs-6 pe-1">Role:</span><?= htmlspecialchars($user['role_name'] ?: "No role ") ?></p>
+                                <p class="mb-0"> <span class="fw-semibold fs-6 pe-1">Team:</span><?= htmlspecialchars($user['team_name'] ?: "No Team") ?></p>
+                                <p class="mb-2"> <span class="fw-semibold fs-6 pe-1">Total Leads:</span><?= (int)($user['total_assigned_leads'] ?? 0) ?></p>
                             </div>
                         </div>
                     </div>
@@ -106,11 +86,17 @@ $show_breadcrumb = false;
 
 </div>
 <!-- Pagination -->
-<div class="row my-4">
-    <div class="col-12 d-flex justify-content-center">
-        <?= paginateLinksSecondary($base_url . "/user-lists", $currentPage, $totalPages); ?>
-
-
+<div class="row my-4 align-items-center">
+    <div class="col-12 col-md-6 text-center text-md-start mb-3 mb-md-0 text-muted">
+        <?php 
+        $perPage = 10;
+        $start = ($currentPage - 1) * $perPage + 1;
+        $end = min($currentPage * $perPage, $totalUsers);
+        echo "Showing " . ($totalUsers > 0 ? $start : 0) . " to " . $end . " of " . $totalUsers . " entries";
+        ?>
+    </div>
+    <div class="col-12 col-md-6 d-flex justify-content-center justify-content-md-end">
+        <?= paginateLinksSecondary($base_url . "/sales-team-view", $currentPage, $totalPages); ?>
     </div>
 </div>
 <script>
