@@ -36,7 +36,17 @@ class SalesHeadDashboardController extends Controller
     public function index()
     {
         $roleId = $_SESSION['user']['role_id'] ?? null;
-        $teamId = $_SESSION['user']['team_id'] ?? null;
+        $sessionTeamId = $_SESSION['user']['team_id'] ?? null;
+        
+        $teamId = null;
+        if ($roleId == 5 && !empty($sessionTeamId)) {
+            $teamId = $sessionTeamId;
+        }
+
+        $followUpTeamId = null;
+        if (in_array($roleId, [5, 9]) && !empty($sessionTeamId)) {
+            $followUpTeamId = $sessionTeamId;
+        }
 
         //  Total Leads
         $totalLeads = $this->leadModel->getAll(null, $roleId, $teamId);
@@ -86,13 +96,13 @@ class SalesHeadDashboardController extends Controller
         $newFollowUpsToday = $newFollowUpsResult->fetch_assoc()['new_followups'] ?? 0;
 
         $todayFollowUpSql = "SELECT COUNT(*) AS total FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE DATE(fu.next_follow_up_date) = CURDATE() AND fu.deleted_at IS NULL AND fu.status = 'pending' AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
-        if (!empty($teamId)) {
-            $todayFollowUpSql .= " AND l.team_id = " . (int)$teamId;
+        if (!empty($followUpTeamId)) {
+            $todayFollowUpSql .= " AND l.team_id = " . (int)$followUpTeamId;
         }
         $totalTodayFollowUps = $this->db->query($todayFollowUpSql)->fetch_assoc()['total'] ?? 0;
 
         // today's follow-ups table data
-        $todayFollowUpData = $this->followUpModel->getTodaysFollowUps($teamId);
+        $todayFollowUpData = $this->followUpModel->getTodaysFollowUps($followUpTeamId);
 
 
         $weeklySalesQuery = "

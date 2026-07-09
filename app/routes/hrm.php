@@ -208,4 +208,10 @@ return [
     'hrm-external-employees'     => ['controller' => 'EmployeeController', 'method' => 'externalEmployeesView'],
     'api/hrm/employees'          => ['controller' => 'HrmApiController', 'method' => 'getErpEmployees'],
     'api/hrm/external-employees' => ['controller' => 'HrmApiController', 'method' => 'getExternalEmployees'],
+
+    // =========================================================================
+    // Batch 2: Attendance & Absence Views & API Routes
+    // =========================================================================
+    'hrm-attendance-dashboard'   => ['controller' => 'EmpAttendanceController', 'method' => 'attendanceDashboardView'],
+    'api/hrm/attendance'         => ['controller' => 'HrmApiController', 'method' => 'getAttendanceReport'],
 ];

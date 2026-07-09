@@ -83,8 +83,8 @@ if ($current_server == 3) {
 
         // Tipsoi API Configuration
         "tipsoi_base_url" => "https://app.tipsoi.ai/inovace-client/api/v1/",
-        "tipsoi_email" => "your-email@tipsoi.com",
-        "tipsoi_password" => "your-password",
+        "tipsoi_email" => "info@dpremiumhomes.com",
+        "tipsoi_password" => "Tphl2025#",
     ];
 }
 

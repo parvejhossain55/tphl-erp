@@ -676,6 +676,14 @@
                             <span class="sidebar__menu-label">Tipsoi Employees</span>
                         </a>
                     </li>
+                    <!-- Tipsoi Attendance Dashboard -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/hrm-attendance-dashboard"
+                            class="sidebar__menu-item <?= isActive('hrm-attendance-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                            <span class="sidebar__menu-label">Tipsoi Attendance</span>
+                        </a>
+                    </li>
 
                     <?php if (!$isManagement): ?>
                         <!-- department -->
