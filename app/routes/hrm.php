@@ -200,4 +200,12 @@ return [
     'store-payslip-item' => ['controller' => 'PayslipItemController', 'method' => 'store'],
     'update-payslip-item' => ['controller' => 'PayslipItemController', 'method' => 'update'],
     'delete-payslip-item' => ['controller' => 'PayslipItemController', 'method' => 'delete'],
+
+    // =========================================================================
+    // Batch 1: Employee Views & REST API Routes
+    // =========================================================================
+
+    'hrm-external-employees'     => ['controller' => 'EmployeeController', 'method' => 'externalEmployeesView'],
+    'api/hrm/employees'          => ['controller' => 'HrmApiController', 'method' => 'getErpEmployees'],
+    'api/hrm/external-employees' => ['controller' => 'HrmApiController', 'method' => 'getExternalEmployees'],
 ];

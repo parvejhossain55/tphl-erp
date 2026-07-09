@@ -22,6 +22,11 @@ if ($current_server == 1) {
         // Premium Homes API Configuration
         "premium_homes_api_url" => "https://premium-api.dvalleybd.com/api/erp",
         "premium_homes_api_key" => "tphl_erp_key_9f8e7d6c5b4a392817065",
+
+        // Tipsoi API Configuration
+        "tipsoi_base_url" => "https://app.tipsoi.ai/inovace-client/api/v1/",
+        "tipsoi_email" => "info@dpremiumhomes.com",
+        "tipsoi_password" => "Tphl2025#",
     ];
 }
 
@@ -48,6 +53,11 @@ if ($current_server == 2) {
         // Premium Homes API Configuration
         "premium_homes_api_url" => "http://127.0.0.1:8000/api/erp",
         "premium_homes_api_key" => "tphl_erp_key_9f8e7d6c5b4a392817065",
+
+        // Tipsoi API Configuration
+        "tipsoi_base_url" => "https://app.tipsoi.ai/inovace-client/api/v1/",
+        "tipsoi_email" => "your-email@tipsoi.com",
+        "tipsoi_password" => "your-password",
     ];
 }
 
@@ -70,6 +80,11 @@ if ($current_server == 3) {
         // Premium Homes API Configuration
         "premium_homes_api_url" => "http://127.0.0.1:8000/api/erp",
         "premium_homes_api_key" => "tphl_erp_key_9f8e7d6c5b4a392817065",
+
+        // Tipsoi API Configuration
+        "tipsoi_base_url" => "https://app.tipsoi.ai/inovace-client/api/v1/",
+        "tipsoi_email" => "your-email@tipsoi.com",
+        "tipsoi_password" => "your-password",
     ];
 }
 

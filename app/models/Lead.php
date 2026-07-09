@@ -131,7 +131,7 @@ class Lead extends Model
         $types  = "";
 
         // ROLE BASED FILTER
-        if (in_array($roleId, [1, 3, 5]) && !empty($teamId)) {
+        if (in_array($roleId, [1, 3, 5, 9]) && !empty($teamId)) {
             $sql .= " AND l.team_id = ?";
             $params[] = $teamId;
             $types .= "i";
@@ -286,7 +286,7 @@ class Lead extends Model
         $types  = "";
 
         //  ROLE BASED FILTER
-        if (in_array($roleId, [1, 3, 5]) && !empty($teamId)) {
+        if (in_array($roleId, [1, 3, 5, 9]) && !empty($teamId)) {
             $sql .= " AND l.team_id = ?";
             $params[] = $teamId;
             $types .= "i";
@@ -1458,7 +1458,8 @@ class Lead extends Model
             (SELECT u2.full_name
              FROM users u2
              INNER JOIN employees e2 ON u2.id = e2.user_id
-             WHERE e2.team_id = l.team_id AND u2.role_id = 5
+             WHERE e2.team_id = l.team_id AND u2.role_id IN (5, 9)
+             ORDER BY u2.role_id ASC
              LIMIT 1) AS sales_team_lead_name,
             -- Follow-up count
             COALESCE((
@@ -1584,11 +1585,12 @@ class Lead extends Model
             p.name AS project_name,
             lpc.name AS project_category_name,
             t.name AS team_name,
-            (SELECT u.full_name 
-             FROM users u 
-             INNER JOIN employees e ON u.id = e.user_id 
-             WHERE e.team_id = l.team_id AND u.role_id = 5 
-             LIMIT 1) AS sales_team_lead_name,
+             (SELECT u.full_name 
+              FROM users u 
+              INNER JOIN employees e ON u.id = e.user_id 
+              WHERE e.team_id = l.team_id AND u.role_id IN (5, 9) 
+              ORDER BY u.role_id ASC
+              LIMIT 1) AS sales_team_lead_name,
             -- ── Follow-up count (batch badge) ─────────────────────────────
             COALESCE((
                 SELECT COUNT(*)
