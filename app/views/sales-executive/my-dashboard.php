@@ -193,18 +193,18 @@
             </a>
         </div>
 
-        <!-- Today FollowUp Due -->
+        <!-- Missing Follow-Ups -->
         <div class="col-12 col-sm-6 col-lg-3">
-            <a href="<?= $GLOBALS['base_url'] ?>/today-follow-up" class="stat-card-link">
-                <div class="card__wrapper stat-card shadow-sm">
+            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter=missing_followup" class="stat-card-link">
+                <div class="card__wrapper stat-card shadow-sm" style="border-left: 4px solid #dc3545;">
                     <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right"></i></span>
                     <div class="card-body d-flex justify-content-between align-items-center">
                         <div>
-                            <p class="stat-label mb-2"><i class="fa-solid fa-calendar-check me-1"></i> Today FollowUp Due</p>
-                            <h2 class="stat-value text-info"><?= $todayFollowUp ?? 0 ?></h2>
-                            <span class="card-hint">View today's follow-ups →</span>
+                            <p class="stat-label mb-2" style="color: #b02a37; font-weight: 600;"><i class="fa-solid fa-calendar-times me-1"></i> Missing Follow-Ups</p>
+                            <h2 class="stat-value text-danger" style="font-weight: 700;"><?= $missingFollowUpCount ?? 0 ?></h2>
+                            <span class="card-hint" style="color: #dc3545;">View missing follow-ups →</span>
                         </div>
-                        <div class="card__icon"><span><i class="fa-solid fa-calendar-check"></i></span></div>
+                        <div class="card__icon" style="color: #f8d7da;"><span><i class="fa-solid fa-calendar-times"></i></span></div>
                     </div>
                 </div>
             </a>

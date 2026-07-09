@@ -80,6 +80,7 @@ class UserDashboardController extends Controller
         // $todayFollowUp  = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
         $todayFollowUp  = $this->followUpModel->getTodayFollowUpCountLoginUser($loggedUserId);
         $followUpOverdue  = $this->followUpModel->getOverdueFollowUpCountLoginUser($loggedUserId);
+        $missingFollowUpCount = $this->followUpModel->getMissingFollowUpCount($loggedUserId);
 
         $todayFollowUpComplete = $this->followUpModel->getTodayFollowUpCompleteCount($loggedUserId);
         // executive target from user model
@@ -130,6 +131,7 @@ class UserDashboardController extends Controller
             "pendingTasks"   => $pendingTasks,
             "myTotalShareSold"   => $myTotalShareSold,
             "followUpOverdue"   => $followUpOverdue,
+            "missingFollowUpCount" => $missingFollowUpCount,
             "getAllLeadsCount"    => $getAllLeadsCount,
             "monthlySiteVisitTarget"    => $monthlySiteVisitTarget,
             "monthlyBookingComplete"    => $monthlyBookingComplete,
@@ -426,6 +428,12 @@ class UserDashboardController extends Controller
         $call_status = $_GET['call_status'] ?? null;
 
         $onlyMissingFollowup = isset($_GET['filter']) && $_GET['filter'] === 'missing_followup';
+        
+        // DEBUG LOGS
+        $logFile = 'c:/xampp/htdocs/TPHL-ERP/logs/controller_debug.log';
+        $logMsg = date('Y-m-d H:i:s') . " - URL: " . $_SERVER['REQUEST_URI'] . " - Session User: " . json_encode($_SESSION['user'] ?? []) . " - GET: " . json_encode($_GET) . " - onlyMissingFollowup: " . ($onlyMissingFollowup ? 'TRUE' : 'FALSE') . "\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+
         $myAssignedClients = $this->leadModel
             ->getAllMyLeads($userId, $year, $month, $lastAction, $call_status, $onlyMissingFollowup);
 

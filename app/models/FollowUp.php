@@ -483,7 +483,10 @@ class FollowUp extends Model
         $sql = "
         SELECT COUNT(*) as total
         FROM lead_follow_ups f
-        WHERE f.next_follow_up_date < ?
+        WHERE f.next_follow_up_date IS NOT NULL
+        AND f.next_follow_up_date <> '0000-00-00'
+        AND f.next_follow_up_date <> ''
+        AND f.next_follow_up_date < ?
         AND f.status = 'pending'
         AND f.assigned_with = ?
         AND f.deleted_at IS NULL
@@ -552,25 +555,28 @@ class FollowUp extends Model
     {
         $today = date('Y-m-d');
         $sql = "
-            SELECT COUNT(DISTINCT f.lead_id) as total
-            FROM lead_follow_ups f
-            INNER JOIN leads l ON f.lead_id = l.id
-            WHERE DATE(f.next_follow_up_date) <= ?
-              AND l.assigned_id = ?
-              AND f.deleted_at IS NULL
+            SELECT COUNT(DISTINCT l.id) as total
+            FROM leads l
+            INNER JOIN (
+                SELECT t1.lead_id, t1.next_follow_up_date
+                FROM lead_follow_ups t1
+                INNER JOIN (
+                    SELECT lead_id, MAX(id) AS max_id
+                    FROM lead_follow_ups
+                    WHERE deleted_at IS NULL
+                    GROUP BY lead_id
+                ) t2 ON t1.id = t2.max_id AND t1.lead_id = t2.lead_id
+            ) lf ON lf.lead_id = l.id
+            WHERE l.assigned_id = ?
+              AND lf.next_follow_up_date IS NOT NULL
+              AND lf.next_follow_up_date <> '0000-00-00'
+              AND lf.next_follow_up_date <> ''
+              AND DATE(lf.next_follow_up_date) <= ?
               AND l.deleted_at IS NULL
-              AND NOT EXISTS (
-                  SELECT 1 
-                  FROM lead_follow_ups f2
-                  WHERE f2.lead_id = f.lead_id
-                    AND f2.follow_up_date >= DATE(f.next_follow_up_date)
-                    AND f2.id <> f.id
-                    AND f2.deleted_at IS NULL
-              )
         ";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) return 0;
-        $stmt->bind_param("si", $today, $userId);
+        $stmt->bind_param("is", $userId, $today);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         return (int)($result['total'] ?? 0);
