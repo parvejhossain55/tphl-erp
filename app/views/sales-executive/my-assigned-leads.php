@@ -173,16 +173,16 @@
 
     /* Stat Card Styles */
     .stat-card {
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
+        border-radius: 12px;
+        padding: 0 !important;
+        margin-bottom: 0 !important;
         transition: transform 0.3s ease, box-shadow 0.3s ease;
         border: none;
     }
     .stat-value {
         font-size: 1.5rem;
         font-weight: bold;
-        margin: 0.5rem 0;
+        margin: 0.2rem 0;
     }
     .stat-label {
         font-size: 11px;
@@ -239,16 +239,16 @@
 <div class="row  mb-4 align-items-stretch">
     <!-- Missing Follow-ups Stats Card -->
     <div class="col-12 col-md-4 mb-3">
-        <a href="?filter=missing_followup" class="stat-card-link">
-            <div class="card__wrapper stat-card shadow-sm <?= ($isFilterMissing ?? false) ? 'border-danger' : '' ?>" style="background: linear-gradient(135deg, #fff5f5 0%, #ffe3e3 100%); border: 1.5px solid <?= ($isFilterMissing ?? false) ? '#dc3545' : '#fecaca' ?> !important; min-height: 110px;">
+        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter=missing_followup" class="stat-card-link">
+            <div class="card__wrapper stat-card shadow-sm <?= ($isFilterMissing ?? false) ? 'border-danger' : '' ?>" style="background: linear-gradient(135deg, #fff5f5 0%, #ffe3e3 100%); border: 1.5px solid <?= ($isFilterMissing ?? false) ? '#dc3545' : '#fecaca' ?> !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-danger"></i></span>
-                <div class="card-body d-flex justify-content-between align-items-center p-3">
+                <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
                     <div>
-                        <p class="stat-label mb-2 text-danger"><i class="fa-solid fa-bell-slash me-1"></i> Missing Follow-Ups (Today)</p>
-                        <h2 class="stat-value text-danger mb-1" style="font-size: 2rem; font-weight: 800;"><?= $missingFollowUpCount ?? 0 ?></h2>
-                        <span class="card-hint text-danger" style="font-size: 11px;">Click to view missing follow-ups →</span>
+                        <p class="stat-label mb-1 text-danger"><i class="fa-solid fa-bell-slash me-1"></i> Missing Follow-Ups</p>
+                        <h2 class="stat-value text-danger mb-1" style="font-size: 1.6rem; font-weight: 800;"><?= $missingFollowUpCount ?? 0 ?></h2>
+                        <span class="card-hint text-danger" style="font-size: 10px; margin-top: 0;">Click to view missing follow-ups →</span>
                     </div>
-                    <div class="card__icon text-danger" style="opacity: 0.15; font-size: 2rem;"><i class="fa-solid fa-bell-slash"></i></div>
+                    <div class="card__icon text-danger" style="opacity: 0.15; font-size: 1.8rem;"><i class="fa-solid fa-bell-slash"></i></div>
                 </div>
             </div>
         </a>
@@ -257,18 +257,18 @@
     <!-- Duplicate Assigned Leads Card (Team-based) -->
     <?php if (!empty($duplicateGroups)): ?>
     <div class="col-12 col-md-8 mb-3">
-        <div class="alert alert-danger border-0 shadow-sm mb-0 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2 h-100"
+        <div class="alert alert-danger border-0 shadow-sm mb-0 p-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2 h-100"
              style="background:linear-gradient(135deg,#fff5f5,#ffe0e0);border-left:4px solid #dc3545 !important;border-radius:10px;">
             <div class="d-flex align-items-center gap-3">
                 <div class="rounded-circle d-flex align-items-center justify-content-center"
-                     style="width:42px;height:42px;background:#dc3545;flex-shrink:0;">
-                    <i class="bi bi-exclamation-triangle-fill text-white" style="font-size:1.1rem;"></i>
+                     style="width:36px;height:36px;background:#dc3545;flex-shrink:0;">
+                    <i class="bi bi-exclamation-triangle-fill text-white" style="font-size:1rem;"></i>
                 </div>
                 <div>
-                    <div class="fw-bold text-danger" style="font-size:.95rem;">
+                    <div class="fw-bold text-danger" style="font-size:.9rem; line-height: 1.2;">
                         &#9888; Duplicate Leads &mdash; In Your Team &amp; Also in Other Teams
                     </div>
-                    <div class="text-muted" style="font-size:.78rem;">
+                    <div class="text-muted" style="font-size:.75rem;">
                         <strong><?= $duplicateCount ?></strong> leads from your team are also assigned in
                         <span class="fw-semibold text-danger">other teams</span> or
                         <span class="fw-semibold text-danger">other members</span>
@@ -701,7 +701,6 @@
                                                     </span>
                                                 <?php endif; ?>
                                             </a>
-
                                             <!-- Booking -->
                                             <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
                                                 class="btn btn-secondary btn-sm position-relative"
@@ -713,8 +712,6 @@
                                             </a>
                                         </div>
                                     </td>
-
-
                                 </tr>
                             <?php endforeach; ?>
 

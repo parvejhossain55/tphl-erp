@@ -139,6 +139,12 @@
                                             class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today
                                             Follow Up <span class="badge bg-primary ms-2"><?= $todayCount ?></span> </a>
                                     </li>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/my-all-assigned-leads?filter=missing_followup"
+                                            class="sidebar__menu-item <?= ($current_route === 'my-all-assigned-leads' && isset($_GET['filter']) && $_GET['filter'] === 'missing_followup') ? 'active' : '' ?>">
+                                            Missing Follow-Ups
+                                        </a>
+                                    </li>
                                 <?php endif; ?>
                                 <?php if (!$isManagement): ?>
                                     <li class="slide">
@@ -430,6 +436,12 @@
                             <a href="<?= $base_url ?>/today-follow-up"
                                 class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today Follow
                                 Up <span class="badge bg-primary ms-2"><?= $todayCount ?></span> </a>
+                        </li>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/my-all-assigned-leads?filter=missing_followup"
+                                class="sidebar__menu-item <?= ($current_route === 'my-all-assigned-leads' && isset($_GET['filter']) && $_GET['filter'] === 'missing_followup') ? 'active' : '' ?>">
+                                Missing Follow-Ups
+                            </a>
                         </li>
                         <li class="slide">
                             <a href="<?= $base_url ?>/upcoming-follow-up"

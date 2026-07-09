@@ -606,19 +606,11 @@ class Lead extends Model
         }
 
         if ($only_missing_followup) {
-            $sql .= " AND EXISTS (
-                SELECT 1 FROM lead_follow_ups f_miss
-                WHERE f_miss.lead_id = leads.id
-                  AND DATE(f_miss.next_follow_up_date) <= CURDATE()
-                  AND f_miss.deleted_at IS NULL
-                  AND NOT EXISTS (
-                      SELECT 1 FROM lead_follow_ups f_check
-                      WHERE f_check.lead_id = f_miss.lead_id
-                        AND f_check.follow_up_date >= DATE(f_miss.next_follow_up_date)
-                        AND f_check.id <> f_miss.id
-                        AND f_check.deleted_at IS NULL
-                  )
-            )";
+            $sql .= " AND lf.next_follow_up_date IS NOT NULL
+                      AND lf.next_follow_up_date <> '0000-00-00'
+                      AND lf.next_follow_up_date <> ''
+                      AND DATE(lf.next_follow_up_date) <= CURDATE()
+                      AND lf.deleted_at IS NULL";
         }
 
         // Try sorting by created_at instead
