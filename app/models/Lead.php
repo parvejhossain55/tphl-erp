@@ -230,9 +230,10 @@ class Lead extends Model
         }
 
         if (!empty($projectId)) {
-            $sql .= " AND l.project_id = ?";
+            $sql .= " AND (l.project_id = ? OR (l.project_category_id IS NOT NULL AND l.project_category_id = (SELECT category_id FROM projects WHERE id = ? LIMIT 1)))";
             $params[] = $projectId;
-            $types .= "i";
+            $params[] = $projectId;
+            $types .= "ii";
         }
         if (!empty($projectCategoryId)) {
             $sql .= " AND l.project_category_id = ?";
@@ -421,9 +422,10 @@ class Lead extends Model
 
 
         if (!empty($projectId)) {
-            $sql .= " AND l.project_id = ?";
+            $sql .= " AND (l.project_id = ? OR (l.project_category_id IS NOT NULL AND l.project_category_id = (SELECT category_id FROM projects WHERE id = ? LIMIT 1)))";
             $params[] = $projectId;
-            $types .= "i";
+            $params[] = $projectId;
+            $types .= "ii";
         }
         if (!empty($projectCategoryId)) {
             $sql .= " AND l.project_category_id = ?";
@@ -944,36 +946,36 @@ class Lead extends Model
         }
 
         // Assign variables (CSV columns first)
-        $campaign_name = $data['campaign_name'] ?? null;
-        $platform = $data['platform'] ?? null;
-        $which_apartment_size_are_you_interested_in = $data['which_apartment_size_are_you_interested_in'] ?? null;
-        $which_floor_are_you_for_shop = $data['which_floor_are_you_for_shop'] ?? null;
-        $when_are_you_planning_to_buy = $data['when_are_you_planning_to_buy'] ?? null;
-        $would_you_like_to_schedule_a_site_visit = $data['would_you_like_to_schedule_a_site_visit'] ?? null;
-        $when_is_the_best_time_to_contact_you = $data['when_is_the_best_time_to_contact_you'] ?? null;
-        $job_title = $data['job_title'] ?? null;
-        $city = $data['city'] ?? null;
+        $campaign_name = isset($data['campaign_name']) ? mb_substr((string)$data['campaign_name'], 0, 255, 'UTF-8') : null;
+        $platform = isset($data['platform']) ? mb_substr((string)$data['platform'], 0, 100, 'UTF-8') : null;
+        $which_apartment_size_are_you_interested_in = isset($data['which_apartment_size_are_you_interested_in']) ? mb_substr((string)$data['which_apartment_size_are_you_interested_in'], 0, 100, 'UTF-8') : null;
+        $which_floor_are_you_for_shop = isset($data['which_floor_are_you_for_shop']) ? mb_substr((string)$data['which_floor_are_you_for_shop'], 0, 50, 'UTF-8') : null;
+        $when_are_you_planning_to_buy = isset($data['when_are_you_planning_to_buy']) ? mb_substr((string)$data['when_are_you_planning_to_buy'], 0, 200, 'UTF-8') : null;
+        $would_you_like_to_schedule_a_site_visit = isset($data['would_you_like_to_schedule_a_site_visit']) ? mb_substr((string)$data['would_you_like_to_schedule_a_site_visit'], 0, 200, 'UTF-8') : null;
+        $when_is_the_best_time_to_contact_you = isset($data['when_is_the_best_time_to_contact_you']) ? mb_substr((string)$data['when_is_the_best_time_to_contact_you'], 0, 50, 'UTF-8') : null;
+        $job_title = isset($data['job_title']) ? mb_substr((string)$data['job_title'], 0, 100, 'UTF-8') : null;
+        $city = isset($data['city']) ? mb_substr((string)$data['city'], 0, 100, 'UTF-8') : null;
 
         // Existing fields
-        $full_name = $data['full_name'] ?? null;
-        $father_name = $data['father_name'] ?? null;
-        $mother_name = $data['mother_name'] ?? null;
+        $full_name = isset($data['full_name']) ? mb_substr((string)$data['full_name'], 0, 150, 'UTF-8') : null;
+        $father_name = isset($data['father_name']) ? mb_substr((string)$data['father_name'], 0, 100, 'UTF-8') : null;
+        $mother_name = isset($data['mother_name']) ? mb_substr((string)$data['mother_name'], 0, 100, 'UTF-8') : null;
         $dob = isset($data['dob']) && trim($data['dob']) !== ''
             ? $data['dob']
             : null;
-        $permanent_address = $data['permanent_address'] ?? null;
-        $nid_or_passport = $data['nid_or_passport'] ?? null;
-        $phone_number = $data['phone_number'] ?? null;
-        $alt_phone_number = $data['alt_phone_number'] ?? null;
-        $email = $data['email'] ?? null;
+        $permanent_address = isset($data['permanent_address']) ? mb_substr((string)$data['permanent_address'], 0, 250, 'UTF-8') : null;
+        $nid_or_passport = isset($data['nid_or_passport']) ? mb_substr((string)$data['nid_or_passport'], 0, 100, 'UTF-8') : null;
+        $phone_number = isset($data['phone_number']) ? mb_substr((string)$data['phone_number'], 0, 20, 'UTF-8') : null;
+        $alt_phone_number = isset($data['alt_phone_number']) ? mb_substr((string)$data['alt_phone_number'], 0, 30, 'UTF-8') : null;
+        $email = isset($data['email']) ? mb_substr((string)$data['email'], 0, 150, 'UTF-8') : null;
         $source_type_id = $data['source_type_id'] ?? null;
         $assigned_id = $data['assigned_id'] ?? null;
-        $address = $data['address'] ?? null;
+        $address = isset($data['address']) ? mb_substr((string)$data['address'], 0, 255, 'UTF-8') : null;
         $pref_location_id = $data['pref_location_id'] ?? null;
-        $designation = $data['designation'] ?? null;
+        $designation = isset($data['designation']) ? mb_substr((string)$data['designation'], 0, 255, 'UTF-8') : null;
         $project_id = $data['project_id'] ?? null;
         $project_category_id = $data['project_category_id'] ?? null;
-        $pref_flat_size = $data['pref_flat_size'] ?? null;
+        $pref_flat_size = isset($data['pref_flat_size']) ? mb_substr((string)$data['pref_flat_size'], 0, 250, 'UTF-8') : null;
         $communication_type = $data['communication_type'] ?? null;
         $tags = $data['tags'] ?? null;
         $description = $data['description'] ?? null;
@@ -981,10 +983,10 @@ class Lead extends Model
         $status = $data['status'] ?? 'active';
         $lead_quality = $data['lead_quality'] ?? 'Pending';
         $lead_type = $data['lead_type'] ?? null;
-        $company_name = isset($data['company_name']) ? substr((string)$data['company_name'], 0, 255) : null;
+        $company_name = isset($data['company_name']) ? mb_substr((string)$data['company_name'], 0, 150, 'UTF-8') : null;
         $team_id = $data['team_id'] ?? null;
         $created_by = $data['created_by'] ?? null;
-        $country = $data['country'] ?? null;
+        $country = isset($data['country']) ? mb_substr((string)$data['country'], 0, 200, 'UTF-8') : null;
 
         // Bind parameters (CSV first, then existing)
         $stmt->bind_param(
@@ -1441,7 +1443,7 @@ class Lead extends Model
     /**
      * Count marketing leads for AJAX pagination (mirrors getMarketingLeadsFlexible filters)
      */
-    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false)
+    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null)
     {
         $sql = "SELECT COUNT(*) AS total FROM leads l WHERE l.deleted_at IS NULL AND l.uploaded_from = 'From Campaign'";
 
@@ -1471,6 +1473,12 @@ class Lead extends Model
         if ($teamId) {
             $sql .= " AND l.team_id = ?";
             $params[] = $teamId;
+            $types   .= "i";
+        }
+
+        if ($projectCategoryId) {
+            $sql .= " AND l.project_category_id = ?";
+            $params[] = $projectCategoryId;
             $types   .= "i";
         }
 
@@ -1514,7 +1522,7 @@ class Lead extends Model
     /**
      * Paginated marketing leads for AJAX (same contact_status logic, adds LIMIT/OFFSET + search)
      */
-    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false)
+    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null)
     {
         $sql = "
         SELECT
@@ -1594,6 +1602,12 @@ class Lead extends Model
         if ($teamId) {
             $sql .= " AND l.team_id = ?";
             $params[] = $teamId;
+            $types   .= "i";
+        }
+
+        if ($projectCategoryId) {
+            $sql .= " AND l.project_category_id = ?";
+            $params[] = $projectCategoryId;
             $types   .= "i";
         }
 
@@ -1850,6 +1864,16 @@ class Lead extends Model
     {
         $phoneNumber = trim($phoneNumber ?? '');
         $email = trim($email ?? '');
+
+        // Ignored dummy values and placeholders to prevent false duplicates
+        $ignoredValues = ['', 'n/a', 'na', 'none', 'a', 'null', 'undefined', '—', '-'];
+
+        if (in_array(strtolower($phoneNumber), $ignoredValues) || strlen(preg_replace('/[^0-9]/', '', $phoneNumber)) < 5) {
+            $phoneNumber = '';
+        }
+        if (in_array(strtolower($email), $ignoredValues) || strpos($email, '@') === false) {
+            $email = '';
+        }
         
         if (empty($phoneNumber) && empty($email)) {
             return null;

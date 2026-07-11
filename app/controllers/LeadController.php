@@ -1116,7 +1116,8 @@ class LeadController extends Controller
 
         if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== 0) {
             setError("CSV upload failed");
-            return;
+            header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+            exit;
         }
 
         // FORM থেকে team_id & project_category_id
@@ -1125,7 +1126,8 @@ class LeadController extends Controller
 
         if (!$team_id) {
             setError("Please select a team");
-            return;
+            header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+            exit;
         }
 
         $fileTmp = $_FILES['csv_file']['tmp_name'];
@@ -1133,11 +1135,29 @@ class LeadController extends Controller
 
         if ($ext !== 'csv') {
             setError("Only CSV files allowed");
-            return;
+            header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+            exit;
         }
 
-        if (($handle = fopen($fileTmp, "r")) !== false) {
+        // Move to temp location
+        $uploadDir = __DIR__ . '/../../public/uploads/csv_imports/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
 
+        $tempName = 'temp_dm_import_' . date('YmdHis') . '_' . uniqid() . '.csv';
+        $tempPath = $uploadDir . $tempName;
+
+        if (!move_uploaded_file($fileTmp, $tempPath)) {
+            setError("Failed to upload file.");
+            header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+            exit;
+        }
+
+        $issues = [];
+        $rowIndex = 1;
+
+        if (($handle = fopen($tempPath, "r")) !== false) {
             //  HEADER read + encoding fix
             $header = fgetcsv($handle);
             $header = array_map(function ($value) {
@@ -1145,11 +1165,7 @@ class LeadController extends Controller
             }, $header);
 
             while (($row = fgetcsv($handle, 1000, ",")) !== false) {
-
-                //  ROW encoding fix
-                $row = array_map(function ($value) {
-                    return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
-                }, $row);
+                $rowIndex++;
 
                 // skip empty row
                 if (count(array_filter($row)) === 0) {
@@ -1158,11 +1174,75 @@ class LeadController extends Controller
 
                 // header mismatch safe check
                 if (count($header) !== count($row)) {
+                    $issues[] = "Row {$rowIndex}: Column count mismatch with header.";
                     continue;
                 }
 
+                //  ROW encoding fix
+                $row = array_map(function ($value) {
+                    return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
+                }, $row);
+
                 $data = array_combine($header, $row);
 
+                // Check lengths of varchar columns to generate warning issues
+                if (isset($data['job_title']) && mb_strlen((string)$data['job_title'], 'UTF-8') > 100) {
+                    $issues[] = "Row {$rowIndex}: Job Title is too long (" . mb_strlen((string)$data['job_title'], 'UTF-8') . " chars, limit 100).";
+                }
+                if (isset($data['company_name']) && mb_strlen((string)$data['company_name'], 'UTF-8') > 150) {
+                    $issues[] = "Row {$rowIndex}: Company Name is too long (" . mb_strlen((string)$data['company_name'], 'UTF-8') . " chars, limit 150).";
+                }
+                if (isset($data['full_name']) && mb_strlen((string)$data['full_name'], 'UTF-8') > 150) {
+                    $issues[] = "Row {$rowIndex}: Full Name is too long (" . mb_strlen((string)$data['full_name'], 'UTF-8') . " chars, limit 150).";
+                }
+                if (isset($data['platform']) && mb_strlen((string)$data['platform'], 'UTF-8') > 100) {
+                    $issues[] = "Row {$rowIndex}: Platform name is too long (" . mb_strlen((string)$data['platform'], 'UTF-8') . " chars, limit 100).";
+                }
+                if (isset($data['phone_number']) && mb_strlen((string)$data['phone_number'], 'UTF-8') > 20) {
+                    $issues[] = "Row {$rowIndex}: Phone Number is too long (" . mb_strlen((string)$data['phone_number'], 'UTF-8') . " chars, limit 20).";
+                }
+            }
+            fclose($handle);
+        }
+
+        // If there are issues, save temp data in session and show confirmation
+        if (!empty($issues)) {
+            $_SESSION['dm_csv_temp_file'] = $tempPath;
+            $_SESSION['dm_csv_metadata'] = [
+                'team_id' => $team_id,
+                'project_category_id' => $project_category_id
+            ];
+            $_SESSION['dm_csv_issues'] = $issues;
+            header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+            exit;
+        }
+
+        // Otherwise, import directly
+        $this->executeImport($tempPath, $team_id, $project_category_id);
+        unlink($tempPath);
+
+        setSuccess("CSV imported successfully");
+        header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+        exit;
+    }
+
+    private function executeImport($filePath, $team_id, $project_category_id)
+    {
+        if (($handle = fopen($filePath, "r")) !== false) {
+            $header = fgetcsv($handle);
+            $header = array_map(function ($value) {
+                return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
+            }, $header);
+
+            while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+                $row = array_map(function ($value) {
+                    return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
+                }, $row);
+
+                if (count(array_filter($row)) === 0) continue;
+                if (count($header) !== count($row)) continue;
+
+                $data = array_combine($header, $row);
                 $data['source_type_id'] = (int)($data['source_type_id'] ?? 0);
                 $data['status'] = 'active';
                 $data['visibility'] = $data['visibility'] ?? 'public';
@@ -1174,21 +1254,56 @@ class LeadController extends Controller
                 try {
                     $this->leadModel->create($data);
                 } catch (Exception $e) {
-                    // optional: log error instead of breaking পুরো import
                     error_log("CSV Import Error: " . $e->getMessage());
                     continue;
                 }
             }
-
             fclose($handle);
+        }
+    }
 
-            setSuccess("CSV imported successfully");
+    public function confirmImportCsv()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $tempFile = $_SESSION['dm_csv_temp_file'] ?? null;
+        $meta = $_SESSION['dm_csv_metadata'] ?? null;
+
+        if (!$tempFile || !file_exists($tempFile) || !$meta) {
+            setError("Import session expired or file not found.");
             header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
             exit;
-        } else {
-            setError("Unable to read CSV file");
-            return;
         }
+
+        $this->executeImport($tempFile, $meta['team_id'], $meta['project_category_id']);
+
+        // Cleanup
+        unlink($tempFile);
+        unset($_SESSION['dm_csv_temp_file']);
+        unset($_SESSION['dm_csv_metadata']);
+        unset($_SESSION['dm_csv_issues']);
+
+        setSuccess("CSV imported successfully with truncations applied.");
+        header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+        exit;
+    }
+
+    public function cancelImportCsv()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $tempFile = $_SESSION['dm_csv_temp_file'] ?? null;
+        if ($tempFile && file_exists($tempFile)) {
+            unlink($tempFile);
+        }
+
+        unset($_SESSION['dm_csv_temp_file']);
+        unset($_SESSION['dm_csv_metadata']);
+        unset($_SESSION['dm_csv_issues']);
+
+        setError("CSV Import cancelled by user.");
+        header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+        exit;
     }
 // form lead list
     public function importCsvBulkLeads()

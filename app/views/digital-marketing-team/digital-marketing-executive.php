@@ -681,6 +681,19 @@
             </select>
           </div>
 
+          <!-- Project Category Filter -->
+          <div class="col-md-3 col-6">
+            <label class="form-label small text-muted fw-semibold">Project Category</label>
+            <select name="project_category_id" class="form-select form-select-sm select2">
+              <option value="">All Categories</option>
+              <?php foreach ($categories as $category): ?>
+                <option value="<?= $category['id'] ?>" <?= ($selected_project_category_id ?? '') == $category['id'] ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($category['name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
           <!-- Lead Age -->
           <div class="col-md-2 col-6">
             <label class="form-label small text-muted fw-semibold">Lead Age</label>
@@ -908,6 +921,7 @@
     duplicates_only: "<?= isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1' ? '1' : '' ?>",
     from_date      : "<?= htmlspecialchars($_GET['from_date']      ?? '') ?>",
     to_date        : "<?= htmlspecialchars($_GET['to_date']        ?? '') ?>",
+    project_category_id : "<?= htmlspecialchars($_GET['project_category_id'] ?? '') ?>",
   };
 
   let dmCurrentPage = 1;
@@ -1088,3 +1102,48 @@
     }
   });
 </script>
+
+<!-- CSV Import Warning Modal -->
+<?php
+$dmCsvIssues = $_SESSION['dm_csv_issues'] ?? [];
+unset($_SESSION['dm_csv_issues']);
+?>
+<?php if (!empty($dmCsvIssues)): ?>
+<div class="modal fade" id="dmCsvIssuesModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark border-0">
+        <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i> CSV Import Warning (Data Exceeds Limits)</h5>
+      </div>
+      <div class="modal-body">
+        <p class="text-danger fw-semibold" style="font-size: .9rem;">
+          The following rows in your CSV contain values that exceed the database column size limits. 
+          If you proceed, these values will be automatically truncated (cut short) to fit the database columns:
+        </p>
+        <div class="alert alert-light border shadow-sm my-3" style="max-height: 220px; overflow-y: auto; background-color: #fcfcfc;">
+          <ul class="mb-0 text-muted small" style="line-height: 1.6; list-style-type: square; padding-left: 1.2rem;">
+            <?php foreach ($dmCsvIssues as $issue): ?>
+              <li class="mb-1 text-dark"><?= htmlspecialchars($issue) ?></li>
+            <?php endforeach; ?>
+          </ul>
+        </div>
+        <p class="mb-0 text-muted small">Do you want to proceed and import the leads with these automatic truncations applied?</p>
+      </div>
+      <div class="modal-footer border-0">
+        <form action="<?= $GLOBALS['base_url'] ?>/leads-import-csv-cancel" method="post" class="d-inline">
+          <button type="submit" class="btn btn-outline-secondary btn-sm px-3">Cancel Import</button>
+        </form>
+        <form action="<?= $GLOBALS['base_url'] ?>/leads-import-csv-confirm" method="post" class="d-inline">
+          <button type="submit" class="btn btn-warning text-dark btn-sm px-3 fw-semibold">Proceed & Import Anyway</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var myModal = new bootstrap.Modal(document.getElementById('dmCsvIssuesModal'));
+    myModal.show();
+  });
+</script>
+<?php endif; ?>

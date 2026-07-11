@@ -20,6 +20,8 @@ return [
     'edit-lead/(\d+)' => ['controller' => 'LeadController', 'method' => 'edit'],
     'view-lead/(\d+)' => ['controller' => 'LeadController', 'method' => 'show'],
     'leads-import-csv' => ['controller' => 'LeadController', 'method' => 'importCsv'],
+    'leads-import-csv-confirm' => ['controller' => 'LeadController', 'method' => 'confirmImportCsv'],
+    'leads-import-csv-cancel' => ['controller' => 'LeadController', 'method' => 'cancelImportCsv'],
     'bulk-leads-import-csv' => ['controller' => 'LeadController', 'method' => 'importCsvBulkLeads'],
     'bulk-leads-import-execute' => ['controller' => 'LeadController', 'method' => 'executeCsvBulkLeads'],
     'delete-lead-ajax' => ['controller' => 'LeadController', 'method' => 'deleteLeadAjax'],

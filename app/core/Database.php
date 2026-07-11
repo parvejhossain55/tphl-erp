@@ -18,6 +18,12 @@ class Database {
 
         // Set UTF-8 charset for proper Bengali / Unicode support
         $this->conn->set_charset("utf8mb4");
+
+        // Set MySQL timezone to Bangladesh time (UTC+6)
+        $this->conn->query("SET time_zone = '+06:00'");
+
+        // Set PHP default timezone to Asia/Dhaka
+        date_default_timezone_set('Asia/Dhaka');
     }
 
     public function query($sql){
