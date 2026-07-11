@@ -981,7 +981,7 @@ class Lead extends Model
         $status = $data['status'] ?? 'active';
         $lead_quality = $data['lead_quality'] ?? 'Pending';
         $lead_type = $data['lead_type'] ?? null;
-        $company_name = $data['company_name'] ?? null;
+        $company_name = isset($data['company_name']) ? substr((string)$data['company_name'], 0, 255) : null;
         $team_id = $data['team_id'] ?? null;
         $created_by = $data['created_by'] ?? null;
         $country = $data['country'] ?? null;
@@ -1109,6 +1109,9 @@ class Lead extends Model
         $full_name             = $v('full_name');
         $job_title             = $v('job_title');
         $company_name          = $v('company_name');
+        if ($company_name !== null) {
+            $company_name = substr($company_name, 0, 255);
+        }
         $phone                 = $v('phone');
         $alt_phone_number      = $v('alt_phone_number');
         $email                 = $v('email');
