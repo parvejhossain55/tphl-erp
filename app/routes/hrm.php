@@ -214,4 +214,24 @@ return [
     // =========================================================================
     'hrm-attendance-dashboard'   => ['controller' => 'EmpAttendanceController', 'method' => 'attendanceDashboardView'],
     'api/hrm/attendance'         => ['controller' => 'HrmApiController', 'method' => 'getAttendanceReport'],
+
+    // =========================================================================
+    // Batch 3: Leave History & Requests Views & API Routes
+    // =========================================================================
+    'hrm-leave-history'          => ['controller' => 'LeaveController', 'method' => 'leaveHistoryDashboardView'],
+    'api/hrm/leave-history'      => ['controller' => 'HrmApiController', 'method' => 'getLeaveHistory'],
+
+    // =========================================================================
+    // Batch 4: Leave Balances & Analytics Views & API Routes
+    // =========================================================================
+    'hrm-leave-balances'         => ['controller' => 'LeaveController', 'method' => 'leaveBalancesDashboardView'],
+    'api/hrm/leave-balances'     => ['controller' => 'HrmApiController', 'method' => 'getLeaveBalances'],
+
+    // =========================================================================
+    // Batch 5: Tipsoi Pending Requests Views & API Routes
+    // =========================================================================
+    'hrm-tipsoi-requests'        => ['controller' => 'LeaveController', 'method' => 'tipsoiRequestsDashboardView'],
+    'api/hrm/tipsoi-requests'    => ['controller' => 'HrmApiController', 'method' => 'getTipsoiRequests'],
+    'api/hrm/tipsoi-holidays'    => ['controller' => 'HrmApiController', 'method' => 'getTipsoiHolidays'],
+    'api/hrm/import-tipsoi-holiday' => ['controller' => 'HrmApiController', 'method' => 'importTipsoiHoliday'],
 ];

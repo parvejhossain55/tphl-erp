@@ -684,6 +684,38 @@
                             <span class="sidebar__menu-label">Tipsoi Attendance</span>
                         </a>
                     </li>
+                    <!-- Tipsoi Leave History Dashboard -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/hrm-leave-history"
+                            class="sidebar__menu-item <?= isActive('hrm-leave-history', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-calendar-minus"></i></div>
+                            <span class="sidebar__menu-label">Tipsoi Leave History</span>
+                        </a>
+                    </li>
+                    <!-- Tipsoi Leave Balances Dashboard -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/hrm-leave-balances"
+                            class="sidebar__menu-item <?= isActive('hrm-leave-balances', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-calculator"></i></div>
+                            <span class="sidebar__menu-label">Tipsoi Leave Balances</span>
+                        </a>
+                    </li>
+                    <!-- All Pending Requests -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/hrm-tipsoi-requests"
+                            class="sidebar__menu-item <?= isActive('hrm-tipsoi-requests', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-envelope-open-text"></i></div>
+                            <span class="sidebar__menu-label">All Pending Requests</span>
+                        </a>
+                    </li>
+                    <!-- Tipsoi Holidays -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/holiday-lists?tab=tipsoi"
+                            class="sidebar__menu-item <?= (isset($_GET['tab']) && $_GET['tab'] === 'tipsoi' && isActive('holiday-lists', $current_route)) ? 'active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-umbrella-beach"></i></div>
+                            <span class="sidebar__menu-label">Tipsoi Holidays</span>
+                        </a>
+                    </li>
 
                     <?php if (!$isManagement): ?>
                         <!-- department -->
@@ -702,7 +734,7 @@
                                 <span class="sidebar__menu-label">Designation Lists</span>
                             </a>
                         </li>
-                        <!-- designation -->
+                        <!-- designation 
                         <li class="slide ">
                             <a href="<?= $base_url ?>/holiday-lists"
                                 class="sidebar__menu-item <?= isActive('holiday-lists', $current_route) ?>">
@@ -710,6 +742,7 @@
                                 <span class="sidebar__menu-label">Holiday Manage</span>
                             </a>
                         </li>
+                        -->
                         <!-- Day Off Manage -->
                         <li class="slide ">
                             <a href="<?= $base_url ?>/day-off"
@@ -730,7 +763,7 @@
                                 <span class="sidebar__menu-label">Generate Template</span>
                             </a>
                         </li>
-                        <li class="slide has-sub <?= isActive(['create-attendance', 'attendance-list'], $current_route) ?>">
+                        <li class="slide has-sub d-none <?= isActive(['create-attendance', 'attendance-list'], $current_route) ?>">
                             <a href="javascript:void(0);"
                                 class="sidebar__menu-item <?= isActive(['create-attendance', 'attendance-list'], $current_route) ? 'active' : '' ?>">
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -749,7 +782,7 @@
                             </ul>
                         </li>
 
-                        <li class="slide has-sub <?= isActive(['leave-types', 'leave-lists'], $current_route) ?>">
+                        <li class="slide has-sub d-none <?= isActive(['leave-types', 'leave-lists'], $current_route) ?>">
                             <a href="javascript:void(0);"
                                 class="sidebar__menu-item <?= isActive(['leave-types', 'leave-lists'], $current_route) ? 'active' : '' ?>">
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>

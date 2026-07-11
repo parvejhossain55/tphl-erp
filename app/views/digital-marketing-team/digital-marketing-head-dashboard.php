@@ -649,6 +649,19 @@
             </select>
           </div>
 
+          <!-- Project Category Filter -->
+          <div class="col-md-3 col-6">
+            <label class="form-label small text-muted fw-semibold">Project Category</label>
+            <select name="project_category_id" class="form-select form-select-sm select2">
+              <option value="">All Categories</option>
+              <?php foreach ($categories as $category): ?>
+                <option value="<?= $category['id'] ?>" <?= ($selected_project_category_id ?? '') == $category['id'] ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($category['name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
           <!-- Lead Age -->
           <div class="col-md-2 col-6">
             <label class="form-label small text-muted fw-semibold">Lead Age</label>
@@ -807,6 +820,7 @@
     duplicates_only: "<?= isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1' ? '1' : '' ?>",
     from_date      : "<?= htmlspecialchars($_GET['from_date']      ?? '') ?>",
     to_date        : "<?= htmlspecialchars($_GET['to_date']        ?? '') ?>",
+    project_category_id : "<?= htmlspecialchars($_GET['project_category_id'] ?? '') ?>",
   };
 
   let dmHeadPage      = 1;
