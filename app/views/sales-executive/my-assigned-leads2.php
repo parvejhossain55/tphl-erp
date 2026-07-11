@@ -282,7 +282,7 @@
                                         $displayName .= ' (' . $lead['project_category_name'] . ')';
                                     }
 
-                                    $plainText = strip_tags($displayName);
+                                    $plainText = strip_tags($displayName ?? '');
                                     ?>
 
 
@@ -680,6 +680,15 @@
             </form>
         </div>
         <?php foreach ($myAllleads as $key => $lead): ?>
+            <?php
+            $displayName = !empty($lead['campaign_name'])
+                ? $lead['campaign_name']
+                : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
+            if (!empty($lead['project_category_name'])) {
+                $displayName .= ' (' . $lead['project_category_name'] . ')';
+            }
+            $plainText = strip_tags($displayName ?? '');
+            ?>
             <!-- Lead Card -->
             <div class="lead-card  mb-3" data-id="<?= $lead['id'] ?>">
                 <div class="lead-card-header d-flex justify-content-between align-items-start gap-1">

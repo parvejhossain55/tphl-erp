@@ -46,7 +46,7 @@
                                         if (!empty($lead['project_category_name'])) {
                                             $displayName .= ' (' . $lead['project_category_name'] . ')';
                                         }
-                                        $plainText = strip_tags($displayName);
+                                        $plainText = strip_tags($displayName ?? '');
                                         ?>
                                        <tr data-id="<?= $lead['id'] ?>">
                                            <!-- S/L -->
@@ -308,7 +308,7 @@
                     if (!empty($lead['project_category_name'])) {
                         $displayName .= ' (' . $lead['project_category_name'] . ')';
                     }
-                    $plainText = strip_tags($displayName);
+                    $plainText = strip_tags($displayName ?? '');
 
                     // Clean phone for call link
                     $phone = !empty($lead['phone_number']) ? preg_replace('/[^0-9+]/', '', $lead['phone_number']) : '';
