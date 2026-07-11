@@ -299,4 +299,43 @@ class LeaveController extends Controller
         echo json_encode(['remaining_days' => $remaining]);
         exit;
     }
+
+    public function leaveHistoryDashboardView()
+    {
+        // Default date range: current year (Jan 1 to Dec 31)
+        $default_from = date('Y-01-01');
+        $default_to = date('Y-12-31');
+
+        $this->view("hrm/leaves/leave-history", [
+            "current_route"   => "hrm-leave-history",
+            "page_title"      => "Leave History & Requests",
+            "show_breadcrumb" => true,
+            "default_from"    => $default_from,
+            "default_to"      => $default_to
+        ]);
+    }
+
+    public function leaveBalancesDashboardView()
+    {
+        $this->view("hrm/leaves/leave-balances", [
+            "current_route"   => "hrm-leave-balances",
+            "page_title"      => "Leave Balances & Entitlements",
+            "show_breadcrumb" => true
+        ]);
+    }
+
+    public function tipsoiRequestsDashboardView()
+    {
+        // Default date range: last 30 days
+        $default_from = date('Y-m-d', strtotime('-30 days'));
+        $default_to = date('Y-m-d');
+
+        $this->view("hrm/leaves/tipsoi-requests", [
+            "current_route"   => "hrm-tipsoi-requests",
+            "page_title"      => "All Pending Requests",
+            "show_breadcrumb" => true,
+            "default_from"    => $default_from,
+            "default_to"      => $default_to
+        ]);
+    }
 }

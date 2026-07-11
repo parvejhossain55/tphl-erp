@@ -15,161 +15,171 @@ class DigitalMarketingController extends Controller
         $this->leadSourceModel = new LeadSource($this->db);
         $this->platformBudgetModel = new PlatformBudget($this->db);
     }
- public function index()
-{
-    $stats = $this->leadModel->getDigitalMarketingStats();
-    $teams = $this->teamsModel->getAll();
-    $teamId = $_GET['team_id'] ?? null;
+    public function index()
+    {
+        $stats = $this->leadModel->getDigitalMarketingStats();
+        $teams = $this->teamsModel->getAll();
+        $teamId = $_GET['team_id'] ?? null;
+        $projectCategoryId = !empty($_GET['project_category_id']) ? (int)$_GET['project_category_id'] : null;
 
-    // Filters (for form state only — leads load via AJAX)
-    $dateAge        = $_GET['date_age']      ?? 'all';
-    $sortOrder      = $_GET['sort']           ?? 'newest';
-    $duplicatesOnly = isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1';
-    $fromDate       = $_GET['from_date']     ?? '';
-    $toDate         = $_GET['to_date']       ?? '';
+        // Filters (for form state only — leads load via AJAX)
+        $dateAge        = $_GET['date_age']      ?? 'all';
+        $sortOrder      = $_GET['sort']           ?? 'newest';
+        $duplicatesOnly = isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1';
+        $fromDate       = $_GET['from_date']     ?? '';
+        $toDate         = $_GET['to_date']       ?? '';
 
-    $currentMonthFilter = $_GET['budget_month'] ?? date('Y-m') . '-01';
-    if (strlen($currentMonthFilter) === 7) {
-        $currentMonthFilter .= '-01';
-    }
-
-    $sources        = $this->leadSourceModel->getAll();
-    $platformBudgets = $this->platformBudgetModel->getAllWithPlatforms($currentMonthFilter);
-    $budgetSummary  = $this->platformBudgetModel->getMonthlySummary($currentMonthFilter);
-
-    // CPL calculation
-    $platformLeadCounts = $this->leadModel->getMarketingPlatformLeadCounts($currentMonthFilter);
-    $platformMapping = [
-        'fb' => 'Meta', 'whatsapp' => 'Meta', 'instagram' => 'Meta', 'ig' => 'Meta',
-        'google' => 'Google', 'youtube' => 'Google',
-        'linkedin' => 'LinkedIn'
-    ];
-    $cplData = [];
-    foreach ($platformBudgets as $pb) {
-        $cplData[$pb['platform_name']] = ['budget' => $pb['budget'], 'spent' => $pb['spent'], 'total_leads' => 0, 'cpl' => 0, 'sources' => []];
-    }
-    foreach ($platformLeadCounts as $plc) {
-        $raw    = strtolower(trim($plc['raw_platform']));
-        $parent = $platformMapping[$raw] ?? 'Other';
-        if (isset($cplData[$parent])) {
-            $cplData[$parent]['total_leads'] += $plc['total_leads'];
-            $cplData[$parent]['sources'][] = ['raw_platform' => $raw, 'leads' => $plc['total_leads']];
-        } else {
-            if (!isset($cplData['Other'])) $cplData['Other'] = ['budget' => 0, 'spent' => 0, 'total_leads' => 0, 'cpl' => 0, 'sources' => []];
-            $cplData['Other']['total_leads'] += $plc['total_leads'];
-            $cplData['Other']['sources'][] = ['raw_platform' => $raw, 'leads' => $plc['total_leads']];
+        $currentMonthFilter = $_GET['budget_month'] ?? date('Y-m') . '-01';
+        if (strlen($currentMonthFilter) === 7) {
+            $currentMonthFilter .= '-01';
         }
-    }
-    foreach ($cplData as $parent => &$data) {
-        if ($data['total_leads'] > 0) {
-            $computed_cpl = $data['spent'] / $data['total_leads'];
-            $data['cpl'] = (floor($computed_cpl) == $computed_cpl) ? number_format($computed_cpl, 0) : number_format($computed_cpl, 2);
+
+        $sources        = $this->leadSourceModel->getAll();
+        $platformBudgets = $this->platformBudgetModel->getAllWithPlatforms($currentMonthFilter);
+        $budgetSummary  = $this->platformBudgetModel->getMonthlySummary($currentMonthFilter);
+
+        // CPL calculation
+        $platformLeadCounts = $this->leadModel->getMarketingPlatformLeadCounts($currentMonthFilter);
+        $platformMapping = [
+            'fb' => 'Meta', 'whatsapp' => 'Meta', 'instagram' => 'Meta', 'ig' => 'Meta',
+            'google' => 'Google', 'youtube' => 'Google',
+            'linkedin' => 'LinkedIn'
+        ];
+        $cplData = [];
+        foreach ($platformBudgets as $pb) {
+            $cplData[$pb['platform_name']] = ['budget' => $pb['budget'], 'spent' => $pb['spent'], 'total_leads' => 0, 'cpl' => 0, 'sources' => []];
         }
+        foreach ($platformLeadCounts as $plc) {
+            $raw    = strtolower(trim($plc['raw_platform']));
+            $parent = $platformMapping[$raw] ?? 'Other';
+            if (isset($cplData[$parent])) {
+                $cplData[$parent]['total_leads'] += $plc['total_leads'];
+                $cplData[$parent]['sources'][] = ['raw_platform' => $raw, 'leads' => $plc['total_leads']];
+            } else {
+                if (!isset($cplData['Other'])) $cplData['Other'] = ['budget' => 0, 'spent' => 0, 'total_leads' => 0, 'cpl' => 0, 'sources' => []];
+                $cplData['Other']['total_leads'] += $plc['total_leads'];
+                $cplData['Other']['sources'][] = ['raw_platform' => $raw, 'leads' => $plc['total_leads']];
+            }
+        }
+        foreach ($cplData as $parent => &$data) {
+            if ($data['total_leads'] > 0) {
+                $computed_cpl = $data['spent'] / $data['total_leads'];
+                $data['cpl'] = (floor($computed_cpl) == $computed_cpl) ? number_format($computed_cpl, 0) : number_format($computed_cpl, 2);
+            }
+        }
+        unset($data);
+
+        // Lightweight duplicate count only
+        $dupStmt = $this->db->query("
+            SELECT COUNT(*) AS total FROM (
+                SELECT phone_number FROM leads
+                WHERE deleted_at IS NULL AND phone_number IS NOT NULL AND phone_number != ''
+                  AND uploaded_from = 'From Campaign'
+                GROUP BY phone_number HAVING COUNT(*) > 1
+            ) dupes
+        ");
+        $duplicateLeadsCount = $dupStmt ? (int)($dupStmt->fetch_assoc()['total'] ?? 0) : 0;
+
+        // Total lead count
+        $totalLeads = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate, false, $projectCategoryId);
+
+        // Contacted / Not Contacted summary counts (From Campaign only)
+        $cSql = "
+            SELECT
+                SUM(CASE
+                    WHEN EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
+                      OR (l.lead_type IS NOT NULL AND l.lead_type != '')
+                      OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
+                      OR (l.call_status IN ('called', 'received'))
+                    THEN 1 ELSE 0
+                END) AS contacted,
+                SUM(CASE
+                    WHEN NOT (
+                        EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
+                        OR (l.lead_type IS NOT NULL AND l.lead_type != '')
+                        OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
+                        OR (l.call_status IN ('called', 'received'))
+                    ) THEN 1 ELSE 0
+                END) AS not_contacted
+            FROM leads l
+            WHERE l.deleted_at IS NULL
+              AND l.uploaded_from = 'From Campaign'
+        ";
+
+        $cParams = [];
+        $cTypes  = "";
+
+        if ($teamId) {
+            $cSql .= " AND l.team_id = ?";
+            $cParams[] = $teamId;
+            $cTypes   .= "i";
+        }
+
+        if ($projectCategoryId) {
+            $cSql .= " AND l.project_category_id = ?";
+            $cParams[] = $projectCategoryId;
+            $cTypes   .= "i";
+        }
+
+        if (!empty($fromDate) && !empty($toDate)) {
+            $cSql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+            $cParams[] = $fromDate;
+            $cParams[] = $toDate;
+            $cTypes   .= "ss";
+        } elseif (!empty($fromDate)) {
+            $cSql .= " AND DATE(l.created_at) >= ?";
+            $cParams[] = $fromDate;
+            $cTypes   .= "s";
+        } elseif (!empty($toDate)) {
+            $cSql .= " AND DATE(l.created_at) <= ?";
+            $cParams[] = $toDate;
+            $cTypes   .= "s";
+        } elseif ($dateAge === 'today') {
+            $cSql .= " AND DATE(l.created_at) = CURDATE()";
+        } elseif ($dateAge === 'old') {
+            $cSql .= " AND DATE(l.created_at) < CURDATE()";
+        } elseif ($dateAge === '7days') {
+            $cSql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+        } elseif ($dateAge === '15days') {
+            $cSql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 15 DAY)";
+        }
+
+        $cStmt = $this->db->prepare($cSql);
+        if (!empty($cParams)) {
+            $cStmt->bind_param($cTypes, ...$cParams);
+        }
+        $cStmt->execute();
+        $cCounts           = $cStmt->get_result()->fetch_assoc();
+        $totalContacted    = (int)($cCounts['contacted']    ?? 0);
+        $totalNotContacted = (int)($cCounts['not_contacted'] ?? 0);
+        $categories        = (new ProjectCategory($this->db))->getAll();
+
+        return $this->view("digital-marketing-team/digital-marketing-head-dashboard", [
+            "current_route"       => "digital-marketing-dashboard",
+            "page_title"          => "Digital Marketing Dashboard",
+            "teams"               => $teams,
+            "categories"          => $categories,
+            "stats"               => $stats,
+            "leads"               => [],   // AJAX loads leads now
+            "selected_team_id"    => $teamId,
+            "selected_project_category_id" => $projectCategoryId,
+            "sources"             => $sources,
+            "platformBudgets"     => $platformBudgets,
+            "budgetSummary"       => $budgetSummary,
+            "cplData"             => $cplData,
+            "budget_month"        => substr($currentMonthFilter, 0, 7),
+            "phoneFreq"           => [],
+            "duplicateLeadsCount" => $duplicateLeadsCount,
+            "totalLeads"          => $totalLeads,
+            "totalContacted"      => $totalContacted,
+            "totalNotContacted"   => $totalNotContacted,
+            "date_age"            => $dateAge,
+            "sort_order"          => $sortOrder,
+            "duplicates_only"     => $duplicatesOnly,
+            "from_date"           => $fromDate,
+            "to_date"             => $toDate,
+        ]);
     }
-    unset($data);
-
-    // Lightweight duplicate count only
-    $dupStmt = $this->db->query("
-        SELECT COUNT(*) AS total FROM (
-            SELECT phone_number FROM leads
-            WHERE deleted_at IS NULL AND phone_number IS NOT NULL AND phone_number != ''
-              AND uploaded_from = 'From Campaign'
-            GROUP BY phone_number HAVING COUNT(*) > 1
-        ) dupes
-    ");
-    $duplicateLeadsCount = $dupStmt ? (int)($dupStmt->fetch_assoc()['total'] ?? 0) : 0;
-
-    // Total lead count
-    $totalLeads = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate);
-
-    // Contacted / Not Contacted summary counts (From Campaign only)
-    $cSql = "
-        SELECT
-            SUM(CASE
-                WHEN EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
-                  OR (l.lead_type IS NOT NULL AND l.lead_type != '')
-                  OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
-                  OR (l.call_status IN ('called', 'received'))
-                THEN 1 ELSE 0
-            END) AS contacted,
-            SUM(CASE
-                WHEN NOT (
-                    EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
-                    OR (l.lead_type IS NOT NULL AND l.lead_type != '')
-                    OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
-                    OR (l.call_status IN ('called', 'received'))
-                ) THEN 1 ELSE 0
-            END) AS not_contacted
-        FROM leads l
-        WHERE l.deleted_at IS NULL
-          AND l.uploaded_from = 'From Campaign'
-    ";
-
-    $cParams = [];
-    $cTypes  = "";
-
-    if ($teamId) {
-        $cSql .= " AND l.team_id = ?";
-        $cParams[] = $teamId;
-        $cTypes   .= "i";
-    }
-
-    if (!empty($fromDate) && !empty($toDate)) {
-        $cSql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
-        $cParams[] = $fromDate;
-        $cParams[] = $toDate;
-        $cTypes   .= "ss";
-    } elseif (!empty($fromDate)) {
-        $cSql .= " AND DATE(l.created_at) >= ?";
-        $cParams[] = $fromDate;
-        $cTypes   .= "s";
-    } elseif (!empty($toDate)) {
-        $cSql .= " AND DATE(l.created_at) <= ?";
-        $cParams[] = $toDate;
-        $cTypes   .= "s";
-    } elseif ($dateAge === 'today') {
-        $cSql .= " AND DATE(l.created_at) = CURDATE()";
-    } elseif ($dateAge === 'old') {
-        $cSql .= " AND DATE(l.created_at) < CURDATE()";
-    } elseif ($dateAge === '7days') {
-        $cSql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
-    } elseif ($dateAge === '15days') {
-        $cSql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 15 DAY)";
-    }
-
-    $cStmt = $this->db->prepare($cSql);
-    if (!empty($cParams)) {
-        $cStmt->bind_param($cTypes, ...$cParams);
-    }
-    $cStmt->execute();
-    $cCounts           = $cStmt->get_result()->fetch_assoc();
-    $totalContacted    = (int)($cCounts['contacted']    ?? 0);
-    $totalNotContacted = (int)($cCounts['not_contacted'] ?? 0);
-
-    return $this->view("digital-marketing-team/digital-marketing-head-dashboard", [
-        "current_route"       => "digital-marketing-dashboard",
-        "page_title"          => "Digital Marketing Dashboard",
-        "teams"               => $teams,
-        "stats"               => $stats,
-        "leads"               => [],   // AJAX loads leads now
-        "selected_team_id"    => $teamId,
-        "sources"             => $sources,
-        "platformBudgets"     => $platformBudgets,
-        "budgetSummary"       => $budgetSummary,
-        "cplData"             => $cplData,
-        "budget_month"        => substr($currentMonthFilter, 0, 7),
-        "phoneFreq"           => [],
-        "duplicateLeadsCount" => $duplicateLeadsCount,
-        "totalLeads"          => $totalLeads,
-        "totalContacted"      => $totalContacted,
-        "totalNotContacted"   => $totalNotContacted,
-        "date_age"            => $dateAge,
-        "sort_order"          => $sortOrder,
-        "duplicates_only"     => $duplicatesOnly,
-        "from_date"           => $fromDate,
-        "to_date"             => $toDate,
-    ]);
-}
 public function storeBudget()
 {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -255,6 +265,7 @@ public function deleteBudget($id)
         $stats = $this->leadModel->getDigitalMarketingStats();
         $teams = $this->teamsModel->getAll();
         $teamId = $_GET['team_id'] ?? null;
+        $projectCategoryId = !empty($_GET['project_category_id']) ? (int)$_GET['project_category_id'] : null;
 
         // Filters (passed to view for filter form state only)
         $dateAge             = $_GET['date_age']      ?? 'all';
@@ -265,7 +276,7 @@ public function deleteBudget($id)
         $toDate              = $_GET['to_date']       ?? '';
 
         // Only load summary counts (not full lead list) — AJAX will fetch leads per page
-        $totalLeads    = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate);
+        $totalLeads    = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate, false, $projectCategoryId);
         $contactedCount    = 0;
         $notContactedCount = 0;
 
@@ -298,6 +309,12 @@ public function deleteBudget($id)
         if ($teamId) {
             $cSql .= " AND l.team_id = ?";
             $cParams[] = $teamId;
+            $cTypes   .= "i";
+        }
+
+        if ($projectCategoryId) {
+            $cSql .= " AND l.project_category_id = ?";
+            $cParams[] = $projectCategoryId;
             $cTypes   .= "i";
         }
 
@@ -365,6 +382,7 @@ public function deleteBudget($id)
             "stats"                => $stats,
             "leads"                => [], // AJAX loads leads now
             "selected_team_id"     => $teamId,
+            "selected_project_category_id" => $projectCategoryId,
             "phoneFreq"            => [],
             "duplicateLeadsCount"  => $duplicateLeadsCount,
             "date_age"             => $dateAge,
@@ -400,6 +418,7 @@ public function deleteBudget($id)
         $perPage        = max(1, min(100, (int)($_GET['per_page'] ?? 10)));
         $offset         = ($page - 1) * $perPage;
         $teamId         = !empty($_GET['team_id'])        ? (int)$_GET['team_id'] : null;
+        $projectCategoryId = !empty($_GET['project_category_id']) ? (int)$_GET['project_category_id'] : null;
         $dateAge        = $_GET['date_age']               ?? 'all';
         $sortOrder      = ($_GET['sort'] ?? 'newest') === 'oldest' ? 'ASC' : 'DESC';
         $contactStatus  = $_GET['contact_status']         ?? '';
@@ -410,11 +429,11 @@ public function deleteBudget($id)
         $toDate         = $_GET['to_date']                ?? '';
 
         // Total count — include duplicatesOnly for correct pagination total
-        $total = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, $search, $fromDate, $toDate, $duplicatesOnly);
+        $total = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, $search, $fromDate, $toDate, $duplicatesOnly, $projectCategoryId);
 
         // Fetch paginated leads — duplicate filter applied at DB level
         $leads = $this->leadModel->getMarketingLeadsPaginated(
-            $teamId, $dateAge, $sortOrder, $perPage, $offset, $search, $fromDate, $toDate, $duplicatesOnly
+            $teamId, $dateAge, $sortOrder, $perPage, $offset, $search, $fromDate, $toDate, $duplicatesOnly, $projectCategoryId
         );
 
         // ── Duplicate detection: phone_number OR email appears > 1 time in leads table ──
