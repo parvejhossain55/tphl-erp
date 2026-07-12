@@ -338,4 +338,13 @@ class LeaveController extends Controller
             "default_to"      => $default_to
         ]);
     }
+
+    public function monthlyLwpDashboardView()
+    {
+        $this->view("hrm/leaves/monthly-lwp", [
+            "current_route"   => "hrm-monthly-lwp",
+            "page_title"      => "Monthly LWP",
+            "show_breadcrumb" => true
+        ]);
+    }
 }

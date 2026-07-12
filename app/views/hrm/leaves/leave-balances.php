@@ -140,7 +140,8 @@ $show_breadcrumb = true;
                         <th rowspan="2" style="vertical-align: middle;">Department</th>
                         <th colspan="3" class="leave-type-col-header" style="border-left: 2px solid #dee2e6;">Sick Leave</th>
                         <th colspan="3" class="leave-type-col-header" style="border-left: 2px solid #dee2e6;">Casual Leave</th>
-                        <th colspan="3" class="leave-type-col-header" style="border-left: 2px solid #dee2e6; border-right: 2px solid #dee2e6;">Earned Leave</th>
+                        <th colspan="3" class="leave-type-col-header" style="border-left: 2px solid #dee2e6;">Earned Leave</th>
+                        <th colspan="3" class="leave-type-col-header" style="border-left: 2px solid #dee2e6; border-right: 2px solid #dee2e6;">Leave without Pay (LWP)</th>
                     </tr>
                     <tr>
                         <!-- Sick -->
@@ -152,6 +153,10 @@ $show_breadcrumb = true;
                         <th style="font-size: 0.75rem; text-align: center;">Used</th>
                         <th style="font-size: 0.75rem; text-align: center;">Bal.</th>
                         <!-- Earned -->
+                        <th style="border-left: 2px solid #dee2e6; font-size: 0.75rem; text-align: center;">Ent.</th>
+                        <th style="font-size: 0.75rem; text-align: center;">Used</th>
+                        <th style="font-size: 0.75rem; text-align: center; border-right: 2px solid #dee2e6;">Bal.</th>
+                        <!-- LWP -->
                         <th style="border-left: 2px solid #dee2e6; font-size: 0.75rem; text-align: center;">Ent.</th>
                         <th style="font-size: 0.75rem; text-align: center;">Used</th>
                         <th style="font-size: 0.75rem; text-align: center; border-right: 2px solid #dee2e6;">Bal.</th>
@@ -362,6 +367,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const sick = getBal('Sick');
             const casual = getBal('Casual');
             const earned = getBal('Earned');
+            const lwp = getBal('without Pay');
 
             return `
                 <tr>
@@ -381,6 +387,10 @@ document.addEventListener("DOMContentLoaded", function() {
                     <td class="text-center" style="border-left: 2px solid #dee2e6;">${earned.entitled}</td>
                     <td class="text-center text-danger fw-semibold">${earned.used}</td>
                     <td class="text-center text-success fw-bold" style="border-right: 2px solid #dee2e6;">${earned.balance}</td>
+                    <!-- LWP -->
+                    <td class="text-center" style="border-left: 2px solid #dee2e6;">${lwp.entitled}</td>
+                    <td class="text-center text-danger fw-semibold">${lwp.used}</td>
+                    <td class="text-center text-success fw-bold" style="border-right: 2px solid #dee2e6;">${lwp.balance}</td>
                 </tr>
             `;
         }).join('');
@@ -460,7 +470,7 @@ document.addEventListener("DOMContentLoaded", function() {
         csv.push("");
         
         // Header
-        csv.push("SN,Office ID,Employee Name,Department,Sick Entitled,Sick Used,Sick Balance,Casual Entitled,Casual Used,Casual Balance,Earned Entitled,Earned Used,Earned Balance");
+        csv.push("SN,Office ID,Employee Name,Department,Sick Entitled,Sick Used,Sick Balance,Casual Entitled,Casual Used,Casual Balance,Earned Entitled,Earned Used,Earned Balance,LWP Entitled,LWP Used,LWP Balance");
 
         let sn = 1;
         filteredRecords.forEach(emp => {
@@ -478,6 +488,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const sick = getBal('Sick');
             const casual = getBal('Casual');
             const earned = getBal('Earned');
+            const lwp = getBal('without Pay');
 
             const row = [
                 sn++,
@@ -486,7 +497,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 emp.departmentName || 'No Department',
                 sick.entitled, sick.used, sick.balance,
                 casual.entitled, casual.used, casual.balance,
-                earned.entitled, earned.used, earned.balance
+                earned.entitled, earned.used, earned.balance,
+                lwp.entitled, lwp.used, lwp.balance
             ].map(val => {
                 const stringVal = String(val);
                 return (stringVal.includes(",") || stringVal.includes("\n")) 
@@ -528,6 +540,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const sick = getBal('Sick');
             const casual = getBal('Casual');
             const earned = getBal('Earned');
+            const lwp = getBal('without Pay');
 
             return `
                 <tr>
@@ -544,6 +557,9 @@ document.addEventListener("DOMContentLoaded", function() {
                     <td class="text-center">${earned.entitled}</td>
                     <td class="text-center text-danger">${earned.used}</td>
                     <td class="text-center text-success" style="font-weight: 600;">${earned.balance}</td>
+                    <td class="text-center">${lwp.entitled}</td>
+                    <td class="text-center text-danger">${lwp.used}</td>
+                    <td class="text-center text-success" style="font-weight: 600;">${lwp.balance}</td>
                 </tr>
             `;
         }).join('');
@@ -595,8 +611,10 @@ document.addEventListener("DOMContentLoaded", function() {
         htmlStr += '                <th colspan="3" class="text-center">Sick Leave</th>';
         htmlStr += '                <th colspan="3" class="text-center">Casual Leave</th>';
         htmlStr += '                <th colspan="3" class="text-center">Earned Leave</th>';
+        htmlStr += '                <th colspan="3" class="text-center">Leave without Pay (LWP)</th>';
         htmlStr += '            </tr>';
         htmlStr += '            <tr>';
+        htmlStr += '                <th class="text-center">Ent.</th><th class="text-center">Used</th><th class="text-center">Bal.</th>';
         htmlStr += '                <th class="text-center">Ent.</th><th class="text-center">Used</th><th class="text-center">Bal.</th>';
         htmlStr += '                <th class="text-center">Ent.</th><th class="text-center">Used</th><th class="text-center">Bal.</th>';
         htmlStr += '                <th class="text-center">Ent.</th><th class="text-center">Used</th><th class="text-center">Bal.</th>';

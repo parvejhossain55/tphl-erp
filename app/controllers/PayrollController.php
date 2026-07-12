@@ -37,6 +37,25 @@ class PayrollController extends Controller
         $unpaidSalarySum = $this->paymentModel->getUnpaidSalarySum($selectedYear, $selectedMonth);
         $companyBanks   = $this->bankModel->getAll();
 
+        // Fetch all local employee IDs, names, departments, and designations for Tipsoi matching
+        $localQuery = $this->db->query("
+            SELECT e.employee_id, e.full_name, dept.name AS department_name, desg.name AS designation_name 
+            FROM employees AS e
+            LEFT JOIN departments AS dept ON e.department_id = dept.id
+            LEFT JOIN designations AS desg ON e.designation_id = desg.id
+        ");
+        $allLocalEmployees = [];
+        if ($localQuery) {
+            while ($row = $localQuery->fetch_assoc()) {
+                $allLocalEmployees[] = [
+                    'employee_id' => trim($row['employee_id'] ?? ''),
+                    'full_name' => trim($row['full_name'] ?? ''),
+                    'department_name' => trim($row['department_name'] ?? 'N/A'),
+                    'designation_name' => trim($row['designation_name'] ?? 'N/A')
+                ];
+            }
+        }
+
         $this->view("payrolls/payslips/payslip-lists", [
             "current_route"  => "payslip-lists",
             "page_title"     => "Payroll Lists",
@@ -50,6 +69,7 @@ class PayrollController extends Controller
             "selectedYear"   => $selectedYear,
             "selectedMonth"  => $selectedMonth,
             "selectedStatus" => $selectedStatus,
+            "allLocalEmployees" => $allLocalEmployees,
         ]);
     }
 

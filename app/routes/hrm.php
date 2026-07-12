@@ -41,6 +41,12 @@ return [
     'my-attendance' => ['controller' => 'EmployeeDashboardController', 'method' => 'myAttendance'],
     'my-leaves' => ['controller' => 'EmployeeDashboardController', 'method' => 'myLeaves'],
     'my-profile' => ['controller' => 'EmployeeDashboardController', 'method' => 'myProfile'],
+    'my-tipsoi-info' => ['controller' => 'EmployeeDashboardController', 'method' => 'myTipsoiInfo'],
+    'api/employee/tipsoi-data' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiData'],
+    'tipsoi-monthly-report' => ['controller' => 'EmployeeDashboardController', 'method' => 'tipsoiMonthlyReport'],
+    'tipsoi-daily-report' => ['controller' => 'EmployeeDashboardController', 'method' => 'tipsoiDailyReport'],
+    'api/employee/tipsoi-monthly-data' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiMonthlyData'],
+    'api/employee/tipsoi-daily-data' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiDailyData'],
     'update-task-status-employee' => ['controller' => 'EmployeeDashboardController', 'method' => 'updateTaskStatus'],
     'update-task-progress-employee' => ['controller' => 'EmployeeDashboardController', 'method' => 'updateTaskProgress'],
 
@@ -234,4 +240,5 @@ return [
     'api/hrm/tipsoi-requests'    => ['controller' => 'HrmApiController', 'method' => 'getTipsoiRequests'],
     'api/hrm/tipsoi-holidays'    => ['controller' => 'HrmApiController', 'method' => 'getTipsoiHolidays'],
     'api/hrm/import-tipsoi-holiday' => ['controller' => 'HrmApiController', 'method' => 'importTipsoiHoliday'],
+    'hrm-monthly-lwp'            => ['controller' => 'LeaveController', 'method' => 'monthlyLwpDashboardView'],
 ];

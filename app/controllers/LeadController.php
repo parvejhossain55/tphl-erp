@@ -1186,14 +1186,14 @@ class LeadController extends Controller
                 $data = array_combine($header, $row);
 
                 // Check lengths of varchar columns to generate warning issues
-                if (isset($data['job_title']) && mb_strlen((string)$data['job_title'], 'UTF-8') > 100) {
-                    $issues[] = "Row {$rowIndex}: Job Title is too long (" . mb_strlen((string)$data['job_title'], 'UTF-8') . " chars, limit 100).";
+                if (isset($data['job_title']) && mb_strlen((string)$data['job_title'], 'UTF-8') > 255) {
+                    $issues[] = "Row {$rowIndex}: Job Title is too long (" . mb_strlen((string)$data['job_title'], 'UTF-8') . " chars, limit 255).";
                 }
-                if (isset($data['company_name']) && mb_strlen((string)$data['company_name'], 'UTF-8') > 150) {
-                    $issues[] = "Row {$rowIndex}: Company Name is too long (" . mb_strlen((string)$data['company_name'], 'UTF-8') . " chars, limit 150).";
+                if (isset($data['company_name']) && mb_strlen((string)$data['company_name'], 'UTF-8') > 255) {
+                    $issues[] = "Row {$rowIndex}: Company Name is too long (" . mb_strlen((string)$data['company_name'], 'UTF-8') . " chars, limit 255).";
                 }
-                if (isset($data['full_name']) && mb_strlen((string)$data['full_name'], 'UTF-8') > 150) {
-                    $issues[] = "Row {$rowIndex}: Full Name is too long (" . mb_strlen((string)$data['full_name'], 'UTF-8') . " chars, limit 150).";
+                if (isset($data['full_name']) && mb_strlen((string)$data['full_name'], 'UTF-8') > 255) {
+                    $issues[] = "Row {$rowIndex}: Full Name is too long (" . mb_strlen((string)$data['full_name'], 'UTF-8') . " chars, limit 255).";
                 }
                 if (isset($data['platform']) && mb_strlen((string)$data['platform'], 'UTF-8') > 100) {
                     $issues[] = "Row {$rowIndex}: Platform name is too long (" . mb_strlen((string)$data['platform'], 'UTF-8') . " chars, limit 100).";

