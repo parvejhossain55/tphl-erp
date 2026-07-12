@@ -668,54 +668,83 @@
                         </a>
                     </li>
 
-                    <!-- Tipsoi Employees -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/hrm-external-employees"
-                            class="sidebar__menu-item <?= isActive('hrm-external-employees', $current_route) ?>">
+                    <!-- Tipsoi Employee Data Group -->
+                    <li class="slide has-sub active open">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item menu-open active">
                             <div class="side-menu__icon"><i class="fa-solid fa-users-line"></i></div>
-                            <span class="sidebar__menu-label">Tipsoi Employees</span>
+                            <span class="sidebar__menu-label">Tipsoi Employee Data</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/hrm-external-employees"
+                                    class="sidebar__menu-item <?= isActive('hrm-external-employees', $current_route) ?>">
+                                    Tipsoi Employees
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/hrm-attendance-dashboard"
+                                    class="sidebar__menu-item <?= isActive('hrm-attendance-dashboard', $current_route) ?>">
+                                    Tipsoi Attendance
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/hrm-leave-history"
+                                    class="sidebar__menu-item <?= isActive('hrm-leave-history', $current_route) ?>">
+                                    Tipsoi Leave History
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/hrm-leave-balances"
+                                    class="sidebar__menu-item <?= isActive('hrm-leave-balances', $current_route) ?>">
+                                    Tipsoi Leave Balances
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/hrm-monthly-lwp"
+                                    class="sidebar__menu-item <?= isActive('hrm-monthly-lwp', $current_route) ?>">
+                                    Monthly LWP
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/hrm-tipsoi-requests"
+                                    class="sidebar__menu-item <?= isActive('hrm-tipsoi-requests', $current_route) ?>">
+                                    All Pending Requests
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/holiday-lists?tab=tipsoi"
+                                    class="sidebar__menu-item <?= (isset($_GET['tab']) && $_GET['tab'] === 'tipsoi' && isActive('holiday-lists', $current_route)) ? 'active' : '' ?>">
+                                    Tipsoi Holidays
+                                </a>
+                            </li>
+                        </ul>
                     </li>
-                    <!-- Tipsoi Attendance Dashboard -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/hrm-attendance-dashboard"
-                            class="sidebar__menu-item <?= isActive('hrm-attendance-dashboard', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
-                            <span class="sidebar__menu-label">Tipsoi Attendance</span>
-                        </a>
-                    </li>
-                    <!-- Tipsoi Leave History Dashboard -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/hrm-leave-history"
-                            class="sidebar__menu-item <?= isActive('hrm-leave-history', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-calendar-minus"></i></div>
-                            <span class="sidebar__menu-label">Tipsoi Leave History</span>
-                        </a>
-                    </li>
-                    <!-- Tipsoi Leave Balances Dashboard -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/hrm-leave-balances"
-                            class="sidebar__menu-item <?= isActive('hrm-leave-balances', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-calculator"></i></div>
-                            <span class="sidebar__menu-label">Tipsoi Leave Balances</span>
-                        </a>
-                    </li>
-                    <!-- All Pending Requests -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/hrm-tipsoi-requests"
-                            class="sidebar__menu-item <?= isActive('hrm-tipsoi-requests', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-envelope-open-text"></i></div>
-                            <span class="sidebar__menu-label">All Pending Requests</span>
-                        </a>
-                    </li>
-                    <!-- Tipsoi Holidays -->
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/holiday-lists?tab=tipsoi"
-                            class="sidebar__menu-item <?= (isset($_GET['tab']) && $_GET['tab'] === 'tipsoi' && isActive('holiday-lists', $current_route)) ? 'active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-umbrella-beach"></i></div>
-                            <span class="sidebar__menu-label">Tipsoi Holidays</span>
-                        </a>
-                    </li>
+
+                    <?php if (hasPermission("HRM Management") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 4])): ?>
+                        <!-- Tipsoi Reports -->
+                        <li class="slide has-sub <?= isActive(['tipsoi-monthly-report', 'tipsoi-daily-report'], $current_route) ? 'active open' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['tipsoi-monthly-report', 'tipsoi-daily-report'], $current_route) ? 'active' : '' ?>">
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                                <div class="side-menu__icon"><i class="fa-solid fa-chart-column"></i></div>
+                                <span class="sidebar__menu-label">Tipsoi Reports</span>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display: <?= isActive(['tipsoi-monthly-report', 'tipsoi-daily-report'], $current_route) ? 'block' : 'none' ?>;">
+                                <li class="slide <?= isActive('tipsoi-monthly-report', $current_route) ?>">
+                                    <a href="<?= $base_url ?>/tipsoi-monthly-report" class="sidebar__menu-item <?= isActive('tipsoi-monthly-report', $current_route) ?>">
+                                        Monthly Report
+                                    </a>
+                                </li>
+                                <li class="slide <?= isActive('tipsoi-daily-report', $current_route) ?>">
+                                    <a href="<?= $base_url ?>/tipsoi-daily-report" class="sidebar__menu-item <?= isActive('tipsoi-daily-report', $current_route) ?>">
+                                        Daily Report
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
 
                     <?php if (!$isManagement): ?>
                         <!-- department -->
@@ -947,6 +976,41 @@
                         <span class="sidebar__menu-label">My Profile</span>
                     </a>
                 </li>
+
+                <?php if (checkTipsoiEmployeeMatch(db())): ?>
+                    <!-- Tipsoi My Data -->
+                    <li class="slide has-sub <?= isActive('my-tipsoi-info', $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive('my-tipsoi-info', $current_route) ? 'active' : '' ?>">
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            <div class="side-menu__icon"><i class="fa-solid fa-users-line"></i></div>
+                            <span class="sidebar__menu-label">Tipsoi My Data</span>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/my-tipsoi-info#profile" class="sidebar__menu-item">
+                                    My Profile
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/my-tipsoi-info#attendance" class="sidebar__menu-item">
+                                    Attendance Data
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/my-tipsoi-info#leave" class="sidebar__menu-item">
+                                    My Leave Balance
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/my-tipsoi-info#requests" class="sidebar__menu-item">
+                                    Pending Request
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                <?php endif; ?>
+
 
                 <?php if (hasPermission("Employee Dashboard") && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
                     <!-- Employee Dashboard -->

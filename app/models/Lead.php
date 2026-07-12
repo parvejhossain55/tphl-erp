@@ -951,11 +951,11 @@ class Lead extends Model
         $when_are_you_planning_to_buy = $data['when_are_you_planning_to_buy'] ?? null;
         $would_you_like_to_schedule_a_site_visit = $data['would_you_like_to_schedule_a_site_visit'] ?? null;
         $when_is_the_best_time_to_contact_you = $data['when_is_the_best_time_to_contact_you'] ?? null;
-        $job_title = $data['job_title'] ?? null;
+        $job_title = isset($data['job_title']) ? mb_substr((string)$data['job_title'], 0, 255, 'UTF-8') : null;
         $city = $data['city'] ?? null;
 
         // Existing fields
-        $full_name = $data['full_name'] ?? null;
+        $full_name = isset($data['full_name']) ? mb_substr((string)$data['full_name'], 0, 255, 'UTF-8') : null;
         $father_name = $data['father_name'] ?? null;
         $mother_name = $data['mother_name'] ?? null;
         $dob = isset($data['dob']) && trim($data['dob']) !== ''
@@ -981,7 +981,7 @@ class Lead extends Model
         $status = $data['status'] ?? 'active';
         $lead_quality = $data['lead_quality'] ?? 'Pending';
         $lead_type = $data['lead_type'] ?? null;
-        $company_name = isset($data['company_name']) ? substr((string)$data['company_name'], 0, 255) : null;
+        $company_name = isset($data['company_name']) ? mb_substr((string)$data['company_name'], 0, 255, 'UTF-8') : null;
         $team_id = $data['team_id'] ?? null;
         $created_by = $data['created_by'] ?? null;
         $country = $data['country'] ?? null;
@@ -1106,12 +1106,9 @@ class Lead extends Model
         };
 
         // Extract ALL values into named variables (bind_param requires variables by reference)
-        $full_name             = $v('full_name');
-        $job_title             = $v('job_title');
-        $company_name          = $v('company_name');
-        if ($company_name !== null) {
-            $company_name = substr($company_name, 0, 255);
-        }
+        $full_name             = $v('full_name') !== null ? mb_substr($v('full_name'), 0, 255, 'UTF-8') : null;
+        $job_title             = $v('job_title') !== null ? mb_substr($v('job_title'), 0, 255, 'UTF-8') : null;
+        $company_name          = $v('company_name') !== null ? mb_substr($v('company_name'), 0, 255, 'UTF-8') : null;
         $phone                 = $v('phone');
         $alt_phone_number      = $v('alt_phone_number');
         $email                 = $v('email');
@@ -1441,7 +1438,7 @@ class Lead extends Model
     /**
      * Count marketing leads for AJAX pagination (mirrors getMarketingLeadsFlexible filters)
      */
-    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false)
+    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null)
     {
         $sql = "SELECT COUNT(*) AS total FROM leads l WHERE l.deleted_at IS NULL AND l.uploaded_from = 'From Campaign'";
 
@@ -1471,6 +1468,12 @@ class Lead extends Model
         if ($teamId) {
             $sql .= " AND l.team_id = ?";
             $params[] = $teamId;
+            $types   .= "i";
+        }
+
+        if ($projectCategoryId) {
+            $sql .= " AND l.project_category_id = ?";
+            $params[] = $projectCategoryId;
             $types   .= "i";
         }
 
@@ -1514,7 +1517,7 @@ class Lead extends Model
     /**
      * Paginated marketing leads for AJAX (same contact_status logic, adds LIMIT/OFFSET + search)
      */
-    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false)
+    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null)
     {
         $sql = "
         SELECT
@@ -1594,6 +1597,12 @@ class Lead extends Model
         if ($teamId) {
             $sql .= " AND l.team_id = ?";
             $params[] = $teamId;
+            $types   .= "i";
+        }
+
+        if ($projectCategoryId) {
+            $sql .= " AND l.project_category_id = ?";
+            $params[] = $projectCategoryId;
             $types   .= "i";
         }
 

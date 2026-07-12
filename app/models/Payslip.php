@@ -282,11 +282,12 @@ public function getPendingCount($year = null, $month = null)
         if (empty($year)) $year = date('Y');
         if (empty($month)) $month = date('m');
 
-        if ($status === 'unpaid') {
+         if ($status === 'unpaid') {
             $sql = "
                 SELECT 
                     p.id AS id,
                     e.id AS employee_id,
+                    e.employee_id AS employee_office_id,
                     e.full_name AS employee_name,
                     e.photo AS photo,
                     e.email AS email,
@@ -295,7 +296,7 @@ public function getPendingCount($year = null, $month = null)
                     dept.name AS department_name,
                     p.total_earning,
                     p.total_deduction,
-                    COALESCE(p.net_salary, e.basic_salary) AS net_salary,
+                    COALESCE(p.net_salary, e.gross_salary) AS net_salary,
                     COALESCE(p.status, 'unpaid') AS status,
                     p.payment_method,
                     p.company_bank_id,
@@ -324,6 +325,7 @@ public function getPendingCount($year = null, $month = null)
                 SELECT 
                     p.id AS id,
                     e.id AS employee_id,
+                    e.employee_id AS employee_office_id,
                     e.full_name AS employee_name,
                     e.photo AS photo,
                     e.email AS email,
@@ -332,7 +334,7 @@ public function getPendingCount($year = null, $month = null)
                     dept.name AS department_name,
                     p.total_earning,
                     p.total_deduction,
-                    p.net_salary,
+                    COALESCE(p.net_salary, e.gross_salary) AS net_salary,
                     p.status,
                     p.payment_method,
                     p.company_bank_id,

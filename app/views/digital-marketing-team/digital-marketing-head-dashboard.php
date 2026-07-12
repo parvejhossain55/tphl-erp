@@ -308,7 +308,7 @@
     <div class="col-xl-3 col-sm-6 col-6 mb-2">
       <div class="card__wrapper stat-card" style="border-left:4px solid #2563eb;">
         <div class="label"><i class="bi bi-people-fill me-1 text-primary"></i>Total Leads</div>
-        <div class="value" style="color:#2563eb;"><?= number_format($totalLeadsCount) ?></div>
+        <div class="value" id="dmHeadTotalLeadsCardVal" style="color:#2563eb;"><?= number_format($totalLeadsCount) ?></div>
         <div class="change text-muted">
           <i class="bi bi-bar-chart-fill me-1 text-primary"></i>All uploaded leads
         </div>
@@ -853,6 +853,8 @@
         if (dmHeadFilters.duplicates_only === '1') hdr += ' (Duplicates Only)';
         document.getElementById('dmHeadTableHeader').textContent = hdr;
         document.getElementById('dmHeadLeadCount').textContent   = `${data.total} Leads`;
+        const totalHeadCardVal = document.getElementById('dmHeadTotalLeadsCardVal');
+        if (totalHeadCardVal) totalHeadCardVal.textContent = data.total.toLocaleString();
 
         if (!data.rows || data.rows.length === 0) {
           tbody.innerHTML = '<tr><td colspan="9" class="text-center py-5"><i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i><div class="text-muted">No leads found.</div></td></tr>';

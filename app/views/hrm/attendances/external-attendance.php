@@ -1037,6 +1037,37 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Start execution
     setupStatsCardListeners();
+
+    // Parse URL parameters for automatic status and date filtering
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialStatus = urlParams.get('status');
+    const initialDate = urlParams.get('date');
+
+    if (initialDate) {
+        fromDateInput.value = initialDate;
+        toDateInput.value = initialDate;
+    }
+
+    if (initialStatus) {
+        const validStatuses = ['present', 'late', 'absent', 'leave', 'offday', 'holiday'];
+        const cleanStatus = initialStatus.toLowerCase().trim();
+        if (validStatuses.includes(cleanStatus)) {
+            statusFilter.value = cleanStatus;
+            activeCardFilter = cleanStatus;
+
+            const cards = [
+                { el: cardPresent, val: "present" },
+                { el: cardLate, val: "late" },
+                { el: cardAbsent, val: "absent" },
+                { el: cardLeave, val: "leave" }
+            ];
+            const matchingCard = cards.find(c => c.val === cleanStatus);
+            if (matchingCard) {
+                matchingCard.el.classList.add("active-filter");
+            }
+        }
+    }
+
     fetchAttendanceData();
 });
 <?php

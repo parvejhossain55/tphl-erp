@@ -486,7 +486,7 @@
 
         <div>
           <div class="label">Total Leads</div>
-          <div class="value"><?= number_format($stats['total_leads'] ?? 0) ?></div>
+          <div class="value" id="dmTotalLeadsCardVal"><?= number_format($totalLeads ?? 0) ?></div>
           <div class="change text-success"><i class="bi bi-arrow-up-short"></i>Data sync ready</div>
         </div>
       </div>
@@ -954,6 +954,8 @@
         if (dmFilters.duplicates_only === '1') headerText += ' (Duplicates Only)';
         document.getElementById('tableHeaderText').textContent = headerText;
         document.getElementById('dmLeadCount').textContent = `${data.total} Leads`;
+        const totalCardVal = document.getElementById('dmTotalLeadsCardVal');
+        if (totalCardVal) totalCardVal.textContent = data.total.toLocaleString();
 
         // Render rows
         if (!data.rows || data.rows.length === 0) {
