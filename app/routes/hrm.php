@@ -168,6 +168,7 @@ return [
     // Controller: DayOffController
     // =========================================================================
     'day-off' => ['controller' => 'DayOffController', 'method' => 'dayOffManage'],
+    'hrm-day-off-lists' => ['controller' => 'DayOffController', 'method' => 'hrmDayOffLists'],
     'get-employee-days-off/(\d+)' => ['controller' => 'DayOffController', 'method' => 'getEmployeeDaysOff'],
     'update-day-off' => ['controller' => 'DayOffController', 'method' => 'updateDayOff'],
 

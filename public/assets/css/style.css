@@ -1362,3 +1362,17 @@ input:checked + .slider:before {
         display: none !important;
     }
 }
+
+/* =========================================
+   Target Lead Highlight Style
+   ========================================= */
+tr:target, .lead-card:target {
+    background-color: #fff3cd !important;
+    border: 2px solid #ffc107 !important;
+    animation: highlightFade 3s ease-in-out;
+}
+
+@keyframes highlightFade {
+    0% { background-color: #fff3cd; }
+    100% { background-color: transparent; }
+}

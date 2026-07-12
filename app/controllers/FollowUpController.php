@@ -165,6 +165,14 @@ public function store()
     if (!empty($_SESSION['follow_up_return_url'])) {
         $returnUrl = $_SESSION['follow_up_return_url'];
         unset($_SESSION['follow_up_return_url']); // clear after use
+        
+        // Remove any existing hash first
+        $hashPos = strpos($returnUrl, '#');
+        if ($hashPos !== false) {
+            $returnUrl = substr($returnUrl, 0, $hashPos);
+        }
+        
+        $returnUrl .= '#lead-' . (int)$leadId;
         header("Location: " . $returnUrl);
         exit;
     }

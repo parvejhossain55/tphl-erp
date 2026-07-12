@@ -650,7 +650,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                 ?>
                 <div class="col-12 col-sm-6">
                     <!-- Lead Card -->
-                    <div class="lead-card h-100" data-id="<?= $lead['id'] ?>">
+                    <div id="lead-<?= $lead['id'] ?>" class="lead-card h-100" data-id="<?= $lead['id'] ?>">
                         <div class="lead-card-header d-flex justify-content-between align-items-start gap-1">
                             <div class="flex-grow-1 overflow-hidden">
                                 <div class="d-flex align-items-center gap-1">
@@ -1193,6 +1193,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 // After each page draw: re-sync checkbox states
                 syncCheckboxes();
 
+                // Highlight and scroll to target lead once on load
+                if (!window.hasScrolledToTarget) {
+                    const hash = window.location.hash;
+                    if (hash && hash.startsWith('#lead-')) {
+                        const targetEl = $(hash);
+                        if (targetEl.length > 0) {
+                            window.hasScrolledToTarget = true;
+                            $('html, body').animate({
+                                scrollTop: targetEl.offset().top - 100
+                            }, 500);
+                        }
+                    }
+                }
+
                 // Re-bind note view buttons
                 $('.note-view-btn').off('click').on('click', function () {
                     const noteEl = document.getElementById('view_note_text');
@@ -1234,6 +1248,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     }, 200);
                 });
             }
+        });
+
+        dtTable.on('page.dt', function () {
+            const info = dtTable.page.info();
+            const page = info.page + 1;
+            const url = new URL(window.location.href);
+            url.searchParams.set('page', page);
+            window.history.replaceState(null, '', url.toString());
         });
     }
 
@@ -1298,7 +1320,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         return `
         <div class="col-12 col-sm-6">
-          <div class="lead-card h-100" data-id="${lead.id}">
+          <div id="lead-${lead.id}" class="lead-card h-100" data-id="${lead.id}">
             <div class="lead-card-header d-flex justify-content-between align-items-start gap-1">
               <div class="flex-grow-1 overflow-hidden">
                 <div class="d-flex align-items-center gap-1">

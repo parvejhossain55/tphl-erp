@@ -79,7 +79,111 @@ class DayOffController extends Controller
         }
     }
 
-    // public function delete(){
+    public function hrmDayOffLists()
+    {
+        // 1. Fetch all external employees from Tipsoi API
+        $externalApiService = new ExternalApiService($this->db);
+        $result = $externalApiService->getExternalEmployees(1, 2000);
+        
+        $tipsoiEmployees = [];
+        $fromMock = false;
+        $apiError = '';
 
-    // }
+        if ($result && isset($result['success']) && $result['success']) {
+            $tipsoiEmployees = $result['data'] ?? [];
+            $fromMock = $result['from_mock'] ?? false;
+            $apiError = $result['error_message'] ?? '';
+        } else {
+            $apiError = $result['message'] ?? 'Unable to connect to Tipsoi API.';
+        }
+
+        // 2. Fetch local day-off mapping
+        $dayOffMap = [];
+        $dayOffQuery = $this->db->query("
+            SELECT e.employee_id, e.email, GROUP_CONCAT(w.day_off_name SEPARATOR ', ') AS days_off
+            FROM employees e
+            JOIN emp_weekly_day_off w ON e.id = w.employee_id
+            GROUP BY e.id
+        ");
+        if ($dayOffQuery) {
+            while ($row = $dayOffQuery->fetch_assoc()) {
+                $empId = trim($row['employee_id'] ?? '');
+                $email = strtolower(trim($row['email'] ?? ''));
+                $daysOff = $row['days_off'] ?? '';
+                if ($empId !== '') {
+                    $dayOffMap[strval($empId)] = $daysOff;
+                }
+                if ($email !== '') {
+                    $dayOffMap[$email] = $daysOff;
+                }
+            }
+        }
+
+        // Helper to normalize IDs (remove leading zeros for numeric IDs)
+        $normalizeIdPhp = function($id) {
+            $str = trim(strval($id));
+            return preg_match('/^\d+$/', $str) ? strval(intval($str)) : $str;
+        };
+
+        // 3. Process Tipsoi employees and attach their day offs
+        $employee_days_off = [];
+        foreach ($tipsoiEmployees as $emp) {
+            $officeId = $emp['employeeOfficeId'] ?? $emp['employee_id'] ?? '';
+            $email = strtolower(trim($emp['email'] ?? ''));
+            $shiftGroup = trim($emp['shiftGroupName'] ?? '');
+            
+            $daysOff = '';
+            
+            // A. Check if any week day names are explicitly mentioned in shiftGroupName
+            $daysFound = [];
+            $weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            foreach ($weekdays as $day) {
+                if (stripos($shiftGroup, $day) !== false) {
+                    $daysFound[] = ucfirst($day);
+                }
+            }
+
+            if (!empty($daysFound)) {
+                $daysOff = implode(', ', $daysFound);
+            } 
+            // B. If shift group is "Regular", default to "Sunday" (verified from attendance API behavior)
+            elseif (strcasecmp($shiftGroup, 'Regular') === 0) {
+                $daysOff = 'Sunday';
+            } 
+            // C. Fallback to local day-off mapping
+            else {
+                $normOfficeId = $normalizeIdPhp($officeId);
+                if ($normOfficeId !== '' && isset($dayOffMap[$normOfficeId])) {
+                    $daysOff = $dayOffMap[$normOfficeId];
+                } elseif ($email !== '' && isset($dayOffMap[$email])) {
+                    $daysOff = $dayOffMap[$email];
+                } else {
+                    $daysOff = $shiftGroup !== '' ? $shiftGroup : 'None';
+                }
+            }
+
+            $employee_days_off[] = [
+                'employee_id' => $officeId,
+                'full_name' => $emp['name'] ?? $emp['full_name'] ?? 'N/A',
+                'designation_name' => $emp['designationName'] ?? $emp['designation_name'] ?? 'N/A',
+                'department_name' => $emp['departmentName'] ?? $emp['department_name'] ?? 'N/A',
+                'days_off' => $daysOff
+            ];
+        }
+
+        // Fallback to local DB if Tipsoi list is completely empty
+        if (empty($employee_days_off)) {
+            $employee_days_off = $this->dayOffModel->getEmployeeOffDaysList();
+        }
+
+        return $this->view(
+            'hrm/employee-day-off/day-off-lists',
+            [
+                "current_route" => "hrm-day-off-lists",
+                "employee_days_off" => $employee_days_off,
+                "from_mock" => $fromMock,
+                "api_error" => $apiError
+            ]
+        );
+    }
 }
