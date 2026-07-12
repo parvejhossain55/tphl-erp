@@ -719,6 +719,12 @@
                                     Tipsoi Holidays
                                 </a>
                             </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/hrm-day-off-lists"
+                                    class="sidebar__menu-item <?= isActive('hrm-day-off-lists', $current_route) ?>">
+                                    Day Off Lists
+                                </a>
+                            </li>
                         </ul>
                     </li>
 
@@ -773,7 +779,7 @@
                         </li>
                         -->
                         <!-- Day Off Manage -->
-                        <li class="slide ">
+                        <li class="slide d-none">
                             <a href="<?= $base_url ?>/day-off"
                                 class="sidebar__menu-item <?= isActive('day-off', $current_route) ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
@@ -1341,7 +1347,7 @@
                 <!--ROle & Permission -->
 
                 <?php if (hasPermission("My Leave Request") && !$isManagement && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
-                    <ul class="sidebar-menu child2" style="display:block;">
+                    <ul class="d-none sidebar-menu child2" style="display:block;">
                         <li class="slide ">
                             <a href="<?= $base_url ?>/create-self-leave-request"
                                 class="sidebar__menu-item <?= isActive('create-self-leave-request', $current_route) ?>">

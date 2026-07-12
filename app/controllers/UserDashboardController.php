@@ -533,12 +533,39 @@ class UserDashboardController extends Controller
             'missingFollowUpCount'=> $missingFollowUpCount,
             'isFilterMissing'     => $onlyMissingFollowup,
             'page_script'         => "
-                // Runs after main.js — override DataTable to 25 per page
+                const urlParams = new URLSearchParams(window.location.search);
+                const pageFromUrl = parseInt(urlParams.get('page') || '1', 10);
+                const pageLength = 25;
+                const displayStart = (pageFromUrl > 1) ? (pageFromUrl - 1) * pageLength : 0;
+
                 $('#assignedLeadsTable').DataTable().destroy();
-                $('#assignedLeadsTable').DataTable({
-                    pageLength : 25,
+                const table = $('#assignedLeadsTable').DataTable({
+                    pageLength : pageLength,
                     lengthMenu : [[25, 50, 100, -1], [25, 50, 100, 'All']],
-                    order      : []
+                    order      : [],
+                    displayStart : displayStart,
+                    drawCallback: function () {
+                        if (!window.hasScrolledToTarget) {
+                            const hash = window.location.hash;
+                            if (hash && hash.startsWith('#lead-')) {
+                                const targetEl = $(hash);
+                                if (targetEl.length > 0) {
+                                    window.hasScrolledToTarget = true;
+                                    $('html, body').animate({
+                                        scrollTop: targetEl.offset().top - 100
+                                    }, 500);
+                                }
+                            }
+                        }
+                    }
+                });
+
+                table.on('page.dt', function () {
+                    const info = table.page.info();
+                    const page = info.page + 1;
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('page', page);
+                    window.history.replaceState(null, '', url.toString());
                 });
             ",
         ]);

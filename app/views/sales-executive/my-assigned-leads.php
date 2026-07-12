@@ -405,7 +405,7 @@
                         </thead>
                         <tbody>
                             <?php foreach ($myAllleads as $key => $lead): ?>
-                                <tr data-id="<?= $lead['id'] ?>">
+                                <tr id="lead-<?= $lead['id'] ?>" data-id="<?= $lead['id'] ?>">
                                     <td>
                                         <input type="checkbox" class="me-2 selectedId" data-id="<?= $lead['id'] ?>">
                                         <?= $key + 1 ?>
@@ -812,7 +812,7 @@
             $plainText = strip_tags($displayName ?? '');
             ?>
             <!-- Lead Card -->
-            <div class="lead-card  mb-3" data-id="<?= $lead['id'] ?>">
+            <div id="lead-<?= $lead['id'] ?>" class="lead-card mb-3" data-id="<?= $lead['id'] ?>">
                 <div class="lead-card-header d-flex justify-content-between align-items-start gap-1">
                     <div class="flex-grow-1 overflow-hidden">
                         <span class="lead-name text-truncate"><?= htmlspecialchars($lead['full_name'] ?? '') ?></span>

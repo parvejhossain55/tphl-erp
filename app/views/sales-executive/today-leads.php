@@ -16,7 +16,7 @@
                <div class="col-xxl-12">
                    <div class="card__wrapper">
                        <div class="table__wrapper table-responsive">
-                           <table class="table no-border-table mb-20 multiple_tables">
+                           <table id="todayLeadsTable" data-dt-custom="1" class="table no-border-table mb-20 multiple_tables">
                                <thead>
                                    <tr class="table__title table__sort">
                                        <th style="min-width:60px;">S/L</th>
@@ -48,7 +48,7 @@
                                         }
                                         $plainText = strip_tags($displayName ?? '');
                                         ?>
-                                       <tr data-id="<?= $lead['id'] ?>">
+                                       <tr id="lead-<?= $lead['id'] ?>" data-id="<?= $lead['id'] ?>">
                                            <!-- S/L -->
                                            <td><?= $key + 1 ?></td>
 
@@ -313,7 +313,7 @@
                     // Clean phone for call link
                     $phone = !empty($lead['phone_number']) ? preg_replace('/[^0-9+]/', '', $lead['phone_number']) : '';
                     ?>
-                   <div class="lead-card mb-3 p-2 border rounded" data-id="<?= $lead['id'] ?>">
+                   <div id="lead-<?= $lead['id'] ?>" class="lead-card mb-3 p-2 border rounded" data-id="<?= $lead['id'] ?>">
                        <!-- Header: Lead Name + Phone + Job/Company/Best Contact Time -->
                        <div class="d-flex justify-content-between align-items-center">
                            <div class="">
@@ -659,4 +659,42 @@
                         }
                     });
             }
-       </script>
+
+            // Initialize DataTable with page restoration and scroll highlighting
+            const urlParams = new URLSearchParams(window.location.search);
+            const pageFromUrl = parseInt(urlParams.get('page') || '1', 10);
+            const pageLength = 10;
+            const displayStart = (pageFromUrl > 1) ? (pageFromUrl - 1) * pageLength : 0;
+
+            const todayTable = $('#todayLeadsTable').DataTable({
+                pageLength: pageLength,
+                lengthMenu: [
+                    [10, 25, 50, -1],
+                    [10, 25, 50, 'All']
+                ],
+                displayStart: displayStart,
+                order: [],
+                drawCallback: function () {
+                    if (!window.hasScrolledToTarget) {
+                        const hash = window.location.hash;
+                        if (hash && hash.startsWith('#lead-')) {
+                            const targetEl = $(hash);
+                            if (targetEl.length > 0) {
+                                window.hasScrolledToTarget = true;
+                                $('html, body').animate({
+                                    scrollTop: targetEl.offset().top - 100
+                                }, 500);
+                            }
+                        }
+                    }
+                }
+            });
+
+            todayTable.on('page.dt', function () {
+                const info = todayTable.page.info();
+                const page = info.page + 1;
+                const url = new URL(window.location.href);
+                url.searchParams.set('page', page);
+                window.history.replaceState(null, '', url.toString());
+            });
+        </script>

@@ -500,6 +500,7 @@ class LeadController extends Controller
         $data = [];
         foreach ($leads as $key => $lead) {
             $row = [];
+            $row['DT_RowId'] = 'lead-' . $lead['id'];
 
             $row[] = '
                 <input type="checkbox" class="me-2 selectedId" data-id="' . $lead['id'] . '">

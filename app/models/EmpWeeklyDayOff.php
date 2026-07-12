@@ -62,10 +62,13 @@ class EmpWeeklyDayOff extends Model
      */
     public function getEmployeeOffDaysList()
     {
-        $sql = "SELECT e.id, e.employee_id, e.full_name, desg.name AS designation_name,
+        $sql = "SELECT e.id, e.employee_id, e.full_name, 
+                       desg.name AS designation_name,
+                       dept.name AS department_name,
                        GROUP_CONCAT(w.day_off_name SEPARATOR ', ') as days_off
                 FROM employees e
                 LEFT JOIN designations desg ON e.designation_id = desg.id
+                LEFT JOIN departments dept ON e.department_id = dept.id
                 JOIN emp_weekly_day_off w ON e.id = w.employee_id
                 GROUP BY e.id
                 ORDER BY e.full_name ASC";
