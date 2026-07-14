@@ -48,7 +48,12 @@ class Con_VendorPaymentRequestController extends Controller
     /** Roles 1 (Admin), 3 (Super Admin) can approve */
     private function canApprove()
     {
-        return in_array($this->userRole, [1, 3]);
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        return (
+            in_array($this->userRole, [1, 3]) 
+            || strpos($roleName, 'admin') !== false 
+            || strpos($roleName, 'management') !== false
+        );
     }
     
     /** Roles that can do QC Approval */
@@ -97,7 +102,13 @@ class Con_VendorPaymentRequestController extends Controller
     /** Roles 1, 3, 6 (Accounts) can process payments */
     private function canProcessPayment()
     {
-        return in_array($this->userRole, [1, 3, 6]);
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        return (
+            in_array($this->userRole, [1, 3, 6]) 
+            || strpos($roleName, 'admin') !== false 
+            || strpos($roleName, 'management') !== false 
+            || strpos($roleName, 'accounts') !== false
+        );
     }
 
     // =========================================================================
@@ -108,9 +119,21 @@ class Con_VendorPaymentRequestController extends Controller
     {
         // Roles 1 (Admin), 3 (Super Admin), 6 (Accounts), 22 (PM Head), 17 (Purchase Head) see ALL requests
         // Other roles only see their own requests OR requests for projects they are assigned to
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        $isPrivileged = (
+            in_array($this->userRole, [1, 3, 6, 22, 17])
+            || strpos($roleName, 'admin') !== false
+            || strpos($roleName, 'management') !== false
+            || strpos($roleName, 'accounts') !== false
+            || strpos($roleName, 'pm head') !== false
+            || strpos($roleName, 'purchase head') !== false
+            || strpos($roleName, 'purchase team leader') !== false
+            || strpos($roleName, 'operation head') !== false
+        );
+
         $filterUserId = null;
         $assignedProjectIds = [];
-        if (!in_array($this->userRole, [1, 3, 6, 22, 17]) && !$this->canApproveQC()) {
+        if (!$isPrivileged && !$this->canApproveQC()) {
             $filterUserId = $this->userId;
             $assignedProjectIds = $this->getAssignedProjectIds($this->userId);
         }
