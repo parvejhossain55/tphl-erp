@@ -51,12 +51,13 @@ $disable_layout = true;
                     <h2>PAYMENT RECEIPT</h2>
                     <p class="invoice-number">#REC-<?= str_pad($payment['id'] ?? '0', 6, '0', STR_PAD_LEFT) ?></p>
                     <p class="invoice-number">Date: <?= date('d M, Y', strtotime($payment['payment_date'] ?? 'now')) ?></p>
-                    <?php if (($payment['payment_status'] ?? 'paid') === 'paid'): ?>
-                        <span class="paid-stamp">PAID</span>
-                    <?php elseif (($payment['payment_status'] ?? 'partially_paid') === 'partially_paid'): ?>
-                        <span class="pending-stamp">Partially Paid</span>
+                    <?php 
+                        $isVerified = ($payment['verification_status'] ?? 'pending') === 'verified';
+                        if ($isVerified): 
+                    ?>
+                        <span class="paid-stamp">VERIFIED AND PAID </span>
                     <?php else: ?>
-                        <span class="pending-stamp">PENDING</span>
+                        <span class="pending-stamp">SUBJECT TO BANK VERIFICATION</span>
                     <?php endif; ?>
                 </div>
             </div>
