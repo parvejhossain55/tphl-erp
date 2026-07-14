@@ -48,7 +48,12 @@ class Con_VendorPaymentRequestController extends Controller
     /** Roles 1 (Admin), 3 (Super Admin) can approve */
     private function canApprove()
     {
-        return in_array($this->userRole, [1, 3]);
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        return (
+            in_array($this->userRole, [1, 3]) 
+            || strpos($roleName, 'admin') !== false 
+            || strpos($roleName, 'management') !== false
+        );
     }
     
     /** Roles that can do QC Approval */
@@ -97,7 +102,13 @@ class Con_VendorPaymentRequestController extends Controller
     /** Roles 1, 3, 6 (Accounts) can process payments */
     private function canProcessPayment()
     {
-        return in_array($this->userRole, [1, 3, 6]);
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        return (
+            in_array($this->userRole, [1, 3, 6]) 
+            || strpos($roleName, 'admin') !== false 
+            || strpos($roleName, 'management') !== false 
+            || strpos($roleName, 'accounts') !== false
+        );
     }
 
     // =========================================================================
@@ -108,11 +119,118 @@ class Con_VendorPaymentRequestController extends Controller
     {
         // Roles 1 (Admin), 3 (Super Admin), 6 (Accounts), 22 (PM Head), 17 (Purchase Head) see ALL requests
         // Other roles only see their own requests OR requests for projects they are assigned to
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        $isPrivileged = (
+            in_array($this->userRole, [1, 3, 6, 22, 17])
+            || strpos($roleName, 'admin') !== false
+            || strpos($roleName, 'management') !== false
+            || strpos($roleName, 'accounts') !== false
+            || strpos($roleName, 'pm head') !== false
+            || strpos($roleName, 'purchase head') !== false
+            || strpos($roleName, 'purchase team leader') !== false
+            || strpos($roleName, 'operation head') !== false
+        );
+
         $filterUserId = null;
         $assignedProjectIds = [];
-        if (!in_array($this->userRole, [1, 3, 6, 22, 17]) && !$this->canApproveQC()) {
+        $qcApprovedCheck = $this->canApproveQC();
+        if (!$isPrivileged && !$qcApprovedCheck) {
             $filterUserId = $this->userId;
             $assignedProjectIds = $this->getAssignedProjectIds($this->userId);
+        }
+
+        // Handle debug output if requested
+        if (isset($_GET['debug'])) {
+            echo "<h2>Debug Mode</h2>";
+            echo "<pre>";
+            echo "Session User details:\n";
+            print_r($_SESSION['user'] ?? 'No user in session');
+            echo "\nUser Role ID: " . var_export($this->userRole, true) . "\n";
+            echo "User ID: " . var_export($this->userId, true) . "\n";
+            echo "Is Privileged: " . var_export($isPrivileged, true) . "\n";
+            echo "Can Approve QC: " . var_export($qcApprovedCheck, true) . "\n";
+            echo "Filter User ID: " . var_export($filterUserId, true) . "\n";
+            echo "Assigned Project IDs: " . var_export($assignedProjectIds, true) . "\n";
+            
+            // Build the query to display it
+            $sql = "SELECT pr.*,
+                           v.name       AS vendor_name,
+                           p.name       AS project_name,
+                           po.id        AS po_number,
+                           u.full_name  AS created_by_name,
+                           ab.full_name AS approved_by_name,
+                           ab_r.name    AS approved_by_role,
+                           pb.full_name AS payment_by_name,
+                           COALESCE(txn_sum.total_paid, 0) AS already_paid
+                    FROM vendor_payment_requests pr
+                    LEFT JOIN vendors v          ON v.id  = pr.vendor_id
+                    LEFT JOIN projects p         ON p.id  = pr.project_id
+                    LEFT JOIN purchase_orders po ON po.id = pr.purchase_order_id
+                    LEFT JOIN users u            ON u.id  = pr.created_by
+                    LEFT JOIN users ab           ON ab.id = pr.approved_by
+                    LEFT JOIN roles ab_r         ON ab_r.id = ab.role_id
+                    LEFT JOIN (
+                        SELECT t1.ref_id, t1.processed_by
+                        FROM con_financial_transactions t1
+                        INNER JOIN (
+                            SELECT MAX(id) AS max_id
+                            FROM con_financial_transactions
+                            WHERE ref_type = 'vendor_payment'
+                            GROUP BY ref_id
+                        ) t2 ON t1.id = t2.max_id
+                    ) latest_txn ON latest_txn.ref_id = pr.id
+                    LEFT JOIN users pb ON pb.id = latest_txn.processed_by
+                    LEFT JOIN (
+                        SELECT ref_id, SUM(amount_paid) AS total_paid
+                        FROM con_financial_transactions
+                        WHERE ref_type = 'vendor_payment'
+                        GROUP BY ref_id
+                    ) txn_sum ON txn_sum.ref_id = pr.id";
+
+            $whereClauses = [];
+            if ($filterUserId !== null) {
+                $userCond = "pr.created_by = " . (int)$filterUserId;
+                if (!empty($assignedProjectIds)) {
+                    $idList = implode(',', array_map('intval', $assignedProjectIds));
+                    $whereClauses[] = "($userCond OR pr.project_id IN ($idList))";
+                } else {
+                    $whereClauses[] = $userCond;
+                }
+            }
+
+            if (!empty($whereClauses)) {
+                $sql .= " WHERE " . implode(" AND ", $whereClauses);
+            }
+            $sql .= " ORDER BY pr.id DESC";
+
+            echo "\nExecuting SQL Query:\n" . $sql . "\n";
+            $res = $this->db->query($sql);
+            if (!$res) {
+                echo "\nMySQL Error: " . $this->db->error . "\n";
+            } else {
+                echo "\nQuery Succeeded! Rows returned: " . $res->num_rows . "\n";
+                print_r($res->fetch_all(MYSQLI_ASSOC));
+            }
+
+            // Dump model details
+            try {
+                $reflector = new \ReflectionClass('Con_VendorPaymentRequest');
+                echo "\nModel Class Source File: " . $reflector->getFileName() . "\n";
+            } catch (\Throwable $e) {
+                echo "\nReflection Error: " . $e->getMessage() . "\n";
+            }
+
+            echo "\nCalling \$this->model->getAll() directly:\n";
+            try {
+                $modelRes = $this->model->getAll($filterUserId, $assignedProjectIds);
+                echo "Returned rows count: " . count($modelRes) . "\n";
+                print_r($modelRes);
+            } catch (\Throwable $e) {
+                echo "Error calling getAll(): " . $e->getMessage() . "\n";
+            }
+            
+            echo "</pre>";
+            exit;
         }
 
         $requests = $this->model->getAll($filterUserId, $assignedProjectIds);

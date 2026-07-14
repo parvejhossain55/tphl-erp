@@ -38,10 +38,14 @@ class Con_VendorPaymentRequest extends Model
                 LEFT JOIN users ab           ON ab.id = pr.approved_by
                 LEFT JOIN roles ab_r         ON ab_r.id = ab.role_id
                 LEFT JOIN (
-                    SELECT ref_id, processed_by
-                    FROM con_financial_transactions
-                    WHERE ref_type = 'vendor_payment'
-                    ORDER BY id DESC
+                    SELECT t1.ref_id, t1.processed_by
+                    FROM con_financial_transactions t1
+                    INNER JOIN (
+                        SELECT MAX(id) AS max_id
+                        FROM con_financial_transactions
+                        WHERE ref_type = 'vendor_payment'
+                        GROUP BY ref_id
+                    ) t2 ON t1.id = t2.max_id
                 ) latest_txn ON latest_txn.ref_id = pr.id
                 LEFT JOIN users pb ON pb.id = latest_txn.processed_by
                 LEFT JOIN (
@@ -66,7 +70,7 @@ class Con_VendorPaymentRequest extends Model
             $sql .= " WHERE " . implode(" AND ", $whereClauses);
         }
 
-        $sql .= " GROUP BY pr.id ORDER BY pr.id DESC";
+        $sql .= " ORDER BY pr.id DESC";
 
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
