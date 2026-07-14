@@ -290,6 +290,18 @@
     border-radius: 2px;
     display: inline-block;
   }
+
+  /* Collapsible CPL Section */
+  .cpl-header {
+    cursor: pointer;
+    user-select: none;
+  }
+  .cpl-header .toggle-icon {
+    transition: transform 0.2s ease-in-out;
+  }
+  .cpl-header[aria-expanded="true"] .toggle-icon {
+    transform: rotate(180deg);
+  }
 </style>
 
 
@@ -458,11 +470,19 @@
     <div class="row mt-4 mb-2">
       <div class="col-12">
         <div class="card__wrapper shadow-sm border-0" style="background:#fff;">
-          <div class="section-title mb-4" style="color:#1a2744; border-bottom:1px solid #e8ecf3; padding-bottom:12px;">
-            <i class="bi bi-funnel-fill me-2 text-primary" style="font-size:1.1rem;"></i>Cost Per Lead (CPL) & Source Breakdown
+          <div class="section-title mb-0 cpl-header d-flex justify-content-between align-items-center" 
+               style=" cursor:pointer;"
+               onclick="toggleCplSection(this)"
+               aria-expanded="false">
+            <div>
+              <i class="bi bi-funnel-fill me-2 text-primary" style="font-size:1.1rem;"></i>Cost Per Lead (CPL) & Source Breakdown
+            </div>
+            <i class="bi bi-chevron-down toggle-icon text-muted" style="font-size:1.1rem;"></i>
           </div>
           
-          <div class="row g-4">
+          <div class="collapse" id="cplBreakdownCollapse">
+            <div style="border-top:1px solid #e8ecf3; padding-top:16px; margin-top:12px;">
+              <div class="row g-4">
             <?php if (!empty($cplData)): ?>
               <?php foreach ($cplData as $parent => $cpl): ?>
                 <?php if (empty($cpl['budget']) && empty($cpl['total_leads']) && $parent !== 'Other') continue; ?>
@@ -512,6 +532,8 @@
             <?php else: ?>
                 <div class="col-12 text-center text-muted py-4">No CPL Data or Budget recorded for this month.</div>
             <?php endif; ?>
+          </div>
+          </div>
           </div>
           
         </div>
@@ -795,9 +817,21 @@
     </div>
   <?php endif; ?>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
+  /* ── collapse/expand CPL breakdown ── */
+  function toggleCplSection(header) {
+    const content = document.getElementById('cplBreakdownCollapse');
+    const isExpanded = content.classList.contains('show');
+    if (isExpanded) {
+      content.classList.remove('show');
+      header.setAttribute('aria-expanded', 'false');
+    } else {
+      content.classList.add('show');
+      header.setAttribute('aria-expanded', 'true');
+    }
+  }
+
   /* ── tab switching ── */
   function showTab(name, el) {
     ['platform', 'add', 'log', 'chart'].forEach(t => {

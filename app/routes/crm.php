@@ -2,6 +2,13 @@
 return [
 
     // =========================================================================
+    // Controller: LeadWebhookController (Freshsales Integration)
+    // =========================================================================
+    'freshsales-webhook'                    => ['controller' => 'LeadWebhookController', 'method' => 'receive'],
+    'digital-marketing/freshsales-leads'    => ['controller' => 'DigitalMarketingController', 'method' => 'freshsalesLeadsPage'],
+    'digital-marketing/freshsales-export'   => ['controller' => 'LeadWebhookController', 'method' => 'exportCsv'],
+
+    // =========================================================================
     // Controller: CustomerController
     // =========================================================================
     'customer-lists' => ['controller' => 'CustomerController', 'method' => 'index'],

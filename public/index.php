@@ -68,7 +68,8 @@ $public_routes = [
     '',
     'admin-login',
     'logout',
-    'admin-registration'
+    'admin-registration',
+    'freshsales-webhook'
 ];
 
 if (!in_array($route, $public_routes)) {

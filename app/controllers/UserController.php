@@ -195,6 +195,7 @@ class UserController extends Controller
             'media_link2'    => $_POST['media_link2'] ?? '',
             'created_by'     => $_SESSION['user']['id'] ?? null,
             'employee_id'    => $_POST['employee_id'] ?? null,
+            'team_id'        => $existingUser['team_id'] ?? 0,
         ];
 
         $redirectTo = $_POST['redirect_to'] ?? $_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/user-lists";
