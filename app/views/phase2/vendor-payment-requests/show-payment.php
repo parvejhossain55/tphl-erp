@@ -71,6 +71,259 @@ $advancePaid = (float) ($advance_paid ?? 0);
     </div>
 </div>
 
+<style>
+    .bg-success-transparent {
+        background-color: rgba(40, 167, 69, 0.08) !important;
+    }
+    .bg-danger-transparent {
+        background-color: rgba(220, 53, 69, 0.08) !important;
+    }
+    .bg-info-transparent {
+        background-color: rgba(23, 162, 184, 0.08) !important;
+    }
+    .bg-warning-transparent {
+        background-color: rgba(255, 193, 7, 0.08) !important;
+    }
+    .timeline-steps .col-md-4 {
+        transition: transform 0.2s ease-in-out;
+    }
+    .timeline-steps .col-md-4:hover {
+        transform: translateY(-2px);
+    }
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    .animate-blink {
+        animation: blink 1.5s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.08); }
+    }
+    .animate-pulse {
+        display: inline-block;
+        animation: pulse 2s infinite ease-in-out;
+    }
+</style>
+
+<?php
+// Compute status timeline details
+$qcApproved = ($status !== 'Draft' && $status !== 'Submitted' && ($status !== 'Rejected' || $request['qc_verified']));
+$qcRejected = ($status === 'Rejected' && !$request['qc_verified']);
+$qcPending = ($status === 'Submitted');
+
+$mgmtApproved = in_array($status, ['Approved', 'Partially_Paid', 'Fully_Paid', 'Paid']);
+$mgmtRejected = ($status === 'Rejected' && $request['qc_verified']);
+$mgmtPending = ($status === 'QC Approved');
+
+$payApproved = in_array($status, ['Fully_Paid', 'Paid']);
+$payPartial = ($status === 'Partially_Paid');
+$payPending = ($status === 'Approved');
+
+// Determine Next Action
+$nextActionText = '';
+$nextActionRole = '';
+$nextActionColor = 'secondary';
+
+if ($status === 'Draft') {
+    $nextActionText = 'Submit the payment request for QC review.';
+    $nextActionRole = 'Creator / Purchase Executive';
+    $nextActionColor = 'warning';
+} elseif ($status === 'Submitted') {
+    $nextActionText = 'Verify materials/delivery and approve QC status.';
+    $nextActionRole = 'QC & Internal Audit Team';
+    $nextActionColor = 'info';
+} elseif ($status === 'QC Approved') {
+    $nextActionText = 'Review the QC-verified request and approve for payment.';
+    $nextActionRole = 'Management / Admin';
+    $nextActionColor = 'primary';
+} elseif ($status === 'Approved') {
+    $nextActionText = 'Disburse the net payable amount of ৳ ' . number_format($dueAmount, 2) . '.';
+    $nextActionRole = 'Accounts Team';
+    $nextActionColor = 'success';
+} elseif ($status === 'Partially_Paid') {
+    $nextActionText = 'Disburse the remaining due amount of ৳ ' . number_format($dueAmount, 2) . '.';
+    $nextActionRole = 'Accounts Team';
+    $nextActionColor = 'info';
+} elseif (in_array($status, ['Fully_Paid', 'Paid'])) {
+    $nextActionText = 'Payment completed successfully. No further action needed.';
+    $nextActionRole = 'None';
+    $nextActionColor = 'secondary';
+} elseif ($status === 'Rejected') {
+    $nextActionText = 'This request has been rejected. No further action possible.';
+    $nextActionRole = 'None';
+    $nextActionColor = 'danger';
+}
+?>
+
+<!-- Approval Workflow & Next Action Status Tracker -->
+<div class="card custom-card mb-4 border-<?= $nextActionColor ?> shadow-sm">
+    <div class="card-header bg-<?= $nextActionColor ?>-transparent d-flex justify-content-between align-items-center">
+        <h6 class="card-title mb-0 text-<?= $nextActionColor === 'secondary' ? 'dark' : $nextActionColor ?> fw-bold">
+            <i class="bi bi-arrow-right-circle-fill me-2"></i>Approval Workflow & Next Action Tracker
+        </h6>
+        <div>
+            <span class="fw-bold me-1">Next Action:</span>
+            <span class="badge bg-<?= $nextActionColor ?> fs-12 px-2 py-1"><?= $nextActionRole ?></span>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Next Action Description banner -->
+        <div class="alert alert-<?= $nextActionColor ?> d-flex align-items-center mb-4" role="alert">
+            <i class="bi bi-info-circle-fill fs-5 me-2"></i>
+            <div>
+                <strong>Current State Description:</strong> <?= $nextActionText ?>
+            </div>
+        </div>
+
+        <!-- 3-Step Approval Timeline -->
+        <div class="row text-center timeline-steps">
+            <!-- Step 1: QC Verification -->
+            <div class="col-md-4 mb-3 mb-md-0 position-relative">
+                <div class="p-3 border rounded h-100 <?= $qcApproved ? 'border-success bg-success-transparent' : ($qcRejected ? 'border-danger bg-danger-transparent' : ($qcPending ? 'border-info bg-info-transparent' : 'bg-light')) ?>">
+                    <div class="fs-4 mb-2">
+                        <?php if ($qcApproved): ?>
+                            <i class="bi bi-shield-check text-success fs-2"></i>
+                        <?php elseif ($qcRejected): ?>
+                            <i class="bi bi-shield-x text-danger fs-2"></i>
+                        <?php else: ?>
+                            <i class="bi bi-shield text-muted fs-2 <?= $qcPending ? 'animate-pulse' : '' ?>"></i>
+                        <?php endif; ?>
+                    </div>
+                    <h6 class="fw-bold mb-1">1. QC Audit & Verification</h6>
+                    
+                    <div class="mt-2">
+                        <?php if ($qcApproved): ?>
+                            <span class="badge bg-success">QC Approved</span>
+                            <div class="small mt-2 text-muted">
+                                <strong>By:</strong> <?= htmlspecialchars($request['qc_approved_by_name'] ?? 'QC Department') ?><br>
+                                <?php if (!empty($request['qc_approved_at'])): ?>
+                                    <strong>On:</strong> <?= date('d M Y h:i A', strtotime($request['qc_approved_at'])) ?>
+                                <?php endif; ?>
+                            </div>
+                        <?php elseif ($qcRejected): ?>
+                            <span class="badge bg-danger">QC Rejected</span>
+                            <div class="small mt-2 text-muted">
+                                <strong>By:</strong> <?= htmlspecialchars($request['qc_approved_by_name'] ?? 'QC Department') ?><br>
+                                <?php if (!empty($request['qc_approved_at'])): ?>
+                                    <strong>On:</strong> <?= date('d M Y h:i A', strtotime($request['qc_approved_at'])) ?>
+                                <?php endif; ?>
+                            </div>
+                        <?php elseif ($qcPending): ?>
+                            <span class="badge bg-info animate-blink">Pending Review</span>
+                            <div class="small mt-2 text-muted">Awaiting QC audit & material verification.</div>
+                        <?php else: ?>
+                            <span class="badge bg-secondary">Awaiting Submission</span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if (!empty($request['qc_note'])): ?>
+                        <div class="mt-2 p-2 bg-white rounded border text-start small">
+                            <strong>Note:</strong> <?= htmlspecialchars($request['qc_note']) ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Step 2: Management Approval -->
+            <div class="col-md-4 mb-3 mb-md-0">
+                <div class="p-3 border rounded h-100 <?= $mgmtApproved ? 'border-success bg-success-transparent' : ($mgmtRejected ? 'border-danger bg-danger-transparent' : ($mgmtPending ? 'border-info bg-info-transparent' : 'bg-light')) ?>">
+                    <div class="fs-4 mb-2">
+                        <?php if ($mgmtApproved): ?>
+                            <i class="bi bi-person-check text-success fs-2"></i>
+                        <?php elseif ($mgmtRejected): ?>
+                            <i class="bi bi-person-x text-danger fs-2"></i>
+                        <?php else: ?>
+                            <i class="bi bi-person text-muted fs-2 <?= $mgmtPending ? 'animate-pulse' : '' ?>"></i>
+                        <?php endif; ?>
+                    </div>
+                    <h6 class="fw-bold mb-1">2. Management Final Approval</h6>
+                    
+                    <div class="mt-2">
+                        <?php if ($mgmtApproved): ?>
+                            <span class="badge bg-success">Approved</span>
+                            <div class="small mt-2 text-muted">
+                                <strong>By:</strong> <?= htmlspecialchars($request['approved_by_name'] ?? 'Management') ?><br>
+                                <?php if (!empty($approval_request['approved_at'])): ?>
+                                    <strong>On:</strong> <?= date('d M Y h:i A', strtotime($approval_request['approved_at'])) ?>
+                                <?php elseif (!empty($request['updated_at']) && $status !== 'Submitted' && $status !== 'QC Approved'): ?>
+                                    <strong>On:</strong> <?= date('d M Y h:i A', strtotime($request['updated_at'])) ?>
+                                <?php endif; ?>
+                            </div>
+                        <?php elseif ($mgmtRejected): ?>
+                            <span class="badge bg-danger">Rejected</span>
+                            <div class="small mt-2 text-muted">
+                                <strong>By:</strong> <?= htmlspecialchars($request['approved_by_name'] ?? 'Management') ?><br>
+                                <?php if (!empty($approval_request['approved_at'])): ?>
+                                    <strong>On:</strong> <?= date('d M Y h:i A', strtotime($approval_request['approved_at'])) ?>
+                                <?php endif; ?>
+                            </div>
+                        <?php elseif ($mgmtPending): ?>
+                            <span class="badge bg-info animate-blink">Pending Review</span>
+                            <div class="small mt-2 text-muted">QC verification completed. Awaiting Management final decision.</div>
+                        <?php elseif ($qcRejected): ?>
+                            <span class="badge bg-secondary">Bypassed</span>
+                            <div class="small mt-2 text-muted">Request was rejected during QC stage.</div>
+                        <?php else: ?>
+                            <span class="badge bg-secondary">Awaiting QC First</span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if (!empty($request['management_note'])): ?>
+                        <div class="mt-2 p-2 bg-white rounded border text-start small">
+                            <strong>Note:</strong> <?= htmlspecialchars($request['management_note']) ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Step 3: Accounts Payment -->
+            <div class="col-md-4">
+                <div class="p-3 border rounded h-100 <?= $payApproved ? 'border-success bg-success-transparent' : ($payPartial ? 'border-info bg-info-transparent' : ($payPending ? 'border-warning bg-warning-transparent' : 'bg-light')) ?>">
+                    <div class="fs-4 mb-2">
+                        <?php if ($payApproved): ?>
+                            <i class="bi bi-wallet2 text-success fs-2"></i>
+                        <?php elseif ($payPartial): ?>
+                            <i class="bi bi-wallet2 text-info fs-2"></i>
+                        <?php elseif ($payPending): ?>
+                            <i class="bi bi-wallet2 text-warning fs-2 <?= $payPending ? 'animate-pulse' : '' ?>"></i>
+                        <?php else: ?>
+                            <i class="bi bi-wallet2 text-muted fs-2"></i>
+                        <?php endif; ?>
+                    </div>
+                    <h6 class="fw-bold mb-1">3. Accounts Disbursement</h6>
+                    
+                    <div class="mt-2">
+                        <?php if ($payApproved): ?>
+                            <span class="badge bg-success">Fully Paid</span>
+                            <div class="small mt-2 text-muted">
+                                <strong>Total Paid:</strong> ৳ <?= number_format($totalPaid, 2) ?><br>
+                                <strong>Remaining Due:</strong> ৳ 0.00
+                            </div>
+                        <?php elseif ($payPartial): ?>
+                            <span class="badge bg-info animate-blink">Partially Paid</span>
+                            <div class="small mt-2 text-muted">
+                                <strong>Total Paid:</strong> ৳ <?= number_format($totalPaid, 2) ?><br>
+                                <strong>Remaining Due:</strong> <span class="text-danger fw-bold">৳ <?= number_format($dueAmount, 2) ?></span>
+                            </div>
+                        <?php elseif ($payPending): ?>
+                            <span class="badge bg-warning animate-blink">Pending Payment</span>
+                            <div class="small mt-2 text-muted">
+                                <strong>Approved Amt:</strong> ৳ <?= number_format($payableAmount, 2) ?><br>
+                                <strong>Pending Due:</strong> <span class="text-danger fw-bold">৳ <?= number_format($dueAmount, 2) ?></span>
+                            </div>
+                        <?php elseif ($status === 'Rejected'): ?>
+                            <span class="badge bg-secondary">Cancelled</span>
+                            <div class="small mt-2 text-muted">Request was rejected. No payment will be processed.</div>
+                        <?php else: ?>
+                            <span class="badge bg-secondary">Awaiting Approvals</span>
+                            <div class="small mt-2 text-muted">Payment will be enabled once approved by Management.</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- ROW 1: Request Information & Additional Documents & Notes -->
 <div class="row mb-3">

@@ -16,9 +16,10 @@ class Con_VendorPaymentRequest extends Model
 
     /**
      * Get all vendor payment requests with relations + approved_by/payment_by names
-     * @param int|null $userId  If set, only show requests created by this user
+     * @param int|null $userId  If set, only show requests created by this user or for projects they are assigned to
+     * @param array $assignedProjectIds  List of project IDs assigned to the user
      */
-    public function getAll($userId = null)
+    public function getAll($userId = null, $assignedProjectIds = [])
     {
         $sql = "SELECT pr.*,
                        v.name       AS vendor_name,
@@ -50,8 +51,19 @@ class Con_VendorPaymentRequest extends Model
                     GROUP BY ref_id
                 ) txn_sum ON txn_sum.ref_id = pr.id";
 
+        $whereClauses = [];
         if ($userId !== null) {
-            $sql .= " WHERE pr.created_by = " . (int)$userId;
+            $userCond = "pr.created_by = " . (int)$userId;
+            if (!empty($assignedProjectIds)) {
+                $idList = implode(',', array_map('intval', $assignedProjectIds));
+                $whereClauses[] = "($userCond OR pr.project_id IN ($idList))";
+            } else {
+                $whereClauses[] = $userCond;
+            }
+        }
+
+        if (!empty($whereClauses)) {
+            $sql .= " WHERE " . implode(" AND ", $whereClauses);
         }
 
         $sql .= " GROUP BY pr.id ORDER BY pr.id DESC";

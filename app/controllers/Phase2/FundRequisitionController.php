@@ -124,9 +124,14 @@ class FundRequisitionController extends Controller {
                 OR operation_head_id  = ?
                 OR qc_id              = ?
                 OR struct_engineer_id = ?
-                OR draftsman_id       = ?)
+                OR draftsman_id       = ?
+                OR landman_id         = ?
+                OR architect_id       = ?
+                OR estimator_id       = ?
+                OR operator_id        = ?
+                OR purchase_user_id   = ?)
         ");
-        $stmt->bind_param('iiiiii', $userId, $userId, $userId, $userId, $userId, $userId);
+        $stmt->bind_param('iiiiiiiiiii', $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId);
         $stmt->execute();
         $result = $stmt->get_result();
         $ids = [];

@@ -2513,6 +2513,15 @@
                 <?php endif; ?>
                 <!-- ==================== END PHASE 2 ==================== -->
 
+                <!-- Fund Requisitions -->
+                <li class="slide <?= isActive('fund-requisitions', $current_route) ?>">
+                    <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions"
+                        class="sidebar__menu-item <?= isActive('fund-requisitions', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                        <span class="sidebar__menu-label">Fund Requisitions</span>
+                    </a>
+                </li>
+
                 <li class="slide <?= isActive('tutorial-video', $current_route) ?>">
                     <a href="<?= $GLOBALS['base_url'] ?>/tutorial-video" target="_blank"
                         class="sidebar__menu-item <?= isActive('tutorial-video', $current_route) ?>">

@@ -63,3 +63,4 @@ class TutorialController extends Controller
         exit;
     }
 }
+

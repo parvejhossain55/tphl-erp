@@ -64,11 +64,13 @@
                     <div class="col-xxl-2 col-lg-2 col-md-4 col-12">
                         <div class="d-flex align-items-center gap-2">
                             <span class="text-muted fs-11 text-nowrap">Rows Per Page</span>
-                            <select id="perPage" class="form-select form-select-sm fs-12" style="width: 80px;">
+                            <select id="perPage" class="form-select form-select-sm fs-12" style="width: 90px;">
                                 <option value="10">10</option>
                                 <option value="20">20</option>
                                 <option value="50" selected>50</option>
                                 <option value="100">100</option>
+                                <option value="500">500</option>
+                                <option value="1000">1000</option>
                             </select>
                         </div>
                     </div>

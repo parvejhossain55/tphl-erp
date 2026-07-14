@@ -399,6 +399,9 @@ CREATE TABLE `purchase_orders` (
   `qc_approved_by_id` int(11) DEFAULT NULL,
   `qc_approved_at` datetime DEFAULT NULL,
   `qc_note` text DEFAULT NULL,
+  `mgmt_approved_by_id` int(11) DEFAULT NULL,
+  `mgmt_approved_at` datetime DEFAULT NULL,
+  `mgmt_note` text DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_po_request` (`request_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
