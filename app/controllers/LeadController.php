@@ -773,7 +773,7 @@ class LeadController extends Controller
                 } else {
                     $targetUid = $userId;
                     // Get team_id of selected user
-                    $userTeamStmt = $this->db->prepare("SELECT team_id FROM employees WHERE user_id = ? LIMIT 1");
+                    $userTeamStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
                     $userTeamStmt->bind_param("i", $userId);
                     $userTeamStmt->execute();
                     $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
@@ -790,7 +790,7 @@ class LeadController extends Controller
             }
         } else {
             // Get team_id of selected user
-            $userTeamStmt = $this->db->prepare("SELECT team_id FROM employees WHERE user_id = ? LIMIT 1");
+            $userTeamStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
             $userTeamStmt->bind_param("i", $userId);
             $userTeamStmt->execute();
             $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();

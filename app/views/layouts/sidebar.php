@@ -485,14 +485,19 @@
                             <span class="sidebar__menu-label">Marketing Head Dashboard</span>
                         </a>
                     </li>
-
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/digital-marketing/freshsales-leads"
+                            class="sidebar__menu-item <?= isActive('freshsales-leads', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+                            <span class="sidebar__menu-label">Freshsales API Leads</span>
+                        </a>
+                    </li>
                 <?php endif; ?>
                 <!--End Marketing Head Dashboard  -->
                 <!--Start Marketing Executive Dashboard  -->
                 <?php if (hasPermission("Upload CSV")): ?>
                     <!--CED CATEGORY -->
                     <li class="sidebar__menu-category">
-
                         <span class="category-name">My Dashboard</span>
                     </li>
                     <li class="slide ">
@@ -500,6 +505,13 @@
                             class="sidebar__menu-item <?= isActive('digital-marketing-executive-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">Marketing Executive Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/digital-marketing/freshsales-leads"
+                            class="sidebar__menu-item <?= isActive('freshsales-leads', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+                            <span class="sidebar__menu-label">Freshsales API Leads</span>
                         </a>
                     </li>
                     <li class="slide">

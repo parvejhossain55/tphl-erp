@@ -205,6 +205,9 @@ class EmployeeController extends Controller
                     $this->db->query("DELETE FROM employees WHERE id = $employee_id");
 
                     throw new Exception("User creation failed!");
+                } else {
+                    // Link the employee to the newly created user
+                    $this->db->query("UPDATE employees SET user_id = $user_id WHERE id = $employee_id");
                 }
             }
 

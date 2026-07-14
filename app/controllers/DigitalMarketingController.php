@@ -755,4 +755,92 @@ public function deleteBudget($id)
             "form_id"       => (int)$id,
         ]);
     }
+
+    public function freshsalesLeadsPage()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['user']['id'])) {
+            header("Location: {$GLOBALS['base_url']}/admin-login");
+            exit;
+        }
+
+        $platform = $_GET['platform'] ?? '';
+        $campaign = $_GET['campaign'] ?? '';
+        $status = $_GET['status'] ?? '0'; // default Pending (is_exported = 0)
+        $fromDate = $_GET['from_date'] ?? '';
+        $toDate = $_GET['to_date'] ?? '';
+
+        $sql = "SELECT * FROM freshsales_leads_cache WHERE 1=1";
+        $params = [];
+        $types = "";
+
+        if ($platform !== '') {
+            $sql .= " AND platform = ?";
+            $params[] = $platform;
+            $types .= "s";
+        }
+        if ($campaign !== '') {
+            $sql .= " AND campaign_name = ?";
+            $params[] = $campaign;
+            $types .= "s";
+        }
+        if ($status !== 'all') {
+            $sql .= " AND is_exported = ?";
+            $params[] = (int)$status;
+            $types .= "i";
+        }
+        if (!empty($fromDate) && !empty($toDate)) {
+            $sql .= " AND DATE(created_at) BETWEEN ? AND ?";
+            $params[] = $fromDate;
+            $params[] = $toDate;
+            $types .= "ss";
+        }
+
+        $sql .= " ORDER BY created_at DESC";
+        $stmt = $this->db->prepare($sql);
+        
+        $leads = [];
+        if ($stmt) {
+            if (!empty($params)) {
+                $stmt->bind_param($types, ...$params);
+            }
+            $stmt->execute();
+            $leads = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+        }
+
+        $platformsResult = $this->db->query("SELECT DISTINCT platform FROM freshsales_leads_cache WHERE platform IS NOT NULL AND platform != ''");
+        $platforms = [];
+        if ($platformsResult) {
+            while ($row = $platformsResult->fetch_assoc()) {
+                $platforms[] = $row['platform'];
+            }
+        }
+
+        $campaignsResult = $this->db->query("SELECT DISTINCT campaign_name FROM freshsales_leads_cache WHERE campaign_name IS NOT NULL AND campaign_name != '' ORDER BY campaign_name ASC");
+        $campaigns = [];
+        if ($campaignsResult) {
+            while ($row = $campaignsResult->fetch_assoc()) {
+                $campaigns[] = $row['campaign_name'];
+            }
+        }
+
+        return $this->view("digital-marketing-team/freshsales-leads", [
+            "current_route" => "freshsales-leads",
+            "page_title"    => "Freshsales API Leads",
+            "leads"         => $leads,
+            "platforms"     => $platforms,
+            "campaigns"     => $campaigns,
+            "filter"        => [
+                "platform"  => $platform,
+                "campaign"  => $campaign,
+                "status"    => $status,
+                "from_date" => $fromDate,
+                "to_date"   => $toDate
+            ]
+        ]);
+    }
 }
