@@ -55,7 +55,43 @@ class Con_VendorPaymentRequestController extends Controller
     private function canApproveQC()
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        return ($roleName === 'qc & internal audit' || hasPermission('QC & Internal Audit') || $this->canApprove());
+        return (
+            strpos($roleName, 'qc') !== false 
+            || strpos($roleName, 'quality controller') !== false 
+            || hasPermission('QC & Internal Audit') 
+            || hasPermission('QC Dashboard') 
+            || $this->canApprove()
+        );
+    }
+
+    /** Helper to get assigned project IDs for a user */
+    private function getAssignedProjectIds(int $userId): array {
+        $stmt = $this->db->prepare("
+            SELECT id FROM projects
+            WHERE deleted_at IS NULL
+              AND (site_engineer_id   = ?
+                OR pm_id              = ?
+                OR operation_head_id  = ?
+                OR qc_id              = ?
+                OR struct_engineer_id = ?
+                OR draftsman_id       = ?
+                OR landman_id         = ?
+                OR architect_id       = ?
+                OR estimator_id       = ?
+                OR operator_id        = ?
+                OR purchase_user_id   = ?)
+        ");
+        if ($stmt) {
+            $stmt->bind_param('iiiiiiiiiii', $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $ids = [];
+            while ($row = $result->fetch_assoc()) {
+                $ids[] = (int)$row['id'];
+            }
+            return $ids;
+        }
+        return [];
     }
 
     /** Roles 1, 3, 6 (Accounts) can process payments */
@@ -71,13 +107,15 @@ class Con_VendorPaymentRequestController extends Controller
     public function index()
     {
         // Roles 1 (Admin), 3 (Super Admin), 6 (Accounts), 22 (PM Head), 17 (Purchase Head) see ALL requests
-        // Other roles only see their own requests
+        // Other roles only see their own requests OR requests for projects they are assigned to
         $filterUserId = null;
+        $assignedProjectIds = [];
         if (!in_array($this->userRole, [1, 3, 6, 22, 17]) && !$this->canApproveQC()) {
             $filterUserId = $this->userId;
+            $assignedProjectIds = $this->getAssignedProjectIds($this->userId);
         }
 
-        $requests = $this->model->getAll($filterUserId);
+        $requests = $this->model->getAll($filterUserId, $assignedProjectIds);
 
         $this->view('phase2/vendor-payment-requests/payment-lists', [
             'current_route' => 'con-vendor-payment-requests',
