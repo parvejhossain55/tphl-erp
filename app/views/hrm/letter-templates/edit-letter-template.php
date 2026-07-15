@@ -35,14 +35,14 @@
                                 <div class="form__input-title">
                                     <label for="designation_id">Designation (Specific to) <span class="text-muted">Optional</span></label>
                                 </div>
-                                <div class="form__input">
-                                    <select class="form-control" name="designation_id" id="designation_id">
-                                        <option value="">— APPLIES TO ALL DESIGNATIONS —</option>
-                                        <?php foreach ($designations as $designation): ?>
-                                            <option value="<?= $designation['id'] ?>" <?= $template['designation_id'] == $designation['id'] ? 'selected' : '' ?>><?= $designation['designation_name'] ?></option>
-                                        <?php endforeach ?>
-                                    </select>
-                                </div>
+                                 <div class="form__input">
+                                     <select class="form-control" name="designation_id" id="designation_id">
+                                         <option value="">— APPLIES TO ALL DESIGNATIONS —</option>
+                                         <?php foreach ($designations as $designation): ?>
+                                             <option value="<?= $designation['id'] ?>" <?= $template['designation_id'] == $designation['id'] ? 'selected' : '' ?>><?= htmlspecialchars($designation['designation_name'] . ' (' . ($designation['department_name'] ?? 'N/A') . ')') ?></option>
+                                         <?php endforeach ?>
+                                     </select>
+                                 </div>
                             </div>
                         </div>
 

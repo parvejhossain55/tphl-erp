@@ -96,7 +96,7 @@
                                         <option value="">— Select Designation —</option>
                                         <?php if (!empty($designations)): ?>
                                             <?php foreach ($designations as $desig): ?>
-                                                <option value="<?= $desig['id'] ?>" <?= $desig['id'] == $letter['designation_id'] ? 'selected' : '' ?>><?= $desig['designation_name'] ?></option>
+                                                <option value="<?= $desig['id'] ?>" <?= $desig['id'] == $letter['designation_id'] ? 'selected' : '' ?>><?= htmlspecialchars($desig['designation_name'] . ' (' . ($desig['department_name'] ?? 'N/A') . ')') ?></option>
                                             <?php endforeach; ?>
                                         <?php endif; ?>
                                     </select>
