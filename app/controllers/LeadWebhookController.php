@@ -31,8 +31,16 @@ class LeadWebhookController extends Controller
 
         $rawPayload = file_get_contents('php://input');
         $signature = $_SERVER['HTTP_X_FRESHSALES_SIGNATURE'] ?? $_SERVER['HTTP_X_FS_SIGNATURE'] ?? '';
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
 
-        if (!$this->freshsalesService->verifySignature($rawPayload, $signature)) {
+        // Detect if request is from Freshchat/Chat Webhook
+        $isFreshchat = (
+            str_contains(strtolower($userAgent), 'freshchat') || 
+            isset($_SERVER['HTTP_X_FRESHCHAT_SIGNATURE']) || 
+            isset($_SERVER['HTTP_X_FS_CHAT_SIGNATURE'])
+        );
+
+        if (!$isFreshchat && !$this->freshsalesService->verifySignature($rawPayload, $signature)) {
             $this->saveLog('unknown', null, null, null, 'failed', 'Invalid signature');
             $this->jsonResponse(401, 'Unauthorized');
             return;
@@ -45,7 +53,8 @@ class LeadWebhookController extends Controller
             return;
         }
 
-        $lead = $payload['lead'] ?? $payload['data'] ?? $payload;
+        // Support both Freshsales lead/contact webhook and Freshchat user payload
+        $lead = $payload['data']['user'] ?? $payload['lead'] ?? $payload['data'] ?? $payload;
         
         $firstName = trim($lead['contact_first_name'] ?? $lead['first_name'] ?? '');
         $lastName = trim($lead['contact_last_name'] ?? $lead['last_name'] ?? '');

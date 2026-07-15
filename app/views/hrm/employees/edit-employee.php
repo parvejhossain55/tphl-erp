@@ -97,7 +97,7 @@
                  <!-- Department -->
                  <div class="col-lg-6">
                      <label>Department <span>*</span></label>
-                     <select class="form-control" name="department_id">
+                     <select class="form-control select2" name="department_id">
                          <option value="">Select Department</option>
                          <?php foreach ($departments as $department): ?>
                              <option value="<?= $department['id'] ?>"
@@ -111,7 +111,7 @@
                  <!-- Designation -->
                  <div class="col-lg-6">
                      <label>Designation <span>*</span></label>
-                     <select class="form-control" name="designation_id">
+                     <select class="form-control select2" name="designation_id">
                          <option value="">Select Designation</option>
                          <?php foreach ($designations as $designation): ?>
                              <option value="<?= $designation['id'] ?>"

@@ -143,7 +143,7 @@
                                  </div>
 
                                  <div class="form__input">
-                                     <select class="form-control" name="department_id">
+                                     <select class="form-control select2" name="department_id">
                                          <?php foreach ($departments as $department): ?>
                                              <option value="<?= $department['id'] ?>"><?= $department['name'] ?></option>
                                          <?php endforeach ?>
@@ -159,7 +159,7 @@
                                      <label>Employee Designation <span>*</span></label>
                                  </div>
                                  <div class="form__input">
-                                     <select class="form-control" name="designation_id">
+                                     <select class="form-control select2" name="designation_id">
                                          <?php foreach ($designations as $designation): ?>
                                              <option value="<?= $designation['id'] ?>">
                                                  <?= htmlspecialchars($designation['designation_name'] . ' (' . ($designation['department_name'] ?? 'N/A') . ')') ?>

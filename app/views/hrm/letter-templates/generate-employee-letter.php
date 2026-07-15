@@ -65,7 +65,7 @@
                                 <label for="filter_designation">Designation</label>
                             </div>
                             <div class="form__input">
-                                <select class="form-control" name="designation_id" id="filter_designation">
+                                <select class="form-control select2" name="designation_id" id="filter_designation">
                                     <option value="">— All Designations —</option>
                                     <?php foreach ($designations as $designation): ?>
                                         <option value="<?= $designation['id'] ?>"
