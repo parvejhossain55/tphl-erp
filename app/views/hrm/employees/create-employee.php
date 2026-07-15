@@ -162,7 +162,7 @@
                                      <select class="form-control" name="designation_id">
                                          <?php foreach ($designations as $designation): ?>
                                              <option value="<?= $designation['id'] ?>">
-                                                 <?= $designation['designation_name'] ?>
+                                                 <?= htmlspecialchars($designation['designation_name'] . ' (' . ($designation['department_name'] ?? 'N/A') . ')') ?>
                                              </option>
                                          <?php endforeach ?>
                                      </select>

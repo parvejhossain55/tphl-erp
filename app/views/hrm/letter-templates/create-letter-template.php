@@ -139,7 +139,7 @@
                                     <select class="form-control select2" name="designation_id" id="designation_id" required>
                                         <option value="">— Select Designation —</option>
                                         <?php foreach ($designations as $desig): ?>
-                                            <option value="<?= $desig['id'] ?>"><?= $desig['designation_name'] ?></option>
+                                            <option value="<?= $desig['id'] ?>"><?= htmlspecialchars($desig['designation_name'] . ' (' . ($desig['department_name'] ?? 'N/A') . ')') ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>

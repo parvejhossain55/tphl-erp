@@ -70,7 +70,7 @@
                                     <?php foreach ($designations as $designation): ?>
                                         <option value="<?= $designation['id'] ?>"
                                             <?= (isset($_GET['designation_id']) && $_GET['designation_id'] == $designation['id']) ? 'selected' : '' ?>>
-                                            <?= $designation['designation_name'] ?>
+                                            <?= htmlspecialchars($designation['designation_name'] . ' (' . ($designation['department_name'] ?? 'N/A') . ')') ?>
                                         </option>
                                     <?php endforeach ?>
                                 </select>

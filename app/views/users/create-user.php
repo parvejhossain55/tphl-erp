@@ -47,7 +47,7 @@ $show_breadcrumb = true;
                         <select class="form-control" name="designation_id" id="designation_id" >
                             <option value="">Select Designation</option>
                             <?php foreach ($designations as $designation): ?>
-                                <option value="<?= $designation['id'] ?>"><?= $designation['designation_name'] ?></option>
+                                <option value="<?= $designation['id'] ?>"><?= htmlspecialchars($designation['designation_name'] . ' (' . ($designation['department_name'] ?? 'N/A') . ')') ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
