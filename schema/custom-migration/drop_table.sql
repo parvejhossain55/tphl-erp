@@ -168,5 +168,12 @@ DROP TABLE IF EXISTS con_labor_payment_logs;
 DROP TABLE IF EXISTS con_labor_requisitions;
 DROP TABLE IF EXISTS project_categories;
 
+
+
+
+DROP TABLE IF EXISTS email_queue;
+
+
+
 SET FOREIGN_KEY_CHECKS = 1;
 
