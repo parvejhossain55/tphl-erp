@@ -742,14 +742,14 @@
 
                     <?php if (hasPermission("HRM Management") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 4])): ?>
                         <!-- Tipsoi Reports -->
-                        <li class="slide has-sub <?= isActive(['tipsoi-monthly-report', 'tipsoi-daily-report'], $current_route) ? 'active open' : '' ?>">
+                        <li class="slide has-sub <?= isActive(['tipsoi-monthly-report', 'tipsoi-daily-report', 'tipsoi-department-report'], $current_route) ? 'active open' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['tipsoi-monthly-report', 'tipsoi-daily-report'], $current_route) ? 'active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['tipsoi-monthly-report', 'tipsoi-daily-report', 'tipsoi-department-report'], $current_route) ? 'active' : '' ?>">
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                                 <div class="side-menu__icon"><i class="fa-solid fa-chart-column"></i></div>
                                 <span class="sidebar__menu-label">Tipsoi Reports</span>
                             </a>
-                            <ul class="sidebar-menu child2" style="display: <?= isActive(['tipsoi-monthly-report', 'tipsoi-daily-report'], $current_route) ? 'block' : 'none' ?>;">
+                            <ul class="sidebar-menu child2" style="display: <?= isActive(['tipsoi-monthly-report', 'tipsoi-daily-report', 'tipsoi-department-report'], $current_route) ? 'block' : 'none' ?>;">
                                 <li class="slide <?= isActive('tipsoi-monthly-report', $current_route) ?>">
                                     <a href="<?= $base_url ?>/tipsoi-monthly-report" class="sidebar__menu-item <?= isActive('tipsoi-monthly-report', $current_route) ?>">
                                         Monthly Report
@@ -758,6 +758,11 @@
                                 <li class="slide <?= isActive('tipsoi-daily-report', $current_route) ?>">
                                     <a href="<?= $base_url ?>/tipsoi-daily-report" class="sidebar__menu-item <?= isActive('tipsoi-daily-report', $current_route) ?>">
                                         Daily Report
+                                    </a>
+                                </li>
+                                <li class="slide <?= isActive('tipsoi-department-report', $current_route) ?>">
+                                    <a href="<?= $base_url ?>/tipsoi-department-report" class="sidebar__menu-item <?= isActive('tipsoi-department-report', $current_route) ?>">
+                                        Department Report
                                     </a>
                                 </li>
                             </ul>

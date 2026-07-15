@@ -1200,4 +1200,175 @@ class EmployeeDashboardController extends Controller
         }
         exit;
     }
+
+    public function tipsoiDepartmentReport()
+    {
+        if (!hasPermission("HRM Management") && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 4])) {
+            die("Unauthorized access.");
+        }
+        $this->view('employee-modules/tipsoi-department-report', [
+            'current_route' => 'tipsoi-department-report',
+            'page_title'    => 'Tipsoi Department Report'
+        ]);
+    }
+
+    public function getTipsoiDepartmentData()
+    {
+        header('Content-Type: application/json');
+        if (!hasPermission("HRM Management") && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 4])) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $dateRange = $_GET['range'] ?? '';
+        if (empty($dateRange)) {
+            $firstDay = date('Y-m-d', strtotime('-6 days'));
+            $lastDay = date('Y-m-d');
+        } else {
+            $parts = explode(' - ', $dateRange);
+            $firstDay = date('Y-m-d', strtotime(trim($parts[0])));
+            if (count($parts) > 1 && !empty(trim($parts[1]))) {
+                $lastDay = date('Y-m-d', strtotime(trim($parts[1])));
+            } else {
+                $lastDay = $firstDay;
+            }
+        }
+
+        $diff = (strtotime($lastDay) - strtotime($firstDay)) / 86400;
+        if ($diff > 31) {
+            echo json_encode(['success' => false, 'message' => 'Date range cannot exceed 31 days.']);
+            exit;
+        }
+
+        $oldTimezone = date_default_timezone_get();
+        try {
+            $token = $this->externalApiService->getBearerToken();
+            if (!$token) {
+                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                exit;
+            }
+
+            date_default_timezone_set('Asia/Dhaka');
+            $fromTime = strtotime($firstDay . ' 00:00:00') * 1000;
+            $toTime = strtotime($lastDay . ' 23:59:59') * 1000;
+
+            $url = "https://app.tipsoi.ai/inovace-client/api/v1/attendance?" . http_build_query([
+                'officeId' => 4699,
+                'order' => 'asc',
+                'pageNumber' => 0,
+                'perPage' => 2000,
+                'reportType' => 'department',
+                'sortKey' => 'reportPosition',
+                'status' => 1,
+                'from' => $fromTime,
+                'to' => $toTime
+            ]);
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer ' . $token,
+                'Accept: application/json'
+            ]);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            $res = curl_exec($ch);
+            curl_close($ch);
+
+            $data = json_decode($res, true);
+            $attendance = $data['attendance'] ?? [];
+
+            $dates = [];
+            $current = strtotime($firstDay);
+            $last = strtotime($lastDay);
+            while ($current <= $last) {
+                $dates[] = [
+                    'db_date' => date('Y-m-d', $current),
+                    'display' => date('d.m.Y (D)', $current)
+                ];
+                $current = strtotime('+1 day', $current);
+            }
+
+            $rows = [];
+            foreach ($attendance as $emp) {
+                $empLogs = $emp['attendance'] ?? [];
+                
+                $logsByDate = [];
+                foreach ($empLogs as $timestamp => $log) {
+                    $logDate = '';
+                    if (isset($log['startTimeOfThisDayInMillis'])) {
+                        $logDate = date('Y-m-d', $log['startTimeOfThisDayInMillis'] / 1000);
+                    } else {
+                        $dateParts = explode(' ', $log['date'] ?? '');
+                        if (!empty($dateParts[0])) {
+                            $dParts = explode('.', $dateParts[0]);
+                            if (count($dParts) === 3) {
+                                $logDate = $dParts[2] . '-' . $dParts[1] . '-' . $dParts[0];
+                            }
+                        }
+                    }
+                    if ($logDate !== '') {
+                        $logsByDate[$logDate] = $log;
+                    }
+                }
+
+                $dateLogs = [];
+                foreach ($dates as $dObj) {
+                    $d = $dObj['db_date'];
+                    if (isset($logsByDate[$d])) {
+                        $log = $logsByDate[$d];
+                        
+                        $status = 'Absent';
+                        if ($log['isLeave'] == 1) {
+                            $status = 'Leave';
+                        } elseif ($log['isOffday'] == 1) {
+                            $status = 'Off Day';
+                        } elseif ($log['isHoliday'] == 1) {
+                            $status = 'Holiday';
+                        } elseif ($log['isPresent'] == 1) {
+                            $status = $log['isLate'] == 1 ? 'Late' : 'Present';
+                        }
+
+                        $dateLogs[$d] = [
+                            'status' => $status,
+                            'entry' => ($log['firstLoggedTime'] !== '-' && !empty($log['firstLoggedTime'])) ? $log['firstLoggedTime'] : '—',
+                            'exit' => ($log['lastLoggedTime'] !== '-' && !empty($log['lastLoggedTime']) && trim($log['lastLoggedTime']) !== '') ? $log['lastLoggedTime'] : '—',
+                            'hours' => ($log['totalHour'] !== '-' && !empty($log['totalHour'])) ? $log['totalHour'] : '—'
+                        ];
+                    } else {
+                        $dateLogs[$d] = [
+                            'status' => 'Absent',
+                            'entry' => '—',
+                            'exit' => '—',
+                            'hours' => '—'
+                        ];
+                    }
+                }
+
+                $rows[] = [
+                    'id' => $emp['employeeOfficeId'] ?? $emp['employeeId'] ?? '—',
+                    'name' => $emp['employeeName'] ?? '—',
+                    'designation' => $emp['designationName'] ?? '—',
+                    'department' => $emp['departmentName'] ?? '—',
+                    'workplace' => $emp['workplaceName'] ?? '—',
+                    'employeeType' => $emp['employmentTypeName'] ?? '—',
+                    'shift' => $emp['shiftGroupName'] ?? '—',
+                    'photo' => $emp['employeePictureUrl'] ?? '',
+                    'attendance' => $dateLogs
+                ];
+            }
+
+            date_default_timezone_set($oldTimezone);
+            echo json_encode([
+                'success' => true,
+                'dates' => $dates,
+                'rows' => $rows
+            ]);
+
+        } catch (Exception $e) {
+            date_default_timezone_set($oldTimezone);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
 }

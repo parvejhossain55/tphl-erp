@@ -92,6 +92,16 @@ class UserActivityLogController extends Controller
         $logs = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
+        // ── Export Trigger ────────────────────────────────────────────────────
+        if (isset($_GET['export'])) {
+            $exportType = $_GET['export'];
+            if ($exportType === 'excel') {
+                $this->exportExcel($logs);
+            } elseif ($exportType === 'pdf') {
+                $this->exportPdf($logs);
+            }
+        }
+
         // ── Build department-wise summary ─────────────────────────────────────
         $deptSummary = [];
         foreach ($logs as $log) {
@@ -288,6 +298,148 @@ class UserActivityLogController extends Controller
             'avg_minutes'    => $sessions > 0 ? intdiv($totalMins, $sessions) : 0,
             'daily'          => $daily,
         ]);
+        exit;
+    }
+
+    private function exportExcel($logs)
+    {
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        $headerStyle = [
+            'font' => [
+                'bold' => true,
+                'color' => ['rgb' => 'FFFFFF'],
+            ],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '1F4E79'],
+            ],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+            ],
+        ];
+
+        $headers = ['SL', 'User Name', 'Email', 'Department', 'Designation', 'Role', 'First Login', 'Last Active', 'Active Duration'];
+        $col = 'A';
+        foreach ($headers as $header) {
+            $sheet->setCellValue($col . '1', $header);
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+            $col++;
+        }
+        $sheet->getStyle('A1:I1')->applyFromArray($headerStyle);
+
+        $rowNum = 2;
+        $serial = 1;
+        foreach ($logs as $log) {
+            $activeMin = max(0, (int)$log['active_minutes']);
+            $durationStr = $activeMin > 0 ? intdiv($activeMin, 60) . 'h ' . ($activeMin % 60) . 'm' : '0m';
+            
+            $loginTime  = date('d M Y, h:i A', strtotime($log['login_time']));
+            $lastActive = $log['last_active_time'] ? date('d M Y, h:i A', strtotime($log['last_active_time'])) : '—';
+
+            $sheet->setCellValue('A' . $rowNum, $serial++);
+            $sheet->setCellValue('B' . $rowNum, $log['full_name'] ?? '—');
+            $sheet->setCellValue('C' . $rowNum, $log['email'] ?? '—');
+            $sheet->setCellValue('D' . $rowNum, $log['department_name'] ?? '—');
+            $sheet->setCellValue('E' . $rowNum, $log['designation_name'] ?? '—');
+            $sheet->setCellValue('F' . $rowNum, $log['role_name'] ?? '—');
+            $sheet->setCellValue('G' . $rowNum, $loginTime);
+            $sheet->setCellValue('H' . $rowNum, $lastActive);
+            $sheet->setCellValue('I' . $rowNum, $durationStr);
+            
+            $rowNum++;
+        }
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="User_Activity_Log_' . date('Y-m-d_His') . '.xlsx"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
+    private function exportPdf($logs)
+    {
+        $dompdf = new \Dompdf\Dompdf([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => true
+        ]);
+
+        $html = '
+        <html>
+        <head>
+            <style>
+                body { font-family: sans-serif; font-size: 11px; color: #333; }
+                .header { text-align: center; margin-bottom: 20px; }
+                .header h2 { margin: 0; color: #1F4E79; }
+                .header p { margin: 5px 0 0 0; font-size: 12px; color: #666; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+                th { background-color: #1F4E79; color: white; font-weight: bold; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                .duration { font-weight: bold; color: #2e7d32; }
+                .footer { position: fixed; bottom: 0; width: 100%; text-align: right; font-size: 9px; color: #999; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>User Activity Log</h2>
+                <p>Generated on ' . date('d M Y, h:i A') . '</p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">SL</th>
+                        <th style="width: 18%;">User Name</th>
+                        <th style="width: 15%;">Email</th>
+                        <th style="width: 12%;">Department</th>
+                        <th style="width: 12%;">Designation</th>
+                        <th style="width: 10%;">Role</th>
+                        <th style="width: 13%;">First Login</th>
+                        <th style="width: 13%;">Last Active</th>
+                        <th style="width: 10%;">Duration</th>
+                    </tr>
+                </thead>
+                <tbody>';
+
+        $serial = 1;
+        if (empty($logs)) {
+            $html .= '<tr><td colspan="9" style="text-align: center;">No activity records found.</td></tr>';
+        } else {
+            foreach ($logs as $log) {
+                $activeMin = max(0, (int)$log['active_minutes']);
+                $durationStr = $activeMin > 0 ? intdiv($activeMin, 60) . 'h ' . ($activeMin % 60) . 'm' : '0m';
+                
+                $loginTime  = date('d M Y, h:i A', strtotime($log['login_time']));
+                $lastActive = $log['last_active_time'] ? date('d M Y, h:i A', strtotime($log['last_active_time'])) : '—';
+                
+                $html .= '
+                <tr>
+                    <td>' . $serial++ . '</td>
+                    <td><b>' . htmlspecialchars($log['full_name'] ?? '—') . '</b></td>
+                    <td>' . htmlspecialchars($log['email'] ?? '—') . '</td>
+                    <td>' . htmlspecialchars($log['department_name'] ?? '—') . '</td>
+                    <td>' . htmlspecialchars($log['designation_name'] ?? '—') . '</td>
+                    <td>' . htmlspecialchars($log['role_name'] ?? '—') . '</td>
+                    <td>' . $loginTime . '</td>
+                    <td>' . $lastActive . '</td>
+                    <td class="duration">' . $durationStr . '</td>
+                </tr>';
+            }
+        }
+
+        $html .= '
+                </tbody>
+            </table>
+        </body>
+        </html>';
+
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+        $dompdf->stream("User_Activity_Log_" . date('Ymd_His') . ".pdf", ["Attachment" => true]);
         exit;
     }
 }
