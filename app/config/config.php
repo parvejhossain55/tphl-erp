@@ -32,7 +32,7 @@ if ($current_server == 1) {
         // Freshsales CRM Integration Configuration
         "freshsales_webhook_secret" => "TphlFwSecret2026@#",
         "freshsales_api_key" => "ACw9JyfiG2qLPQdN9AhUhg",
-        "freshsales_domain" => "easytech-996679288715662932"
+        "freshsales_domain" => "premiumhomesltd"
     ];
 }
 
@@ -67,7 +67,7 @@ if ($current_server == 2) {
         // Freshsales CRM Integration Configuration
         "freshsales_webhook_secret" => "TphlFwSecret2026@#",
         "freshsales_api_key" => "ACw9JyfiG2qLPQdN9AhUhg",
-        "freshsales_domain" => "premiumhomesltd2026"
+        "freshsales_domain" => "premiumhomesltd"
     ];
 }
 
@@ -99,7 +99,7 @@ if ($current_server == 3) {
         // Freshsales CRM Integration Configuration
         "freshsales_webhook_secret" => "TphlFwSecret2026@#",
         "freshsales_api_key" => "ACw9JyfiG2qLPQdN9AhUhg",
-        "freshsales_domain" => "premiumhomesltd2026"
+        "freshsales_domain" => "premiumhomesltd"
     ];
 }
 

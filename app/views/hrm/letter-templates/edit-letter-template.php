@@ -36,7 +36,7 @@
                                     <label for="designation_id">Designation (Specific to) <span class="text-muted">Optional</span></label>
                                 </div>
                                  <div class="form__input">
-                                     <select class="form-control" name="designation_id" id="designation_id">
+                                     <select class="form-control select2" name="designation_id" id="designation_id">
                                          <option value="">— APPLIES TO ALL DESIGNATIONS —</option>
                                          <?php foreach ($designations as $designation): ?>
                                              <option value="<?= $designation['id'] ?>" <?= $template['designation_id'] == $designation['id'] ? 'selected' : '' ?>><?= htmlspecialchars($designation['designation_name'] . ' (' . ($designation['department_name'] ?? 'N/A') . ')') ?></option>
