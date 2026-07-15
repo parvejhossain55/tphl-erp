@@ -172,8 +172,7 @@ DROP TABLE IF EXISTS project_categories;
 
 
 DROP TABLE IF EXISTS email_queue;
-
-
+DROP TABLE IF EXISTS employee_salary_items;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

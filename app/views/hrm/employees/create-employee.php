@@ -421,7 +421,58 @@
 
                      </div>
                  </div>
-                 <div class="submit__btn text-center">
+                  <!-- Salary Allowances & Deductions Configuration -->
+                  <div class="card__wrapper mb-20 p-4 border rounded">
+                      <div class="card__title-wrap mb-20">
+                          <h5 class="card__heading-title">Salary Allowances & Deductions</h5>
+                          <small class="text-muted">Set standard monthly allowance/deduction amounts for this employee</small>
+                      </div>
+                      <div class="row g-20 gy-20">
+                          <!-- Earnings -->
+                          <div class="col-lg-6">
+                              <h6 class="mb-3 text-success"><i class="fa-solid fa-circle-plus me-2"></i>Earnings / Allowances</h6>
+                              <div class="row g-3">
+                                  <?php foreach ($payslipItems as $item): ?>
+                                      <?php if ($item['type'] === 'earning'): ?>
+                                          <div class="col-12 mb-2">
+                                              <div class="from__input-box">
+                                                  <div class="form__input-title">
+                                                      <label for="allowance_<?= $item['id'] ?>"><?= htmlspecialchars($item['name']) ?></label>
+                                                  </div>
+                                                  <div class="form__input">
+                                                      <input class="form-control" name="salary_items[<?= $item['id'] ?>]" id="allowance_<?= $item['id'] ?>" type="number" step="0.01" value="0.00">
+                                                  </div>
+                                              </div>
+                                          </div>
+                                      <?php endif; ?>
+                                  <?php endforeach; ?>
+                              </div>
+                          </div>
+
+                          <!-- Deductions -->
+                          <div class="col-lg-6">
+                              <h6 class="mb-3 text-danger"><i class="fa-solid fa-circle-minus me-2"></i>Deductions</h6>
+                              <div class="row g-3">
+                                  <?php foreach ($payslipItems as $item): ?>
+                                      <?php if ($item['type'] === 'deduction'): ?>
+                                          <div class="col-12 mb-2">
+                                              <div class="from__input-box">
+                                                  <div class="form__input-title">
+                                                      <label for="deduction_<?= $item['id'] ?>"><?= htmlspecialchars($item['name']) ?></label>
+                                                  </div>
+                                                  <div class="form__input">
+                                                      <input class="form-control" name="salary_items[<?= $item['id'] ?>]" id="deduction_<?= $item['id'] ?>" type="number" step="0.01" value="0.00">
+                                                  </div>
+                                              </div>
+                                          </div>
+                                      <?php endif; ?>
+                                  <?php endforeach; ?>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div class="submit__btn text-center">
                      <button class="btn btn-primary">Submit</button>
                  </div>
              </form>

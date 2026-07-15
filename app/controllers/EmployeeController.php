@@ -70,6 +70,10 @@ class EmployeeController extends Controller
         $roles = $this->roleModel->getAllFilterRole();
         $designations = $this->designationModel->getAll();
         $teams = $this->teamsModel->getAll();
+        
+        $payslipItemModel = new PayslipItem($this->db);
+        $payslipItems = $payslipItemModel->getAll();
+
         $this->view("hrm/employees/create-employee", [
             "current_route"   => "create-employee",
             "active"          => "create-employee",
@@ -78,8 +82,8 @@ class EmployeeController extends Controller
             "departments"     => $departments,
             "designations"    => $designations,
             "roles"           => $roles,
-            "teams"           => $teams
-
+            "teams"           => $teams,
+            "payslipItems"    => $payslipItems
         ]);
     }
 
@@ -150,6 +154,21 @@ class EmployeeController extends Controller
 
             if (!$employee_id) {
                 throw new Exception("Employee creation failed in model!");
+            }
+
+            // Save employee salary items configuration
+            if (!empty($_POST['salary_items']) && is_array($_POST['salary_items'])) {
+                $stmtSalaryItem = $this->db->prepare(
+                    "INSERT INTO employee_salary_items (employee_id, payslip_item_id, amount) VALUES (?, ?, ?)"
+                );
+                foreach ($_POST['salary_items'] as $itemId => $amount) {
+                    $amt = (float)$amount;
+                    if ($amt >= 0) {
+                        $stmtSalaryItem->bind_param("iid", $employee_id, $itemId, $amt);
+                        $stmtSalaryItem->execute();
+                    }
+                }
+                $stmtSalaryItem->close();
             }
 
             // Insert leave balances
@@ -234,6 +253,16 @@ class EmployeeController extends Controller
         $designations = $this->designationModel->getAll();
         $roles = $this->roleModel->getAll();
 
+        $payslipItemModel = new PayslipItem($this->db);
+        $payslipItems = $payslipItemModel->getAll();
+
+        // Get configured employee salary items
+        $stmt = $this->db->prepare("SELECT * FROM employee_salary_items WHERE employee_id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $employeeSalaryItems = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
         $this->view("hrm/employees/edit-employee", [
             "current_route"   => "edit-employee",
             "page_title"      => "Edit Employee",
@@ -242,7 +271,9 @@ class EmployeeController extends Controller
             "departments"     => $departments,
             "designations"    => $designations,
             "roles"    => $roles,
-            "teams"    => $teams
+            "teams"    => $teams,
+            "payslipItems" => $payslipItems,
+            "employeeSalaryItems" => $employeeSalaryItems
         ]);
     }
 
@@ -353,6 +384,22 @@ class EmployeeController extends Controller
             $_SESSION['error'] = "Employee update failed!";
             header("Location: {$GLOBALS['base_url']}/edit-employee/$id");
             exit;
+        }
+
+        // Update employee salary items configuration
+        $this->db->query("DELETE FROM employee_salary_items WHERE employee_id = " . (int)$id);
+        if (!empty($_POST['salary_items']) && is_array($_POST['salary_items'])) {
+            $stmtSalaryItem = $this->db->prepare(
+                "INSERT INTO employee_salary_items (employee_id, payslip_item_id, amount) VALUES (?, ?, ?)"
+            );
+            foreach ($_POST['salary_items'] as $itemId => $amount) {
+                $amt = (float)$amount;
+                if ($amt >= 0) {
+                    $stmtSalaryItem->bind_param("iid", $id, $itemId, $amt);
+                    $stmtSalaryItem->execute();
+                }
+            }
+            $stmtSalaryItem->close();
         }
 
         // User account handling
