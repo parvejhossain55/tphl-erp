@@ -58,4 +58,34 @@ class FreshsalesService
         }
         return $s;
     }
+
+    /**
+     * Update a contact in Freshsales via CRM API
+     */
+    public function updateContact(string $contactId, array $data): bool
+    {
+        $apiKey = $this->config['freshsales_api_key'] ?? '';
+        $domain = $this->config['freshsales_domain'] ?? '';
+        if (empty($apiKey) || empty($domain)) {
+            return false;
+        }
+
+        // Freshsales standard API endpoint
+        $url = "https://{$domain}.myfreshworks.com/crm/sales/api/contacts/{$contactId}";
+        
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['contact' => $data]));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Authorization: Token token={$apiKey}",
+            "Content-Type: application/json"
+        ]);
+        
+        $response = curl_exec($ch);
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        return $status === 200 || $status === 201;
+    }
 }

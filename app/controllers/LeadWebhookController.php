@@ -52,18 +52,31 @@ class LeadWebhookController extends Controller
         $fullName = trim("$firstName $lastName") ?: ($lead['contact_name'] ?? $lead['name'] ?? 'Unknown');
 
         $phone = $lead['contact_mobile_number'] ?? $lead['mobile_number'] ?? $lead['contact_phone'] ?? $lead['phone'] ?? null;
+        $freshsalesId = $lead['contact_id'] ?? $lead['id'] ?? null;
+
+        // If phone is missing from standard fields, search payload recursively (e.g. chat messages)
+        $extracted = false;
         if (empty($phone)) {
-            $this->saveLog('lead.created', $lead['contact_id'] ?? $lead['id'] ?? null, null, null, 'skipped', 'No phone number in payload');
+            $phone = $this->extractPhoneNumber($payload);
+            if (!empty($phone)) {
+                $extracted = true;
+                // If we have a Freshsales contact ID, push the phone number back to the CRM profile
+                if (!empty($freshsalesId)) {
+                    $this->freshsalesService->updateContact($freshsalesId, ['mobile_number' => $phone]);
+                }
+            }
+        }
+
+        if (empty($phone)) {
+            $this->saveLog('lead.created', $freshsalesId, null, null, 'skipped', 'No phone number in payload');
             $this->jsonResponse(200, 'Skipped: No Phone Number');
             return;
         }
 
-        $freshsalesId = $lead['contact_id'] ?? $lead['id'] ?? null;
-        
         $source = $lead['contact_source_name'] ?? $lead['lead_source']['name'] ?? $lead['source'] ?? null;
         $platform = $this->freshsalesService->mapPlatform($source);
         
-        $campaign = $lead['contact_campaign_name'] ?? $lead['campaign_name'] ?? $lead['custom_field']['campaign_name'] ?? null;
+        $campaign = $lead['contact_campaign_name'] ?? $lead['campaign_name'] ?? $lead['utm_campaign'] ?? $lead['campaign'] ?? $lead['custom_field']['campaign_name'] ?? null;
         $city = $lead['contact_city'] ?? $lead['city'] ?? null;
         $country = $lead['contact_country'] ?? $lead['country'] ?? 'Bangladesh';
         $jobTitle = $lead['contact_job_title'] ?? $lead['job_title'] ?? null;
@@ -111,11 +124,12 @@ class LeadWebhookController extends Controller
             $fullName, $jobTitle, $companyName, $phone, $email, $city, $country
         );
 
+        $logEvent = $extracted ? 'lead.extracted' : 'lead.created';
         if ($stmt->execute()) {
-            $this->saveLog('lead.created', $freshsalesId, $platform, $phone, 'success', null);
+            $this->saveLog($logEvent, $freshsalesId, $platform, $phone, 'success', null);
             $this->jsonResponse(200, 'Lead Cached Successfully');
         } else {
-            $this->saveLog('lead.created', $freshsalesId, $platform, $phone, 'failed', $stmt->error);
+            $this->saveLog($logEvent, $freshsalesId, $platform, $phone, 'failed', $stmt->error);
             $this->jsonResponse(500, 'Database Insert Failed');
         }
         $stmt->close();
@@ -233,5 +247,30 @@ class LeadWebhookController extends Controller
         header('Content-Type: application/json');
         echo json_encode(['status' => $code, 'message' => $message]);
         exit;
+    }
+
+    /**
+     * Recursively search an array for any string matching a Bangladeshi phone number.
+     */
+    private function extractPhoneNumber(array $array): ?string
+    {
+        // Matches: 01711223344, +8801711223344, 01711-223344, +880 1711-223344, etc.
+        $pattern = '/(?:\+?88)?01[3-9][\s-]?\d{2}[\s-]?\d{2}[\s-]?\d{4}/';
+        
+        foreach ($array as $key => $value) {
+            if (is_array($value)) {
+                $found = $this->extractPhoneNumber($value);
+                if ($found) {
+                    return $found;
+                }
+            } elseif (is_string($value)) {
+                if (preg_match($pattern, $value, $matches)) {
+                    // Clean up: remove spaces, hyphens, keep leading + if present
+                    $clean = preg_replace('/[\s-]/', '', $matches[0]);
+                    return $clean;
+                }
+            }
+        }
+        return null;
     }
 }

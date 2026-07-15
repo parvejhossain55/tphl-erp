@@ -45,8 +45,10 @@ return [
     'api/employee/tipsoi-data' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiData'],
     'tipsoi-monthly-report' => ['controller' => 'EmployeeDashboardController', 'method' => 'tipsoiMonthlyReport'],
     'tipsoi-daily-report' => ['controller' => 'EmployeeDashboardController', 'method' => 'tipsoiDailyReport'],
+    'tipsoi-department-report' => ['controller' => 'EmployeeDashboardController', 'method' => 'tipsoiDepartmentReport'],
     'api/employee/tipsoi-monthly-data' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiMonthlyData'],
     'api/employee/tipsoi-daily-data' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiDailyData'],
+    'api/employee/tipsoi-department-data' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiDepartmentData'],
     'update-task-status-employee' => ['controller' => 'EmployeeDashboardController', 'method' => 'updateTaskStatus'],
     'update-task-progress-employee' => ['controller' => 'EmployeeDashboardController', 'method' => 'updateTaskProgress'],
 

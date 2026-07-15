@@ -291,7 +291,7 @@ function durationBadgeClass(int $mins): string {
                 <span class="fw-semibold">Login Activity Records</span>
                 <span class="badge bg-primary ms-1"><?= (int)$rawLogsCount ?> records</span>
             </div>
-            <div>
+            <div class="d-flex align-items-center gap-2">
                 <?php if ($showAll): ?>
                     <a href="<?= getShowPaginatedUrl() ?>" class="btn btn-sm btn-outline-primary">
                         <i class="fa-solid fa-list me-1"></i>Show Paginated (15 per page)
@@ -301,6 +301,17 @@ function durationBadgeClass(int $mins): string {
                         <i class="fa-solid fa-eye me-1"></i>Show All Records
                     </a>
                 <?php endif; ?>
+                
+                <?php 
+                $excelUrl = '?' . http_build_query(array_merge($_GET, ['export' => 'excel']));
+                $pdfUrl   = '?' . http_build_query(array_merge($_GET, ['export' => 'pdf']));
+                ?>
+                <a href="<?= $excelUrl ?>" class="btn btn-sm btn-success text-white">
+                    <i class="fa-solid fa-file-excel me-1"></i>Excel
+                </a>
+                <a href="<?= $pdfUrl ?>" class="btn btn-sm btn-danger text-white">
+                    <i class="fa-solid fa-file-pdf me-1"></i>PDF
+                </a>
             </div>
         </div>
         <div class="table__wrapper table-responsive p-2">
