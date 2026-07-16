@@ -1,0 +1,1 @@
+<?php session_start(); $_SESSION['user'] = ['id' => 1, 'role_id' => 1]; require 'app/config/config.php'; require 'app/core/Database.php'; require 'app/core/Controller.php'; require 'app/controllers/DashboardController.php'; $db = (new Database($config))->conn; $dash = new DashboardController($db); print_r($dash->getAccountsNotifications(false)); ?>

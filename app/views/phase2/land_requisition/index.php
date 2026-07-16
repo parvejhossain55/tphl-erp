@@ -142,6 +142,12 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 22]);
                                                     </button>
                                                 <?php endif; ?>
 
+                                                <?php if ($row['accounts_status'] === 'Paid'): ?>
+                                                    <a href="<?= $base_url ?>/print-debit-voucher?module=land_requisition&id=<?= $row['id'] ?>" target="_blank" class="btn btn-sm btn-outline-primary" title="Print Debit Voucher">
+                                                        <i class="fa-light fa-file-invoice-dollar"></i>
+                                                    </a>
+                                                <?php endif; ?>
+
                                                 <?php if ($roleId === 1 || $roleId === 3): ?>
                                                 <form action="<?= $base_url ?>/con-land-requisitions/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this requisition?');" class="d-inline">
                                                     <input type="hidden" name="id" value="<?= $row['id'] ?>">

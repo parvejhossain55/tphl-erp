@@ -366,6 +366,17 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
 
                     <!-- Right Sidebar -->
                     <div class="col-md-4">
+                        <!-- Print Debit Voucher -->
+                        <?php if (!empty($payments)): ?>
+                            <div class="card mb-4 border-primary">
+                                <div class="card-body text-center">
+                                    <a href="<?= $GLOBALS['base_url'] ?>/print-debit-voucher?module=cashout&id=<?= $request['id'] ?>" target="_blank" class="btn btn-primary w-100">
+                                        <i class="bi bi-printer"></i> Print Debit Voucher
+                                    </a>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
                         <!-- Quick Actions -->
                         <?php if ($isAdmin): ?>
                             <div class="card mb-4">

@@ -11,9 +11,16 @@ $isExtra = $adj['adjustment_type'] == 'extra';
         <div class="card__wrapper">
             <div class="card__header d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card__title">Expense Adjustment REQ-<?= $adj['id'] ?></h5>
-                <a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments" class="btn btn-secondary btn-sm goBackBtn" style="flex: none;">
-                    <i class="fa-light fa-arrow-left me-1"></i> Back
-                </a>
+                <div class="d-flex gap-2">
+                    <?php if (!empty($transactions)): ?>
+                        <a href="<?= $GLOBALS['base_url'] ?>/print-debit-voucher?module=expense_adjustment&id=<?= $adj['id'] ?>" target="_blank" class="btn btn-primary btn-sm">
+                            <i class="fa-light fa-file-invoice-dollar me-1"></i> Debit Voucher
+                        </a>
+                    <?php endif; ?>
+                    <a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments" class="btn btn-secondary btn-sm goBackBtn" style="flex: none;">
+                        <i class="fa-light fa-arrow-left me-1"></i> Back
+                    </a>
+                </div>
             </div>
             
             <div class="card__body">

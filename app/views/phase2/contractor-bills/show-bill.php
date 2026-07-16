@@ -53,6 +53,11 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
         </nav>
     </div>
     <div class="d-flex gap-2 align-items-center">
+        <?php if (!empty($payments)): ?>
+            <a href="<?= $base_url ?>/print-debit-voucher?module=contractor_bill&id=<?= $bill['id'] ?>" target="_blank" class="btn btn-primary btn-sm">
+                <i class="bi bi-printer me-1"></i> Debit Voucher
+            </a>
+        <?php endif; ?>
         <span class="badge bg-<?= $statusInfo['color'] ?> fs-6 px-3 py-2"><?= $statusInfo['label'] ?></span>
         <a href="<?= $base_url ?>/con-contractor-bills" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i> Back

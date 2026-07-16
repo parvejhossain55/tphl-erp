@@ -63,6 +63,11 @@ $advancePaid = (float) ($advance_paid ?? 0);
             </nav>
     </div>
     <div class="d-flex gap-2 align-items-center">
+        <?php if (!empty($payments)): ?>
+            <a href="<?= $base_url ?>/print-debit-voucher?module=vendor_payment&id=<?= $request['id'] ?>" target="_blank" class="btn btn-primary btn-sm">
+                <i class="bi bi-printer me-1"></i> Debit Voucher
+            </a>
+        <?php endif; ?>
         <span class="badge bg-<?= $statusInfo['color'] ?> fs-6 px-3 py-2"><?= $statusInfo['label'] ?></span>
         <span class="badge <?= $typeBadge['class'] ?> fs-6 px-3 py-2"><?= $typeBadge['label'] ?> Payment</span>
         <a href="<?= $base_url ?>/con-vendor-payment-requests" class="btn btn-outline-secondary btn-sm">

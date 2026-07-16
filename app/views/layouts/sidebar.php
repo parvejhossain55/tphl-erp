@@ -1112,12 +1112,26 @@
                     </li>
 
                     <!-- Accounts Dashboard -->
+                    <?php
+                        $accountsNotifCount = 0;
+                        if (hasPermission("accounts manage") && ($_SESSION['user']['role_id'] ?? 0) != 9) {
+                            if (!class_exists('DashboardController')) {
+                                require_once __DIR__ . '/../../controllers/DashboardController.php';
+                            }
+                            global $db;
+                            $dashCtrl = new DashboardController($db);
+                            $notifs = $dashCtrl->getAccountsNotifications(false);
+                            $accountsNotifCount = count($notifs);
+                        }
+                    ?>
                     <li class="slide <?= isActive('accounts-dashboard', $current_route) ?>">
                         <a href="<?= $base_url ?>/accounts-dashboard"
                             class="sidebar__menu-item <?= isActive('accounts-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">Accounts Dashboard</span>
-
+                            <?php if ($accountsNotifCount > 0): ?>
+                                <span class="badge bg-danger ms-2" style="border-radius: 50%; padding: 0.35em 0.5em; font-size: 0.75em;"><?= $accountsNotifCount ?></span>
+                            <?php endif; ?>
                         </a>
                     </li>
                     <li class="slide <?= isActive('central-statement', $current_route) ?>">

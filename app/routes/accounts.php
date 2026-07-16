@@ -219,4 +219,9 @@ return [
     'con-risk-dashboard-store' => ['controller' => 'Phase2\Con_RiskDashboardController', 'method' => 'storeRisk'],
     'con-risk-dashboard-update-status' => ['controller' => 'Phase2\Con_RiskDashboardController', 'method' => 'updateRiskStatus'],
     'con-risk-dashboard-delete/(\d+)' => ['controller' => 'Phase2\Con_RiskDashboardController', 'method' => 'deleteRisk'],
+
+    // =========================================================================
+    // Controller: VoucherController
+    // =========================================================================
+    'print-debit-voucher' => ['controller' => 'VoucherController', 'method' => 'printDebitVoucher'],
 ];
