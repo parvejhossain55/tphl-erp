@@ -164,5 +164,19 @@ return [
     'api/flat-inventory-summary' => ['controller' => 'ApiController', 'method' => 'flatInventorySummary'],
     'api/flat-inventory-summary/(\d+)' => ['controller' => 'ApiController', 'method' => 'flatInventorySummary'],
     'api/financial-summary' => ['controller' => 'ApiController', 'method' => 'financialSummary'],
+
+    // =========================================================================
+    // Controller: ErpTrackerController
+    // =========================================================================
+    'erp-tracker' => ['controller' => 'ErpTrackerController', 'method' => 'dashboard'],
+    'erp-tracker/session/create' => ['controller' => 'ErpTrackerController', 'method' => 'createSession'],
+    'erp-tracker/session/close/(\d+)' => ['controller' => 'ErpTrackerController', 'method' => 'closeSession'],
+    'erp-tracker/form' => ['controller' => 'ErpTrackerController', 'method' => 'form'],
+    'erp-tracker/form/submit' => ['controller' => 'ErpTrackerController', 'method' => 'submitForm'],
+    'erp-tracker/view/(\d+)' => ['controller' => 'ErpTrackerController', 'method' => 'viewSubmission'],
+    'erp-tracker/champions' => ['controller' => 'ErpTrackerController', 'method' => 'champions'],
+    'erp-tracker/champions/add' => ['controller' => 'ErpTrackerController', 'method' => 'addChampion'],
+    'erp-tracker/champions/remove/(\d+)' => ['controller' => 'ErpTrackerController', 'method' => 'removeChampion'],
+    'erp-tracker/api/get-dept-users/(\d+)' => ['controller' => 'ErpTrackerController', 'method' => 'getDepartmentUsers'],
 ];
 

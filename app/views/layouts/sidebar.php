@@ -38,6 +38,30 @@
                     </li>
                 <?php endif; ?>
 
+                <?php
+                // Check if user has ERP Tracker access
+                $sidebar_user_id = $_SESSION['user']['id'] ?? 0;
+                $sidebar_role_id = $_SESSION['user']['role_id'] ?? 0;
+                $hasErpAccess = in_array($sidebar_role_id, [1, 3]);
+                
+                if (!$hasErpAccess) {
+                    global $db;
+                    $champ_check = $db->query("SELECT id FROM erp_tracker_champions WHERE user_id = $sidebar_user_id LIMIT 1");
+                    if ($champ_check && $champ_check->num_rows > 0) {
+                        $hasErpAccess = true;
+                    }
+                }
+                ?>
+                
+                <?php if ($hasErpAccess): ?>
+                <!-- ERP Tracker -->
+                <li class="slide <?= isActive('erp-tracker', $current_route) ?>">
+                    <a href="<?= $base_url ?>/erp-tracker" class="sidebar__menu-item <?= isActive('erp-tracker', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fas fa-tasks"></i></div>
+                        <span class="sidebar__menu-label">ERP Tracker</span>
+                    </a>
+                </li>
+                <?php endif; ?>
 
                 <!-- Sales Manager CATEGORY -->
                 <?php
