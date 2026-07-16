@@ -64,6 +64,7 @@ return [
     'clients-cash-in-history-view/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'indexTwoView'],
     'save-transfer-note' => ['controller' => 'AccountClientController', 'method' => 'saveTransferNote'],
     'verify-payment' => ['controller' => 'AccountClientController', 'method' => 'verifyPayment'],
+    'assign-handover' => ['controller' => 'AccountClientController', 'method' => 'assignHandover'],
     'get-banks' => ['controller' => 'AccountClientController', 'method' => 'getBanks'],
     'upload-transaction-proof' => ['controller' => 'AccountClientController', 'method' => 'uploadTransactionProof'],
     'get-transaction-attachments' => ['controller' => 'AccountClientController', 'method' => 'getTransactionAttachments'],
@@ -218,4 +219,9 @@ return [
     'con-risk-dashboard-store' => ['controller' => 'Phase2\Con_RiskDashboardController', 'method' => 'storeRisk'],
     'con-risk-dashboard-update-status' => ['controller' => 'Phase2\Con_RiskDashboardController', 'method' => 'updateRiskStatus'],
     'con-risk-dashboard-delete/(\d+)' => ['controller' => 'Phase2\Con_RiskDashboardController', 'method' => 'deleteRisk'],
+
+    // =========================================================================
+    // Controller: VoucherController
+    // =========================================================================
+    'print-debit-voucher' => ['controller' => 'VoucherController', 'method' => 'printDebitVoucher'],
 ];

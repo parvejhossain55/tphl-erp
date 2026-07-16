@@ -38,6 +38,30 @@
                     </li>
                 <?php endif; ?>
 
+                <?php
+                // Check if user has ERP Tracker access
+                $sidebar_user_id = $_SESSION['user']['id'] ?? 0;
+                $sidebar_role_id = $_SESSION['user']['role_id'] ?? 0;
+                $hasErpAccess = in_array($sidebar_role_id, [1, 3]);
+                
+                if (!$hasErpAccess) {
+                    global $db;
+                    $champ_check = $db->query("SELECT id FROM erp_tracker_champions WHERE user_id = $sidebar_user_id LIMIT 1");
+                    if ($champ_check && $champ_check->num_rows > 0) {
+                        $hasErpAccess = true;
+                    }
+                }
+                ?>
+                
+                <?php if ($hasErpAccess): ?>
+                <!-- ERP Tracker -->
+                <li class="slide <?= isActive('erp-tracker', $current_route) ?>">
+                    <a href="<?= $base_url ?>/erp-tracker" class="sidebar__menu-item <?= isActive('erp-tracker', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fas fa-tasks"></i></div>
+                        <span class="sidebar__menu-label">ERP Tracker</span>
+                    </a>
+                </li>
+                <?php endif; ?>
 
                 <!-- Sales Manager CATEGORY -->
                 <?php
@@ -1117,12 +1141,26 @@
                     </li>
 
                     <!-- Accounts Dashboard -->
+                    <?php
+                        $accountsNotifCount = 0;
+                        if (hasPermission("accounts manage") && ($_SESSION['user']['role_id'] ?? 0) != 9) {
+                            if (!class_exists('DashboardController')) {
+                                require_once __DIR__ . '/../../controllers/DashboardController.php';
+                            }
+                            global $db;
+                            $dashCtrl = new DashboardController($db);
+                            $notifs = $dashCtrl->getAccountsNotifications(false);
+                            $accountsNotifCount = count($notifs);
+                        }
+                    ?>
                     <li class="slide <?= isActive('accounts-dashboard', $current_route) ?>">
                         <a href="<?= $base_url ?>/accounts-dashboard"
                             class="sidebar__menu-item <?= isActive('accounts-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">Accounts Dashboard</span>
-
+                            <?php if ($accountsNotifCount > 0): ?>
+                                <span class="badge bg-danger ms-2" style="border-radius: 50%; padding: 0.35em 0.5em; font-size: 0.75em;"><?= $accountsNotifCount ?></span>
+                            <?php endif; ?>
                         </a>
                     </li>
                     <li class="slide <?= isActive('central-statement', $current_route) ?>">

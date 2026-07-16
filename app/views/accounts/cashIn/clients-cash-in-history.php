@@ -6,6 +6,13 @@ $addPage = true;
 $show_breadcrumb = true;
 ?>
 
+<div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+    <div>
+        <strong><i class="fa-light fa-circle-info me-1"></i> Notice:</strong> If you see any data missing (e.g., missing EMI numbers, missing landshare fee) or errors in calculations, it may be due to incomplete booking data or project setup. Please <strong>contact the sales team first</strong> to resolve these issues before proceeding.
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+
 <div class="row">
     <!-- Client Header Section -->
     <div class="col-xxl-12 mb-4">
@@ -461,6 +468,7 @@ $show_breadcrumb = true;
                                 <th>Bank</th>
                                 <th>Trx ID</th>
                                 <th>Status</th>
+                                <th>Handover To</th>
                                 <th>Verification</th>
                                 <th>Verified By</th>
                                 <th style="white-space:nowrap;min-width:90px;">Document</th>
@@ -544,10 +552,37 @@ $show_breadcrumb = true;
                                             <?php echo $transaction['status_text']; ?>
                                         </span>
                                     </td>
+                                    <?php 
+                                        $vs = $transaction['verification_status'] ?? 'pending';
+                                        $hs = $transaction['handover_status'] ?? null;
+                                    ?>
+                                    <!-- HANDOVER TO -->
+                                    <td>
+                                        <?php if (!empty($transaction['handover_to'])): ?>
+                                            <span class="badge bg-info text-dark">
+                                                <?= htmlspecialchars($transaction['handover_to_name'] ?? 'Mgmt') ?>
+                                            </span>
+                                            <?php if ($transaction['handover_status'] === 'pending'): ?>
+                                                <small class="d-block text-warning mt-1"><i class="fa-light fa-clock"></i> Pending</small>
+                                            <?php elseif ($transaction['handover_status'] === 'approved'): ?>
+                                                <small class="d-block text-success mt-1"><i class="fa-light fa-check"></i> Approved</small>
+                                            <?php elseif ($transaction['handover_status'] === 'rejected'): ?>
+                                                <small class="d-block text-danger mt-1"><i class="fa-light fa-times"></i> Rejected</small>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <?php if ($vs === 'pending'): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-info py-0 px-1" onclick="openHandoverModal(<?= $transaction['id'] ?>)">
+                                                    <i class="fa-light fa-handshake"></i> Handover
+                                                </button>
+                                            <?php else: ?>
+                                                
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                    </td>
+
                                     <!-- VERIFICATION CONTROL -->
                                     <td class="ver-cell" id="ver-cell-<?= $transaction['id'] ?>">
                                         <?php
-                                            $vs = $transaction['verification_status'] ?? 'pending';
                                             if ($vs === 'verified'):
                                         ?>
                                             <span class="badge bg-success ver-badge">
@@ -570,13 +605,16 @@ $show_breadcrumb = true;
                                                 $canVerify = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6]);
                                             ?>
                                             <?php if ($canVerify): ?>
-                                            <div class="d-flex gap-1">
-                                                <button type="button"
-                                                    class="btn btn-sm btn-verify"
-                                                    onclick="verifyPayment(<?= $transaction['id'] ?>, 'verify')"
-                                                    title="Verify this payment">
-                                                    <i class="fa-light fa-check"></i> Verify
-                                                </button>
+                                                <?php if ($hs === 'pending'): ?>
+                                                    <span class="badge bg-warning text-dark"><i class="fa-light fa-lock"></i> Awaiting Mgmt</span>
+                                                <?php else: ?>
+                                                    <div class="d-flex gap-1">
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-verify"
+                                                            onclick="<?= ($hs === 'rejected') ? "openForceVerifyModal({$transaction['id']})" : "verifyPayment({$transaction['id']}, 'verify')" ?>"
+                                                            title="Verify this payment">
+                                                            <i class="fa-light fa-check"></i> Verify
+                                                        </button>
                                                 <button type="button"
                                                     class="btn btn-sm btn-reject"
                                                     onclick="openRejectModal(<?= $transaction['id'] ?>)"
@@ -584,6 +622,7 @@ $show_breadcrumb = true;
                                                     <i class="fa-light fa-times"></i> Reject
                                                 </button>
                                             </div>
+                                                <?php endif; ?>
                                             <?php else: ?>
                                             <span class="badge bg-warning text-dark">
                                                 <i class="fa-light fa-clock me-1"></i>Pending
@@ -636,8 +675,7 @@ $show_breadcrumb = true;
                                         <div class="d-flex align-items-center justify-content-start gap-10">
                                             <?php if (!empty($transaction['id']) && strpos($transaction['id'], 'booking-') === false): ?>
                                                 <?php $isVerified = ($transaction['verification_status'] ?? 'pending') === 'verified'; ?>
-                                                <!-- INVOICE BUTTON — disabled when not verified -->
-                                                <?php if ($isVerified): ?>
+                                                <!-- INVOICE BUTTON -->
                                                 <a href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $transaction['id'] ?>"
                                                     class="table__icon invoice"
                                                     style="color: #fff; background-color: #6c5ffc;"
@@ -645,13 +683,6 @@ $show_breadcrumb = true;
                                                     target="_blank">
                                                     <i class="fa-light fa-file-invoice"></i>
                                                 </a>
-                                                <?php else: ?>
-                                                <span class="table__icon disabled"
-                                                    title="Invoice disabled — payment not yet verified"
-                                                    style="background-color: #fef3cd; color: #856404; cursor: not-allowed;">
-                                                    <i class="fa-light fa-file-invoice"></i>
-                                                </span>
-                                                <?php endif; ?>
                                                 <!-- EDIT BUTTON — hidden when verified -->
                                                 <?php if (!$isVerified): ?>
                                                 <?php if ($transaction['payment_type'] !== 'booking_money'): ?>
@@ -821,6 +852,67 @@ $show_breadcrumb = true;
     </div>
 </div>
 
+<!-- Handover Modal -->
+<div class="modal fade" id="handoverModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form id="handoverForm" onsubmit="submitHandover(event)">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Initiate Handover</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="handoverPaymentId" name="payment_id">
+                    <div class="mb-3">
+                        <label class="form-label">Select Management User <span class="text-danger">*</span></label>
+                        <select name="handover_to" id="handoverSelect" class="form-select" required>
+                            <option value="">-- Select Employee --</option>
+                            <?php 
+                                // Need to fetch management users or load via AJAX. We'll load them here if available or rely on the view data.
+                                // Actually, we might need to fetch them. Since we don't have them in this view by default, let's assume we can get them.
+                                $mgmtUsersQuery = $this->db->query("SELECT id, full_name, email FROM users WHERE role_id IN (1, 3)");
+                                while ($mgmtUser = $mgmtUsersQuery->fetch_assoc()):
+                            ?>
+                                <option value="<?= $mgmtUser['id'] ?>">
+                                    <?= htmlspecialchars($mgmtUser['full_name']) ?> <?= !empty($mgmtUser['email']) ? '('.htmlspecialchars($mgmtUser['email']).')' : '' ?>
+                                </option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Confirm Handover</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Force Verify Modal -->
+<div class="modal fade" id="forceVerifyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title text-dark"><i class="fa-light fa-triangle-exclamation"></i> Force Verify Rejected Handover</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>This transaction's handover was <strong>rejected</strong> by management.</p>
+                <p>Are you sure you want to bypass this and verify the payment as paid?</p>
+                <div class="mb-3">
+                    <label class="form-label">Note for Management (Required) <span class="text-danger">*</span></label>
+                    <textarea id="forceVerifyNote" class="form-control" rows="3" required placeholder="Explain why you are force-verifying this payment..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="submitForceVerify()">Force Verify</button>
+            </div>
+        </div>
+    </div>
+</div>
+
     <script>
         const BASE_URL = '<?= $GLOBALS['base_url'] ?>';
 
@@ -984,6 +1076,62 @@ $show_breadcrumb = true;
             }
         });
 
+        // ─── Handover Logic ─────────────────────────────
+        function openHandoverModal(paymentId) {
+            document.getElementById('handoverPaymentId').value = paymentId;
+            document.getElementById('handoverSelect').value = '';
+            new bootstrap.Modal(document.getElementById('handoverModal')).show();
+        }
+
+        function submitHandover(e) {
+            e.preventDefault();
+            const paymentId = document.getElementById('handoverPaymentId').value;
+            const handoverTo = document.getElementById('handoverSelect').value;
+
+            if (!handoverTo) return;
+
+            fetch(BASE_URL + '/assign-handover', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `payment_id=${paymentId}&handover_to=${handoverTo}`
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success',
+                        text: 'Handover requested successfully',
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire('Error', data.message || 'Failed to initiate handover', 'error');
+                }
+            })
+            .catch(err => {
+                Swal.fire('Error', 'Network error', 'error');
+            });
+        }
+
+        // ─── Force Verify Logic ─────────────────────────────
+        let _forceVerifyPaymentId = null;
+        function openForceVerifyModal(paymentId) {
+            _forceVerifyPaymentId = paymentId;
+            document.getElementById('forceVerifyNote').value = '';
+            new bootstrap.Modal(document.getElementById('forceVerifyModal')).show();
+        }
+
+        function submitForceVerify() {
+            const note = document.getElementById('forceVerifyNote').value.trim();
+            if (!note) {
+                Swal.fire('Error', 'A note is required for force verification', 'error');
+                return;
+            }
+            bootstrap.Modal.getInstance(document.getElementById('forceVerifyModal')).hide();
+            _doVerifyRequest(_forceVerifyPaymentId, 'verify', '', note);
+        }
+
         // ─── Core verify/reject AJAX (with SweetAlert2) ────────────────────
         function verifyPayment(paymentId, action, rejectionReason = '') {
             // ── Pre-confirm for Verify action only
@@ -1011,11 +1159,11 @@ $show_breadcrumb = true;
             }
         }
 
-        function _doVerifyRequest(paymentId, action, rejectionReason) {
+        function _doVerifyRequest(paymentId, action, rejectionReason = '', forceVerifyNote = '') {
             const cell = document.getElementById('ver-cell-' + paymentId);
             if (cell) cell.innerHTML = '<span class="text-muted small"><i class="fa-light fa-spinner fa-spin"></i> Processing…</span>';
 
-            const body = new URLSearchParams({ payment_id: paymentId, action, rejection_reason: rejectionReason });
+            const body = new URLSearchParams({ payment_id: paymentId, action, rejection_reason: rejectionReason, force_verify_note: forceVerifyNote });
 
             fetch(BASE_URL + '/verify-payment', { method: 'POST', body })
                 .then(r => r.json())

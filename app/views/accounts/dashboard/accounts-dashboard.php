@@ -416,6 +416,133 @@ function getStatusBadge($status)
         </a>
     </div>
 
+    <?php if (!empty($accountsNotifications)): ?>
+    <!-- ══════════════ ACCOUNTS NOTIFICATION BANNER ══════════════ -->
+    <div class="col-12 mb-4 mt-2">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <div style="width:4px;height:22px;background:linear-gradient(180deg,#3b82f6,#8b5cf6);border-radius:4px"></div>
+            <h6 class="mb-0 fw-bold" style="font-size:14px;">
+                <i class="fa-light fa-bell me-2 text-primary"></i>
+                Actionable Requests & Updates
+            </h6>
+            <span class="badge" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;font-size:11px;">
+                <?= count($accountsNotifications) ?> Item<?= count($accountsNotifications) > 1 ? 's' : '' ?>
+            </span>
+        </div>
+
+        <div class="row g-3">
+            <?php foreach (array_slice($accountsNotifications, 0, 8) as $notif): ?>
+            <?php
+                $statusColor = match(strtolower($notif['status'])) {
+                    'pending', 'submitted' => ['bg' => 'rgba(245,158,11,.10)', 'border' => '#f59e0b', 'badge' => '#f59e0b', 'text' => '#b45309', 'icon' => 'fa-clock'],
+                    'qc_approved', 'verified' => ['bg' => 'rgba(16,185,129,.10)', 'border' => '#10b981', 'badge' => '#10b981', 'text' => '#047857', 'icon' => 'fa-check-double'],
+                    'approved'  => ['bg' => 'rgba(34,197,94,.12)', 'border' => '#22c55e', 'badge' => '#22c55e', 'text' => '#15803d', 'icon' => 'fa-check-circle'],
+                    'partially_paid' => ['bg' => 'rgba(59,130,246,.10)', 'border' => '#3b82f6', 'badge' => '#3b82f6', 'text' => '#1d4ed8', 'icon' => 'fa-coins'],
+                    'fully_paid', 'paid' => ['bg' => 'rgba(45,198,83,.12)', 'border' => '#2dc653', 'badge' => '#2dc653', 'text' => '#15803d', 'icon' => 'fa-check'],
+                    'rejected'  => ['bg' => 'rgba(239,68,68,.10)', 'border' => '#ef4444', 'badge' => '#ef4444', 'text' => '#b91c1c', 'icon' => 'fa-times'],
+                    default     => ['bg' => 'rgba(107,114,128,.10)', 'border' => '#6b7280', 'badge' => '#6b7280', 'text' => '#374151', 'icon' => 'fa-info-circle'],
+                };
+                
+                $typeIcon = match($notif['source_table']) {
+                    'cashout_requests' => 'fa-money-bill-transfer text-danger',
+                    'operational_fund_requests' => 'fa-money-bills text-success',
+                    'contractor_bill_requests' => 'fa-helmet-safety text-teal',
+                    'vendor_payment_requests' => 'fa-truck text-purple',
+                    'expense_adjustments' => 'fa-calculator text-warning',
+                    default => 'fa-file-invoice'
+                };
+                
+                $fadeClass = !empty($notif['is_one_time']) ? 'fade-out-animation' : '';
+            ?>
+            <div class="col-xl-3 col-lg-4 col-md-6 notif-card <?= $fadeClass ?>">
+                <div class="card border-0 shadow-sm h-100 position-relative overflow-hidden"
+                     style="border-left: 4px solid <?= $statusColor['border'] ?> !important;background:<?= $statusColor['bg'] ?>;">
+                    <!-- Decorative pulse dot for actionable items -->
+                    <?php if (in_array(strtolower($notif['status']), ['pending', 'submitted', 'approved', 'partially_paid', 'qc_approved', 'verified'])): ?>
+                    <span style="position:absolute;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:<?= $statusColor['border'] ?>;box-shadow:0 0 0 3px <?= $statusColor['bg'] ?>;animation:boq-pulse 1.5s infinite"></span>
+                    <?php endif; ?>
+
+                    <div class="card-body py-3 px-4 d-flex flex-column h-100">
+                        <!-- Request Type & Purpose -->
+                        <div class="fw-bold mb-2" style="font-size:13px;color:#111827">
+                            <i class="fa-light <?= $typeIcon ?> me-1"></i>
+                            <span class="text-muted" style="font-size:11px;"><?= $notif['request_type'] ?></span><br/>
+                            <span class="text-truncate d-block mt-1" title="<?= htmlspecialchars($notif['purpose'] ?? '') ?>"><?= htmlspecialchars($notif['purpose'] ?? '') ?></span>
+                        </div>
+
+                        <div class="mt-auto">
+                            <!-- Status & Amount -->
+                            <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-1">
+                                <span class="badge" style="background:<?= $statusColor['badge'] ?>;color:#fff;font-size:10px;font-weight:700;">
+                                    <i class="fa-solid <?= $statusColor['icon'] ?> me-1"></i>
+                                    <?php 
+                                        $displayStatus = ucwords(str_replace('_', ' ', $notif['status']));
+                                        if (strtolower($notif['status']) === 'approved') {
+                                            $displayStatus = 'Approved - Awaiting Payment';
+                                        }
+                                        echo $displayStatus;
+                                    ?>
+                                </span>
+                                <div class="d-flex flex-column align-items-end">
+                                    <span class="fw-bold" style="font-size:13px;color:<?= $statusColor['text'] ?>; line-height: 1.2;">
+                                        TK.<?= number_format($notif['amount'] ?? 0, 2) ?>
+                                    </span>
+                                    <?php 
+                                        if (strtolower($notif['status']) === 'partially_paid' || ($notif['due_amount'] !== null && $notif['due_amount'] > 0 && $notif['due_amount'] < ($notif['approved_amount'] ?? $notif['amount']))) {
+                                            $baseAmt = $notif['approved_amount'] ?? $notif['amount'];
+                                            $due = $notif['due_amount'] ?? 0;
+                                            $paid = max(0, $baseAmt - $due);
+                                            echo '<small class="text-muted mt-1" style="font-size:9px;line-height:1.2;">Paid: '.number_format($paid, 2).' | Due: <span class="text-danger fw-bold">'.number_format($due, 2).'</span></small>';
+                                        }
+                                    ?>
+                                </div>
+                            </div>
+
+                            <!-- Requester & Action -->
+                            <div class="d-flex align-items-center justify-content-between">
+                                <small class="text-muted text-truncate w-50" style="font-size:11px;" title="<?= htmlspecialchars($notif['requested_by_name'] ?? 'Unknown') ?>">
+                                    <i class="fa-light fa-user me-1"></i>
+                                    <?= htmlspecialchars($notif['requested_by_name'] ?? 'Unknown') ?>
+                                </small>
+                                <a href="<?= $GLOBALS['base_url'] ?>/<?= $notif['view_url'] ?>"
+                                   class="btn btn-sm fw-bold"
+                                   style="font-size:11px;padding:4px 10px;border-radius:6px;background:<?= $statusColor['border'] ?>;color:#fff;border:none;text-decoration:none;">
+                                    View <i class="fa-solid fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        
+        <?php if (count($accountsNotifications) > 8): ?>
+        <div class="text-center mt-3">
+            <span class="text-muted" style="font-size:12px;">
+                Showing 8 of <?= count($accountsNotifications) ?> notifications
+            </span>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <style>
+    @keyframes boq-pulse {
+        0%   { box-shadow: 0 0 0 0 rgba(59,130,246,.4); }
+        70%  { box-shadow: 0 0 0 6px rgba(59,130,246,0); }
+        100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+    }
+    .fade-out-animation {
+        animation: fadeOutSlow 6s forwards;
+        animation-delay: 2s;
+    }
+    @keyframes fadeOutSlow {
+        0% { opacity: 1; transform: scale(1); }
+        100% { opacity: 0.6; filter: grayscale(50%); }
+    }
+    </style>
+    <?php endif; ?>
+
     <!-- Charts Section -->
     <div class="col-12 mb-3">
         <div class="row">
