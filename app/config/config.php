@@ -71,7 +71,7 @@ if ($current_server == 2) {
     ];
 }
 
-// Production Server
+// Production Serve
 
 if ($current_server == 3) {
     return [
