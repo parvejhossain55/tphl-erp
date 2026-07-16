@@ -78,6 +78,21 @@ class ErpTracker extends Model
         return $stmt->execute();
     }
 
+    public function deleteSession($id)
+    {
+        $stmt1 = $this->db->prepare("DELETE FROM erp_tracker_actions WHERE session_id = ?");
+        $stmt1->bind_param("i", $id);
+        $stmt1->execute();
+        
+        $stmt2 = $this->db->prepare("DELETE FROM erp_tracker_submissions WHERE session_id = ?");
+        $stmt2->bind_param("i", $id);
+        $stmt2->execute();
+        
+        $stmt3 = $this->db->prepare("DELETE FROM erp_tracker_sessions WHERE id = ?");
+        $stmt3->bind_param("i", $id);
+        return $stmt3->execute();
+    }
+
     private function carryForwardTasks($new_session_id)
     {
         // Get the latest closed session (previous session)

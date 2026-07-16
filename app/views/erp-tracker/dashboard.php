@@ -39,11 +39,16 @@ $page_title = "ERP Implement Tracker Dashboard";
     <!-- Active Session Overview -->
     <?php if ($activeSession): ?>
         <div class="card mb-4 border-0 shadow-sm">
-            <div class="card-header bg-white border-0 pt-4 pb-0">
-                <h5 class="mb-0 text-primary">
-                    <i class="fas fa-calendar-check me-2"></i>Active Session: <?= htmlspecialchars($activeSession['topic']) ?>
-                </h5>
-                <small class="text-muted">Created Date: <?= date('d M Y', strtotime($activeSession['meeting_date'])) ?></small>
+            <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0 text-primary">
+                        <i class="fas fa-calendar-check me-2"></i><?= isset($_GET['session_id']) ? 'Session #' . $activeSession['id'] : 'Active Session' ?>: <?= htmlspecialchars($activeSession['topic']) ?>
+                    </h5>
+                    <small class="text-muted">Created Date: <?= date('d M Y', strtotime($activeSession['meeting_date'])) ?></small>
+                </div>
+                <?php if (isset($_GET['session_id'])): ?>
+                    <a href="<?= $base_url ?>/erp-tracker" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i> Back to Active Tracker</a>
+                <?php endif; ?>
             </div>
             <div class="card-body">
                 <div class="row g-4">
@@ -117,7 +122,7 @@ $page_title = "ERP Implement Tracker Dashboard";
                                             </div>
                                         </td>
                                         <td>
-                                            <a href="<?= $base_url ?>/erp-tracker/view/<?= $rank['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye me-1"></i> View Details</a>
+                                            <a href="<?= $base_url ?>/erp-tracker/view/<?= $rank['id'] ?><?= isset($_GET['session_id']) ? '?session_id=' . $_GET['session_id'] : '' ?>" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye me-1"></i> View Details</a>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -156,6 +161,7 @@ $page_title = "ERP Implement Tracker Dashboard";
                             <th>Topic</th>
                             <th>Status</th>
                             <th>Depts Submitted</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -170,6 +176,12 @@ $page_title = "ERP Implement Tracker Dashboard";
                                     </span>
                                 </td>
                                 <td><?= $sess['submitted_departments'] ?></td>
+                                <td>
+                                    <a href="<?= $base_url ?>/erp-tracker?session_id=<?= $sess['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye me-1"></i> View Dashboard</a>
+                                    <?php if ($hasManagementAccess): ?>
+                                        <a href="<?= $base_url ?>/erp-tracker/session/delete/<?= $sess['id'] ?>" class="btn btn-sm btn-outline-danger ms-1" onclick="return confirm('Are you sure you want to delete this session entirely? This will delete all tasks and submissions associated with it.');"><i class="fas fa-trash me-1"></i></a>
+                                    <?php endif; ?>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>

@@ -59,7 +59,11 @@ class ErpTrackerController extends Controller
         
         $hasAccess = in_array($role_id, [1, 3, $it_role]);
 
-        $activeSession = $this->tracker->getActiveSession();
+        if (isset($_GET['session_id'])) {
+            $activeSession = $this->tracker->getSession($_GET['session_id']);
+        } else {
+            $activeSession = $this->tracker->getActiveSession();
+        }
         $stats = [];
         $rankings = [];
         if ($activeSession) {
@@ -112,12 +116,13 @@ class ErpTrackerController extends Controller
     public function closeSession($id)
     {
         $this->checkErpAccess(true); // Management only
-
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        
+        if ($this->tracker->closeSession($id)) {
+            $_SESSION['success'] = "Session closed successfully.";
+        } else {
+            $_SESSION['error'] = "Failed to close session.";
         }
-        $this->tracker->closeSession($id);
-        $_SESSION['success'] = "Tracker session manually closed.";
+        
         header("Location: {$GLOBALS['base_url']}/erp-tracker");
         exit;
     }
@@ -272,7 +277,12 @@ class ErpTrackerController extends Controller
     {
         $this->checkErpAccess(true); // Management only
         
-        $activeSession = $this->tracker->getActiveSession();
+        if (isset($_GET['session_id'])) {
+            $activeSession = $this->tracker->getSession($_GET['session_id']);
+        } else {
+            $activeSession = $this->tracker->getActiveSession();
+        }
+
         if (!$activeSession) {
             $_SESSION['error'] = "No active tracker session.";
             header("Location: {$GLOBALS['base_url']}/erp-tracker");
@@ -423,6 +433,21 @@ class ErpTrackerController extends Controller
         }
         
         header("Location: {$GLOBALS['base_url']}/erp-tracker/champions");
+        exit;
+    }
+
+
+    public function deleteSession($id)
+    {
+        $this->checkErpAccess(true); // Management only
+        
+        if ($this->tracker->deleteSession($id)) {
+            $_SESSION['success'] = "Session deleted successfully.";
+        } else {
+            $_SESSION['error'] = "Failed to delete session.";
+        }
+        
+        header("Location: {$GLOBALS['base_url']}/erp-tracker");
         exit;
     }
 
