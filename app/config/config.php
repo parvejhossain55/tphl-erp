@@ -4,7 +4,7 @@
 // 2 = Project staging Server
 // 3 = Production Server
 
-$current_server = 3; 
+$current_server = 1; 
 // Local Development Server
 /////////////////////////////////
 ////////////////////////////////
@@ -13,6 +13,7 @@ if ($current_server == 1) {
         "db_host" => "127.0.0.1",
         "db_user" => "root",
         "db_pass" => "",
+        
         "db_name" => "tphl_db",
         // AI Assistant Read-Only database connection
         "db_ai_user" => "tphl_read_only",

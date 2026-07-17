@@ -408,7 +408,7 @@ class LeadController extends Controller
         $draw = isset($_POST['draw']) ? (int)$_POST['draw'] : 1;
         $start = isset($_POST['start']) ? (int)$_POST['start'] : 0;
         // lead-lists page load
-        $length = isset($_POST['length']) ? (int)$_POST['length'] : 25;
+        $length = isset($_POST['length']) ? (int)$_POST['length'] : 10;
         $search = isset($_POST['search']['value']) ? $_POST['search']['value'] : null;
 
         // Get filters from GET
@@ -1063,11 +1063,17 @@ class LeadController extends Controller
 
         $leadId     = (int) $id;
         $lastAction = $_POST['last_lead_action'] ?? null;
+        $isAjax     = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') || isset($_POST['ajax']);
 
         // Allowed enum values (important for security)
         $allowedActions = ['new', 'booked', 'follow up', 'visited', 'cancel'];
 
         if (!$leadId || !in_array($lastAction, $allowedActions)) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Invalid lead action selected.']);
+                exit;
+            }
             setError("Invalid lead action selected.");
             header("Location: " . $_SERVER['HTTP_REFERER']);
             exit;
@@ -1081,12 +1087,22 @@ class LeadController extends Controller
         $lead = $result->fetch_assoc();
 
         if (!$lead) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Lead not found.']);
+                exit;
+            }
             setError("Lead not found.");
             header("Location: " . $_SERVER['HTTP_REFERER']);
             exit;
         }
 
         if ($lead['last_lead_action'] === 'booked') {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Action cannot be changed because this lead is already booked.']);
+                exit;
+            }
             setError("Action cannot be changed because this lead is already booked.");
             header("Location: " . $_SERVER['HTTP_REFERER']);
             exit;
@@ -1098,10 +1114,20 @@ class LeadController extends Controller
             $stmtUpdate->bind_param("si", $lastAction, $leadId);
             $stmtUpdate->execute();
 
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Lead last action updated successfully!']);
+                exit;
+            }
             setSuccess("Lead last action updated successfully!");
             header("Location: " . $_SERVER['HTTP_REFERER']);
             exit;
         } catch (Exception $e) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                exit;
+            }
             setError($e->getMessage());
             header("Location: " . $_SERVER['HTTP_REFERER']);
             exit;

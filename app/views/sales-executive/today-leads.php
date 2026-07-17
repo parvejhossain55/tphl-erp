@@ -130,21 +130,21 @@
                                                <?php endif; ?>
                                            </td>
 
-                                           <!-- Change Client Action -->
-                                           <td>
-                                               <form method="POST" action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>" class="m-0 p-0">
-                                                   <select name="last_lead_action"
-                                                       class="form-select form-select-sm last-action-select <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
-                                                       onchange="this.form.submit()">
-                                                       <option value="">Update action</option>
-                                                       <option value="new" <?= $lead['last_lead_action'] == 'new' ? 'selected' : '' ?>>New</option>
-                                                       <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>Booked</option>
-                                                       <option value="follow up" <?= $lead['last_lead_action'] == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
-                                                       <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>Visited</option>
-                                                       <option value="cancel" <?= $lead['last_lead_action'] == 'cancel' ? 'selected' : '' ?>>Cancel</option>
-                                                   </select>
-                                               </form>
-                                           </td>
+                                            <!-- Change Client Action -->
+                                            <td>
+                                                <form method="POST" action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>" class="m-0 p-0">
+                                                    <select name="last_lead_action"
+                                                        class="form-select form-select-sm last-action-select last-action-select-ajax <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
+                                                        data-lead-id="<?= $lead['id'] ?>">
+                                                        <option value="">Update action</option>
+                                                        <option value="new" <?= $lead['last_lead_action'] == 'new' ? 'selected' : '' ?>>New</option>
+                                                        <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>Booked</option>
+                                                        <option value="follow up" <?= $lead['last_lead_action'] == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
+                                                        <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>Visited</option>
+                                                        <option value="cancel" <?= $lead['last_lead_action'] == 'cancel' ? 'selected' : '' ?>>Cancel</option>
+                                                    </select>
+                                                </form>
+                                            </td>
 
                                            <!-- Call Status -->
                                            <?php
@@ -696,5 +696,68 @@
                 const url = new URL(window.location.href);
                 url.searchParams.set('page', page);
                 window.history.replaceState(null, '', url.toString());
+            });
+
+            // AJAX Lead Last Action Update
+            $(document).on('change', '.last-action-select-ajax', function() {
+                const selectEl = $(this);
+                const leadId = selectEl.data('lead-id');
+                const action = selectEl.val();
+                const url = (typeof base_url !== 'undefined' ? base_url : window.base_url || "<?= $GLOBALS['base_url'] ?>") + '/update-last_leadAction/' + leadId;
+
+                const formData = new URLSearchParams();
+                formData.append('last_lead_action', action);
+                formData.append('ajax', '1');
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData.toString()
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remove existing classes starting with 'action-'
+                        selectEl.removeClass(function (index, className) {
+                            return (className.match(/(^|\s)action-\S+/g) || []).join(' ');
+                        });
+                        // Add new action class
+                        const classVal = action.replace(' ', '_');
+                        selectEl.addClass('action-' + (classVal || 'not_called'));
+
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: data.message || 'Action updated successfully!',
+                                toast: true,
+                                position: 'top-end',
+                                showConfirmButton: false,
+                                timer: 2000,
+                                timerProgressBar: true
+                            });
+                        }
+                    } else {
+                        throw new Error(data.message || 'Update failed');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error updating action:', err);
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Failed to update action!',
+                            text: err.message,
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: true
+                        });
+                    }
+                    setTimeout(() => location.reload(), 1500);
+                });
             });
         </script>
