@@ -171,6 +171,7 @@ return [
     'erp-tracker' => ['controller' => 'ErpTrackerController', 'method' => 'dashboard'],
     'erp-tracker/session/create' => ['controller' => 'ErpTrackerController', 'method' => 'createSession'],
     'erp-tracker/session/close/(\d+)' => ['controller' => 'ErpTrackerController', 'method' => 'closeSession'],
+    'erp-tracker/session/delete/(\d+)' => ['controller' => 'ErpTrackerController', 'method' => 'deleteSession'],
     'erp-tracker/form' => ['controller' => 'ErpTrackerController', 'method' => 'form'],
     'erp-tracker/form/submit' => ['controller' => 'ErpTrackerController', 'method' => 'submitForm'],
     'erp-tracker/view/(\d+)' => ['controller' => 'ErpTrackerController', 'method' => 'viewSubmission'],

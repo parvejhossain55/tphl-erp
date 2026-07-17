@@ -22,3 +22,17 @@ if ($db->query($sql)) {
 } else {
     echo "[".date('Y-m-d H:i:s')."] Error updating tasks: " . $db->error . "\n";
 }
+
+// Auto-close sessions that are older than 7 days
+$sqlClose = "UPDATE erp_tracker_sessions 
+             SET status = 'Closed' 
+             WHERE status = 'Open' AND DATEDIFF(CURRENT_DATE(), meeting_date) >= 7";
+
+if ($db->query($sqlClose)) {
+    $affectedSessions = $db->affected_rows;
+    if ($affectedSessions > 0) {
+        echo "[".date('Y-m-d H:i:s')."] Auto-closed $affectedSessions session(s) older than 7 days.\n";
+    }
+} else {
+    echo "[".date('Y-m-d H:i:s')."] Error closing sessions: " . $db->error . "\n";
+}
