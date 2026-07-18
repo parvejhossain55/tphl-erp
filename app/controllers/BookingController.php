@@ -200,6 +200,13 @@ class BookingController extends Controller
             $header[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $header[0]);
             $header = array_map(function ($value) { return trim($value); }, $header);
 
+            $normalizeText = function($str) {
+                if ($str === null) return '';
+                $str = str_replace(array("\xC2\xA0", "\xA0"), ' ', $str);
+                $str = preg_replace('/\s+/', ' ', $str);
+                return trim($str);
+            };
+
             $validCount = 0;
             
             $leadsCache    = [];
@@ -229,6 +236,21 @@ class BookingController extends Controller
                 }
 
                 $data      = $partialData;
+                
+                // Clean commas from numeric fields to ensure valid float/decimal parsing
+                if (isset($data['agreement_value'])) {
+                    $data['agreement_value'] = str_replace(',', '', trim($data['agreement_value']));
+                }
+                if (isset($data['discount_amount'])) {
+                    $data['discount_amount'] = str_replace(',', '', trim($data['discount_amount']));
+                }
+                if (isset($data['approved_amount'])) {
+                    $data['approved_amount'] = str_replace(',', '', trim($data['approved_amount']));
+                }
+                if (isset($data['service_fee_balance'])) {
+                    $data['service_fee_balance'] = str_replace(',', '', trim($data['service_fee_balance']));
+                }
+
                 $rowIssues = [];
                 
                 // 1. Resolve lead
@@ -237,14 +259,46 @@ class BookingController extends Controller
                     $rowIssues[] = "lead_phone is empty";
                 } else {
                     if (!isset($leadsCache[$leadPhone])) {
-                        $stmt = $this->db->prepare("SELECT id FROM leads WHERE (phone = ? OR phone_number = ?) AND deleted_at IS NULL LIMIT 1");
-                        $stmt->bind_param("ss", $leadPhone, $leadPhone);
-                        $stmt->execute();
-                        $res = $stmt->get_result()->fetch_assoc();
-                        if ($res) {
-                            $leadsCache[$leadPhone] = ['id' => $res['id']];
-                        } else {
+                        // Extract ONLY digits
+                        $cleanPhone = preg_replace('/[^0-9]/', '', $leadPhone);
+                        
+                        if (empty($cleanPhone)) {
                             $rowIssues[] = "Lead not found for phone '$leadPhone'";
+                        } else {
+                            $leadFoundId = null;
+                            
+                            // 1. Try exact match on cleaned database columns
+                            $stmt = $this->db->prepare("SELECT id FROM leads WHERE (
+                                REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', ''), '\'', ''), '\"', '') = ? OR 
+                                REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone_number, '-', ''), ' ', ''), '+', ''), '\'', ''), '\"', '') = ?
+                            ) AND deleted_at IS NULL LIMIT 1");
+                            $stmt->bind_param("ss", $cleanPhone, $cleanPhone);
+                            $stmt->execute();
+                            $res = $stmt->get_result()->fetch_assoc();
+                            if ($res) {
+                                $leadFoundId = $res['id'];
+                            } else {
+                                // 2. Try last 9 digits wildcard matching
+                                $last9 = (strlen($cleanPhone) >= 9) ? substr($cleanPhone, -9) : $cleanPhone;
+                                $likePattern = '%';
+                                for ($i = 0; $i < strlen($last9); $i++) {
+                                    $likePattern .= $last9[$i] . '%';
+                                }
+                                
+                                $stmtLike = $this->db->prepare("SELECT id FROM leads WHERE (phone LIKE ? OR phone_number LIKE ?) AND deleted_at IS NULL LIMIT 1");
+                                $stmtLike->bind_param("ss", $likePattern, $likePattern);
+                                $stmtLike->execute();
+                                $resLike = $stmtLike->get_result()->fetch_assoc();
+                                if ($resLike) {
+                                    $leadFoundId = $resLike['id'];
+                                }
+                            }
+                            
+                            if ($leadFoundId) {
+                                $leadsCache[$leadPhone] = ['id' => $leadFoundId];
+                            } else {
+                                $rowIssues[] = "Lead not found for phone '$leadPhone'";
+                            }
                         }
                     }
                 }
@@ -266,7 +320,7 @@ class BookingController extends Controller
                 }
 
                 // 3. Resolve project
-                $projectName = trim($data['project_name'] ?? '');
+                $projectName = $normalizeText($data['project_name'] ?? '');
                 $projectId   = null;
                 if (empty($projectName)) {
                     $rowIssues[] = "project_name is empty";
@@ -282,19 +336,31 @@ class BookingController extends Controller
                             $projectId = $res['id'];
                             $projectsCache[$projectName] = $projectId;
                         } else {
-                            $rowIssues[] = "Project not found '$projectName'";
+                            // Try case-insensitive and relaxed space matching as a fallback
+                            $normalizedSearch = '%' . str_replace(' ', '%', $projectName) . '%';
+                            $stmtLike = $this->db->prepare("SELECT id FROM projects WHERE name LIKE ? LIMIT 1");
+                            $stmtLike->bind_param("s", $normalizedSearch);
+                            $stmtLike->execute();
+                            $resLike = $stmtLike->get_result()->fetch_assoc();
+                            if ($resLike) {
+                                $projectId = $resLike['id'];
+                                $projectsCache[$projectName] = $projectId;
+                            } else {
+                                $rowIssues[] = "Project not found '$projectName'";
+                            }
                         }
                     }
                 }
 
                 // 4. Resolve flat
-                $flatName = trim($data['flat_name'] ?? '');
+                $flatName = $normalizeText($data['flat_name'] ?? '');
                 if (empty($flatName)) {
                     $rowIssues[] = "flat_name is empty";
                 } elseif ($projectId) {
                     $flatCacheKey = $projectId . '_' . $flatName;
                     
                     if (!isset($flatsCache[$flatCacheKey])) {
+                        // First try exact match
                         $stmt = $this->db->prepare("SELECT id, is_booked, status FROM flats WHERE project_id = ? AND flat_name = ? AND deleted_at IS NULL LIMIT 1");
                         $stmt->bind_param("is", $projectId, $flatName);
                         $stmt->execute();
@@ -306,7 +372,21 @@ class BookingController extends Controller
                                 'status' => $res['status']
                             ];
                         } else {
-                            $flatsCache[$flatCacheKey] = null;
+                            // Try relaxed search by replacing spaces
+                            $normalizedFlat = '%' . str_replace(' ', '%', $flatName) . '%';
+                            $stmtLike = $this->db->prepare("SELECT id, is_booked, status FROM flats WHERE project_id = ? AND flat_name LIKE ? AND deleted_at IS NULL LIMIT 1");
+                            $stmtLike->bind_param("is", $projectId, $normalizedFlat);
+                            $stmtLike->execute();
+                            $resLike = $stmtLike->get_result()->fetch_assoc();
+                            if ($resLike) {
+                                $flatsCache[$flatCacheKey] = [
+                                    'id' => $resLike['id'],
+                                    'is_booked' => $resLike['is_booked'],
+                                    'status' => $resLike['status']
+                                ];
+                            } else {
+                                $flatsCache[$flatCacheKey] = null;
+                            }
                         }
                     }
 
@@ -377,7 +457,15 @@ class BookingController extends Controller
             $header[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $header[0]);
             $header = array_map(function ($value) { return trim($value); }, $header);
 
+            $normalizeText = function($str) {
+                if ($str === null) return '';
+                $str = str_replace(array("\xC2\xA0", "\xA0"), ' ', $str);
+                $str = preg_replace('/\s+/', ' ', $str);
+                return trim($str);
+            };
+
             $successCount = 0;
+            $importErrors = [];
             
             $leadsCache    = [];
             $projectsCache = [];
@@ -393,6 +481,20 @@ class BookingController extends Controller
 
                 $data = array_combine($header, $row);
                 
+                // Clean commas from numeric fields to ensure valid float/decimal parsing
+                if (isset($data['agreement_value'])) {
+                    $data['agreement_value'] = str_replace(',', '', trim($data['agreement_value']));
+                }
+                if (isset($data['discount_amount'])) {
+                    $data['discount_amount'] = str_replace(',', '', trim($data['discount_amount']));
+                }
+                if (isset($data['approved_amount'])) {
+                    $data['approved_amount'] = str_replace(',', '', trim($data['approved_amount']));
+                }
+                if (isset($data['service_fee_balance'])) {
+                    $data['service_fee_balance'] = str_replace(',', '', trim($data['service_fee_balance']));
+                }
+
                 $rowIssues = [];
                 
                 // 1. Resolve lead
@@ -404,15 +506,50 @@ class BookingController extends Controller
                     if (isset($leadsCache[$leadPhone])) {
                         $leadId = $leadsCache[$leadPhone]['id'];
                     } else {
-                        $stmt = $this->db->prepare("SELECT id, assigned_id FROM leads WHERE (phone = ? OR phone_number = ?) AND deleted_at IS NULL LIMIT 1");
-                        $stmt->bind_param("ss", $leadPhone, $leadPhone);
-                        $stmt->execute();
-                        $res = $stmt->get_result()->fetch_assoc();
-                        if ($res) {
-                            $leadsCache[$leadPhone] = ['id' => $res['id'], 'assigned_id' => $res['assigned_id']];
-                            $leadId = $res['id'];
-                        } else {
+                        // Extract ONLY digits
+                        $cleanPhone = preg_replace('/[^0-9]/', '', $leadPhone);
+                        
+                        if (empty($cleanPhone)) {
                             $rowIssues[] = "Lead not found";
+                        } else {
+                            $leadFoundId = null;
+                            $assignedId = null;
+                            
+                            // 1. Try exact match on cleaned database columns
+                            $stmt = $this->db->prepare("SELECT id, assigned_id FROM leads WHERE (
+                                REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', ''), '\'', ''), '\"', '') = ? OR 
+                                REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone_number, '-', ''), ' ', ''), '+', ''), '\'', ''), '\"', '') = ?
+                            ) AND deleted_at IS NULL LIMIT 1");
+                            $stmt->bind_param("ss", $cleanPhone, $cleanPhone);
+                            $stmt->execute();
+                            $res = $stmt->get_result()->fetch_assoc();
+                            if ($res) {
+                                $leadFoundId = $res['id'];
+                                $assignedId = $res['assigned_id'];
+                            } else {
+                                // 2. Try last 9 digits wildcard matching
+                                $last9 = (strlen($cleanPhone) >= 9) ? substr($cleanPhone, -9) : $cleanPhone;
+                                $likePattern = '%';
+                                for ($i = 0; $i < strlen($last9); $i++) {
+                                    $likePattern .= $last9[$i] . '%';
+                                }
+                                
+                                $stmtLike = $this->db->prepare("SELECT id, assigned_id FROM leads WHERE (phone LIKE ? OR phone_number LIKE ?) AND deleted_at IS NULL LIMIT 1");
+                                $stmtLike->bind_param("ss", $likePattern, $likePattern);
+                                $stmtLike->execute();
+                                $resLike = $stmtLike->get_result()->fetch_assoc();
+                                if ($resLike) {
+                                    $leadFoundId = $resLike['id'];
+                                    $assignedId = $resLike['assigned_id'];
+                                }
+                            }
+                            
+                            if ($leadFoundId) {
+                                $leadsCache[$leadPhone] = ['id' => $leadFoundId, 'assigned_id' => $assignedId];
+                                $leadId = $leadFoundId;
+                            } else {
+                                $rowIssues[] = "Lead not found";
+                            }
                         }
                     }
                 }
@@ -442,7 +579,7 @@ class BookingController extends Controller
                 }
 
                 // 3. Resolve project
-                $projectName = trim($data['project_name'] ?? '');
+                $projectName = $normalizeText($data['project_name'] ?? '');
                 $projectId   = null;
                 if (empty($projectName)) {
                     $rowIssues[] = "project_name is empty";
@@ -458,13 +595,24 @@ class BookingController extends Controller
                             $projectId = $res['id'];
                             $projectsCache[$projectName] = $projectId;
                         } else {
-                            $rowIssues[] = "Project not found";
+                            // Try case-insensitive and relaxed space matching as a fallback
+                            $normalizedSearch = '%' . str_replace(' ', '%', $projectName) . '%';
+                            $stmtLike = $this->db->prepare("SELECT id FROM projects WHERE name LIKE ? LIMIT 1");
+                            $stmtLike->bind_param("s", $normalizedSearch);
+                            $stmtLike->execute();
+                            $resLike = $stmtLike->get_result()->fetch_assoc();
+                            if ($resLike) {
+                                $projectId = $resLike['id'];
+                                $projectsCache[$projectName] = $projectId;
+                            } else {
+                                $rowIssues[] = "Project not found '$projectName'";
+                            }
                         }
                     }
                 }
 
                 // 4. Resolve flat
-                $flatName = trim($data['flat_name'] ?? '');
+                $flatName = $normalizeText($data['flat_name'] ?? '');
                 $flatId   = null;
                 if (empty($flatName)) {
                     $rowIssues[] = "flat_name is empty";
@@ -472,6 +620,7 @@ class BookingController extends Controller
                     $flatCacheKey = $projectId . '_' . $flatName;
                     
                     if (!isset($flatsCache[$flatCacheKey])) {
+                        // First try exact match
                         $stmt = $this->db->prepare("SELECT id, is_booked, status FROM flats WHERE project_id = ? AND flat_name = ? AND deleted_at IS NULL LIMIT 1");
                         $stmt->bind_param("is", $projectId, $flatName);
                         $stmt->execute();
@@ -483,14 +632,28 @@ class BookingController extends Controller
                                 'status' => $res['status']
                             ];
                         } else {
-                            $flatsCache[$flatCacheKey] = null;
+                            // Try relaxed search by replacing spaces
+                            $normalizedFlat = '%' . str_replace(' ', '%', $flatName) . '%';
+                            $stmtLike = $this->db->prepare("SELECT id, is_booked, status FROM flats WHERE project_id = ? AND flat_name LIKE ? AND deleted_at IS NULL LIMIT 1");
+                            $stmtLike->bind_param("is", $projectId, $normalizedFlat);
+                            $stmtLike->execute();
+                            $resLike = $stmtLike->get_result()->fetch_assoc();
+                            if ($resLike) {
+                                $flatsCache[$flatCacheKey] = [
+                                    'id' => $resLike['id'],
+                                    'is_booked' => $resLike['is_booked'],
+                                    'status' => $resLike['status']
+                                ];
+                            } else {
+                                $flatsCache[$flatCacheKey] = null;
+                            }
                         }
                     }
 
                     if (isset($flatsCache[$flatCacheKey]) && $flatsCache[$flatCacheKey] !== null) {
                         $flatData = $flatsCache[$flatCacheKey];
                         if ($flatData['is_booked'] == 1 || $flatData['status'] === 'booked') {
-                            $rowIssues[] = "Flat is already booked";
+                            $rowIssues[] = "Flat '$flatName' is already booked";
                         } else {
                             $flatId = $flatData['id'];
                             // Mark as booked in cache to prevent duplicate processing
@@ -498,11 +661,12 @@ class BookingController extends Controller
                             $flatsCache[$flatCacheKey]['status'] = 'booked';
                         }
                     } else {
-                        $rowIssues[] = "Flat not found";
+                        $rowIssues[] = "Flat '$flatName' not found in project '$projectName'";
                     }
                 }
 
                 if (!empty($rowIssues)) {
+                    $importErrors[] = "Row $rowNum skipped: " . implode(', ', $rowIssues);
                     continue; // Skip this row in execution, it was already shown as an error in preview
                 }
 
@@ -524,8 +688,10 @@ class BookingController extends Controller
                     if ($timestamp !== false) {
                         $data['booking_date'] = date('Y-m-d', $timestamp);
                     } else {
-                        $data['booking_date'] = null;
+                        $data['booking_date'] = date('Y-m-d');
                     }
+                } else {
+                    $data['booking_date'] = date('Y-m-d');
                 }
 
                 try {
@@ -545,6 +711,7 @@ class BookingController extends Controller
 
                     $successCount++;
                 } catch (Exception $e) {
+                    $importErrors[] = "Row $rowNum insert failed: " . $e->getMessage();
                     error_log("CSV Import Error: " . $e->getMessage());
                     continue;
                 }
@@ -556,7 +723,12 @@ class BookingController extends Controller
             unset($_SESSION['bookings_csv_import_file']);
             unset($_SESSION['bookings_csv_import_filename']);
 
-            setSuccess("$successCount Bookings imported successfully.");
+            if (!empty($importErrors)) {
+                $errStr = "Import completed with " . count($importErrors) . " error(s). " . $successCount . " successfully imported. First few errors:\n" . implode("\n", array_slice($importErrors, 0, 5));
+                setError($errStr);
+            } else {
+                setSuccess("$successCount Bookings imported successfully.");
+            }
             header("Location: {$GLOBALS['base_url']}/lead-lists");
             exit;
         } else {

@@ -121,7 +121,7 @@ $categories   = $categories   ?? [];
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Project <span class="text-danger">*</span></label>
-                                <select name="project_id" id="prProjectSelect" class="form-select" required>
+                                <select name="project_id" id="prProjectSelect" class="form-select select2" required>
                                     <option value="">-- Select Project --</option>
                                     <?php foreach ($projects as $p): ?>
                                         <option value="<?= $p['id'] ?>" <?= ($preProjectId && $preProjectId == $p['id']) ? 'selected' : '' ?>>
@@ -406,7 +406,7 @@ function setPrType(type) {
 // ── Material select HTML for manual rows (BOQ Linked) ─────────────────────
 function makeMaterialSelect(selectedId = '', unit = '-') {
     let html = `<div class="mb-1">
-        <select name="material_id[]" class="form-select form-select-sm pr-material" required>
+        <select name="material_id[]" class="form-select form-select-sm pr-material select2" required>
             <option value="">-- Select Material --</option>`;
     ALL_MATERIALS.forEach(m => {
         const sel = (m.id == selectedId) ? 'selected' : '';
@@ -420,7 +420,7 @@ function makeMaterialSelect(selectedId = '', unit = '-') {
 
 // ── Material select HTML for Independent rows ─────────────────────────────
 function makeMaterialSelectInd(selectedId = '') {
-    let html = `<select name="material_id[]" class="form-select form-select-sm pr-material-ind" required>
+    let html = `<select name="material_id[]" class="form-select form-select-sm pr-material-ind select2" required>
         <option value="">-- Select Material --</option>`;
     ALL_MATERIALS.forEach(m => {
         const sel = (m.id == selectedId) ? 'selected' : '';
@@ -622,8 +622,20 @@ function bindLastManualRow() {
     const newRow = rows[rows.length - 1];
     const sel = newRow?.querySelector('.pr-material');
     if (!sel) return;
-    sel.addEventListener('change', function () {
+
+    // Initialize select2 on this dynamic dropdown
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $(sel).select2({
+            placeholder: '-- Select Material --',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $(sel).parent()
+        });
+    }
+
+    $(sel).on('change', function () {
         const opt  = this.options[this.selectedIndex];
+        if (!opt) return;
         const unit = opt.dataset.unit || '-';
         newRow.querySelector('.pr-unit').textContent = unit;
         const small = newRow.querySelector('.pr-mat-unit');
@@ -652,8 +664,20 @@ function bindLastIndRow() {
     const newRow = rows[rows.length - 1];
     const sel = newRow?.querySelector('.pr-material-ind');
     if (!sel) return;
-    sel.addEventListener('change', function () {
+
+    // Initialize select2 on this dynamic dropdown
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $(sel).select2({
+            placeholder: '-- Select Material --',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $(sel).parent()
+        });
+    }
+
+    $(sel).on('change', function () {
         const opt  = this.options[this.selectedIndex];
+        if (!opt) return;
         const unit = opt.dataset.unit || '—';
         newRow.querySelector('.pr-ind-unit').textContent      = unit;
         newRow.querySelector('.pr-ind-unit-label').textContent = unit;
@@ -771,6 +795,9 @@ document.getElementById('saveMaterialBtn').addEventListener('click', function ()
             opt.dataset.unit     = newMat.unit;
             opt.textContent      = `${newMat.name} (${newMat.category_name})`;
             sel.appendChild(opt);
+            if (typeof $ !== 'undefined' && $.fn.select2) {
+                $(sel).trigger('change');
+            }
         });
 
         // 3. Auto-add a new row with this material selected
@@ -781,8 +808,12 @@ document.getElementById('saveMaterialBtn').addEventListener('click', function ()
             // Select the new material in the last row
             const lastSel = document.getElementById('prItemsBody').querySelector('tr:last-child .pr-material');
             if (lastSel) {
-                lastSel.value = newMat.id;
-                lastSel.dispatchEvent(new Event('change'));
+                if (typeof $ !== 'undefined' && $.fn.select2) {
+                    $(lastSel).val(newMat.id).trigger('change');
+                } else {
+                    lastSel.value = newMat.id;
+                    lastSel.dispatchEvent(new Event('change'));
+                }
             }
         } else {
             const html = makeIndRow(newMat.id, newMat.unit);
@@ -790,7 +821,13 @@ document.getElementById('saveMaterialBtn').addEventListener('click', function ()
             bindLastIndRow();
             // Trigger change to set unit display
             const lastSel = document.getElementById('prItemsBodyInd').querySelector('tr:last-child .pr-material-ind');
-            if (lastSel) lastSel.dispatchEvent(new Event('change'));
+            if (lastSel) {
+                if (typeof $ !== 'undefined' && $.fn.select2) {
+                    $(lastSel).val(newMat.id).trigger('change');
+                } else {
+                    lastSel.dispatchEvent(new Event('change'));
+                }
+            }
         }
         updateEmptyHint();
 
