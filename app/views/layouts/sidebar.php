@@ -982,6 +982,15 @@
                             <span class="sidebar__menu-label">Payslip Lists</span>
                         </a>
                     </li>
+
+                    <!-- Auto Generate Payslip -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/auto-generate-payslip"
+                            class="sidebar__menu-item <?= isActive('auto-generate-payslip', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                            <span class="sidebar__menu-label">Auto Generate Payslip</span>
+                        </a>
+                    </li>
                 <?php endif; ?>
 
                 <?php if (hasPermission("User Manage") && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>

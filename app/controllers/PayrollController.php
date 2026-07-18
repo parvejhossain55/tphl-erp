@@ -486,4 +486,234 @@ class PayrollController extends Controller
         fclose($output);
         exit;
     }
+
+    public function showAutoGenerateForm()
+    {
+        $departmentModel = new Department($this->db);
+        $departments = $departmentModel->getAll();
+        $this->view("payrolls/payslips/auto-create-payslip", [
+            "current_route" => "auto-generate-payslip",
+            "page_title"    => "Auto Generate Payslips",
+            "departments"   => $departments
+        ]);
+    }
+
+    public function getDepartmentAttendance()
+    {
+        header('Content-Type: application/json');
+
+        $departmentId = isset($_GET['department_id']) ? (int)$_GET['department_id'] : 0;
+        $monthStr     = isset($_GET['month']) ? trim($_GET['month']) : ''; // e.g. "2026-07"
+
+        if (!$departmentId || !$monthStr) {
+            echo json_encode(['success' => false, 'message' => 'Invalid parameters.']);
+            exit;
+        }
+
+        // 1. Fetch active employees in this department
+        $stmt = $this->db->prepare("
+            SELECT e.id, e.full_name, e.employee_id, e.email, e.gross_salary, e.basic_salary, e.designation_id, desg.name AS designation_name
+            FROM employees e
+            LEFT JOIN designations desg ON e.designation_id = desg.id
+            WHERE e.department_id = ? AND e.employee_status = 'active'
+        ");
+        $stmt->bind_param("i", $departmentId);
+        $stmt->execute();
+        $employees = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        // 2. Fetch all configured salary items for these employees
+        $configuredSalaryItems = [];
+        if (!empty($employees)) {
+            $employeeIds = array_column($employees, 'id');
+            $placeholders = implode(',', array_fill(0, count($employeeIds), '?'));
+            $stmt = $this->db->prepare("
+                SELECT * FROM employee_salary_items WHERE employee_id IN ($placeholders)
+            ");
+            $types = str_repeat('i', count($employeeIds));
+            $stmt->bind_param($types, ...$employeeIds);
+            $stmt->execute();
+            $salaryItemsRaw = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+
+            foreach ($salaryItemsRaw as $sir) {
+                $configuredSalaryItems[$sir['employee_id']][$sir['payslip_item_id']] = $sir['amount'];
+            }
+        }
+
+        // 3. Fetch attendance logs from Tipsoi
+        $oldTimezone = date_default_timezone_get();
+        date_default_timezone_set('Asia/Dhaka');
+
+        $fromDateStr = $monthStr . '-01';
+        $toDateStr   = date('Y-m-t', strtotime($fromDateStr));
+
+        $fromTime = strtotime($fromDateStr . ' 00:00:00') * 1000;
+        $toTime   = strtotime($toDateStr . ' 23:59:59') * 1000;
+
+        date_default_timezone_set($oldTimezone);
+
+        $externalApiService = new ExternalApiService($this->db);
+        $attendanceLogs = $externalApiService->getAttendanceLogs($fromTime, $toTime) ?? [];
+
+        // Map Tipsoi attendance records by employee ID
+        $tipsoiMap = [];
+        foreach ($attendanceLogs as $log) {
+            $officeId = trim($log['employeeOfficeId'] ?? $log['employeeId'] ?? '');
+            if ($officeId !== '') {
+                $tipsoiMap[strtolower($officeId)] = $log['attendance'] ?? [];
+            }
+        }
+
+        // 4. Calculate absent days for each employee
+        foreach ($employees as &$emp) {
+            $empIdLower = strtolower(trim($emp['employee_id']));
+            $absentCount = 0;
+            $matchedInTipsoi = false;
+
+            if (isset($tipsoiMap[$empIdLower])) {
+                $matchedInTipsoi = true;
+                $attMap = $tipsoiMap[$empIdLower];
+                foreach ($attMap as $timestampMs => $dayAtt) {
+                    $isPresent = $dayAtt['isPresent'] ?? false;
+                    $isLeave   = $dayAtt['isLeave'] ?? false;
+                    $isOffday  = $dayAtt['isOffday'] ?? false;
+                    $isHoliday = $dayAtt['isHoliday'] ?? false;
+
+                    if (!$isPresent && !$isLeave && !$isOffday && !$isHoliday) {
+                        $absentCount++;
+                    }
+                }
+            }
+
+            $emp['matched_in_tipsoi'] = $matchedInTipsoi;
+            $emp['absent_days']       = $absentCount;
+            // Per day deduction = gross_salary / 30
+            $perDaySal = $emp['gross_salary'] / 30;
+            $emp['absent_deduction']  = round($absentCount * $perDaySal, 2);
+
+            // Pre-fill configured allowances/deductions
+            $emp['configured_items']  = $configuredSalaryItems[$emp['id']] ?? [];
+        }
+
+        // 5. Load active payslip items to display as table headers
+        $payslipItems = $this->payslipItemModel->getAll();
+
+        echo json_encode([
+            'success'      => true,
+            'employees'    => $employees,
+            'payslip_items' => $payslipItems
+        ]);
+        exit;
+    }
+
+    public function storeBulkPayslips()
+    {
+        header('Content-Type: application/json');
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $input = file_get_contents('php://input');
+        $payload = json_decode($input, true);
+
+        if (empty($payload) || empty($payload['employees']) || empty($payload['payslip_month'])) {
+            echo json_encode(['success' => false, 'message' => 'Invalid payslip data.']);
+            exit;
+        }
+
+        $payslipMonth  = $payload['payslip_month'] . '-01'; // Format as YYYY-MM-01
+        $payslipDate   = !empty($payload['payslip_date']) ? $payload['payslip_date'] : date('Y-m-d');
+        $generatedBy   = $_SESSION['user']['id'] ?? 1;
+
+        $payslipModel  = new Payslip($this->db);
+        $detailsModel  = new PayslipDetail($this->db);
+        $approvalModel = new ApprovalRequest($this->db);
+
+        // Begin Transaction
+        $this->db->begin_transaction();
+
+        try {
+            foreach ($payload['employees'] as $empData) {
+                // Double check if employee has already generated payslip for this month
+                $stmtCheck = $this->db->prepare("
+                    SELECT id FROM payslips WHERE employee_id = ? AND DATE_FORMAT(payslip_month, '%Y-%m') = ? LIMIT 1
+                ");
+                $monthStr = date('Y-m', strtotime($payslipMonth));
+                $stmtCheck->bind_param("is", $empData['employee_id'], $monthStr);
+                $stmtCheck->execute();
+                $exists = $stmtCheck->get_result()->fetch_assoc();
+                $stmtCheck->close();
+
+                if ($exists) {
+                    throw new Exception("Payslip already generated for " . htmlspecialchars($empData['employee_name']) . " for this month.");
+                }
+
+                // 1. Create Payslip
+                $payslipId = $payslipModel->create([
+                    'employee_id'     => $empData['employee_id'],
+                    'designation_id'  => $empData['designation_id'],
+                    'payslip_month'   => $payslipMonth,
+                    'total_earning'   => $empData['total_earning'],
+                    'total_deduction' => $empData['total_deduction'],
+                    'net_salary'      => $empData['net_salary'],
+                    'status'          => 'pending',
+                    'upload_by'       => 'manual',
+                    'created_by'      => $generatedBy,
+                ]);
+
+                if (!$payslipId) {
+                    throw new Exception("Failed to create payslip for " . $empData['employee_name'] . ". DB Error: " . $this->db->error);
+                }
+
+                // 2. Insert Earning Details
+                if (!empty($empData['earnings'])) {
+                    foreach ($empData['earnings'] as $itemId => $amount) {
+                        $amt = (float)$amount;
+                        if ($amt > 0) {
+                            $detailsModel->create($payslipId, $itemId, $amt);
+                        }
+                    }
+                }
+
+                // 3. Insert Deduction Details
+                if (!empty($empData['deductions'])) {
+                    foreach ($empData['deductions'] as $itemId => $amount) {
+                        $amt = (float)$amount;
+                        if ($amt > 0) {
+                            $detailsModel->create($payslipId, $itemId, $amt);
+                        }
+                    }
+                }
+
+                // 4. Create Approval Request
+                $approvalModel->create([
+                    'department'      => 'HR',
+                    'request_type'    => 'salary',
+                    'title'           => 'Salary Approval',
+                    'source_table'    => 'payslips',
+                    'source_id'       => $payslipId,
+                    'requested_days'  => 0,
+                    'requested_by'    => $generatedBy,
+                    'approve_role'    => 'management',
+                    'meta_data'       => json_encode([
+                        'employee_id' => $empData['employee_id'],
+                        'month' => date('d F Y', strtotime($payslipMonth))
+                    ]),
+                    'request_amount'  => $empData['net_salary']
+                ]);
+            }
+
+            // Commit Transaction
+            $this->db->commit();
+            echo json_encode(['success' => true, 'message' => 'All payslips generated successfully and submitted for approval.']);
+            exit;
+
+        } catch (Exception $e) {
+            $this->db->rollback();
+            echo json_encode(['success' => false, 'message' => 'Failed to generate payslips: ' . $e->getMessage()]);
+            exit;
+        }
+    }
 }
