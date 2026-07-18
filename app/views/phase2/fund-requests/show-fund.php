@@ -58,6 +58,11 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                     </p>
                 </div>
                 <div class="text-end d-flex gap-2">
+                    <?php if (!empty($payments)): ?>
+                        <a href="<?= $base_url ?>/print-debit-voucher?module=operational_fund&id=<?= $request['id'] ?>" target="_blank" class="btn btn-primary btn-sm">
+                            <i class="bi bi-printer me-1"></i> Debit Voucher
+                        </a>
+                    <?php endif; ?>
                     <span class="badge bg-<?= $statusInfo['color'] ?> fs-6 px-3 py-2"><?= $statusInfo['label'] ?></span>
                     <a href="<?= $base_url ?>/con-fund-requests" class="btn btn-secondary btn-sm">
                         <i class="bi bi-arrow-left me-1"></i> Back

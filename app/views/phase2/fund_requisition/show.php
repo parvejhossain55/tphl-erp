@@ -28,6 +28,11 @@ $settleBadgeMap = [
             </ol></nav>
         </div>
         <div class="d-flex gap-2 no-print">
+            <?php if ($req['status'] === 'paid'): ?>
+            <a href="<?php echo $base; ?>/print-debit-voucher?module=fund_requisition&id=<?php echo $req['id']; ?>" target="_blank" class="btn btn-primary btn-sm border">
+                <i class="fa-solid fa-file-invoice-dollar me-1"></i> Debit Voucher
+            </a>
+            <?php endif; ?>
             <button type="button" class="btn btn-light btn-sm border" onclick="window.print()">
                 <i class="fa-solid fa-print me-1"></i> Print
             </button>

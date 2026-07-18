@@ -18,7 +18,8 @@ class ApprovalRequest extends Model
         'operational_fund_requests',
         'con_work_orders',
         'vendor_payment_requests',
-        'contractor_bill_requests'
+        'contractor_bill_requests',
+        'lead_payments'
     ];
     public function create($data)
     {
@@ -236,6 +237,16 @@ class ApprovalRequest extends Model
                 (int)$approval['source_id']
             );
 
+            if ($approval['request_type'] === 'Cash In Handover' && $approval['source_table'] === 'lead_payments') {
+                $handoverToId = $details['account']['handover_to'] ?? null;
+                if ($handoverToId) {
+                    $employee = $this->getUserById((int)$handoverToId);
+                    if ($employee) {
+                        $meta['handover_to'] = $employee['user_name'];
+                    }
+                }
+            }
+
             $details['meta'] = $meta; // purpose, payment_method etc
         }
 
@@ -379,6 +390,12 @@ class ApprovalRequest extends Model
                 'rejected' => 'rejected',
                 default => 'pending',
             };
+        } elseif ($sourceTable === 'lead_payments') {
+            $sourceStatus = match ($status) {
+                'approved' => 'approved',
+                'rejected' => 'rejected',
+                default => 'pending',
+            };
         }
 
         $updateFields = [];
@@ -391,6 +408,10 @@ class ApprovalRequest extends Model
             $params[] = $sourceStatus;
         } elseif (in_array('status', $columns)) {
             $updateFields[] = "status = ?";
+            $types .= 's';
+            $params[] = $sourceStatus;
+        } elseif ($sourceTable === 'lead_payments' && in_array('handover_status', $columns)) {
+            $updateFields[] = "handover_status = ?";
             $types .= 's';
             $params[] = $sourceStatus;
         }
@@ -411,6 +432,14 @@ class ApprovalRequest extends Model
             $updateFields[] = "approved_by = ?";
             $types .= 'i';
             $params[] = $approvedBy;
+        } elseif ($sourceTable === 'lead_payments' && in_array('handover_to', $columns)) { // Wait, handover_to is who it was requested to? Actually approved_by goes nowhere if there's no approved_by column. We can add approved_by if needed. Let's just leave handover_to alone here.
+            // Do not override handover_to, it's the requested approver, not the actual one.
+        }
+
+        if ($sourceTable === 'lead_payments' && $status === 'rejected' && in_array('handover_rejection_reason', $columns)) {
+            $updateFields[] = "handover_rejection_reason = ?";
+            $types .= 's';
+            $params[] = $approvalNote;
         }
 
         if (in_array('approved_at', $columns)) {

@@ -363,6 +363,30 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                             </div>
                         </div>
 
+                        <!-- Handover Section -->
+                        <div class="col-md-12 mb-3">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="enableHandover" value="1">
+                                <label class="form-check-label fw-bold" for="enableHandover">
+                                    Initiate Handover Approval?
+                                </label>
+                            </div>
+                            <div class="from__input-box d-none" id="handoverWrapper">
+                                <label class="form__input-title">Handover To <span class="text-danger">*</span></label>
+                                <select name="handover_to" id="handoverTo" class="form-control select2">
+                                    <option value="">-- Select Employee --</option>
+                                    <?php if (!empty($managementUsers)): ?>
+                                        <?php foreach ($managementUsers as $user): ?>
+                                            <option value="<?= $user['id'] ?>">
+                                                <?= htmlspecialchars($user['full_name']) ?> 
+                                                <?= !empty($user['email']) ? '('.htmlspecialchars($user['email']).')' : '' ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
+                        </div>
+
                         <!-- Proof of Payment Documents (multi-file upload) -->
                         <div class="col-md-12">
                             <div class="from__input-box">
@@ -404,6 +428,22 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
         const amountField = document.getElementById('amount');
         const amountHelp = document.getElementById('amountHelp');
         const partiallyPaidOption = document.getElementById('partiallyPaidOption');
+        const enableHandover = document.getElementById('enableHandover');
+        const handoverWrapper = document.getElementById('handoverWrapper');
+        const handoverTo = document.getElementById('handoverTo');
+        
+        if (enableHandover) {
+            enableHandover.addEventListener('change', function() {
+                if (this.checked) {
+                    handoverWrapper.classList.remove('d-none');
+                    handoverTo.setAttribute('required', 'required');
+                } else {
+                    handoverWrapper.classList.add('d-none');
+                    handoverTo.removeAttribute('required');
+                    handoverTo.value = '';
+                }
+            });
+        }
 
         const emiFields = document.querySelectorAll('.emi-fields');
         const bankFields = document.querySelectorAll('.bank-fields');

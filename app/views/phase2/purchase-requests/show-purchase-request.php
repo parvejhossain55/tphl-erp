@@ -46,14 +46,27 @@ $isReadOnly = !in_array($sessionRole, [17, 23]);
                 <div class="card__body p-4">
 
                     <!-- Header Info -->
+                    <?php $prType = $pr['pr_type'] ?? 'boq_linked'; ?>
                     <div class="row mb-4 g-3">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="small text-uppercase text-muted d-block">PR Number</label>
                             <span class="fw-bold fs-5">PR-<?= $pr['id'] ?></span>
                         </div>
                         <div class="col-md-3">
                             <label class="small text-uppercase text-muted d-block">Project</label>
                             <span class="fw-bold"><?= htmlspecialchars($pr['project_name']) ?></span>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="small text-uppercase text-muted d-block">Type</label>
+                            <?php if ($prType === 'independent'): ?>
+                                <span class="badge" style="background:rgba(245,158,11,.15);color:#b45309;border:1px solid rgba(245,158,11,.3);font-size:11px;font-weight:700;padding:5px 10px">
+                                    ✏️ Not link with monthly target
+                                </span>
+                            <?php else: ?>
+                                <span class="badge" style="background:rgba(37,99,235,.1);color:#1d4ed8;border:1px solid rgba(37,99,235,.2);font-size:11px;font-weight:700;padding:5px 10px">
+                                    📋 Link with monthly target
+                                </span>
+                            <?php endif; ?>
                         </div>
                         <div class="col-md-2">
                             <label class="small text-uppercase text-muted d-block">Status</label>
@@ -72,11 +85,35 @@ $isReadOnly = !in_array($sessionRole, [17, 23]);
                             <label class="small text-uppercase text-muted d-block">Created By</label>
                             <span class="fw-bold"><?= htmlspecialchars($pr['created_by_name'] ?? '—') ?></span>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-1">
                             <label class="small text-uppercase text-muted d-block">Date</label>
                             <span class="fw-bold"><?= date('d M Y', strtotime($pr['created_at'])) ?></span>
                         </div>
                     </div>
+
+                    <!-- Independent PR: Required Date + Purpose -->
+                    <?php if ($prType === 'independent' && (!empty($pr['required_date']) || !empty($pr['purpose']))): ?>
+                    <div class="rounded p-3 mb-3" style="background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.2)">
+                        <div class="row g-3">
+                            <?php if (!empty($pr['required_date'])): ?>
+                            <div class="col-md-3">
+                                <label class="small text-uppercase text-muted d-block">
+                                    <i class="bi bi-calendar-event me-1 text-warning"></i> Required By
+                                </label>
+                                <span class="fw-bold text-warning"><?= date('d M Y', strtotime($pr['required_date'])) ?></span>
+                            </div>
+                            <?php endif; ?>
+                            <?php if (!empty($pr['purpose'])): ?>
+                            <div class="col-md-9">
+                                <label class="small text-uppercase text-muted d-block">
+                                    <i class="bi bi-justify-left me-1 text-info"></i> Purpose / Description
+                                </label>
+                                <span class="fw-bold"><?= htmlspecialchars($pr['purpose']) ?></span>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
 
                     <!-- Approval Status Panel -->
                     <?php

@@ -692,12 +692,22 @@ public function showAddTransactionForm($bookingId = null)
     // SIMPLE CHECK: Is registration paid?
     $registrationPaid = $this->clientModel->isRegistrationPaid($bookingId);
 
+    // Get management users for handover dropdown
+    $managementUsers = [];
+    $mgmtQuery = $this->db->query("SELECT id, full_name, email FROM users WHERE role_id IN (1, 3)");
+    if ($mgmtQuery) {
+        while ($row = $mgmtQuery->fetch_assoc()) {
+            $managementUsers[] = $row;
+        }
+    }
+
     $this->view("accounts/cashIn/client-cash-in-form", [
         "current_route" => "client-cash-in-form",
         "page_title" => "Add Transaction - " . $clientDetails['client_name'],
         "clientDetails" => $clientDetails,
         "bookingId" => $bookingId,
-        "registrationPaid" => $registrationPaid  // Just pass this boolean
+        "registrationPaid" => $registrationPaid,
+        "managementUsers" => $managementUsers
     ]);
 }
 
@@ -782,6 +792,7 @@ public function addTransaction()
             'parent_payment_id'=> !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : null,
             'settlement_type'  => ($paymentType === 'emi_due_settlement') ? 'emi_due_settlement' : null,
             'bulk_emi_discount'=> isset($_POST['bulk_emi_discount']) ? (float)$_POST['bulk_emi_discount'] : 0,
+            'handover_to'      => !empty($_POST['handover_to']) ? (int)$_POST['handover_to'] : null,
             'created_by'       => $_SESSION['user']['id'] ?? 1
         ];
 
@@ -1337,13 +1348,22 @@ public function getClientPaymentHistory()
     // Get transactions
     $transactions = $accountModel->getTransactionsByBookingId($bookingId);
     
+    // Get management users for handover dropdown
+    $managementUsers = [];
+    $mgmtStmt = clone $this->db;
+    $mgmtQuery = $mgmtStmt->query("SELECT id, full_name, email FROM users WHERE role_id IN (1, 3)");
+    while ($row = $mgmtQuery->fetch_assoc()) {
+        $managementUsers[] = $row;
+    }
+
     // Prepare data for view
     $data = [
         'client' => $clientDetails,
         'summary' => $paymentSummary,
         'transactions' => $transactions,
         'remaining_land_share' => $paymentSummary['remaining_land_share'],
-        'is_land_share_completed' => $paymentSummary['is_land_share_completed']
+        'is_land_share_completed' => $paymentSummary['is_land_share_completed'],
+        'management_users' => $managementUsers
     ];
     
     // Return JSON or load view
@@ -1616,31 +1636,66 @@ public function discountStatement($bookingId = null)
             exit;
         }
 
+        $forceVerifyNote = trim($_POST['force_verify_note'] ?? '');
+
+        // Check handover status first to prevent race conditions
+        $payQuery = $this->db->prepare("
+            SELECT p.handover_status, b.id as booking_id, c.full_name as client_name, pr.name as project_name, f.flat_name
+            FROM lead_payments p 
+            LEFT JOIN lead_bookings b ON p.booking_id = b.id
+            LEFT JOIN leads c ON b.lead_id = c.id
+            LEFT JOIN flats f ON b.flat_id = f.id
+            LEFT JOIN projects pr ON f.project_id = pr.id
+            WHERE p.id = ?
+        ");
+        $payQuery->bind_param("i", $paymentId);
+        $payQuery->execute();
+        $paymentData = $payQuery->get_result()->fetch_assoc();
+
+        if (!$paymentData) {
+            echo json_encode(['success' => false, 'message' => 'Payment not found']);
+            exit;
+        }
+
+        if ($action === 'verify' && $paymentData['handover_status'] === 'pending') {
+            echo json_encode(['success' => false, 'message' => 'Cannot verify: Handover is pending management approval.']);
+            exit;
+        }
+
+        if ($action === 'verify' && $paymentData['handover_status'] === 'rejected' && empty($forceVerifyNote)) {
+            echo json_encode(['success' => false, 'message' => 'A note is required to force-verify a rejected handover.']);
+            exit;
+        }
+
         $newStatus = ($action === 'verify') ? 'verified' : 'rejected';
 
-        // Build the rejection_reason column dynamically (only relevant for reject action)
-        $rejectionReasonSql = ($action === 'reject') ? ', rejection_reason = ?' : '';
+        $updateFields = ["verification_status = ?", "verified_by = ?", "verified_at = NOW()"];
+        $params = [$newStatus, $userId];
+        $types = "si";
 
-        $stmt = $this->db->prepare("
-            UPDATE lead_payments
-            SET    verification_status = ?,
-                   verified_by         = ?,
-                   verified_at         = NOW()
-                   {$rejectionReasonSql}
-            WHERE  id = ?
-            AND    verification_status = 'pending'
-        ");
+        if ($action === 'reject') {
+            $updateFields[] = "rejection_reason = ?";
+            $params[] = $rejectionReason;
+            $types .= "s";
+        }
+        
+        if ($action === 'verify' && !empty($forceVerifyNote)) {
+            $updateFields[] = "force_verify_note = ?";
+            $params[] = $forceVerifyNote;
+            $types .= "s";
+        }
+        
+        $params[] = $paymentId;
+        $types .= "i";
+        $sql = "UPDATE lead_payments SET " . implode(", ", $updateFields) . " WHERE id = ? AND verification_status = 'pending'";
+        $stmt = $this->db->prepare($sql);
 
         if (!$stmt) {
             echo json_encode(['success' => false, 'message' => 'DB prepare error']);
             exit;
         }
 
-        if ($action === 'reject') {
-            $stmt->bind_param("sisi", $newStatus, $userId, $rejectionReason, $paymentId);
-        } else {
-            $stmt->bind_param("sii", $newStatus, $userId, $paymentId);
-        }
+        $stmt->bind_param($types, ...$params);
 
         if (!$stmt->execute()) {
             echo json_encode(['success' => false, 'message' => 'Update failed: ' . $stmt->error]);
@@ -1726,6 +1781,35 @@ public function discountStatement($bookingId = null)
             $nameResult = $nameStmt->get_result();
             $nameRow = $nameResult ? $nameResult->fetch_assoc() : null;
             $verifierName = $nameRow['full_name'] ?? '';
+        }
+
+        // Send email if bypassing a rejected handover
+        if ($action === 'verify' && $paymentData['handover_status'] === 'rejected' && !empty($forceVerifyNote)) {
+            // Find management emails to notify
+            $adminQuery = $this->db->query("SELECT email FROM users WHERE role_id IN (1, 3)");
+            $accountsUserName = $_SESSION['user']['full_name'] ?? 'Accounts User';
+            
+            while ($admin = $adminQuery->fetch_assoc()) {
+                if (!empty($admin['email'])) {
+                    $subject = "Alert: Force Verification of Rejected Handover (Payment #$paymentId)";
+                    $body = "
+                        <h3>Handover Rejection Overridden</h3>
+                        <p>You rejected a request for:</p>
+                        <ul>
+                            <li><strong>Project:</strong> {$paymentData['project_name']}</li>
+                            <li><strong>Flat:</strong> {$paymentData['flat_name']}</li>
+                            <li><strong>Client:</strong> {$paymentData['client_name']}</li>
+                        </ul>
+                        <p>But this person (<strong>{$accountsUserName}</strong>) verified the transaction as paid.</p>
+                        <p><strong>Note provided by the user:</strong></p>
+                        <blockquote>" . nl2br(htmlspecialchars($forceVerifyNote)) . "</blockquote>
+                    ";
+                    
+                    if (function_exists('sendMail')) {
+                        sendMail($admin['email'], $subject, $body);
+                    }
+                }
+            }
         }
 
         echo json_encode([
@@ -2213,6 +2297,34 @@ public function discountStatement($bookingId = null)
         ]);
 
         fclose($output);
+        exit;
+    }
+
+    public function assignHandover()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+            exit;
+        }
+
+        $paymentId = (int)($_POST['payment_id'] ?? 0);
+        $handoverToId = (int)($_POST['handover_to'] ?? 0);
+        $createdBy = $_SESSION['user']['id'] ?? 1;
+
+        if (!$paymentId || !$handoverToId) {
+            echo json_encode(['success' => false, 'message' => 'Missing payment ID or handover employee']);
+            exit;
+        }
+
+        try {
+            $result = $this->clientModel->initiateHandover($paymentId, $handoverToId, $createdBy);
+            echo json_encode($result);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
         exit;
     }
 }

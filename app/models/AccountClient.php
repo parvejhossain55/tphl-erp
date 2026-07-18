@@ -1137,8 +1137,9 @@ ORDER BY lb.booking_date DESC
                     booking_id, payment_type, amount, land_share_amount, service_fee,
                     payment_method, payment_status, payment_date, transaction_ref,
                     bank_id, bank_name, bank_account_no, cheque_no, online_type,
-                    attachment_paths, due_emi_amount, parent_payment_id, settlement_type, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    attachment_paths, due_emi_amount, parent_payment_id, settlement_type, created_by,
+                    handover_to, handover_status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             if (!$stmt) {
@@ -1161,8 +1162,11 @@ ORDER BY lb.booking_date DESC
             $p_onlineType= $transactionData['online_type'] ?? '';
             $p_createdBy = (int) ($transactionData['created_by'] ?? 0);
 
+            $handoverToId = !empty($transactionData['handover_to']) ? (int) $transactionData['handover_to'] : null;
+            $handoverStatus = $handoverToId ? 'pending' : null;
+
             $stmt->bind_param(
-                "isdddssssisssssdisi",
+                "isdddssssisssssdisiis",
                 $bookingId,
                 $paymentType,
                 $amount,
@@ -1181,7 +1185,9 @@ ORDER BY lb.booking_date DESC
                 $dueEmiAmount,
                 $parentPaymentId,
                 $settlementType,
-                $p_createdBy
+                $p_createdBy,
+                $handoverToId,
+                $handoverStatus
             );
 
             if (!$stmt->execute()) {
@@ -1211,6 +1217,28 @@ ORDER BY lb.booking_date DESC
                 // Ensure the backend-calculated due amount is passed to the schedule!
                 $emiScheduleData['due_emi_amount'] = $dueEmiAmount;
                 $this->createEMISchedule($bookingId, $paymentId, $amount, $serviceFee, $emiScheduleData);
+            }
+
+            if (!empty($handoverToId)) {
+                if (!class_exists('ApprovalRequest')) {
+                    require_once __DIR__ . '/ApprovalRequest.php';
+                }
+                $approvalModel = new ApprovalRequest($this->db);
+                $approvalModel->create([
+                    'department' => 'Accounts',
+                    'request_type' => 'Cash In Handover',
+                    'title' => 'Handover Approval Request for Payment #' . $paymentId,
+                    'source_table' => 'lead_payments',
+                    'source_id' => $paymentId,
+                    'requested_days' => 0,
+                    'requested_by' => $p_createdBy,
+                    'approve_role' => 'management',
+                    'meta_data' => json_encode([
+                        'Amount' => $amount,
+                        'Payment Type' => $paymentType
+                    ]),
+                    'request_amount' => $amount
+                ]);
             }
 
             $this->db->commit();
@@ -1460,6 +1488,7 @@ ORDER BY lb.booking_date DESC
                 CONCAT(f.flat_name, ' - FLOOR ', f.floor_no) as flat_no,
                 u.full_name as created_by_name,
                 uv.full_name as verified_by_name,
+                uh.full_name as handover_to_name,
                 es.emi_no,
                 es.emi_amount,
                 es.due_emi_amount,
@@ -1507,6 +1536,7 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN users uv ON uv.id = lp.verified_by
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
             LEFT JOIN banks b ON b.id = lp.bank_id
+            LEFT JOIN users uh ON uh.id = lp.handover_to
             WHERE lp.booking_id = ?
             ORDER BY lp.created_at DESC, lp.id DESC
         ");
@@ -2197,8 +2227,9 @@ ORDER BY lb.booking_date DESC
                         booking_id, payment_type, amount, land_share_amount, service_fee,
                         payment_method, payment_status, payment_date, transaction_ref,
                         bank_name, bank_account_no, cheque_no, online_type,
-                        attachment_paths, due_emi_amount, parent_payment_id, settlement_type, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        attachment_paths, due_emi_amount, parent_payment_id, settlement_type, created_by,
+                        handover_to, handover_status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if (!$settleStmt) throw new Exception("Settlement prepare failed: " . $this->db->error);
 
@@ -2209,15 +2240,43 @@ ORDER BY lb.booking_date DESC
                 $stDue = 0.0;
                 $parentId = (int) $due['id'];
 
+                $handoverToId = !empty($transactionData['handover_to']) ? (int) $transactionData['handover_to'] : null;
+                $handoverStatus = $handoverToId ? 'pending' : null;
+
                 $settleStmt->bind_param(
-                    "isdddsssssssssdisi",
+                    "isdddsssssssssdisiis",
                     $bookingId, $stPayType, $settle, $stLandShare, $settleSvcFee,
                     $paymentMethod, $stStatus, $paymentDate, $transactionRef,
                     $bankName, $bankAccNo, $chequeNo, $onlineType,
-                    $attachmentPathsJson, $stDue, $parentId, $stType, $createdBy
+                    $attachmentPathsJson, $stDue, $parentId, $stType, $createdBy,
+                    $handoverToId, $handoverStatus
                 );
 
                 if (!$settleStmt->execute()) throw new Exception("Settlement insert failed: " . $settleStmt->error);
+                
+                $settlePaymentId = $this->db->insert_id;
+                
+                if (!empty($handoverToId)) {
+                    if (!class_exists('ApprovalRequest')) {
+                        require_once __DIR__ . '/ApprovalRequest.php';
+                    }
+                    $approvalModel = new ApprovalRequest($this->db);
+                    $approvalModel->create([
+                        'department' => 'Accounts',
+                        'request_type' => 'Cash In Handover',
+                        'title' => 'Handover Approval Request for Payment #' . $settlePaymentId,
+                        'source_table' => 'lead_payments',
+                        'source_id' => $settlePaymentId,
+                        'requested_days' => 0,
+                        'requested_by' => $createdBy,
+                        'approve_role' => 'management',
+                        'meta_data' => json_encode([
+                            'Amount' => $settle,
+                            'Payment Type' => 'EMI Settlement'
+                        ]),
+                        'request_amount' => $settle
+                    ]);
+                }
 
                 // Update parent's due_emi_amount in lead_payments
                 $newDue = max(0, $dueAmount - $settle);
@@ -2277,8 +2336,9 @@ ORDER BY lb.booking_date DESC
                         booking_id, payment_type, amount, land_share_amount, service_fee,
                         payment_method, payment_status, payment_date, transaction_ref,
                         bank_name, bank_account_no, cheque_no, online_type,
-                        attachment_paths, due_emi_amount, bulk_emi_discount, bulk_pay_amount, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        attachment_paths, due_emi_amount, bulk_emi_discount, bulk_pay_amount, created_by,
+                        handover_to, handover_status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if (!$emiStmt) throw new Exception("EMI payment prepare failed: " . $this->db->error);
 
@@ -2288,17 +2348,43 @@ ORDER BY lb.booking_date DESC
                 $thisDiscount = (!$firstPaymentId && $bulkEmiDiscount > 0) ? $bulkEmiDiscount : 0.0;
                 $thisBulkPayAmount = (!$firstPaymentId && $newInstallments === 0) ? $totalAmount : null;
 
+                $handoverToId = !empty($transactionData['handover_to']) ? (int) $transactionData['handover_to'] : null;
+                $handoverStatus = $handoverToId ? 'pending' : null;
+
                 $emiStmt->bind_param(
-                    "isdddsssssssssdddi",
+                    "isdddsssssssssdddiis",
                     $bookingId, $emiPayType, $thisEmi, $emiLandShare, $thisSvcFee,
                     $paymentMethod, $thisStatus, $paymentDate, $transactionRef,
                     $bankName, $bankAccNo, $chequeNo, $onlineType,
-                    $attachmentPathsJson, $thisDue, $thisDiscount, $thisBulkPayAmount, $createdBy
+                    $attachmentPathsJson, $thisDue, $thisDiscount, $thisBulkPayAmount, $createdBy,
+                    $handoverToId, $handoverStatus
                 );
 
                 if (!$emiStmt->execute()) throw new Exception("EMI payment insert failed: " . $emiStmt->error);
 
                 $paymentId = $this->db->insert_id;
+                
+                if (!empty($handoverToId)) {
+                    if (!class_exists('ApprovalRequest')) {
+                        require_once __DIR__ . '/ApprovalRequest.php';
+                    }
+                    $approvalModel = new ApprovalRequest($this->db);
+                    $approvalModel->create([
+                        'department' => 'Accounts',
+                        'request_type' => 'Cash In Handover',
+                        'title' => 'Handover Approval Request for Payment #' . $paymentId,
+                        'source_table' => 'lead_payments',
+                        'source_id' => $paymentId,
+                        'requested_days' => 0,
+                        'requested_by' => $createdBy,
+                        'approve_role' => 'management',
+                        'meta_data' => json_encode([
+                            'Amount' => $thisEmi,
+                            'Payment Type' => 'EMI'
+                        ]),
+                        'request_amount' => $thisEmi
+                    ]);
+                }
                 if (!$firstPaymentId) $firstPaymentId = $paymentId;
 
                 // Insert emi_schedule row
@@ -3520,5 +3606,50 @@ ORDER BY lb.booking_date DESC
         $stmt->close();
 
         return $result ? $insertId : false;
+    }
+
+    public function initiateHandover($paymentId, $handoverToId, $createdBy)
+    {
+        $this->db->begin_transaction();
+        try {
+            // Update the lead_payments table
+            $stmt = $this->db->prepare("UPDATE lead_payments SET handover_to = ?, handover_status = 'pending' WHERE id = ?");
+            $stmt->bind_param("ii", $handoverToId, $paymentId);
+            if (!$stmt->execute()) {
+                throw new Exception("Failed to update handover status.");
+            }
+
+            // Get payment details for the approval request
+            $payStmt = $this->db->prepare("SELECT amount, payment_type FROM lead_payments WHERE id = ?");
+            $payStmt->bind_param("i", $paymentId);
+            $payStmt->execute();
+            $paymentData = $payStmt->get_result()->fetch_assoc();
+
+            if (!class_exists('ApprovalRequest')) {
+                require_once __DIR__ . '/ApprovalRequest.php';
+            }
+            $approvalModel = new ApprovalRequest($this->db);
+            $approvalModel->create([
+                'department' => 'Accounts',
+                'request_type' => 'Cash In Handover',
+                'title' => 'Handover Approval Request for Payment #' . $paymentId,
+                'source_table' => 'lead_payments',
+                'source_id' => $paymentId,
+                'requested_days' => 0,
+                'requested_by' => $createdBy,
+                'approve_role' => 'management',
+                'meta_data' => json_encode([
+                    'Amount' => $paymentData['amount'] ?? 0,
+                    'Payment Type' => $paymentData['payment_type'] ?? ''
+                ]),
+                'request_amount' => $paymentData['amount'] ?? 0
+            ]);
+
+            $this->db->commit();
+            return ['success' => true, 'message' => 'Handover request initiated successfully.'];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
     }
 }

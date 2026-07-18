@@ -6,6 +6,7 @@ use Con_PurchaseRequest;
 use Con_BOQ;
 use Project;
 use Con_Material;
+use Con_MaterialCategory;
 use Con_Quotation;
 
 class Con_PurchaseRequestController extends Controller
@@ -15,6 +16,7 @@ class Con_PurchaseRequestController extends Controller
     protected $boqModel;
     protected $projectModel;
     protected $materialModel;
+    protected $categoryModel;
 
     public function __construct($db)
     {
@@ -23,6 +25,7 @@ class Con_PurchaseRequestController extends Controller
         $this->boqModel      = new Con_BOQ($this->db);
         $this->projectModel  = new Project($this->db);
         $this->materialModel = new Con_Material($this->db);
+        $this->categoryModel = new Con_MaterialCategory($this->db);
     }
 
     // =========================================================================
@@ -164,11 +167,15 @@ class Con_PurchaseRequestController extends Controller
             }
         }
 
+        // Fetch material categories for the "Add New Material" modal
+        $categories = $this->categoryModel->getAll();
+
         $this->view('phase2/purchase-requests/create-purchase-request', [
             'current_route' => 'con-purchase-request-create',
             'page_title'    => 'New Purchase Request',
             'projects'      => $projects,
             'materials'     => $materials,
+            'categories'    => $categories,
             'preBoqId'      => $preBoqId,
             'preProjectId'  => $preProjectId,
             'preBoqData'    => $preBoqData,
@@ -189,23 +196,30 @@ class Con_PurchaseRequestController extends Controller
 
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        $prType = ($_POST['pr_type'] ?? 'boq_linked') === 'independent' ? 'independent' : 'boq_linked';
+
         $data = [
-            'project_id' => (int)($_POST['project_id'] ?? 0),
-            'bom_id'     => !empty($_POST['bom_id']) ? (int)$_POST['bom_id'] : null,
-            'created_by' => (int)($_SESSION['user']['id'] ?? 0),
-            'status'     => $_POST['status'] ?? 'Draft',
-            'notes'      => trim($_POST['notes'] ?? ''),
+            'project_id'   => (int)($_POST['project_id'] ?? 0),
+            'bom_id'       => ($prType === 'boq_linked' && !empty($_POST['bom_id'])) ? (int)$_POST['bom_id'] : null,
+            'pr_type'      => $prType,
+            'required_date'=> !empty($_POST['required_date']) ? $_POST['required_date'] : null,
+            'purpose'      => trim($_POST['purpose'] ?? ''),
+            'created_by'   => (int)($_SESSION['user']['id'] ?? 0),
+            'status'       => $_POST['status'] ?? 'Draft',
+            'notes'        => trim($_POST['notes'] ?? ''),
         ];
 
-        $materialIds = $_POST['material_id'] ?? [];
-        $quantities  = $_POST['quantity']    ?? [];
+        $materialIds   = $_POST['material_id']   ?? [];
+        $quantities    = $_POST['quantity']       ?? [];
+        $itemDates     = $_POST['item_req_date']  ?? []; // per-item required_date (optional)
 
         $items = [];
         foreach ($materialIds as $i => $mid) {
             if (!empty($mid) && ($quantities[$i] ?? 0) > 0) {
                 $items[] = [
-                    'material_id' => (int)$mid,
-                    'quantity'    => (float)$quantities[$i],
+                    'material_id'  => (int)$mid,
+                    'quantity'     => (float)$quantities[$i],
+                    'required_date'=> !empty($itemDates[$i]) ? $itemDates[$i] : null,
                 ];
             }
         }
@@ -235,11 +249,11 @@ class Con_PurchaseRequestController extends Controller
                     // 2. Get Site Engineer Name
                     $engineerName = $_SESSION['user']['full_name'] ?? 'Site Engineer';
 
-                    // 3. Get Requisition Month
+                    // 3. Requisition Month — from BOQ for boq_linked, or from required_date for independent
                     $requisitionMonth = date('F Y');
-                    if ($data['bom_id'] > 0) {
+                    if ($prType === 'boq_linked' && !empty($data['bom_id'])) {
                         $boqStmt = $this->db->prepare("
-                            SELECT pmt.target_month 
+                            SELECT pmt.target_month
                             FROM boq_master bm
                             LEFT JOIN phase_monthly_targets pmt ON pmt.id = bm.target_id
                             WHERE bm.id = ?
@@ -250,6 +264,8 @@ class Con_PurchaseRequestController extends Controller
                         if ($boqRow && !empty($boqRow['target_month'])) {
                             $requisitionMonth = date('F Y', strtotime($boqRow['target_month']));
                         }
+                    } elseif ($prType === 'independent' && !empty($data['required_date'])) {
+                        $requisitionMonth = date('F Y', strtotime($data['required_date']));
                     }
 
                     // 4. Send email
@@ -260,7 +276,8 @@ class Con_PurchaseRequestController extends Controller
                         $projectName,
                         $engineerName,
                         $requisitionMonth,
-                        $prId
+                        $prId,
+                        $prType
                     );
                 } catch (\Throwable $e) {
                     error_log("Failed to send PR submission email in store(): " . $e->getMessage());
@@ -764,6 +781,81 @@ class Con_PurchaseRequestController extends Controller
         }
 
         echo json_encode(['boqs' => $boqs]);
+        exit;
+    }
+
+    // =========================================================================
+    // AJAX — Add New Material on-the-fly (from PR create modal)
+    // POST: /con-ajax-add-material
+    // Body: { category_id, name, unit }
+    // Returns JSON: { success, material: { id, name, unit, category_name } }
+    // =========================================================================
+
+    public function ajaxAddMaterial()
+    {
+        header('Content-Type: application/json');
+
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        if (!$userId) {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+
+        $categoryId = (int)($_POST['category_id'] ?? 0);
+        $name       = trim($_POST['name'] ?? '');
+        $unit       = trim($_POST['unit'] ?? '');
+
+        if (!$categoryId || empty($name) || empty($unit)) {
+            echo json_encode(['success' => false, 'error' => 'Category, name and unit are required.']);
+            exit;
+        }
+
+        // Check duplicate in same category
+        $dupStmt = $this->db->prepare(
+            "SELECT id FROM con_materials WHERE LOWER(name) = LOWER(?) AND category_id = ? LIMIT 1"
+        );
+        $dupStmt->bind_param('si', $name, $categoryId);
+        $dupStmt->execute();
+        $dup = $dupStmt->get_result()->fetch_assoc();
+        if ($dup) {
+            echo json_encode(['success' => false, 'error' => "Material '{$name}' already exists in this category."]);
+            exit;
+        }
+
+        // Get category name
+        $catStmt = $this->db->prepare("SELECT name FROM con_material_categories WHERE id = ? LIMIT 1");
+        $catStmt->bind_param('i', $categoryId);
+        $catStmt->execute();
+        $catRow = $catStmt->get_result()->fetch_assoc();
+        if (!$catRow) {
+            echo json_encode(['success' => false, 'error' => 'Category not found.']);
+            exit;
+        }
+
+        // Insert
+        $insStmt = $this->db->prepare(
+            "INSERT INTO con_materials (category_id, name, unit, min_stock_level, created_by) VALUES (?, ?, ?, 0, ?)"
+        );
+        $insStmt->bind_param('issi', $categoryId, $name, $unit, $userId);
+        if (!$insStmt->execute()) {
+            echo json_encode(['success' => false, 'error' => 'Failed to save material.']);
+            exit;
+        }
+
+        $newId = $this->db->insert_id;
+
+        echo json_encode([
+            'success'  => true,
+            'material' => [
+                'id'            => $newId,
+                'name'          => $name,
+                'unit'          => $unit,
+                'category_id'   => $categoryId,
+                'category_name' => $catRow['name'],
+            ]
+        ]);
         exit;
     }
 }

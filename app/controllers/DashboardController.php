@@ -101,8 +101,13 @@ class DashboardController extends Controller
             }
         }
 
-        // ── ACCOUNTS OPERATIONS STATS ─────────────────────────────────────
+        // 🟢 ACCOUNTS OPERATIONS STATS 🟢
         $operationsStats = $this->getOperationsStats();
+        
+        $accountsNotifications = [];
+        if (method_exists($this, 'getAccountsNotifications')) {
+            $accountsNotifications = $this->getAccountsNotifications(true);
+        }
 
         $this->view("accounts/dashboard/accounts-dashboard", [
             "current_route" => "accounts-dashboard",
@@ -124,7 +129,8 @@ class DashboardController extends Controller
             "weeklyData" => $weeklyData,
             "yearlyData" => $yearlyData,
             "overviewStats" => $overviewStats,
-            "operationsStats" => $operationsStats
+            "operationsStats" => $operationsStats,
+            "accountsNotifications" => $accountsNotifications
         ]);
     }
 
@@ -256,5 +262,263 @@ class DashboardController extends Controller
         }
 
         return $stats;
+    }
+
+    /**
+     * Fetch all actionable notifications for Accounts (Cashouts, Funds, Vendors, Contractors, Expenses)
+     */
+    public function getAccountsNotifications($triggerDismissal = false)
+    {
+        $notifications = [];
+        $userId = $_SESSION['user']['id'] ?? 0;
+
+        // 1. Cashout Requests
+        $sql = "
+            SELECT
+                cr.id,
+                'cashout_requests' AS source_table,
+                'Cashout Request' AS request_type,
+                cr.purpose_paid_to AS purpose,
+                u.full_name AS requested_by_name,
+                cr.amount,
+                cr.approved_amount,
+                cr.due_amount,
+                cr.status,
+                cr.created_at,
+                'admin-cashout-requests' AS view_url
+            FROM cashout_requests cr
+            LEFT JOIN users u ON u.id = cr.requested_by
+            WHERE cr.status IN ('pending', 'qc_approved', 'approved', 'partially_paid', 'fully_paid', 'rejected')
+            ORDER BY cr.created_at DESC
+            LIMIT 50
+        ";
+        $r = $this->db->query($sql);
+        if ($r) {
+            while ($row = $r->fetch_assoc()) {
+                $notifications[] = $row;
+            }
+        }
+
+        // 2. Operational Fund Requests
+        $sql = "
+            SELECT
+                ofr.id,
+                'operational_fund_requests' AS source_table,
+                'Fund Requisition' AS request_type,
+                ofr.purpose AS purpose,
+                u.full_name AS requested_by_name,
+                ofr.amount,
+                ofr.approved_amount,
+                ofr.due_amount,
+                ofr.status,
+                ofr.created_at,
+                'con-fund-requests' AS view_url
+            FROM operational_fund_requests ofr
+            LEFT JOIN users u ON u.id = ofr.requester_id
+            WHERE ofr.status IN ('pending', 'approved', 'partially_paid', 'fully_paid', 'rejected')
+            ORDER BY ofr.created_at DESC
+            LIMIT 50
+        ";
+        $r = $this->db->query($sql);
+        if ($r) {
+            while ($row = $r->fetch_assoc()) {
+                $notifications[] = $row;
+            }
+        }
+
+        // 3. Contractor Bills
+        $sql = "
+            SELECT
+                cbr.id,
+                'contractor_bill_requests' AS source_table,
+                'Contractor Bill' AS request_type,
+                CONCAT(c.name, ' — ', LEFT(cbr.work_description, 60)) AS purpose,
+                u.full_name AS requested_by_name,
+                cbr.bill_amount AS amount,
+                cbr.approved_amount,
+                cbr.due_amount,
+                cbr.status,
+                cbr.created_at,
+                'con-contractor-bills' AS view_url
+            FROM contractor_bill_requests cbr
+            LEFT JOIN contractors c ON c.id = cbr.operator_id
+            LEFT JOIN users u ON u.id = cbr.created_by
+            WHERE cbr.status IN ('submitted', 'verified', 'qc_approved', 'approved', 'partially_paid', 'fully_paid', 'rejected')
+            ORDER BY cbr.created_at DESC
+            LIMIT 50
+        ";
+        $r = $this->db->query($sql);
+        if ($r) {
+            while ($row = $r->fetch_assoc()) {
+                $notifications[] = $row;
+            }
+        }
+
+        // 4. Vendor Payment Requests
+        $sql = "
+            SELECT
+                vpr.id,
+                'vendor_payment_requests' AS source_table,
+                'Vendor Payment' AS request_type,
+                CONCAT(v.name, ' — ', COALESCE(vpr.invoice_number, 'No Invoice')) AS purpose,
+                u.full_name AS requested_by_name,
+                vpr.net_payable AS amount,
+                vpr.approved_amount,
+                vpr.due_amount,
+                vpr.status,
+                vpr.created_at,
+                'con-vendor-payment-requests' AS view_url
+            FROM vendor_payment_requests vpr
+            LEFT JOIN vendors v ON v.id = vpr.vendor_id
+            LEFT JOIN users u ON u.id = vpr.created_by
+            WHERE vpr.status IN ('Submitted', 'QC Approved', 'Approved', 'Partially_Paid', 'Fully_Paid', 'Rejected')
+            ORDER BY vpr.created_at DESC
+            LIMIT 50
+        ";
+        $r = $this->db->query($sql);
+        if ($r) {
+            while ($row = $r->fetch_assoc()) {
+                $notifications[] = $row;
+            }
+        }
+
+        // 5. Expense Adjustments
+        $sql = "
+            SELECT
+                ea.id,
+                'expense_adjustments' AS source_table,
+                'Expense Adjustment' AS request_type,
+                ea.title AS purpose,
+                u.full_name AS requested_by_name,
+                ea.amount,
+                ea.approved_amount,
+                ea.due_amount,
+                ea.status,
+                ea.created_at,
+                'expense-adjustments' AS view_url
+            FROM expense_adjustments ea
+            LEFT JOIN users u ON u.id = ea.user_id
+            WHERE ea.status IN ('pending', 'approved', 'partially_paid', 'fully_paid', 'rejected')
+            ORDER BY ea.created_at DESC
+            LIMIT 50
+        ";
+        $r = $this->db->query($sql);
+        if ($r) {
+            while ($row = $r->fetch_assoc()) {
+                $notifications[] = $row;
+            }
+        }
+
+        // 6. Fund Requisitions (Petty Cash / General)
+        $sql = "
+            SELECT
+                fr.id,
+                'fund_requisitions' AS source_table,
+                'Fund Requisition' AS request_type,
+                fr.purpose AS purpose,
+                u.full_name AS requested_by_name,
+                fr.amount,
+                fr.amount AS approved_amount,
+                0 AS due_amount,
+                IF(fr.status = 'paid', 'fully_paid', fr.status) AS status,
+                fr.created_at,
+                'admin-fund-requests' AS view_url
+            FROM fund_requisitions fr
+            LEFT JOIN users u ON u.id = fr.requested_by
+            WHERE fr.status IN ('pending', 'approved', 'rejected', 'paid')
+            ORDER BY fr.created_at DESC
+            LIMIT 50
+        ";
+        $r = $this->db->query($sql);
+        if ($r) {
+            while ($row = $r->fetch_assoc()) {
+                $notifications[] = $row;
+            }
+        }
+
+        // 7. Land Fund Requisitions
+        $sql = "
+            SELECT
+                lfr.id,
+                'land_fund_requisitions' AS source_table,
+                'Land Requisition' AS request_type,
+                lfr.purpose AS purpose,
+                u.full_name AS requested_by_name,
+                lfr.requested_amount AS amount,
+                lfr.requested_amount AS approved_amount,
+                0 AS due_amount,
+                IF(lfr.accounts_status = 'Paid', 'fully_paid', lfr.accounts_status) AS status,
+                lfr.created_at,
+                'land-requisitions' AS view_url
+            FROM land_fund_requisitions lfr
+            LEFT JOIN users u ON u.id = lfr.requested_by
+            WHERE lfr.mgmt_status = 'Approved' 
+              AND lfr.accounts_status IN ('Pending', 'Paid', 'Rejected')
+            ORDER BY lfr.created_at DESC
+            LIMIT 50
+        ";
+        $r = $this->db->query($sql);
+        if ($r) {
+            while ($row = $r->fetch_assoc()) {
+                $notifications[] = $row;
+            }
+        }
+
+        // Sort by created_at DESC
+        usort($notifications, function ($a, $b) {
+            return strtotime($b['created_at']) - strtotime($a['created_at']);
+        });
+
+        // Dismiss logic for Paid / Rejected items
+        $finalNotifications = [];
+        $toDismiss = [];
+
+        foreach ($notifications as $n) {
+            // Auto-detect fully paid if due amount is 0
+            if (isset($n['due_amount']) && (float)$n['amount'] > 0 && (float)$n['due_amount'] <= 0) {
+                $n['status'] = 'fully_paid';
+            }
+
+            $st = strtolower($n['status']);
+            if (in_array($st, ['fully_paid', 'rejected', 'paid'])) {
+                // Check if already dismissed
+                $stmt = $this->db->prepare("SELECT id FROM notification_dismissals WHERE user_id = ? AND source_table = ? AND source_id = ? AND status = ?");
+                $stmt->bind_param("isss", $userId, $n['source_table'], $n['id'], $st);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                
+                if ($res->num_rows > 0) {
+                    $stmt->close();
+                    continue; // Skip, already seen
+                }
+                $stmt->close();
+                
+                // Add one-time flag so the UI can animate it fading away
+                $n['is_one_time'] = true;
+                $toDismiss[] = $n;
+            } else {
+                $n['is_one_time'] = false;
+            }
+            $finalNotifications[] = $n;
+        }
+
+        if ($triggerDismissal && !empty($toDismiss)) {
+            $this->dismissCompletedNotifications($userId, $toDismiss);
+        }
+
+        return $finalNotifications;
+    }
+
+    private function dismissCompletedNotifications($userId, $toDismiss)
+    {
+        $stmt = $this->db->prepare("INSERT INTO notification_dismissals (user_id, source_table, source_id, status) VALUES (?, ?, ?, ?)");
+        if ($stmt) {
+            foreach ($toDismiss as $item) {
+                $st = strtolower($item['status']);
+                $stmt->bind_param("isss", $userId, $item['source_table'], $item['id'], $st);
+                $stmt->execute();
+            }
+            $stmt->close();
+        }
     }
 }

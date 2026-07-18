@@ -24,6 +24,7 @@
                         <tr>
                             <th>#</th>
                             <th>Project</th>
+                            <th>Type</th>
                             <th class="text-center">Items</th>
                             <th class="text-end">Est. Total</th>
                             <th>Status</th>
@@ -39,6 +40,18 @@
                                 <tr>
                                     <td><span class="fw-bold text-muted">PR-<?= $r['id'] ?></span></td>
                                     <td class="fw-bold"><?= htmlspecialchars($r['project_name']) ?></td>
+                                    <td>
+                                        <?php $prType = $r['pr_type'] ?? 'boq_linked'; ?>
+                                        <?php if ($prType === 'independent'): ?>
+                                            <span class="badge" style="background:rgba(245,158,11,.15);color:#b45309;border:1px solid rgba(245,158,11,.3);font-size:10px;font-weight:700;">
+                                                ✏️ Not link with monthly target
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge" style="background:rgba(37,99,235,.1);color:#1d4ed8;border:1px solid rgba(37,99,235,.2);font-size:10px;font-weight:700;">
+                                                📋 Link with monthly target
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td class="text-center">
                                         <span class="badge bg-light text-dark border"><?= $r['item_count'] ?> items</span>
                                     </td>
@@ -104,7 +117,7 @@
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="9" class="text-center py-4 text-muted">
+                                <td colspan="10" class="text-center py-4 text-muted">
                                     <i class="bi bi-clipboard-x me-2"></i>No purchase requests yet.
                                     <a href="<?= $base_url ?>/con-purchase-request-create" class="ms-2">Create one →</a>
                                 </td>
