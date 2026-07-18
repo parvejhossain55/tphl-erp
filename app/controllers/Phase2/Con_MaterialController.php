@@ -364,7 +364,7 @@ class Con_MaterialController extends Controller
         $catRows  = $this->categoryModel->getAll();
         $catByName = [];
         foreach ($catRows as $cat) {
-            $catByName[strtolower($cat['name'])] = $cat['id'];
+            $catByName[strtolower(trim($cat['name']))] = $cat['id'];
         }
 
         foreach ($lines as $line) {
@@ -386,8 +386,21 @@ class Con_MaterialController extends Controller
 
             // Resolve category_id from name
             $categoryId = null;
-            if ($categoryName) {
-                $categoryId = $catByName[strtolower($categoryName)] ?? null;
+            if ($categoryName !== '') {
+                $lowerCatName = strtolower($categoryName);
+                if (isset($catByName[$lowerCatName])) {
+                    $categoryId = $catByName[$lowerCatName];
+                } else {
+                    $newCatId = $this->categoryModel->create([
+                        'name'        => $categoryName,
+                        'description' => null,
+                        'created_by'  => $userId,
+                    ]);
+                    if ($newCatId) {
+                        $categoryId = $newCatId;
+                        $catByName[$lowerCatName] = $newCatId;
+                    }
+                }
             }
 
             $stmt = $this->db->prepare("SELECT id FROM con_materials WHERE name = ? LIMIT 1");

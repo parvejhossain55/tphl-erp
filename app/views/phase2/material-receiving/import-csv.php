@@ -20,7 +20,7 @@ $page_title = $page_title ?? 'Bulk Material Receiving Import (CSV)';
     </div>
 </div>
 
-<div class="row g-3">
+<div class="row ">
 
     <!-- ══ LEFT: Upload Form ════════════════════════════════════════════════ -->
     <div class="col-lg-7">

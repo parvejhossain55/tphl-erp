@@ -33,7 +33,7 @@
                 <div class="row g-2 align-items-center">
                     
                     <!-- Search Input -->
-                    <div class="col-xxl-3 col-lg-3 col-md-6 col-12">
+                    <div class="col-xxl-2 col-lg-3 col-md-6 col-12">
                         <div class="input-group input-group-sm">
                             <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
                             <input type="text" id="employeeSearch" class="form-control form-control-sm border-start-0 fs-12" placeholder="Search Employee by Name/ID/RFID">
@@ -41,7 +41,7 @@
                     </div>
 
                     <!-- Date Picker -->
-                    <div class="col-xxl-3 col-lg-3 col-md-6 col-12">
+                    <div class="col-xxl-2 col-lg-3 col-md-6 col-12">
                         <div class="input-group input-group-sm">
                             <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-calendar-day text-muted"></i></span>
                             <input type="text" id="dailyDate" class="form-control form-control-sm border-start-0 fs-12 bg-white" placeholder="Select Date">
@@ -60,11 +60,32 @@
                         </select>
                     </div>
 
-                    <!-- Rows Per Page -->
+                    <!-- Department Dropdown -->
                     <div class="col-xxl-2 col-lg-2 col-md-4 col-12">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="text-muted fs-11 text-nowrap">Rows Per Page</span>
-                            <select id="perPage" class="form-select form-select-sm fs-12" style="width: 90px;">
+                        <select id="departmentFilter" class="form-select form-select-sm fs-12">
+                            <option value="">All Departments</option>
+                        </select>
+                    </div>
+
+                    <!-- Sort By Dropdown -->
+                    <div class="col-xxl-2 col-lg-2 col-md-4 col-12">
+                        <select id="sortBy" class="form-select form-select-sm fs-12">
+                            <option value="report_position">Sort By: Report Position</option>
+                            <option value="id">Sort By: ID</option>
+                            <option value="name">Sort By: Name</option>
+                            <option value="department">Sort By: Department</option>
+                            <option value="designation">Sort By: Designation</option>
+                            <option value="employment_type">Sort By: Employment Type</option>
+                            <option value="shift_group">Sort By: Shift Group</option>
+                            <option value="workplace">Sort By: Workplace</option>
+                        </select>
+                    </div>
+
+                    <!-- Rows Per Page -->
+                    <div class="col-xxl-1 col-lg-2 col-md-4 col-12">
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="text-muted fs-11 text-nowrap">Rows</span>
+                            <select id="perPage" class="form-select form-select-sm fs-12" style="width: 75px;">
                                 <option value="10">10</option>
                                 <option value="20">20</option>
                                 <option value="50" selected>50</option>
@@ -76,12 +97,12 @@
                     </div>
 
                     <!-- Export Buttons -->
-                    <div class="col-xxl-2 col-lg-2 col-md-4 col-12 text-end ms-auto">
+                    <div class="col-xxl-1 col-lg-2 col-md-4 col-12 text-end ms-auto">
                         <div class="d-flex gap-2 justify-content-end">
-                            <button id="btnPdf" class="btn btn-sm btn-danger text-white px-3 d-flex align-items-center gap-1 fs-11" style="height: 32px;">
+                            <button id="btnPdf" class="btn btn-sm btn-danger text-white px-3 d-flex align-items-center gap-1 fs-11" style="height: 32px; background-color: #dc3545; border-color: #dc3545;">
                                 <i class="fa-solid fa-file-pdf"></i> PDF
                             </button>
-                            <button id="btnExcel" class="btn btn-sm btn-success text-white px-3 d-flex align-items-center gap-1 fs-11" style="height: 32px;">
+                            <button id="btnExcel" class="btn btn-sm btn-success text-white px-3 d-flex align-items-center gap-1 fs-11" style="height: 32px; background-color: #198754; border-color: #198754;">
                                 <i class="fa-solid fa-file-excel"></i> Excel
                             </button>
                         </div>
@@ -200,6 +221,8 @@ document.addEventListener("DOMContentLoaded", function() {
     // Event listeners
     document.getElementById("employeeSearch").addEventListener("input", applyFilters);
     document.getElementById("statusFilter").addEventListener("change", applyFilters);
+    document.getElementById("departmentFilter").addEventListener("change", applyFilters);
+    document.getElementById("sortBy").addEventListener("change", applyFilters);
     document.getElementById("perPage").addEventListener("change", function() {
         currentPage = 1;
         renderTable();
@@ -234,7 +257,15 @@ document.addEventListener("DOMContentLoaded", function() {
                 document.getElementById("statEarly").textContent = res.earlyExitCount;
                 document.getElementById("statNoOut").textContent = res.noOutPunchCount;
 
-                allRows = res.rows || [];
+                // Map report position
+                allRows = (res.rows || []).map((row, index) => {
+                    row.reportPosition = index;
+                    return row;
+                });
+
+                // Populate Department Dropdown dynamically
+                populateDepartmentFilter(allRows);
+
                 applyFilters();
             })
             .catch(err => {
@@ -242,9 +273,32 @@ document.addEventListener("DOMContentLoaded", function() {
             });
     }
 
+    function populateDepartmentFilter(rows) {
+        const depts = new Set();
+        rows.forEach(r => {
+            if (r.department) {
+                depts.add(r.department.trim());
+            }
+        });
+
+        const select = document.getElementById("departmentFilter");
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">All Departments</option>';
+
+        Array.from(depts).sort().forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.textContent = d;
+            select.appendChild(opt);
+        });
+        select.value = currentVal;
+    }
+
     function applyFilters() {
         const searchVal = document.getElementById("employeeSearch").value.toLowerCase().trim();
         const statusVal = document.getElementById("statusFilter").value;
+        const deptVal = document.getElementById("departmentFilter").value;
+        const currentSortKey = document.getElementById("sortBy").value;
 
         filteredRows = allRows.filter(row => {
             // Search filter
@@ -255,8 +309,30 @@ document.addEventListener("DOMContentLoaded", function() {
             // Status filter
             const matchesStatus = !statusVal || row.status === statusVal;
 
-            return matchesSearch && matchesStatus;
+            // Department filter
+            const matchesDept = !deptVal || row.department === deptVal;
+
+            return matchesSearch && matchesStatus && matchesDept;
         });
+
+        // Sorting
+        if (currentSortKey === 'report_position') {
+            filteredRows.sort((a, b) => a.reportPosition - b.reportPosition);
+        } else if (currentSortKey === 'id') {
+            filteredRows.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+        } else if (currentSortKey === 'name') {
+            filteredRows.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+        } else if (currentSortKey === 'department') {
+            filteredRows.sort((a, b) => String(a.department).localeCompare(String(b.department)));
+        } else if (currentSortKey === 'designation') {
+            filteredRows.sort((a, b) => String(a.designation).localeCompare(String(b.designation)));
+        } else if (currentSortKey === 'employment_type') {
+            filteredRows.sort((a, b) => String(a.employeeType).localeCompare(String(b.employeeType)));
+        } else if (currentSortKey === 'shift_group') {
+            filteredRows.sort((a, b) => String(a.shiftGroup || '').localeCompare(String(b.shiftGroup || '')));
+        } else if (currentSortKey === 'workplace') {
+            filteredRows.sort((a, b) => String(a.workplace).localeCompare(String(b.workplace)));
+        }
 
         currentPage = 1;
         renderTable();
