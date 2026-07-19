@@ -135,6 +135,15 @@ $activeCard = $_GET['filter_card'] ?? '';
             </div>
         </a>
     </div>
+    <div class="col-6 col-md-6 col-lg-4 col-xl-2">
+        <a href="<?= getStatCardLink('contacted_leads') ?>" class="card__wrapper stat-card text-decoration-none d-block h-100 <?= !empty($filteredExecName) ? 'border border-primary border-opacity-25' : '' ?>" style="cursor: pointer; <?= $activeCard === 'contacted_leads' ? 'border: 2px solid #10b981 !important; background-color: #f0fdf4;' : '' ?>">
+            <div class="stat-label">Total Contacted <?= !empty($filteredExecName) ? '<i class="fa-solid fa-filter ms-1 text-primary" style="font-size:9px;" title="Filtered"></i>' : '' ?></div>
+            <div class="stat-value"><?= $totalContactedLeads ?></div>
+            <div class="stat-change positive d-none">
+                <i class="bi bi-arrow-up"></i> 1.5%
+            </div>
+        </a>
+    </div>
 
 
     <!-- Duplicate Leads Alert Card -->
@@ -312,6 +321,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Status</label>
                         <select class="form-select form-select-sm filter-select" name="last_action">
                             <option value="">Status: All</option>
+                            <option value="contacted" <?= ($selectedAction ?? '') == 'contacted' ? 'selected' : '' ?>>Contacted</option>
                             <option value="new" <?= ($selectedAction ?? '') == 'new' ? 'selected' : '' ?>>New</option>
                             <option value="booked" <?= ($selectedAction ?? '') == 'booked' ? 'selected' : '' ?>>Booked</option>
                             <option value="follow up" <?= ($selectedAction ?? '') == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
@@ -558,6 +568,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                     <!-- Status -->
                     <select class="form-select form-select-sm" name="last_action">
                         <option value="">Status: All</option>
+                        <option value="contacted" <?= ($_GET['last_action'] ?? '') == 'contacted' ? 'selected' : '' ?>>Contacted</option>
                         <option value="new" <?= ($_GET['last_action'] ?? '') == 'new' ? 'selected' : '' ?>>New</option>
                         <option value="booked" <?= ($_GET['last_action'] ?? '') == 'booked' ? 'selected' : '' ?>>Booked</option>
                         <option value="follow up" <?= ($_GET['last_action'] ?? '') == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
@@ -723,6 +734,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                                     class="form-select form-select-sm last-action-select w-100 <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
                                     onchange="this.form.submit()">
                                     <option value="">Update action</option>
+                                    <option value="contacted" <?= $lead['last_lead_action'] == 'contacted' ? 'selected' : '' ?>>Contacted</option>
                                     <option value="new" <?= $lead['last_lead_action'] == 'new' ? 'selected' : '' ?>>New</option>
                                     <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>Booked</option>
                                     <option value="follow up" <?= $lead['last_lead_action'] == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
@@ -1291,6 +1303,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'follow up': 'bg-warning-subtle text-warning',
         'visited':   'bg-primary-subtle text-primary',
         'cancel':    'bg-danger-subtle text-danger',
+        'contacted': 'bg-primary-subtle text-primary',
     };
 
     function buildCard(lead) {
@@ -1477,7 +1490,8 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
 
             <div class="modal-body">
-                <form action="<?= $GLOBALS['base_url'] ?>/bulk-payments-import-csv"
+                <form id="importPaymentsCsvForm"
+                    action="<?= $GLOBALS['base_url'] ?>/bulk-payments-import-csv"
                     method="post"
                     enctype="multipart/form-data">
 
@@ -1487,6 +1501,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>
                         <div class="form__input">
                             <input type="file"
+                                id="importPaymentsCsvFile"
                                 name="csv_file"
                                 class="form-control"
                                 accept=".csv"
@@ -1505,6 +1520,49 @@ document.addEventListener('DOMContentLoaded', function () {
                     <br><br>
                     <em>Note: <code>lead_number</code>, <code>project_name</code>, and <code>flat_name</code> are used to find the `booking_id`. Each imported payment will be automatically verified, and if the total paid `booking_money` covers the expected amount, the booking status and flat `is_booked` will be updated to completed. `payment_type` refers to the type of payment (e.g., booking_money, registration).</em>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payments CSV Import Confirmation Modal -->
+<div class="modal fade" id="importPaymentsConfirmModal" tabindex="-1" aria-labelledby="importPaymentsConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius:14px; overflow:hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0d6efd, #0b5ed7); color: #fff;">
+                <h5 class="modal-title fw-bold" id="importPaymentsConfirmModalLabel">
+                    <i class="bi bi-file-earmark-check me-2"></i>Confirm Payments CSV Import
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="background: #fafafa; max-height: 60vh; overflow-y: auto;">
+                <div id="confirmPaymentsAlert" class="alert d-none mb-3"></div>
+                <div class="table-responsive rounded border shadow-sm bg-white">
+                    <table class="table table-sm table-hover mb-0" style="font-size: 13px;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3" style="width: 50px;">Row</th>
+                                <th>Lead Number</th>
+                                <th>Project Name</th>
+                                <th>Flat Name</th>
+                                <th>Payment Type</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="confirmPaymentsTableBody">
+                            <!-- Rows dynamically populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer" style="background: #f8f9fa;">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="submitPaymentsImportConfirmed" class="btn btn-success btn-sm">
+                    <i class="bi bi-check-circle me-1"></i>Confirm & Import
+                </button>
             </div>
         </div>
     </div>
@@ -1675,3 +1733,215 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 <?php endif; ?>
+
+<!-- Standalone Script for Payments CSV Import Confirmation -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const importForm = document.getElementById('importPaymentsCsvForm');
+    const fileInput = document.getElementById('importPaymentsCsvFile');
+    const confirmModalEl = document.getElementById('importPaymentsConfirmModal');
+    let confirmModal = null;
+    let isConfirmed = false;
+
+    if (importForm && fileInput) {
+        importForm.addEventListener('submit', function (e) {
+            if (isConfirmed) {
+                return; // Let form submit
+            }
+
+            e.preventDefault();
+
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Please select a CSV file first.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (evt) {
+                const text = evt.target.result;
+                const rows = parseCSV(text);
+
+                if (rows.length < 2) {
+                    alert("The CSV file is empty or invalid.");
+                    return;
+                }
+
+                // Header mapping
+                const rawHeaders = rows[0];
+                const headers = rawHeaders.map(h => h.trim().toLowerCase());
+
+                const reqHeaders = ['lead_number', 'project_name', 'flat_name', 'payment_type', 'amount'];
+                const missing = reqHeaders.filter(h => !headers.includes(h));
+
+                if (missing.length > 0) {
+                    alert("Missing required CSV headers: " + missing.join(', ') + "\n\nFound headers: " + rawHeaders.join(', '));
+                    return;
+                }
+
+                const leadNumIdx = headers.indexOf('lead_number');
+                const projectIdx = headers.indexOf('project_name');
+                const flatIdx = headers.indexOf('flat_name');
+                const typeIdx = headers.indexOf('payment_type');
+                const amountIdx = headers.indexOf('amount');
+                const methodIdx = headers.indexOf('payment_method');
+                const dateIdx = headers.indexOf('payment_date');
+
+                const tbody = document.getElementById('confirmPaymentsTableBody');
+                tbody.innerHTML = '';
+
+                let hasErrors = false;
+                let rowCount = 0;
+
+                for (let i = 1; i < rows.length; i++) {
+                    const rowData = rows[i];
+                    if (rowData.length === 0 || (rowData.length === 1 && rowData[0] === '')) {
+                        continue; // Skip empty rows
+                    }
+
+                    // Pad short rows
+                    while (rowData.length < headers.length) {
+                        rowData.push('');
+                    }
+
+                    rowCount++;
+                    const leadNum = (rowData[leadNumIdx] || '').trim();
+                    const projectName = (rowData[projectIdx] || '').trim();
+                    const flatName = (rowData[flatIdx] || '').trim();
+                    const paymentType = (rowData[typeIdx] || '').trim();
+                    const amount = (rowData[amountIdx] || '').trim();
+                    const method = methodIdx !== -1 ? (rowData[methodIdx] || '').trim() : 'cash';
+                    const date = dateIdx !== -1 ? (rowData[dateIdx] || '').trim() : '';
+
+                    let rowError = '';
+                    let typeBadge = '';
+
+                    // Validate payment type
+                    if (paymentType === 'booking_money') {
+                        typeBadge = '<span class="badge bg-success-subtle text-success">Booking Money</span>';
+                    } else if (paymentType === 'registration') {
+                        typeBadge = '<span class="badge bg-info-subtle text-info">Registration</span>';
+                    } else {
+                        hasErrors = true;
+                        rowError = `payment_type '${paymentType}' is invalid. Only 'booking_money' or 'registration' allowed.`;
+                        typeBadge = `<span class="badge bg-danger-subtle text-danger">${paymentType || 'empty'}</span>`;
+                    }
+
+                    // Check other fields
+                    if (!leadNum) {
+                        hasErrors = true;
+                        rowError = rowError ? rowError + ' | lead_number is empty' : 'lead_number is empty';
+                    }
+                    if (!projectName) {
+                        hasErrors = true;
+                        rowError = rowError ? rowError + ' | project_name is empty' : 'project_name is empty';
+                    }
+                    if (!flatName) {
+                        hasErrors = true;
+                        rowError = rowError ? rowError + ' | flat_name is empty' : 'flat_name is empty';
+                    }
+                    if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+                        hasErrors = true;
+                        rowError = rowError ? rowError + ' | amount must be greater than 0' : 'amount must be greater than 0';
+                    }
+
+                    const statusHtml = rowError 
+                        ? `<span class="text-danger fw-semibold"><i class="bi bi-x-circle-fill me-1"></i>Error: ${rowError}</span>`
+                        : '<span class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>Valid</span>';
+
+                    const tr = document.createElement('tr');
+                    if (rowError) {
+                        tr.style.backgroundColor = '#fff5f5';
+                    }
+                    tr.innerHTML = `
+                        <td class="ps-3 text-muted fw-bold">${i}</td>
+                        <td><strong>${escapeHTML(leadNum)}</strong></td>
+                        <td>${escapeHTML(projectName)}</td>
+                        <td>${escapeHTML(flatName)}</td>
+                        <td>${typeBadge}</td>
+                        <td><strong>${escapeHTML(amount)}</strong></td>
+                        <td>${escapeHTML(method)}</td>
+                        <td>${escapeHTML(date)}</td>
+                        <td>${statusHtml}</td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+
+                const alertEl = document.getElementById('confirmPaymentsAlert');
+                const submitBtn = document.getElementById('submitPaymentsImportConfirmed');
+
+                if (hasErrors) {
+                    alertEl.className = 'alert alert-danger d-block';
+                    alertEl.innerHTML = `<i class="bi bi-exclamation-octagon-fill me-2"></i><strong>Validation Failed:</strong> The CSV contains invalid rows. Only <code>booking_money</code> and <code>registration</code> are allowed as payment types. Please correct the CSV and try again.`;
+                    submitBtn.disabled = true;
+                } else {
+                    alertEl.className = 'alert alert-success d-block';
+                    alertEl.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i><strong>Ready to Import:</strong> All ${rowCount} rows are valid. Please verify the information below before importing.`;
+                    submitBtn.disabled = false;
+                }
+
+                // Show confirmation modal
+                if (!confirmModal) {
+                    confirmModal = new bootstrap.Modal(confirmModalEl);
+                }
+                // Hide upload modal
+                const uploadModalEl = document.getElementById('importPaymentsCsvModal');
+                const uploadModal = bootstrap.Modal.getInstance(uploadModalEl);
+                if (uploadModal) {
+                    uploadModal.hide();
+                }
+                confirmModal.show();
+            };
+
+            reader.readAsText(file);
+        });
+
+        document.getElementById('submitPaymentsImportConfirmed').addEventListener('click', function () {
+            isConfirmed = true;
+            importForm.submit();
+        });
+    }
+
+    // Helper: RFC 4180 CSV parser
+    function parseCSV(text) {
+        let lines = [];
+        let row = [""];
+        let inQuotes = false;
+        for (let i = 0; i < text.length; i++) {
+            let c = text[i];
+            let next = text[i+1];
+            if (c === '"') {
+                if (inQuotes && next === '"') {
+                    row[row.length - 1] += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (c === ',' && !inQuotes) {
+                row.push('');
+            } else if ((c === '\r' || c === '\n') && !inQuotes) {
+                if (c === '\r' && next === '\n') {
+                    i++;
+                }
+                lines.push(row);
+                row = [''];
+            } else {
+                row[row.length - 1] += c;
+            }
+        }
+        if (row.length > 1 || row[0] !== '') {
+            lines.push(row);
+        }
+        return lines;
+    }
+
+    function escapeHTML(str) {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#039;');
+    }
+});
+</script>

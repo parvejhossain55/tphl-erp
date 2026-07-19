@@ -49,6 +49,8 @@ return [
     'con-land-acquisitions/edit' => ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'edit'],
     'con-land-acquisitions/update' => ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'update'],
     'con-land-acquisitions/delete' => ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'delete'],
+    'con-land-acquisitions/execute-import' => ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'executeImport'],
+    'con-land-acquisitions/sample-csv' => ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'downloadSampleCsv'],
 
     // =========================================================================
     // Controller: Phase2\LandRequisitionController
