@@ -414,6 +414,7 @@ return [
     // =========================================================================
     'con-material-receiving-import' => ['controller' => 'Phase2\Con_MaterialReceivingImportController', 'method' => 'index'],
     'con-material-receiving-import-process' => ['controller' => 'Phase2\Con_MaterialReceivingImportController', 'method' => 'import'],
+    'con-material-receiving-import-validate' => ['controller' => 'Phase2\Con_MaterialReceivingImportController', 'method' => 'validateCsv'],
     'con-material-receiving-import-template' => ['controller' => 'Phase2\Con_MaterialReceivingImportController', 'method' => 'downloadTemplate'],
 
     // =========================================================================

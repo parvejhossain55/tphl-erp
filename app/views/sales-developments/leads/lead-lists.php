@@ -1757,143 +1757,115 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const reader = new FileReader();
-            reader.onload = function (evt) {
-                const text = evt.target.result;
-                const rows = parseCSV(text);
+            // Create FormData to send file to server
+            const formData = new FormData();
+            formData.append('csv_file', file);
 
-                if (rows.length < 2) {
-                    alert("The CSV file is empty or invalid.");
+            // Show confirmation modal with spinner/loading state
+            const tbody = document.getElementById('confirmPaymentsTableBody');
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-muted">Checking database records...</div></td></tr>';
+
+            const alertEl = document.getElementById('confirmPaymentsAlert');
+            alertEl.className = 'alert alert-info d-block';
+            alertEl.innerHTML = '<i class="bi bi-info-circle-fill me-2"></i>Verifying CSV data against database...';
+
+            const submitBtn = document.getElementById('submitPaymentsImportConfirmed');
+            submitBtn.disabled = true;
+
+            if (!confirmModal) {
+                confirmModal = new bootstrap.Modal(confirmModalEl);
+            }
+            // Hide upload modal
+            const uploadModalEl = document.getElementById('importPaymentsCsvModal');
+            const uploadModal = bootstrap.Modal.getInstance(uploadModalEl);
+            if (uploadModal) {
+                uploadModal.hide();
+            }
+            confirmModal.show();
+
+            fetch((typeof base_url !== 'undefined' ? base_url : window.base_url || '') + '/bulk-payments-validate-csv', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (!res.success) {
+                    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger fw-semibold">${escapeHTML(res.message || 'Validation failed')}</td></tr>`;
+                    alertEl.className = 'alert alert-danger d-block';
+                    alertEl.innerHTML = `<i class="bi bi-x-circle-fill me-2"></i><strong>Error:</strong> ${escapeHTML(res.message || 'Failed to validate CSV')}`;
+                    submitBtn.disabled = true;
                     return;
                 }
 
-                // Header mapping
-                const rawHeaders = rows[0];
-                const headers = rawHeaders.map(h => h.trim().toLowerCase());
-
-                const reqHeaders = ['lead_number', 'project_name', 'flat_name', 'payment_type', 'amount'];
-                const missing = reqHeaders.filter(h => !headers.includes(h));
-
-                if (missing.length > 0) {
-                    alert("Missing required CSV headers: " + missing.join(', ') + "\n\nFound headers: " + rawHeaders.join(', '));
-                    return;
-                }
-
-                const leadNumIdx = headers.indexOf('lead_number');
-                const projectIdx = headers.indexOf('project_name');
-                const flatIdx = headers.indexOf('flat_name');
-                const typeIdx = headers.indexOf('payment_type');
-                const amountIdx = headers.indexOf('amount');
-                const methodIdx = headers.indexOf('payment_method');
-                const dateIdx = headers.indexOf('payment_date');
-
-                const tbody = document.getElementById('confirmPaymentsTableBody');
                 tbody.innerHTML = '';
-
                 let hasErrors = false;
                 let rowCount = 0;
 
-                for (let i = 1; i < rows.length; i++) {
-                    const rowData = rows[i];
-                    if (rowData.length === 0 || (rowData.length === 1 && rowData[0] === '')) {
-                        continue; // Skip empty rows
-                    }
-
-                    // Pad short rows
-                    while (rowData.length < headers.length) {
-                        rowData.push('');
-                    }
-
+                res.rows.forEach((rowResult, idx) => {
                     rowCount++;
-                    const leadNum = (rowData[leadNumIdx] || '').trim();
-                    const projectName = (rowData[projectIdx] || '').trim();
-                    const flatName = (rowData[flatIdx] || '').trim();
-                    const paymentType = (rowData[typeIdx] || '').trim();
-                    const amount = (rowData[amountIdx] || '').trim();
-                    const method = methodIdx !== -1 ? (rowData[methodIdx] || '').trim() : 'cash';
-                    const date = dateIdx !== -1 ? (rowData[dateIdx] || '').trim() : '';
+                    const rowData = rowResult.data;
+                    const error = rowResult.error;
+                    const valid = rowResult.valid;
 
-                    let rowError = '';
+                    if (!valid) {
+                        hasErrors = true;
+                    }
+
                     let typeBadge = '';
-
-                    // Validate payment type
-                    if (paymentType === 'booking_money') {
+                    if (rowData.payment_type === 'booking_money') {
                         typeBadge = '<span class="badge bg-success-subtle text-success">Booking Money</span>';
-                    } else if (paymentType === 'registration') {
+                    } else if (rowData.payment_type === 'registration') {
                         typeBadge = '<span class="badge bg-info-subtle text-info">Registration</span>';
                     } else {
-                        hasErrors = true;
-                        rowError = `payment_type '${paymentType}' is invalid. Only 'booking_money' or 'registration' allowed.`;
-                        typeBadge = `<span class="badge bg-danger-subtle text-danger">${paymentType || 'empty'}</span>`;
+                        typeBadge = `<span class="badge bg-danger-subtle text-danger">${rowData.payment_type || 'empty'}</span>`;
                     }
 
-                    // Check other fields
-                    if (!leadNum) {
-                        hasErrors = true;
-                        rowError = rowError ? rowError + ' | lead_number is empty' : 'lead_number is empty';
-                    }
-                    if (!projectName) {
-                        hasErrors = true;
-                        rowError = rowError ? rowError + ' | project_name is empty' : 'project_name is empty';
-                    }
-                    if (!flatName) {
-                        hasErrors = true;
-                        rowError = rowError ? rowError + ' | flat_name is empty' : 'flat_name is empty';
-                    }
-                    if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
-                        hasErrors = true;
-                        rowError = rowError ? rowError + ' | amount must be greater than 0' : 'amount must be greater than 0';
-                    }
+                    // Normalize method display
+                    let methodDisplay = rowData.payment_method || 'cash';
+                    const m = methodDisplay.toLowerCase();
+                    if (m === 'bank_transfer' || m === 'bank transfer' || m === 'transfer') methodDisplay = 'bank';
+                    else if (['bkash', 'nagad', 'rocket', 'mobile_banking', 'mobile banking'].includes(m)) methodDisplay = 'online';
+                    else if (m === 'check') methodDisplay = 'cheque';
 
-                    const statusHtml = rowError 
-                        ? `<span class="text-danger fw-semibold"><i class="bi bi-x-circle-fill me-1"></i>Error: ${rowError}</span>`
+                    const statusHtml = !valid 
+                        ? `<span class="text-danger fw-semibold"><i class="bi bi-x-circle-fill me-1"></i>Error: ${escapeHTML(error)}</span>`
                         : '<span class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>Valid</span>';
 
                     const tr = document.createElement('tr');
-                    if (rowError) {
+                    if (!valid) {
                         tr.style.backgroundColor = '#fff5f5';
                     }
                     tr.innerHTML = `
-                        <td class="ps-3 text-muted fw-bold">${i}</td>
-                        <td><strong>${escapeHTML(leadNum)}</strong></td>
-                        <td>${escapeHTML(projectName)}</td>
-                        <td>${escapeHTML(flatName)}</td>
+                        <td class="ps-3 text-muted fw-bold">${idx + 1}</td>
+                        <td><strong>${escapeHTML(rowData.lead_number)}</strong></td>
+                        <td>${escapeHTML(rowData.project_name)}</td>
+                        <td>${escapeHTML(rowData.flat_name)}</td>
                         <td>${typeBadge}</td>
-                        <td><strong>${escapeHTML(amount)}</strong></td>
-                        <td>${escapeHTML(method)}</td>
-                        <td>${escapeHTML(date)}</td>
+                        <td><strong>${escapeHTML(rowData.amount)}</strong></td>
+                        <td>${escapeHTML(methodDisplay)}</td>
+                        <td>${escapeHTML(rowData.payment_date)}</td>
                         <td>${statusHtml}</td>
                     `;
                     tbody.appendChild(tr);
-                }
-
-                const alertEl = document.getElementById('confirmPaymentsAlert');
-                const submitBtn = document.getElementById('submitPaymentsImportConfirmed');
+                });
 
                 if (hasErrors) {
                     alertEl.className = 'alert alert-danger d-block';
-                    alertEl.innerHTML = `<i class="bi bi-exclamation-octagon-fill me-2"></i><strong>Validation Failed:</strong> The CSV contains invalid rows. Only <code>booking_money</code> and <code>registration</code> are allowed as payment types. Please correct the CSV and try again.`;
+                    alertEl.innerHTML = `<i class="bi bi-exclamation-octagon-fill me-2"></i><strong>Validation Failed:</strong> The CSV contains invalid rows or mismatching database records. Please correct the CSV and try again.`;
                     submitBtn.disabled = true;
                 } else {
                     alertEl.className = 'alert alert-success d-block';
-                    alertEl.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i><strong>Ready to Import:</strong> All ${rowCount} rows are valid. Please verify the information below before importing.`;
+                    alertEl.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i><strong>Ready to Import:</strong> All ${rowCount} rows are valid and match database bookings. Please verify the information below before importing.`;
                     submitBtn.disabled = false;
                 }
-
-                // Show confirmation modal
-                if (!confirmModal) {
-                    confirmModal = new bootstrap.Modal(confirmModalEl);
-                }
-                // Hide upload modal
-                const uploadModalEl = document.getElementById('importPaymentsCsvModal');
-                const uploadModal = bootstrap.Modal.getInstance(uploadModalEl);
-                if (uploadModal) {
-                    uploadModal.hide();
-                }
-                confirmModal.show();
-            };
-
-            reader.readAsText(file);
+            })
+            .catch(err => {
+                console.error("AJAX validation error:", err);
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger fw-semibold">Error verifying CSV file with the server.</td></tr>`;
+                alertEl.className = 'alert alert-danger d-block';
+                alertEl.innerHTML = `<i class="bi bi-x-circle-fill me-2"></i><strong>Error:</strong> Failed to connect to verification server.`;
+                submitBtn.disabled = true;
+            });
         });
 
         document.getElementById('submitPaymentsImportConfirmed').addEventListener('click', function () {
@@ -1945,3 +1917,4 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
+
