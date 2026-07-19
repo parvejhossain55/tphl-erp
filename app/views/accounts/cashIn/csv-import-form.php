@@ -248,19 +248,68 @@ $base_url = $GLOBALS['base_url'];
 
                 <!-- Error List (if any) -->
                 <?php if (!empty($errors)): ?>
-                <div class="alert alert-danger mb-4">
-                    <h6 class="alert-heading"><i class="fa-light fa-triangle-exclamation me-2"></i>Validation Errors (<?= count($errors) ?> rows)</h6>
-                    <div style="max-height:200px;overflow-y:auto;">
-                        <?php foreach ($errors as $err): ?>
-                            <div class="mb-2 p-2 rounded" style="background:rgba(220,53,69,0.05);">
-                                <strong>Row <?= $err['row'] ?>:</strong>
-                                <?php if (isset($err['messages'])): ?>
-                                    <?= implode(', ', $err['messages']) ?>
-                                <?php elseif (isset($err['message'])): ?>
-                                    <?= htmlspecialchars($err['message']) ?>
-                                <?php endif; ?>
-                            </div>
-                        <?php endforeach; ?>
+                <div class="alert alert-warning mb-3">
+                    Found <?= count($errors) ?> rows with errors (missing data, not found, or validation failed). These will be skipped.
+                </div>
+                <?php if (empty($preview_data)): ?>
+                    <div class="alert alert-danger mb-3">
+                        No valid rows to import. Please fix the errors and try again.
+                    </div>
+                <?php else: ?>
+                    <div class="alert alert-success mb-4">
+                        <?= count($preview_data) ?> rows are valid and ready to import.
+                    </div>
+                <?php endif; ?>
+
+                <div class="card mb-4 border shadow-sm">
+                    <div class="card-header bg-light border-bottom">
+                        <h6 class="mb-0 fw-bold">Skipped Rows (Errors)</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height:400px; overflow-y:auto;">
+                            <table class="table table-bordered table-hover mb-0" style="font-size: 0.85rem;">
+                                <thead style="position: sticky; top: 0; background: #fff; z-index: 1;">
+                                    <tr>
+                                        <th style="width: 80px;" class="text-muted fw-normal">CSV Row</th>
+                                        <th class="text-muted fw-normal">Lead Phone</th>
+                                        <th class="text-muted fw-normal">Project Name</th>
+                                        <th class="text-muted fw-normal">Flat Name</th>
+                                        <th class="text-muted fw-normal">Reason for Failure</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($errors as $err): 
+                                        $phone = $err['data']['client_phone'] ?? '-';
+                                        $project = $err['data']['project_name'] ?? '-';
+                                        $flat = $err['data']['flat_name'] ?? '-';
+                                    ?>
+                                    <tr>
+                                        <td class="align-middle text-center">
+                                            <span class="badge bg-success px-2 py-1">#<?= $err['row'] ?></span>
+                                        </td>
+                                        <td class="align-middle"><?= htmlspecialchars($phone) ?></td>
+                                        <td class="align-middle fw-bold"><?= htmlspecialchars($project) ?></td>
+                                        <td class="align-middle fw-bold"><?= htmlspecialchars($flat) ?></td>
+                                        <td class="align-middle text-danger">
+                                            <?php if (isset($err['messages']) && is_array($err['messages'])): ?>
+                                                <?php if (count($err['messages']) > 1): ?>
+                                                    <ul class="mb-0 ps-3">
+                                                        <?php foreach($err['messages'] as $msg): ?>
+                                                            <li class="py-1"><?= htmlspecialchars($msg) ?></li>
+                                                        <?php endforeach; ?>
+                                                    </ul>
+                                                <?php else: ?>
+                                                    <div class="py-1"><?= htmlspecialchars($err['messages'][0]) ?></div>
+                                                <?php endif; ?>
+                                            <?php elseif (isset($err['message'])): ?>
+                                                <div class="py-1"><?= htmlspecialchars($err['message']) ?></div>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
                 <?php endif; ?>

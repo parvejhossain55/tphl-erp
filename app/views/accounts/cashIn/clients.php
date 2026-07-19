@@ -122,10 +122,11 @@ $show_breadcrumb = true;
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="text-muted small">
-                                            <i class="fa-light fa-home me-1"></i>
-                                            <?= htmlspecialchars($client['flat_no'] ?? '—') ?>
-                                        </span>
+                                        <button class="btn btn-sm btn-outline-info py-0 px-2"
+                                            onclick="openProjectsModal(<?= $client['lead_id'] ?>, '<?= htmlspecialchars($client['client_name'], ENT_QUOTES) ?>')"
+                                            title="View Owned Flats" style="font-size:12px;">
+                                            <i class="fa-light fa-building-user me-1"></i>View Flats
+                                        </button>
                                     </td>
                                     <td><?= htmlspecialchars($client['agent_name'] ?? 'N/A') ?></td>
                                     <td>TK.<?= number_format($client['total_paid'] ?? 0, 2) ?></td>

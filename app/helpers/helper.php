@@ -263,7 +263,9 @@ function redirectByRole()
     //    case 25: //  qc and internal audit head
     //         $url = "{$GLOBALS['base_url']}/qc-audit-dashboard";
     //         break;
- 
+        case 30: // Head Accountant
+            $url = "{$GLOBALS['base_url']}/accounts-dashboard";
+            break;
 
         default:
             $url = "{$GLOBALS['base_url']}/admin-login";
@@ -995,6 +997,14 @@ if (!function_exists('sendMail')) {
     }
 }
 
+if (!function_exists('sendGenericMail')) {
+    function sendGenericMail($email, $subject, $body)
+    {
+        $mail = new MailService();
+        return $mail->sendGenericMail($email, $subject, $body);
+    }
+}
+
 function generateVerificationCode($length = 6)
 {
     return str_pad(rand(0, pow(10, $length) - 1), $length, '0', STR_PAD_LEFT);
@@ -1094,3 +1104,10 @@ function checkTipsoiEmployeeMatch($db)
     return false;
 }
 
+/**
+ * Check if the currently logged-in user is an Accounts Head (Role ID 30)
+ */
+function isAccountsHead(): bool
+{
+    return isset($_SESSION['user']['role_id']) && (int)$_SESSION['user']['role_id'] === 30;
+}

@@ -15,11 +15,9 @@ class MailService
     private $clientSecret = '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';
     private $refreshToken = '1//041-wDvZzKIoVCgYIARAAGAQSNwF-L9IrP3uKc9BZMrTRHt9EHVR-PDRZdgog0Hk8uAOapqaf45h4Xkp8rkwzPTIY2Vhxt1DgIx4'; // Must be permanent, Playground token won't work
 
-public function sendMail($toEmail, $subject, $link, $assignedBy)
-{
-    $mail = new PHPMailer(true);
-
-    try {
+    private function getMailer()
+    {
+        $mail = new PHPMailer(true);
         // SMTP setup
         $mail->isSMTP();
         $mail->Host = $this->smtpHost;
@@ -42,8 +40,32 @@ public function sendMail($toEmail, $subject, $link, $assignedBy)
             'userName'     => $this->senderEmail,
         ]));
 
-        // Sender & Recipient
+        // Sender
         $mail->setFrom($this->senderEmail, $this->senderName);
+        return $mail;
+    }
+
+public function sendGenericMail($toEmail, $subject, $body)
+{
+    try {
+        $mail = $this->getMailer();
+        $mail->addAddress($toEmail);
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+        $mail->Body = $body;
+        $mail->AltBody = strip_tags($body);
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("Mailer Exception: " . $e->getMessage());
+        return false;
+    }
+}
+
+public function sendMail($toEmail, $subject, $link, $assignedBy)
+{
+    try {
+        $mail = $this->getMailer();
         $mail->addAddress($toEmail);
 
         // Professional HTML Template

@@ -24,7 +24,7 @@ $bookingBalance          = max(0, $effectiveBookingTarget - $bookingMoneyTotal);
 $perEmiAmount         = $paymentSummary['per_emi_amount']          ?? 0;
 $serviceChargeRate    = $paymentSummary['service_charge_per_emi']  ?? 0;
 $flatDevCharges       = $paymentSummary['flat_development_charges'] ?? 0;
-$devChargePaid        = $paymentSummary['development_charge_paid'] ?? 0;
+$devChargePaid        = $paymentSummary['development_charge_paid_total'] ?? 0;
 $totalEmiDue          = $paymentSummary['total_emi_due']           ?? 0;
 $hasOutstandingDues   = count($outstandingDues) > 0;
 // isRegistrationPaid is now tied to is_land_share_completed (same gate)
@@ -126,19 +126,30 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                     <option value="registration">
                                         Registration
                                     </option>
+                                    <option value="mutation_cost">
+                                        Mutation Cost
+                                    </option>
                                 <?php elseif ($isLandShareCompleted): ?>
                                     <option value="land_share" disabled>Land Share (Completed)</option>
                                     <option value="registration" disabled>Registration (Completed with Land Share)</option>
+                                    <option value="mutation_cost" disabled>Mutation Cost (Completed with Land Share)</option>
                                 <?php else: ?>
                                     <option value="land_share" disabled>Land Share (Locked — complete booking first)</option>
                                     <option value="registration" disabled>Registration (Locked — complete booking first)</option>
+                                    <option value="mutation_cost" disabled>Mutation Cost (Locked — complete booking first)</option>
                                 <?php endif; ?>
 
                                 <!-- Development Charge — requires landshare completed -->
                                 <?php if ($isLandShareCompleted && !$isDevChargeCompleted): ?>
-                                    <option value="development_charge">
-                                        Development Charges (Remaining: TK.<?= number_format(max(0, $flatDevCharges - $devChargePaid), 2) ?>)
-                                    </option>
+                                    <?php if ($devChargePaid >= $flatDevCharges): ?>
+                                        <option value="development_charge" disabled>
+                                            Development Charges (Pending Verification — TK.<?= number_format($devChargePaid, 2) ?>)
+                                        </option>
+                                    <?php else: ?>
+                                        <option value="development_charge">
+                                            Development Charges (Remaining: TK.<?= number_format(max(0, $flatDevCharges - $devChargePaid), 2) ?>)
+                                        </option>
+                                    <?php endif; ?>
                                 <?php elseif ($isDevChargeCompleted): ?>
                                     <option value="development_charge" disabled>
                                         Development Charges (Fully Paid — TK.<?= number_format($devChargePaid, 2) ?>)

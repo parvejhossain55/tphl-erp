@@ -81,6 +81,7 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                                         <option value="booking_money" <?= ($transaction['payment_type'] ?? '') === 'booking_money' ? 'selected' : '' ?>>Booking Money</option>
                                         <option value="land_share" <?= ($transaction['payment_type'] ?? '') === 'land_share' ? 'selected' : '' ?>>Land Share</option>
                                         <option value="registration" <?= ($transaction['payment_type'] ?? '') === 'registration' ? 'selected' : '' ?>>Registration</option>
+                                        <option value="mutation_cost" <?= ($transaction['payment_type'] ?? '') === 'mutation_cost' ? 'selected' : '' ?>>Mutation Cost</option>
                                         <option value="development_charge" <?= ($transaction['payment_type'] ?? '') === 'development_charge' ? 'selected' : '' ?>>Development Charge</option>
                                         <option value="emi" <?= ($transaction['payment_type'] ?? '') === 'emi' ? 'selected' : '' ?>>EMI</option>
                                         <option value="down_payment" <?= ($transaction['payment_type'] ?? '') === 'down_payment' ? 'selected' : '' ?>>Down Payment</option>
@@ -249,6 +250,30 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                         </div>
                         <?php endif; ?>
 
+                        <!-- Handover Section -->
+                        <div class="col-md-12 mb-3">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="enableHandover" value="1" <?= (!empty($transactionDetails['handover_to'])) ? 'checked' : '' ?>>
+                                <label class="form-check-label fw-bold" for="enableHandover">
+                                    Initiate Handover Approval?
+                                </label>
+                            </div>
+                            <div class="from__input-box <?= empty($transactionDetails['handover_to']) ? 'd-none' : '' ?>" id="handoverWrapper">
+                                <label class="form__input-title">Handover To <span class="text-danger">*</span></label>
+                                <select name="handover_to" id="handoverTo" class="form-control select2" <?= !empty($transactionDetails['handover_to']) ? 'required' : '' ?>>
+                                    <option value="">-- Select Employee --</option>
+                                    <?php if (!empty($managementUsers)): ?>
+                                        <?php foreach ($managementUsers as $user): ?>
+                                            <option value="<?= $user['id'] ?>" <?= ($transactionDetails['handover_to'] ?? '') == $user['id'] ? 'selected' : '' ?>>
+                                                <?= htmlspecialchars($user['full_name']) ?> 
+                                                (<?= htmlspecialchars($user['email'] ?? 'No Email') ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
+                        </div>
+
                         <!-- ── New File Upload ── -->
                         <div class="col-md-12">
                             <div class="from__input-box">
@@ -296,6 +321,23 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
         const bankFields = document.querySelectorAll('.bank-fields');
         const chequeFields = document.querySelectorAll('.cheque-fields');
         const onlineFields = document.querySelectorAll('.online-fields');
+
+        const enableHandover = document.getElementById('enableHandover');
+        const handoverWrapper = document.getElementById('handoverWrapper');
+        const handoverTo = document.getElementById('handoverTo');
+        
+        if (enableHandover) {
+            enableHandover.addEventListener('change', function() {
+                if (this.checked) {
+                    handoverWrapper.classList.remove('d-none');
+                    handoverTo.setAttribute('required', 'required');
+                } else {
+                    handoverWrapper.classList.add('d-none');
+                    handoverTo.removeAttribute('required');
+                    handoverTo.value = '';
+                }
+            });
+        }
 
         // Show/hide EMI fields when payment type changes
         if (paymentType) {

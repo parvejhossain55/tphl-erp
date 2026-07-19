@@ -66,7 +66,7 @@ class AccountShopClientController extends AccountClientController
             
             // Validate sequence for shops
             $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
-            $landShareExempt = ['land_share', 'booking_money', 'registration', 'emi_due_settlement'];
+            $landShareExempt = ['land_share', 'booking_money', 'registration', 'mutation_cost', 'emi_due_settlement'];
             if (!in_array($paymentType, $landShareExempt) && empty($paymentSummary['is_land_share_completed'])) {
                 setError("Land share must be fully paid before adding " . ucfirst(str_replace('_', ' ', $paymentType)) . " payments.");
                 header("Location: {$GLOBALS['base_url']}/shop-client-cash-in-form?booking_id={$bookingId}");

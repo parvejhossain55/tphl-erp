@@ -422,6 +422,15 @@ ORDER BY lb.booking_date DESC
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
+                     AND lp.payment_status IN ('paid','partially_paid')
+                     AND lp.verification_status = 'verified'
+                     AND lp.payment_type = 'mutation_cost'), 
+                    0
+                ) as mutation_cost_paid,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id = lb.id 
                      AND lp.payment_type = 'booking_money'
                      AND lp.verification_status = 'verified'), 
                     0
@@ -539,18 +548,19 @@ ORDER BY lb.booking_date DESC
             $developmentChargePaid = (float) $clientDetails['development_charge_paid'];
             $emiPaid               = (float) $clientDetails['emi_paid'];
             $totalServiceFee       = (float) $clientDetails['total_service_fee'];
+            $mutationCostPaid      = (float) ($clientDetails['mutation_cost_paid'] ?? 0);
 
             // booking_money_total: all recorded entries (used for remaining in dropdown)
             $bookingMoneyTotal = (float) ($clientDetails['booking_money_total'] ?? 0);
 
-            // NEW: Landshare Paid = booking money + land share payments + registration payments
-            // (registration is treated as part of the landshare component)
-            $totalLandSharePaid = $bookingMoney + $additionalLandSharePaid + $registrationPaid;
+            // NEW: Landshare Paid = booking money + land share payments + registration payments + mutation cost
+            // (registration and mutation cost are treated as part of the landshare component)
+            $totalLandSharePaid = $bookingMoney + $additionalLandSharePaid + $registrationPaid + $mutationCostPaid;
 
             // Remaining land share = effective target - all land share group payments
-            // Land share group = booking money + additional land share payments + registration
+            // Land share group = booking money + additional land share payments + registration + mutation cost
             // Discount from sales reduces the effective land share target
-            $landSharePaymentsOnly    = round($bookingMoney + $additionalLandSharePaid + $registrationPaid);
+            $landSharePaymentsOnly    = round($bookingMoney + $additionalLandSharePaid + $registrationPaid + $mutationCostPaid);
             $effectiveLandShareTarget = max(0, round($totalLandShare - $discountAmount));
             $remainingLandShare       = max(0, round($effectiveLandShareTarget - $landSharePaymentsOnly));
             $isLandShareCompleted     = ($remainingLandShare <= 0);
@@ -595,6 +605,7 @@ ORDER BY lb.booking_date DESC
             // Add calculated fields to response
             $clientDetails['total_land_share_paid']                = $totalLandSharePaid;
             $clientDetails['landshare_paid']                       = $totalLandSharePaid;
+            $clientDetails['mutation_cost_paid']                   = $mutationCostPaid;
             $clientDetails['flat_development_charges']             = $flatDevCharges;
             $clientDetails['development_charge_paid']              = $developmentChargePaid;
             $clientDetails['remaining_land_share']                 = $remainingLandShare;
@@ -942,6 +953,7 @@ ORDER BY lb.booking_date DESC
             'registration_paid'                    => $clientDetails['registration_paid'],
             'registration_money'                   => $clientDetails['registration_paid'],
             'is_registration_paid'                 => $clientDetails['is_registration_paid'] ?? false,
+            'mutation_cost_paid'                   => $clientDetails['mutation_cost_paid'] ?? 0,
             'is_land_share_completed'              => $clientDetails['is_land_share_completed'],
             'is_dev_charge_completed'              => $clientDetails['is_dev_charge_completed'] ?? false,
             'development_charge_paid'              => $clientDetails['development_charge_paid'] ?? 0,
@@ -1025,8 +1037,20 @@ ORDER BY lb.booking_date DESC
                         throw new Exception("Booking money must be fully settled before registration payment can be recorded.");
                     }
                     if (!empty($summary['is_land_share_completed'])) {
-                        throw new Exception("Registration is already completed (land share completion marks registration as complete).");
+                        throw new Exception("Registration is already completed (land share completion marks registration and mutation cost as complete).");
                     }
+                    $landShareAmount = $amount;
+                    break;
+
+                case 'mutation_cost':
+                    // Mutation cost unlocks AND locks at the same time as Land Share
+                    if (empty($summary['is_booking_fully_paid'])) {
+                        throw new Exception("Booking money must be fully settled before mutation cost payment can be recorded.");
+                    }
+                    if (!empty($summary['is_land_share_completed'])) {
+                        throw new Exception("Mutation cost is already completed (land share completion marks registration and mutation cost as complete).");
+                    }
+                    $landShareAmount = $amount;
                     break;
 
                 case 'development_charge':
@@ -1219,7 +1243,7 @@ ORDER BY lb.booking_date DESC
                 $this->createEMISchedule($bookingId, $paymentId, $amount, $serviceFee, $emiScheduleData);
             }
 
-            if (!empty($handoverToId)) {
+            if (!empty($handoverToId) && $handoverStatus === 'pending') {
                 if (!class_exists('ApprovalRequest')) {
                     require_once __DIR__ . '/ApprovalRequest.php';
                 }
@@ -1231,11 +1255,13 @@ ORDER BY lb.booking_date DESC
                     'source_table' => 'lead_payments',
                     'source_id' => $paymentId,
                     'requested_days' => 0,
-                    'requested_by' => $p_createdBy,
+                    'requested_by' => $transactionData['created_by'] ?? ($_SESSION['user']['id'] ?? 1),
                     'approve_role' => 'management',
                     'meta_data' => json_encode([
+                        'Project' => $clientDetails['project_name'] ?? 'N/A',
+                        'Unit' => $clientDetails['unit_name'] ?? 'N/A',
                         'Amount' => $amount,
-                        'Payment Type' => $paymentType
+                        'Payment Type' => ucfirst(str_replace('_', ' ', $paymentType))
                     ]),
                     'request_amount' => $amount
                 ]);
@@ -1519,6 +1545,7 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI Due Settlement'
                     WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
                     WHEN lp.payment_type = 'registration' THEN 'Registration Money'
+                    WHEN lp.payment_type = 'mutation_cost' THEN 'Mutation Cost'
                     WHEN lp.payment_type = 'booking_money' THEN 'Booking Money'
                     WHEN lp.payment_type = 'land_share' THEN 'Land Share Payment'
                     WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
@@ -1551,7 +1578,7 @@ ORDER BY lb.booking_date DESC
                 $transaction['formatted_date'] = date('d M, Y', strtotime($transaction['payment_date']));
             }
 
-            if ($transaction['payment_type'] === 'booking_money' && $transaction['land_share_amount'] == 0) {
+            if (in_array($transaction['payment_type'], ['booking_money', 'registration', 'mutation_cost']) && $transaction['land_share_amount'] == 0) {
                 $transaction['land_share_amount'] = $transaction['amount'];
             }
 
@@ -1567,8 +1594,13 @@ ORDER BY lb.booking_date DESC
                 } else {
                     switch ($transaction['payment_status']) {
                         case 'paid':
-                            $transaction['status_class'] = 'bg-success';
-                            $transaction['status_text'] = 'Paid';
+                            if (($transaction['verification_status'] ?? '') !== 'verified') {
+                                $transaction['status_class'] = 'bg-warning text-dark';
+                                $transaction['status_text'] = 'Unverified (Paid)';
+                            } else {
+                                $transaction['status_class'] = 'bg-success';
+                                $transaction['status_text'] = 'Paid';
+                            }
                             break;
                         case 'partially_paid':
                             $transaction['status_class'] = 'bg-info';
@@ -1639,6 +1671,7 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI Due Settlement'
                     WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
                     WHEN lp.payment_type = 'registration' THEN 'Registration Money'
+                    WHEN lp.payment_type = 'mutation_cost' THEN 'Mutation Cost'
                     WHEN lp.payment_type = 'booking_money' THEN 'Booking Money'
                     WHEN lp.payment_type = 'land_share' THEN 'Land Share Payment'
                     WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
@@ -1701,15 +1734,20 @@ ORDER BY lb.booking_date DESC
                 $transaction['formatted_date'] = date('d M, Y', strtotime($transaction['payment_date']));
             }
 
-            if ($transaction['payment_type'] === 'booking_money' && $transaction['land_share_amount'] == 0) {
+            if (in_array($transaction['payment_type'], ['booking_money', 'registration', 'mutation_cost']) && $transaction['land_share_amount'] == 0) {
                 $transaction['land_share_amount'] = $transaction['amount'];
             }
 
             if (isset($transaction['payment_status'])) {
                 switch ($transaction['payment_status']) {
                     case 'paid':
-                        $transaction['status_class'] = 'bg-success';
-                        $transaction['status_text'] = 'Paid';
+                        if (($transaction['verification_status'] ?? '') !== 'verified') {
+                            $transaction['status_class'] = 'bg-warning text-dark';
+                            $transaction['status_text'] = 'Unverified (Paid)';
+                        } else {
+                            $transaction['status_class'] = 'bg-success';
+                            $transaction['status_text'] = 'Paid';
+                        }
                         break;
                     case 'partially_paid':
                         $transaction['status_class'] = 'bg-info';
@@ -1768,6 +1806,8 @@ ORDER BY lb.booking_date DESC
                     throw new Exception("Land share amount would exceed remaining land share by: ৳" .
                         number_format(abs($remainingAfterChange), 2));
                 }
+                $landShareAmount = $newAmount;
+            } elseif (in_array($newPaymentType, ['booking_money', 'registration', 'mutation_cost'])) {
                 $landShareAmount = $newAmount;
             } elseif ($newPaymentType === 'emi') {
                 $serviceFee = $newAmount * 0.10;
@@ -2065,12 +2105,12 @@ ORDER BY lb.booking_date DESC
             $bookingId = (int) $transactionData['booking_id'];
             $paymentType = $transactionData['payment_type'];
             $totalAmount = (float) $transactionData['amount'];
+            $clientDetails = $this->getClientByBookingId($bookingId);
 
             // ─── NON-EMI PAYMENTS: land_share, registration, etc. (unchanged) ───
             if ($paymentType !== 'emi') {
                 if ($paymentType === 'land_share') {
                     $landShareAmount = $totalAmount;
-                    $clientDetails = $this->getClientByBookingId($bookingId);
                     $remainingLandShare = $clientDetails['remaining_land_share'];
                     if ($remainingLandShare <= 0) {
                         throw new Exception("Land share payment is already completed!");
@@ -2104,8 +2144,8 @@ ORDER BY lb.booking_date DESC
                         booking_id, payment_type, amount, land_share_amount, service_fee,
                         payment_method, payment_status, payment_date, transaction_ref,
                         bank_name, bank_account_no, cheque_no, online_type,
-                        attachment_paths, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        attachment_paths, created_by, handover_to, handover_status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if (!$stmt) throw new Exception("Prepare failed: " . $this->db->error);
 
@@ -2124,21 +2164,47 @@ ORDER BY lb.booking_date DESC
                 $p_onlineType = $transactionData['online_type']      ?? '';
                 $p_createdBy  = (int) $transactionData['created_by'];
 
+                $p_handoverTo = !empty($transactionData['handover_to']) ? (int) $transactionData['handover_to'] : null;
+                $p_handoverStatus = $p_handoverTo ? 'pending' : null;
+
                 $stmt->bind_param(
-                    "isdddsssssssssi",
+                    "isdddsssssssssiis",
                     $p_bookingId, $p_type, $p_amount, $p_landShare, $p_svcFee,
                     $p_method, $p_status, $p_date, $p_txRef,
                     $p_bankName, $p_bankAccNo, $p_chequeNo, $p_onlineType,
-                    $attachmentPathsJson, $p_createdBy
+                    $attachmentPathsJson, $p_createdBy, $p_handoverTo, $p_handoverStatus
                 );
 
                 if (!$stmt->execute()) throw new Exception("Insert failed: " . $stmt->error);
+                $paymentId = $this->db->insert_id;
+
+                if (!empty($p_handoverTo)) {
+                    if (!class_exists('ApprovalRequest')) {
+                        require_once __DIR__ . '/ApprovalRequest.php';
+                    }
+                    $approvalModel = new ApprovalRequest($this->db);
+                    $approvalModel->create([
+                        'department' => 'Accounts',
+                        'request_type' => 'Cash In Handover',
+                        'title' => 'Handover Approval Request for Payment #' . $paymentId,
+                        'source_table' => 'lead_payments',
+                        'source_id' => $paymentId,
+                        'requested_days' => 0,
+                        'requested_by' => $p_createdBy,
+                        'approve_role' => 'management',
+                        'meta_data' => json_encode([
+                            'Amount' => $p_amount,
+                            'Payment Type' => ucfirst(str_replace('_', ' ', $p_type))
+                        ]),
+                        'request_amount' => $p_amount
+                    ]);
+                }
 
                 $this->db->commit();
                 return [
                     'success' => true,
                     'message' => 'Transaction added successfully!',
-                    'payment_id' => $this->db->insert_id,
+                    'payment_id' => $paymentId,
                     'service_fee' => 0,
                     'land_share_amount' => $landShareAmount
                 ];
@@ -2337,8 +2403,8 @@ ORDER BY lb.booking_date DESC
                         payment_method, payment_status, payment_date, transaction_ref,
                         bank_name, bank_account_no, cheque_no, online_type,
                         attachment_paths, due_emi_amount, bulk_emi_discount, bulk_pay_amount, created_by,
-                        handover_to, handover_status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        handover_to, handover_status, bulk_parent_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if (!$emiStmt) throw new Exception("EMI payment prepare failed: " . $this->db->error);
 
@@ -2350,21 +2416,23 @@ ORDER BY lb.booking_date DESC
 
                 $handoverToId = !empty($transactionData['handover_to']) ? (int) $transactionData['handover_to'] : null;
                 $handoverStatus = $handoverToId ? 'pending' : null;
+                $thisHandoverToId = $handoverToId;
+                $thisBulkParentId = ($firstPaymentId) ? $firstPaymentId : null;
 
                 $emiStmt->bind_param(
-                    "isdddsssssssssdddiis",
+                    "isdddsssssssssdddiisi",
                     $bookingId, $emiPayType, $thisEmi, $emiLandShare, $thisSvcFee,
                     $paymentMethod, $thisStatus, $paymentDate, $transactionRef,
                     $bankName, $bankAccNo, $chequeNo, $onlineType,
                     $attachmentPathsJson, $thisDue, $thisDiscount, $thisBulkPayAmount, $createdBy,
-                    $handoverToId, $handoverStatus
+                    $thisHandoverToId, $handoverStatus, $thisBulkParentId
                 );
 
                 if (!$emiStmt->execute()) throw new Exception("EMI payment insert failed: " . $emiStmt->error);
 
                 $paymentId = $this->db->insert_id;
                 
-                if (!empty($handoverToId)) {
+                if (!empty($handoverToId) && !$firstPaymentId) {
                     if (!class_exists('ApprovalRequest')) {
                         require_once __DIR__ . '/ApprovalRequest.php';
                     }
@@ -2379,10 +2447,13 @@ ORDER BY lb.booking_date DESC
                         'requested_by' => $createdBy,
                         'approve_role' => 'management',
                         'meta_data' => json_encode([
-                            'Amount' => $thisEmi,
-                            'Payment Type' => 'EMI'
+                            'Project' => $clientDetails['project_name'] ?? 'N/A',
+                            'Unit' => $clientDetails['unit_name'] ?? 'N/A',
+                            'Amount' => $totalAmount, // Send the total bulk amount
+                            'Discount' => $bulkEmiDiscount,
+                            'Payment Type' => 'Bulk EMI'
                         ]),
-                        'request_amount' => $thisEmi
+                        'request_amount' => $totalAmount // Use total bulk amount
                     ]);
                 }
                 if (!$firstPaymentId) $firstPaymentId = $paymentId;
@@ -2499,7 +2570,9 @@ ORDER BY lb.booking_date DESC
                     bank_account_no = ?,
                     cheque_no = ?,
                     online_type = ?,
-                    attachment_paths = ?
+                    attachment_paths = ?,
+                    handover_to = COALESCE(?, handover_to),
+                    handover_status = COALESCE(?, handover_status)
                 WHERE id = ?
             ");
 
@@ -2520,9 +2593,22 @@ ORDER BY lb.booking_date DESC
             $u_chequeNo     =         $transactionData['cheque_no']        ?? '';
             $u_onlineType   =         $transactionData['online_type']      ?? '';
             $u_paymentId    = (int)   $transactionData['payment_id'];
+            
+            // Only update handover if it actually changed
+            $u_handoverTo = null;
+            $u_handoverStat = null;
+            if (!empty($transactionData['handover_to'])) {
+                $newHandoverTo = (int)$transactionData['handover_to'];
+                $oldHandoverTo = !empty($oldTransaction['handover_to']) ? (int)$oldTransaction['handover_to'] : 0;
+                
+                if ($newHandoverTo !== $oldHandoverTo) {
+                    $u_handoverTo = $newHandoverTo;
+                    $u_handoverStat = 'pending';
+                }
+            }
 
             $stmt->bind_param(
-                "sddsssssssssi",  // 13: s d d s s s s s s s s s i
+                "sddsssssssssisi",
                 $u_paymentType,
                 $u_amount,
                 $u_landShare,
@@ -2535,6 +2621,8 @@ ORDER BY lb.booking_date DESC
                 $u_chequeNo,
                 $u_onlineType,
                 $attachmentPathsJson,
+                $u_handoverTo,
+                $u_handoverStat,
                 $u_paymentId
             );
 
@@ -2610,6 +2698,31 @@ ORDER BY lb.booking_date DESC
                 ");
                 $deleteEmiStmt->bind_param("i", $transactionData['payment_id']);
                 $deleteEmiStmt->execute();
+            }
+
+            // If handover was initiated/changed, create the Approval Request
+            if (!empty($u_handoverTo) && $u_handoverStat === 'pending') {
+                if (!class_exists('ApprovalRequest')) {
+                    require_once __DIR__ . '/ApprovalRequest.php';
+                }
+                $approvalModel = new ApprovalRequest($this->db);
+                $approvalModel->create([
+                    'department' => 'Accounts',
+                    'request_type' => 'Cash In Handover',
+                    'title' => 'Handover Approval Request for Payment #' . $u_paymentId,
+                    'source_table' => 'lead_payments',
+                    'source_id' => $u_paymentId,
+                    'requested_days' => 0,
+                    'requested_by' => $transactionData['created_by'] ?? ($_SESSION['user']['id'] ?? 1),
+                    'approve_role' => 'management',
+                    'meta_data' => json_encode([
+                        'Project' => $clientDetails['project_name'] ?? 'N/A',
+                        'Unit' => $clientDetails['unit_name'] ?? 'N/A',
+                        'Amount' => $u_amount,
+                        'Payment Type' => ucfirst(str_replace('_', ' ', $u_paymentType))
+                    ]),
+                    'request_amount' => $u_amount
+                ]);
             }
 
             $this->db->commit();
@@ -2958,6 +3071,107 @@ ORDER BY lb.booking_date DESC
     }
 
     /**
+     * Diagnose why a booking was not found for the given details.
+     * Returns an array of specific error messages.
+     */
+    public function diagnoseBookingFailure($clientName, $clientPhone, $projectName, $flatName)
+    {
+        $errors = [];
+        
+        // Normalize phone
+        $phone = preg_replace('/[^0-9]/', '', $clientPhone);
+        $shortPhone = $phone;
+        if (str_starts_with($shortPhone, '880')) $shortPhone = substr($shortPhone, 3);
+        if (str_starts_with($shortPhone, '0')) $shortPhone = substr($shortPhone, 1);
+        $phoneLike = '%' . $shortPhone;
+        
+        // Normalize flat name
+        $cleanFlatName = trim($flatName);
+        $flatNameBase = $cleanFlatName;
+        if (preg_match('/^(.+?)\s*[-–]\s*(FLOOR|Floor|floor)\s*\d+/i', $cleanFlatName, $fMatch)) {
+            $flatNameBase = trim($fMatch[1]);
+        }
+        
+        // 1. Check if client exists by phone
+        $stmt = $this->db->prepare("
+            SELECT id, full_name, phone, phone_number 
+            FROM leads 
+            WHERE deleted_at IS NULL 
+              AND (
+                  REPLACE(REPLACE(REPLACE(COALESCE(phone,''), ' ', ''), '-', ''), '+', '') LIKE ?
+                  OR REPLACE(REPLACE(REPLACE(COALESCE(phone_number,''), ' ', ''), '-', ''), '+', '') LIKE ?
+              )
+            LIMIT 1
+        ");
+        if ($stmt) {
+            $stmt->bind_param("ss", $phoneLike, $phoneLike);
+            $stmt->execute();
+            $leadResult = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            
+            if (!$leadResult) {
+                $errors[] = "Client not found for phone '{$clientPhone}'";
+            } else {
+                // Client found by phone, check if name matches roughly
+                $dbName = strtolower(trim($leadResult['full_name']));
+                $csvName = strtolower(trim($clientName));
+                
+                // Allow partial match
+                if (!empty($csvName) && !empty($dbName) && strpos($dbName, $csvName) === false && strpos($csvName, $dbName) === false) {
+                    $errors[] = "Client name '{$clientName}' doesn't match with DB name '{$leadResult['full_name']}' for phone '{$clientPhone}'";
+                }
+            }
+        }
+        
+        // 2. Check if project and flat exist
+        $stmt = $this->db->prepare("
+            SELECT f.id, p.id as project_id
+            FROM flats f
+            INNER JOIN projects p ON p.id = f.project_id
+            WHERE LOWER(TRIM(p.name)) = LOWER(TRIM(?))
+              AND (LOWER(TRIM(f.flat_name)) = LOWER(TRIM(?)) OR LOWER(TRIM(f.flat_name)) = LOWER(TRIM(?)))
+            LIMIT 1
+        ");
+        if ($stmt) {
+            $stmt->bind_param("sss", $projectName, $cleanFlatName, $flatNameBase);
+            $stmt->execute();
+            $flatResult = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            
+            if (!$flatResult) {
+                $errors[] = "Associated flat '{$flatName}' not found in project '{$projectName}'";
+            } else {
+                // Flat exists. Check if it's booked
+                $stmt = $this->db->prepare("
+                    SELECT l.full_name, COALESCE(l.phone, l.phone_number) AS phone
+                    FROM lead_bookings lb
+                    INNER JOIN leads l ON l.id = lb.lead_id
+                    WHERE lb.flat_id = ? AND lb.deleted_at IS NULL AND l.deleted_at IS NULL
+                    LIMIT 1
+                ");
+                if ($stmt) {
+                    $stmt->bind_param("i", $flatResult['id']);
+                    $stmt->execute();
+                    $bookingResult = $stmt->get_result()->fetch_assoc();
+                    $stmt->close();
+                    
+                    if ($bookingResult) {
+                        $errors[] = "Associated flat '{$flatName}' in project '{$projectName}' is booked by another client ('{$bookingResult['full_name']}', phone: '{$bookingResult['phone']}')";
+                    } else {
+                        $errors[] = "Associated flat '{$flatName}' in project '{$projectName}' is not currently booked by any client";
+                    }
+                }
+            }
+        }
+        
+        if (empty($errors)) {
+            $errors[] = "No valid booking found for phone '{$clientPhone}', project '{$projectName}', flat '{$flatName}'";
+        }
+        
+        return $errors;
+    }
+
+    /**
      * Parse and validate a CSV file for bulk payment import.
      * Returns ['valid_rows' => [...], 'errors' => [...], 'summary' => [...]]
      */
@@ -3091,7 +3305,22 @@ ORDER BY lb.booking_date DESC
                     $row['flat_name']
                 );
                 if (!$bookingData) {
-                    $rowErrors[] = "No booking found for phone '{$row['client_phone']}' + project '{$row['project_name']}' + flat '{$row['flat_name']}'";
+                    $diagnostics = $this->diagnoseBookingFailure(
+                        $row['client_name'],
+                        $row['client_phone'],
+                        $row['project_name'],
+                        $row['flat_name']
+                    );
+                    foreach ($diagnostics as $diagError) {
+                        $rowErrors[] = $diagError;
+                    }
+                } else {
+                    // Booking found, but still verify if the name roughly matches to catch typos
+                    $dbName = strtolower(trim($bookingData['client_name']));
+                    $csvName = strtolower(trim($row['client_name']));
+                    if (!empty($csvName) && !empty($dbName) && strpos($dbName, $csvName) === false && strpos($csvName, $dbName) === false) {
+                        $rowErrors[] = "Warning/Error: Client name '{$row['client_name']}' in CSV doesn't match booked client name '{$bookingData['client_name']}'";
+                    }
                 }
             }
 
@@ -3620,7 +3849,14 @@ ORDER BY lb.booking_date DESC
             }
 
             // Get payment details for the approval request
-            $payStmt = $this->db->prepare("SELECT amount, payment_type FROM lead_payments WHERE id = ?");
+            $payStmt = $this->db->prepare("
+                SELECT lp.amount, lp.payment_type, p.name as project_name, f.flat_name as unit_name
+                FROM lead_payments lp
+                LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id
+                LEFT JOIN flats f ON lb.flat_id = f.id
+                LEFT JOIN projects p ON f.project_id = p.id
+                WHERE lp.id = ?
+            ");
             $payStmt->bind_param("i", $paymentId);
             $payStmt->execute();
             $paymentData = $payStmt->get_result()->fetch_assoc();
@@ -3639,6 +3875,8 @@ ORDER BY lb.booking_date DESC
                 'requested_by' => $createdBy,
                 'approve_role' => 'management',
                 'meta_data' => json_encode([
+                    'Project' => $paymentData['project_name'] ?? 'N/A',
+                    'Unit' => $paymentData['unit_name'] ?? 'N/A',
                     'Amount' => $paymentData['amount'] ?? 0,
                     'Payment Type' => $paymentData['payment_type'] ?? ''
                 ]),

@@ -471,6 +471,7 @@ $show_breadcrumb = true;
                                 <th>Handover To</th>
                                 <th>Verification</th>
                                 <th>Verified By</th>
+                                <th>Note</th>
                                 <th style="white-space:nowrap;min-width:90px;">Document</th>
                                 <th>Added By</th>
                                 <th style="white-space:nowrap;">Actions</th>
@@ -602,7 +603,7 @@ $show_breadcrumb = true;
                                         <?php else: /* pending */ ?>
                                             <?php
                                                 // ── ACCOUNTS-ONLY: show action buttons only to Accounts/Admin ──
-                                                $canVerify = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6]);
+                                                $canVerify = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 30]);
                                             ?>
                                             <?php if ($canVerify): ?>
                                                 <?php if ($hs === 'pending'): ?>
@@ -632,10 +633,33 @@ $show_breadcrumb = true;
                                     </td>
                                     <!-- VERIFIED BY -->
                                     <td id="verified-by-<?= $transaction['id'] ?>">
-                                        <?php if (!empty($transaction['verified_by_name'])): ?>
-                                            <?= htmlspecialchars($transaction['verified_by_name']) ?>
+                                        <?= htmlspecialchars($transaction['verified_by_name'] ?? '—') ?>
+                                    </td>
+
+                                    <!-- NOTE COLUMN -->
+                                    <td>
+                                        <?php 
+                                            $hasNote = !empty($transaction['force_verify_note']) || !empty($transaction['handover_rejection_reason']) || !empty($transaction['rejection_reason']);
+                                            if ($hasNote): 
+                                                // Prepare notes for display
+                                                $notesHtml = "";
+                                                if (!empty($transaction['rejection_reason'])) {
+                                                    $notesHtml .= "<strong>Accounts Rejection:</strong><br>" . nl2br(htmlspecialchars($transaction['rejection_reason'])) . "<br><br>";
+                                                }
+                                                if (!empty($transaction['handover_rejection_reason'])) {
+                                                    $notesHtml .= "<strong>Management Rejection:</strong><br>" . nl2br(htmlspecialchars($transaction['handover_rejection_reason'])) . "<br><br>";
+                                                }
+                                                if (!empty($transaction['force_verify_note'])) {
+                                                    $notesHtml .= "<strong>Force Verify Note:</strong><br>" . nl2br(htmlspecialchars($transaction['force_verify_note']));
+                                                }
+                                        ?>
+                                            <button type="button" class="btn btn-sm btn-outline-info py-0 px-2"
+                                                onclick="showTransactionNote(`<?= htmlspecialchars(addslashes($notesHtml), ENT_QUOTES) ?>`)"
+                                                title="View Notes">
+                                                <i class="fa-light fa-note-sticky"></i>
+                                            </button>
                                         <?php else: ?>
-                                            <span class="text-muted">-</span>
+                                            <span class="text-muted">—</span>
                                         <?php endif; ?>
                                     </td>
                                     <!-- DOCUMENT COLUMN — visible regardless of verification_status -->
@@ -683,27 +707,39 @@ $show_breadcrumb = true;
                                                     target="_blank">
                                                     <i class="fa-light fa-file-invoice"></i>
                                                 </a>
-                                                <!-- EDIT BUTTON — hidden when verified -->
-                                                <?php if (!$isVerified): ?>
-                                                <?php if ($transaction['payment_type'] !== 'booking_money'): ?>
+                                                <?php 
+                                                    $isAccountsHead = function_exists('isAccountsHead') ? isAccountsHead() : (($_SESSION['user']['role_id'] ?? 0) == 30);
+                                                    $canEdit = (!$isVerified && $transaction['payment_type'] !== 'booking_money') || $isAccountsHead;
+                                                    $canDelete = !$isVerified; // Keep delete logic standard
+                                                ?>
+                                                <!-- EDIT BUTTON -->
+                                                <?php if ($canEdit): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/edit-client-cash-in/<?= $transaction['id'] ?>"
                                                     class="table__icon edit"
                                                     title="Edit">
                                                     <i class="fa-sharp fa-light fa-pen"></i>
                                                 </a>
                                                 <?php else: ?>
-                                                <span class="table__icon disabled" title="Booking Money Cannot Be Edited" style="background-color: #f3f6f9; color: #a5aeb7;">
-                                                    <i class="fa-regular fa-lock"></i>
-                                                </span>
+                                                    <?php if ($isVerified): ?>
+                                                    <span class="table__icon disabled" title="Verified — cannot edit" style="background-color: #d4edda; color: #155724;">
+                                                        <i class="fa-regular fa-lock"></i>
+                                                    </span>
+                                                    <?php else: ?>
+                                                    <span class="table__icon disabled" title="Booking Money Cannot Be Edited" style="background-color: #f3f6f9; color: #a5aeb7;">
+                                                        <i class="fa-regular fa-lock"></i>
+                                                    </span>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
-                                                <!-- DELETE BUTTON — hidden when verified -->
+
+                                                <!-- DELETE BUTTON -->
+                                                <?php if ($canDelete): ?>
                                                 <a href="#" class="removeBtn table__icon delete"
                                                     onclick="deleteTransaction(<?= $transaction['id'] ?>); return false;"
                                                     title="Delete">
                                                     <i class="fa-regular fa-trash"></i>
                                                 </a>
                                                 <?php else: ?>
-                                                <span class="table__icon disabled" title="Verified — cannot edit or delete" style="background-color: #d4edda; color: #155724;">
+                                                <span class="table__icon disabled" title="Verified — cannot delete" style="background-color: #d4edda; color: #155724;">
                                                     <i class="fa-regular fa-lock"></i>
                                                 </span>
                                                 <?php endif; ?>
@@ -1130,6 +1166,16 @@ $show_breadcrumb = true;
             }
             bootstrap.Modal.getInstance(document.getElementById('forceVerifyModal')).hide();
             _doVerifyRequest(_forceVerifyPaymentId, 'verify', '', note);
+        }
+
+        // ─── Shared Note Modal ─────────────────────────────
+        function showTransactionNote(noteHtml) {
+            Swal.fire({
+                title: 'Transaction Notes',
+                html: '<div style="text-align: left; font-size: 14px;">' + noteHtml + '</div>',
+                icon: 'info',
+                confirmButtonText: 'Close'
+            });
         }
 
         // ─── Core verify/reject AJAX (with SweetAlert2) ────────────────────
