@@ -1,7 +1,52 @@
 <?php
 $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 $canModify = in_array($roleId, [1, 3, 14]);
+
+// ── Land CSV import skipped-row report ────────────────────────
+$landCsvSkipped = $_SESSION['land_csv_import_skipped'] ?? [];
+unset($_SESSION['land_csv_import_skipped']); // clear after reading
 ?>
+
+<?php if (!empty($landCsvSkipped)): ?>
+<div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #dc3545 !important;">
+    <div class="card-header bg-white border-0 py-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-danger fs-5"></i>
+            <h6 class="mb-0 fw-bold text-danger">
+                <?= count($landCsvSkipped) ?> row(s) failed validation and were <u>not imported</u>
+            </h6>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive" style="max-height:350px; overflow-y:auto;">
+            <table class="table align-middle mb-0" style="font-size:13px;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:100px;">CSV Row</th>
+                        <th>Landowner</th>
+                        <th>Project</th>
+                        <th>Location</th>
+                        <th>Reason for Failure</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($landCsvSkipped as $sk): ?>
+                    <tr>
+                        <td>
+                            <span class="badge bg-danger">#<?= (int)$sk['row'] ?></span>
+                        </td>
+                        <td class="fw-semibold"><?= htmlspecialchars($sk['landowner'] ?? '—') ?></td>
+                        <td><?= htmlspecialchars($sk['project'] ?? '—') ?></td>
+                        <td><?= htmlspecialchars($sk['location'] ?? '—') ?></td>
+                        <td class="text-danger fw-semibold"><i class="fa-light fa-circle-exclamation me-1"></i><?= htmlspecialchars($sk['reason'] ?? '') ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 
 <div class="mb-3 pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -15,9 +60,14 @@ $canModify = in_array($roleId, [1, 3, 14]);
         </nav>
     </div>
     <?php if ($canModify): ?>
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLandModal">
-        <i class="fa-light fa-plus me-1"></i> Record New Land Purchase
-    </button>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#importLandModal">
+            <i class="fa-light fa-file-import me-1"></i> Bulk Import CSV
+        </button>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLandModal">
+            <i class="fa-light fa-plus me-1"></i> Record New Land Purchase
+        </button>
+    </div>
     <?php endif; ?>
 </div>
 
@@ -275,6 +325,70 @@ $canModify = in_array($roleId, [1, 3, 14]);
                     </div>
                     <div class="submit__btn text-center mt-3">
                         <button class="btn btn-primary" type="submit">Save Land Record</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Import CSV Modal -->
+<div class="modal fade" id="importLandModal" tabindex="-1" aria-labelledby="importLandModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importLandModalLabel"><i class="fa-light fa-file-import me-2"></i>Bulk Import Land Purchase Portfolio</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info border-0 shadow-sm mb-4">
+                    <h6 class="fw-bold mb-1"><i class="fa-light fa-circle-info me-2"></i>Instructions & Validation Rules:</h6>
+                    <ul class="mb-0 small ps-3">
+                        <li><strong>Database Transaction:</strong> The entire import runs in a database transaction. If any row fails validation, no changes will be made to the database.</li>
+                        <li><strong>Required Columns:</strong> <code>project_name</code>, <code>land_owner_name</code>, <code>total_area</code>, <code>price_per_unit</code>, and <code>land_dept_email</code> are required. All other columns are optional.</li>
+                        <li><strong>Spelling & Project Names:</strong> Project names must match the project names in TPHL-ERP exactly.</li>
+                        <li><strong>Emails Lookup:</strong> User emails for <code>land_dept_email</code>, <code>management_email</code>, and <code>account_verify_email</code> must match existing active users in TPHL-ERP to assign IDs correctly.</li>
+                        <li><strong>Drive Document Links:</strong> You can paste Google Drive links directly into <code>bayana_document_link</code> and <code>deed_document_link</code>.</li>
+                        <li><strong>File Uploads (Optional):</strong> If you want to upload local files (e.g. agreement PDF, deed scan), write the exact filename in the CSV column (e.g. <code>deed_copy.pdf</code>) and upload the file in the "Document Attachments" field below.</li>
+                    </ul>
+                </div>
+
+                <div class="text-center mb-4">
+                    <a href="<?= $base_url ?>/con-land-acquisitions/sample-csv" class="btn btn-success px-4">
+                        <i class="fa-light fa-download me-2"></i>Download Sample CSV Template
+                    </a>
+                </div>
+
+                <form action="<?= $base_url ?>/con-land-acquisitions/execute-import" method="POST" enctype="multipart/form-data">
+                    <div class="row g-3">
+                        <!-- CSV File -->
+                        <div class="col-12">
+                            <div class="from__input-box">
+                                <div class="form__input-title">
+                                    <label class="fw-bold">Select CSV File <span class="text-danger">*</span></label>
+                                </div>
+                                <div class="form__input">
+                                    <input type="file" name="csv_file" accept=".csv" required class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Attachments (Multiple) -->
+                        <div class="col-12">
+                            <div class="from__input-box">
+                                <div class="form__input-title">
+                                    <label class="fw-bold">Document Attachments <span class="text-muted">(Optional, Select multiple files)</span></label>
+                                    <div class="text-muted small mt-1">Select all files that are referenced by name in your CSV (e.g. <code>bayana_receipt.pdf</code>, <code>deed_copy.pdf</code>).</div>
+                                </div>
+                                <div class="form__input mt-2">
+                                    <input type="file" name="attachments[]" multiple class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="submit__btn text-center mt-4">
+                        <button class="btn btn-primary px-5" type="submit">Import Portfolio & Transactions</button>
                     </div>
                 </form>
             </div>

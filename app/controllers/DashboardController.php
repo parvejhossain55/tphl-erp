@@ -217,11 +217,11 @@ class DashboardController extends Controller
             $stats['total_clients'] = (int)$row['c'];
         }
 
-        // 7. Pending Land Requisitions (approved by Management, pending Accounts payment)
+        // 7. Land Requisitions (approved by Management, pending or paid)
         $r = $this->db->query("
             SELECT COUNT(*) AS c, COALESCE(SUM(requested_amount), 0) AS amt
             FROM land_fund_requisitions
-            WHERE mgmt_status = 'Approved' AND accounts_status = 'Pending'
+            WHERE mgmt_status = 'Approved' AND accounts_status IN ('Pending', 'Paid')
         ");
         if ($r && $row = $r->fetch_assoc()) {
             $stats['pending_land_requisitions'] = (int)$row['c'];

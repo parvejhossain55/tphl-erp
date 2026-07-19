@@ -137,6 +137,7 @@
                                                         class="form-select form-select-sm last-action-select last-action-select-ajax <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
                                                         data-lead-id="<?= $lead['id'] ?>">
                                                         <option value="">Update action</option>
+                                                        <option value="contacted" <?= $lead['last_lead_action'] == 'contacted' ? 'selected' : '' ?>>Contacted</option>
                                                         <option value="new" <?= $lead['last_lead_action'] == 'new' ? 'selected' : '' ?>>New</option>
                                                         <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>Booked</option>
                                                         <option value="follow up" <?= $lead['last_lead_action'] == 'follow up' ? 'selected' : '' ?>>Follow Up</option>

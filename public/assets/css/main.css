@@ -15623,21 +15623,21 @@ strong ~ p {
 }
 
 .alert-info {
-  background-color: #19915a;
+  background-color: #93cfdb;
   border-color: #0dcaf0;
-  color: #FFFFFF;
+  /* color: #FFFFFF; */
 }
 .alert-info p {
-  color: #FFFFFF;
+  /* color: #FFFFFF; */
 }
 .alert-info .btn-close {
   filter: brightness(1) invert(1);
 }
 .alert-info .alert-link {
-  color: #0dcaf0;
+  color: #044755;
 }
 .alert-info hr {
-  border-top-color: #0dcaf0;
+  border-top-color: #0f3d46;
 }
 
 .alert-info.outline,

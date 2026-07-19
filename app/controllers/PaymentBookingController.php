@@ -185,15 +185,49 @@ class PaymentBookingController extends Controller
         $stmt2->bind_param("i", $bookingId);
         $stmt2->execute();
 
-        // lead update
-        $stmt3 = $this->db->prepare("
-        UPDATE leads l
-        INNER JOIN lead_bookings b ON l.id = b.lead_id
-        SET l.last_lead_action = 'booked'
-        WHERE b.id = ?
-    ");
-        $stmt3->bind_param("i", $bookingId);
-        $stmt3->execute();
+        // lead update: get phone numbers and update all matching lead records
+        $phoneStmt = $this->db->prepare("
+            SELECT l.phone, l.phone_number 
+            FROM leads l
+            INNER JOIN lead_bookings b ON l.id = b.lead_id
+            WHERE b.id = ?
+            LIMIT 1
+        ");
+        $phoneStmt->bind_param("i", $bookingId);
+        $phoneStmt->execute();
+        $pRes = $phoneStmt->get_result()->fetch_assoc();
+        $phoneStmt->close();
+
+        if ($pRes) {
+            $p1 = trim($pRes['phone'] ?? '');
+            $p2 = trim($pRes['phone_number'] ?? '');
+            
+            $conds = [];
+            $params = [];
+            $types = "";
+            if ($p1 !== '') {
+                $conds[] = "phone = ?";
+                $conds[] = "phone_number = ?";
+                $params[] = $p1;
+                $params[] = $p1;
+                $types .= "ss";
+            }
+            if ($p2 !== '' && $p2 !== $p1) {
+                $conds[] = "phone = ?";
+                $conds[] = "phone_number = ?";
+                $params[] = $p2;
+                $params[] = $p2;
+                $types .= "ss";
+            }
+            
+            if (!empty($conds)) {
+                $updateSql = "UPDATE leads SET last_lead_action = 'booked' WHERE " . implode(" OR ", $conds);
+                $updateStmt = $this->db->prepare($updateSql);
+                $updateStmt->bind_param($types, ...$params);
+                $updateStmt->execute();
+                $updateStmt->close();
+            }
+        }
     }
 
     public function verify($id)
@@ -302,6 +336,12 @@ class PaymentBookingController extends Controller
 
                     $data = array_combine($header, $row);
                     $rowIssues = []; // collect all issues for this row before skipping
+
+                    // Validate payment_type
+                    $paymentType = trim($data['payment_type'] ?? '');
+                    if ($paymentType !== 'booking_money' && $paymentType !== 'registration') {
+                        $rowIssues[] = "payment_type must be either 'booking_money' or 'registration' (found '$paymentType')";
+                    }
                     
                     // 1. Resolve lead_id
                     $leadPhone = trim($data['lead_number'] ?? '');
