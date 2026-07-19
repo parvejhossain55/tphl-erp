@@ -79,6 +79,7 @@ return [
     // Controller: PaymentBookingController
     // =========================================================================
     'bulk-payments-import-csv' => ['controller' => 'PaymentBookingController', 'method' => 'importCsvBulkPayments'],
+    'bulk-payments-validate-csv' => ['controller' => 'PaymentBookingController', 'method' => 'validateCsvBulkPayments'],
     'payments-booking/(\d+)' => ['controller' => 'PaymentBookingController', 'method' => 'index'],
     'payment-booking-store' => ['controller' => 'PaymentBookingController', 'method' => 'store'],
     'payment-booking-invoice/(\d+)' => ['controller' => 'PaymentBookingController', 'method' => 'invoice'],

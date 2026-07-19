@@ -298,6 +298,204 @@ class PaymentBookingController extends Controller
     }
 
 
+    public function validateCsvBulkPayments()
+    {
+        header('Content-Type: application/json');
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_FILES['csv_file'])) {
+            echo json_encode(['success' => false, 'message' => 'No CSV file uploaded']);
+            exit;
+        }
+
+        $file = $_FILES['csv_file'];
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'message' => 'Upload failed']);
+            exit;
+        }
+
+        $handle = fopen($file['tmp_name'], "r");
+        if ($handle === false) {
+            echo json_encode(['success' => false, 'message' => 'Failed to read CSV file']);
+            exit;
+        }
+
+        $header = fgetcsv($handle, 1000, ",");
+        $header = array_map('trim', $header);
+
+        // Check required headers
+        $reqHeaders = ['lead_number', 'project_name', 'flat_name', 'payment_type', 'amount'];
+        $missing = array_diff($reqHeaders, $header);
+        if (!empty($missing)) {
+            echo json_encode(['success' => false, 'message' => 'Missing headers: ' . implode(', ', $missing)]);
+            fclose($handle);
+            exit;
+        }
+
+        $leadsCache = [];
+        $projectsCache = [];
+        $flatsCache = [];
+
+        $results = [];
+        $rowNum = 1;
+
+        while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+            $rowNum++;
+            if (count(array_filter($row)) === 0) continue;
+            if (count($header) !== count($row)) {
+                $results[] = [
+                    'row' => $rowNum,
+                    'valid' => false,
+                    'error' => 'Column count mismatch'
+                ];
+                continue;
+            }
+
+            $data = array_combine($header, $row);
+            $rowIssues = [];
+
+            // 1. Validate payment_type
+            $paymentType = trim($data['payment_type'] ?? '');
+            if ($paymentType !== 'booking_money' && $paymentType !== 'registration') {
+                $rowIssues[] = "payment_type must be either 'booking_money' or 'registration' (found '$paymentType')";
+            }
+
+            // 2. Validate lead_number
+            $leadPhone = trim($data['lead_number'] ?? '');
+            $leadId = null;
+            if (empty($leadPhone)) {
+                $rowIssues[] = "lead_number is empty";
+            } else {
+                if (isset($leadsCache[$leadPhone])) {
+                    $leadId = $leadsCache[$leadPhone];
+                } else {
+                    $stmt = $this->db->prepare("SELECT id FROM leads WHERE (phone = ? OR phone_number = ?) LIMIT 1");
+                    $stmt->bind_param("ss", $leadPhone, $leadPhone);
+                    $stmt->execute();
+                    $res = $stmt->get_result()->fetch_assoc();
+                    if ($res) {
+                        $leadId = $res['id'];
+                        $leadsCache[$leadPhone] = $leadId;
+                    } else {
+                        $rowIssues[] = "Lead not found for phone '$leadPhone'";
+                    }
+                }
+            }
+
+            // 3. Validate project_name
+            $projectName = trim($data['project_name'] ?? '');
+            $projectId = null;
+            if (empty($projectName)) {
+                $rowIssues[] = "project_name is empty";
+            } else {
+                if (isset($projectsCache[$projectName])) {
+                    $projectId = $projectsCache[$projectName];
+                } else {
+                    $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
+                    $stmt->bind_param("s", $projectName);
+                    $stmt->execute();
+                    $res = $stmt->get_result()->fetch_assoc();
+                    if ($res) {
+                        $projectId = $res['id'];
+                        $projectsCache[$projectName] = $projectId;
+                    } else {
+                        $rowIssues[] = "Project not found '$projectName'";
+                    }
+                }
+            }
+
+            // 4. Validate flat_name
+            $flatName = trim($data['flat_name'] ?? '');
+            $flatId = null;
+            if (empty($flatName)) {
+                $rowIssues[] = "flat_name is empty";
+            } else {
+                if ($projectId) {
+                    $flatCacheKey = $projectId . '_' . $flatName;
+                    if (isset($flatsCache[$flatCacheKey])) {
+                        $flatId = $flatsCache[$flatCacheKey];
+                    } else {
+                        $stmt = $this->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? LIMIT 1");
+                        $stmt->bind_param("is", $projectId, $flatName);
+                        $stmt->execute();
+                        $res = $stmt->get_result()->fetch_assoc();
+                        if ($res) {
+                            $flatId = $res['id'];
+                            $flatsCache[$flatCacheKey] = $flatId;
+                        } else {
+                            $rowIssues[] = "Flat not found '$flatName' in project '$projectName'";
+                        }
+                    }
+                } else {
+                    $rowIssues[] = "Cannot lookup flat — project not resolved";
+                }
+            }
+
+            // 5. Validate booking_id
+            $bookingId = null;
+            if ($leadId && $projectId && $flatId) {
+                $stmt = $this->db->prepare("SELECT id FROM lead_bookings WHERE lead_id = ? AND project_id = ? AND flat_id = ? LIMIT 1");
+                $stmt->bind_param("iii", $leadId, $projectId, $flatId);
+                $stmt->execute();
+                $bRes = $stmt->get_result()->fetch_assoc();
+                if ($bRes) {
+                    $bookingId = $bRes['id'];
+                } else {
+                    $rowIssues[] = "Booking not found for this Lead, Project, and Flat";
+                }
+            } else {
+                $rowIssues[] = "Cannot lookup booking — missing lead, project, or flat";
+            }
+
+            // 6. Validate amount
+            $rawAmount = trim($data['amount'] ?? '0');
+            $cleanAmount = floatval(str_replace(',', '', $rawAmount));
+            if ($cleanAmount <= 0) {
+                $rowIssues[] = "amount must be greater than 0 (found '$rawAmount')";
+            }
+
+            // 7. Validate payment_method
+            $rawMethod = trim($data['payment_method'] ?? '');
+            if (!empty($rawMethod)) {
+                $cleanMethod = strtolower($rawMethod);
+                if ($cleanMethod === 'bank_transfer' || $cleanMethod === 'bank transfer' || $cleanMethod === 'transfer') {
+                    $cleanMethod = 'bank';
+                } elseif (in_array($cleanMethod, ['bkash', 'nagad', 'rocket', 'mobile_banking', 'mobile banking'])) {
+                    $cleanMethod = 'online';
+                } elseif ($cleanMethod === 'check') {
+                    $cleanMethod = 'cheque';
+                }
+                
+                if (!in_array($cleanMethod, ['cash', 'bank', 'online', 'cheque'])) {
+                    $rowIssues[] = "payment_method '$rawMethod' is invalid (must be 'cash', 'bank', 'online', or 'cheque')";
+                }
+            }
+
+            $results[] = [
+                'row' => $rowNum,
+                'valid' => empty($rowIssues),
+                'error' => empty($rowIssues) ? '' : implode(' | ', $rowIssues),
+                'data' => [
+                    'lead_number' => $leadPhone,
+                    'project_name' => $projectName,
+                    'flat_name' => $flatName,
+                    'payment_type' => $paymentType,
+                    'amount' => $rawAmount,
+                    'payment_method' => $rawMethod,
+                    'payment_date' => $data['payment_date'] ?? ''
+                ]
+            ];
+        }
+
+        fclose($handle);
+
+        echo json_encode([
+            'success' => true,
+            'rows' => $results
+        ]);
+        exit;
+    }
+
+
     public function importCsvBulkPayments()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
@@ -431,6 +629,24 @@ class PaymentBookingController extends Controller
                         $rowIssues[] = "Cannot lookup booking — missing lead, project, or flat";
                     }
 
+                    // Validate & Normalize payment_method
+                    $rawMethod = trim($data['payment_method'] ?? '');
+                    $cleanMethod = 'cash';
+                    if (!empty($rawMethod)) {
+                        $cleanMethod = strtolower($rawMethod);
+                        if ($cleanMethod === 'bank_transfer' || $cleanMethod === 'bank transfer' || $cleanMethod === 'transfer') {
+                            $cleanMethod = 'bank';
+                        } elseif (in_array($cleanMethod, ['bkash', 'nagad', 'rocket', 'mobile_banking', 'mobile banking'])) {
+                            $cleanMethod = 'online';
+                        } elseif ($cleanMethod === 'check') {
+                            $cleanMethod = 'cheque';
+                        }
+                        
+                        if (!in_array($cleanMethod, ['cash', 'bank', 'online', 'cheque'])) {
+                            $rowIssues[] = "payment_method '$rawMethod' is invalid (must be 'cash', 'bank', 'online', or 'cheque')";
+                        }
+                    }
+
                     if (!empty($rowIssues)) {
                         $errors[] = "Row $rowNum: " . implode(' | ', $rowIssues);
                         continue;
@@ -448,11 +664,14 @@ class PaymentBookingController extends Controller
                     if (!$paymentDate) $paymentDate = date('Y-m-d');
 
                     // Prepare payment data
+                    $rawAmount = trim($data['amount'] ?? '0');
+                    $cleanAmount = floatval(str_replace(',', '', $rawAmount));
+
                     $paymentData = [
                         'booking_id' => $bookingId,
                         'payment_type' => $data['payment_type'] ?? '',
-                        'amount' => $data['amount'] ?? 0,
-                        'payment_method' => $data['payment_method'] ?? 'cash',
+                        'amount' => $cleanAmount,
+                        'payment_method' => $cleanMethod,
                         'payment_status' => 'pending', // Will be updated
                         'payment_date' => $paymentDate,
                         'total_emi_no' => $data['total_emi_no'] ?? null,
