@@ -226,6 +226,8 @@ class Lead extends Model
                 )";
             } elseif ($filter_card === 'hot_leads') {
                 $sql .= " AND l.lead_type = 'Hot'";
+            } elseif ($filter_card === 'contacted_leads') {
+                $sql .= " AND l.last_lead_action = 'contacted'";
             }
         }
 
@@ -415,6 +417,8 @@ class Lead extends Model
                 )";
             } elseif ($filter_card === 'hot_leads') {
                 $sql .= " AND l.lead_type = 'Hot'";
+            } elseif ($filter_card === 'contacted_leads') {
+                $sql .= " AND l.last_lead_action = 'contacted'";
             }
         }
 
@@ -528,6 +532,13 @@ class Lead extends Model
         $sql->execute();
         $result = $sql->get_result()->fetch_assoc();
         return $result['total_hot'] ?? 0;
+    }
+    public function getTotalContactedLeads()
+    {
+        $sql = $this->db->prepare("SELECT COUNT(*) AS total_contacted FROM leads where last_lead_action = 'contacted' And deleted_at IS NULL AND status = 'active'");
+        $sql->execute();
+        $result = $sql->get_result()->fetch_assoc();
+        return $result['total_contacted'] ?? 0;
     }
     public function getVisitedLeadCount($period = null)
     {

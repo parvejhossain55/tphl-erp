@@ -244,4 +244,9 @@ return [
     'api/hrm/tipsoi-holidays'    => ['controller' => 'HrmApiController', 'method' => 'getTipsoiHolidays'],
     'api/hrm/import-tipsoi-holiday' => ['controller' => 'HrmApiController', 'method' => 'importTipsoiHoliday'],
     'hrm-monthly-lwp'            => ['controller' => 'LeaveController', 'method' => 'monthlyLwpDashboardView'],
+
+    // Automated Payroll Routes
+    'auto-generate-payslip'              => ['controller' => 'PayrollController', 'method' => 'showAutoGenerateForm'],
+    'api/payroll/department-attendance'  => ['controller' => 'PayrollController', 'method' => 'getDepartmentAttendance'],
+    'store-bulk-payslips'                => ['controller' => 'PayrollController', 'method' => 'storeBulkPayslips'],
 ];

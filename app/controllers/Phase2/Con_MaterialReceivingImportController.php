@@ -10,17 +10,8 @@ use Controller;
  *           → purchase_orders  → purchase_order_items
  *           → material_receiving → material_receiving_items
  *           → con_stocks  (UPSERT)
- *
- * CST (quotations / comparisons) বাদ।
- *
- * CSV columns (header row required):
- *   project_name, created_by_email, approved_by_email,
- *   receiving_date, warehouse_name, material_name,
- *   qty, unit_price, vendor_name
- *
- * - Multiple rows with same project_name+created_by_email = ONE PR / PO / Receiving
- * - vendor_name  → vendors.name   → vendors.id
- * - warehouse_name → con_warehouses.name → con_warehouses.id
+ *           → vendor_payment_requests (NEW)
+ *           → con_financial_transactions (NEW)
  */
 class Con_MaterialReceivingImportController extends Controller
 {
@@ -39,8 +30,243 @@ class Con_MaterialReceivingImportController extends Controller
     {
         $this->view('phase2/material-receiving/import-csv', [
             'current_route' => 'con-material-receiving-import',
-            'page_title'    => 'Bulk Material Receiving Import (CSV)',
+            'page_title'    => 'Bulk Material Receiving & Payment Import (CSV)',
         ]);
+    }
+
+    // =========================================================================
+    // VALIDATE CSV (POST)
+    // =========================================================================
+
+    public function validateCsv()
+    {
+        header('Content-Type: application/json');
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_FILES['csv_file'])) {
+            echo json_encode(['success' => false, 'message' => 'No CSV file uploaded']);
+            exit;
+        }
+
+        $file = $_FILES['csv_file'];
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'message' => 'Upload failed']);
+            exit;
+        }
+
+        $handle = fopen($file['tmp_name'], "r");
+        if ($handle === false) {
+            echo json_encode(['success' => false, 'message' => 'Failed to read CSV file']);
+            exit;
+        }
+
+        // Auto-detect delimiter
+        $rawFirst = fgets($handle);
+        if (!$rawFirst) {
+            echo json_encode(['success' => false, 'message' => 'CSV file is empty']);
+            fclose($handle);
+            exit;
+        }
+        $rawFirst = preg_replace('/^\xEF\xBB\xBF/', '', $rawFirst); // Strip BOM
+        $counts = [
+            ','  => substr_count($rawFirst, ','),
+            ';'  => substr_count($rawFirst, ';'),
+            "\t" => substr_count($rawFirst, "\t"),
+        ];
+        arsort($counts);
+        $delimiter = array_key_first($counts);
+
+        rewind($handle);
+        $bom = fread($handle, 3);
+        if ($bom !== "\xEF\xBB\xBF") {
+            rewind($handle);
+        }
+
+        $header = fgetcsv($handle, 0, $delimiter);
+        if (!$header) {
+            echo json_encode(['success' => false, 'message' => 'Failed to parse CSV header']);
+            fclose($handle);
+            exit;
+        }
+        $header = array_map(fn($h) => strtolower(preg_replace('/[^\x20-\x7E]/', '', trim($h))), $header);
+
+        $reqHeaders = ['project_name', 'receiving_date', 'warehouse_name', 'material_name', 'qty', 'unit_price', 'vendor_name'];
+        $missing = array_diff($reqHeaders, $header);
+        if (!empty($missing)) {
+            echo json_encode(['success' => false, 'message' => 'Missing required columns: ' . implode(', ', $missing)]);
+            fclose($handle);
+            exit;
+        }
+
+        $projectMap = $this->buildMap("SELECT id, name FROM projects", 'name', 'id');
+        $userMap    = $this->buildMap("SELECT id, email FROM users", 'email', 'id');
+        
+        $results = [];
+        $rowNum = 1;
+
+        while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+            $rowNum++;
+            if (count(array_filter($row)) === 0) continue;
+            if (count($header) !== count($row)) {
+                $results[] = [
+                    'row' => $rowNum,
+                    'valid' => false,
+                    'error' => 'Column count mismatch'
+                ];
+                continue;
+            }
+
+            $data = array_combine($header, $row);
+            $data = array_map('trim', $data);
+            $rowIssues = [];
+
+            // 1. Resolve project
+            $projectName = $data['project_name'] ?? '';
+            $projectId = $projectMap[strtolower($projectName)] ?? null;
+            if (empty($projectName)) {
+                $rowIssues[] = "project_name is empty";
+            } elseif (!$projectId) {
+                $rowIssues[] = "Project not found '$projectName'";
+            }
+
+            // 2. Resolve users (Optional)
+            $creatorEmail = $data['purchase_request_email'] ?? '';
+            if (!empty($creatorEmail)) {
+                $creatorId = $userMap[strtolower($creatorEmail)] ?? null;
+                if (!$creatorId) {
+                    $rowIssues[] = "Creator user not found '$creatorEmail'";
+                }
+            }
+
+            $pmEmail = $data['pm_approved_email'] ?? '';
+            if (!empty($pmEmail)) {
+                $pmId = $userMap[strtolower($pmEmail)] ?? null;
+                if (!$pmId) {
+                    $rowIssues[] = "Project Manager user not found '$pmEmail'";
+                }
+            }
+
+            $mgmtEmail = $data['management_approved_email'] ?? '';
+            if (!empty($mgmtEmail)) {
+                $mgmtId = $userMap[strtolower($mgmtEmail)] ?? null;
+                if (!$mgmtId) {
+                    $rowIssues[] = "Management user not found '$mgmtEmail'";
+                }
+            }
+
+            // 3. Resolve warehouse (requires projectId)
+            $warehouseName = $data['warehouse_name'] ?? '';
+            if (empty($warehouseName)) {
+                $rowIssues[] = "warehouse_name is empty";
+            }
+
+            // 4. Resolve vendor (by name and optional phone)
+            $vendorName = $data['vendor_name'] ?? '';
+            $vendorPhone = $data['vendor_phone'] ?? '';
+            $vendorId = null;
+            if (empty($vendorName)) {
+                $rowIssues[] = "vendor_name is empty";
+            } else {
+                if (!empty($vendorPhone)) {
+                    $cleanPhone = preg_replace('/[^0-9]/', '', $vendorPhone);
+                    $stmt = $this->db->prepare("SELECT id FROM vendors WHERE LOWER(name) = LOWER(?) AND (phone = ? OR phone LIKE ? OR REPLACE(phone, '-', '') LIKE ?) LIMIT 1");
+                    $likePhone1 = "%" . $vendorPhone . "%";
+                    $likePhone2 = "%" . $cleanPhone . "%";
+                    $stmt->bind_param("ssss", $vendorName, $vendorPhone, $likePhone1, $likePhone2);
+                    $stmt->execute();
+                    $res = $stmt->get_result()->fetch_assoc();
+                    if ($res) {
+                        $vendorId = $res['id'];
+                    } else {
+                        $rowIssues[] = "Vendor not found with name '$vendorName' and phone '$vendorPhone'";
+                    }
+                } else {
+                    $stmt = $this->db->prepare("SELECT id FROM vendors WHERE LOWER(name) = LOWER(?) LIMIT 1");
+                    $stmt->bind_param("s", $vendorName);
+                    $stmt->execute();
+                    $res = $stmt->get_result()->fetch_assoc();
+                    if ($res) {
+                        $vendorId = $res['id'];
+                    } else {
+                        $rowIssues[] = "Vendor not found with name '$vendorName'";
+                    }
+                }
+            }
+
+            // 5. Quantity & price validation
+            $qty = floatval(str_replace(',', '', $data['qty'] ?? '0'));
+            if ($qty <= 0) {
+                $rowIssues[] = "qty must be greater than 0";
+            }
+            $unitPrice = floatval(str_replace(',', '', $data['unit_price'] ?? '0'));
+            if ($unitPrice < 0) {
+                $rowIssues[] = "unit_price cannot be negative";
+            }
+
+            // 6. Payment validation
+            $payAmount = floatval(str_replace(',', '', $data['payment_amount'] ?? '0'));
+            if ($payAmount > 0) {
+                $accEmail = $data['accounts_paid_email'] ?? '';
+                if (!empty($accEmail)) {
+                    $accId = $userMap[strtolower($accEmail)] ?? null;
+                    if (!$accId) {
+                        $rowIssues[] = "Accounts user not found '$accEmail'";
+                    }
+                }
+
+                $payMethod = trim($data['payment_method'] ?? '');
+                if (empty($payMethod)) {
+                    $rowIssues[] = "payment_method is required since payment_amount is greater than 0";
+                } else {
+                    $normMethod = '';
+                    $m = strtolower($payMethod);
+                    if ($m === 'cash') $normMethod = 'Cash';
+                    elseif (in_array($m, ['cheque', 'check'])) $normMethod = 'Cheque';
+                    elseif (in_array($m, ['banktransfer', 'bank_transfer', 'bank transfer', 'bank'])) $normMethod = 'BankTransfer';
+                    elseif (in_array($m, ['mobilewallet', 'mobile wallet', 'bkash', 'nagad', 'rocket', 'mobile_banking', 'online'])) $normMethod = 'MobileWallet';
+                    else $normMethod = 'Other';
+
+                    $allowedMethods = ['Cash', 'Cheque', 'BankTransfer', 'MobileWallet', 'Other'];
+                    if (!in_array($normMethod, $allowedMethods)) {
+                        $rowIssues[] = "payment_method '$payMethod' is invalid (allowed: Cash, Cheque, BankTransfer, MobileWallet, Other)";
+                    }
+                }
+            }
+
+            $results[] = [
+                'row' => $rowNum,
+                'valid' => empty($rowIssues),
+                'error' => empty($rowIssues) ? '' : implode(' | ', $rowIssues),
+                'data' => [
+                    'project_name' => $projectName,
+                    'purchase_request_email' => $creatorEmail,
+                    'pm_approved_email' => $pmEmail,
+                    'management_approved_email' => $mgmtEmail,
+                    'accounts_paid_email' => $data['accounts_paid_email'] ?? '',
+                    'receiving_date' => $data['receiving_date'] ?? '',
+                    'warehouse_name' => $warehouseName,
+                    'material_name' => $data['material_name'] ?? '',
+                    'material_category' => $data['material_category'] ?? '',
+                    'unit' => $data['unit'] ?? 'pcs',
+                    'qty' => $data['qty'] ?? '0',
+                    'unit_price' => $data['unit_price'] ?? '0',
+                    'vendor_name' => $vendorName,
+                    'vendor_phone' => $vendorPhone,
+                    'payment_amount' => $data['payment_amount'] ?? '',
+                    'payment_method' => $data['payment_method'] ?? '',
+                    'payment_date' => $data['payment_date'] ?? '',
+                    'payment_reference' => $data['payment_reference'] ?? '',
+                    'payment_attachment' => $data['payment_attachment'] ?? ''
+                ]
+            ];
+        }
+
+        fclose($handle);
+
+        echo json_encode([
+            'success' => true,
+            'rows' => $results
+        ]);
+        exit;
     }
 
     // =========================================================================
@@ -62,31 +288,26 @@ class Con_MaterialReceivingImportController extends Controller
             exit;
         }
 
-        // ── Auto-detect delimiter & strip BOM ───────────────────────────────
         $rawFirst = fgets($file);
         if (!$rawFirst) {
             setError('CSV file is empty or invalid.');
             header('Location: ' . $GLOBALS['base_url'] . '/con-material-receiving-import');
             exit;
         }
-        // Strip UTF-8 BOM (\xEF\xBB\xBF) that Excel adds
         $rawFirst = preg_replace('/^\xEF\xBB\xBF/', '', $rawFirst);
 
-        // Auto-detect delimiter: count occurrences of , ; \t in first line
         $counts = [
             ','  => substr_count($rawFirst, ','),
             ';'  => substr_count($rawFirst, ';'),
             "\t" => substr_count($rawFirst, "\t"),
         ];
         arsort($counts);
-        $delimiter = array_key_first($counts); // pick the most frequent one
+        $delimiter = array_key_first($counts);
 
-        // Re-open from the cleaned first line
         rewind($file);
-        // Skip BOM bytes at start of file if present
         $bom = fread($file, 3);
         if ($bom !== "\xEF\xBB\xBF") {
-            rewind($file); // no BOM, go back to start
+            rewind($file);
         }
 
         $header = fgetcsv($file, 0, $delimiter);
@@ -95,36 +316,25 @@ class Con_MaterialReceivingImportController extends Controller
             header('Location: ' . $GLOBALS['base_url'] . '/con-material-receiving-import');
             exit;
         }
-
-        // Normalize header keys (lowercase + trim whitespace/invisible chars)
         $header = array_map(fn($h) => strtolower(preg_replace('/[^\x20-\x7E]/', '', trim($h))), $header);
 
-        // Required columns (unit is optional — defaults to 'pcs' if missing)
-        $required = ['project_name','created_by_email','approved_by_email',
-                     'receiving_date','warehouse_name','material_name',
-                     'qty','unit_price','vendor_name'];
+        $required = ['project_name','receiving_date','warehouse_name','material_name','qty','unit_price','vendor_name'];
         $missing = array_diff($required, $header);
         if (!empty($missing)) {
-            setError('CSV missing columns: ' . implode(', ', $missing) .
-                     ' | Detected delimiter: "' . ($delimiter === "\t" ? 'TAB' : $delimiter) . '"' .
-                     ' | First header cell: "' . ($header[0] ?? '?') . '"');
+            setError('CSV missing required columns: ' . implode(', ', $missing));
             header('Location: ' . $GLOBALS['base_url'] . '/con-material-receiving-import');
             exit;
         }
 
-        // Add 'unit' to header map if not present (backward compat)
         $hasUnit = in_array('unit', $header);
 
-        // Read all rows
         $rows = [];
         while (($row = fgetcsv($file, 0, $delimiter)) !== false) {
             if (count($row) < count($header)) continue;
             $data = array_combine($header, $row);
             $data = array_map('trim', $data);
-            // Skip comment rows and blank rows
             if (empty($data['project_name']) || str_starts_with($data['project_name'], '#')) continue;
             if (empty($data['material_name'])) continue;
-            // Default unit to 'pcs' if column missing
             if (!$hasUnit) { $data['unit'] = 'pcs'; }
             $rows[] = $data;
         }
@@ -136,93 +346,95 @@ class Con_MaterialReceivingImportController extends Controller
             exit;
         }
 
-        // ── Build lookup caches ──────────────────────────────────────────────
         $projectMap  = $this->buildMap("SELECT id, name FROM projects", 'name', 'id');
         $userMap     = $this->buildMap("SELECT id, email FROM users",    'email', 'id');
-        $materialMap = $this->buildMap("SELECT id, name FROM con_materials", 'name', 'id');
         $vendorMap   = $this->buildMap("SELECT id, name FROM vendors",   'name', 'id');
-        // warehouse lookup is done per-project (name + project_id) — see resolveWarehouse()
+        
+        $fallbackUserId = $this->getFallbackUserId();
 
-        // ── Group rows by (project_name + created_by_email) ─────────────────
-        // Each group → 1 PR → 1 PO → 1 Receiving
+        // Group rows by PO identifier
         $groups = [];
         foreach ($rows as $r) {
-            $key = $r['project_name'] . '||' . $r['created_by_email'];
+            $key = $r['project_name'] . '||' . ($r['purchase_request_email'] ?? '') . '||' . $r['vendor_name'] . '||' . ($r['vendor_phone'] ?? '') . '||' . ($r['payment_amount'] ?? '0') . '||' . ($r['payment_reference'] ?? '');
             $groups[$key][] = $r;
         }
 
         $errors  = [];
-        $summary = ['materials_saved' => 0, 'pr' => 0, 'po' => 0, 'receiving' => 0, 'stock_lines' => 0];
+        $summary = ['materials_saved' => 0, 'pr' => 0, 'po' => 0, 'receiving' => 0, 'stock_lines' => 0, 'vpr' => 0, 'transactions' => 0];
 
         $this->db->begin_transaction();
         try {
-            // ── Step 0: Auto-upsert all materials before processing ───────────
-            // Collect unique (material_name, unit) pairs from CSV
-            $uniqueMaterials = [];
-            foreach ($rows as $r) {
-                $key = strtolower(trim($r['material_name']));
-                if (!isset($uniqueMaterials[$key])) {
-                    $uniqueMaterials[$key] = [
-                        'name' => trim($r['material_name']),
-                        'unit' => trim($r['unit'] ?? 'pcs'),
-                    ];
-                }
-            }
-
-            $matUpsertStmt = $this->db->prepare(
-                "INSERT INTO con_materials (name, unit)
-                 VALUES (?, ?)
-                 ON DUPLICATE KEY UPDATE unit = VALUES(unit)"
-            );
-            foreach ($uniqueMaterials as $key => $mat) {
-                if (!isset($materialMap[$key])) {
-                    // New material — insert it
-                    $matUpsertStmt->bind_param('ss', $mat['name'], $mat['unit']);
-                    $matUpsertStmt->execute();
-                    $newId = $this->db->insert_id;
-                    $materialMap[$key] = $newId;
-                    $summary['materials_saved']++;
-                }
-                // If already in map — keep existing id (no change needed)
-            }
-
             foreach ($groups as $groupKey => $groupRows) {
                 $firstRow = $groupRows[0];
 
-                // ── Resolve IDs ──────────────────────────────────────────
-                $projectId   = $projectMap[strtolower($firstRow['project_name'])]   ?? null;
-                $createdById = $userMap[strtolower($firstRow['created_by_email'])]  ?? null;
-                $approvedById= $userMap[strtolower($firstRow['approved_by_email'])] ?? null;
+                // Resolve main IDs
+                $projectId    = $projectMap[strtolower($firstRow['project_name'])]   ?? null;
+                if (!$projectId)   { $errors[] = "Project not found: {$firstRow['project_name']}"; continue; }
+
+                $creatorEmail = $firstRow['purchase_request_email'] ?? '';
+                $createdById  = !empty($creatorEmail) ? ($userMap[strtolower($creatorEmail)] ?? $fallbackUserId) : $fallbackUserId;
+
+                $pmEmail = $firstRow['pm_approved_email'] ?? '';
+                $pmApprovedId = !empty($pmEmail) ? ($userMap[strtolower($pmEmail)] ?? $fallbackUserId) : $fallbackUserId;
+
+                $mgmtEmail = $firstRow['management_approved_email'] ?? '';
+                $mgmtApprovedId = !empty($mgmtEmail) ? ($userMap[strtolower($mgmtEmail)] ?? $fallbackUserId) : $fallbackUserId;
+
                 $receivingDate = $firstRow['receiving_date'];
 
-                if (!$projectId)   { $errors[] = "Project not found: {$firstRow['project_name']}"; continue; }
-                if (!$createdById) { $errors[] = "User not found: {$firstRow['created_by_email']}"; continue; }
-                if (!$approvedById){ $errors[] = "Approver not found: {$firstRow['approved_by_email']}"; continue; }
+                // Resolve or create warehouse
+                $warehouseId = $this->findOrCreateWarehouse($firstRow['warehouse_name'], $projectId, $createdById);
 
-                // Warehouse: match by name AND project_id
-                $warehouseId = $this->resolveWarehouse($firstRow['warehouse_name'], $projectId);
-                if (!$warehouseId) { $errors[] = "Warehouse '{$firstRow['warehouse_name']}' not found for project '{$firstRow['project_name']}'"; continue; }
+                // Resolve vendor
+                $vName = trim($firstRow['vendor_name']);
+                $vPhone = trim($firstRow['vendor_phone'] ?? '');
+                $vendorId = null;
+                if (!empty($vPhone)) {
+                    $cleanPhone = preg_replace('/[^0-9]/', '', $vPhone);
+                    $stmt = $this->db->prepare("SELECT id FROM vendors WHERE LOWER(name) = LOWER(?) AND (phone = ? OR phone LIKE ? OR REPLACE(phone, '-', '') LIKE ?) LIMIT 1");
+                    $likePhone1 = "%" . $vPhone . "%";
+                    $likePhone2 = "%" . $cleanPhone . "%";
+                    $stmt->bind_param("ssss", $vName, $vPhone, $likePhone1, $likePhone2);
+                    $stmt->execute();
+                    $res = $stmt->get_result()->fetch_assoc();
+                    $vendorId = $res ? (int)$res['id'] : null;
+                } else {
+                    $vendorId = $vendorMap[strtolower($vName)] ?? null;
+                }
 
-                // Resolve all material IDs for this group first
+                if (!$vendorId) { $errors[] = "Vendor not found: $vName (phone: $vPhone)"; continue; }
+
                 $resolvedItems = [];
-                foreach ($groupRows as $idx => $r) {
-                    $matId    = $materialMap[strtolower($r['material_name'])] ?? null;
-                    $vendorId = $vendorMap[strtolower($r['vendor_name'])]     ?? null;
-                    $qty      = (float)$r['qty'];
-                    $unitPrice= (float)$r['unit_price'];
+                $totalPoAmount = 0.0;
 
-                    if (!$matId)    { $errors[] = "Material id missing for: {$r['material_name']}"; continue; }
-                    if (!$vendorId) { $errors[] = "Vendor not found: {$r['vendor_name']}"; continue; }
-                    if ($qty <= 0)  { $errors[] = "Invalid qty for {$r['material_name']}"; continue; }
+                foreach ($groupRows as $r) {
+                    $unit = trim($r['unit'] ?? 'pcs');
+                    if (empty($unit)) $unit = 'pcs';
+
+                    // Resolve or create category
+                    $catName = trim($r['material_category'] ?? '');
+                    $categoryId = null;
+                    if (!empty($catName)) {
+                        $categoryId = $this->findOrCreateCategory($catName, $createdById);
+                    }
+
+                    // Resolve or create material
+                    $matName = trim($r['material_name']);
+                    $matId = $this->findOrCreateMaterial($matName, $unit, $categoryId, $createdById);
+
+                    $qty      = floatval(str_replace(',', '', $r['qty']));
+                    $unitPrice= floatval(str_replace(',', '', $r['unit_price']));
+
+                    if ($qty <= 0)  { $errors[] = "Invalid qty for $matName"; continue; }
 
                     $resolvedItems[] = [
                         'material_id' => $matId,
-                        'vendor_id'   => $vendorId,
                         'qty'         => $qty,
                         'unit_price'  => $unitPrice,
-                        'warehouse_id'=> $warehouseId,
                     ];
+                    $totalPoAmount += ($qty * $unitPrice);
                 }
+
                 if (empty($resolvedItems)) continue;
 
                 // ── 1. purchase_requests ──────────────────────────────────
@@ -231,7 +443,7 @@ class Con_MaterialReceivingImportController extends Controller
                         (project_id, created_by, status, approved_by_id, approved_at, notes)
                      VALUES (?, ?, 'PO Issued', ?, NOW(), 'CSV Import')"
                 );
-                $stmt->bind_param('iii', $projectId, $createdById, $approvedById);
+                $stmt->bind_param('iii', $projectId, $createdById, $pmApprovedId);
                 $stmt->execute();
                 $prId = $this->db->insert_id;
                 $summary['pr']++;
@@ -249,34 +461,35 @@ class Con_MaterialReceivingImportController extends Controller
                 }
 
                 // ── 3. purchase_orders ────────────────────────────────────
-                $vendorId = !empty($resolvedItems) ? (int)$resolvedItems[0]['vendor_id'] : 0;
                 $today = date('Y-m-d');
                 $stmt2 = $this->db->prepare(
                     "INSERT INTO purchase_orders
                         (request_id, created_by, status, order_date,
                          approved_by_pm, pm_approved_at,
-                         approved_by_se, se_approved_at, vendor_id)
-                     VALUES (?, ?, 'Fully Received', ?, ?, NOW(), ?, NOW(), ?)"
+                         approved_by_se, se_approved_at,
+                         qc_approved_by_id, qc_approved_at, qc_note,
+                         mgmt_approved_by_id, mgmt_approved_at, mgmt_note,
+                         vendor_id)
+                     VALUES (?, ?, 'Fully Received', ?, ?, NOW(), ?, NOW(), ?, NOW(), 'CSV Import', ?, NOW(), 'CSV Import', ?)"
                 );
-                $stmt2->bind_param('iisiiii', $prId, $createdById, $today, $approvedById, $approvedById, $vendorId);
+                $stmt2->bind_param('iisiiiii', $prId, $createdById, $today, $pmApprovedId, $pmApprovedId, $pmApprovedId, $mgmtApprovedId, $vendorId);
                 $stmt2->execute();
                 $poId = $this->db->insert_id;
                 $summary['po']++;
 
                 // ── 4. purchase_order_items ───────────────────────────────
-                // total_price is STORED GENERATED → don't insert it
                 $poiStmt = $this->db->prepare(
                     "INSERT INTO purchase_order_items
                         (purchase_order_id, material_id, selected_vendor_id,
                          quantity, unit_price, created_by)
                      VALUES (?, ?, ?, ?, ?, ?)"
                 );
-                $poiIds = []; // material_id → poi_id
+                $poiIds = [];
                 foreach ($resolvedItems as $item) {
                     $poiStmt->bind_param('iiiidi',
                         $poId,
                         $item['material_id'],
-                        $item['vendor_id'],
+                        $vendorId,
                         $item['qty'],
                         $item['unit_price'],
                         $createdById
@@ -296,7 +509,7 @@ class Con_MaterialReceivingImportController extends Controller
                 $stmt3->bind_param('iisiiii',
                     $poId, $createdById, $receivingDate,
                     $createdById, $warehouseId,
-                    $approvedById, $approvedById
+                    $pmApprovedId, $pmApprovedId
                 );
                 $stmt3->execute();
                 $recId = $this->db->insert_id;
@@ -340,7 +553,7 @@ class Con_MaterialReceivingImportController extends Controller
                     $totalVal = $item['qty'] * $item['unit_price'];
                     $stockStmt->bind_param('iiddd',
                         $item['material_id'],
-                        $item['warehouse_id'],
+                        $warehouseId,
                         $item['qty'],
                         $item['unit_price'],
                         $totalVal
@@ -349,7 +562,7 @@ class Con_MaterialReceivingImportController extends Controller
 
                     $movStmt->bind_param('iidii',
                         $item['material_id'],
-                        $item['warehouse_id'],
+                        $warehouseId,
                         $item['qty'],
                         $recId,
                         $createdById
@@ -357,19 +570,90 @@ class Con_MaterialReceivingImportController extends Controller
                     $movStmt->execute();
                     $summary['stock_lines']++;
                 }
-            } // end foreach groups
+
+                // ── 9. vendor_payment_requests ────────────────────────────
+                $paymentAmount = floatval(str_replace(',', '', $firstRow['payment_amount'] ?? '0'));
+                $dueAmount = $totalPoAmount - $paymentAmount;
+                $vprStatus = 'Approved';
+                if ($paymentAmount >= $totalPoAmount) {
+                    $vprStatus = 'Fully_Paid';
+                } elseif ($paymentAmount > 0) {
+                    $vprStatus = 'Partially_Paid';
+                }
+
+                $paymentAttachment = trim($firstRow['payment_attachment'] ?? '');
+
+                $stmtVpr = $this->db->prepare(
+                    "INSERT INTO vendor_payment_requests
+                        (vendor_id, project_id, purchase_order_id, payment_type, created_by,
+                         invoice_number, invoice_amount, delivery_verified, qc_verified, qc_approved_by_id,
+                         qc_approved_at, qc_note, management_note, status, approved_amount,
+                         net_payable, approved_by, due_amount, payment_attachment)
+                     VALUES (?, ?, ?, 'Final', ?, ?, ?, 1, 1, ?, NOW(), 'CSV Import', 'CSV Import', ?, ?, ?, ?, ?, ?)"
+                );
+                $invNum = 'INV-PO-' . $poId;
+                $stmtVpr->bind_param('iiiisdisddids',
+                    $vendorId, $projectId, $poId, $createdById, $invNum,
+                    $totalPoAmount, $pmApprovedId, $vprStatus, $totalPoAmount,
+                    $totalPoAmount, $mgmtApprovedId, $dueAmount, $paymentAttachment
+                );
+                $stmtVpr->execute();
+                $vprId = $this->db->insert_id;
+                $summary['vpr']++;
+
+                // ── 10. con_financial_transactions (if paymentAmount > 0) ──
+                if ($paymentAmount > 0) {
+                    $accountsPaidEmail = $firstRow['accounts_paid_email'] ?? '';
+                    $accountsPaidId = !empty($accountsPaidEmail) ? ($userMap[strtolower($accountsPaidEmail)] ?? $fallbackUserId) : $fallbackUserId;
+
+                    $rawPayMethod = trim($firstRow['payment_method'] ?? 'Other');
+                    $normMethod = 'Other';
+                    $m = strtolower($rawPayMethod);
+                    if ($m === 'cash') $normMethod = 'Cash';
+                    elseif (in_array($m, ['cheque', 'check'])) $normMethod = 'Cheque';
+                    elseif (in_array($m, ['banktransfer', 'bank_transfer', 'bank transfer', 'bank'])) $normMethod = 'BankTransfer';
+                    elseif (in_array($m, ['mobilewallet', 'mobile wallet', 'bkash', 'nagad', 'rocket', 'mobile_banking', 'online'])) $normMethod = 'MobileWallet';
+
+                    $payTypeFT = ($paymentAmount >= $totalPoAmount) ? 'Full' : 'Partial';
+                    $payRef = trim($firstRow['payment_reference'] ?? '');
+                    if (empty($payRef)) {
+                        $payRef = 'REF-PO-' . $poId;
+                    }
+
+                    $payDate = trim($firstRow['payment_date'] ?? '');
+                    if (empty($payDate)) {
+                        $payDate = date('Y-m-d H:i:s');
+                        $payDateStr = date('Y-m-d');
+                    } else {
+                        $payDateStr = date('Y-m-d', strtotime($payDate));
+                    }
+
+                    $stmtFt = $this->db->prepare(
+                        "INSERT INTO con_financial_transactions
+                            (ref_type, project_id, ref_id, payment_type, payment_method, amount_paid,
+                             reference_number, processed_by, transaction_date, transaction_date_str,
+                             update_status, notes, disbursement_proof, created_by)
+                         VALUES ('vendor_payment', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Completed', 'CSV Import', ?, ?)"
+                    );
+                    $stmtFt->bind_param('iisssdisssi',
+                        $projectId, $vprId, $payTypeFT, $normMethod, $paymentAmount,
+                        $payRef, $accountsPaidId, $payDate, $payDateStr, $paymentAttachment, $accountsPaidId
+                    );
+                    $stmtFt->execute();
+                    $summary['transactions']++;
+                }
+            }
 
             if (!empty($errors)) {
-                // Partial errors — still commit what succeeded
                 $this->db->commit();
                 setError('Import completed with warnings: ' . implode(' | ', array_slice($errors, 0, 5)));
             } else {
                 $this->db->commit();
                 setSuccess(
                     "Import successful! " .
-                    "Materials saved: {$summary['materials_saved']}, " .
                     "PR: {$summary['pr']}, PO: {$summary['po']}, " .
-                    "Receivings: {$summary['receiving']}, Stock lines updated: {$summary['stock_lines']}"
+                    "Receivings: {$summary['receiving']}, Stock: {$summary['stock_lines']}, " .
+                    "Payment Requests: {$summary['vpr']}, Payments Made: {$summary['transactions']}"
                 );
             }
 
@@ -381,23 +665,6 @@ class Con_MaterialReceivingImportController extends Controller
 
         header('Location: ' . $GLOBALS['base_url'] . '/con-material-receiving-import');
         exit;
-    }
-
-    // =========================================================================
-    // HELPER: Resolve warehouse by name + project_id
-    // =========================================================================
-
-    private function resolveWarehouse(string $name, int $projectId): ?int
-    {
-        $stmt = $this->db->prepare(
-            "SELECT id FROM con_warehouses
-             WHERE LOWER(name) = LOWER(?) AND project_id = ?
-             LIMIT 1"
-        );
-        $stmt->bind_param('si', $name, $projectId);
-        $stmt->execute();
-        $row = $stmt->get_result()->fetch_assoc();
-        return $row ? (int)$row['id'] : null;
     }
 
     // =========================================================================
@@ -417,98 +684,115 @@ class Con_MaterialReceivingImportController extends Controller
     }
 
     // =========================================================================
-    // DOWNLOAD TEMPLATE CSV (with real DB sample data)
+    // HELPER: Resolve/Create Material Category
+    // =========================================================================
+
+    private function findOrCreateCategory(string $catName, int $createdById): int
+    {
+        $cleanName = strtolower(str_replace(' ', '', $catName));
+        
+        $stmt = $this->db->prepare("SELECT id FROM con_material_categories WHERE LOWER(REPLACE(name, ' ', '')) = ? LIMIT 1");
+        $stmt->bind_param("s", $cleanName);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        if ($row) {
+            return (int)$row['id'];
+        }
+
+        $stmt2 = $this->db->prepare("INSERT INTO con_material_categories (name, created_by, created_at) VALUES (?, ?, NOW())");
+        $stmt2->bind_param("si", $catName, $createdById);
+        $stmt2->execute();
+        return (int)$this->db->insert_id;
+    }
+
+    // =========================================================================
+    // HELPER: Resolve/Create Material
+    // =========================================================================
+
+    private function findOrCreateMaterial(string $matName, string $unit, ?int $categoryId, int $createdById): int
+    {
+        $cleanName = strtolower(str_replace(' ', '', $matName));
+        
+        $stmt = $this->db->prepare("SELECT id, category_id FROM con_materials WHERE LOWER(REPLACE(name, ' ', '')) = ? LIMIT 1");
+        $stmt->bind_param("s", $cleanName);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        if ($row) {
+            $matId = (int)$row['id'];
+            if ($categoryId !== null && (int)$row['category_id'] !== $categoryId) {
+                $stmtUp = $this->db->prepare("UPDATE con_materials SET category_id = ? WHERE id = ?");
+                $stmtUp->bind_param("ii", $categoryId, $matId);
+                $stmtUp->execute();
+            }
+            return $matId;
+        }
+
+        $stmt2 = $this->db->prepare("INSERT INTO con_materials (name, unit, category_id, min_stock_level, created_by, created_at) VALUES (?, ?, ?, 0, ?, NOW())");
+        $stmt2->bind_param("ssii", $matName, $unit, $categoryId, $createdById);
+        $stmt2->execute();
+        return (int)$this->db->insert_id;
+    }
+
+    // =========================================================================
+    // HELPER: Resolve/Create Warehouse
+    // =========================================================================
+
+    private function findOrCreateWarehouse(string $name, int $projectId, int $createdById): int
+    {
+        $cleanName = strtolower(str_replace(' ', '', $name));
+        
+        $stmt = $this->db->prepare("SELECT id FROM con_warehouses WHERE LOWER(REPLACE(name, ' ', '')) = ? AND project_id = ? LIMIT 1");
+        $stmt->bind_param("si", $cleanName, $projectId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        if ($row) {
+            return (int)$row['id'];
+        }
+
+        $stmt2 = $this->db->prepare("INSERT INTO con_warehouses (name, project_id, location, created_by, created_at) VALUES (?, ?, 'CSV Import', ?, NOW())");
+        $stmt2->bind_param("sisi", $name, $projectId, $createdById);
+        $stmt2->execute();
+        return (int)$this->db->insert_id;
+    }
+
+    // =========================================================================
+    // HELPER: Get Fallback User ID
+    // =========================================================================
+
+    private function getFallbackUserId(): int
+    {
+        $res = $this->db->query("SELECT id FROM users ORDER BY id ASC LIMIT 1");
+        if ($res && $row = $res->fetch_assoc()) {
+            return (int)$row['id'];
+        }
+        return 1; // default absolute fallback
+    }
+
+    // =========================================================================
+    // DOWNLOAD TEMPLATE CSV
     // =========================================================================
 
     public function downloadTemplate()
     {
-        // ── Pull real data from DB for dummy rows ────────────────────────────
-        $project = $this->db->query(
-            "SELECT p.name AS project_name, w.name AS warehouse_name
-             FROM projects p
-             LEFT JOIN con_warehouses w ON w.project_id = p.id
-             LIMIT 1"
-        )->fetch_assoc();
-
-        $creator = $this->db->query(
-            "SELECT email FROM users WHERE role_id NOT IN (1,3) AND email IS NOT NULL LIMIT 1"
-        )->fetch_assoc();
-
-        $approver = $this->db->query(
-            "SELECT email FROM users WHERE role_id IN (1,3,15,22) AND email IS NOT NULL LIMIT 1"
-        )->fetch_assoc();
-
-        $materials = $this->db->query(
-            "SELECT name FROM con_materials LIMIT 3"
-        )->fetch_all(MYSQLI_ASSOC);
-
-        $vendor = $this->db->query(
-            "SELECT name FROM vendors WHERE status = 'active' LIMIT 1"
-        )->fetch_assoc();
-
-        // ── Fallback values if DB empty ──────────────────────────────────────
-        $projName   = $project['project_name']  ?? 'Mirpur Housing Project';
-        $warehouse  = $project['warehouse_name'] ?? 'Main Warehouse';
-        $creatorEmail  = $creator['email']  ?? 'site.engineer@tphl.com';
-        $approverEmail = $approver['email'] ?? 'pm@tphl.com';
-        $vendorName = $vendor['name'] ?? 'ABC Suppliers Ltd';
-        $today      = date('Y-m-d');
-
-        $matNames = [];
-        foreach ($materials as $m) { $matNames[] = $m['name']; }
-        if (empty($matNames)) {
-            $matNames = ['Rod 10mm', 'Cement (50kg)', 'Brick (1000pcs)'];
-        }
-
-        // ── Build rows ───────────────────────────────────────────────────────
-        $sampleQtys   = ['500', '200', '1000'];
-        $samplePrices = ['85.50', '420.00', '12.00'];
-        $sampleUnits  = ['kg', 'bag', 'pcs'];
-
-        // Try to get unit from DB
-        $matWithUnit = $this->db->query("SELECT name, unit FROM con_materials LIMIT 3")->fetch_all(MYSQLI_ASSOC);
-
-        $rows = [];
-        foreach ($matNames as $i => $mat) {
-            $unit = $matWithUnit[$i]['unit'] ?? $sampleUnits[$i] ?? 'pcs';
-            $rows[] = [
-                $projName,
-                $creatorEmail,
-                $approverEmail,
-                $today,
-                $warehouse,
-                $mat,
-                $unit,
-                $sampleQtys[$i]   ?? '100',
-                $samplePrices[$i] ?? '50.00',
-                $vendorName,
-            ];
-        }
-
-        // ── Output CSV ───────────────────────────────────────────────────────
         header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename="material_receiving_sample_' . date('Ymd') . '.csv"');
+        header('Content-Disposition: attachment; filename="purchase_orders_payments_bulk_template.csv"');
         header('Cache-Control: no-cache, no-store, must-revalidate');
 
         $out = fopen('php://output', 'w');
 
         // Header row
         fputcsv($out, [
-            'project_name', 'created_by_email', 'approved_by_email',
-            'receiving_date', 'warehouse_name', 'material_name',
-            'unit', 'qty', 'unit_price', 'vendor_name'
+            'project_name', 'purchase_request_email', 'pm_approved_email', 'management_approved_email', 'accounts_paid_email',
+            'receiving_date', 'warehouse_name', 'material_name', 'material_category', 'unit', 'qty', 'unit_price',
+            'vendor_name', 'vendor_phone', 'payment_amount', 'payment_method', 'payment_date', 'payment_reference', 'payment_attachment'
         ]);
 
-        // Instruction comment row (skipped during import)
+        // Sample data row
         fputcsv($out, [
-            '# Replace values below with real data. Do not change column headers.',
-            '', '', '', '', '', '', '', '', ''
+            'Mirpur Housing Project', 'site.engineer@tphl.com', 'pm@tphl.com', 'management@tphl.com', 'accounts@tphl.com',
+            date('Y-m-d'), 'Main Warehouse', 'Brick (1000pcs)', 'Civil Materials', 'pcs', '50', '12.00',
+            'ABC Suppliers Ltd', '01712345678', '600.00', 'BankTransfer', date('Y-m-d'), 'TXN987654321', 'receipt.pdf'
         ]);
-
-        // Data rows
-        foreach ($rows as $row) {
-            fputcsv($out, $row);
-        }
 
         fclose($out);
         exit;

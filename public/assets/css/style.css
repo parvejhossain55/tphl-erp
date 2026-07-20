@@ -1031,6 +1031,12 @@ animation: pulse 1.5s ease-in-out infinite alternate;
   background-color: #fee2e2;
   color: #991b1b;
 }
+
+/* Contacted */
+.last-action-select.action-contacted {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
 /*END last_action_badge start  */
 
 .filters .filter-select {

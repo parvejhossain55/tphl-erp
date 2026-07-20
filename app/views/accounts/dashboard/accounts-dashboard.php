@@ -280,8 +280,8 @@ function getStatusBadge($status)
                 </div>
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
                     <h6 class="card__sub-title mb-2 text-muted">Cashouts</h6>
-                    <h4 class="card__title mb-0 text-warning text-break">TK.<?= number_format($statistics['management_cashout'] ?? 0, 2) ?></h4>
-                    <small class="text-muted" style="font-size: 0.7rem;">Operational Expenses</small>
+                    <h4 class="card__title mb-0 text-warning text-break">TK.<?= number_format(($statistics['paid_amount'] ?? 0) - ($statistics['salary_payments'] ?? 0), 2) ?></h4>
+                    <small class="text-muted" style="font-size: 0.7rem;">Operational & Project Outflows</small>
                 </div>
             </div>
         </div>

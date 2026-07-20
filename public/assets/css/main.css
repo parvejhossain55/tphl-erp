@@ -4861,7 +4861,7 @@ input[type=month]::-webkit-calendar-picker-indicator:hover {
 }
 
 .text-muted {
-  color: var(--clr-text-body) !important;
+  color: #adb5bd !important;
 }
 
 .bg_success {
@@ -15198,8 +15198,8 @@ strong ~ p {
 }
 
 .alert-primary {
-  background-color: #6c5ffc;
-  border-color: #6c5ffc;
+  background-color: #0b742a;
+  border-color: #076431;
   color: #FFFFFF;
 }
 .alert-primary p {
@@ -15209,17 +15209,17 @@ strong ~ p {
   filter: brightness(1) invert(1);
 }
 .alert-primary .alert-link {
-  color: #6C5FFC;
+  color: #2bc465;
 }
 .alert-primary hr {
-  border-top-color: #6C5FFC;
+  border-top-color: #19a866;
 }
 
 .alert-primary.outline,
 .alert-primary.outline-2x {
   background-color: transparent;
-  border-color: #6C5FFC;
-  color: #6C5FFC;
+  border-color: #2a944d;
+  color: #dce9eb;
 }
 .alert-primary.outline p,
 .alert-primary.outline-2x p {
@@ -15623,21 +15623,21 @@ strong ~ p {
 }
 
 .alert-info {
-  background-color: #19915a;
+  background-color: #93cfdb;
   border-color: #0dcaf0;
-  color: #FFFFFF;
+  /* color: #FFFFFF; */
 }
 .alert-info p {
-  color: #FFFFFF;
+  /* color: #FFFFFF; */
 }
 .alert-info .btn-close {
   filter: brightness(1) invert(1);
 }
 .alert-info .alert-link {
-  color: #0dcaf0;
+  color: #044755;
 }
 .alert-info hr {
-  border-top-color: #0dcaf0;
+  border-top-color: #0f3d46;
 }
 
 .alert-info.outline,
