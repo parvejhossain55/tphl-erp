@@ -26,7 +26,21 @@
     $pendingVerificationsCount = 0;
     global $db;
     if (isset($db)) {
-        $res = $db->query("SELECT COUNT(*) AS total FROM lead_payments WHERE (verification_status = 'pending' OR verification_status IS NULL) AND payment_status IN ('paid', 'partially_paid') AND payment_type != 'booking_money'");
+        $res = $db->query("
+            SELECT COUNT(*) AS total FROM (
+                SELECT (
+                    SELECT lp.verification_status
+                    FROM lead_payments lp
+                    INNER JOIN lead_bookings lb3 ON lb3.id = lp.booking_id
+                    WHERE lb3.lead_id = l.id
+                    ORDER BY lp.created_at DESC LIMIT 1
+                ) AS latest_verification_status
+                FROM leads l
+                INNER JOIN lead_bookings lb ON lb.lead_id = l.id
+                GROUP BY l.id
+            ) AS t
+            WHERE t.latest_verification_status = 'pending' OR t.latest_verification_status IS NULL
+        ");
         if ($res) {
             $pendingVerificationsCount = (int)$res->fetch_assoc()['total'];
         }
@@ -1225,7 +1239,7 @@
                                 <a href="<?= $base_url ?>/clients-cash-in"
                                     class="sidebar__menu-item <?= isActive('clients-cash-in', $current_route) ?>" style="display:flex; justify-content:space-between; align-items:center; padding-right:15px;">
                                     <span>Clients</span>
-                                    <span class="badge <?= $pendingVerificationsCount > 0 ? 'bg-dark text-white' : 'bg-secondary text-white' ?> rounded-pill" style="font-size:10px; padding: 2px 6px;"><?= $pendingVerificationsCount ?> Pending</span>
+                                    <span class="badge <?= $pendingVerificationsCount > 0 ? 'text-dark' : 'bg-secondary text-white' ?> rounded-pill" style="font-size:10px; padding: 2px 6px; <?= $pendingVerificationsCount > 0 ? 'background-color: #ffb300;' : '' ?>"><?= $pendingVerificationsCount ?> Pending</span>
                                 </a>
                             </li>
                             <li class="slide <?= isActive('management-cash-in', $current_route) ?>">
