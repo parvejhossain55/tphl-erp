@@ -755,6 +755,56 @@ $show_breadcrumb = true;
                         </tbody>
                     </table>
                 </div>
+
+                <!-- VIRTUAL EMI SCHEDULE (Yield to Maturity) -->
+                <?php if (!empty($virtualEmiSchedule)): ?>
+                <div class="mt-4 pt-4 border-top">
+                    <h5 class="mb-3"><i class="fa-light fa-calendar-check me-2"></i>EMI Maturity Schedule</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped" style="font-size: 14px;">
+                            <thead style="background-color: #f8f9fa;">
+                                <tr>
+                                    <th>EMI No</th>
+                                    <th>Projected/Actual Due Date</th>
+                                    <th>Amount</th>
+                                    <th>Paid Amount</th>
+                                    <th>Due Amount</th>
+                                    <th>Payment Status</th>
+                                    <th>Maturity Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($virtualEmiSchedule as $emi): 
+                                    $maturityBadge = '';
+                                    switch($emi['maturity_status']) {
+                                        case 'paid': $maturityBadge = '<span class="badge bg-success">Paid</span>'; break;
+                                        case 'matured': $maturityBadge = '<span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;">Matured</span>'; break;
+                                        case 'pending': $maturityBadge = '<span class="badge bg-warning text-dark">Pending (Current Month)</span>'; break;
+                                        case 'due': $maturityBadge = '<span class="badge bg-danger">Due (Overdue)</span>'; break;
+                                        case 'future': $maturityBadge = '<span class="badge bg-secondary">Future</span>'; break;
+                                    }
+                                    
+                                    $statusBadge = '';
+                                    if ($emi['status'] === 'paid') $statusBadge = '<span class="badge bg-success">Paid</span>';
+                                    elseif ($emi['status'] === 'partially_paid') $statusBadge = '<span class="badge bg-warning text-dark">Partially Paid</span>';
+                                    else $statusBadge = '<span class="text-muted">Unpaid</span>';
+                                ?>
+                                <tr>
+                                    <td><strong>#<?= $emi['emi_no'] ?></strong> <?= $emi['is_virtual'] ? '<small class="text-muted">(Proj.)</small>' : '' ?></td>
+                                    <td><?= date('d M, Y', strtotime($emi['due_date'])) ?></td>
+                                    <td>TK. <?= number_format($emi['amount'], 2) ?></td>
+                                    <td>TK. <?= number_format($emi['paid_amount'], 2) ?></td>
+                                    <td>TK. <?= number_format($emi['due_amount'], 2) ?></td>
+                                    <td><?= $statusBadge ?></td>
+                                    <td><?= $maturityBadge ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <?php endif; ?>
+
             </div>
         </div>
     </div>

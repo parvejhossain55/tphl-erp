@@ -53,40 +53,48 @@ $show_breadcrumb = true;
         </div>
     </div>
 
-    <!-- ══ PROJECT FILTER DROPDOWN ══ -->
+    <!-- ══ PROJECT & STATUS FILTER DROPDOWN ══ -->
     <div class="col-12">
         <div class="card__wrapper">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-10">
-                <div class="d-flex align-items-center gap-10">
-                    <div class="card__icon">
-                        <span><i class="fa-light fa-filter"></i></span>
-                    </div>
-                    <div>
-                        <h6 class="card__sub-title mb-0">Filter by Project</h6>
-                    </div>
-                    <select id="projectFilter" class="form-select" style="max-width: 350px;" onchange="filterByProject(this.value)">
-                        <option value="">All Projects</option>
-                        <?php if (!empty($projects)): ?>
-                            <?php foreach ($projects as $project): ?>
-                                <option value="<?= $project['id'] ?>"
-                                    <?= ($selectedProjectId == $project['id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($project['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </select>
-                </div>
-                <?php if ($selectedProjectId && $selectedProjectName): ?>
+                <form method="GET" action="<?= $GLOBALS['base_url'] ?>/clients-cashin-view" id="filterForm" class="d-flex align-items-center gap-10 w-100 flex-wrap">
                     <div class="d-flex align-items-center gap-10">
-                        <span class="bd-badge bg-primary">
-                            <i class="fa-light fa-building me-1"></i>
-                            <?= htmlspecialchars($selectedProjectName) ?>
-                        </span>
-                        <a href="<?= $GLOBALS['base_url'] ?>/clients-cashin-view" class="bd-badge bg-danger" style="text-decoration:none;">
-                            <i class="fa-light fa-xmark me-1"></i> Clear
-                        </a>
+                        <div class="card__icon">
+                            <span><i class="fa-light fa-filter"></i></span>
+                        </div>
+                        <div>
+                            <h6 class="card__sub-title mb-0">Filter Data</h6>
+                        </div>
+                        <select name="project_id" id="projectFilter" class="form-select" style="max-width: 350px;" onchange="document.getElementById('filterForm').submit()">
+                            <option value="">All Projects</option>
+                            <?php if (!empty($projects)): ?>
+                                <?php foreach ($projects as $project): ?>
+                                    <option value="<?= $project['id'] ?>"
+                                        <?= ($selectedProjectId == $project['id']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($project['name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                        <select name="verification_status" class="form-select" style="max-width: 200px;" onchange="document.getElementById('filterForm').submit()">
+                            <option value="">All Statuses</option>
+                            <option value="pending" <?= (isset($selectedVerificationStatus) && $selectedVerificationStatus == 'pending') ? 'selected' : '' ?>>Pending Verification</option>
+                            <option value="verified" <?= (isset($selectedVerificationStatus) && $selectedVerificationStatus == 'verified') ? 'selected' : '' ?>>Verified</option>
+                            <option value="rejected" <?= (isset($selectedVerificationStatus) && $selectedVerificationStatus == 'rejected') ? 'selected' : '' ?>>Rejected</option>
+                        </select>
                     </div>
-                <?php endif; ?>
+                    <?php if ($selectedProjectId && $selectedProjectName): ?>
+                        <div class="d-flex align-items-center gap-10 ms-auto">
+                            <span class="bd-badge bg-primary">
+                                <i class="fa-light fa-building me-1"></i>
+                                <?= htmlspecialchars($selectedProjectName) ?>
+                            </span>
+                            <a href="<?= $GLOBALS['base_url'] ?>/clients-cashin-view<?= isset($selectedVerificationStatus) && $selectedVerificationStatus ? '?verification_status=' . $selectedVerificationStatus : '' ?>" class="bd-badge bg-danger" style="text-decoration:none;">
+                                <i class="fa-light fa-times"></i> Clear Project
+                            </a>
+                        </div>
+                    <?php endif; ?>
+                </form>
             </div>
         </div>
     </div>

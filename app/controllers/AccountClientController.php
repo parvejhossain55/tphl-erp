@@ -12,11 +12,17 @@ class AccountClientController extends Controller
 
     public function index()
     {
-        // Get all clients (unique leads)
-        $clients = $this->clientModel->getAllClients();
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null;
+        $verificationStatus = isset($_GET['verification_status']) && $_GET['verification_status'] !== '' ? $_GET['verification_status'] : null;
+
+        // Get all clients (unique leads) with filters
+        $clients = $this->clientModel->getAllClients($selectedProjectId, $verificationStatus);
 
         // Get payment statistics
-        $paymentStats = $this->clientModel->getPaymentStatistics();
+        $paymentStats = $this->clientModel->getPaymentStatistics($selectedProjectId);
+
+        // Get all projects for dropdown
+        $projects = $this->clientModel->getProjectsForCED();
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -26,7 +32,10 @@ class AccountClientController extends Controller
             "current_route" => "clients-cash-in",
             "page_title" => "Clients Management - Cash In",
             "clients" => $clients,
-            "paymentStats" => $paymentStats
+            "paymentStats" => $paymentStats,
+            "projects" => $projects,
+            "selectedProjectId" => $selectedProjectId,
+            "selectedVerificationStatus" => $verificationStatus
         ]);
     }
 
@@ -123,11 +132,14 @@ public function indexTwo($bookingId = null)
         }
     }
 
+    $virtualEmiSchedule = $this->clientModel->getVirtualEmiSchedule($bookingId);
+
     $this->view("accounts/cashIn/clients-cash-in-history", [
         "current_route"   => "clients-cash-in-history",
         "page_title"      => "Transaction History - " . $clientDetails['client_name'],
         "clientDetails"   => $clientDetails,
         "transactions"    => $transactions,
+        "virtualEmiSchedule" => $virtualEmiSchedule,
         "paymentSummary"  => $paymentSummary,
         "outstandingDues" => $outstandingDues,
         "refundDetails"   => $refundDetails,
@@ -213,11 +225,12 @@ public function indexTwo($bookingId = null)
             session_start();
         }
 
-        // Check for project filter
-        $selectedProjectId = isset($_GET['project_id']) ? (int) $_GET['project_id'] : null;
+        // Check for project and verification status filters
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null;
+        $verificationStatus = isset($_GET['verification_status']) && $_GET['verification_status'] !== '' ? $_GET['verification_status'] : null;
 
-        // Get all clients, optionally filtered by project
-        $clients = $this->clientModel->getAllClients($selectedProjectId);
+        // Get all clients, optionally filtered by project and verification status
+        $clients = $this->clientModel->getAllClients($selectedProjectId, $verificationStatus);
 
         // Get payment statistics
         $paymentStats = $this->clientModel->getPaymentStatistics($selectedProjectId);
@@ -256,6 +269,7 @@ public function indexTwo($bookingId = null)
             "paymentStats" => $paymentStats,
             "projects" => $projects,
             "selectedProjectId" => $selectedProjectId,
+            "selectedVerificationStatus" => $verificationStatus,
             "selectedProjectName" => $selectedProjectName,
             "flatStats" => $flatStats,
             "bookedFlats" => $bookedFlats,

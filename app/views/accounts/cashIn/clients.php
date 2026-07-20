@@ -72,11 +72,27 @@ $show_breadcrumb = true;
 
     <div class="col-xxl-12">
         <div class="card__wrapper">
-            <div class="d-flex justify-content-between align-items-center mb-20">
+            <div class="d-flex justify-content-between align-items-center mb-20 flex-wrap gap-3">
                 <h4>Clients Information</h4>
-                <div class="d-flex gap-2 align-items-center">
-                    <span class="badge bg-warning text-dark me-1"><i class="fa-light fa-clock me-1"></i> Pending Verification</span>
-                    <span class="badge bg-success"><i class="fa-light fa-check-circle me-1"></i> Verified</span>
+                <div class="d-flex gap-3 align-items-center flex-wrap">
+                    <form method="GET" action="<?= $GLOBALS['base_url'] ?>/clients-cash-in" id="filterForm" class="d-flex gap-2">
+                        <select name="project_id" class="form-select form-select-sm" style="min-width: 150px;" onchange="document.getElementById('filterForm').submit()">
+                            <option value="">All Projects</option>
+                            <?php if(!empty($projects)): foreach($projects as $p): ?>
+                                <option value="<?= $p['id'] ?>" <?= $selectedProjectId == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
+                            <?php endforeach; endif; ?>
+                        </select>
+                        <select name="verification_status" class="form-select form-select-sm" style="min-width: 150px;" onchange="document.getElementById('filterForm').submit()">
+                            <option value="">All Statuses</option>
+                            <option value="pending" <?= $selectedVerificationStatus == 'pending' ? 'selected' : '' ?>>Pending Verification</option>
+                            <option value="verified" <?= $selectedVerificationStatus == 'verified' ? 'selected' : '' ?>>Verified</option>
+                            <option value="rejected" <?= $selectedVerificationStatus == 'rejected' ? 'selected' : '' ?>>Rejected</option>
+                        </select>
+                    </form>
+                    <div>
+                        <span class="badge bg-warning text-dark me-1"><i class="fa-light fa-clock me-1"></i> Pending</span>
+                        <span class="badge bg-success"><i class="fa-light fa-check-circle me-1"></i> Verified</span>
+                    </div>
                 </div>
             </div>
 

@@ -21,6 +21,16 @@
 
     // Check if the current user belongs to Management (Admin or Super Admin)
     $isManagement = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3]);
+
+    // Calculate pending verifications
+    $pendingVerificationsCount = 0;
+    global $db;
+    if (isset($db)) {
+        $res = $db->query("SELECT COUNT(*) AS total FROM lead_payments WHERE (verification_status = 'pending' OR verification_status IS NULL) AND payment_status IN ('paid', 'partially_paid') AND payment_type != 'booking_money'");
+        if ($res) {
+            $pendingVerificationsCount = (int)$res->fetch_assoc()['total'];
+        }
+    }
     ?>
 
 
@@ -1213,7 +1223,10 @@
                         <ul class="sidebar-menu child2" style="display:block;">
                             <li class="slide <?= isActive('clients-cash-in', $current_route) ?>">
                                 <a href="<?= $base_url ?>/clients-cash-in"
-                                    class="sidebar__menu-item <?= isActive('clients-cash-in', $current_route) ?>">Clients</a>
+                                    class="sidebar__menu-item <?= isActive('clients-cash-in', $current_route) ?>" style="display:flex; justify-content:space-between; align-items:center; padding-right:15px;">
+                                    <span>Clients</span>
+                                    <span class="badge <?= $pendingVerificationsCount > 0 ? 'bg-dark text-white' : 'bg-secondary text-white' ?> rounded-pill" style="font-size:10px; padding: 2px 6px;"><?= $pendingVerificationsCount ?> Pending</span>
+                                </a>
                             </li>
                             <li class="slide <?= isActive('management-cash-in', $current_route) ?>">
                                 <a href="<?= $base_url ?>/management-cash-in"
