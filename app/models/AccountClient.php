@@ -12,9 +12,10 @@ class AccountClient extends Model
     /**
      * Get all clients (booked leads) with full details, optionally filtered by project
      */
-    public function getAllClients($projectId = null)
+    public function getAllClients($projectId = null, $verificationStatus = null)
     {
         $whereClause = "WHERE 1=1";
+        $havingClause = "";
         $params = [];
         $types = '';
 
@@ -22,6 +23,14 @@ class AccountClient extends Model
             $whereClause .= " AND lb.project_id = ?";
             $params[] = (int) $projectId;
             $types .= 'i';
+        }
+        
+        if ($verificationStatus === 'verified') {
+            $havingClause = "HAVING latest_verification_status = 'verified'";
+        } elseif ($verificationStatus === 'pending') {
+            $havingClause = "HAVING (latest_verification_status = 'pending' OR latest_verification_status IS NULL)";
+        } elseif ($verificationStatus === 'rejected') {
+            $havingClause = "HAVING latest_verification_status = 'rejected'";
         }
 
         $sql = $this->db->prepare("
@@ -76,6 +85,7 @@ class AccountClient extends Model
         INNER JOIN lead_bookings lb ON lb.lead_id = l.id
         $whereClause
         GROUP BY l.id
+        $havingClause
         ORDER BY l.full_name
     ");
 
