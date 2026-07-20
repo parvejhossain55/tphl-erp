@@ -449,9 +449,17 @@ class ApprovalRequest extends Model
         //    7. Execute source update 
         if (!empty($updateFields)) {
             $sql2 = "UPDATE {$sourceTable} SET " . implode(', ', $updateFields) . " WHERE id = ?";
-            $types .= 'i';
-            $params[] = $sourceId;
-
+            
+            if ($sourceTable === 'lead_payments') {
+                $sql2 = "UPDATE {$sourceTable} SET " . implode(', ', $updateFields) . " WHERE id = ? OR bulk_parent_id = ?";
+                $types .= 'ii';
+                $params[] = $sourceId;
+                $params[] = $sourceId;
+            } else {
+                $types .= 'i';
+                $params[] = $sourceId;
+            }
+            
             $stmt2 = $this->db->prepare($sql2);
             $stmt2->bind_param($types, ...$params);
             $stmt2->execute();

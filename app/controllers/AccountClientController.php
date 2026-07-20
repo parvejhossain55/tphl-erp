@@ -538,7 +538,7 @@ public function addCedTransaction()
         'payment_type'    => $paymentType,
         'amount'          => $_POST['amount'] ?? 0,
         'payment_method'  => $_POST['payment_method'] ?? 'cash',
-        'payment_status'  => $_POST['payment_status'] ?? 'paid',
+        'payment_status'  => 'pending', // Always pending until verified
         'payment_date'    => $_POST['payment_date'] ?? date('Y-m-d'),
         'transaction_ref' => $_POST['transaction_ref'] ?? null,
         'bank_id'         => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
@@ -729,7 +729,7 @@ public function addTransaction()
         // CHECK 0: Land share must be complete before most payment types
         // Exceptions: land_share, booking_money, and registration are always allowed
         $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
-        $landShareExempt = ['land_share', 'booking_money', 'registration', 'emi_due_settlement'];
+        $landShareExempt = ['land_share', 'booking_money', 'registration', 'mutation_cost', 'emi_due_settlement'];
         if (!in_array($paymentType, $landShareExempt) && empty($paymentSummary['is_land_share_completed'])) {
             setError("Land share must be fully paid before adding " . ucfirst(str_replace('_', ' ', $paymentType)) . " payments.");
             header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
@@ -780,7 +780,7 @@ public function addTransaction()
             'payment_type'     => $paymentType,
             'amount'           => $_POST['amount'] ?? 0,
             'payment_method'   => $_POST['payment_method'] ?? 'cash',
-            'payment_status'   => $_POST['payment_status'] ?? 'paid',
+            'payment_status'   => 'pending', // Always pending until verified
             'payment_date'     => $_POST['payment_date'] ?? date('Y-m-d'),
             'transaction_ref'  => $_POST['transaction_ref'] ?? null,
             'bank_id'          => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
@@ -861,6 +861,15 @@ public function addTransaction()
             $emiSchedule = $this->clientModel->getEMIScheduleByPaymentId($paymentId);
         }
 
+        // Get management users for handover dropdown
+        $managementUsers = [];
+        $mgmtQuery = $this->db->query("SELECT id, full_name, email FROM users WHERE role_id IN (1, 3)");
+        if ($mgmtQuery) {
+            while ($row = $mgmtQuery->fetch_assoc()) {
+                $managementUsers[] = $row;
+            }
+        }
+
         // DEBUG: Check what data is being fetched
         error_log("Transaction Data: " . print_r($transaction, true));
         error_log("EMI Schedule: " . print_r($emiSchedule, true));
@@ -869,8 +878,9 @@ public function addTransaction()
             "current_route" => "client-cash-in-edit-form",
             "page_title" => "Edit Transaction - " . $clientDetails['client_name'],
             "clientDetails" => $clientDetails,
-            "transactionDetails" => $transaction, // Changed from "transaction" to "transactionDetails"
-            "emiSchedule" => $emiSchedule
+            "transactionDetails" => $transaction,
+            "emiSchedule" => $emiSchedule,
+            "managementUsers" => $managementUsers
         ]);
     }
 
@@ -947,7 +957,7 @@ public function updateTransaction()
             'payment_type'     => $_POST['payment_type'] ?? 'emi',
             'amount'           => $_POST['amount'] ?? 0,
             'payment_method'   => $_POST['payment_method'] ?? 'cash',
-            'payment_status'   => $_POST['payment_status'] ?? 'paid',
+            'payment_status'   => 'pending', // Always pending until verified
             'payment_date'     => $_POST['payment_date'] ?? date('Y-m-d'),
             'transaction_ref'  => $_POST['transaction_ref'] ?? null,
             'bank_name'        => $_POST['bank_name'] ?? null,
@@ -990,6 +1000,11 @@ public function updateTransaction()
                 $transactionData['amount'] = (float)$transactionData['amount'] + $additionalPayment;
                 error_log("Updated transaction amount: " . $transactionData['amount']);
             }
+        }
+
+        // Handle Handover Approval Initiation
+        if (!empty($_POST['handover_to'])) {
+            $transactionData['handover_to'] = (int)$_POST['handover_to'];
         }
 
         // Update transaction with EMI schedule if applicable
@@ -1608,7 +1623,7 @@ public function discountStatement($bookingId = null)
         // ── ACCOUNTS-ONLY GATE ────────────────────────────────────────────────
         // role_id 1 = Super Admin, 3 = Admin, 6 = Accounts
         $userRoleId     = (int)($_SESSION['user']['role_id'] ?? 0);
-        $allowedRoleIds = [1, 3, 6];
+        $allowedRoleIds = [1, 3, 6, 30];
         if (!in_array($userRoleId, $allowedRoleIds)) {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Unauthorized: Accounts module access only']);
@@ -1640,7 +1655,7 @@ public function discountStatement($bookingId = null)
 
         // Check handover status first to prevent race conditions
         $payQuery = $this->db->prepare("
-            SELECT p.handover_status, b.id as booking_id, c.full_name as client_name, pr.name as project_name, f.flat_name
+            SELECT p.handover_status, p.payment_type, p.due_emi_amount, b.id as booking_id, c.full_name as client_name, pr.name as project_name, f.flat_name
             FROM lead_payments p 
             LEFT JOIN lead_bookings b ON p.booking_id = b.id
             LEFT JOIN leads c ON b.lead_id = c.id
@@ -1673,6 +1688,13 @@ public function discountStatement($bookingId = null)
         $params = [$newStatus, $userId];
         $types = "si";
 
+        // Also update payment_status
+        if ($action === 'verify') {
+            $updateFields[] = "payment_status = CASE WHEN payment_type = 'emi' AND due_emi_amount > 0 THEN 'partially_paid' ELSE 'paid' END";
+        } elseif ($action === 'reject') {
+            $updateFields[] = "payment_status = 'failed'";
+        }
+
         if ($action === 'reject') {
             $updateFields[] = "rejection_reason = ?";
             $params[] = $rejectionReason;
@@ -1686,8 +1708,9 @@ public function discountStatement($bookingId = null)
         }
         
         $params[] = $paymentId;
-        $types .= "i";
-        $sql = "UPDATE lead_payments SET " . implode(", ", $updateFields) . " WHERE id = ? AND verification_status = 'pending'";
+        $params[] = $paymentId;
+        $types .= "ii";
+        $sql = "UPDATE lead_payments SET " . implode(", ", $updateFields) . " WHERE (id = ? OR bulk_parent_id = ?) AND verification_status = 'pending'";
         $stmt = $this->db->prepare($sql);
 
         if (!$stmt) {
@@ -1805,8 +1828,8 @@ public function discountStatement($bookingId = null)
                         <blockquote>" . nl2br(htmlspecialchars($forceVerifyNote)) . "</blockquote>
                     ";
                     
-                    if (function_exists('sendMail')) {
-                        sendMail($admin['email'], $subject, $body);
+                    if (function_exists('sendGenericMail')) {
+                        sendGenericMail($admin['email'], $subject, $body);
                     }
                 }
             }
