@@ -107,11 +107,9 @@ class LeadController extends Controller
             session_start();
         }
         $message = "";
-        $prevPeriodLeads = $this->leadModel->getAllByDate(
-            $year ? ($month ? "$year-$month-01" : "$year-01-01") : null,
-            $year ? ($month ? date("Y-m-t", strtotime("$year-$month-01")) : "$year-12-31") : null
-        );
-        $prevCount = count($prevPeriodLeads);
+        $startDate = $year ? ($month ? "$year-$month-01" : "$year-01-01") : null;
+        $endDate = $year ? ($month ? date("Y-m-t", strtotime("$year-$month-01")) : "$year-12-31") : null;
+        $prevCount = $this->leadModel->countAllByDateRange($startDate, $endDate);
 
         if ($prevCount == 0) {
             $leadsPercentChange = $leadCounts > 0 ? 100 : 0;

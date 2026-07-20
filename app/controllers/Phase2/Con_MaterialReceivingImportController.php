@@ -440,8 +440,8 @@ class Con_MaterialReceivingImportController extends Controller
                 // ── 1. purchase_requests ──────────────────────────────────
                 $stmt = $this->db->prepare(
                     "INSERT INTO purchase_requests
-                        (project_id, created_by, status, approved_by_id, approved_at, notes)
-                     VALUES (?, ?, 'PO Issued', ?, NOW(), 'CSV Import')"
+                        (project_id, created_by, status, approved_by_id, approved_at, notes, upload_from)
+                     VALUES (?, ?, 'PO Issued', ?, NOW(), 'CSV Import', 'from CSV')"
                 );
                 $stmt->bind_param('iii', $projectId, $createdById, $pmApprovedId);
                 $stmt->execute();
@@ -469,8 +469,8 @@ class Con_MaterialReceivingImportController extends Controller
                          approved_by_se, se_approved_at,
                          qc_approved_by_id, qc_approved_at, qc_note,
                          mgmt_approved_by_id, mgmt_approved_at, mgmt_note,
-                         vendor_id)
-                     VALUES (?, ?, 'Fully Received', ?, ?, NOW(), ?, NOW(), ?, NOW(), 'CSV Import', ?, NOW(), 'CSV Import', ?)"
+                         vendor_id, upload_from)
+                     VALUES (?, ?, 'Fully Received', ?, ?, NOW(), ?, NOW(), ?, NOW(), 'CSV Import', ?, NOW(), 'CSV Import', ?, 'from CSV')"
                 );
                 $stmt2->bind_param('iisiiiii', $prId, $createdById, $today, $pmApprovedId, $pmApprovedId, $pmApprovedId, $mgmtApprovedId, $vendorId);
                 $stmt2->execute();
