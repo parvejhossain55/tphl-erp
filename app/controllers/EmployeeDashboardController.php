@@ -1171,6 +1171,7 @@ class EmployeeDashboardController extends Controller
                     'workplace' => $emp['workplaceName'] ?? '—',
                     'employeeType' => $emp['employmentTypeName'] ?? '—',
                     'shift' => ($emp['shiftGroupName'] ?? '—') . '<br><small class="text-muted">' . ($emp['shiftStartTime'] ?? '') . ' - ' . ($emp['shiftEndTime'] ?? '') . '</small>',
+                    'shiftGroup' => $emp['shiftGroupName'] ?? '—',
                     'status' => $status,
                     'entry' => $entry,
                     'exit' => $exit,

@@ -130,6 +130,7 @@ class LeadController extends Controller
         //  Conversion Rate
         $conversionRate = $leadCounts > 0 ? ($totalBookingCount / $leadCounts) * 100 : 0;
         $totalHotLeads = $this->leadModel->getTotalHotLeads();
+        $totalContactedLeads = $this->leadModel->getTotalContactedLeads();
 
         // ── Filtered stats when a Sales Executive is selected ────────────────
         if (!empty($assigned_user)) {
@@ -214,7 +215,24 @@ class LeadController extends Controller
                 $totalHotLeads = 0;
             }
 
-            // 5. Recalculate Conversion Rate with filtered booking count
+            // 5. Contacted Leads for this user
+            $contactedSql = "
+                SELECT COUNT(*) AS total FROM leads
+                WHERE deleted_at IS NULL
+                AND assigned_id = ?
+                AND last_lead_action = 'contacted'
+            ";
+            $contactedStmt = $this->db->prepare($contactedSql);
+            if ($contactedStmt) {
+                $contactedStmt->bind_param('i', $assignedUserId);
+                $contactedStmt->execute();
+                $totalContactedLeads = $contactedStmt->get_result()->fetch_assoc()['total'] ?? 0;
+                $contactedStmt->close();
+            } else {
+                $totalContactedLeads = 0;
+            }
+
+            // 6. Recalculate Conversion Rate with filtered booking count
             $conversionRate = $leadCounts > 0 ? ($totalBookingCount / $leadCounts) * 100 : 0;
         }
 
@@ -325,6 +343,7 @@ class LeadController extends Controller
             "totalTodayPendingFollowUps" => $totalTodayPendingFollowUps,
             "conversionRate" => $conversionRate,
             "totalHotLeads" => $totalHotLeads,
+            "totalContactedLeads" => $totalContactedLeads,
             "selectedAction" => $lastAction,
             "selectedAssigned" => $assigned,
             "selectedAssignedUser" => $assigned_user,
@@ -408,7 +427,7 @@ class LeadController extends Controller
         $draw = isset($_POST['draw']) ? (int)$_POST['draw'] : 1;
         $start = isset($_POST['start']) ? (int)$_POST['start'] : 0;
         // lead-lists page load
-        $length = isset($_POST['length']) ? (int)$_POST['length'] : 25;
+        $length = isset($_POST['length']) ? (int)$_POST['length'] : 10;
         $search = isset($_POST['search']['value']) ? $_POST['search']['value'] : null;
 
         // Get filters from GET
@@ -569,6 +588,7 @@ class LeadController extends Controller
             <form method="POST" action="' . $base_url . '/update-last_leadAction/' . $lead['id'] . '" class="m-0 p-0">
                 <select name="last_lead_action" class="form-select form-select-sm last-action-select action-' . $last_action . '" onchange="this.form.submit()">
                     <option value=""> Update action </option>
+                    <option value="contacted" ' . ($last_action == 'contacted' ? 'selected' : '') . '>Contacted</option>
                     <option value="new" ' . ($last_action == 'new' ? 'selected' : '') . '>New</option>
                     <option value="booked" ' . ($last_action == 'booked' ? 'selected' : '') . '>Booked</option>
                     <option value="follow up" ' . ($last_action == 'follow up' ? 'selected' : '') . '>Follow Up</option>
@@ -1063,11 +1083,17 @@ class LeadController extends Controller
 
         $leadId     = (int) $id;
         $lastAction = $_POST['last_lead_action'] ?? null;
+        $isAjax     = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') || isset($_POST['ajax']);
 
         // Allowed enum values (important for security)
-        $allowedActions = ['new', 'booked', 'follow up', 'visited', 'cancel'];
+        $allowedActions = ['new', 'booked', 'follow up', 'visited', 'cancel', 'contacted'];
 
         if (!$leadId || !in_array($lastAction, $allowedActions)) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Invalid lead action selected.']);
+                exit;
+            }
             setError("Invalid lead action selected.");
             header("Location: " . $_SERVER['HTTP_REFERER']);
             exit;
@@ -1081,12 +1107,22 @@ class LeadController extends Controller
         $lead = $result->fetch_assoc();
 
         if (!$lead) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Lead not found.']);
+                exit;
+            }
             setError("Lead not found.");
             header("Location: " . $_SERVER['HTTP_REFERER']);
             exit;
         }
 
         if ($lead['last_lead_action'] === 'booked') {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Action cannot be changed because this lead is already booked.']);
+                exit;
+            }
             setError("Action cannot be changed because this lead is already booked.");
             header("Location: " . $_SERVER['HTTP_REFERER']);
             exit;
@@ -1098,10 +1134,20 @@ class LeadController extends Controller
             $stmtUpdate->bind_param("si", $lastAction, $leadId);
             $stmtUpdate->execute();
 
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Lead last action updated successfully!']);
+                exit;
+            }
             setSuccess("Lead last action updated successfully!");
             header("Location: " . $_SERVER['HTTP_REFERER']);
             exit;
         } catch (Exception $e) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                exit;
+            }
             setError($e->getMessage());
             header("Location: " . $_SERVER['HTTP_REFERER']);
             exit;

@@ -1757,6 +1757,20 @@ LIMIT ?
                     SELECT COALESCE(updated_at, created_at) as date, COALESCE(approved_amount, net_payable) as amount, project_id
                     FROM vendor_payment_requests
                     WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
+
+                    UNION ALL
+                    
+                    SELECT paid_at as date, amount, project_id
+                    FROM fund_requisitions
+                    WHERE status = 'paid'
+                    
+                    UNION ALL
+                    
+                    SELECT lfr.accounts_paid_at as date, lfr.requested_amount as amount, la.project_id
+                    FROM land_fund_requisitions lfr
+                    LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
+                    WHERE lfr.mgmt_status = 'Approved'
+                    AND lfr.accounts_status = 'Paid'
                 ) combined
                 WHERE date BETWEEN ? AND ?
             ";
@@ -1808,6 +1822,20 @@ LIMIT ?
                     SELECT COALESCE(updated_at, created_at) as date, COALESCE(approved_amount, net_payable) as amount, project_id
                     FROM vendor_payment_requests
                     WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
+
+                    UNION ALL
+                    
+                    SELECT paid_at as date, amount, project_id
+                    FROM fund_requisitions
+                    WHERE status = 'paid'
+                    
+                    UNION ALL
+                    
+                    SELECT lfr.accounts_paid_at as date, lfr.requested_amount as amount, la.project_id
+                    FROM land_fund_requisitions lfr
+                    LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
+                    WHERE lfr.mgmt_status = 'Approved'
+                    AND lfr.accounts_status = 'Paid'
                 ) combined
                 WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL ? MONTH)
             ";
@@ -1909,6 +1937,20 @@ LIMIT ?
                     SELECT COALESCE(updated_at, created_at) as date, COALESCE(approved_amount, net_payable) as amount, project_id
                     FROM vendor_payment_requests
                     WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
+
+                    UNION ALL
+                    
+                    SELECT paid_at as date, amount, project_id
+                    FROM fund_requisitions
+                    WHERE status = 'paid'
+                    
+                    UNION ALL
+                    
+                    SELECT lfr.accounts_paid_at as date, lfr.requested_amount as amount, la.project_id
+                    FROM land_fund_requisitions lfr
+                    LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
+                    WHERE lfr.mgmt_status = 'Approved'
+                    AND lfr.accounts_status = 'Paid'
                 ) combined
                 WHERE date BETWEEN ? AND ?
             ";
@@ -2012,6 +2054,20 @@ LIMIT ?
                     SELECT COALESCE(updated_at, created_at) as date, COALESCE(approved_amount, net_payable) as amount, project_id
                     FROM vendor_payment_requests
                     WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
+
+                    UNION ALL
+                    
+                    SELECT paid_at as date, amount, project_id
+                    FROM fund_requisitions
+                    WHERE status = 'paid'
+                    
+                    UNION ALL
+                    
+                    SELECT lfr.accounts_paid_at as date, lfr.requested_amount as amount, la.project_id
+                    FROM land_fund_requisitions lfr
+                    LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
+                    WHERE lfr.mgmt_status = 'Approved'
+                    AND lfr.accounts_status = 'Paid'
                 ) combined
                     WHERE date BETWEEN ? AND ?
                 ";
@@ -2087,6 +2143,20 @@ LIMIT ?
                     SELECT COALESCE(updated_at, created_at) as date, COALESCE(approved_amount, net_payable) as amount, project_id
                     FROM vendor_payment_requests
                     WHERE status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid')
+
+                    UNION ALL
+                    
+                    SELECT paid_at as date, amount, project_id
+                    FROM fund_requisitions
+                    WHERE status = 'paid'
+                    
+                    UNION ALL
+                    
+                    SELECT lfr.accounts_paid_at as date, lfr.requested_amount as amount, la.project_id
+                    FROM land_fund_requisitions lfr
+                    LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
+                    WHERE lfr.mgmt_status = 'Approved'
+                    AND lfr.accounts_status = 'Paid'
                 ) combined
                     WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL ? YEAR)
                 ";

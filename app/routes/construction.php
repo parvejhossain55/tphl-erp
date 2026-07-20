@@ -49,6 +49,8 @@ return [
     'con-land-acquisitions/edit' => ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'edit'],
     'con-land-acquisitions/update' => ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'update'],
     'con-land-acquisitions/delete' => ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'delete'],
+    'con-land-acquisitions/execute-import' => ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'executeImport'],
+    'con-land-acquisitions/sample-csv' => ['controller' => 'Phase2\LandAcquisitionController', 'method' => 'downloadSampleCsv'],
 
     // =========================================================================
     // Controller: Phase2\LandRequisitionController
@@ -376,6 +378,7 @@ return [
     'con-purchase-request-assign/(\d+)' => ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'assignExecutive'],
     'con-boq-remaining/(\d+)' => ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'boqRemaining'],
     'con-ajax-pr-boqs' => ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'ajaxGetProjectBoqs'],
+    'con-ajax-add-material' => ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'ajaxAddMaterial'],
 
     // =========================================================================
     // Controller: Phase2\Con_QuotationController
@@ -411,6 +414,7 @@ return [
     // =========================================================================
     'con-material-receiving-import' => ['controller' => 'Phase2\Con_MaterialReceivingImportController', 'method' => 'index'],
     'con-material-receiving-import-process' => ['controller' => 'Phase2\Con_MaterialReceivingImportController', 'method' => 'import'],
+    'con-material-receiving-import-validate' => ['controller' => 'Phase2\Con_MaterialReceivingImportController', 'method' => 'validateCsv'],
     'con-material-receiving-import-template' => ['controller' => 'Phase2\Con_MaterialReceivingImportController', 'method' => 'downloadTemplate'],
 
     // =========================================================================

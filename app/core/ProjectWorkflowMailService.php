@@ -512,7 +512,7 @@ class ProjectWorkflowMailService
     /**
      * PR SUBMITTED — Notify Management, PM, Purchase Head, Site Operator/Procurement, PM Head (role_id 3, 15, 17, 20, 22)
      */
-    public function notifyOnPRSubmission(int $projectId, string $projectName, string $engineerName, string $requisitionMonth, int $prId): void
+    public function notifyOnPRSubmission(int $projectId, string $projectName, string $engineerName, string $requisitionMonth, int $prId, string $prType = 'boq_linked'): void
     {
         $base = $this->getBaseUrl();
 
@@ -537,26 +537,41 @@ class ProjectWorkflowMailService
             }
         }
 
-        $subject = "New Purchase Request Submitted: Requisition for {$requisitionMonth} — {$projectName}";
+        // Differentiate by PR type
+        $isIndependent = ($prType === 'independent');
+        $typeLabel     = $isIndependent ? '✏️ Not link with monthly target' : '📋 Link with monthly target';
+        $typeColor     = $isIndependent ? '#d97706' : '#0284c7';
+        $typeBg        = $isIndependent ? '#fef3c7' : '#e0f2fe';
+        $typeTextColor = $isIndependent ? '#92400e' : '#0369a1';
+
+        $subject = $isIndependent
+            ? "✏️ Purchase Request (Not link with monthly target) Submitted — {$projectName}"
+            : "📋 Purchase Request (Link with monthly target) Submitted: {$requisitionMonth} — {$projectName}";
 
         foreach ($uniqueRecipients as $user) {
-            // Build custom status indicator for PR submission
             $stepHtml = "<div style='margin:20px 0;'>
                 <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
-                    <div style='width:28px;height:28px;border-radius:50%;background:#0284c7;color:#fff;
+                    <div style='width:28px;height:28px;border-radius:50%;background:{$typeColor};color:#fff;
                                 text-align:center;line-height:28px;
                                 font-size:13px;font-weight:700;flex-shrink:0;'>&#9654;</div>
-                    <div style='font-size:13px;color:#0284c7;'>
-                        <strong>Status:</strong> 
+                    <div style='font-size:13px;color:{$typeColor};'>
+                        <strong>Type:</strong>
+                        <span style='background:{$typeBg};color:{$typeTextColor};padding:2px 8px;border-radius:4px;font-weight:bold;font-size:11px;'>{$typeLabel}</span>
+                        &nbsp;
+                        <strong>Status:</strong>
                         <span style='background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:4px;font-weight:bold;font-size:11px;'>Submitted</span>
                     </div>
                 </div>
             </div>";
 
+            $message = $isIndependent
+                ? "A new <strong>Purchase Request (PR-{$prId}, Not link with monthly target)</strong> has been submitted by <strong>{$engineerName}</strong>. Materials are required by <strong>{$requisitionMonth}</strong>."
+                : "A new <strong>Purchase Request (PR-{$prId}, Link with monthly target)</strong> has been submitted by Site Engineer <strong>{$engineerName}</strong> for the month of <strong>{$requisitionMonth}</strong>.";
+
             $body = $this->buildHtml(
                 title:       "New Purchase Requisition Submitted",
                 greeting:    "Dear {$user['full_name']},",
-                message:     "A new Purchase Requisition <strong>PR-{$prId}</strong> has been submitted by Site Engineer <strong>{$engineerName}</strong> for the month of <strong>{$requisitionMonth}</strong>.",
+                message:     $message,
                 stepHtml:    $stepHtml,
                 ctaLabel:    'Review Purchase Request',
                 ctaLink:     $base . "/con-purchase-request/{$prId}",
@@ -567,6 +582,7 @@ class ProjectWorkflowMailService
             $this->send($user['email'], $subject, $body);
         }
     }
+
 
     /**
      * PO REJECTED — Notify Procurement Head (20) & Site Engineer

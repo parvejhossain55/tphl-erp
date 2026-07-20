@@ -294,6 +294,57 @@
                      <textarea class="form-control" name="responsibilities" rows="4" placeholder="Enter key responsibilities..."><?= htmlspecialchars($employee['responsibilities'] ?? '') ?></textarea>
                  </div>
 
+                  <?php
+                  $existingItems = [];
+                  if (!empty($employeeSalaryItems)) {
+                      foreach ($employeeSalaryItems as $esi) {
+                          $existingItems[$esi['payslip_item_id']] = $esi['amount'];
+                      }
+                  }
+                  ?>
+                  <!-- Salary Allowances & Deductions Configuration -->
+                  <div class="col-lg-12">
+                      <div class="card__wrapper p-4 mt-4 mb-20 border rounded">
+                          <div class="card__title-wrap mb-20">
+                              <h5 class="card__heading-title">Salary Allowances & Deductions</h5>
+                              <small class="text-muted">Set standard monthly allowance/deduction amounts for this employee</small>
+                          </div>
+                          <div class="row g-20 gy-20">
+                              <!-- Earnings -->
+                              <div class="col-lg-6">
+                                  <h6 class="mb-3 text-success"><i class="fa-solid fa-circle-plus me-2"></i>Earnings / Allowances</h6>
+                                  <div class="row g-3">
+                                      <?php foreach ($payslipItems as $item): ?>
+                                          <?php if ($item['type'] === 'earning'): ?>
+                                              <div class="col-12 mb-2">
+                                                  <label for="allowance_<?= $item['id'] ?>"><?= htmlspecialchars($item['name']) ?></label>
+                                                  <input class="form-control" name="salary_items[<?= $item['id'] ?>]" id="allowance_<?= $item['id'] ?>" type="number" step="0.01" 
+                                                      value="<?= number_format($existingItems[$item['id']] ?? 0, 2, '.', '') ?>">
+                                              </div>
+                                          <?php endif; ?>
+                                      <?php endforeach; ?>
+                                  </div>
+                              </div>
+
+                              <!-- Deductions -->
+                              <div class="col-lg-6">
+                                  <h6 class="mb-3 text-danger"><i class="fa-solid fa-circle-minus me-2"></i>Deductions</h6>
+                                  <div class="row g-3">
+                                      <?php foreach ($payslipItems as $item): ?>
+                                          <?php if ($item['type'] === 'deduction'): ?>
+                                              <div class="col-12 mb-2">
+                                                  <label for="deduction_<?= $item['id'] ?>"><?= htmlspecialchars($item['name']) ?></label>
+                                                  <input class="form-control" name="salary_items[<?= $item['id'] ?>]" id="deduction_<?= $item['id'] ?>" type="number" step="0.01" 
+                                                      value="<?= number_format($existingItems[$item['id']] ?? 0, 2, '.', '') ?>">
+                                              </div>
+                                          <?php endif; ?>
+                                      <?php endforeach; ?>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
                  <!-- Submit -->
                  <div class="col-12 text-center mt-3">
                      <button class="btn btn-primary">Update Employee</button>

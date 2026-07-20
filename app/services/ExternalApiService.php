@@ -150,6 +150,57 @@ class ExternalApiService
     }
 
     /**
+     * Get attendance logs from Tipsoi API for a specific timestamp range (milliseconds)
+     */
+    public function getAttendanceLogs($fromTime, $toTime)
+    {
+        $token = $this->getBearerToken();
+        if (!$token) {
+            error_log("Tipsoi API Fetch Blocked: Bearer token is unavailable.");
+            return null;
+        }
+
+        $url = $this->baseUrl . "attendance?" . http_build_query([
+            'officeId' => 4699,
+            'order' => 'asc',
+            'pageNumber' => 0,
+            'perPage' => 2000,
+            'reportType' => 'department',
+            'sortKey' => 'reportPosition',
+            'status' => 1,
+            'from' => $fromTime,
+            'to' => $toTime
+        ]);
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $token,
+            'Accept: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            error_log("Tipsoi Attendance Fetch cURL Error: " . $curlError);
+            return null;
+        }
+
+        if ($httpCode !== 200) {
+            error_log("Tipsoi Attendance Fetch HTTP Failure. Code: $httpCode");
+            return null;
+        }
+
+        $data = json_decode($response, true);
+        return $data['attendance'] ?? [];
+    }
+
+    /**
      * Fallback mock data in case API endpoint is down or config is incorrect.
      * Ensures UI displays cleanly and helps in testing/debugging.
      */
