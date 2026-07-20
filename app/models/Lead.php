@@ -119,6 +119,110 @@ class Lead extends Model
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
+    public function countAll($period = null, $teamId = null)
+    {
+        $sqlQuery = "
+            SELECT COUNT(l.id) AS total
+            FROM leads AS l
+            LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
+            WHERE l.deleted_at IS NULL
+              AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+        ";
+        
+        $params = [];
+        $types = "";
+        
+        if (!empty($teamId)) {
+            $sqlQuery .= " AND l.team_id = ?";
+            $params[] = $teamId;
+            $types .= "i";
+        }
+        
+        if ($period) {
+            switch ($period) {
+                case 'daily':
+                    $sqlQuery .= " AND DATE(l.created_at) = CURDATE()";
+                    break;
+                case 'weekly':
+                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                    break;
+                case 'monthly':
+                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    break;
+                case 'yearly':
+                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    break;
+            }
+        }
+        
+        $stmt = $this->db->prepare($sqlQuery);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        return $res ? (int)$res['total'] : 0;
+    }
+
+    public function countAllByDate($period, $previous = false)
+    {
+        $sqlQuery = "
+            SELECT COUNT(l.id) AS total FROM leads AS l
+            WHERE l.status = 'active' AND l.deleted_at IS NULL
+        ";
+        
+        $today = date('Y-m-d');
+        if ($period) {
+            switch ($period) {
+                case 'daily':
+                    $date = $previous ? date('Y-m-d', strtotime('-1 day')) : $today;
+                    $sqlQuery .= " AND DATE(l.created_at) = '$date'";
+                    break;
+                case 'weekly':
+                    if ($previous) {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 14 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                    } else {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                    }
+                    break;
+                case 'monthly':
+                    if ($previous) {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    } else {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    }
+                    break;
+                case 'yearly':
+                    if ($previous) {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 2 YEAR) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    } else {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    }
+                    break;
+            }
+        }
+        
+        $stmt = $this->db->prepare($sqlQuery);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        return $res ? (int)$res['total'] : 0;
+    }
+
+    public function countAllByDateRange($startDate, $endDate)
+    {
+        if (empty($startDate) || empty($endDate)) {
+            return 0;
+        }
+        $sql = "SELECT COUNT(id) AS total FROM leads WHERE status = 'active' AND deleted_at IS NULL AND created_at BETWEEN ? AND ?";
+        $stmt = $this->db->prepare($sql);
+        $startStr = $startDate . ' 00:00:00';
+        $endStr = $endDate . ' 23:59:59';
+        $stmt->bind_param("ss", $startStr, $endStr);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        return $res ? (int)$res['total'] : 0;
+    }
+
 
     public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null)
     {

@@ -49,26 +49,11 @@ class HomeController extends Controller
             : $this->employeeModel->getTotalCount();
 
         // Leads
-        $totalLeads = $this->leadModel->getAll($period);
-        $totalLeadsCount = count($totalLeads);
+        $totalLeadsCount = $this->leadModel->countAll($period);
 
         // Leads % change calculation
         if ($period) {
-            switch ($period) {
-                case 'daily':
-                    $prevPeriodLeads = $this->leadModel->getAllByDate('daily', true); // yesterday
-                    break;
-                case 'weekly':
-                    $prevPeriodLeads = $this->leadModel->getAllByDate('weekly', true); // last week
-                    break;
-                case 'monthly':
-                    $prevPeriodLeads = $this->leadModel->getAllByDate('monthly', true); // last month
-                    break;
-                case 'yearly':
-                    $prevPeriodLeads = $this->leadModel->getAllByDate('yearly', previous: true); // last year
-                    break;
-            }
-            $prevCount = count($prevPeriodLeads);
+            $prevCount = $this->leadModel->countAllByDate($period, true);
 
             if ($prevCount == 0) {
                 $leadsPercentChange = $totalLeadsCount > 0 ? 100 : 0;
