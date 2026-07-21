@@ -21,12 +21,7 @@ class AssetManagementController extends Controller
         $this->roleId   = (int)($_SESSION['user']['role_id'] ?? 0);
         $this->roleName = strtolower($_SESSION['user']['role_name'] ?? '');
 
-        // Permission check: Asset Management or QC & Internal Audit or Admin/Director
-        if (!hasPermission('Asset Management') && !hasPermission('QC & Internal Audit') && !in_array($this->roleId, [1, 3, 20])) {
-            setError("Unauthorized access.");
-            header("Location: {$GLOBALS['base_url']}/home");
-            exit;
-        }
+
 
         require_once __DIR__ . '/../../models/AssetManagement.php';
         $this->model = new \AssetManagement($this->db);
@@ -69,7 +64,7 @@ class AssetManagementController extends Controller
      */
     private function isAccounts()
     {
-        return $this->roleId == 6;
+        return in_array($this->roleId, [6, 30]);
     }
 
     /**
@@ -100,6 +95,14 @@ class AssetManagementController extends Controller
      */
     public function products()
     {
+        // Permission check: Asset Management or QC & Internal Audit or Admin/Director
+        if (!hasPermission('Asset Management') && !hasPermission('QC & Internal Audit') && !in_array($this->roleId, [1, 3, 20])) {
+            setError("Unauthorized access.");
+            header("Location: {$GLOBALS['base_url']}/home");
+            exit;
+        }
+
+
         $filters = [
             'search'   => $_GET['search'] ?? '',
             'category' => $_GET['category'] ?? '',
@@ -108,6 +111,7 @@ class AssetManagementController extends Controller
 
         $products = $this->model->getAllProducts($filters);
         $stockCounts = $this->model->getProductStockCounts();
+        $categories = $this->model->getProcurementCategories();
 
         // Index stock counts by product id for easy lookup
         $stockMap = [];
@@ -120,6 +124,7 @@ class AssetManagementController extends Controller
             'page_title'    => 'Office Asset Products',
             'products'      => $products,
             'stockMap'      => $stockMap,
+            'categories'    => $categories,
             'filters'       => $filters,
             'canEdit'       => $this->canEdit(),
             'isQcAudit'     => $this->isQcAudit(),
@@ -160,7 +165,7 @@ class AssetManagementController extends Controller
         $data = [
             'product_code' => $productCode,
             'name'         => $name,
-            'category'     => $_POST['category'] ?? 'Other',
+            'category_id'  => (int)($_POST['category_id'] ?? 0),
             'brand'        => $_POST['brand'] ?? null,
             'model'        => $_POST['model'] ?? null,
             'unit'         => $_POST['unit'] ?? 'Piece',
@@ -216,7 +221,7 @@ class AssetManagementController extends Controller
         $data = [
             'product_code' => $productCode,
             'name'         => $name,
-            'category'     => $_POST['category'] ?? 'Other',
+            'category_id'  => (int)($_POST['category_id'] ?? 0),
             'brand'        => $_POST['brand'] ?? null,
             'model'        => $_POST['model'] ?? null,
             'unit'         => $_POST['unit'] ?? 'Piece',
@@ -268,6 +273,14 @@ class AssetManagementController extends Controller
      */
     public function index()
     {
+        // Permission check: Asset Management or QC & Internal Audit or Admin/Director
+        if (!hasPermission('Asset Management') && !hasPermission('QC & Internal Audit') && !in_array($this->roleId, [1, 3, 20])) {
+            setError("Unauthorized access.");
+            header("Location: {$GLOBALS['base_url']}/home");
+            exit;
+        }
+
+
         $filters = [
             'search'           => $_GET['search'] ?? '',
             'project_id'       => $_GET['project_id'] ?? '',
@@ -598,10 +611,24 @@ class AssetManagementController extends Controller
      */
     public function extraPurchases()
     {
+        $isPurchaseHead = $this->isPurchaseHead();
+        $isQcAudit = $this->isQcAudit();
+        $isManagement = $this->isManagement();
+        $isAccounts = $this->isAccounts();
+        $isOperations = ($this->roleId == 20 || in_array($this->roleId, [1, 3]));
+
+        $isApprover = $isPurchaseHead || $isQcAudit || $isManagement || $isAccounts || $isOperations;
+        $activeTab = $_GET['tab'] ?? 'my_requests';
+
         $filters = [
             'project_id'     => $_GET['project_id'] ?? '',
             'overall_status' => $_GET['status'] ?? '',
         ];
+
+        // Restrict to current user's requests if they are not an approver, or if they selected 'my_requests' tab
+        if (!$isApprover || $activeTab === 'my_requests') {
+            $filters['created_by'] = $this->userId;
+        }
 
         $requests = $this->model->getExtraPurchases($filters);
         
@@ -609,16 +636,27 @@ class AssetManagementController extends Controller
         $projectsResult = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
         $projects = $projectsResult ? $projectsResult->fetch_all(MYSQLI_ASSOC) : [];
 
+        // Get users
+        $usersResult = $this->db->query("SELECT id, full_name, email FROM users ORDER BY full_name");
+        $users = $usersResult ? $usersResult->fetch_all(MYSQLI_ASSOC) : [];
+
+        $categories = $this->model->getProcurementCategories();
+
         $this->view('phase2/asset-management/extra-purchases', [
             'current_route'   => 'asset-extra-purchases',
-            'page_title'      => 'Extra Asset Purchase Requests',
+            'page_title'      => 'Office Procurement Requests',
             'requests'        => $requests,
-                        'projects'        => $projects,
-            'canCreate'       => $this->roleId == 20 || $this->isManagement(),
-            'isPurchaseHead'  => $this->isPurchaseHead(),
-            'isQcAudit'       => $this->isQcAudit(),
-            'isManagement'    => $this->isManagement(),
-            'isAccounts'      => $this->isAccounts(),
+            'projects'        => $projects,
+            'users'           => $users,
+            'categories'      => $categories,
+            'canCreate'       => true,
+            'isApprover'      => $isApprover,
+            'activeTab'       => $activeTab,
+            'isPurchaseHead'  => $isPurchaseHead,
+            'isQcAudit'       => $isQcAudit,
+            'isManagement'    => $isManagement,
+            'isAccounts'      => $isAccounts,
+            'isOperations'    => $isOperations,
             'currentUserId'   => $this->userId,
             'currentRoleId'   => $this->roleId,
         ]);
@@ -634,13 +672,14 @@ class AssetManagementController extends Controller
             exit;
         }
 
-        $projectId = (int)($_POST['project_id'] ?? 0);
+        $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
         $assetLocation = trim($_POST['asset_location'] ?? '');
+        $itemCategoryId = !empty($_POST['item_category_id']) ? (int)$_POST['item_category_id'] : null;
         $itemName = trim($_POST['item_name'] ?? '');
         $justification = trim($_POST['justification'] ?? '');
 
-        if (!$projectId || empty($itemName) || empty($justification)) {
-            setError('Project, item name, and justification are required.');
+        if (empty($itemName) || empty($justification) || empty($itemCategoryId)) {
+            setError('Item Category, Item name and justification are required.');
             header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
             exit;
         }
@@ -651,14 +690,16 @@ class AssetManagementController extends Controller
         }
 
         $data = [
-            'project_id'    => $projectId,
-            'asset_location' => $assetLocation,
-            'item_name'     => $itemName,
-            'quantity'      => (int)($_POST['quantity'] ?? 1),
-            'unit_price'    => (float)($_POST['unit_price'] ?? 0),
-            'justification' => $justification,
-            'attachment'    => $attachment,
-            'requested_by'  => $this->userId,
+            'project_id'       => $projectId,
+            'asset_location'   => $assetLocation,
+            'assigned_to'      => !empty($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null,
+            'item_category_id' => $itemCategoryId,
+            'item_name'        => $itemName,
+            'quantity'         => (int)($_POST['quantity'] ?? 1),
+            'unit_price'       => (float)($_POST['unit_price'] ?? 0),
+            'justification'    => $justification,
+            'attachment'       => $attachment,
+            'requested_by'     => $this->userId,
         ];
 
         if ($this->model->createExtraPurchase($data)) {
@@ -692,9 +733,13 @@ class AssetManagementController extends Controller
         $status = $_POST['approval_status'] ?? 'approved'; // 'approved' or 'rejected'
         $note = $_POST['approval_note'] ?? '';
 
+        $isOperations = ($this->roleId == 20 || in_array($this->roleId, [1, 3]));
+        
         // Determine which step based on current user role
         $step = null;
-        if ($this->isPurchaseHead() && $request['purchase_head_status'] === 'pending') {
+        if ($isOperations && $request['operations_status'] === 'pending') {
+            $step = 'operations';
+        } elseif ($this->isPurchaseHead() && $request['operations_status'] === 'approved' && $request['purchase_head_status'] === 'pending') {
             $step = 'purchase_head';
         } elseif ($this->isQcAudit() && $request['purchase_head_status'] === 'approved' && $request['qc_audit_status'] === 'pending') {
             $step = 'qc_audit';
@@ -708,7 +753,12 @@ class AssetManagementController extends Controller
             exit;
         }
 
-        if ($this->model->approveStep($id, $step, $status, $this->userId, $note)) {
+        $document = null;
+        if ($step === 'purchase_head' && isset($_FILES['purchase_head_document']) && $_FILES['purchase_head_document']['error'] === 0) {
+            $document = $this->uploadFile($_FILES['purchase_head_document'], 'uploads/asset-purchases/');
+        }
+
+        if ($this->model->approveStep($id, $step, $status, $this->userId, $note, $document)) {
             $actionText = $status === 'approved' ? 'approved' : 'rejected';
             setSuccess("Request #{$id} {$actionText} successfully.");
         } else {
@@ -772,6 +822,12 @@ class AssetManagementController extends Controller
             exit;
         }
 
+        if (!($this->roleId == 20 || in_array($this->roleId, [1, 3]))) {
+            setError('Only Operations can mark this as purchased.');
+            header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
+            exit;
+        }
+
         // Handle document upload
         $document = null;
         if (isset($_FILES['purchase_document']) && $_FILES['purchase_document']['error'] === 0) {
@@ -786,6 +842,55 @@ class AssetManagementController extends Controller
             setError('Failed to confirm purchase.');
         }
 
+        header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
+        exit;
+    }
+    // =========================================================================
+    // CATEGORY CRUD
+    // =========================================================================
+
+    public function storeProcurementCategory()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $name = trim($_POST['name'] ?? '');
+            if (!empty($name)) {
+                $this->model->addProcurementCategory($name);
+                setSuccess('Category added successfully.');
+            } else {
+                setError('Category name cannot be empty.');
+            }
+        }
+        header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
+        exit;
+    }
+
+    public function updateProcurementCategory()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = (int)($_POST['id'] ?? 0);
+            $name = trim($_POST['name'] ?? '');
+            if (!empty($name) && $id > 0) {
+                $this->model->updateProcurementCategory($id, $name);
+                setSuccess('Category updated successfully.');
+            } else {
+                setError('Invalid data provided.');
+            }
+        }
+        header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
+        exit;
+    }
+
+    public function deleteProcurementCategory()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = (int)($_POST['id'] ?? 0);
+            if ($id > 0) {
+                $this->model->deleteProcurementCategory($id);
+                setSuccess('Category deleted successfully.');
+            } else {
+                setError('Invalid category ID.');
+            }
+        }
         header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
         exit;
     }

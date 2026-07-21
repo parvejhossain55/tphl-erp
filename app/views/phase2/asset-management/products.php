@@ -1,6 +1,5 @@
 <?php
 $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-$categories = ['Electronics','Furniture','Vehicle','IT Equipment','Office Supplies','Machinery','Safety Equipment','Other'];
 ?>
 
 <div class="container-fluid">
@@ -113,10 +112,10 @@ $categories = ['Electronics','Furniture','Vehicle','IT Equipment','Office Suppli
                 </div>
                 <div class="col-md-2 col-sm-6">
                     <label class="form-label fs-12 fw-semibold mb-1">Category</label>
-                    <select name="category" class="form-select form-select-sm">
+                    <select name="category_id" class="form-select form-select-sm">
                         <option value="">All Categories</option>
                         <?php foreach ($categories as $cat): ?>
-                            <option value="<?= $cat ?>" <?= ($filters['category'] ?? '') === $cat ? 'selected' : '' ?>><?= $cat ?></option>
+                            <option value="<?= $cat['id'] ?>" <?= ($filters['category_id'] ?? '') == $cat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -171,7 +170,7 @@ $categories = ['Electronics','Furniture','Vehicle','IT Equipment','Office Suppli
                                     </td>
                                     <td class="fw-semibold"><?= htmlspecialchars($p['name']) ?></td>
                                     <td>
-                                        <span class="badge bg-light text-dark"><?= htmlspecialchars($p['category']) ?></span>
+                                        <span class="badge bg-light text-dark"><?= htmlspecialchars($p['category_name'] ?? 'Uncategorized') ?></span>
                                     </td>
                                     <td class="text-muted fs-12">
                                         <?= htmlspecialchars($p['brand'] ?? '—') ?>
@@ -240,9 +239,9 @@ $categories = ['Electronics','Furniture','Vehicle','IT Equipment','Office Suppli
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Category <span class="text-danger">*</span></label>
-                            <select name="category" class="form-select" required>
+                            <select name="category_id" class="form-select" required>
                                 <?php foreach ($categories as $cat): ?>
-                                    <option value="<?= $cat ?>"><?= $cat ?></option>
+                                    <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -312,9 +311,9 @@ $categories = ['Electronics','Furniture','Vehicle','IT Equipment','Office Suppli
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Category <span class="text-danger">*</span></label>
-                            <select name="category" id="edit_category" class="form-select" required>
+                            <select name="category_id" id="edit_category_id" class="form-select" required>
                                 <?php foreach ($categories as $cat): ?>
-                                    <option value="<?= $cat ?>"><?= $cat ?></option>
+                                    <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -382,7 +381,7 @@ function openEditModal(product) {
     document.getElementById('edit_product_id').value = product.id;
     document.getElementById('edit_product_code').value = product.product_code;
     document.getElementById('edit_name').value = product.name;
-    document.getElementById('edit_category').value = product.category;
+    document.getElementById('edit_category_id').value = product.category_id;
     document.getElementById('edit_unit').value = product.unit || 'Piece';
     document.getElementById('edit_brand').value = product.brand || '';
     document.getElementById('edit_model').value = product.model || '';

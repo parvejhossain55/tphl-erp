@@ -585,6 +585,9 @@ return [
     'asset-extra-purchases/approve/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'approveExtraPurchase'],
     'asset-extra-purchases/purchased/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'markPurchased'],
     'asset-extra-purchases/confirm/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'confirmPurchased'],
+    'asset-extra-purchases/category/store' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'storeProcurementCategory'],
+    'asset-extra-purchases/category/update' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'updateProcurementCategory'],
+    'asset-extra-purchases/category/delete' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'deleteProcurementCategory'],
 
     // =========================================================================
     // Controller: Phase2\Con_ProgressReportController
