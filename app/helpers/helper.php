@@ -517,10 +517,11 @@ function setErrors(array $errors)
  * @param string $name
  * @param string $table
  * @param string $column
+ * @param int|null $excludeId
  * @return string
  */
 
-function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug')
+function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug', $excludeId = null)
 {
     $name = trim($name);
 
@@ -532,11 +533,14 @@ function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug
 
     // Lowercase English letters only
     $slug = mb_strtolower($slug, 'UTF-8');
+    if (empty($slug)) {
+        $slug = 'project-' . time();
+    }
 
     $originalSlug = $slug;
     $i = 1;
 
-    while (slugExists($db, $slug, $table, $column)) {
+    while (slugExists($db, $slug, $table, $column, $excludeId)) {
         $slug = $originalSlug . '-' . $i;
         $i++;
     }
@@ -605,10 +609,15 @@ function addCameraWithHls($db, $project_id, $project_name, $camera_name, $rtsp_u
  * @param string $column
  * @return bool
  */
-function slugExists($db, $slug, $table = 'lead_sources', $column = 'slug')
+function slugExists($db, $slug, $table = 'lead_sources', $column = 'slug', $excludeId = null)
 {
-    $stmt = $db->prepare("SELECT id FROM $table WHERE $column = ?");
-    $stmt->bind_param("s", $slug);
+    if ($excludeId !== null) {
+        $stmt = $db->prepare("SELECT id FROM $table WHERE $column = ? AND id != ?");
+        $stmt->bind_param("si", $slug, $excludeId);
+    } else {
+        $stmt = $db->prepare("SELECT id FROM $table WHERE $column = ?");
+        $stmt->bind_param("s", $slug);
+    }
     $stmt->execute();
     $result = $stmt->get_result();
     return $result && $result->num_rows > 0;

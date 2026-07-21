@@ -221,27 +221,28 @@ class ProjectController extends Controller
         // Fetch existing project BEFORE update (to compare team changes)
         $oldProject = $this->projectModel->find($id);
         $data = [
-            'name' => $_POST['name'] ?? null,
-            'location_id' => $_POST['location_id'] ?? null,
-            'community_id' => $_POST['community_id'] ?? null,
+            'name' => !empty($_POST['name']) ? trim($_POST['name']) : null,
+            'location_id' => !empty($_POST['location_id']) ? (int)$_POST['location_id'] : null,
+            'community_id' => !empty($_POST['community_id']) ? (int)$_POST['community_id'] : null,
             'category_id'  => !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null,
-            'incentive_percentage' => !empty($_POST['incentive_percentage']) ? (float)$_POST['incentive_percentage'] : null,
+            'incentive_percentage' => (isset($_POST['incentive_percentage']) && $_POST['incentive_percentage'] !== '') ? (float)$_POST['incentive_percentage'] : null,
             'building_type' => $_POST['building_type'] ?? null,
-            'total_share' => $_POST['total_share'] ?? null,
-            'unit_per_floor' => $_POST['unit_per_floor'] ?? null,
+            'total_share' => !empty($_POST['total_share']) ? (int)$_POST['total_share'] : null,
+            'unit_per_floor' => !empty($_POST['unit_per_floor']) ? (int)$_POST['unit_per_floor'] : null,
             'types' => $_POST['types'] ?? null,
             'price_range' => $_POST['price_range'] ?? null,
             'project_sale_status' => $_POST['project_sale_status'] ?? null,
-            'apartment_count' => $_POST['apartment_count'] ?? null,
+            'apartment_count' => !empty($_POST['apartment_count']) ? (int)$_POST['apartment_count'] : null,
             'front_road' => $_POST['front_road'] ?? null,
             'hover_text' => $_POST['hover_text'] ?? null,
-            'plot_size' => $_POST['plot_size'] ?? null,
+            'plot_size' => (isset($_POST['plot_size']) && $_POST['plot_size'] !== '') ? (float)$_POST['plot_size'] : null,
             'plot_no' => $_POST['plot_no'] ?? null,
             'block_no' => $_POST['block_no'] ?? null,
             'brochure_link' => $_POST['brochure_link'] ?? null,
-            'passenger_lift' => $_POST['passenger_lift'] ?? null,
-            'cargo_lift' => $_POST['cargo_lift'] ?? null,
+            'passenger_lift' => !empty($_POST['passenger_lift']) ? (int)$_POST['passenger_lift'] : null,
+            'cargo_lift' => !empty($_POST['cargo_lift']) ? (int)$_POST['cargo_lift'] : null,
             'rooftop_gardening' => isset($_POST['rooftop_gardening']) ? 1 : 0,
+            'swimming_pool' => isset($_POST['swimming_pool']) ? 1 : 0,
             'car_parking' => isset($_POST['car_parking']) ? 1 : 0,
             'convention' => isset($_POST['convention']) ? 1 : 0,
             'electricity_backup' => isset($_POST['electricity_backup']) ? 1 : 0,
@@ -250,7 +251,7 @@ class ProjectController extends Controller
             'map_link' => $_POST['map_link'] ?? null,
             'description' => $_POST['description'] ?? null,
             'project_map_location'   => $_POST['project_map_location'] ?? null,
-            'service_charge_per_emi' => !empty($_POST['service_charge_per_emi']) ? (float)$_POST['service_charge_per_emi'] : null,
+            'service_charge_per_emi' => (isset($_POST['service_charge_per_emi']) && $_POST['service_charge_per_emi'] !== '') ? (float)$_POST['service_charge_per_emi'] : null,
             'created_by'             => $_SESSION['user']['id'] ?? null,
             // Project Team Assignment
             'pm_id'               => !empty($_POST['pm_id']) ? (int)$_POST['pm_id'] : null,
@@ -269,7 +270,7 @@ class ProjectController extends Controller
         // Update slug if name changed or slug is empty
         // ===================================
         if (empty($oldProject['slug']) || trim($data['name']) !== trim($oldProject['name'] ?? '')) {
-            $data['slug'] = generateUniqueSlug($this->db, $data['name'], 'projects', 'slug');
+            $data['slug'] = generateUniqueSlug($this->db, $data['name'], 'projects', 'slug', $id);
         } else {
             $data['slug'] = $oldProject['slug'] ?? null;
         }
@@ -396,7 +397,9 @@ class ProjectController extends Controller
             exit;
         }
 
-        setError("Project update failed");
+        if (empty($_SESSION['error'])) {
+            setError("Project update failed");
+        }
         header("Location: {$GLOBALS['base_url']}/edit-project/$id");
         exit;
     }
