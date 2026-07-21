@@ -197,12 +197,6 @@ unset($_SESSION['csv_legal_sheet_skipped']); // clear after reading
                                     <td><em>https://drive.google.com/...</em></td>
                                 </tr>
                                 <tr>
-                                    <td><code>Version</code></td>
-                                    <td><span class="badge bg-secondary">Optional</span></td>
-                                    <td>Version label (defaults to V1)</td>
-                                    <td><em>V2</em></td>
-                                </tr>
-                                <tr>
                                     <td><code>Remark</code></td>
                                     <td><span class="badge bg-secondary">Optional</span></td>
                                     <td>Any additional notes</td>
@@ -244,11 +238,11 @@ unset($_SESSION['csv_legal_sheet_skipped']); // clear after reading
 <script>
 function downloadLegalSheetSampleCsv() {
     const headers = [
-        'Project_Name', 'Sheet_Type', 'Title', 'Link', 'Version', 'Remark'
+        'Project_Name', 'Sheet_Type', 'Title', 'Link', 'Remark'
     ];
     const sampleRows = [
-        ['The Prime Heights', 'Land Document', 'Plot Purchase Deed', 'https://drive.google.com/example1', 'V1', 'Original copy scanned'],
-        ['Green Valley Tower', 'Approval', 'RAJUK Approval Letter', 'https://drive.google.com/example2', 'V2', 'Revised version']
+        ['The Prime Heights', 'Land Document', 'Plot Purchase Deed', 'https://drive.google.com/example1', 'Original copy scanned'],
+        ['Green Valley Tower', 'Approval', 'RAJUK Approval Letter', 'https://drive.google.com/example2', 'Revised version']
     ];
 
     const csvContent = [

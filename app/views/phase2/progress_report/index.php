@@ -200,8 +200,8 @@ if ($totalTarget > 0) {
                 <!-- Project Selector -->
                 <div class="<?= !empty($siteEngineers) ? 'col-md-2' : 'col-md-3' ?>">
                     <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:5px; display:block;">Project</label>
-                    <select name="project_id" class="form-select" style="border-radius:8px; font-size:13px; border:1.5px solid #cbd5e1; height:38px;">
-                        <option value="0">All Projects (সকল প্রজেক্ট)</option>
+                    <select name="project_id" class="form-select select2" style="border-radius:8px; font-size:13px; border:1.5px solid #cbd5e1; height:38px;">
+                        <option value="0" <?= $selProjectId === 0 ? 'selected' : '' ?>>All Projects (সকল প্রজেক্ট)</option>
                         <?php foreach ($projects as $p): ?>
                             <option value="<?= $p['id'] ?>" <?= $selProjectId === (int)$p['id'] ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($p['name']) ?>
@@ -214,8 +214,8 @@ if ($totalTarget > 0) {
                 <?php if (!empty($siteEngineers)): ?>
                     <div class="col-md-3">
                         <label style="font-size:12px; font-weight:700; color:#475569; margin-bottom:5px; display:block;">Site Engineer</label>
-                        <select name="site_engineer_id" class="form-select" style="border-radius:8px; font-size:13px; border:1.5px solid #cbd5e1; height:38px;">
-                            <option value="0">All Engineers (সকল ইঞ্জিনিয়ার)</option>
+                        <select name="site_engineer_id" class="form-select select2" style="border-radius:8px; font-size:13px; border:1.5px solid #cbd5e1; height:38px;">
+                            <option value="0" <?= $selSiteEngineerId === 0 ? 'selected' : '' ?>>All Engineers (সকল ইঞ্জিনিয়ার)</option>
                             <?php foreach ($siteEngineers as $eng): ?>
                                 <option value="<?= $eng['id'] ?>" <?= $selSiteEngineerId === (int)$eng['id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($eng['full_name']) ?>
@@ -426,5 +426,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
     selector.addEventListener("change", adjustMonthVisibility);
     adjustMonthVisibility(); // init on load
+
 });
 </script>

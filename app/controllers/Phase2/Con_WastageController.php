@@ -45,7 +45,7 @@ class Con_WastageController extends Controller
     public function create()
     {
         // Get projects and materials for dropdowns
-        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
         $warehouses = $this->db->query("SELECT id, name, project_id FROM con_warehouses ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
         $materials = $this->db->query("SELECT m.id, m.name, m.unit, c.name AS category_name FROM con_materials m LEFT JOIN con_material_categories c ON c.id = m.category_id ORDER BY m.name ASC")->fetch_all(MYSQLI_ASSOC);
 

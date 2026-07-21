@@ -320,7 +320,15 @@ class PaymentBookingController extends Controller
         }
 
         $header = fgetcsv($handle, 1000, ",");
+        if (!$header) {
+            echo json_encode(['success' => false, 'message' => 'CSV file is empty or invalid']);
+            fclose($handle);
+            exit;
+        }
         $header = array_map('trim', $header);
+        if (!empty($header[0])) {
+            $header[0] = preg_replace('/[\x{EF}\x{BB}\x{BF}]/u', '', $header[0]);
+        }
 
         // Check required headers
         $reqHeaders = ['lead_number', 'project_name', 'flat_name', 'payment_type', 'amount'];
@@ -338,6 +346,15 @@ class PaymentBookingController extends Controller
         $results = [];
         $rowNum = 1;
 
+        $cleanUtf8 = function($str) {
+            if ($str === null || $str === false) return '';
+            $str = str_replace("\xC2\xA0", ' ', (string)$str);
+            if (!mb_check_encoding($str, 'UTF-8')) {
+                $str = mb_convert_encoding($str, 'UTF-8', 'ISO-8859-1');
+            }
+            return trim($str);
+        };
+
         while (($row = fgetcsv($handle, 1000, ",")) !== false) {
             $rowNum++;
             if (count(array_filter($row)) === 0) continue;
@@ -350,52 +367,88 @@ class PaymentBookingController extends Controller
                 continue;
             }
 
-            $data = array_combine($header, $row);
+            $data = array_combine($header, array_map($cleanUtf8, $row));
             $rowIssues = [];
 
-            // 1. Validate payment_type
-            $paymentType = trim($data['payment_type'] ?? '');
-            if ($paymentType !== 'booking_money' && $paymentType !== 'registration') {
-                $rowIssues[] = "payment_type must be either 'booking_money' or 'registration' (found '$paymentType')";
+            // 1. Validate and normalize payment_type
+            $rawPaymentType = strtolower(trim($data['payment_type'] ?? ''));
+            $paymentType = $rawPaymentType;
+            if (in_array($rawPaymentType, ['landshare', 'land_share', 'land_share_amount', 'land share'])) {
+                $paymentType = 'land_share';
+            } elseif (in_array($rawPaymentType, ['development_charge', 'development charge', 'development'])) {
+                $paymentType = 'development_charge';
+            } elseif (in_array($rawPaymentType, ['booking', 'booking_money', 'booking money'])) {
+                $paymentType = 'booking_money';
+            } elseif (in_array($rawPaymentType, ['shop_service_charge', 'shop service charge'])) {
+                $paymentType = 'shop_service_charge';
+            } elseif (in_array($rawPaymentType, ['emi_due_settlement', 'emi due settlement'])) {
+                $paymentType = 'emi_due_settlement';
+            }
+
+            $validPaymentTypes = ['booking_money', 'registration', 'emi', 'land_share', 'development_charge', 'emi_due_settlement', 'shop_service_charge'];
+            if (!in_array($paymentType, $validPaymentTypes)) {
+                $rowIssues[] = "payment_type '$rawPaymentType' is invalid (allowed: " . implode(', ', $validPaymentTypes) . ")";
             }
 
             // 2. Validate lead_number
             $leadPhone = trim($data['lead_number'] ?? '');
-            $leadId = null;
+            $candidateLeadIds = [];
             if (empty($leadPhone)) {
                 $rowIssues[] = "lead_number is empty";
             } else {
                 if (isset($leadsCache[$leadPhone])) {
-                    $leadId = $leadsCache[$leadPhone];
+                    $candidateLeadIds = $leadsCache[$leadPhone];
                 } else {
-                    $stmt = $this->db->prepare("SELECT id FROM leads WHERE (phone = ? OR phone_number = ?) LIMIT 1");
-                    $stmt->bind_param("ss", $leadPhone, $leadPhone);
+                    $cleanPhone = preg_replace('/[^0-9]/', '', $leadPhone);
+                    $suffix = (strlen($cleanPhone) >= 10) ? substr($cleanPhone, -10) : $cleanPhone;
+                    $likePattern = "%" . $suffix;
+                    $stmt = $this->db->prepare("
+                        SELECT id FROM leads 
+                        WHERE (
+                            phone = ? 
+                            OR phone_number = ? 
+                            OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', ''), '(', ''), ')', '') LIKE ? 
+                            OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone_number, '-', ''), ' ', ''), '+', ''), '(', ''), ')', '') LIKE ?
+                        ) AND deleted_at IS NULL
+                    ");
+                    $stmt->bind_param("ssss", $leadPhone, $leadPhone, $likePattern, $likePattern);
                     $stmt->execute();
-                    $res = $stmt->get_result()->fetch_assoc();
-                    if ($res) {
-                        $leadId = $res['id'];
-                        $leadsCache[$leadPhone] = $leadId;
-                    } else {
-                        $rowIssues[] = "Lead not found for phone '$leadPhone'";
+                    $res = $stmt->get_result();
+                    while ($r = $res->fetch_assoc()) {
+                        $candidateLeadIds[] = (int)$r['id'];
                     }
+                    $leadsCache[$leadPhone] = $candidateLeadIds;
+                }
+
+                if (empty($candidateLeadIds)) {
+                    $rowIssues[] = "Lead not found for phone '$leadPhone'";
                 }
             }
 
             // 3. Validate project_name
             $projectName = trim($data['project_name'] ?? '');
+            $cleanProjectName = preg_replace('/\s+/', ' ', $projectName);
             $projectId = null;
             if (empty($projectName)) {
                 $rowIssues[] = "project_name is empty";
             } else {
-                if (isset($projectsCache[$projectName])) {
+                if (isset($projectsCache[$cleanProjectName])) {
+                    $projectId = $projectsCache[$cleanProjectName];
+                } elseif (isset($projectsCache[$projectName])) {
                     $projectId = $projectsCache[$projectName];
                 } else {
-                    $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
-                    $stmt->bind_param("s", $projectName);
+                    $stmt = $this->db->prepare("
+                        SELECT id FROM projects 
+                        WHERE name = ? 
+                           OR REPLACE(REPLACE(name, '  ', ' '), '  ', ' ') = ? 
+                        LIMIT 1
+                    ");
+                    $stmt->bind_param("ss", $projectName, $cleanProjectName);
                     $stmt->execute();
                     $res = $stmt->get_result()->fetch_assoc();
                     if ($res) {
                         $projectId = $res['id'];
+                        $projectsCache[$cleanProjectName] = $projectId;
                         $projectsCache[$projectName] = $projectId;
                     } else {
                         $rowIssues[] = "Project not found '$projectName'";
@@ -405,17 +458,23 @@ class PaymentBookingController extends Controller
 
             // 4. Validate flat_name
             $flatName = trim($data['flat_name'] ?? '');
+            $cleanFlatName = preg_replace('/\s+/', ' ', $flatName);
             $flatId = null;
             if (empty($flatName)) {
                 $rowIssues[] = "flat_name is empty";
             } else {
                 if ($projectId) {
-                    $flatCacheKey = $projectId . '_' . $flatName;
+                    $flatCacheKey = $projectId . '_' . $cleanFlatName;
                     if (isset($flatsCache[$flatCacheKey])) {
                         $flatId = $flatsCache[$flatCacheKey];
                     } else {
-                        $stmt = $this->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? LIMIT 1");
-                        $stmt->bind_param("is", $projectId, $flatName);
+                        $stmt = $this->db->prepare("
+                            SELECT id FROM flats 
+                            WHERE project_id = ? 
+                              AND (flat_name = ? OR REPLACE(REPLACE(flat_name, '  ', ' '), '  ', ' ') = ?) 
+                            LIMIT 1
+                        ");
+                        $stmt->bind_param("iss", $projectId, $flatName, $cleanFlatName);
                         $stmt->execute();
                         $res = $stmt->get_result()->fetch_assoc();
                         if ($res) {
@@ -432,7 +491,26 @@ class PaymentBookingController extends Controller
 
             // 5. Validate booking_id
             $bookingId = null;
-            if ($leadId && $projectId && $flatId) {
+            $leadId = null;
+            if (!empty($candidateLeadIds) && $projectId && $flatId) {
+                if (count($candidateLeadIds) === 1) {
+                    $leadId = $candidateLeadIds[0];
+                } else {
+                    $placeholders = implode(',', array_fill(0, count($candidateLeadIds), '?'));
+                    $types = str_repeat('i', count($candidateLeadIds)) . 'ii';
+                    $query = "SELECT lead_id FROM lead_bookings WHERE lead_id IN ($placeholders) AND project_id = ? AND flat_id = ? LIMIT 1";
+                    $stmt = $this->db->prepare($query);
+                    $bindParams = array_merge($candidateLeadIds, [$projectId, $flatId]);
+                    $stmt->bind_param($types, ...$bindParams);
+                    $stmt->execute();
+                    $bRes = $stmt->get_result()->fetch_assoc();
+                    if ($bRes) {
+                        $leadId = (int)$bRes['lead_id'];
+                    } else {
+                        $leadId = $candidateLeadIds[0];
+                    }
+                }
+
                 $stmt = $this->db->prepare("SELECT id FROM lead_bookings WHERE lead_id = ? AND project_id = ? AND flat_id = ? LIMIT 1");
                 $stmt->bind_param("iii", $leadId, $projectId, $flatId);
                 $stmt->execute();
@@ -445,6 +523,23 @@ class PaymentBookingController extends Controller
             } else {
                 $rowIssues[] = "Cannot lookup booking — missing lead, project, or flat";
             }
+
+            // Log details for debugging
+            $debugLogPath = dirname(dirname(__DIR__)) . '/app/logs/import_debug.log';
+            $logMsg = sprintf(
+                "[%s] VALIDATE - Row: %d | LeadPhone: %s | CleanPhone: %s | Candidates: %s | ProjectID: %s | FlatID: %s | LeadID: %s | BookingID: %s | Issues: %s\n",
+                date('Y-m-d H:i:s'),
+                $rowNum,
+                $leadPhone,
+                preg_replace('/[^0-9]/', '', $leadPhone),
+                json_encode($candidateLeadIds),
+                $projectId ?? 'NULL',
+                $flatId ?? 'NULL',
+                $leadId ?? 'NULL',
+                $bookingId ?? 'NULL',
+                implode(' | ', $rowIssues)
+            );
+            file_put_contents($debugLogPath, $logMsg, FILE_APPEND);
 
             // 6. Validate amount
             $rawAmount = trim($data['amount'] ?? '0');
@@ -491,7 +586,7 @@ class PaymentBookingController extends Controller
         echo json_encode([
             'success' => true,
             'rows' => $results
-        ]);
+        ], JSON_INVALID_UTF8_SUBSTITUTE);
         exit;
     }
 
@@ -512,7 +607,12 @@ class PaymentBookingController extends Controller
             $handle = fopen($file['tmp_name'], "r");
             if ($handle !== false) {
                 $header = fgetcsv($handle, 1000, ",");
-                $header = array_map('trim', $header);
+                if ($header) {
+                    $header = array_map('trim', $header);
+                    if (!empty($header[0])) {
+                        $header[0] = preg_replace('/[\x{EF}\x{BB}\x{BF}]/u', '', $header[0]);
+                    }
+                }
 
                 $successCount = 0;
                 $errorCount = 0;
@@ -524,6 +624,15 @@ class PaymentBookingController extends Controller
                 $errors = [];
                 $rowNum = 1;
 
+                $cleanUtf8 = function($str) {
+                    if ($str === null || $str === false) return '';
+                    $str = str_replace("\xC2\xA0", ' ', (string)$str);
+                    if (!mb_check_encoding($str, 'UTF-8')) {
+                        $str = mb_convert_encoding($str, 'UTF-8', 'ISO-8859-1');
+                    }
+                    return trim($str);
+                };
+
                 while (($row = fgetcsv($handle, 1000, ",")) !== false) {
                     $rowNum++;
                     if (count(array_filter($row)) === 0) continue;
@@ -532,52 +641,88 @@ class PaymentBookingController extends Controller
                         continue;
                     }
 
-                    $data = array_combine($header, $row);
+                    $data = array_combine($header, array_map($cleanUtf8, $row));
                     $rowIssues = []; // collect all issues for this row before skipping
 
-                    // Validate payment_type
-                    $paymentType = trim($data['payment_type'] ?? '');
-                    if ($paymentType !== 'booking_money' && $paymentType !== 'registration') {
-                        $rowIssues[] = "payment_type must be either 'booking_money' or 'registration' (found '$paymentType')";
+                    // 1. Validate and normalize payment_type
+                    $rawPaymentType = strtolower(trim($data['payment_type'] ?? ''));
+                    $paymentType = $rawPaymentType;
+                    if (in_array($rawPaymentType, ['landshare', 'land_share', 'land_share_amount', 'land share'])) {
+                        $paymentType = 'land_share';
+                    } elseif (in_array($rawPaymentType, ['development_charge', 'development charge', 'development'])) {
+                        $paymentType = 'development_charge';
+                    } elseif (in_array($rawPaymentType, ['booking', 'booking_money', 'booking money'])) {
+                        $paymentType = 'booking_money';
+                    } elseif (in_array($rawPaymentType, ['shop_service_charge', 'shop service charge'])) {
+                        $paymentType = 'shop_service_charge';
+                    } elseif (in_array($rawPaymentType, ['emi_due_settlement', 'emi due settlement'])) {
+                        $paymentType = 'emi_due_settlement';
+                    }
+
+                    $validPaymentTypes = ['booking_money', 'registration', 'emi', 'land_share', 'development_charge', 'emi_due_settlement', 'shop_service_charge'];
+                    if (!in_array($paymentType, $validPaymentTypes)) {
+                        $rowIssues[] = "payment_type '$rawPaymentType' is invalid (allowed: " . implode(', ', $validPaymentTypes) . ")";
                     }
                     
                     // 1. Resolve lead_id
                     $leadPhone = trim($data['lead_number'] ?? '');
-                    $leadId = null;
+                    $candidateLeadIds = [];
                     if (empty($leadPhone)) {
                         $rowIssues[] = "lead_number is empty";
                     } else {
                         if (isset($leadsCache[$leadPhone])) {
-                            $leadId = $leadsCache[$leadPhone];
+                            $candidateLeadIds = $leadsCache[$leadPhone];
                         } else {
-                            $stmt = $this->db->prepare("SELECT id FROM leads WHERE (phone = ? OR phone_number = ?) LIMIT 1");
-                            $stmt->bind_param("ss", $leadPhone, $leadPhone);
+                            $cleanPhone = preg_replace('/[^0-9]/', '', $leadPhone);
+                            $suffix = (strlen($cleanPhone) >= 10) ? substr($cleanPhone, -10) : $cleanPhone;
+                            $likePattern = "%" . $suffix;
+                            $stmt = $this->db->prepare("
+                                SELECT id FROM leads 
+                                WHERE (
+                                    phone = ? 
+                                    OR phone_number = ? 
+                                    OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', ''), '(', ''), ')', '') LIKE ? 
+                                    OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone_number, '-', ''), ' ', ''), '+', ''), '(', ''), ')', '') LIKE ?
+                                ) AND deleted_at IS NULL
+                            ");
+                            $stmt->bind_param("ssss", $leadPhone, $leadPhone, $likePattern, $likePattern);
                             $stmt->execute();
-                            $res = $stmt->get_result()->fetch_assoc();
-                            if ($res) {
-                                $leadId = $res['id'];
-                                $leadsCache[$leadPhone] = $leadId;
-                            } else {
-                                $rowIssues[] = "Lead not found for phone '$leadPhone'";
+                            $res = $stmt->get_result();
+                            while ($r = $res->fetch_assoc()) {
+                                $candidateLeadIds[] = (int)$r['id'];
                             }
+                            $leadsCache[$leadPhone] = $candidateLeadIds;
+                        }
+
+                        if (empty($candidateLeadIds)) {
+                            $rowIssues[] = "Lead not found for phone '$leadPhone'";
                         }
                     }
 
                     // 2. Resolve project_id
                     $projectName = trim($data['project_name'] ?? '');
+                    $cleanProjectName = preg_replace('/\s+/', ' ', $projectName);
                     $projectId = null;
                     if (empty($projectName)) {
                         $rowIssues[] = "project_name is empty";
                     } else {
-                        if (isset($projectsCache[$projectName])) {
+                        if (isset($projectsCache[$cleanProjectName])) {
+                            $projectId = $projectsCache[$cleanProjectName];
+                        } elseif (isset($projectsCache[$projectName])) {
                             $projectId = $projectsCache[$projectName];
                         } else {
-                            $stmt = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
-                            $stmt->bind_param("s", $projectName);
+                            $stmt = $this->db->prepare("
+                                SELECT id FROM projects 
+                                WHERE name = ? 
+                                   OR REPLACE(REPLACE(name, '  ', ' '), '  ', ' ') = ? 
+                                LIMIT 1
+                            ");
+                            $stmt->bind_param("ss", $projectName, $cleanProjectName);
                             $stmt->execute();
                             $res = $stmt->get_result()->fetch_assoc();
                             if ($res) {
                                 $projectId = $res['id'];
+                                $projectsCache[$cleanProjectName] = $projectId;
                                 $projectsCache[$projectName] = $projectId;
                             } else {
                                 $rowIssues[] = "Project not found '$projectName'";
@@ -587,17 +732,23 @@ class PaymentBookingController extends Controller
 
                     // 3. Resolve flat_id
                     $flatName = trim($data['flat_name'] ?? '');
+                    $cleanFlatName = preg_replace('/\s+/', ' ', $flatName);
                     $flatId = null;
                     if (empty($flatName)) {
                         $rowIssues[] = "flat_name is empty";
                     } else {
                         if ($projectId) {
-                            $flatCacheKey = $projectId . '_' . $flatName;
+                            $flatCacheKey = $projectId . '_' . $cleanFlatName;
                             if (isset($flatsCache[$flatCacheKey])) {
                                 $flatId = $flatsCache[$flatCacheKey];
                             } else {
-                                $stmt = $this->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? LIMIT 1");
-                                $stmt->bind_param("is", $projectId, $flatName);
+                                $stmt = $this->db->prepare("
+                                    SELECT id FROM flats 
+                                    WHERE project_id = ? 
+                                      AND (flat_name = ? OR REPLACE(REPLACE(flat_name, '  ', ' '), '  ', ' ') = ?) 
+                                    LIMIT 1
+                                ");
+                                $stmt->bind_param("iss", $projectId, $flatName, $cleanFlatName);
                                 $stmt->execute();
                                 $res = $stmt->get_result()->fetch_assoc();
                                 if ($res) {
@@ -614,7 +765,26 @@ class PaymentBookingController extends Controller
 
                     // 4. Resolve booking_id
                     $bookingId = null;
-                    if ($leadId && $projectId && $flatId) {
+                    $leadId = null;
+                    if (!empty($candidateLeadIds) && $projectId && $flatId) {
+                        if (count($candidateLeadIds) === 1) {
+                            $leadId = $candidateLeadIds[0];
+                        } else {
+                            $placeholders = implode(',', array_fill(0, count($candidateLeadIds), '?'));
+                            $types = str_repeat('i', count($candidateLeadIds)) . 'ii';
+                            $query = "SELECT lead_id FROM lead_bookings WHERE lead_id IN ($placeholders) AND project_id = ? AND flat_id = ? LIMIT 1";
+                            $stmt = $this->db->prepare($query);
+                            $bindParams = array_merge($candidateLeadIds, [$projectId, $flatId]);
+                            $stmt->bind_param($types, ...$bindParams);
+                            $stmt->execute();
+                            $bRes = $stmt->get_result()->fetch_assoc();
+                            if ($bRes) {
+                                $leadId = (int)$bRes['lead_id'];
+                            } else {
+                                $leadId = $candidateLeadIds[0];
+                            }
+                        }
+
                         $stmt = $this->db->prepare("SELECT id FROM lead_bookings WHERE lead_id = ? AND project_id = ? AND flat_id = ? LIMIT 1");
                         $stmt->bind_param("iii", $leadId, $projectId, $flatId);
                         $stmt->execute();
@@ -628,6 +798,23 @@ class PaymentBookingController extends Controller
                     } else {
                         $rowIssues[] = "Cannot lookup booking — missing lead, project, or flat";
                     }
+
+                    // Log details for debugging
+                    $debugLogPath = dirname(dirname(__DIR__)) . '/app/logs/import_debug.log';
+                    $logMsg = sprintf(
+                        "[%s] IMPORT - Row: %d | LeadPhone: %s | CleanPhone: %s | Candidates: %s | ProjectID: %s | FlatID: %s | LeadID: %s | BookingID: %s | Issues: %s\n",
+                        date('Y-m-d H:i:s'),
+                        $rowNum,
+                        $leadPhone,
+                        preg_replace('/[^0-9]/', '', $leadPhone),
+                        json_encode($candidateLeadIds),
+                        $projectId ?? 'NULL',
+                        $flatId ?? 'NULL',
+                        $leadId ?? 'NULL',
+                        $bookingId ?? 'NULL',
+                        implode(' | ', $rowIssues)
+                    );
+                    file_put_contents($debugLogPath, $logMsg, FILE_APPEND);
 
                     // Validate & Normalize payment_method
                     $rawMethod = trim($data['payment_method'] ?? '');
@@ -669,7 +856,7 @@ class PaymentBookingController extends Controller
 
                     $paymentData = [
                         'booking_id' => $bookingId,
-                        'payment_type' => $data['payment_type'] ?? '',
+                        'payment_type' => $paymentType,
                         'amount' => $cleanAmount,
                         'payment_method' => $cleanMethod,
                         'payment_status' => 'pending', // Will be updated

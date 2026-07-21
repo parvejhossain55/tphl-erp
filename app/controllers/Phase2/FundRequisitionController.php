@@ -21,7 +21,7 @@ class FundRequisitionController extends Controller {
 
         // Management (role 3), Admin (role 1), Accounts (role 6) see everything
         $where = "1=1";
-        if (!in_array($roleId, [1, 3, 6])) {
+        if (!in_array($roleId, [1, 3, 6, 17, 20, 22])) {
             // Start with: own requisitions
             $conditions = ["fr.requested_by = $userId"];
 
@@ -89,7 +89,7 @@ class FundRequisitionController extends Controller {
 
         // Projects for create form — restrict to assigned projects for site engineers
         $assignedIds = isset($assignedIds) ? $assignedIds : $this->getAssignedProjectIds($userId);
-        if (!in_array($roleId, [1, 3, 6]) && !empty($assignedIds)) {
+        if (!in_array($roleId, [1, 3, 6, 17, 20, 22]) && !empty($assignedIds)) {
             $idList = implode(',', $assignedIds);
             $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND id IN ($idList) ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
         } else {
@@ -185,7 +185,7 @@ class FundRequisitionController extends Controller {
         $balance    = max(0, (float)$req['amount'] - $totalSpent);
 
         // Projects dropdown — restrict for restricted roles
-        if (!in_array($sessionRoleId, [1, 3, 6])) {
+        if (!in_array($sessionRoleId, [1, 3, 6, 17, 20, 22])) {
             $assignedIds = $this->getAssignedProjectIds($sessionUserId);
             if (!empty($assignedIds)) {
                 $idList   = implode(',', $assignedIds);
@@ -482,7 +482,7 @@ class FundRequisitionController extends Controller {
         // For restricted roles, only show their assigned projects in the dropdown
         $sessionUserId  = (int)$_SESSION['user']['id'];
         $sessionRoleId  = (int)$_SESSION['user']['role_id'];
-        if (!in_array($sessionRoleId, [1, 3, 6])) {
+        if (!in_array($sessionRoleId, [1, 3, 6, 17, 20, 22])) {
             $assignedIds = $this->getAssignedProjectIds($sessionUserId);
             if (!empty($assignedIds)) {
                 $idList   = implode(',', $assignedIds);

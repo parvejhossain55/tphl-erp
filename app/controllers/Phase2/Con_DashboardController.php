@@ -551,6 +551,19 @@ class Con_DashboardController extends Controller
         $tStmt->execute();
         $thisMonthTargets = $tStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
+        // Calculate exact total of pending approval items for current user view
+        $stats['pending_approvals'] = count($prsForApproval ?? [])
+            + count($pendingWorkOrders ?? [])
+            + count($pendingContractorBills ?? [])
+            + count($pendingAlerts ?? [])
+            + count($pendingLaborRequisitions ?? [])
+            + count($pendingWeeklyReportsPM ?? [])
+            + count($pendingBoqs ?? [])
+            + count($pendingPettyCash ?? [])
+            + count($pendingInitialBudgets ?? [])
+            + count($pendingLandRequisitions ?? [])
+            + count($pendingBudgetExtends ?? []);
+
         $this->view('phase2/dashboard/cons-dashboard', [
             'current_route'           => 'con-dashboard',
             'page_title'              => 'Construction Dashboard',
@@ -597,8 +610,9 @@ class Con_DashboardController extends Controller
     {
         $userId = $_SESSION['user']['id'] ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
-        if (in_array($roleId, [1, 3, 22])) return '1=1';
-        return "({$alias}.pm_id = {$userId} OR {$alias}.site_engineer_id = {$userId} OR {$alias}.landman_id = {$userId} OR {$alias}.struct_engineer_id = {$userId} OR {$alias}.operation_head_id = {$userId} OR {$alias}.draftsman_id = {$userId} OR {$alias}.architect_id = {$userId} OR {$alias}.estimator_id = {$userId} OR {$alias}.qc_id = {$userId} OR {$alias}.operator_id = {$userId} OR {$alias}.created_by = {$userId})";
+        $baseFilter = "{$alias}.under_construction = 1";
+        if (in_array($roleId, [1, 3, 20, 22])) return $baseFilter;
+        return "{$baseFilter} AND ({$alias}.pm_id = {$userId} OR {$alias}.site_engineer_id = {$userId} OR {$alias}.landman_id = {$userId} OR {$alias}.struct_engineer_id = {$userId} OR {$alias}.operation_head_id = {$userId} OR {$alias}.draftsman_id = {$userId} OR {$alias}.architect_id = {$userId} OR {$alias}.estimator_id = {$userId} OR {$alias}.qc_id = {$userId} OR {$alias}.operator_id = {$userId} OR {$alias}.created_by = {$userId})";
     }
 
     private function getDashboardStats($projectId = null): array
@@ -657,8 +671,6 @@ class Con_DashboardController extends Controller
             $prQueryPart = " UNION ALL SELECT id FROM purchase_requests WHERE status = 'Submitted' AND approved_by_id IS NULL" . ($projectId ? " AND project_id = $projectId" : "");
         } elseif ($userRole === 20) {
             $prQueryPart = " UNION ALL SELECT id FROM purchase_requests WHERE status = 'Submitted' AND approved_by_id IS NOT NULL AND qc_approved_by_id IS NULL" . ($projectId ? " AND project_id = $projectId" : "");
-        } elseif ($userRole === 3) {
-            $prQueryPart = " UNION ALL SELECT id FROM purchase_requests WHERE status = 'Submitted' AND approved_by_id IS NOT NULL AND qc_approved_by_id IS NOT NULL AND mgmt_approved_by_id IS NULL" . ($projectId ? " AND project_id = $projectId" : "");
         }
 
         if ($projectId) {
@@ -875,8 +887,6 @@ class Con_DashboardController extends Controller
             $prUnion = " UNION ALL SELECT 'Purchase Request' AS type, CONCAT('PR #', id) AS description, 0 AS amount, project_id, created_at, CONCAT('/con-purchase-request/', id) AS url FROM purchase_requests WHERE status = 'Submitted' AND approved_by_id IS NULL" . ($projectId ? " AND project_id = $projectId" : "");
         } elseif ($userRole === 20) {
             $prUnion = " UNION ALL SELECT 'Purchase Request' AS type, CONCAT('PR #', id) AS description, 0 AS amount, project_id, created_at, CONCAT('/con-purchase-request/', id) AS url FROM purchase_requests WHERE status = 'Submitted' AND approved_by_id IS NOT NULL AND qc_approved_by_id IS NULL" . ($projectId ? " AND project_id = $projectId" : "");
-        } elseif ($userRole === 3) {
-            $prUnion = " UNION ALL SELECT 'Purchase Request' AS type, CONCAT('PR #', id) AS description, 0 AS amount, project_id, created_at, CONCAT('/con-purchase-request/', id) AS url FROM purchase_requests WHERE status = 'Submitted' AND approved_by_id IS NOT NULL AND qc_approved_by_id IS NOT NULL AND mgmt_approved_by_id IS NULL" . ($projectId ? " AND project_id = $projectId" : "");
         }
 
         if ($projectId) {

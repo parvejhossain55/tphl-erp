@@ -46,10 +46,10 @@ class Con_LaborRequisitionController extends Controller
         // SE sees only their assigned projects in filter dropdown; others see all
         if ($this->isSiteEngineer() && $this->userRole !== 1) {
             $rPrj = $this->db->query(
-                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND site_engineer_id = {$this->userId} ORDER BY name"
+                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 AND site_engineer_id = {$this->userId} ORDER BY name"
             );
         } else {
-            $rPrj = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
+            $rPrj = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name");
         }
         $projects = $rPrj ? $rPrj->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -77,11 +77,11 @@ class Con_LaborRequisitionController extends Controller
         // SE sees only their assigned projects; PM/Mgmt/Admin see all
         if ($this->isSiteEngineer() && $this->userRole !== 1) {
             $rProjects = $this->db->query(
-                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND site_engineer_id = {$this->userId} ORDER BY name"
+                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 AND site_engineer_id = {$this->userId} ORDER BY name"
             );
         } else {
             $rProjects = $this->db->query(
-                "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name"
+                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name"
             );
         }
         $projects = $rProjects ? $rProjects->fetch_all(MYSQLI_ASSOC) : [];

@@ -28,7 +28,7 @@ if ($current_server == 1) {
         // Tipsoi API Configuration
         "tipsoi_base_url" => "https://app.tipsoi.ai/inovace-client/api/v1/",
         "tipsoi_email" => "info@dpremiumhomes.com",
-        "tipsoi_password" => "Tphl2025#",
+        "tipsoi_password" => "HRD@tphl@1274",
 
         // Freshsales CRM Integration Configuration
         "freshsales_webhook_secret" => "TphlFwSecret2026@#",
@@ -64,7 +64,7 @@ if ($current_server == 2) {
         // Tipsoi API Configuration
          "tipsoi_base_url" => "https://app.tipsoi.ai/inovace-client/api/v1/",
         "tipsoi_email" => "info@dpremiumhomes.com",
-        "tipsoi_password" => "Tphl2025#",
+        "tipsoi_password" => "HRD@tphl@1274",
         // Freshsales CRM Integration Configuration
         "freshsales_webhook_secret" => "TphlFwSecret2026@#",
         "freshsales_api_key" => "ACw9JyfiG2qLPQdN9AhUhg",
@@ -95,7 +95,7 @@ if ($current_server == 3) {
         // Tipsoi API Configuration
         "tipsoi_base_url" => "https://app.tipsoi.ai/inovace-client/api/v1/",
         "tipsoi_email" => "info@dpremiumhomes.com",
-        "tipsoi_password" => "Tphl2025#",
+        "tipsoi_password" => "HRD@tphl@1274",
 
         // Freshsales CRM Integration Configuration
         "freshsales_webhook_secret" => "TphlFwSecret2026@#",

@@ -19,8 +19,8 @@ class Con_ProgressReportController extends Controller
         }
 
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        // Authorize roles: 1 (Super Admin), 3 (Admin), 12 (Site Engineer), 15 (Project Manager), 22 (PM Head)
-        if (!in_array($roleId, [1, 3, 12, 15, 22])) {
+        // Authorize roles: 1 (Super Admin), 3 (Admin), 12 (Site Engineer), 15 (Project Manager), 20 (Operation Head), 22 (PM Head)
+        if (!in_array($roleId, [1, 3, 12, 15, 20, 22])) {
             header("Location: " . $GLOBALS['base_url'] . "/home");
             exit;
         }
@@ -92,26 +92,35 @@ class Con_ProgressReportController extends Controller
         $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
         $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('n');
 
-        // Fetch site engineers for filter option (for role_id 1, 3, 15, 22)
+        // Fetch site engineers for filter option (for role_id 1, 3, 15, 20, 22)
         $selSiteEngineerId = 0;
         $siteEngineersList = [];
-        if (in_array($roleId, [1, 3, 15, 22])) {
+        if (in_array($roleId, [1, 3, 15, 20, 22])) {
             $selSiteEngineerId = isset($_GET['site_engineer_id']) ? (int)$_GET['site_engineer_id'] : 0;
             $engSql = "SELECT id, full_name FROM users WHERE role_id = 12 ORDER BY full_name ASC";
             $engRes = $this->db->query($engSql);
             $siteEngineersList = $engRes ? $engRes->fetch_all(MYSQLI_ASSOC) : [];
         }
 
-        // 1. Fetch authorized projects for dropdown list
-        $projectSql = "SELECT id, name FROM projects WHERE deleted_at IS NULL";
-        if ($roleId === 12) {
-            $projectSql .= " AND site_engineer_id = " . $userId;
+        // 1. Fetch authorized projects for dropdown list (only under_construction = 1)
+        $projectSql = "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1";
+        if (in_array($roleId, [1, 2, 3, 17, 20, 22])) {
+            // Privileged roles see all under_construction = 1 projects
+        } elseif ($roleId === 12) {
+            $projectSql .= " AND (site_engineer_id = {$userId} OR created_by = {$userId})";
         } elseif ($roleId === 15) {
-            $projectSql .= " AND pm_id = " . $userId;
+            $projectSql .= " AND (pm_id = {$userId} OR created_by = {$userId})";
         }
         $projectSql .= " ORDER BY name ASC";
         $projectsRes = $this->db->query($projectSql);
         $projectsList = $projectsRes ? $projectsRes->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Fallback: If no projects specifically assigned to user, fetch all under_construction = 1 projects
+        if (empty($projectsList)) {
+            $fallbackSql = "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name ASC";
+            $fallbackRes = $this->db->query($fallbackSql);
+            $projectsList = $fallbackRes ? $fallbackRes->fetch_all(MYSQLI_ASSOC) : [];
+        }
 
         // Build list of project IDs the user has access to
         $authorizedProjectIds = array_column($projectsList, 'id');

@@ -235,11 +235,33 @@ class Con_VendorPaymentRequestController extends Controller
 
         $requests = $this->model->getAll($filterUserId, $assignedProjectIds);
 
+        // Fetch QC Audited/Approved POs (having qc_approved_by_id)
+        $qcApprovedPOs = [];
+        $stmtPO = $this->db->prepare("
+            SELECT po.id, po.status, po.created_at,
+                   pr.project_id, p.name AS project_name,
+                   v.id AS vendor_id, v.name AS vendor_name, v.company_name AS vendor_company,
+                   (SELECT COALESCE(SUM(quantity * unit_price), 0) FROM purchase_order_items WHERE purchase_order_id = po.id) AS total_amount,
+                   (SELECT COALESCE(SUM(vpr.net_payable_amount), 0) FROM vendor_payment_requests vpr WHERE vpr.purchase_order_id = po.id AND vpr.status IN ('Approved','Paid','Partially_Paid','Fully_Paid')) AS total_paid
+            FROM purchase_orders po
+            JOIN purchase_requests pr ON pr.id = po.request_id
+            LEFT JOIN projects p ON p.id = pr.project_id
+            LEFT JOIN vendors v ON v.id = po.vendor_id
+            WHERE po.qc_approved_by_id IS NOT NULL 
+              AND po.status != 'Cancelled'
+            ORDER BY po.id DESC
+        ");
+        if ($stmtPO) {
+            $stmtPO->execute();
+            $qcApprovedPOs = $stmtPO->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
         $this->view('phase2/vendor-payment-requests/payment-lists', [
-            'current_route' => 'con-vendor-payment-requests',
-            'page_title'    => 'Vendor Payment Requests',
-            'requests'      => $requests,
-            'userRole'      => $this->userRole,
+            'current_route'   => 'con-vendor-payment-requests',
+            'page_title'      => 'Vendor Payment Requests',
+            'requests'        => $requests,
+            'qc_approved_pos' => $qcApprovedPOs,
+            'userRole'        => $this->userRole,
         ]);
     }
 
@@ -254,9 +276,8 @@ class Con_VendorPaymentRequestController extends Controller
         $userId = (int)$this->userId;
         $roleId = (int)$this->userRole;
 
-        // Payment create — show all active projects regardless of role
-        // (the created payment will be reviewed by management before approval)
-        $projectStmt = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
+        // Payment create — show under construction projects
+        $projectStmt = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name");
         $projects = ($projectStmt instanceof \mysqli_result)
             ? $projectStmt->fetch_all(MYSQLI_ASSOC)
             : [];

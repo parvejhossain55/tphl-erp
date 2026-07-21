@@ -40,7 +40,8 @@ class Con_PurchaseRequestController extends Controller
 
         // Filter for Purchase Executive
         $executiveId = ($userRole === 23) ? $userId : null;
-        $requests = $this->prModel->getAll($executiveId);
+        $pmId        = ($userRole === 15) ? $userId : null; // Scope to assigned Project Manager
+        $requests    = $this->prModel->getAll($executiveId, $pmId);
 
         // Fetch Purchase Executives (Role ID 23) for assignment dropdown
         $executives = [];
@@ -79,7 +80,7 @@ class Con_PurchaseRequestController extends Controller
         // ── Project list based on role ────────────────────────────────────────
         if (in_array($userRole, [1, 3, 17, 22])) {
             // Admin / Super Admin / Purchase Team Leader / PM Head → all projects
-            $pResult  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
+            $pResult  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name ASC");
             $projects = $pResult ? $pResult->fetch_all(MYSQLI_ASSOC) : [];
 
         } elseif ($userRole === 23) {
@@ -433,6 +434,38 @@ class Con_PurchaseRequestController extends Controller
             }
         }
 
+        // Fetch project manager details (assigned to project)
+        $assignedPm = null;
+        if (!empty($pr['project_id'])) {
+            $stmtPm = $this->db->prepare("
+                SELECT u.id, u.full_name, d.name AS designation 
+                FROM projects p
+                JOIN users u ON p.pm_id = u.id
+                LEFT JOIN designations d ON u.designation_id = d.id
+                WHERE p.id = ?
+            ");
+            if ($stmtPm) {
+                $stmtPm->bind_param('i', $pr['project_id']);
+                $stmtPm->execute();
+                $assignedPm = $stmtPm->get_result()->fetch_assoc();
+                $stmtPm->close();
+            }
+        }
+
+        // Fetch Operation Head details (Role ID 20)
+        $operationHeads = [];
+        $stmtOh = $this->db->prepare("
+            SELECT u.id, u.full_name, d.name AS designation 
+            FROM users u
+            LEFT JOIN designations d ON u.designation_id = d.id
+            WHERE u.role_id = 20 AND u.deleted_at IS NULL
+        ");
+        if ($stmtOh) {
+            $stmtOh->execute();
+            $operationHeads = $stmtOh->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmtOh->close();
+        }
+
         $this->view('phase2/purchase-requests/show-purchase-request', [
             'current_route' => 'con-purchase-requests',
             'page_title'    => 'Purchase Request #' . $id,
@@ -441,6 +474,8 @@ class Con_PurchaseRequestController extends Controller
             'quotations'    => $quotations,
             'hasCST'        => $hasCST,
             'nextStepInfo'  => $nextStepInfo,
+            'assignedPm'    => $assignedPm,
+            'operationHeads'=> $operationHeads,
         ]);
     }
 
@@ -482,8 +517,21 @@ class Con_PurchaseRequestController extends Controller
                 exit;
             }
             if (empty($pr['approved_by_id'])) {
-                if (!in_array($userRole, [15, 22])) {
-                    setError('You do not have permission to reject at Stage 1.');
+                // Fetch assigned PM for this project
+                $assignedPmId = null;
+                $stmtProject = $this->db->prepare("SELECT pm_id FROM projects WHERE id = ?");
+                if ($stmtProject) {
+                    $stmtProject->bind_param('i', $pr['project_id']);
+                    $stmtProject->execute();
+                    $resProj = $stmtProject->get_result()->fetch_assoc();
+                    if ($resProj) {
+                        $assignedPmId = $resProj['pm_id'] !== null ? (int)$resProj['pm_id'] : null;
+                    }
+                    $stmtProject->close();
+                }
+
+                if (!in_array($userRole, [15, 22]) || ($userRole === 15 && $userId !== $assignedPmId)) {
+                    setError('You do not have permission to reject at Stage 1. Only the assigned Project Manager for this project can reject.');
                     header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
                     exit;
                 }
@@ -522,8 +570,21 @@ class Con_PurchaseRequestController extends Controller
         } else { // status === 'Approved' (which means approving current stage)
             // Stage 1: PM Approval (roles 15, 22)
             if (empty($pr['approved_by_id'])) {
-                if (!in_array($userRole, [15, 22])) {
-                    setError('You do not have permission to perform Stage 1 (PM) Approval.');
+                // Fetch assigned PM for this project
+                $assignedPmId = null;
+                $stmtProject = $this->db->prepare("SELECT pm_id FROM projects WHERE id = ?");
+                if ($stmtProject) {
+                    $stmtProject->bind_param('i', $pr['project_id']);
+                    $stmtProject->execute();
+                    $resProj = $stmtProject->get_result()->fetch_assoc();
+                    if ($resProj) {
+                        $assignedPmId = $resProj['pm_id'] !== null ? (int)$resProj['pm_id'] : null;
+                    }
+                    $stmtProject->close();
+                }
+
+                if (!in_array($userRole, [15, 22]) || ($userRole === 15 && $userId !== $assignedPmId)) {
+                    setError('You do not have permission to perform Stage 1 (PM) Approval. Only the assigned Project Manager for this project can approve.');
                     header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
                     exit;
                 }
@@ -533,7 +594,7 @@ class Con_PurchaseRequestController extends Controller
                 $stmt->bind_param('isi', $userId, $note, $id);
                 $successMsg = "Purchase Request approved by PM. Awaiting Stage 2 (Operation Head) approval.";
             }
-            // Stage 2: Operation Approval (role 20)
+            // Stage 2: Operation Approval (role 20) — Final Approval stage
             elseif (empty($pr['qc_approved_by_id'])) {
                 if ($userRole != 20) {
                     setError('You do not have permission to perform Stage 2 (Operation) Approval.');
@@ -541,10 +602,10 @@ class Con_PurchaseRequestController extends Controller
                     exit;
                 }
                 $stmt = $this->db->prepare(
-                    "UPDATE purchase_requests SET qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ? WHERE id = ?"
+                    "UPDATE purchase_requests SET status = 'Approved', qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ? WHERE id = ?"
                 );
                 $stmt->bind_param('isi', $userId, $note, $id);
-                $successMsg = "Purchase Request approved by Operation Head. Awaiting Stage 3 (Management) final approval.";
+                $successMsg = "Purchase Request approved by Operation Head.";
             }
             // Stage 3: Management Approval (role 3)
             elseif (empty($pr['mgmt_approved_by_id'])) {

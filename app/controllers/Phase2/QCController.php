@@ -40,8 +40,9 @@ class QCController extends Controller
     {
         $userId = $_SESSION['user']['id'] ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
-        if (in_array($roleId, [1, 3, 13, 22, 24, 25])) return '1=1';
-        return "({$alias}.pm_id = {$userId} OR {$alias}.site_engineer_id = {$userId} OR {$alias}.landman_id = {$userId} OR {$alias}.struct_engineer_id = {$userId} OR {$alias}.operation_head_id = {$userId} OR {$alias}.draftsman_id = {$userId} OR {$alias}.architect_id = {$userId} OR {$alias}.estimator_id = {$userId} OR {$alias}.qc_id = {$userId} OR {$alias}.operator_id = {$userId} OR {$alias}.created_by = {$userId})";
+        $baseFilter = "{$alias}.under_construction = 1";
+        if (in_array($roleId, [1, 3, 13, 20, 22, 24, 25])) return $baseFilter;
+        return "{$baseFilter} AND ({$alias}.pm_id = {$userId} OR {$alias}.site_engineer_id = {$userId} OR {$alias}.landman_id = {$userId} OR {$alias}.struct_engineer_id = {$userId} OR {$alias}.operation_head_id = {$userId} OR {$alias}.draftsman_id = {$userId} OR {$alias}.architect_id = {$userId} OR {$alias}.estimator_id = {$userId} OR {$alias}.qc_id = {$userId} OR {$alias}.operator_id = {$userId} OR {$alias}.created_by = {$userId})";
     }
 
     public function index()
@@ -80,11 +81,11 @@ class QCController extends Controller
         ");
         $siteWorkTests = $rSiteTests ? $rSiteTests->fetch_all(MYSQLI_ASSOC) : [];
 
-        // ── KPI 1: Assigned Projects (only QC-assigned) ──────────────────
+        // ── KPI 1: Assigned Projects (only QC-assigned under construction) ──────────────────
         if (in_array($roleId, [1, 3, 15, 22])) {
-            $rAssigned = $this->db->query("SELECT COUNT(*) AS c FROM projects WHERE deleted_at IS NULL");
+            $rAssigned = $this->db->query("SELECT COUNT(*) AS c FROM projects WHERE deleted_at IS NULL AND under_construction = 1");
         } else {
-            $stmt = $this->db->prepare("SELECT COUNT(*) AS c FROM projects WHERE qc_id = ? AND deleted_at IS NULL");
+            $stmt = $this->db->prepare("SELECT COUNT(*) AS c FROM projects WHERE qc_id = ? AND deleted_at IS NULL AND under_construction = 1");
             $stmt->bind_param('i', $userId);
             $stmt->execute();
             $rAssigned = $stmt->get_result();
@@ -535,18 +536,12 @@ class QCController extends Controller
         // Fetch all material receivings (all statuses, for challan dropdown)
         $receivings = $this->materialReceivingModel->getAll();
 
-        // Fetch projects for "Other QC Test" — QC users see qc_id assigned projects
-        // Admins/Directors/QC Heads see all projects
-        if (in_array($roleId, [1, 3, 15, 22])) {
-            $projectsQuery = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
+        if (in_array($roleId, [1, 3, 15, 22, 13, 24, 25])) {
+            $projectsQuery = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name");
         } else {
             // For QC role: show projects assigned to this user as qc_id
-            // Also include any project they are otherwise assigned to
-            $projectsQuery = $this->db->query("
+            $stmtP = $this->db->prepare("
                 SELECT id, name FROM projects
-                WHERE deleted_at IS NULL
-                  AND (
-                    qc_id = $userId
                     OR pm_id = $userId
                     OR site_engineer_id = $userId
                     OR struct_engineer_id = $userId

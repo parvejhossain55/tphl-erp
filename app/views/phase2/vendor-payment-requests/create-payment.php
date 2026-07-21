@@ -315,6 +315,17 @@ document.getElementById('projectSelect').addEventListener('change', function () 
             renderProjectPoList(data);
             listPanel.classList.remove('d-none');
             rightSide.classList.remove('d-none');
+
+            // Auto-select PO if po_id parameter is present in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const paramPO = urlParams.get('po_id');
+            if (paramPO) {
+                const poSelect = document.getElementById('poSelect');
+                if (poSelect.querySelector(`option[value="${paramPO}"]`)) {
+                    poSelect.value = paramPO;
+                    poSelect.dispatchEvent(new Event('change'));
+                }
+            }
         })
         .catch(() => {
             loader.style.display = 'none';
@@ -508,7 +519,7 @@ function fetchVendorReceivable() {
                 <div class="d-flex gap-3 flex-wrap">
                     <span><strong style="color:#065f46">Net Received:</strong> ৳ ${parseFloat(d.net_receivable).toLocaleString('en-BD', {minimumFractionDigits:2})}</span>
                     <span class="ps-2"><strong style="color:#1d4ed8">Already Paid:</strong> ৳ ${parseFloat(d.total_paid).toLocaleString('en-BD', {minimumFractionDigits:2})}</span>
-                    <span><strong style="color:#dc2626">Due:</strong> ৳ ${parseFloat(d.due_amount).toLocaleString('en-BD', {minimumFractionDigits:2})}</span>
+                    <span><strong style="color:#dc2626" class="ps-2">Due:</strong> ৳ ${parseFloat(d.due_amount).toLocaleString('en-BD', {minimumFractionDigits:2})}</span>
                 </div>`;
 
             calculateNet();
@@ -526,4 +537,24 @@ document.getElementById('invoiceAmt').addEventListener('input', calculateNet);
 
 // Init
 togglePaymentTypeUI();
+
+// Auto-fill from URL parameters if present
+const urlParams = new URLSearchParams(window.location.search);
+const paramProj = urlParams.get('project_id');
+const paramVend = urlParams.get('vendor_id');
+
+if (paramProj) {
+    const projectSelect = document.getElementById('projectSelect');
+    if (projectSelect) {
+        projectSelect.value = paramProj;
+        projectSelect.dispatchEvent(new Event('change'));
+    }
+}
+if (paramVend) {
+    const vendorSelect = document.getElementById('vendorSelect');
+    if (vendorSelect) {
+        vendorSelect.value = paramVend;
+        vendorSelect.dispatchEvent(new Event('change'));
+    }
+}
 </script>

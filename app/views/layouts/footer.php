@@ -395,30 +395,40 @@
     $(parent).find('.select2').each(function () {
         if ($(this).hasClass('select2-hidden-accessible')) return;
 
-        var placeholder = $(this).data('placeholder') || 'Select option';
+        var hasEmptyOption = $(this).find('option[value=""]').length > 0;
+        var placeholder = $(this).data('placeholder');
         var modalParent = $(this).closest('.modal');
 
-        $(this).select2({
-            placeholder: placeholder,
-            allowClear: true,
+        var opts = {
             width: '100%',
             dropdownParent: modalParent.length ? modalParent : $('body')
-        });
+        };
+        if (placeholder || hasEmptyOption) {
+            opts.placeholder = placeholder || 'Select option';
+            opts.allowClear = hasEmptyOption;
+        }
+
+        $(this).select2(opts);
     });
 
     // ✅ Fix scroll-to-top for team assignment dropdowns
     $(parent).find('.select2-no-scroll').each(function () {
         if ($(this).hasClass('select2-hidden-accessible')) return;
 
-        var placeholder = $(this).data('placeholder') || 'Select option';
+        var hasEmptyOption = $(this).find('option[value=""]').length > 0;
+        var placeholder = $(this).data('placeholder');
 
-        $(this).select2({
-            placeholder: placeholder,
-            allowClear: true,
+        var opts = {
             width: '100%',
-            dropdownParent: $('body'), // append to body to avoid positioning/scroll issues
+            dropdownParent: $('body'),
             scrollAfterSelect: false
-        });
+        };
+        if (placeholder || hasEmptyOption) {
+            opts.placeholder = placeholder || 'Select option';
+            opts.allowClear = hasEmptyOption;
+        }
+
+        $(this).select2(opts);
     });
 }
 

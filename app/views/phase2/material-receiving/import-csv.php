@@ -361,7 +361,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             confirmModal.show();
 
-            fetch((typeof base_url !== 'undefined' ? base_url : window.base_url || '') + '/con-material-receiving-import-validate', {
+            fetch('<?= $GLOBALS['base_url'] ?>/con-material-receiving-import-validate', {
                 method: 'POST',
                 body: formData
             })

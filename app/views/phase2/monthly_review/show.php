@@ -11,7 +11,8 @@ $delayMap       = $delayMap       ?? [];
 $projectId      = (int)($project['id'] ?? 0);
 $phaseId        = (int)($phase['id']   ?? 0);
 
-$monthLabel  = date('F Y', strtotime($monthDate ?? 'now'));
+$monthDate   = $monthDate ?? 'now';
+$monthLabel  = date('F Y', strtotime($monthDate));
 $monthStart  = date('d M Y', strtotime(date('Y-m-01', strtotime($monthDate))));
 $monthEnd    = date('d M Y', strtotime(date('Y-m-t',  strtotime($monthDate))));
 
@@ -540,7 +541,9 @@ body { font-family:'Inter',sans-serif }
             }
 
             $wColBar = $wCardCls==='completed'?'#10b981':($wCardCls==='partial'?'#f59e0b':'#e2e8f0');
-            $wLbl    = $wPct >= 100 || $wStatus === 'Submitted' || $wStatus === 'Appro        <a href="<?= $base ?>/con-weekly-progress/<?= $targetId ?>?week=<?= $wk ?>" class="week-card <?= $wCardCls ?>" style="text-decoration:none;display:block;color:inherit;transition:all 0.2s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.05)';" onmouseout="this.style.transform='none';this.style.boxShadow='none';">
+            $wLbl    = $wPct >= 100 || $wStatus === 'Submitted' || $wStatus === 'Approved' ? 'Completed' : ($wPct > 0 ? 'In Progress' : 'Not Started');
+            ?>
+            <a href="<?= $base ?>/con-weekly-progress/<?= $targetId ?>?week=<?= $wk ?>" class="week-card <?= $wCardCls ?>" style="text-decoration:none;display:block;color:inherit;transition:all 0.2s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.05)';" onmouseout="this.style.transform='none';this.style.boxShadow='none';">
             <div style="font-size:11px;font-weight:700;color:var(--clr-text-muted, #94a3b8);margin-bottom:6px">Week <?= $wk ?></div>
             <div style="font-size:11px;font-weight:600;color:var(--clr-text-muted, #64748b);margin-bottom:10px">
                 <?= $wStart->format('d M') ?> – <?= $wEnd->format('d M Y') ?>
@@ -709,8 +712,6 @@ body { font-family:'Inter',sans-serif }
                 ?><div style="font-size:8.5px;color:#10b981;font-weight:700;margin-top:2px">On Target ✓</div>
                 <?php elseif ($planPctItem > 0): ?>
                 <div style="font-size:8.5px;color:#ef4444;font-weight:700;margin-top:2px">Behind</div>
-                <?php endif; ?>
-            </td>x;color:#ef4444;font-weight:700;margin-top:2px">Behind</div>
                 <?php endif; ?>
             </td>
             <!-- Site Photos column -->
