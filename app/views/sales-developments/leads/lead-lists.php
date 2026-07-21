@@ -1783,11 +1783,20 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             confirmModal.show();
 
-            fetch((typeof base_url !== 'undefined' ? base_url : window.base_url || '') + '/bulk-payments-validate-csv', {
+            fetch('<?= $GLOBALS['base_url'] ?>/bulk-payments-validate-csv', {
                 method: 'POST',
                 body: formData
             })
-            .then(res => res.json())
+            .then(res => res.text().then(text => {
+                let resData;
+                try {
+                    resData = JSON.parse(text);
+                } catch (e) {
+                    console.error("Invalid JSON response:", text);
+                    throw new Error("Server response error: " + (text ? text.replace(/<[^>]*>?/gm, '').trim().substring(0, 150) : 'Empty server response'));
+                }
+                return resData;
+            }))
             .then(res => {
                 if (!res.success) {
                     tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger fw-semibold">${escapeHTML(res.message || 'Validation failed')}</td></tr>`;
@@ -1812,12 +1821,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     let typeBadge = '';
-                    if (rowData.payment_type === 'booking_money') {
+                    const pt = (rowData.payment_type || '').toLowerCase();
+                    if (pt === 'booking_money') {
                         typeBadge = '<span class="badge bg-success-subtle text-success">Booking Money</span>';
-                    } else if (rowData.payment_type === 'registration') {
+                    } else if (pt === 'registration') {
                         typeBadge = '<span class="badge bg-info-subtle text-info">Registration</span>';
+                    } else if (pt === 'land_share') {
+                        typeBadge = '<span class="badge bg-warning-subtle text-dark">Land Share</span>';
+                    } else if (pt === 'emi') {
+                        typeBadge = '<span class="badge bg-primary-subtle text-primary">EMI</span>';
+                    } else if (pt === 'development_charge') {
+                        typeBadge = '<span class="badge bg-secondary-subtle text-dark">Development Charge</span>';
                     } else {
-                        typeBadge = `<span class="badge bg-danger-subtle text-danger">${rowData.payment_type || 'empty'}</span>`;
+                        typeBadge = `<span class="badge bg-light text-dark border">${escapeHTML(rowData.payment_type || 'empty')}</span>`;
                     }
 
                     // Normalize method display
@@ -1861,9 +1877,9 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .catch(err => {
                 console.error("AJAX validation error:", err);
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger fw-semibold">Error verifying CSV file with the server.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger fw-semibold">${escapeHTML(err.message || 'Error verifying CSV file with the server.')}</td></tr>`;
                 alertEl.className = 'alert alert-danger d-block';
-                alertEl.innerHTML = `<i class="bi bi-x-circle-fill me-2"></i><strong>Error:</strong> Failed to connect to verification server.`;
+                alertEl.innerHTML = `<i class="bi bi-x-circle-fill me-2"></i><strong>Error:</strong> ${escapeHTML(err.message || 'Failed to connect to verification server.')}`;
                 submitBtn.disabled = true;
             });
         });

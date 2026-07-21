@@ -160,8 +160,8 @@ $filterProjectId = $filterProjectId ?? 0;
                                 <tr>
                                     <td><code>Design_Type_Name</code></td>
                                     <td><span class="badge bg-danger">Required</span></td>
-                                    <td>Exact Design Type</td>
-                                    <td><em>Architectural</em></td>
+                                    <td>Exact Design Type (Electrical, Plumbing, Fire Department, etc.)</td>
+                                    <td><em>Electrical</em></td>
                                 </tr>
                                 <tr>
                                     <td><code>Is_In_House</code></td>
@@ -246,21 +246,27 @@ function downloadProjectDrawingSampleCsv() {
         'Designer_Name', 'Designer_Designation', 'Designer_Company', 'Design_Link', 
         'Status'
     ];
-    const sampleInternal = [
-        'The Prime Heights', 'Architectural', '1', 'designer@example.com', 
-        '', '', '', 'https://example.com/design1', 
+    const sampleElectrical = [
+        'The Prime Heights', 'Electrical', '1', 'electrical@example.com', 
+        '', '', '', 'https://example.com/electrical-drawing', 
         'Draft'
     ];
-    const sampleExternal = [
-        'The Prime Heights', 'Structural', '0', '', 
-        'John Doe', 'Lead Engineer', 'ABC Engineering', 'https://example.com/design2', 
+    const samplePlumbing = [
+        'The Prime Heights', 'Plumbing', '1', 'plumbing@example.com', 
+        '', '', '', 'https://example.com/plumbing-drawing', 
+        'Draft'
+    ];
+    const sampleFireDepart = [
+        'The Prime Heights', 'Fire Department', '0', '', 
+        'Fire Safety Consultant', 'Lead Inspector', 'Fire Tech Safety Ltd', 'https://example.com/fire-safety-drawing', 
         'Submitted'
     ];
     
     const csvContent = [
         headers.join(','),
-        sampleInternal.map(v => '"' + v + '"').join(','),
-        sampleExternal.map(v => '"' + v + '"').join(',')
+        sampleElectrical.map(v => '"' + v + '"').join(','),
+        samplePlumbing.map(v => '"' + v + '"').join(','),
+        sampleFireDepart.map(v => '"' + v + '"').join(',')
     ].join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

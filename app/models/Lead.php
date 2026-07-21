@@ -119,7 +119,7 @@ class Lead extends Model
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
-    public function countAll($period = null, $teamId = null)
+    public function countAll($period = null, $roleId = null, $teamId = null)
     {
         $sqlQuery = "
             SELECT COUNT(l.id) AS total
@@ -132,9 +132,12 @@ class Lead extends Model
         $params = [];
         $types = "";
         
-        if (!empty($teamId)) {
+        // Handle flexible parameter passing: countAll($period, $teamId) or countAll($period, $roleId, $teamId)
+        $actualTeamId = !empty($teamId) ? $teamId : (!empty($roleId) ? $roleId : null);
+
+        if (!empty($actualTeamId)) {
             $sqlQuery .= " AND l.team_id = ?";
-            $params[] = $teamId;
+            $params[] = $actualTeamId;
             $types .= "i";
         }
         
@@ -234,8 +237,8 @@ class Lead extends Model
         $params = [];
         $types  = "";
 
-        // ROLE BASED FILTER
-        if (in_array($roleId, [1, 3, 5, 9]) && !empty($teamId)) {
+        // TEAM BASED FILTER
+        if (!empty($teamId)) {
             $sql .= " AND l.team_id = ?";
             $params[] = $teamId;
             $types .= "i";
@@ -424,8 +427,8 @@ class Lead extends Model
         $params = [];
         $types  = "";
 
-        //  ROLE BASED FILTER
-        if (in_array($roleId, [1, 3, 5, 9]) && !empty($teamId)) {
+        // TEAM BASED FILTER
+        if (!empty($teamId)) {
             $sql .= " AND l.team_id = ?";
             $params[] = $teamId;
             $types .= "i";

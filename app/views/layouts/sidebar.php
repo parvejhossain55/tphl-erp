@@ -1057,7 +1057,13 @@
                     </a>
                 </li>
 
-                <?php if (checkTipsoiEmployeeMatch(db())): ?>
+                <?php 
+                $showTipsoiMyData = checkTipsoiEmployeeMatch(db()) 
+                    || !empty($_SESSION['user']['employee_id']) 
+                    || (($_SESSION['user']['role_id'] ?? 0) == 9) 
+                    || hasPermission("Employee Dashboard");
+                if ($showTipsoiMyData): 
+                ?>
                     <!-- Tipsoi My Data -->
                     <li class="slide has-sub <?= isActive('my-tipsoi-info', $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
@@ -1085,6 +1091,11 @@
                             <li class="slide">
                                 <a href="<?= $base_url ?>/my-tipsoi-info#requests" class="sidebar__menu-item">
                                     Pending Request
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/my-tipsoi-info#approvals" class="sidebar__menu-item">
+                                    Approval Pending
                                 </a>
                             </li>
                         </ul>

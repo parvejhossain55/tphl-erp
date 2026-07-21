@@ -32,7 +32,15 @@ class FollowUpController extends Controller
             $_SESSION['follow_up_return_url'] = $referer;
         }
 
-        $leads = $this->leadModel->getAll(); // for the table/list
+        $leads = [];
+        if ($lead_id) {
+            $singleLead = $this->leadModel->find($lead_id);
+            if ($singleLead) {
+                $leads[] = $singleLead;
+            }
+        } else {
+            $leads = $this->leadModel->getAll(); // fallback
+        }
         $followUpLeads = [];
 
         if ($lead_id) {
@@ -40,7 +48,7 @@ class FollowUpController extends Controller
         }
         $assignedUsers = $this->userModel->getAllRoleUser();
         $projects = $this->projectModel->getAll(); // optional
-        $flats = $this->flatModel->getAll();       // optional
+        $flats = [];       // Flat options are loaded dynamically via AJAX in getFlats()
 
         // Fetch teams for re-assignment
         $teamModel = new Team($this->db);

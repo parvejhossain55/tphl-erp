@@ -111,6 +111,11 @@
                                 <i class="fa-solid fa-hourglass-half text-warning me-2"></i>Pending Requests
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" id="approvals-tab" data-bs-toggle="tab" href="#approvalsTabContent" role="tab" aria-controls="approvalsTabContent" aria-selected="false">
+                                <i class="fa-solid fa-user-check text-primary me-2"></i>Approval Pending
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -595,10 +600,93 @@
                     </div>
                 </div>
 
+                <!-- 5. Approval Pending Tab (Requests Pending My Approval) -->
+                <div class="tab-pane fade" id="approvalsTabContent" role="tabpanel" aria-labelledby="approvals-tab">
+                    <div class="card custom-card border-top border-4 border-primary shadow-sm">
+                        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 py-3 bg-white border-bottom">
+                            <h5 class="card-title fw-bold mb-0 text-dark">
+                                <i class="fa-solid fa-user-clock text-primary me-2"></i>Requests Pending My Approval
+                            </h5>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 fs-12" id="approvalsCountBadge">Total Pending: 0</span>
+                            </div>
+                        </div>
+                        <div class="card-body p-4">
+                            <!-- Filter Bar -->
+                            <div class="row g-3 mb-4 align-items-end  p-3 rounded border">
+                                <div class="col-md-3 col-12">
+                                    <label class="form-label fs-12 fw-bold text-secondary mb-1">Request Type</label>
+                                    <select class="form-select form-select-sm" id="approvalReqTypeFilter">
+                                        <option value="all">All Types</option>
+                                        <option value="Leave Request">Leave Request</option>
+                                        <option value="Manual Entry">Manual Entry</option>
+                                        <option value="Late Excuse">Late Excuse</option>
+                                        <option value="Field Visit">Field Visit</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 col-12">
+                                    <label class="form-label fs-12 fw-bold text-secondary mb-1">Approval Stage</label>
+                                    <select class="form-select form-select-sm" id="approvalStageFilter">
+                                        <option value="all">All Pending Stages</option>
+                                        <option value="first">Pending 1st Approval</option>
+                                        <option value="second">Pending 2nd Approval</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    <label class="form-label fs-12 fw-bold text-secondary mb-1">Search Employee</label>
+                                    <input type="text" id="approvalSearchInput" class="form-control form-control-sm" placeholder="Search by name, ID, department...">
+                                </div>
+                                <div class="col-md-2 col-12">
+                                    <button type="button" id="btnRefreshApprovals" class="btn btn-sm btn-outline-primary w-100 fw-semibold">
+                                        <i class="fa-solid fa-rotate me-1"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Approvals Table -->
+                            <div class="table-responsive">
+                                <table class="table table-hover table-striped table-bordered align-middle text-start fs-12 mb-0" id="approvalsTable">
+                                    <thead class="table-light text-secondary">
+                                        <tr>
+                                            <th style="width: 45px;">SN</th>
+                                            <th style="width: 85px;">Office ID</th>
+                                            <th>Employee Name</th>
+                                            <th>Department</th>
+                                            <th>Designation</th>
+                                            <th style="width: 140px;">Request Type</th>
+                                            <th style="width: 120px;">Period</th>
+                                            <th>Reason</th>
+                                            <th style="width: 180px;">First Approver</th>
+                                            <th style="width: 180px;">Second Approver</th>
+                                            <th style="width: 95px;">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="approvalsTableBody">
+                                        <tr>
+                                            <td colspan="11" class="text-center py-4 text-muted">
+                                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                                Loading pending approvals...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div id="noApprovalsMsg" class="text-muted text-center py-5 d-none">
+                                <i class="fa-regular fa-circle-check fs-1 mb-2 d-block text-success animate__animated animate__pulse animate__infinite"></i>
+                                <h6 class="fw-bold text-dark mb-1">No Pending Approvals</h6>
+                                <p class="text-muted fs-13 mb-0">You have no requests pending for your approval. All caught up!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
 <script>
+const baseUrl = window.base_url || '<?= $GLOBALS['base_url'] ?>';
+
 document.addEventListener("DOMContentLoaded", function() {
     // Safely hide the global preloader if it gets stuck due to asset load race conditions
     const preloader = document.getElementById("preloader");
@@ -1027,6 +1115,39 @@ document.addEventListener("DOMContentLoaded", function() {
             });
     }
 
+    // ── Approval Pending Tab Logic ──
+    let allTipsoiRequests = [];
+    let loggedUserApproverInfo = null;
+
+    function loadApprovalsData() {
+        const tbody = document.getElementById("approvalsTableBody");
+        if (!tbody) return;
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="11" class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                    Fetching pending approval requests from Tipsoi API...
+                </td>
+            </tr>
+        `;
+
+        fetch(`${baseUrl}/api/hrm/tipsoi-requests`)
+        .then(res => res.json())
+        .then(res => {
+            if (res.success) {
+                allTipsoiRequests = res.data || [];
+                loggedUserApproverInfo = res.logged_user || null;
+                renderApprovalsTable();
+            } else {
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center text-danger py-4">${res.message || 'Failed to load requests'}</td></tr>`;
+            }
+        })
+        .catch(err => {
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center text-danger py-4">${err.message || 'Network error'}</td></tr>`;
+        });
+    }
+
     // Check and activate tab from URL hash on load/change
     function handleHashTab() {
         const hash = window.location.hash;
@@ -1035,12 +1156,134 @@ document.addEventListener("DOMContentLoaded", function() {
             const tabEl = document.querySelector(`a[id="${cleanHash}-tab"]`);
             if (tabEl) {
                 tabEl.click();
+                if (cleanHash === 'approvals') {
+                    loadApprovalsData();
+                }
             }
         }
     }
     
     handleHashTab();
     window.addEventListener("hashchange", handleHashTab);
+
+    function renderApprovalsTable() {
+        const tbody = document.getElementById("approvalsTableBody");
+        const noMsg = document.getElementById("noApprovalsMsg");
+        const badge = document.getElementById("approvalsCountBadge");
+        const typeFilter = document.getElementById("approvalReqTypeFilter") ? document.getElementById("approvalReqTypeFilter").value : 'all';
+        const stageFilter = document.getElementById("approvalStageFilter") ? document.getElementById("approvalStageFilter").value : 'all';
+        const searchVal = document.getElementById("approvalSearchInput") ? document.getElementById("approvalSearchInput").value.toLowerCase().trim() : '';
+
+        if (!tbody) return;
+
+        const loggedUser = loggedUserApproverInfo;
+        const userEmail = loggedUser ? (loggedUser.email || '').toLowerCase().trim() : '';
+        const userOfficeId = loggedUser ? (loggedUser.employee_id || loggedUser.tipsoi_office_id || '').trim() : '';
+        const userName = loggedUser ? (loggedUser.full_name || '').toLowerCase().trim() : '';
+        const userTipsoiId = loggedUser ? String(loggedUser.tipsoi_id || '') : '';
+        const isHr = loggedUser ? loggedUser.is_hr : false;
+
+        const normalizeName = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const normUser = normalizeName(userName);
+
+        const matchedRecords = allTipsoiRequests.filter(rec => {
+            if (typeFilter !== 'all') {
+                if (rec.requestType !== typeFilter && rec.subType !== typeFilter) return false;
+            }
+
+            if (searchVal) {
+                const name = String(rec.employeeName || '').toLowerCase();
+                const oid = String(rec.employeeOfficeId || '').toLowerCase();
+                const dept = String(rec.departmentName || '').toLowerCase();
+                const desig = String(rec.designationName || '').toLowerCase();
+                if (!name.includes(searchVal) && !oid.includes(searchVal) && !dept.includes(searchVal) && !desig.includes(searchVal)) {
+                    return false;
+                }
+            }
+
+            const firstAppName = String(rec.firstApproverName || '').trim();
+            const normFirst = normalizeName(firstAppName);
+            const firstAppId = String(rec.firstApproverId || '');
+            const firstStatus = rec.firstApprovalStatus;
+
+            const secondAppName = String(rec.secondApproverName || '').trim();
+            const normSecond = normalizeName(secondAppName);
+            const secondAppId = String(rec.secondApproverId || '');
+            const secondStatus = rec.secondApprovalStatus;
+
+            const isFirstApprover = (userTipsoiId && firstAppId && userTipsoiId === firstAppId) ||
+                (normUser && normFirst && (normUser.includes(normFirst) || normFirst.includes(normUser))) ||
+                (userOfficeId && firstAppName && firstAppName.includes(userOfficeId));
+
+            const isSecondApprover = (userTipsoiId && secondAppId && userTipsoiId === secondAppId) ||
+                (normUser && normSecond && (normUser.includes(normSecond) || normSecond.includes(normUser))) ||
+                (userOfficeId && secondAppName && secondAppName.includes(userOfficeId));
+
+            let isForMe = false;
+            if (stageFilter === 'first') {
+                isForMe = (isFirstApprover && firstStatus == 0) || (isHr && firstStatus == 0);
+            } else if (stageFilter === 'second') {
+                isForMe = (isSecondApprover && secondStatus == 0) || (isHr && secondStatus == 0);
+            } else {
+                isForMe = (isFirstApprover && firstStatus == 0) || (isSecondApprover && secondStatus == 0);
+                if (!isForMe && isHr) {
+                    isForMe = true;
+                }
+            }
+
+            return isForMe;
+        });
+
+        if (badge) badge.textContent = `Total Pending: ${matchedRecords.length}`;
+
+        if (matchedRecords.length === 0) {
+            tbody.innerHTML = '';
+            if (noMsg) noMsg.classList.remove("d-none");
+            return;
+        }
+
+        if (noMsg) noMsg.classList.add("d-none");
+
+        const getApproverBadge = (status, name) => {
+            if (!name) return '<span class="text-muted">—</span>';
+            if (status === 1) return `<div class="text-success fw-semibold"><i class="fa-solid fa-circle-check me-1"></i>${name} <small class="text-success">(Approved)</small></div>`;
+            if (status === 2) return `<div class="text-danger fw-semibold"><i class="fa-solid fa-circle-xmark me-1"></i>${name} <small class="text-danger">(Rejected)</small></div>`;
+            return `<div class="text-warning fw-semibold"><i class="fa-solid fa-hourglass-half me-1"></i>${name} <small class="text-warning">(Pending)</small></div>`;
+        };
+
+        let sn = 1;
+        tbody.innerHTML = matchedRecords.map(rec => {
+            const datePeriod = (rec.startDate === rec.endDate) ? rec.startDate : `${rec.startDate} to ${rec.endDate}`;
+            const firstAppBadge = getApproverBadge(rec.firstApprovalStatus, rec.firstApproverName);
+            const secondAppBadge = getApproverBadge(rec.secondApprovalStatus, rec.secondApproverName);
+
+            return `
+                <tr>
+                    <td class="text-muted fw-semibold text-center">${sn++}</td>
+                    <td class="fw-semibold text-muted">${rec.employeeOfficeId || '—'}</td>
+                    <td class="fw-bold text-dark">${rec.employeeName}</td>
+                    <td>${rec.departmentName}</td>
+                    <td><span class="badge bg-light text-dark border">${rec.designationName}</span></td>
+                    <td><span class="badge bg-primary-subtle text-primary fw-semibold">${rec.subType || rec.requestType}</span></td>
+                    <td class="text-secondary fw-semibold">${datePeriod}</td>
+                    <td class="text-muted" style="max-width: 250px; word-wrap: break-word;">${rec.reason || '—'}</td>
+                    <td>${firstAppBadge}</td>
+                    <td>${secondAppBadge}</td>
+                    <td><span class="badge bg-warning text-dark px-2 py-1"><i class="fa-solid fa-hourglass-half me-1"></i>Pending</span></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    document.getElementById("approvals-tab")?.addEventListener("click", function() {
+        loadApprovalsData();
+    });
+    document.getElementById("btnRefreshApprovals")?.addEventListener("click", function() {
+        loadApprovalsData();
+    });
+    document.getElementById("approvalReqTypeFilter")?.addEventListener("change", renderApprovalsTable);
+    document.getElementById("approvalStageFilter")?.addEventListener("change", renderApprovalsTable);
+    document.getElementById("approvalSearchInput")?.addEventListener("input", renderApprovalsTable);
 
     // Helper Utility Formatters
     function isNumeric(n) {

@@ -36,7 +36,7 @@ class WarehouseController extends Controller
             exit;
         }
 
-        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/warehouses/create-warehouse', [
             'current_route' => 'con-warehouses',
@@ -87,7 +87,7 @@ class WarehouseController extends Controller
         }
 
         $warehouse = $this->warehouseModel->find($id);
-        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/warehouses/edit-warehouse', [
             'current_route' => 'con-warehouses',

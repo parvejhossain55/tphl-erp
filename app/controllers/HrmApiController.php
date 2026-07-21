@@ -655,8 +655,10 @@ class HrmApiController extends Controller
                     'categoryName' => $log['categoryName'] ?? 'Leave Request',
                     'firstApproverName' => $log['firstApproverName'] ?? '',
                     'firstApprovalStatus' => $log['firstApprovalStatus'] ?? 0,
+                    'firstApproverId' => $log['firstApproverId'] ?? null,
                     'secondApproverName' => $log['secondApproverName'] ?? '',
                     'secondApprovalStatus' => $log['secondApprovalStatus'] ?? 0,
+                    'secondApproverId' => $log['secondApproverId'] ?? null,
                     'status' => 0
                 ];
             }
@@ -711,8 +713,10 @@ class HrmApiController extends Controller
                     'categoryName' => 'Late Excuse',
                     'firstApproverName' => $log['firstLateApproverName'] ?? '',
                     'firstApprovalStatus' => $log['firstLateApprovalStatus'] ?? 0,
+                    'firstApproverId' => $log['firstLateApproverId'] ?? $log['firstApproverId'] ?? null,
                     'secondApproverName' => $log['secondLateApproverName'] ?? '',
                     'secondApprovalStatus' => $log['secondLateApprovalStatus'] ?? 0,
+                    'secondApproverId' => $log['secondLateApproverId'] ?? $log['secondApproverId'] ?? null,
                     'status' => 0
                 ];
             }
@@ -833,10 +837,36 @@ class HrmApiController extends Controller
                     'categoryName' => $reqType,
                     'firstApproverName' => $entry['firstManualApproverName'] ?? '',
                     'firstApprovalStatus' => $entry['firstManualEntryApprovalStatus'] ?? 0,
+                    'firstApproverId' => $entry['firstManualEntryApproverId'] ?? null,
                     'secondApproverName' => $entry['secondManualApproverName'] ?? '',
                     'secondApprovalStatus' => $entry['secondManualEntryApprovalStatus'] ?? 0,
+                    'secondApproverId' => $entry['secondManualEntryApproverId'] ?? null,
                     'status' => 0
                 ];
+            }
+
+            // Fetch Logged-in user information for approver matching
+            $loggedUser = null;
+            if (!empty($_SESSION['user']['id'])) {
+                $loggedUserId = (int)$_SESSION['user']['id'];
+                $stmt = $this->db->prepare("SELECT u.id, u.role_id, e.employee_id, e.email, e.full_name FROM users u LEFT JOIN employees e ON u.employee_id = e.id WHERE u.id = ? LIMIT 1");
+                if ($stmt) {
+                    $stmt->bind_param("i", $loggedUserId);
+                    $stmt->execute();
+                    $uRes = $stmt->get_result()->fetch_assoc();
+                    if ($uRes) {
+                        $loggedUser = [
+                            'id' => $uRes['id'],
+                            'email' => strtolower(trim($uRes['email'] ?? '')),
+                            'employee_id' => trim($uRes['employee_id'] ?? ''),
+                            'full_name' => trim($uRes['full_name'] ?? ''),
+                            'tipsoi_id' => $_SESSION['user']['tipsoi_id'] ?? null,
+                            'tipsoi_office_id' => $_SESSION['user']['tipsoi_office_id'] ?? null,
+                            'role_id' => (int)($uRes['role_id'] ?? 0),
+                            'is_hr' => hasPermission("HRM Management") || in_array((int)($uRes['role_id'] ?? 0), [1, 3, 4])
+                        ];
+                    }
+                }
             }
 
             echo json_encode([
@@ -844,7 +874,8 @@ class HrmApiController extends Controller
                 'data' => array_values($pendingRequests),
                 'local_employees' => $localEmployees,
                 'local_employee_ids' => $localIds,
-                'local_employee_emails' => $localEmails
+                'local_employee_emails' => $localEmails,
+                'logged_user' => $loggedUser
             ]);
             exit;
 

@@ -76,7 +76,7 @@ class Con_FundRequestController extends Controller
     public function create()
     {
         $operators = $this->operatorModel->getAll();
-        $projects  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name")->fetch_all(MYSQLI_ASSOC);
+        $projects  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name")->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/fund-requests/create-fund', [
             'current_route' => 'con-fund-requests',

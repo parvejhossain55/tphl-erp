@@ -304,9 +304,9 @@ class Con_BOQController extends Controller
         $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // ── Approval permission ─────────────────────────────────────────────
-        // Roles 1 (MD), 3 (Director), 15 (PM), 22 (PM Head) can approve BOQ.
+        // Roles 15 (PM), 22 (PM Head) can approve BOQ.
         $createdBy  = (int)($boq['created_by'] ?? 0);
-        $canApprove = in_array($currentRoleId, [1, 3, 15, 22]);
+        $canApprove = in_array($currentRoleId, [15, 22]);
 
         // If Approved, no one can edit. Otherwise, PM (15) and others (excluding blocked list) can edit.
         $canEdit = ($boq['status'] !== 'Approved' && !in_array($currentRoleId, [1, 3, 20, 22]));
@@ -645,9 +645,8 @@ class Con_BOQController extends Controller
                 exit;
             }
         } else {
-            // 'Approved' or 'Rejected'
-            // Role guard: only 1, 3, 15, 22 can approve/reject
-            if (!in_array($roleId, [1, 3, 15, 22])) {
+            // Role guard: only 15, 22 can approve/reject
+            if (!in_array($roleId, [15, 22])) {
                 setError('Only authorized approvers can approve/reject a BOQ.');
                 header("Location: {$GLOBALS['base_url']}/con-boq-show/{$id}");
                 exit;

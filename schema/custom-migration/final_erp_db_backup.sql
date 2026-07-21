@@ -4374,7 +4374,7 @@ CREATE TABLE `purchase_orders` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `request_id` int unsigned NOT NULL,
   `created_by` int NOT NULL,
-  `status` enum('Draft','Issued','Partially Received','Fully Received','Cancelled','PM Approved','Approved') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
+  `status` enum('Draft','Issued','Partially Received','Fully Received','Cancelled','PM Approved','QC Approved','Approved') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Draft',
   `order_date` date NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,

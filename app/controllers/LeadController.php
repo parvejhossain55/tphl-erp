@@ -61,11 +61,11 @@ class LeadController extends Controller
         $filterCategoryId = isset($_GET['project_category_id']) && $_GET['project_category_id'] !== '' ? (int)$_GET['project_category_id'] : null;
         $filterCountry = isset($_GET['filter_country']) && $_GET['filter_country'] !== '' ? $_GET['filter_country'] : null;
 
-        // Determine team restriction: role 9 sees all by default, but can filter.
+        // Determine team restriction: roles 1, 3, 9 see all by default (unless filtered), others filter by team.
         if (in_array($userRoleId, [1, 3, 9])) {
             $teamIdForQuery = $filterTeamId;
         } else {
-            $teamIdForQuery = $userTeamId;
+            $teamIdForQuery = !empty($userTeamId) ? (int)$userTeamId : $filterTeamId;
         }
 
         $owners = $this->userModel->getAll();
@@ -233,8 +233,6 @@ class LeadController extends Controller
             // 6. Recalculate Conversion Rate with filtered booking count
             $conversionRate = $leadCounts > 0 ? ($totalBookingCount / $leadCounts) * 100 : 0;
         }
-
-
         // ── Duplicate Leads Detection ─────────────────────────────────────────
         // My team leads assigned to me whose phone/email also appears in OTHER assigned_ids
         $dupGroups  = [];
