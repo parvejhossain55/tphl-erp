@@ -150,6 +150,11 @@ $page_title = $page_title ?? 'Bulk Material Receiving & Payment Import (CSV)';
                                 <td>01712345678</td>
                                 <td>Vendor's phone/mobile number (Validated)</td>
                             </tr>
+                            <tr>
+                                <td><code>remarks</code></td>
+                                <td>Remarks for this purchase order</td>
+                                <td><strong>Optional.</strong> General remark/note for this purchase order (e.g. detailed material list for category others).</td>
+                            </tr>
                             <tr class="table-success">
                                 <td><code>payment_amount</code></td>
                                 <td>600.00</td>
@@ -254,9 +259,9 @@ $page_title = $page_title ?? 'Bulk Material Receiving & Payment Import (CSV)';
                 </h6>
             </div>
             <div class="card-body p-0">
-                <pre class="mb-0 p-3" style="font-size:10px;overflow-x:auto;background:#f8f9fa;border-radius:0 0 8px 8px"><code>project_name,purchase_request_email,pm_approved_email,management_approved_email,accounts_paid_email,receiving_date,warehouse_name,material_name,material_category,unit,qty,unit_price,vendor_name,vendor_phone,payment_amount,payment_method,payment_date,payment_reference,payment_attachment
-Mirpur Housing,site.engineer@tphl.com,pm@tphl.com,management@tphl.com,accounts@tphl.com,2026-05-07,Main Warehouse,Rod 10mm,Civil Materials,kg,500,85.50,ABC Suppliers Ltd,01712345678,600.00,BankTransfer,2026-05-07,TXN987654321,receipt.pdf
-Mirpur Housing,site.engineer@tphl.com,pm@tphl.com,management@tphl.com,accounts@tphl.com,2026-05-07,Main Warehouse,Cement (50kg),Civil Materials,bag,200,420.00,ABC Suppliers Ltd,01712345678,600.00,BankTransfer,2026-05-07,TXN987654321,receipt.pdf</code></pre>
+                <pre class="mb-0 p-3" style="font-size:10px;overflow-x:auto;background:#f8f9fa;border-radius:0 0 8px 8px"><code>project_name,purchase_request_email,pm_approved_email,management_approved_email,accounts_paid_email,receiving_date,warehouse_name,material_name,material_category,unit,qty,unit_price,vendor_name,vendor_phone,remarks,payment_amount,payment_method,payment_date,payment_reference,payment_attachment
+Mirpur Housing,site.engineer@tphl.com,pm@tphl.com,management@tphl.com,accounts@tphl.com,2026-05-07,Main Warehouse,Rod 10mm,Civil Materials,kg,500,85.50,ABC Suppliers Ltd,01712345678,Remarks for PO,600.00,BankTransfer,2026-05-07,TXN987654321,receipt.pdf
+Mirpur Housing,site.engineer@tphl.com,pm@tphl.com,management@tphl.com,accounts@tphl.com,2026-05-07,Main Warehouse,Cement (50kg),Civil Materials,bag,200,420.00,ABC Suppliers Ltd,01712345678,Remarks for PO,600.00,BankTransfer,2026-05-07,TXN987654321,receipt.pdf</code></pre>
             </div>
         </div>
     </div>
@@ -297,6 +302,7 @@ Mirpur Housing,site.engineer@tphl.com,pm@tphl.com,management@tphl.com,accounts@t
                                 <th>Material Details</th>
                                 <th>Payment Info</th>
                                 <th>Warehouse</th>
+                                <th>Remarks</th>
                                 <th>Verification Status</th>
                             </tr>
                         </thead>
@@ -347,7 +353,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Show confirmation modal with loading spinner
             const tbody = document.getElementById('confirmPoTableBody');
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-muted">Checking database records...</div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-muted">Checking database records...</div></td></tr>';
 
             const alertEl = document.getElementById('confirmPoAlert');
             alertEl.className = 'alert alert-info d-block';
@@ -368,7 +374,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(res => res.json())
             .then(res => {
                 if (!res.success) {
-                    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-danger fw-semibold">${escapeHTML(res.message || 'Validation failed')}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger fw-semibold">${escapeHTML(res.message || 'Validation failed')}</td></tr>`;
                     alertEl.className = 'alert alert-danger d-block';
                     alertEl.innerHTML = `<i class="bi bi-x-circle-fill me-2"></i><strong>Error:</strong> ${escapeHTML(res.message || 'Failed to validate CSV')}`;
                     submitBtn.disabled = true;
@@ -423,6 +429,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <td>${matDetails}</td>
                         <td>${paymentInfoHtml}</td>
                         <td>${escapeHTML(rowData.warehouse_name)}</td>
+                        <td>${escapeHTML(rowData.remarks || '—')}</td>
                         <td>${statusHtml}</td>
                     `;
                     tbody.appendChild(tr);
@@ -440,7 +447,7 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .catch(err => {
                 console.error("AJAX validation error:", err);
-                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-danger fw-semibold">Error verifying CSV file with the server.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger fw-semibold">Error verifying CSV file with the server.</td></tr>`;
                 alertEl.className = 'alert alert-danger d-block';
                 alertEl.innerHTML = `<i class="bi bi-x-circle-fill me-2"></i><strong>Error:</strong> Failed to connect to verification server.`;
                 submitBtn.disabled = true;

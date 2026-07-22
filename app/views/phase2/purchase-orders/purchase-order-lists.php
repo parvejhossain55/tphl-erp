@@ -39,7 +39,14 @@
                             <?php foreach ($orders as $po): ?>
                             <tr>
                                 <td><span class="fw-bold text-primary">PO-<?= $po['id'] ?></span></td>
-                                <td class="fw-bold"><?= htmlspecialchars($po['project_name']) ?></td>
+                                <td class="fw-bold">
+                                    <?= htmlspecialchars($po['project_name']) ?>
+                                    <?php if (!empty($po['remarks'])): ?>
+                                        <div class="text-muted small fw-normal mt-1" style="font-size:11px" title="Remarks">
+                                            <i class="bi bi-chat-left-text me-1 text-primary"></i><?= htmlspecialchars($po['remarks']) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
                                 <td class="text-end">৳ <?= number_format($po['total_amount'] ?? 0, 2) ?></td>
                                 <td>
                                     <?php
