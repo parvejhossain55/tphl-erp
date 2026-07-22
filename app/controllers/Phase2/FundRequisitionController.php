@@ -276,8 +276,8 @@ class FundRequisitionController extends Controller {
 
     public function approve() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 3])) {
-            setError('Only Management or Admins can approve requisitions.');
+        if (!in_array($roleId, [1, 3, 20])) {
+            setError('Only Management, Admins, or Operation can approve requisitions.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
         }

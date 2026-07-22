@@ -298,7 +298,7 @@ $showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
                 <?php elseif ($isPending && !$canApproveReq): ?>
                     <div class="alert mb-0 py-2 small" style="background: rgba(255,255,255,0.2); border: none; color: white;">
                         <i class="bi bi-hourglass-split me-1"></i>
-                        Waiting for management approval. Only Admin/Super Admin can approve.
+                        Waiting for approval. Only Admin/Super Admin/Operation can approve.
                     </div>
                 <?php elseif ($isApproved): ?>
                     <div class="alert mb-0 py-2 small" style="background: rgba(255,255,255,0.2); border: none; color: white;">

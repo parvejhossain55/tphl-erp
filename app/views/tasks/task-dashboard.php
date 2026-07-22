@@ -1,11 +1,29 @@
         <?php
         $page_title = "Your Task  ";
         ?>
-        <!-- Today Task Count Card -->
-        <div class="card mb-4">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Today's Task</h5>
-                <span class="badge bg-primary fs-5"><?= $todayTaskCount ?></span>
+        <!-- Task Count Cards -->
+        <div class="row mb-4">
+            <div class="col-md-6 col-sm-12">
+                <div class="card h-100 shadow-sm border-0" style="background: linear-gradient(135deg, #fff3cd 0%, #fff9e6 100%); border-left: 4px solid #ffc107 !important;">
+                    <div class="card-body d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <h6 class="mb-1 text-warning-emphasis fw-bold" style="color: #664d03 !important;"><i class="bi bi-calendar2-event me-2"></i>Today's Tasks</h6>
+                            <span class="text-muted small">Tasks due today</span>
+                        </div>
+                        <span class="badge bg-warning text-dark fs-5 rounded-pill px-3 py-2 fw-bold shadow-sm"><?= $todayTaskCount ?></span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-sm-12">
+                <div class="card h-100 shadow-sm border-0" style="background: linear-gradient(135deg, #e8e6ff 0%, #f3f1ff 100%); border-left: 4px solid #5e4cdc !important;">
+                    <div class="card-body d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <h6 class="mb-1 text-primary fw-bold" style="color: #493aa6 !important;"><i class="bi bi-clipboard-data me-2"></i>Total Pending Tasks</h6>
+                            <span class="text-muted small">All incomplete tasks</span>
+                        </div>
+                        <span class="badge text-white fs-5 rounded-pill px-3 py-2 fw-bold shadow-sm" style="background-color: #5e4cdc !important;"><?= count($pendingTasks) ?></span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -13,7 +31,7 @@
         <!-- Task Notification Section -->
         <?php if (!empty($pendingTasks)): ?>
             <div class="tasks-container">
-                <div class="row g-4">
+                <div class="row ">
                     <?php foreach ($pendingTasks as $task): ?>
                         <?php
                         // Determine status and styling
@@ -34,7 +52,7 @@
                         }
                         ?>
 
-                        <div class="col-lg-6 col-md-6 col-sm-12">
+                        <div class="col-lg-4 col-md-6 col-sm-12">
                             <div class="card__wrapper task-card <?= $cardClass ?>">
                                 <!-- Task Header -->
                                 <div class="task-header">
@@ -192,8 +210,8 @@
             /* Task Card Styles */
             .task-card {
                 background: #ffffff;
-                border-radius: 16px;
-                padding: 24px;
+                border-radius: 12px;
+                padding: 16px;
                 box-shadow: 0 4px 12px rgba(94, 76, 220, 0.08);
                 border: 1px solid #e8e6ff;
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -227,8 +245,8 @@
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                margin-bottom: 20px;
-                padding-bottom: 16px;
+                margin-bottom: 14px;
+                padding-bottom: 10px;
                 border-bottom: 2px solid #e8e6ff;
             }
 
@@ -240,21 +258,21 @@
             }
 
             .task-icon-wrapper {
-                width: 44px;
-                height: 44px;
+                width: 36px;
+                height: 36px;
                 /* background: linear-gradient(135deg, #5e4cdc 0%, #4b3db1 100%); */
-                border-radius: 12px;
+                border-radius: 8px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 /* color: white; */
-                font-size: 20px;
+                font-size: 16px;
                 box-shadow: 0 4px 12px rgba(94, 76, 220, 0.25);
             }
 
             .task-title {
                 margin: 0;
-                font-size: 18px;
+                font-size: 15px;
                 font-weight: 700;
                 /* color: #212529; */
                 line-height: 1.3;
@@ -325,29 +343,29 @@
 
             /* Assigned Section */
             .assigned-section {
-                margin-bottom: 20px;
+                margin-bottom: 14px;
             }
 
             .assigned-info-card {
                 /* background: linear-gradient(135deg, #e8e6ff 0%, #f8f9fa 100%); */
-                border-radius: 12px;
-                padding: 16px;
+                border-radius: 10px;
+                padding: 10px 12px;
                 display: flex;
                 align-items: center;
-                gap: 14px;
+                gap: 10px;
                 border: 1px solid #e8e6ff;
             }
 
             .info-icon {
-                width: 48px;
-                height: 48px;
+                width: 36px;
+                height: 36px;
                 /* background: #5e4cdc; */
-                border-radius: 10px;
+                border-radius: 8px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 color: #5e4cdc;
-                font-size: 22px;
+                font-size: 18px;
                 flex-shrink: 0;
             }
 
@@ -356,7 +374,7 @@
             }
 
             .info-label {
-                font-size: 12px;
+                font-size: 11px;
                 color: #6c757d;
                 margin: 0 0 4px 0;
                 text-transform: uppercase;
@@ -365,14 +383,14 @@
             }
 
             .info-value {
-                font-size: 16px;
+                font-size: 14px;
                 font-weight: 700;
                 /* color: #212529; */
                 margin: 0 0 2px 0;
             }
 
             .info-designation {
-                font-size: 13px;
+                font-size: 12px;
                 color: #5e4cdc;
                 margin: 0;
                 font-weight: 600;
@@ -380,23 +398,23 @@
 
             /* Description Section */
             .task-description-section {
-                margin-bottom: 20px;
+                margin-bottom: 14px;
             }
 
             .section-title {
-                font-size: 14px;
+                font-size: 13px;
                 font-weight: 700;
-                margin-bottom: 10px;
+                margin-bottom: 8px;
                 display: flex;
                 align-items: center;
             }
 
             .description-content {
                 /* background: #f8f9fa; */
-                border-radius: 10px;
-                padding: 14px;
-                font-size: 14px;
-                line-height: 1.6;
+                border-radius: 8px;
+                padding: 10px 12px;
+                font-size: 13px;
+                line-height: 1.5;
                 /* color: #495057; */
                 border-left: 3px solid #5e4cdc;
             }
@@ -405,18 +423,18 @@
             .date-info-section {
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
-                gap: 12px;
-                margin-bottom: 20px;
+                gap: 8px;
+                margin-bottom: 14px;
             }
 
             .date-card {
                 /* background: #ffffff; */
                 border: 1.5px solid #e8e6ff;
-                border-radius: 10px;
-                padding: 14px;
+                border-radius: 8px;
+                padding: 8px 10px;
                 display: flex;
                 align-items: center;
-                gap: 12px;
+                gap: 8px;
                 transition: all 0.3s ease;
             }
 
@@ -426,13 +444,13 @@
             }
 
             .date-icon {
-                width: 40px;
-                height: 40px;
-                border-radius: 8px;
+                width: 30px;
+                height: 30px;
+                border-radius: 6px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 18px;
+                font-size: 14px;
                 flex-shrink: 0;
             }
 
@@ -542,10 +560,10 @@
 
             .btn-task-action {
                 width: 100%;
-                padding: 14px 24px;
+                padding: 10px 16px;
                 border: none;
-                border-radius: 10px;
-                font-size: 15px;
+                border-radius: 8px;
+                font-size: 14px;
                 font-weight: 700;
                 display: flex;
                 align-items: center;
@@ -587,10 +605,10 @@
 
             .form-input {
                 width: 100%;
-                padding: 14px 14px 14px 40px;
+                padding: 10px 10px 10px 32px;
                 border: 2px solid #e8e6ff;
-                border-radius: 10px;
-                font-size: 15px;
+                border-radius: 8px;
+                font-size: 14px;
                 font-weight: 600;
                 color: #212529;
                 transition: all 0.3s ease;
@@ -605,10 +623,10 @@
             .btn-update {
                 background: #19915a;
                 color: white;
-                padding: 14px 24px;
+                padding: 10px 16px;
                 border: none;
-                border-radius: 10px;
-                font-size: 15px;
+                border-radius: 8px;
+                font-size: 14px;
                 font-weight: 700;
                 display: flex;
                 align-items: center;
