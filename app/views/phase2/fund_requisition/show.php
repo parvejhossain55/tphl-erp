@@ -6,6 +6,7 @@ $base          = $GLOBALS['base_url'];
 $isOwner    = ($req['requested_by'] == $sessionUserId);
 $isAccounts = in_array($sessionRoleId, [1, 6]);
 $isAdmin    = in_array($sessionRoleId, [1, 3]);
+$canApprove = in_array($sessionRoleId, [1, 3, 20]);
 $isVerified = !empty($req['accounts_settlement_verified']);
 
 $statusColors = ['pending'=>'bg-warning text-dark','approved'=>'bg-info','paid'=>'bg-success','rejected'=>'bg-danger'];
@@ -186,7 +187,10 @@ $settleBadgeMap = [
                         <p class="fs-12 mb-0 bg-light p-2 rounded"><?php echo htmlspecialchars($req['approval_note'] ?? '---'); ?></p>
                     <?php else: ?>
                         <span class="badge bg-warning-transparent fs-11 mb-2">Awaiting Approval</span>
-                        <?php if ($req['status'] === 'pending' && $isAdmin): ?>
+                        <div class="fs-12 text-muted mt-1">
+                            Pending Approval: Management or Operation
+                        </div>
+                        <?php if ($req['status'] === 'pending' && $canApprove): ?>
                         <div class="mt-2">
                             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#approveModal">
                                 <i class="fa-solid fa-stamp me-1"></i> Approve / Reject

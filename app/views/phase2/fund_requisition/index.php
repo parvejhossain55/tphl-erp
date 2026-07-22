@@ -930,7 +930,7 @@ function fetchModalExpensesData(id, startDate = '', endDate = '') {
             } else {
                 mgmtStatusBadge.innerText = 'Pending';
                 mgmtStatusBadge.className = 'badge bg-warning-transparent fs-11 text-capitalize';
-                document.getElementById('vMgmtNote').innerText = 'Awaiting Management Approval';
+                document.getElementById('vMgmtNote').innerText = 'Awaiting Approval (Management or Operation)';
             }
             
             var acctsStatusBadge = document.getElementById('vAcctsStatus');
@@ -1348,7 +1348,11 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
             <span class="badge <?= $statusClass ?> fs-11 text-capitalize">
                 <?= htmlspecialchars($req['status']) ?>
             </span>
-            <?php if ($req['status'] === 'approved' && !empty($req['approved_by_name'])): ?>
+            <?php if ($req['status'] === 'pending'): ?>
+                <div class="fs-9 text-muted mt-1">
+                    Pending: Management or Operation
+                </div>
+            <?php elseif ($req['status'] === 'approved' && !empty($req['approved_by_name'])): ?>
                 <div class="fs-9 text-muted mt-1">
                     Approved by <?= htmlspecialchars($req['approved_by_name']) ?>
                 </div>
@@ -1367,8 +1371,8 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
                     <i class="fa-solid fa-eye"></i>
                 </a>
 
-                <!-- Management Approval button (role 1, 3 for pending requisitions) -->
-                <?php if ($req['status'] === 'pending' && in_array($roleId, [1, 3])): ?>
+                <!-- Management Approval button (role 1, 3, 20 for pending requisitions) -->
+                <?php if ($req['status'] === 'pending' && in_array($roleId, [1, 3, 20])): ?>
                     <button type="button" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1" 
                             onclick="openApproveModal(<?= $req['id'] ?>, '<?= addslashes($req['requester_name']) ?>', '<?= addslashes($req['department_name']) ?>', '<?= $req['requisition_type'] ?>', <?= $req['amount'] ?>)">
                         <i class="fa-solid fa-stamp"></i> Approve

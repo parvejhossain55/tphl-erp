@@ -31,6 +31,22 @@
             $pendingVerificationsCount = (int)$res->fetch_assoc()['total'];
         }
     }
+
+    // Calculate pending tasks count for logged in user
+    $pendingTasksCount = 0;
+    if (isset($db) && isset($_SESSION['user']['id'])) {
+        $loggedUserId = (int)$_SESSION['user']['id'];
+        $stmt = $db->prepare("SELECT COUNT(*) AS total FROM tasks WHERE user_id = ? AND progress < 100 AND status != 'completed'");
+        if ($stmt) {
+            $stmt->bind_param("i", $loggedUserId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res) {
+                $pendingTasksCount = (int)$res->fetch_assoc()['total'];
+            }
+            $stmt->close();
+        }
+    }
     ?>
 
 
@@ -472,6 +488,9 @@
                             <a href="<?= $base_url ?>/task-dashboard"
                                 class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
                                 <span class="sidebar__menu-label">Task Dashbaord</span>
+                                <?php if ($pendingTasksCount > 0): ?>
+                                    <span class="badge bg-danger ms-2 rounded-pill" style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
+                                <?php endif; ?>
                             </a>
                         </li>
 
@@ -589,6 +608,9 @@
                             class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
                             <span class="sidebar__menu-label">Task Dashbaord</span>
+                            <?php if ($pendingTasksCount > 0): ?>
+                                <span class="badge bg-danger ms-2 rounded-pill" style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
+                            <?php endif; ?>
                         </a>
                     </li>
 
@@ -692,6 +714,9 @@
                             class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
                             <span class="sidebar__menu-label">Task Dashbaord</span>
+                            <?php if ($pendingTasksCount > 0): ?>
+                                <span class="badge bg-danger ms-2 rounded-pill" style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
+                            <?php endif; ?>
                         </a>
                     </li>
                     <?php if (!$isManagement): ?>
@@ -2517,12 +2542,18 @@
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
                             <span class="sidebar__menu-label">Task Manage</span>
+                            <?php if ($pendingTasksCount > 0): ?>
+                                <span class="badge bg-danger ms-2 rounded-pill" style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
+                            <?php endif; ?>
                         </a>
                         <ul class="sidebar-menu child2" style="display:block;">
                             <li class="slide">
                                 <a href="<?= $base_url ?>/task-dashboard"
                                     class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
                                     <span class="sidebar__menu-label">Task Dashbaord</span>
+                                    <?php if ($pendingTasksCount > 0): ?>
+                                        <span class="badge bg-danger ms-2 rounded-pill" style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
+                                    <?php endif; ?>
                                 </a>
                             </li>
                             <li class="slide <?= isActive('create-task', $current_route) ?>">
