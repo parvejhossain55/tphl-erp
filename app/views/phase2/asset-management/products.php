@@ -166,7 +166,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
                                 <tr>
                                     <td class="fw-semibold text-muted"><?= $i + 1 ?></td>
                                     <td>
-                                        <span class="badge bg-primary-transparent fw-semibold"><?= htmlspecialchars($p['product_code']) ?></span>
+                                        <span class="badge bg-primary fw-semibold text-white"><?= htmlspecialchars($p['product_code']) ?></span>
                                     </td>
                                     <td class="fw-semibold"><?= htmlspecialchars($p['name']) ?></td>
                                     <td>
@@ -178,13 +178,13 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
                                     </td>
                                     <td class="text-end fw-semibold"><?= number_format($p['unit_price'], 2) ?></td>
                                     <td class="text-center">
-                                        <span class="badge bg-info-transparent"><?= $stock['in_store'] ?? 0 ?></span>
+                                        <span class="badge bg-info text-white"><?= $stock['in_store'] ?? 0 ?></span>
                                     </td>
                                     <td class="text-center">
-                                        <span class="badge bg-success-transparent"><?= $stock['in_use'] ?? 0 ?></span>
+                                        <span class="badge bg-success text-white"><?= $stock['in_use'] ?? 0 ?></span>
                                     </td>
                                     <td>
-                                        <span class="badge bg-<?= $p['status'] === 'active' ? 'success' : 'secondary' ?>-transparent">
+                                        <span class="badge bg-<?= $p['status'] === 'active' ? 'success' : 'secondary' ?> text-white">
                                             <?= ucfirst($p['status']) ?>
                                         </span>
                                     </td>

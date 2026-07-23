@@ -264,7 +264,8 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             </button>
                                         <?php elseif ($canConfirmPurchase): ?>
                                             <button type="button" class="btn btn-sm btn-outline-success" title="Mark as Purchased"
-                                                onclick="openConfirmPurchaseModal(<?= $r['id'] ?>)">
+                                                data-info='<?= htmlspecialchars(json_encode($r), ENT_QUOTES, "UTF-8") ?>'
+                                                onclick="openConfirmPurchaseModal(this)">
                                                 <i class="fa-solid fa-box-check me-1"></i> Mark Purchased
                                             </button>
                                         <?php endif; ?>
@@ -839,10 +840,16 @@ function openDetailModal(btn) {
     new bootstrap.Modal(document.getElementById('detailModal')).show();
 }
 
-function openConfirmPurchaseModal(id) {
-    document.getElementById('confirmPurchaseForm').action = '<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/confirm/' + id;
+function openConfirmPurchaseModal(btn) {
+    var data = JSON.parse(btn.getAttribute('data-info'));
+    document.getElementById('confirmPurchaseForm').action = '<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/confirm/' + data.id;
     document.getElementById('confirm_purchase_note').value = '';
     document.getElementById('confirm_purchase_document').value = '';
+    
+    // Set default assignment based on request data if available
+    document.getElementById('confirm_assigned_to').value = data.assigned_to || '';
+    document.getElementById('confirm_asset_location').value = data.asset_location || '';
+    
     new bootstrap.Modal(document.getElementById('confirmPurchaseModal')).show();
 }
 </script>
@@ -860,6 +867,23 @@ function openConfirmPurchaseModal(id) {
                 </div>
                 <div class="modal-body">
                     <p class="text-muted fs-12 mb-3">Confirm that the purchased items have been received. This will register the assets in the system.</p>
+                    
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fs-12 fw-semibold">Assign To (Optional)</label>
+                            <select name="assigned_to" id="confirm_assigned_to" class="form-select form-select-sm">
+                                <option value="">-- Unassigned --</option>
+                                <?php foreach ($users ?? [] as $u): ?>
+                                    <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fs-12 fw-semibold">Location / Office</label>
+                            <input type="text" name="asset_location" id="confirm_asset_location" class="form-control form-control-sm" placeholder="e.g. Site Office, Room 204">
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label">Upload Document <span class="text-muted fs-11">(Invoice, Receipt, Challan etc.)</span></label>
                         <input type="file" name="purchase_document" id="confirm_purchase_document" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">

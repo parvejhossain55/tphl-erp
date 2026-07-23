@@ -587,7 +587,7 @@ class AssetManagement
     /**
      * Operations confirms purchase received → registers assets into All Assets
      */
-    public function confirmPurchased($id, $userId, $document = null, $note = '')
+    public function confirmPurchased($id, $userId, $document = null, $note = '', $assignedTo = null, $location = null)
     {
         // Mark as purchased with document and note
         $stmt = $this->db->prepare(
@@ -628,11 +628,12 @@ class AssetManagement
                 for ($i = 0; $i < $qty; $i++) {
                     $code = $this->generateAssetCode();
                     
-                    $assignedTo = $req['assigned_to'] ? (int)$req['assigned_to'] : null;
-                    $assetStatus = $assignedTo ? 'in_use' : 'in_store';
+                    $finalAssignedTo = $assignedTo !== null ? $assignedTo : ($req['assigned_to'] ? (int)$req['assigned_to'] : null);
+                    $finalLocation = $location !== null && $location !== '' ? $location : $req['asset_location'];
+                    $assetStatus = $finalAssignedTo ? 'in_use' : 'in_store';
                     
                     $insertStmt = $this->db->prepare("INSERT INTO office_assets (asset_code, product_id, item_name, project_id, location, assigned_to, purchase_price, purchase_date, condition_status, asset_status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'new', ?, ?, NOW())");
-                    $insertStmt->bind_param('sisisisdi', $code, $productId, $req['item_name'], $req['project_id'], $req['asset_location'], $assignedTo, $req['unit_price'], $assetStatus, $userId);
+                    $insertStmt->bind_param('sisisisdi', $code, $productId, $req['item_name'], $req['project_id'], $finalLocation, $finalAssignedTo, $req['unit_price'], $assetStatus, $userId);
                     $insertStmt->execute();
                 }
 

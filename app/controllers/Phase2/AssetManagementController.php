@@ -835,8 +835,11 @@ class AssetManagementController extends Controller
         }
 
         $note = trim($_POST['purchase_note'] ?? '');
+        
+        $assignedTo = !empty($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null;
+        $location = trim($_POST['asset_location'] ?? '');
 
-        if ($this->model->confirmPurchased($id, $this->userId, $document, $note)) {
+        if ($this->model->confirmPurchased($id, $this->userId, $document, $note, $assignedTo, $location)) {
             setSuccess("Purchase confirmed! Asset(s) have been registered in All Assets.");
         } else {
             setError('Failed to confirm purchase.');
