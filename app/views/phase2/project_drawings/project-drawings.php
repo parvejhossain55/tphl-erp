@@ -99,15 +99,18 @@ $filterProjectId = $filterProjectId ?? 0;
                                     <?php if ($canModify): ?>
                                     <td class="table__icon-box">
                                         <div class="d-flex align-items-center justify-content-center gap-10">
-                                            <a href="<?= $GLOBALS['base_url'] ?>/con-project-drawings/edit?id=<?= $row['id'] ?>" class="table__icon edit">
-                                                <i class="fa-sharp fa-light fa-pen"></i>
-                                            </a>
-                                            <button class="table__icon delete removeBtnCust"
-                                                data-id="<?= $row['id'] ?>"
-                                                data-name="<?= htmlspecialchars($row['project_name'] ?? '') ?>"
-                                                data-action="delete-project-drawing">
-                                                <i class="fa-regular fa-trash"></i>
-                                            </button>
+                                            <?php if (($row['status'] ?? 'Draft') === 'Draft'): ?>
+                                                <a href="<?= $GLOBALS['base_url'] ?>/con-project-drawings/edit?id=<?= $row['id'] ?>" class="table__icon edit" title="Edit Draft">
+                                                    <i class="fa-sharp fa-light fa-pen"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <button class="table__icon delete removeBtnCust"
+                                                    data-id="<?= $row['id'] ?>"
+                                                    data-name="<?= htmlspecialchars($row['project_name'] ?? '') ?>"
+                                                    data-action="delete-project-drawing" title="Delete Drawing">
+                                                    <i class="fa-regular fa-trash"></i>
+                                                </button>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                     <?php endif; ?>

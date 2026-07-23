@@ -1008,12 +1008,16 @@ class Lead extends Model
 
     public function create($data)
     {
-        // Auto-assign duplicates to the first owner
+        // Auto-assign duplicates to the first owner or team
         if (empty($data['assigned_id'])) {
             $firstAssignee = $this->findFirstAssignee($data['phone_number'] ?? $data['phone'] ?? null, $data['email'] ?? null);
             if ($firstAssignee) {
-                $data['assigned_id'] = $firstAssignee['assigned_id'];
-                $data['team_id']     = $firstAssignee['team_id'];
+                if (!empty($firstAssignee['assigned_id'])) {
+                    $data['assigned_id'] = $firstAssignee['assigned_id'];
+                }
+                if (!empty($firstAssignee['team_id'])) {
+                    $data['team_id']     = $firstAssignee['team_id'];
+                }
             }
         }
 
@@ -1194,12 +1198,16 @@ class Lead extends Model
      */
     public function createFromCsvBulk(&$data)
     {
-        // Auto-assign duplicates to the first owner
+        // Auto-assign duplicates to the first owner or team
         if (empty($data['assigned_id'])) {
             $firstAssignee = $this->findFirstAssignee($data['phone'] ?? $data['phone_number'] ?? null, $data['email'] ?? null);
             if ($firstAssignee) {
-                $data['assigned_id'] = $firstAssignee['assigned_id'];
-                $data['team_id']     = $firstAssignee['team_id'];
+                if (!empty($firstAssignee['assigned_id'])) {
+                    $data['assigned_id'] = $firstAssignee['assigned_id'];
+                }
+                if (!empty($firstAssignee['team_id'])) {
+                    $data['team_id']     = $firstAssignee['team_id'];
+                }
             }
         }
 
@@ -1983,32 +1991,51 @@ class Lead extends Model
         }
         
         $sql = "
-            SELECT l.assigned_id, l.team_id 
+            SELECT l.assigned_id, l.team_id,
+                   CASE 
+                       WHEN u.id IS NOT NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+                       THEN 1 ELSE 0 
+                   END AS is_assignee_active
             FROM leads l
-            JOIN users u ON l.assigned_id = u.id
+            LEFT JOIN users u ON l.assigned_id = u.id
             LEFT JOIN employees emp ON emp.user_id = u.id
             WHERE l.deleted_at IS NULL 
-              AND l.assigned_id IS NOT NULL 
-              AND u.role_id IS NOT NULL 
-              AND u.role_id != 0 
-              AND u.role_id != ''
-              AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+              AND (l.assigned_id IS NOT NULL OR l.team_id IS NOT NULL)
         ";
         
         $params = [];
         $types = "";
         
         if (!empty($phoneNumber) && !empty($email)) {
-            $sql .= " AND (l.phone_number = ? OR l.phone = ? OR l.email = ?)";
-            $params[] = $phoneNumber;
-            $params[] = $phoneNumber;
-            $params[] = $email;
-            $types .= "sss";
+            $digits = preg_replace('/\D/', '', $phoneNumber);
+            if (strlen($digits) >= 10) {
+                $suffix = substr($digits, -10);
+                $sql .= " AND (l.phone_number LIKE ? OR l.phone LIKE ? OR l.email = ?)";
+                $params[] = '%' . $suffix;
+                $params[] = '%' . $suffix;
+                $params[] = $email;
+                $types .= "sss";
+            } else {
+                $sql .= " AND (l.phone_number = ? OR l.phone = ? OR l.email = ?)";
+                $params[] = $phoneNumber;
+                $params[] = $phoneNumber;
+                $params[] = $email;
+                $types .= "sss";
+            }
         } elseif (!empty($phoneNumber)) {
-            $sql .= " AND (l.phone_number = ? OR l.phone = ?)";
-            $params[] = $phoneNumber;
-            $params[] = $phoneNumber;
-            $types .= "ss";
+            $digits = preg_replace('/\D/', '', $phoneNumber);
+            if (strlen($digits) >= 10) {
+                $suffix = substr($digits, -10);
+                $sql .= " AND (l.phone_number LIKE ? OR l.phone LIKE ?)";
+                $params[] = '%' . $suffix;
+                $params[] = '%' . $suffix;
+                $types .= "ss";
+            } else {
+                $sql .= " AND (l.phone_number = ? OR l.phone = ?)";
+                $params[] = $phoneNumber;
+                $params[] = $phoneNumber;
+                $types .= "ss";
+            }
         } else {
             $sql .= " AND l.email = ?";
             $params[] = $email;

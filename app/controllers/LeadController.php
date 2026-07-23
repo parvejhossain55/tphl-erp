@@ -34,7 +34,14 @@ class LeadController extends Controller
         $userId     = $_SESSION['user']['id']      ?? null;
         $isCoLeader = isSalesCoLeader();
 
-        if (in_array($userRoleId, [5]) || $isCoLeader) {
+        // Block Sales Executives (role 8) who are not co-leaders from accessing lead-lists
+        if ($userRoleId === 8 && !$isCoLeader) {
+            setError("You do not have permission to access the Lead List page.");
+            header("Location: " . $GLOBALS['base_url'] . "/my-dashboard");
+            exit;
+        }
+
+        if (in_array($userRoleId, [5, 9]) || $isCoLeader) {
             if (!empty($userTeamId)) {
                 // team wise users
                 $assignedUsers = $this->userModel->getUsersByTeamAndRole($userTeamId);
@@ -43,7 +50,7 @@ class LeadController extends Controller
                 $assignedUsers = $this->userModel->getAllRoleUser();
             }
         } else {
-            // admin / role 9 / others
+            // admin / others
             $assignedUsers = $this->userModel->getAllRoleUser();
         }
         $date = $_GET['date'] ?? null;
@@ -443,6 +450,18 @@ class LeadController extends Controller
 
         $userRoleId = $_SESSION['user']['role_id'] ?? null;
         $userTeamId = $_SESSION['user']['team_id'] ?? null;
+        $isCoLeader = isSalesCoLeader();
+
+        // Block Sales Executives (role 8) who are not co-leaders from fetching lead data via AJAX
+        if ($userRoleId === 8 && !$isCoLeader) {
+            echo json_encode([
+                "draw"            => $draw,
+                "recordsTotal"    => 0,
+                "recordsFiltered" => 0,
+                "data"            => []
+            ]);
+            exit;
+        }
         
         $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int)$_GET['team_id'] : null;
         $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
@@ -686,9 +705,21 @@ class LeadController extends Controller
                 t.name AS original_team_name
             FROM leads l
             JOIN leads orig ON (
-                (orig.phone_number IS NOT NULL AND orig.phone_number != '' AND (orig.phone_number = l.phone_number OR orig.phone_number = l.phone))
-                OR (orig.phone IS NOT NULL AND orig.phone != '' AND (orig.phone = l.phone_number OR orig.phone = l.phone))
-                OR (orig.email IS NOT NULL AND orig.email != '' AND orig.email = l.email)
+                (
+                    (orig.phone_number IS NOT NULL AND orig.phone_number != '') AND 
+                    (
+                        (l.phone_number IS NOT NULL AND l.phone_number != '' AND RIGHT(orig.phone_number, 10) = RIGHT(l.phone_number, 10)) OR
+                        (l.phone IS NOT NULL AND l.phone != '' AND RIGHT(orig.phone_number, 10) = RIGHT(l.phone, 10))
+                    )
+                ) OR (
+                    (orig.phone IS NOT NULL AND orig.phone != '') AND
+                    (
+                        (l.phone_number IS NOT NULL AND l.phone_number != '' AND RIGHT(orig.phone, 10) = RIGHT(l.phone_number, 10)) OR
+                        (l.phone IS NOT NULL AND l.phone != '' AND RIGHT(orig.phone, 10) = RIGHT(l.phone, 10))
+                    )
+                ) OR (
+                    orig.email IS NOT NULL AND orig.email != '' AND orig.email = l.email
+                )
             )
             JOIN users u ON orig.assigned_id = u.id
             JOIN employees emp ON emp.user_id = u.id
@@ -1650,6 +1681,63 @@ class LeadController extends Controller
         }
 
         header("Location:{$GLOBALS['base_url']}/lead-lists");
+        exit;
+    }
+
+    public function reassignDuplicateGroup()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        
+        $phoneOrEmail = $_POST['phone_or_email'] ?? '';
+        $targetUserId = (int)($_POST['target_user_id'] ?? 0);
+        
+        if (empty($phoneOrEmail) || !$targetUserId) {
+            setError("Invalid parameters!");
+            header("Location: " . $GLOBALS['base_url'] . "/lead-lists");
+            exit;
+        }
+        
+        // Find team_id of target user
+        $userTeamStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
+        $userTeamStmt->bind_param("i", $targetUserId);
+        $userTeamStmt->execute();
+        $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
+        $teamId = $userTeamRes ? (int)$userTeamRes['team_id'] : 0;
+        
+        // Clean phone/email and check if it's email or phone
+        $isEmail = filter_var($phoneOrEmail, FILTER_VALIDATE_EMAIL);
+        
+        $assignedAt = date('Y-m-d H:i:s');
+        $assignedBy = $_SESSION['user']['id'] ?? 0;
+        
+        if ($isEmail) {
+            $stmt = $this->db->prepare("
+                UPDATE leads 
+                SET assigned_id = ?, team_id = ?, assigned_at = ?, created_by = ? 
+                WHERE email = ? AND deleted_at IS NULL
+            ");
+            $stmt->bind_param("iisis", $targetUserId, $teamId, $assignedAt, $assignedBy, $phoneOrEmail);
+        } else {
+            // It's a phone number. We match by 10-digit suffix!
+            $digits = preg_replace('/\D/', '', $phoneOrEmail);
+            $suffix = strlen($digits) >= 10 ? substr($digits, -10) : $digits;
+            $likePattern = '%' . $suffix;
+            
+            $stmt = $this->db->prepare("
+                UPDATE leads 
+                SET assigned_id = ?, team_id = ?, assigned_at = ?, created_by = ? 
+                WHERE (phone_number LIKE ? OR phone LIKE ?) AND deleted_at IS NULL
+            ");
+            $stmt->bind_param("iisiss", $targetUserId, $teamId, $assignedAt, $assignedBy, $likePattern, $likePattern);
+        }
+        
+        if ($stmt && $stmt->execute()) {
+            setSuccess("All duplicate leads reassigned successfully!");
+        } else {
+            setError("Failed to reassign duplicate leads.");
+        }
+        
+        header("Location: " . $GLOBALS['base_url'] . "/lead-lists");
         exit;
     }
 }

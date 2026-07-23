@@ -340,7 +340,7 @@ window.addEventListener('load', function () {
                 if (item.type === 'deduction') {
                     // Check if this deduction is "Unpaid Leave" (which is mapped to absent deduction)
                     // We assume item ID 3 is Unpaid Leave or name matches "Unpaid Leave"
-                    const isUnpaidLeave = (item.id == 3 || item.name.toLowerCase().includes('unpaid') || item.name.toLowerCase().includes('leave'));
+                    const isUnpaidLeave = (item.id == 3 || item.id == 4 || item.name.toLowerCase().includes('unpaid') || item.name.toLowerCase().includes('leave') || item.name.toLowerCase() === 'lwp');
                     let val = emp.configured_items[item.id] || 0.00;
                     
                     if (isUnpaidLeave) {

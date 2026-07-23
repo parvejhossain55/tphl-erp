@@ -226,6 +226,12 @@ class ProjectDrawingController extends Controller {
             exit;
         }
 
+        if (($record['status'] ?? 'Draft') !== 'Draft') {
+            setError("Only Draft drawings can be edited.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
+            exit;
+        }
+
         $projects     = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
         $design_types = $this->db->query("SELECT id, name FROM design_types ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
         $users        = $this->db->query("SELECT id, full_name FROM users ORDER BY full_name ASC")->fetch_all(MYSQLI_ASSOC);
@@ -249,6 +255,19 @@ class ProjectDrawingController extends Controller {
         }
 
         $id   = $_POST['id'] ?? 0;
+        $record = $this->model->find($id);
+        if (!$record) {
+            setError("Record not found.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
+            exit;
+        }
+
+        if (($record['status'] ?? 'Draft') !== 'Draft') {
+            setError("Only Draft drawings can be updated.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
+            exit;
+        }
+
         $data = [
             'project_id'              => $_POST['project_id'] ?? 0,
             'design_type_id'          => $_POST['design_type_id'] ?? null,
@@ -293,6 +312,19 @@ class ProjectDrawingController extends Controller {
         }
 
         $id = $_POST['id'] ?? 0;
+        $record = $this->model->find($id);
+        if (!$record) {
+            setError("Record not found.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
+            exit;
+        }
+
+        if (($record['status'] ?? 'Draft') === 'Draft') {
+            setError("Draft drawings cannot be deleted. You can edit them.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
+            exit;
+        }
+
         if ($this->model->delete($id)) {
             setSuccess("Deleted successfully.");
         } else {

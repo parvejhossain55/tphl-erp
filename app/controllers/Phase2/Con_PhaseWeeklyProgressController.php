@@ -728,5 +728,8 @@ class Con_PhaseWeeklyProgressController extends Controller {
             $stmt->bind_param('i', $weeklyProgressId);
             $stmt->execute();
         }
+
+        // Auto-sync weekly progress to project phase items
+        $this->model->syncAllPhaseItemsForWeeklyProgress($weeklyProgressId);
     }
 }
