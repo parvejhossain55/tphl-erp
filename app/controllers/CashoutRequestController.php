@@ -259,9 +259,9 @@ class CashoutRequestController extends Controller
             exit;
         }
 
-        // Authorization check — admin users AND the request owner can view
+        // Authorization check — admin users, QC users, AND the request owner can view
         $canView = false;
-        if ($this->isAdminUser()) {
+        if ($this->isAdminUser() || $this->canApproveQC()) {
             $canView = true;
         } elseif ($request['requested_by'] == $this->userId) {
             $canView = true;
@@ -743,7 +743,7 @@ class CashoutRequestController extends Controller
      */
     private function isAdminUser()
     {
-        return in_array($this->userRole, [1, 3, 6, 10]);
+        return in_array($this->userRole, [1, 3, 6, 10, 30]);
     }
 
     /**
@@ -756,8 +756,9 @@ class CashoutRequestController extends Controller
 
     private function canApproveQC()
     {
+        if (in_array($this->userRole, [1, 24, 25])) return true;
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        return ($roleName === 'qc & internal audit' || hasPermission('QC & Internal Audit') || $this->canApproveOrReject());
+        return (str_contains($roleName, 'qc & internal audit') || hasPermission('QC & Internal Audit') || $this->canApproveOrReject());
     }
 
     /**
@@ -765,7 +766,7 @@ class CashoutRequestController extends Controller
      */
     private function canAddPayment()
     {
-        return in_array($this->userRole, [1, 3, 6, 10]);
+        return in_array($this->userRole, [1, 3, 6, 10, 30]);
     }
 
     // -------------------------------------------------------

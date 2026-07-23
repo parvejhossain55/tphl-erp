@@ -471,6 +471,80 @@ class AssetManagementController extends Controller
     }
 
     /**
+     * Bulk Transfer multiple assets
+     */
+    public function bulkTransfer()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/office-assets");
+            exit;
+        }
+
+        $assetIdsStr = $_POST['asset_ids'] ?? '';
+        if (empty($assetIdsStr)) {
+            setError('No assets selected.');
+            header("Location: {$GLOBALS['base_url']}/office-assets");
+            exit;
+        }
+
+        $assetIds = array_filter(array_map('intval', explode(',', $assetIdsStr)));
+        if (empty($assetIds)) {
+            setError('Invalid assets selected.');
+            header("Location: {$GLOBALS['base_url']}/office-assets");
+            exit;
+        }
+
+        $newProjectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
+        $newAssignedTo = !empty($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null;
+        $newLocation = $_POST['location'] ?? '';
+        $notes = $_POST['notes'] ?? '';
+
+        $successCount = 0;
+
+        foreach ($assetIds as $id) {
+            $asset = $this->model->findAsset($id);
+            if (!$asset) continue;
+
+            $finalLocation = !empty($newLocation) ? $newLocation : $asset['location'];
+
+            // Update asset
+            $this->db->query("UPDATE office_assets SET 
+                project_id = " . ($newProjectId ? $newProjectId : 'NULL') . ",
+                assigned_to = " . ($newAssignedTo ? $newAssignedTo : 'NULL') . ",
+                location = '" . $this->db->real_escape_string($finalLocation) . "',
+                asset_status = 'transferred'
+                WHERE id = {$id}");
+
+            // Log movement
+            $this->model->logMovement([
+                'asset_id'        => $id,
+                'action'          => 'transferred',
+                'from_location'   => $asset['location'],
+                'to_location'     => $finalLocation,
+                'from_user_id'    => $asset['assigned_to'],
+                'to_user_id'      => $newAssignedTo,
+                'from_project_id' => $asset['project_id'],
+                'to_project_id'   => $newProjectId,
+                'old_condition'   => $asset['condition_status'],
+                'new_condition'   => $asset['condition_status'],
+                'notes'           => $notes,
+                'performed_by'    => $this->userId,
+            ]);
+
+            $successCount++;
+        }
+
+        if ($successCount > 0) {
+            setSuccess("Successfully transferred {$successCount} asset(s).");
+        } else {
+            setError("Failed to transfer assets.");
+        }
+
+        header("Location: {$GLOBALS['base_url']}/office-assets");
+        exit;
+    }
+
+    /**
      * Update asset details (from edit modal) — Operations (role 20) only
      */
     public function update($id)

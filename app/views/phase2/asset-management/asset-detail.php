@@ -77,6 +77,10 @@ $conditionStatuses = ['new','ok','need_repair','repairing','repaired','damaged',
                             <span class="fw-semibold d-block mt-1"><?= htmlspecialchars($asset['item_name']) ?></span>
                         </div>
                         <div class="col-md-4">
+                            <label class="text-muted fs-11 fw-semibold d-block">Quantity</label>
+                            <span class="fw-semibold d-block mt-1">1</span>
+                        </div>
+                        <div class="col-md-4">
                             <label class="text-muted fs-11 fw-semibold d-block">Serial Number</label>
                             <span><?= htmlspecialchars($asset['serial_no'] ?? '—') ?></span>
                         </div>

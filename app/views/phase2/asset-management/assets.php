@@ -88,6 +88,9 @@ $statusBadges = [
             <div class="card-title">All Assets</div>
             <div class="d-flex gap-2">
                 <?php if (!empty($canEdit)): ?>
+                    <button type="button" class="btn btn-warning btn-sm d-none align-items-center gap-1" id="bulkAssignBtn" data-bs-toggle="modal" data-bs-target="#bulkAssignModal">
+                        <i class="fa-solid fa-people-arrows"></i> Bulk Assign (<span id="bulkAssignCount">0</span>)
+                    </button>
                     <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addAssetModal">
                         <i class="fa-solid fa-plus"></i> Register Asset
                     </button>
@@ -142,10 +145,14 @@ $statusBadges = [
                 <table class="table text-nowrap table-hover">
                     <thead>
                         <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" class="form-check-input" id="selectAllAssets">
+                            </th>
                             <th>#</th>
                             <th>Asset Code</th>
                             <th>Product Code</th>
                             <th>Item Name</th>
+                            <th class="text-center">Qty</th>
                             <th>Project / Location</th>
                             <th>Assigned To</th>
                             <th class="text-end">Price (BDT)</th>
@@ -157,11 +164,14 @@ $statusBadges = [
                     <tbody>
                         <?php if (empty($assets)): ?>
                             <tr>
-                                <td colspan="10" class="text-center py-4 text-muted">No assets found.</td>
+                                <td colspan="11" class="text-center py-4 text-muted">No assets found.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($assets as $i => $a): ?>
                                 <tr>
+                                    <td>
+                                        <input type="checkbox" class="form-check-input asset-checkbox" value="<?= $a['id'] ?>">
+                                    </td>
                                     <td class="fw-semibold text-muted"><?= $i + 1 ?></td>
                                     <td>
                                         <a href="<?= $GLOBALS['base_url'] ?>/office-assets/show/<?= $a['id'] ?>" class="fw-semibold text-primary text-decoration-underline">
@@ -171,6 +181,9 @@ $statusBadges = [
                                     <td class="fs-12"><?= htmlspecialchars($a['serial_no'] ?? '—') ?></td>
                                     <td>
                                         <span class="d-block fs-13 fw-semibold"><?= htmlspecialchars($a['item_name']) ?></span>
+                                    </td>
+                                    <td class="text-center fw-semibold text-dark">
+                                        1
                                     </td>
                                     <td>
                                         <span class="d-block fs-12"><?= htmlspecialchars($a['project_name'] ?? 'Head Office') ?></span>
@@ -394,6 +407,60 @@ $statusBadges = [
     </div>
 </div>
 
+<!-- Bulk Assign Modal -->
+<div class="modal fade" id="bulkAssignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form action="<?= $GLOBALS['base_url'] ?>/office-assets/bulk-transfer" method="POST" id="bulkAssignForm">
+            <input type="hidden" name="asset_ids" id="bulk_asset_ids" value="">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Bulk Assign Assets</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2">
+                        You have selected <strong id="bulkSelectedCountText">0</strong> asset(s) to transfer.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Transfer to Project</label>
+                        <select name="project_id" class="form-select">
+                            <option value="">Head Office (No Project)</option>
+                            <?php foreach ($projects ?? [] as $proj): ?>
+                                <option value="<?= $proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Assign To</label>
+                        <select name="assigned_to" class="form-select">
+                            <option value="">Unassigned</option>
+                            <?php foreach ($users ?? [] as $u): ?>
+                                <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">New Location</label>
+                        <input type="text" name="location" class="form-control" placeholder="e.g., Site Office">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Reason for transfer..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Transfer Assets</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <style>
 @media (max-width: 480px) {
     #stats-cards .card.custom-card {
@@ -436,4 +503,49 @@ function openEditModal(button) {
     var modal = new bootstrap.Modal(document.getElementById('editAssetModal'));
     modal.show();
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllBtn = document.getElementById('selectAllAssets');
+    const checkboxes = document.querySelectorAll('.asset-checkbox');
+    const bulkAssignBtn = document.getElementById('bulkAssignBtn');
+    const bulkAssignCount = document.getElementById('bulkAssignCount');
+    const bulkSelectedCountText = document.getElementById('bulkSelectedCountText');
+    const bulkAssetIdsInput = document.getElementById('bulk_asset_ids');
+
+    function updateBulkButton() {
+        let selectedCount = 0;
+        let selectedIds = [];
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                selectedCount++;
+                selectedIds.push(cb.value);
+            }
+        });
+
+        if (selectedCount > 0) {
+            bulkAssignBtn.classList.remove('d-none');
+            bulkAssignBtn.classList.add('d-flex');
+            bulkAssignCount.textContent = selectedCount;
+            bulkSelectedCountText.textContent = selectedCount;
+            bulkAssetIdsInput.value = selectedIds.join(',');
+        } else {
+            bulkAssignBtn.classList.add('d-none');
+            bulkAssignBtn.classList.remove('d-flex');
+        }
+    }
+
+    if(selectAllBtn) {
+        selectAllBtn.addEventListener('change', function() {
+            checkboxes.forEach(cb => cb.checked = this.checked);
+            updateBulkButton();
+        });
+    }
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            if (!this.checked && selectAllBtn) selectAllBtn.checked = false;
+            updateBulkButton();
+        });
+    });
+});
 </script>

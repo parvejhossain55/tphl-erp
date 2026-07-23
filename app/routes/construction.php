@@ -574,6 +574,7 @@ return [
     'office-assets/update-code/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'updateAssetCode'],
     'office-assets/update/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'update'],
     'office-assets/transfer/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'transfer'],
+    'office-assets/bulk-transfer' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'bulkTransfer'],
     'office-assets/condition/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'updateCondition'],
     'office-assets/dispose/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'dispose'],
     'asset-products' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'products'],

@@ -2247,6 +2247,9 @@ LIMIT ?
 
                 case 'pending':
                 default:
+                    if ($cashoutStatus === 'qc_approved') {
+                        return 'qc_approved';
+                    }
                     return 'pending';
             }
         }

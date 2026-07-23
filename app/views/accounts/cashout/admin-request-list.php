@@ -11,7 +11,8 @@ $roleNames = [
     4 => 'HR',
     5 => 'Sales Head',
     6 => 'Accounts',
-    7 => 'Clients Experiment'
+    7 => 'Clients Experiment',
+    30 => 'Accounts Head'
 ];
 $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
 

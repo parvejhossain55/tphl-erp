@@ -2235,7 +2235,7 @@
                             </li>
 
                             <!-- Labor Requisition shortcut inside Bills menu -->
-                            <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 13, 15, 22, 24, 25])): ?>
+                            <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 22])): ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/con-labor-requisitions"
                                         class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
@@ -2259,7 +2259,7 @@
                 <?php endif; ?>
 
                 <!-- ====== Labor Requisitions ====== -->
-                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 13, 15, 22, 24, 25])): ?>
+                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 22])): ?>
                     <li
                         class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
