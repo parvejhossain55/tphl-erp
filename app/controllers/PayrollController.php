@@ -634,6 +634,10 @@ class PayrollController extends Controller
         // Begin Transaction
         $this->db->begin_transaction();
 
+        $generatedCount = 0;
+        $skippedCount = 0;
+        $skippedNames = [];
+
         try {
             foreach ($payload['employees'] as $empData) {
                 // Double check if employee has already generated payslip for this month
@@ -647,7 +651,9 @@ class PayrollController extends Controller
                 $stmtCheck->close();
 
                 if ($exists) {
-                    throw new Exception("Payslip already generated for " . htmlspecialchars($empData['employee_name']) . " for this month.");
+                    $skippedCount++;
+                    $skippedNames[] = $empData['employee_name'];
+                    continue;
                 }
 
                 // 1. Create Payslip
@@ -704,11 +710,25 @@ class PayrollController extends Controller
                     ]),
                     'request_amount'  => $empData['net_salary']
                 ]);
+
+                $generatedCount++;
             }
 
             // Commit Transaction
             $this->db->commit();
-            echo json_encode(['success' => true, 'message' => 'All payslips generated successfully and submitted for approval.']);
+
+            if ($generatedCount === 0 && $skippedCount > 0) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'No payslips were generated. All selected employees already have payslips generated for this month: ' . implode(', ', $skippedNames)
+                ]);
+            } else {
+                $msg = "Generated $generatedCount payslips successfully and submitted for approval.";
+                if ($skippedCount > 0) {
+                    $msg .= " Skipped $skippedCount employees who already had payslips for this month: " . implode(', ', $skippedNames);
+                }
+                echo json_encode(['success' => true, 'message' => $msg]);
+            }
             exit;
 
         } catch (Exception $e) {
