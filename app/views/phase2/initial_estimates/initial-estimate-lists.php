@@ -20,6 +20,34 @@
     </div>
 </div>
 
+<?php if (!empty($_SESSION['csv_import_errors'])): ?>
+    <div class="alert alert-danger p-3 mb-4">
+        <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle-fill me-2"></i>CSV Import Failed (No data was imported)</h6>
+        <p class="mb-2 fs-12">Please fix the following errors in your CSV file and try again:</p>
+        <div class="table-responsive" style="max-height: 250px;">
+            <table class="table table-sm table-bordered bg-white text-dark mb-0 fs-11">
+                <thead>
+                    <tr class="bg-light">
+                        <th class="py-1" style="width: 80px;">Row No</th>
+                        <th class="py-1" style="width: 180px;">Column / Data</th>
+                        <th class="py-1">Error Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($_SESSION['csv_import_errors'] as $err): ?>
+                        <tr>
+                            <td class="py-1 font-monospace"><?= htmlspecialchars($err['row'] ?? '—') ?></td>
+                            <td class="py-1 text-danger font-monospace"><?= htmlspecialchars($err['column'] ?? '—') ?></td>
+                            <td class="py-1 text-danger"><?= htmlspecialchars($err['message'] ?? $err) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <?php unset($_SESSION['csv_import_errors']); ?>
+<?php endif; ?>
+
 <section class="section">
     <div class="card__wrapper shadow-sm">
         <div class="card__body p-0">
@@ -134,28 +162,46 @@
                     </div>
 
                     <!-- Format instructions -->
-                    <div class="border rounded p-2 mb-2" style="font-size:12px;">
-                        <div class="fw-semibold mb-2"><i class="bi bi-info-circle text-primary me-1"></i>CSV Format — একটি ফাইলে Budget + Items + Labors:</div>
-                        <div class="mb-1">
-                            <span class="badge bg-primary me-1">BUDGET</span>
-                            <span class="text-danger fw-semibold">Project_Name</span>
-                            <span class="text-muted ms-1">+ Total_Area_Sqft, Other_Costs, Other_Cost_Detail, Budget_Link, Start_Date, End_Date, Status, Approved_By_Email, Approval_Date</span>
+                    <div class="mb-3">
+                        <div class="fw-semibold mb-2 text-dark fs-12"><i class="bi bi-info-circle text-primary me-1"></i>CSV Column Structure:</div>
+                        <div class="table-responsive border rounded">
+                            <table class="table table-sm table-bordered bg-white mb-0 align-middle fs-11">
+                                <thead class="table-light text-nowrap">
+                                    <tr>
+                                        <th class="py-2" style="width: 140px;">Row Type (Row_Type)</th>
+                                        <th class="py-2 text-danger">Required Fields</th>
+                                        <th class="py-2 text-muted">Optional Fields</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="badge bg-primary px-2 py-1">BUDGET</span></td>
+                                        <td class="fw-semibold text-danger">Project_Name, Estimator_Email, Total_Area_Sqft</td>
+                                        <td class="text-muted">Approved_By_Email, Start_Date, End_Date, Drive_Link, Other_Costs, Other_Cost_Detail</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-success px-2 py-1">ITEM (Material)</span></td>
+                                        <td class="fw-semibold text-danger">Material_Name, Material_Unit, Estimated_Qty, Unit_Cost, Work_Type_Name, Phase_Item_Name</td>
+                                        <td class="text-muted">Floor_Type, Floor_No, Location, Item_Remarks</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge bg-warning text-dark px-2 py-1">LABOR</span></td>
+                                        <td class="fw-semibold text-danger">Labor_Type_Name, Rate_Per_Sqft, Area_Sqft, Work_Type_Name, Phase_Item_Name</td>
+                                        <td class="text-muted">Labor_Description</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                        <div class="mb-1">
-                            <span class="badge bg-success me-1">ITEM</span>
-                            <span class="text-danger fw-semibold">Material_Name, Estimated_Qty, Unit_Cost</span>
-                            <span class="text-muted ms-1">+ Material_Unit, Item_Remarks, Work_Type_Name</span>
-                        </div>
-                        <div class="mb-2">
-                            <span class="badge bg-warning text-dark me-1">LABOR</span>
-                            <span class="text-danger fw-semibold">Labor_Type_Name, Rate_Per_Sqft, Area_Sqft</span>
-                            <span class="text-muted ms-1">+ Work_Type_Name, Labor_Description</span>
-                        </div>
-                        <div class="text-muted" style="font-size:11px; border-top:1px solid #dee2e6; padding-top:6px;">
-                            ⚠️ ITEM ও LABOR rows সবসময় তার উপরের BUDGET row-এর সাথে link হবে।<br>
-                            ⚠️ Project_Name ও Material_Name অবশ্যই database-এর exact name হতে হবে।<br>
-                            ⚠️ Status: <code>pending</code> / <code>approved</code> / <code>cancelled</code>
-                        </div>
+                    </div>
+
+                    <div class="alert alert-warning py-2 px-3 mb-2 fs-11" style="border: 1px solid rgba(255, 193, 7, 0.3); background-color: #fffdf5;">
+                        <div class="fw-bold text-warning-emphasis mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i> Rules & Validations:</div>
+                        <ul class="mb-0 ps-3">
+                            <li><strong>Strict Project Match:</strong> Project name must match an existing project in the ERP or the import fails.</li>
+                            <li><strong>Architect Engineering:</strong> The matched project must have an active Architect Engineering setup or the import fails.</li>
+                            <li><strong>Estimator Email:</strong> Must belong to a valid registered ERP user.</li>
+                            <li><strong>Dynamic Creation:</strong> Any Work Type, Material, or Phase Item not found in database will be dynamically created by name.</li>
+                        </ul>
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center mt-3">

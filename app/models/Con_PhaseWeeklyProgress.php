@@ -1081,4 +1081,81 @@ class Con_PhaseWeeklyProgress {
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
+
+    public function syncAllPhaseItemsForWeeklyProgress(int $weeklyProgressId): void {
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT pmti.phase_item_id
+            FROM phase_weekly_progress_items pwpi
+            INNER JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
+            WHERE pwpi.weekly_progress_id = ? AND pmti.phase_item_id IS NOT NULL
+        ");
+        $stmt->bind_param('i', $weeklyProgressId);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        foreach ($res as $row) {
+            $this->syncPhaseItemProgressFromWeekly((int)$row['phase_item_id']);
+        }
+    }
+
+    public function syncPhaseItemProgressFromWeekly(int $phaseItemId): void {
+        // 1. Get budgeted quantity from initial_estimate_items
+        $stmt = $this->db->prepare("SELECT SUM(estimated_qty) AS total FROM initial_estimate_items WHERE phase_item_id = ?");
+        $stmt->bind_param('i', $phaseItemId);
+        $stmt->execute();
+        $budgeted = (float)($stmt->get_result()->fetch_assoc()['total'] ?? 0);
+
+        if ($budgeted <= 0) {
+            // 2. Try getting it from initial_estimate_labors
+            $stmt = $this->db->prepare("SELECT SUM(area_sqft) AS total FROM initial_estimate_labors WHERE phase_item_id = ?");
+            $stmt->bind_param('i', $phaseItemId);
+            $stmt->execute();
+            $budgeted = (float)($stmt->get_result()->fetch_assoc()['total'] ?? 0);
+        }
+
+        if ($budgeted <= 0) {
+            // No budget defined in estimates, we cannot calculate relative progress. Let's return.
+            return;
+        }
+
+        // 3. Compute total achieved quantity across all approved weekly reports for this phase_item_id
+        $stmt = $this->db->prepare("
+            SELECT SUM(pwpi.achieved_qty) AS total_achieved
+            FROM phase_weekly_progress_items pwpi
+            INNER JOIN phase_monthly_target_items pmti ON pmti.id = pwpi.target_item_id
+            INNER JOIN phase_weekly_progress pwp ON pwp.id = pwpi.weekly_progress_id
+            WHERE pmti.phase_item_id = ? AND pwp.pm_status = 'Approved'
+        ");
+        $stmt->bind_param('i', $phaseItemId);
+        $stmt->execute();
+        $achieved = (float)($stmt->get_result()->fetch_assoc()['total_achieved'] ?? 0);
+
+        // 4. Calculate progress percentage
+        $progressPct = ($achieved / $budgeted) * 100;
+        $progressPct = min(100.0, max(0.0, round($progressPct, 2)));
+
+        // 5. Update project_phase_items
+        $status = 'Not Started';
+        if ($progressPct >= 100.0) {
+            $status = 'Completed';
+        } elseif ($progressPct > 0.0) {
+            $status = 'In Progress';
+        }
+
+        $upd = $this->db->prepare("UPDATE project_phase_items SET actual_progress = ?, status = ? WHERE id = ?");
+        $upd->bind_param('dsi', $progressPct, $status, $phaseItemId);
+        $upd->execute();
+
+        // 6. Get phase_id to sync parent phase progress
+        $phStmt = $this->db->prepare("SELECT phase_id FROM project_phase_items WHERE id = ?");
+        $phStmt->bind_param('i', $phaseItemId);
+        $phStmt->execute();
+        $phaseId = (int)($phStmt->get_result()->fetch_assoc()['phase_id'] ?? 0);
+
+        if ($phaseId > 0) {
+            // Instantiate Con_PhaseItem model and sync
+            require_once __DIR__ . '/Con_PhaseItem.php';
+            $phaseItemModel = new \Con_PhaseItem($this->db);
+            $phaseItemModel->syncPhaseProgress($phaseId);
+        }
+    }
 }

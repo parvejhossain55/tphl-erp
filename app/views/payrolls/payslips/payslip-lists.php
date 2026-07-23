@@ -295,7 +295,20 @@ $show_breadcrumb = true;
                                 <td class="table__joining-date"><?= $payslip['joining_date'] ?></td>
 
                                 <td class="table__salary"><?= $payslip['net_salary'] ?></td>
-                                <td class="table__lwp-days text-center" data-emp-office-id="<?= htmlspecialchars($payslip['employee_office_id'] ?? '') ?>" data-emp-id="<?= $payslip['employee_id'] ?>" data-emp-name="<?= htmlspecialchars($payslip['employee_name']) ?>">
+                                <?php
+                                $lwpAmount = (float)($payslip['lwp_amount'] ?? 0);
+                                $grossSalary = (float)($payslip['emp_gross_salary'] ?? 0);
+                                $phpLwpDays = 0;
+                                if ($lwpAmount > 0 && $grossSalary > 0) {
+                                    $perDay = $grossSalary / 30;
+                                    $phpLwpDays = (int)round($lwpAmount / $perDay);
+                                }
+                                ?>
+                                <td class="table__lwp-days text-center" 
+                                    data-emp-office-id="<?= htmlspecialchars($payslip['employee_office_id'] ?? '') ?>" 
+                                    data-emp-id="<?= $payslip['employee_id'] ?>" 
+                                    data-emp-name="<?= htmlspecialchars($payslip['employee_name']) ?>"
+                                    data-php-lwp-days="<?= $phpLwpDays ?>">
                                     <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
                                 </td>
                                 <td class="table__approval-time">
@@ -742,6 +755,7 @@ $show_breadcrumb = true;
                     const officeId = normalizeId(rawId);
                     const empName = cell.dataset.empName || '';
                     const parentRow = cell.closest('tr');
+                    const phpLwpDays = parseInt(cell.getAttribute('data-php-lwp-days') || '0', 10);
 
                     console.log("Cell rawId:", rawId, "normalized officeId:", officeId, "matches group:", !!empGroups[officeId]);
 
@@ -764,8 +778,17 @@ $show_breadcrumb = true;
                             </div>
                         `;
                     } else {
-                        parentRow.setAttribute('data-lwp-days', '0');
-                        cell.innerHTML = `<span class="text-muted" style="font-size: 0.85rem;">—</span>`;
+                        if (phpLwpDays > 0) {
+                            parentRow.setAttribute('data-lwp-days', phpLwpDays);
+                            cell.innerHTML = `
+                                <div class="d-flex align-items-center justify-content-center gap-1 animate__animated animate__fadeIn">
+                                    <span class="badge bg-danger-subtle text-danger px-2 py-1 fw-bold border border-danger-subtle">${phpLwpDays} Days</span>
+                                </div>
+                            `;
+                        } else {
+                            parentRow.setAttribute('data-lwp-days', '0');
+                            cell.innerHTML = `<span class="text-muted" style="font-size: 0.85rem;">—</span>`;
+                        }
                     }
                 });
 

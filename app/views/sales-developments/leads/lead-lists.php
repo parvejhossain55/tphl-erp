@@ -1570,6 +1570,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <!-- ══ Lead Lists — Duplicate Leads Modal ══════════════════════════════════ -->
 <?php if (!empty($dupGroups)): ?>
+<style>
+.swal2-container {
+    z-index: 99999 !important;
+}
+</style>
 <div class="modal fade" id="leadDupModal" tabindex="-1" aria-labelledby="leadDupModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content" style="border-radius:14px;overflow:hidden;">
@@ -1643,9 +1648,22 @@ document.addEventListener('DOMContentLoaded', function () {
                     <th>Assigned To (Member)</th>
                     <th>Team</th>
                     <th>Assigned Date</th>
+                    <th class="pe-3 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
+                  <?php
+                    // Find the index of the oldest assignment
+                    $oldestIndex = 0;
+                    $minTime = null;
+                    foreach ($grp['rows'] as $idx => $r) {
+                        $time = !empty($r['assigned_date']) ? strtotime($r['assigned_date']) : PHP_INT_MAX;
+                        if ($minTime === null || $time < $minTime) {
+                            $minTime = $time;
+                            $oldestIndex = $idx;
+                        }
+                    }
+                  ?>
                   <?php foreach ($grp['rows'] as $ri => $r): ?>
                   <tr class="ld-dup-row" data-member="<?= htmlspecialchars($r['assigned_to_name'] ?? '') ?>">
                     <td class="ps-3 text-muted"><?= $ri + 1 ?></td>
@@ -1688,7 +1706,25 @@ document.addEventListener('DOMContentLoaded', function () {
                       <?php if (!empty($r['assigned_date'])): ?>
                         <div class="fw-semibold text-dark" style="font-size:.8rem;"><?= date('M d, Y', strtotime($r['assigned_date'])) ?></div>
                         <small><?= date('h:i A', strtotime($r['assigned_date'])) ?></small>
+                        <?php if ($ri === $oldestIndex): ?>
+                          <div class="mt-1">
+                            <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.65rem; font-weight: bold;">
+                              <i class="bi bi-clock-history me-1"></i>First Assigned
+                            </span>
+                          </div>
+                        <?php endif; ?>
                       <?php else: ?>&mdash;<?php endif; ?>
+                    </td>
+                    <td class="pe-3 text-center">
+                      <button class="btn btn-xs btn-outline-primary py-1 px-2 fw-semibold assign-dup-all-btn"
+                              onclick="handleReassignGroup(this, event)"
+                              data-user-id="<?= $r['assigned_id'] ?>"
+                              data-user-name="<?= htmlspecialchars($r['assigned_to_name'] ?? '') ?>"
+                              data-phone-or-email="<?= htmlspecialchars($grp['label']) ?>"
+                              data-lead-name="<?= htmlspecialchars($grp['name']) ?>"
+                              style="font-size:0.75rem;">
+                        Assign Group Here
+                      </button>
                     </td>
                   </tr>
                   <?php endforeach; ?>
@@ -1717,20 +1753,66 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var filterEl = document.getElementById('leadDupMemberFilter');
-    if (!filterEl) return;
-    filterEl.addEventListener('change', function () {
-        var selected = this.value.toLowerCase();
-        var anyVisible = false;
-        document.querySelectorAll('.ld-dup-group').forEach(function (grp) {
-            var members = (grp.getAttribute('data-members') || '').toLowerCase();
-            var show = !selected || members.includes(selected);
-            grp.style.display = show ? '' : 'none';
-            if (show) anyVisible = true;
+    if (filterEl) {
+        filterEl.addEventListener('change', function () {
+            var selected = this.value.toLowerCase();
+            var anyVisible = false;
+            document.querySelectorAll('.ld-dup-group').forEach(function (grp) {
+                var members = (grp.getAttribute('data-members') || '').toLowerCase();
+                var show = !selected || members.includes(selected);
+                grp.style.display = show ? '' : 'none';
+                if (show) anyVisible = true;
+            });
+            var noRes = document.getElementById('leadDupNoResult');
+            if (noRes) noRes.classList.toggle('d-none', anyVisible);
         });
-        var noRes = document.getElementById('leadDupNoResult');
-        if (noRes) noRes.classList.toggle('d-none', anyVisible);
-    });
+    }
 });
+
+// Global function for assigning duplicate lead group
+window.handleReassignGroup = function (btn, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var targetUserId = btn.getAttribute('data-user-id');
+    var targetUserName = btn.getAttribute('data-user-name');
+    var phoneOrEmail = btn.getAttribute('data-phone-or-email');
+    var leadName = btn.getAttribute('data-lead-name');
+
+    Swal.fire({
+        title: 'Assign Duplicate Group',
+        text: 'Are you sure you want to assign all duplicate leads for "' + leadName + '" (' + phoneOrEmail + ') to ' + targetUserName + '?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Assign All',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#0d6efd',
+        cancelButtonColor: '#6c757d'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            var baseUrl = window.base_url || '<?= $GLOBALS['base_url'] ?>';
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = baseUrl + '/reassign-duplicate-group';
+
+            var input1 = document.createElement('input');
+            input1.type = 'hidden';
+            input1.name = 'target_user_id';
+            input1.value = targetUserId;
+            form.appendChild(input1);
+
+            var input2 = document.createElement('input');
+            input2.type = 'hidden';
+            input2.name = 'phone_or_email';
+            input2.value = phoneOrEmail;
+            form.appendChild(input2);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+};
 </script>
 <?php endif; ?>
 

@@ -698,8 +698,9 @@ class PayrollController extends Controller
                     'requested_by'    => $generatedBy,
                     'approve_role'    => 'management',
                     'meta_data'       => json_encode([
-                        'employee_id' => $empData['employee_id'],
-                        'month' => date('d F Y', strtotime($payslipMonth))
+                        'employee_name' => $empData['employee_name'],
+                        'net_salary'    => $empData['net_salary'],
+                        'month'         => $payslipMonth
                     ]),
                     'request_amount'  => $empData['net_salary']
                 ]);
