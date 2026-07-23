@@ -816,7 +816,17 @@ class LeadController extends Controller
                 
                 if ($firstAssignee) {
                     $targetUid = $firstAssignee['assigned_id'];
-                    $targetTid = $firstAssignee['team_id'];
+                    
+                    // Fetch current team_id of this assignee from users table
+                    if (!empty($targetUid)) {
+                        $userTeamStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
+                        $userTeamStmt->bind_param("i", $targetUid);
+                        $userTeamStmt->execute();
+                        $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
+                        $targetTid = ($userTeamRes && $userTeamRes['team_id'] !== null) ? (int)$userTeamRes['team_id'] : $firstAssignee['team_id'];
+                    } else {
+                        $targetTid = $firstAssignee['team_id'];
+                    }
                 } else {
                     $targetUid = $userId;
                     // Get team_id of selected user

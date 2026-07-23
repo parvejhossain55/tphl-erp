@@ -1014,8 +1014,16 @@ class Lead extends Model
             if ($firstAssignee) {
                 if (!empty($firstAssignee['assigned_id'])) {
                     $data['assigned_id'] = $firstAssignee['assigned_id'];
-                }
-                if (!empty($firstAssignee['team_id'])) {
+                    
+                    // Fetch current team_id of this assignee from users table
+                    $userTeamStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
+                    $userTeamStmt->bind_param("i", $firstAssignee['assigned_id']);
+                    $userTeamStmt->execute();
+                    $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
+                    $currentTeamId = $userTeamRes ? $userTeamRes['team_id'] : null;
+                    
+                    $data['team_id'] = $currentTeamId !== null ? (int)$currentTeamId : $firstAssignee['team_id'];
+                } elseif (!empty($firstAssignee['team_id'])) {
                     $data['team_id']     = $firstAssignee['team_id'];
                 }
             }
@@ -1204,8 +1212,16 @@ class Lead extends Model
             if ($firstAssignee) {
                 if (!empty($firstAssignee['assigned_id'])) {
                     $data['assigned_id'] = $firstAssignee['assigned_id'];
-                }
-                if (!empty($firstAssignee['team_id'])) {
+                    
+                    // Fetch current team_id of this assignee from users table
+                    $userTeamStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
+                    $userTeamStmt->bind_param("i", $firstAssignee['assigned_id']);
+                    $userTeamStmt->execute();
+                    $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
+                    $currentTeamId = $userTeamRes ? $userTeamRes['team_id'] : null;
+                    
+                    $data['team_id'] = $currentTeamId !== null ? (int)$currentTeamId : $firstAssignee['team_id'];
+                } elseif (!empty($firstAssignee['team_id'])) {
                     $data['team_id']     = $firstAssignee['team_id'];
                 }
             }
