@@ -616,9 +616,14 @@ class LeadController extends Controller
             $next_date = (!empty($lead['next_follow_up_date']) && $lead['next_follow_up_date'] !== '0000-00-00') ? date('d-M-Y', strtotime($lead['next_follow_up_date'])) : 'No Schedule';
             $row[] = '<div>' . $next_date . '</div>';
 
-            $agent_name = htmlspecialchars($lead['agent_name'] ?? 'No Agent Assigned');
+            if (empty($lead['agent_name'])) {
+                $agentBadge = '<span class="bd-badge text-danger text-truncate" style="max-width: 150px; background-color: #fde8e8; border: 1px solid #f8b4b4;">No Agent Assigned</span>';
+            } else {
+                $agentBadge = '<span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">' . htmlspecialchars($lead['agent_name']) . '</span>';
+            }
+
             $noteHtml = '<div class="d-flex align-items-center gap-2 flex-nowrap">
-                <span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">' . $agent_name . '</span>
+                ' . $agentBadge . '
                 <span class="bd-badge bg-success">';
             if (!empty($lead['call_note'])) {
                 $noteHtml .= '<button type="button" class="btn btn-sm p-0  note-view-btn" style="font-size:11px; vertical-align:baseline; color:#fff;" data-note="' . htmlspecialchars($lead['call_note'], ENT_QUOTES, 'UTF-8') . '" data-bs-toggle="modal" data-bs-target="#viewNoteModal">View Note</button>';
@@ -1747,7 +1752,8 @@ class LeadController extends Controller
             setError("Failed to reassign duplicate leads.");
         }
         
-        header("Location: " . $GLOBALS['base_url'] . "/lead-lists");
+        $redirectUrl = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/lead-lists");
+        header("Location: " . $redirectUrl);
         exit;
     }
 }
