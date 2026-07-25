@@ -6,7 +6,7 @@ The Incentive Module enables automated calculation, claiming, approval, and disb
 
 Core Requirements Covered:
 Category-Wise Incentive %:
-Incentive is calculated from agreed_value * incentive_percentage / 100 based on the project's category.
+Incentive is calculated from flat total price (`flats.price_value`) * incentive_percentage / 100 based on the project's category.
 Eligibility Condition:
 A sale is eligible for incentive claiming when both Booking Money and Registration are completed and verified for a lead's booking (lead_bookings).
 Sales Person View ("My Incentives"):
@@ -135,7 +135,7 @@ External Incentive Assignment Modal: Employee dropdown, Project/Booking selector
 Automated / CLI Testing:
 Create and execute a test script (scratch/test_incentives_flow.php) to test:
 Creation of database tables.
-Incentive calculation given a project category incentive % and booking agreement value.
+Incentive calculation given a project category incentive % and flat total price (`flats.price_value`).
 Sales claim creation and status transition.
 Manual external incentive assignment.
 Disbursement recording and balance calculation.

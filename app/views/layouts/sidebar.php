@@ -2013,7 +2013,7 @@
                 <?php endif; ?>
                 <!-- ====== END Site Operations ====== -->
 
-                <?php if (hasPermission('Material Manage')): ?>
+                <?php if (hasPermission('Material Manage') || hasPermission('Estimator dashboard')): ?>
                     <!-- Module 3: Materials & Inventory -->
                     <li
                         class="slide has-sub <?= isActive(['con-materials', 'con-material-create', 'con-warehouses', 'con-warehouse-create', 'con-stocks'], $current_route) ? 'active' : '' ?>">
@@ -2029,6 +2029,7 @@
                                     class="sidebar__menu-item <?= isActive('con-materials', $current_route) ?>">Material
                                     Master</a>
                             </li>
+                            <?php if (hasPermission('Material Manage')): ?>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/con-material-create"
                                     class="sidebar__menu-item <?= isActive('con-material-create', $current_route) ?>">Add
@@ -2043,6 +2044,7 @@
                                     class="sidebar__menu-item <?= isActive('con-warehouse-create', $current_route) ?>">Add
                                     Warehouse</a>
                             </li>
+                            <?php endif; ?>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/con-stocks"
                                     class="sidebar__menu-item <?= isActive('con-stocks', $current_route) ?>">Stock
