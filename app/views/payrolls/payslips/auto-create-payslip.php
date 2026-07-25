@@ -338,9 +338,8 @@ window.addEventListener('load', function () {
             // Append deduction inputs
             payslipItems.forEach(item => {
                 if (item.type === 'deduction') {
-                    // Check if this deduction is "Unpaid Leave" (which is mapped to absent deduction)
-                    // We assume item ID 3 is Unpaid Leave or name matches "Unpaid Leave"
-                    const isUnpaidLeave = (item.id == 3 || item.id == 4 || item.name.toLowerCase().includes('unpaid') || item.name.toLowerCase().includes('leave') || item.name.toLowerCase() === 'lwp');
+                    const itemNameNormalized = String(item.name || '').toLowerCase().trim();
+                    const isUnpaidLeave = (item.id == 3 || item.id == 4 || itemNameNormalized.includes('unpaid') || itemNameNormalized.includes('leave') || itemNameNormalized.includes('lwp'));
                     let val = emp.configured_items[item.id] || 0.00;
                     
                     if (isUnpaidLeave) {

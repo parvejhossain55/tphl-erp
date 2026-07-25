@@ -1053,13 +1053,15 @@ document.addEventListener('DOMContentLoaded', function () {
                             html: `<div class="text-start mb-3" style="font-size:0.85rem;">
                                     Some of the selected leads are already assigned:<br><br>
                                     ${dupInfo}<br><br>
-                                    Would you like to assign them to their <strong>Existing Executive</strong> or proceed with the <strong>New Executive</strong>?
+                                    Please choose how to assign them:<br><br>
+                                    • <strong>Split Assign:</strong> Assign duplicate leads back to their <strong>Existing Executive(s)</strong> (e.g. Shafia), and assign the remaining leads to the <strong>New Executive</strong>.<br><br>
+                                    • <strong>Assign All to New:</strong> Override and assign all selected leads (including duplicates) to the <strong>New Executive</strong>.
                                    </div>`,
                             icon: 'warning',
                             showCancelButton: true,
                             showDenyButton: true,
-                            confirmButtonText: 'Existing Executive',
-                            denyButtonText: 'New Executive',
+                            confirmButtonText: 'Split Assign (Existing + Rest to New)',
+                            denyButtonText: 'Assign All to New',
                             cancelButtonText: 'Cancel',
                             confirmButtonColor: '#198754',
                             denyButtonColor: '#0d6efd',
@@ -1107,13 +1109,15 @@ document.addEventListener('DOMContentLoaded', function () {
                             html: `<div class="text-start mb-3" style="font-size:0.85rem;">
                                     Some of the selected leads are already assigned:<br><br>
                                     ${dupInfo}<br><br>
-                                    Would you like to assign them to their <strong>Existing Executive</strong> or proceed with the <strong>New Executive</strong>?
+                                    Please choose how to assign them:<br><br>
+                                    • <strong>Split Assign:</strong> Assign duplicate leads back to their <strong>Existing Executive(s)</strong> (e.g. Shafia), and assign the remaining leads to the <strong>New Executive</strong>.<br><br>
+                                    • <strong>Assign All to New:</strong> Override and assign all selected leads (including duplicates) to the <strong>New Executive</strong>.
                                    </div>`,
                             icon: 'warning',
                             showCancelButton: true,
                             showDenyButton: true,
-                            confirmButtonText: 'Existing Executive',
-                            denyButtonText: 'New Executive',
+                            confirmButtonText: 'Split Assign (Existing + Rest to New)',
+                            denyButtonText: 'Assign All to New',
                             cancelButtonText: 'Cancel',
                             confirmButtonColor: '#198754',
                             denyButtonColor: '#0d6efd',

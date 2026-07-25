@@ -1497,7 +1497,7 @@
 
 
                 <!-- Others-->
-                <?php if (hasPermission("others") && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
+                <?php if ((hasPermission("others") || hasPermission("Hr Manage")) && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
                     <li class="sidebar__menu-category">
                         <span class="category-name">Others</span>
                     </li>
@@ -1507,6 +1507,7 @@
 
 
                     <!-- Location -->
+                    <?php if (hasPermission("others")): ?>
                     <li class="slide ">
                         <a href="<?= $base_url ?>/company-bank-accounts"
                             class="sidebar__menu-item <?= isActive('company-bank-accounts', $current_route) ?>">
@@ -1514,9 +1515,11 @@
                             <span class="sidebar__menu-label">Company Bank Accounts</span>
                         </a>
                     </li>
+                    <?php endif; ?>
 
 
                     <!-- Site Manage -->
+                    <?php if (hasPermission("others") || hasPermission("Hr Manage")): ?>
                     <li
                         class="slide has-sub <?= isActive(['site-settings', 'home-footer-setting', 'flat-purchase-rules'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
@@ -1545,6 +1548,7 @@
                             </li>
                         </ul>
                     </li>
+                    <?php endif; ?>
 
 
 
