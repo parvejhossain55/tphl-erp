@@ -798,7 +798,11 @@ class LeadController extends Controller
         $idsStr = implode(',', $ids);
 
         // Final assigned datetime
-        $assignedAt = $assignedDate . ' ' . date('H:i:s');
+        $formattedDate = date('Y-m-d', strtotime($assignedDate));
+        if (!$formattedDate || $formattedDate === '1970-01-01') {
+            $formattedDate = date('Y-m-d');
+        }
+        $assignedAt = $formattedDate . ' ' . date('H:i:s');
 
         if ($routeMode === 'existing') {
             // Reassign duplicates to their existing owners, and others to the selected userId
@@ -814,19 +818,15 @@ class LeadController extends Controller
                 
                 $firstAssignee = $this->leadModel->findFirstAssignee($leadPhone, $leadEmail);
                 
-                if ($firstAssignee) {
+                if ($firstAssignee && !empty($firstAssignee['assigned_id'])) {
                     $targetUid = $firstAssignee['assigned_id'];
                     
                     // Fetch current team_id of this assignee from users table
-                    if (!empty($targetUid)) {
-                        $userTeamStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
-                        $userTeamStmt->bind_param("i", $targetUid);
-                        $userTeamStmt->execute();
-                        $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
-                        $targetTid = ($userTeamRes && $userTeamRes['team_id'] !== null) ? (int)$userTeamRes['team_id'] : $firstAssignee['team_id'];
-                    } else {
-                        $targetTid = $firstAssignee['team_id'];
-                    }
+                    $userTeamStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
+                    $userTeamStmt->bind_param("i", $targetUid);
+                    $userTeamStmt->execute();
+                    $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
+                    $targetTid = ($userTeamRes && $userTeamRes['team_id'] !== null) ? (int)$userTeamRes['team_id'] : $firstAssignee['team_id'];
                 } else {
                     $targetUid = $userId;
                     // Get team_id of selected user

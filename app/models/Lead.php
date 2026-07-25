@@ -2058,7 +2058,7 @@ class Lead extends Model
             $types .= "s";
         }
         
-        $sql .= " ORDER BY l.created_at ASC LIMIT 1";
+        $sql .= " ORDER BY (l.assigned_id IS NOT NULL) DESC, l.created_at ASC LIMIT 1";
         
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
@@ -2116,4 +2116,58 @@ class Lead extends Model
         sort($countries);
         return $countries;
     }
+
+    public function getDuplicateLeadsForUser(int $userId)
+    {
+        $userId = (int) $userId;
+        $sql = "
+            SELECT 
+                l.id,
+                l.full_name,
+                l.phone_number,
+                l.phone,
+                l.email,
+                l.created_at,
+                l.assigned_at,
+                l.last_lead_action,
+                l.lead_type,
+                p.name AS project_name
+            FROM leads l
+            LEFT JOIN projects p ON l.project_id = p.id
+            WHERE l.assigned_id = ?
+              AND l.deleted_at IS NULL
+              AND (
+                  (l.phone_number IS NOT NULL AND l.phone_number != '' AND l.phone_number IN (
+                      SELECT phone_number FROM leads 
+                      WHERE assigned_id = ? AND deleted_at IS NULL AND phone_number IS NOT NULL AND phone_number != ''
+                      GROUP BY phone_number HAVING COUNT(*) > 1
+                  ))
+                  OR
+                  (l.phone IS NOT NULL AND l.phone != '' AND l.phone IN (
+                      SELECT phone FROM leads 
+                      WHERE assigned_id = ? AND deleted_at IS NULL AND phone IS NOT NULL AND phone != ''
+                      GROUP BY phone HAVING COUNT(*) > 1
+                  ))
+                  OR
+                  (l.email IS NOT NULL AND l.email != '' AND l.email IN (
+                      SELECT email FROM leads 
+                      WHERE assigned_id = ? AND deleted_at IS NULL AND email IS NOT NULL AND email != ''
+                      GROUP BY email HAVING COUNT(*) > 1
+                  ))
+              )
+            ORDER BY l.created_at DESC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+        $stmt->bind_param("iiii", $userId, $userId, $userId, $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $leads = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+        $stmt->close();
+        return $leads;
+    }
 }
+

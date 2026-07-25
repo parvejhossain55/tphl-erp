@@ -21,6 +21,7 @@
                                    <tr class="table__title table__sort">
                                        <th style="min-width:60px;">S/L</th>
                                        <th style="min-width: 120px;">Lead Date</th>
+                                       <th style="min-width: 130px;">Duplicate</th>
                                        <th style="min-width: 160px;">Lead & Job Title/company</th>
                                        <th style="min-width: 150px;">Best Time to Contact</th>
                                        <th style="min-width: 140px;">Address & City</th>
@@ -54,6 +55,43 @@
 
                                            <!-- Lead Date -->
                                            <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
+
+                                            <!-- Duplicate Status -->
+                                            <td>
+                                                <?php
+                                                $cleanPhone = preg_replace('/[^0-9]/', '', $lead['phone_number'] ?? $lead['phone'] ?? '');
+                                                $cleanEmail = trim(strtolower($lead['email'] ?? ''));
+                                                $leadDuplicates = [];
+                                                $dupIds = [];
+                                                if ($cleanPhone !== '' && isset($phoneMap[$cleanPhone])) {
+                                                    foreach ($phoneMap[$cleanPhone] as $item) {
+                                                        if (!in_array($item['id'], $dupIds)) {
+                                                            $leadDuplicates[] = $item;
+                                                            $dupIds[] = $item['id'];
+                                                        }
+                                                    }
+                                                }
+                                                if ($cleanEmail !== '' && isset($emailMap[$cleanEmail])) {
+                                                    foreach ($emailMap[$cleanEmail] as $item) {
+                                                        if (!in_array($item['id'], $dupIds)) {
+                                                            $leadDuplicates[] = $item;
+                                                            $dupIds[] = $item['id'];
+                                                        }
+                                                    }
+                                                }
+                                                if (count($leadDuplicates) > 1):
+                                                ?>
+                                                    <span class="badge bg-danger cursor-pointer duplicate-badge-click" 
+                                                          data-duplicates="<?= htmlspecialchars(json_encode($leadDuplicates), ENT_QUOTES, 'UTF-8') ?>"
+                                                          data-current-lead-id="<?= $lead['id'] ?>"
+                                                          style="cursor: pointer;"
+                                                          title="Click to view duplicate history">
+                                                        Duplicate (<?= count($leadDuplicates) ?>)
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="text-muted small">Unique</span>
+                                                <?php endif; ?>
+                                            </td>
 
                                             <!-- Lead Name + WhatsApp + Job/Company -->
                                             <td>
@@ -320,6 +358,37 @@
                            <div class="">
                                <input type="checkbox" class="selectedIdMobile me-2 d-none" data-id="<?= $lead['id'] ?>">
                                <span class="lead-name fw-bold"><?= htmlspecialchars($lead['full_name'] ?? 'N/A') ?></span>
+                               <?php
+                                $cleanPhone = preg_replace('/[^0-9]/', '', $lead['phone_number'] ?? $lead['phone'] ?? '');
+                                $cleanEmail = trim(strtolower($lead['email'] ?? ''));
+                                $leadDuplicates = [];
+                                $dupIds = [];
+                                if ($cleanPhone !== '' && isset($phoneMap[$cleanPhone])) {
+                                    foreach ($phoneMap[$cleanPhone] as $item) {
+                                        if (!in_array($item['id'], $dupIds)) {
+                                            $leadDuplicates[] = $item;
+                                            $dupIds[] = $item['id'];
+                                        }
+                                    }
+                                }
+                                if ($cleanEmail !== '' && isset($emailMap[$cleanEmail])) {
+                                    foreach ($emailMap[$cleanEmail] as $item) {
+                                        if (!in_array($item['id'], $dupIds)) {
+                                            $leadDuplicates[] = $item;
+                                            $dupIds[] = $item['id'];
+                                        }
+                                    }
+                                }
+                                if (count($leadDuplicates) > 1):
+                                ?>
+                                    <span class="badge bg-danger cursor-pointer duplicate-badge-click" 
+                                          data-duplicates="<?= htmlspecialchars(json_encode($leadDuplicates), ENT_QUOTES, 'UTF-8') ?>"
+                                          data-current-lead-id="<?= $lead['id'] ?>"
+                                          style="cursor: pointer; font-size: 10px; padding: 2px 4px;"
+                                          title="Click to view duplicate history">
+                                        Dup (<?= count($leadDuplicates) ?>)
+                                    </span>
+                                <?php endif; ?>
                            </div>
                            <div>
                                <?php if ($phone): ?>
@@ -762,3 +831,78 @@
                 });
             });
         </script>
+
+<!-- Duplicate Leads Details Modal -->
+<div id="duplicateLeadsModal" class="modal custom-modal fade" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger"><i class="fa-solid fa-clone me-2"></i>Duplicate Lead History</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Below are the leads assigned to you with the same phone number or email address.</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped" id="duplicateLeadsModalTable">
+                        <thead>
+                            <tr class="bg-light">
+                                <th>Lead ID</th>
+                                <th>Name</th>
+                                <th>Assigned Date</th>
+                                <th>Project</th>
+                                <th>Action Status</th>
+                                <th>Lead Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="duplicateLeadsModalBody">
+                            <!-- Populated via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $(document).on('click', '.duplicate-badge-click', function() {
+            const duplicates = $(this).data('duplicates');
+            const currentLeadId = $(this).data('current-lead-id');
+            let html = '';
+            if (duplicates && duplicates.length > 0) {
+                duplicates.forEach(function(item) {
+                    const isCurrent = (item.id == currentLeadId) ? 'table-warning fw-bold' : '';
+                    const currentBadge = (item.id == currentLeadId) ? ' <span class="badge bg-warning text-dark ms-1">Current</span>' : '';
+                    html += `
+                        <tr class="${isCurrent}">
+                            <td>#${item.id}${currentBadge}</td>
+                            <td>${escapeHtml(item.full_name)}</td>
+                            <td>${item.created_at}</td>
+                            <td>${escapeHtml(item.project_name)}</td>
+                            <td><span class="badge bg-secondary">${escapeHtml(item.last_lead_action)}</span></td>
+                            <td><span class="badge bg-info">${escapeHtml(item.lead_type)}</span></td>
+                        </tr>
+                    `;
+                });
+            } else {
+                html = '<tr><td colspan="6" class="text-center">No duplicate details found.</td></tr>';
+            }
+            $('#duplicateLeadsModalBody').html(html);
+            $('#duplicateLeadsModal').modal('show');
+        });
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text
+                .toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    });
+</script>
