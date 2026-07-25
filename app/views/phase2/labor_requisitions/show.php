@@ -236,6 +236,23 @@ $steps = [
 
             <!-- ====== ACTION PANELS ====== -->
 
+            <!-- SE / Owner / Admin: Delete Requisition (status=pending or rejected) -->
+            <?php if (($st === 'pending' || $st === 'rejected') && ($isOwner || ($_SESSION['user']['role_id'] ?? 0) == 1)): ?>
+            <div class="card custom-card mb-3 border border-danger border-opacity-50">
+                <div class="card-header bg-danger-transparent">
+                    <div class="card-title fs-13 text-danger"><i class="fa-solid fa-trash me-2"></i> Delete Requisition</div>
+                </div>
+                <div class="card-body">
+                    <p class="fs-13 text-muted mb-3">This requisition is not approved yet. You can delete it permanently.</p>
+                    <form action="<?php echo $base; ?>/con-labor-requisition-delete/<?php echo $req['id']; ?>" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete this requisition? This action cannot be undone.')">
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            <i class="fa-solid fa-trash me-1"></i> Delete Requisition
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- STEP 1: PM Approve (status=pending) -->
             <?php if ($st === 'pending' && $isPM): ?>
             <div class="card custom-card mb-3 border border-info border-opacity-50">

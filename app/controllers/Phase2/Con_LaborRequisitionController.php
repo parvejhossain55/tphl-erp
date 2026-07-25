@@ -367,4 +367,41 @@ class Con_LaborRequisitionController extends Controller
         }
         $this->back($id);
     }
+
+    public function delete($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $id = (int)$id;
+
+        $requisition = $this->model->find($id);
+        if (!$requisition) {
+            $_SESSION['error'] = 'Requisition not found.';
+            header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisitions');
+            exit;
+        }
+
+        // Only allow deleting pending requisitions
+        if ($requisition['status'] !== 'pending') {
+            $_SESSION['error'] = 'Processed or approved requisitions cannot be deleted.';
+            $this->back($id);
+        }
+
+        // Check permissions: only creator or Admin (role 1)
+        if ($requisition['requested_by'] !== $this->userId && ($_SESSION['user']['role_id'] ?? 0) !== 1) {
+            $_SESSION['error'] = 'You do not have permission to delete this requisition.';
+            $this->back($id);
+        }
+
+        // Delete from database
+        $stmt = $this->db->prepare("DELETE FROM con_labor_requisitions WHERE id = ?");
+        $stmt->bind_param('i', $id);
+        if ($stmt->execute()) {
+            $_SESSION['success'] = '✅ Labor requisition deleted successfully!';
+            header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisitions');
+            exit;
+        } else {
+            $_SESSION['error'] = 'Failed to delete requisition.';
+            $this->back($id);
+        }
+    }
 }

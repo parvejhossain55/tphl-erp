@@ -179,6 +179,17 @@ $statusLabel = [
                                     <a href="<?php echo $base; ?>/con-labor-requisition/<?php echo $lr['id']; ?>" class="btn btn-icon btn-sm btn-light border">
                                         <i class="fa-solid fa-eye fs-11"></i>
                                     </a>
+                                    <?php 
+                                    $isOwner = ($lr['requested_by'] == ($_SESSION['user']['id'] ?? 0));
+                                    $isAdmin = (($_SESSION['user']['role_id'] ?? 0) == 1);
+                                    if (($lr['status'] === 'pending' || $lr['status'] === 'rejected') && ($isOwner || $isAdmin)): 
+                                    ?>
+                                        <form action="<?php echo $base; ?>/con-labor-requisition-delete/<?php echo $lr['id']; ?>" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this requisition?')">
+                                            <button type="submit" class="btn btn-icon btn-sm btn-danger-light border ms-1" title="Delete">
+                                                <i class="fa-solid fa-trash fs-11"></i>
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </td>
                         </tr>
