@@ -170,7 +170,8 @@ class AssetManagement
         $sql = "SELECT oa.*, 
                        p.name AS project_name,
                        u_assigned.full_name AS assigned_to_name,
-                       u_created.full_name AS created_by_name
+                       u_created.full_name AS created_by_name,
+                       (SELECT COUNT(*) FROM asset_movement_logs WHERE asset_id = oa.id AND action = 'transferred') AS transfer_count
                 FROM office_assets oa
                 LEFT JOIN projects p ON p.id = oa.project_id
                 LEFT JOIN users u_assigned ON u_assigned.id = oa.assigned_to
@@ -587,7 +588,7 @@ class AssetManagement
     /**
      * Operations confirms purchase received → registers assets into All Assets
      */
-    public function confirmPurchased($id, $userId, $document = null, $note = '', $assignedTo = null, $location = null)
+    public function confirmPurchased($id, $userId, $document = null, $note = '', $assignedTo = null, $location = null, $returnAmount = 0, $returnNote = '')
     {
         // Mark as purchased with document and note
         $stmt = $this->db->prepare(
@@ -595,11 +596,13 @@ class AssetManagement
                 overall_status = 'purchased', 
                 purchase_document = ?, 
                 purchase_note = ?,
+                return_amount = ?,
+                return_note = ?,
                 purchase_confirmed_by = ?,
                 purchase_confirmed_at = NOW()
             WHERE id = ?"
         );
-        $stmt->bind_param('ssii', $document, $note, $userId, $id);
+        $stmt->bind_param('ssdsii', $document, $note, $returnAmount, $returnNote, $userId, $id);
         $res = $stmt->execute();
 
         if ($res) {

@@ -94,13 +94,16 @@ class CashoutRequestController extends Controller
                    d.name          AS department_name,
                    u_req.full_name AS requester_name,
                    u_app.full_name AS approved_by_name,
-                   u_paid.full_name AS paid_by_name
+                   u_paid.full_name AS paid_by_name,
+                   oa.asset_code,
+                   oa.item_name    AS asset_name
             FROM fund_requisitions fr
             LEFT JOIN projects p     ON fr.project_id    = p.id
             LEFT JOIN departments d  ON fr.department_id = d.id
             LEFT JOIN users u_req    ON fr.requested_by  = u_req.id
             LEFT JOIN users u_app    ON fr.approved_by   = u_app.id
             LEFT JOIN users u_paid   ON fr.paid_by       = u_paid.id
+            LEFT JOIN office_assets oa ON fr.asset_id    = oa.id
             ORDER BY
                 FIELD(fr.status, 'approved', 'pending', 'paid', 'rejected'),
                 fr.id DESC

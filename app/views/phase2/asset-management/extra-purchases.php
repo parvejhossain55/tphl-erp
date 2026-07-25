@@ -756,6 +756,16 @@ function openDetailModal(btn) {
                     <div class="detail-label">Total Amount</div>
                     <div class="detail-value text-success">৳ ${parseFloat(data.total_price).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
                 </div>
+                ${data.return_amount > 0 ? `
+                <div class="col-md-3 mt-2">
+                    <div class="detail-label text-danger">Returned Bal.</div>
+                    <div class="detail-value text-danger">৳ ${parseFloat(data.return_amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                </div>
+                <div class="col-md-3 mt-2">
+                    <div class="detail-label text-primary">Spent Amount</div>
+                    <div class="detail-value text-primary">৳ ${(parseFloat(data.paid_amount) - parseFloat(data.return_amount)).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                </div>
+                ` : ''}
                 <div class="col-12 mt-2">
                     <div class="detail-label">Justification</div>
                     <div class="bg-white border rounded p-2 fs-12 mt-1">${data.justification || 'No justification provided.'}</div>
@@ -811,7 +821,7 @@ function openDetailModal(btn) {
         </div>
 
         <!-- Approval Notes (if any) -->
-        ${(data.operations_note || data.purchase_head_note || data.qc_audit_note || data.mgmt_note || data.purchase_note) ? `
+        ${(data.operations_note || data.purchase_head_note || data.qc_audit_note || data.mgmt_note || data.purchase_note || data.return_note) ? `
         <div class="mt-3">
             <div class="detail-label mb-1 px-1">APPROVAL NOTES</div>
             <div class="bg-light rounded p-2">
@@ -819,7 +829,8 @@ function openDetailModal(btn) {
                 ${data.purchase_head_note ? '<div class="fs-11 mb-1"><strong class="text-primary">Purchase Head:</strong> ' + data.purchase_head_note + '</div>' : ''}
                 ${data.qc_audit_note ? '<div class="fs-11 mb-1"><strong class="text-info">QC & Audit:</strong> ' + data.qc_audit_note + '</div>' : ''}
                 ${data.mgmt_note ? '<div class="fs-11 mb-1"><strong class="text-warning">Management:</strong> ' + data.mgmt_note + '</div>' : ''}
-                ${data.purchase_note ? '<div class="fs-11"><strong class="text-success">Operations / Purchaser:</strong> ' + data.purchase_note + '</div>' : ''}
+                ${data.purchase_note ? '<div class="fs-11 mb-1"><strong class="text-success">Operations / Purchaser:</strong> ' + data.purchase_note + '</div>' : ''}
+                ${data.return_note ? '<div class="fs-11"><strong class="text-danger">Return Note:</strong> ' + data.return_note + '</div>' : ''}
             </div>
         </div>
         ` : ''}
@@ -847,9 +858,6 @@ function openConfirmPurchaseModal(btn) {
     document.getElementById('confirm_purchase_document').value = '';
     
     // Set default assignment based on request data if available
-    document.getElementById('confirm_assigned_to').value = data.assigned_to || '';
-    document.getElementById('confirm_asset_location').value = data.asset_location || '';
-    
     new bootstrap.Modal(document.getElementById('confirmPurchaseModal')).show();
 }
 </script>
@@ -868,28 +876,21 @@ function openConfirmPurchaseModal(btn) {
                 <div class="modal-body">
                     <p class="text-muted fs-12 mb-3">Confirm that the purchased items have been received. This will register the assets in the system.</p>
                     
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fs-12 fw-semibold">Assign To (Optional)</label>
-                            <select name="assigned_to" id="confirm_assigned_to" class="form-select form-select-sm">
-                                <option value="">-- Unassigned --</option>
-                                <?php foreach ($users ?? [] as $u): ?>
-                                    <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fs-12 fw-semibold">Location / Office</label>
-                            <input type="text" name="asset_location" id="confirm_asset_location" class="form-control form-control-sm" placeholder="e.g. Site Office, Room 204">
-                        </div>
-                    </div>
 
                     <div class="mb-3">
                         <label class="form-label">Upload Document <span class="text-muted fs-11">(Invoice, Receipt, Challan etc.)</span></label>
                         <input type="file" name="purchase_document" id="confirm_purchase_document" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Returned Balance <span class="text-muted fs-11">(optional, if money was saved)</span></label>
+                        <input type="number" name="return_amount" class="form-control" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Return Note <span class="text-muted fs-11">(optional)</span></label>
+                        <input type="text" name="return_note" class="form-control" placeholder="E.g., Vendor discount applied">
+                    </div>
                     <div class="mb-0">
-                        <label class="form-label">Notes <span class="text-muted fs-11">(optional)</span></label>
+                        <label class="form-label">Purchase Notes <span class="text-muted fs-11">(optional)</span></label>
                         <textarea name="purchase_note" id="confirm_purchase_note" class="form-control" rows="2" placeholder="Any remarks about the received items..."></textarea>
                     </div>
                 </div>

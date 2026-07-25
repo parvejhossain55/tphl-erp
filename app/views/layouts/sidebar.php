@@ -2566,10 +2566,7 @@
                                 <a class="sidebar__menu-item <?= isActive('office-assets', $current_route) ?>"
                                     href="<?= $base_url ?>/office-assets">All Assets</a>
                             </li>
-                            <li class="slide <?= isActive('asset-products', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('asset-products', $current_route) ?>"
-                                    href="<?= $base_url ?>/asset-products">Products Master</a>
-                            </li>
+
 
                         </ul>
                     </li>

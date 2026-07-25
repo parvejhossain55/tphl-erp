@@ -189,6 +189,69 @@ $conditionStatuses = ['new','ok','need_repair','repairing','repaired','damaged',
                     <?php endif; ?>
                 </div>
             </div>
+
+            <!-- Repair Requisitions -->
+            <div class="card custom-card mt-3">
+                <div class="card-header">
+                    <div class="card-title"><i class="fa-solid fa-money-bill-wave me-2"></i>Repair Requisitions</div>
+                </div>
+                <div class="card-body p-0">
+                    <?php if (empty($repair_requisitions)): ?>
+                        <div class="p-4 text-center text-muted">
+                            <i class="fa-solid fa-file-invoice-dollar fs-3 mb-2 opacity-50"></i>
+                            <p class="mb-0 fs-13">No repair requisitions found.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-bordered mb-0 text-nowrap">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="fs-11 text-muted">Date</th>
+                                        <th class="fs-11 text-muted">Requested By</th>
+                                        <th class="fs-11 text-muted">Amount</th>
+                                        <th class="fs-11 text-muted">Purpose</th>
+                                        <th class="fs-11 text-muted">Status</th>
+                                        <th class="fs-11 text-muted">Receipt</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($repair_requisitions as $req): ?>
+                                        <tr>
+                                            <td class="fs-12"><?= date('d M Y, h:i A', strtotime($req['created_at'])) ?></td>
+                                            <td class="fs-12"><?= htmlspecialchars($req['requested_by_name'] ?? '—') ?></td>
+                                            <td class="fs-12 fw-semibold">৳<?= number_format($req['amount'], 2) ?></td>
+                                            <td class="fs-12 text-wrap" style="max-width: 250px"><?= htmlspecialchars($req['purpose'] ?? '—') ?></td>
+                                            <td class="fs-12">
+                                                <?php
+                                                    $statusBadge = 'secondary';
+                                                    $textColor = '';
+                                                    if ($req['status'] === 'pending') {
+                                                        $statusBadge = 'warning';
+                                                        $textColor = 'text-dark';
+                                                    }
+                                                    elseif ($req['status'] === 'approved') $statusBadge = 'primary';
+                                                    elseif ($req['status'] === 'paid') $statusBadge = 'success';
+                                                    elseif ($req['status'] === 'rejected') $statusBadge = 'danger';
+                                                ?>
+                                                <span class="badge bg-<?= $statusBadge ?>-transparent <?= $textColor ?>">
+                                                    <?= ucfirst($req['status']) ?>
+                                                </span>
+                                            </td>
+                                            <td class="fs-12">
+                                                <?php if ($req['receipt_path']): ?>
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/<?= $req['receipt_path'] ?>" target="_blank" class="btn btn-sm btn-light"><i class="fa-solid fa-file-pdf text-danger"></i></a>
+                                                <?php else: ?>
+                                                    —
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
 
         <!-- Right Column: Actions -->
@@ -225,7 +288,14 @@ $conditionStatuses = ['new','ok','need_repair','repairing','repaired','damaged',
                             </div>
                             <div class="mb-3">
                                 <label class="form-label fs-12">New Location</label>
-                                <input type="text" name="location" class="form-control form-control-sm" value="<?= htmlspecialchars($asset['location'] ?? '') ?>">
+                                <select name="location" class="form-select form-select-sm">
+                                    <option value="">-- Select Location --</option>
+                                    <?php foreach ($locations ?? [] as $loc): ?>
+                                        <option value="<?= htmlspecialchars($loc) ?>" <?= ($asset['location'] ?? '') == $loc ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($loc) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label fs-12">Notes</label>
@@ -269,6 +339,53 @@ $conditionStatuses = ['new','ok','need_repair','repairing','repaired','damaged',
                         </form>
                     </div>
                 </div>
+
+                <!-- Request Repair Fund Card -->
+                <?php 
+                $hasActiveRequisition = false;
+                foreach ($repair_requisitions as $req) {
+                    if (in_array($req['status'], ['pending', 'approved'])) {
+                        $hasActiveRequisition = true;
+                        break;
+                    }
+                }
+                
+                if (in_array($asset['condition_status'], ['need_repair', 'repairing', 'repaired'])): ?>
+                    <div class="card custom-card border-primary">
+                        <div class="card-header bg-primary-transparent">
+                            <div class="card-title text-primary"><i class="fa-solid fa-money-bill-wave me-2"></i>Request Repair Fund</div>
+                        </div>
+                        <div class="card-body">
+                            <?php if ($hasActiveRequisition): ?>
+                                <div class="alert alert-info fs-12 mb-0 text-center">
+                                    <i class="fa-solid fa-circle-info mb-2 fs-3 d-block"></i>
+                                    <p class="mb-3">A repair fund requisition is currently <strong>pending</strong> or <strong>approved</strong> for this asset.</p>
+                                    <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions" class="btn btn-sm btn-info w-100">
+                                        Go to Fund Requisitions <i class="fa-solid fa-arrow-right ms-1"></i>
+                                    </a>
+                                </div>
+                            <?php else: ?>
+                            <form method="POST" action="<?= $GLOBALS['base_url'] ?>/office-assets/repair-requisition/<?= $asset['id'] ?>" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <label class="form-label fs-12">Amount (BDT)</label>
+                                    <input type="number" step="0.01" name="amount" class="form-control form-control-sm" required placeholder="0.00">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fs-12">Purpose / Vendor</label>
+                                    <textarea name="purpose" class="form-control form-control-sm" rows="2" placeholder="Repair details and vendor name" required></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fs-12">Receipt / Quotation (Optional)</label>
+                                    <input type="file" name="receipt" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.pdf">
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-sm w-100" onclick="return confirm('Submit repair fund requisition?')">
+                                    <i class="fa-solid fa-paper-plane me-1"></i> Submit Requisition
+                                </button>
+                            </form>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
 
                 <!-- Dispose Card -->
                 <?php if ($asset['condition_status'] !== 'disposed'): ?>

@@ -296,6 +296,9 @@ class AssetManagementController extends Controller
         $projectsResult = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
         $projects = $projectsResult ? $projectsResult->fetch_all(MYSQLI_ASSOC) : [];
 
+        // Get locations list
+        $locations = ['Corporate Office', 'Site Office', 'Site Office 2', 'Zonal Office'];
+
         // Get users list
         $usersResult = $this->db->query("SELECT id, full_name FROM users ORDER BY full_name");
         $users = $usersResult ? $usersResult->fetch_all(MYSQLI_ASSOC) : [];
@@ -307,6 +310,7 @@ class AssetManagementController extends Controller
             'page_title'    => 'Asset Register',
             'assets'        => $assets,
             'projects'      => $projects,
+            'locations'     => $locations,
             'users'         => $users,
             'products'      => $products,
             'stats'         => $stats,
@@ -400,17 +404,25 @@ class AssetManagementController extends Controller
         $projectsResult = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
         $projects = $projectsResult ? $projectsResult->fetch_all(MYSQLI_ASSOC) : [];
 
+        $locations = ['Corporate Office', 'Site Office', 'Site Office 2', 'Zonal Office'];
+
         $usersResult = $this->db->query("SELECT id, full_name FROM users ORDER BY full_name");
         $users = $usersResult ? $usersResult->fetch_all(MYSQLI_ASSOC) : [];
 
+        // Fetch related repair requisitions
+        $reqResult = $this->db->query("SELECT fr.*, u.full_name as requested_by_name FROM fund_requisitions fr LEFT JOIN users u ON u.id = fr.requested_by WHERE fr.asset_id = {$id} ORDER BY fr.created_at DESC");
+        $repair_requisitions = $reqResult ? $reqResult->fetch_all(MYSQLI_ASSOC) : [];
+
         $this->view('phase2/asset-management/asset-detail', [
-            'current_route' => 'office-assets',
-            'page_title'    => 'Asset: ' . $asset['asset_code'],
-            'asset'         => $asset,
-            'movements'     => $movements,
-            'projects'      => $projects,
-            'users'         => $users,
-            'canEdit'       => $this->canEdit(),
+            'current_route'       => 'office-assets',
+            'page_title'          => 'Asset: ' . $asset['asset_code'],
+            'asset'               => $asset,
+            'movements'           => $movements,
+            'projects'            => $projects,
+            'locations'           => $locations,
+            'users'               => $users,
+            'repair_requisitions' => $repair_requisitions,
+            'canEdit'             => $this->canEdit(),
         ]);
     }
 
@@ -467,6 +479,15 @@ class AssetManagementController extends Controller
 
         setSuccess('Asset transferred successfully.');
         header("Location: {$GLOBALS['base_url']}/office-assets/show/{$id}");
+        exit;
+    }
+
+    public function getLogs($id)
+    {
+        $id = (int)$id;
+        $movements = $this->model->getMovementLog($id);
+        header('Content-Type: application/json');
+        echo json_encode($movements);
         exit;
     }
 
@@ -583,6 +604,12 @@ class AssetManagementController extends Controller
             exit;
         }
 
+        // Check if it's a transfer (project, location, or assigned_to changed)
+        $isTransfer = ($asset['project_id'] != $projectId || $asset['location'] != $location || $asset['assigned_to'] != $assignedTo);
+        if ($isTransfer) {
+            $assetStatus = 'transferred';
+        }
+
         $sql = "UPDATE office_assets SET 
                     item_name = ?, project_id = ?, location = ?, serial_no = ?, 
                     assigned_to = ?, condition_status = ?, asset_status = ?
@@ -594,12 +621,81 @@ class AssetManagementController extends Controller
         );
 
         if ($stmt->execute()) {
+            if ($isTransfer) {
+                $this->model->logMovement([
+                    'asset_id'        => $id,
+                    'action'          => 'transferred',
+                    'from_location'   => $asset['location'],
+                    'to_location'     => $location,
+                    'from_user_id'    => $asset['assigned_to'],
+                    'to_user_id'      => $assignedTo,
+                    'from_project_id' => $asset['project_id'],
+                    'to_project_id'   => $projectId,
+                    'old_condition'   => $asset['condition_status'],
+                    'new_condition'   => $conditionStatus,
+                    'notes'           => 'Updated from Edit Details form',
+                    'performed_by'    => $this->userId,
+                ]);
+            }
             setSuccess('Asset updated successfully.');
         } else {
             setError('Failed to update asset.');
         }
 
         header("Location: {$GLOBALS['base_url']}/office-assets");
+        exit;
+    }
+
+    public function storeRepairRequisition($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/office-assets/show/{$id}");
+            exit;
+        }
+
+        $id = (int)$id;
+        $asset = $this->model->findAsset($id);
+        if (!$asset) {
+            setError('Asset not found.');
+            header("Location: {$GLOBALS['base_url']}/office-assets");
+            exit;
+        }
+
+        $amount = !empty($_POST['amount']) ? (float)$_POST['amount'] : 0;
+        $purpose = trim($_POST['purpose'] ?? '');
+
+        if ($amount <= 0 || empty($purpose)) {
+            setError('Amount and purpose are required.');
+            header("Location: {$GLOBALS['base_url']}/office-assets/show/{$id}");
+            exit;
+        }
+
+        $receiptPath = null;
+        if (!empty($_FILES['receipt']['name'])) {
+            $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/requisitions/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+            $fileName = time() . '_' . basename($_FILES['receipt']['name']);
+            $targetFilePath = $uploadDir . $fileName;
+            if (move_uploaded_file($_FILES['receipt']['tmp_name'], $targetFilePath)) {
+                $receiptPath = 'uploads/requisitions/' . $fileName;
+            }
+        }
+
+        $sql = "INSERT INTO fund_requisitions (requested_by, requisition_type, category, amount, purpose, receipt_path, status, asset_id, created_at)
+                VALUES (?, 'general', 'Asset Repair', ?, ?, ?, 'pending', ?, NOW())";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('idssi', $this->userId, $amount, $purpose, $receiptPath, $id);
+        
+        if ($stmt->execute()) {
+            setSuccess('Repair fund requisition submitted successfully.');
+        } else {
+            setError('Failed to submit requisition.');
+        }
+
+        header("Location: {$GLOBALS['base_url']}/office-assets/show/{$id}");
         exit;
     }
 
@@ -909,11 +1005,13 @@ class AssetManagementController extends Controller
         }
 
         $note = trim($_POST['purchase_note'] ?? '');
+        $returnAmount = (float)($_POST['return_amount'] ?? 0);
+        $returnNote = trim($_POST['return_note'] ?? '');
         
         $assignedTo = !empty($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null;
         $location = trim($_POST['asset_location'] ?? '');
 
-        if ($this->model->confirmPurchased($id, $this->userId, $document, $note, $assignedTo, $location)) {
+        if ($this->model->confirmPurchased($id, $this->userId, $document, $note, $assignedTo, $location, $returnAmount, $returnNote)) {
             setSuccess("Purchase confirmed! Asset(s) have been registered in All Assets.");
         } else {
             setError('Failed to confirm purchase.');

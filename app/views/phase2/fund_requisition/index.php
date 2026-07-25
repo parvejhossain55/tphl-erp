@@ -1309,6 +1309,12 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
         </td>
         <td>
             <?= !empty($req['project_name']) ? htmlspecialchars($req['project_name']) : '<span class="text-muted fs-11">Office General</span>' ?>
+            <?php if (!empty($req['asset_code'])): ?>
+                <div class="mt-1">
+                    <span class="badge bg-secondary-transparent text-dark border"><i class="fa-solid fa-cube me-1"></i> <?= htmlspecialchars($req['asset_code']) ?></span>
+                    <div class="fs-11 text-muted mt-1"><?= htmlspecialchars($req['asset_name']) ?></div>
+                </div>
+            <?php endif; ?>
         </td>
         <td>
             <span class="<?= $badgeType ?> mb-1"><?= $typeText ?></span>
