@@ -1250,7 +1250,8 @@ class LeadController extends Controller
             //  HEADER read + encoding fix
             $header = fgetcsv($handle);
             $header = array_map(function ($value) {
-                return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
+                $val = trim($value);
+                return mb_check_encoding($val, 'UTF-8') ? $val : mb_convert_encoding($val, 'UTF-8', 'Windows-1252');
             }, $header);
 
             while (($row = fgetcsv($handle, 1000, ",")) !== false) {
@@ -1269,7 +1270,8 @@ class LeadController extends Controller
 
                 //  ROW encoding fix
                 $row = array_map(function ($value) {
-                    return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
+                    $val = trim($value);
+                    return mb_check_encoding($val, 'UTF-8') ? $val : mb_convert_encoding($val, 'UTF-8', 'Windows-1252');
                 }, $row);
 
                 $data = array_combine($header, $row);
@@ -1320,12 +1322,14 @@ class LeadController extends Controller
         if (($handle = fopen($filePath, "r")) !== false) {
             $header = fgetcsv($handle);
             $header = array_map(function ($value) {
-                return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
+                $val = trim($value);
+                return mb_check_encoding($val, 'UTF-8') ? $val : mb_convert_encoding($val, 'UTF-8', 'Windows-1252');
             }, $header);
 
             while (($row = fgetcsv($handle, 1000, ",")) !== false) {
                 $row = array_map(function ($value) {
-                    return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
+                    $val = trim($value);
+                    return mb_check_encoding($val, 'UTF-8') ? $val : mb_convert_encoding($val, 'UTF-8', 'Windows-1252');
                 }, $row);
 
                 if (count(array_filter($row)) === 0) continue;
