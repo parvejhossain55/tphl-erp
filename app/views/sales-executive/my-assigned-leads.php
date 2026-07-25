@@ -1,4 +1,27 @@
 <!-- Custom Styles for Table and Responsiveness -->
+<?php
+$totalDuplicatesCount = 0;
+$duplicateLeadIds = [];
+foreach ($myAllleads as $lead) {
+    $cleanPhone = preg_replace('/[^0-9]/', '', $lead['phone_number'] ?? $lead['phone'] ?? '');
+    $cleanEmail = trim(strtolower($lead['email'] ?? ''));
+    $leadDuplicates = [];
+    $dupIds = [];
+    if ($cleanPhone !== '' && isset($phoneMap[$cleanPhone])) {
+        foreach ($phoneMap[$cleanPhone] as $item) {
+            if (!in_array($item['id'], $dupIds)) { $leadDuplicates[] = $item; $dupIds[] = $item['id']; }
+        }
+    }
+    if ($cleanEmail !== '' && isset($emailMap[$cleanEmail])) {
+        foreach ($emailMap[$cleanEmail] as $item) {
+            if (!in_array($item['id'], $dupIds)) { $leadDuplicates[] = $item; $dupIds[] = $item['id']; }
+        }
+    }
+    if (count($leadDuplicates) > 1) {
+        $totalDuplicatesCount++;
+    }
+}
+?>
 <style>
     /* Table Layout Fixes */
     .table__wrapper.table-responsive {
@@ -305,6 +328,7 @@
         <!-- Filters -->
         <div class="filters">
             <form action="" method="get">
+
                 <div class="row g-2 align-items-center flex-wrap">
 
                     <!-- Year Select -->
@@ -368,6 +392,7 @@
                         <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads" class="btn btn-primary btn-sm">
                             Reset
                         </a>
+
                     </div>
 
                 </div>
@@ -378,7 +403,7 @@
         <div class="col-xxl-12">
             <div class="card__wrapper">
                 <div class="table__wrapper table-responsive">
-                    <table id="assignedLeadsTable" data-dt-custom="1" class="table no-border-table mb-20 multiple_tables">
+                    <table id="assignedLeadsTable" class="table no-border-table mb-20 multiple_tables">
                         <thead>
                             <tr class="table__title table__sort">
                                 <th style="min-width:60px;">
@@ -406,7 +431,30 @@
                         </thead>
                         <tbody>
                             <?php foreach ($myAllleads as $key => $lead): ?>
-                                <tr id="lead-<?= $lead['id'] ?>" data-id="<?= $lead['id'] ?>">
+                                <?php
+                                 $cleanPhone = preg_replace('/[^0-9]/', '', $lead['phone_number'] ?? $lead['phone'] ?? '');
+                                 $cleanEmail = trim(strtolower($lead['email'] ?? ''));
+                                 $leadDuplicates = [];
+                                 $dupIds = [];
+                                 if ($cleanPhone !== '' && isset($phoneMap[$cleanPhone])) {
+                                     foreach ($phoneMap[$cleanPhone] as $item) {
+                                         if (!in_array($item['id'], $dupIds)) {
+                                             $leadDuplicates[] = $item;
+                                             $dupIds[] = $item['id'];
+                                         }
+                                     }
+                                 }
+                                 if ($cleanEmail !== '' && isset($emailMap[$cleanEmail])) {
+                                     foreach ($emailMap[$cleanEmail] as $item) {
+                                         if (!in_array($item['id'], $dupIds)) {
+                                             $leadDuplicates[] = $item;
+                                             $dupIds[] = $item['id'];
+                                         }
+                                     }
+                                 }
+                                 $isDup = count($leadDuplicates) > 1;
+                                 ?>
+                                <tr id="lead-<?= $lead['id'] ?>" data-id="<?= $lead['id'] ?>" data-is-duplicate="<?= $isDup ? '1' : '0' ?>">
                                     <td>
                                         <input type="checkbox" class="me-2 selectedId" data-id="<?= $lead['id'] ?>">
                                         <?= $key + 1 ?>
@@ -415,29 +463,7 @@
                                     
                                     <!-- Duplicate Status -->
                                     <td>
-                                        <?php
-                                        $cleanPhone = preg_replace('/[^0-9]/', '', $lead['phone_number'] ?? $lead['phone'] ?? '');
-                                        $cleanEmail = trim(strtolower($lead['email'] ?? ''));
-                                        $leadDuplicates = [];
-                                        $dupIds = [];
-                                        if ($cleanPhone !== '' && isset($phoneMap[$cleanPhone])) {
-                                            foreach ($phoneMap[$cleanPhone] as $item) {
-                                                if (!in_array($item['id'], $dupIds)) {
-                                                    $leadDuplicates[] = $item;
-                                                    $dupIds[] = $item['id'];
-                                                }
-                                            }
-                                        }
-                                        if ($cleanEmail !== '' && isset($emailMap[$cleanEmail])) {
-                                            foreach ($emailMap[$cleanEmail] as $item) {
-                                                if (!in_array($item['id'], $dupIds)) {
-                                                    $leadDuplicates[] = $item;
-                                                    $dupIds[] = $item['id'];
-                                                }
-                                            }
-                                        }
-                                        if (count($leadDuplicates) > 1):
-                                        ?>
+                                        <?php if ($isDup): ?>
                                             <span class="badge bg-danger cursor-pointer duplicate-badge-click" 
                                                   data-duplicates="<?= htmlspecialchars(json_encode($leadDuplicates), ENT_QUOTES, 'UTF-8') ?>"
                                                   data-current-lead-id="<?= $lead['id'] ?>"
@@ -778,6 +804,7 @@
         <!-- Collapsible Filter Section -->
         <div class="collapse" id="mobileFilterCollapse">
             <form action="" method="get" class="p-2 border rounded ">
+
                 <div class="d-flex flex-column gap-2">
 
                     <!-- Year Select -->
@@ -847,35 +874,35 @@
                 $displayName .= ' (' . $lead['project_category_name'] . ')';
             }
             $plainText = strip_tags($displayName ?? '');
+
+            $cleanPhone = preg_replace('/[^0-9]/', '', $lead['phone_number'] ?? $lead['phone'] ?? '');
+            $cleanEmail = trim(strtolower($lead['email'] ?? ''));
+            $leadDuplicates = [];
+            $dupIds = [];
+            if ($cleanPhone !== '' && isset($phoneMap[$cleanPhone])) {
+                foreach ($phoneMap[$cleanPhone] as $item) {
+                    if (!in_array($item['id'], $dupIds)) {
+                        $leadDuplicates[] = $item;
+                        $dupIds[] = $item['id'];
+                    }
+                }
+            }
+            if ($cleanEmail !== '' && isset($emailMap[$cleanEmail])) {
+                foreach ($emailMap[$cleanEmail] as $item) {
+                    if (!in_array($item['id'], $dupIds)) {
+                        $leadDuplicates[] = $item;
+                        $dupIds[] = $item['id'];
+                    }
+                }
+            }
+            $isDup = count($leadDuplicates) > 1;
             ?>
             <!-- Lead Card -->
-            <div id="lead-<?= $lead['id'] ?>" class="lead-card mb-3" data-id="<?= $lead['id'] ?>">
+            <div id="lead-<?= $lead['id'] ?>" class="lead-card mb-3" data-id="<?= $lead['id'] ?>" data-is-duplicate="<?= $isDup ? '1' : '0' ?>">
                 <div class="lead-card-header d-flex justify-content-between align-items-start gap-1">
                     <div class="flex-grow-1 overflow-hidden">
                         <span class="lead-name text-truncate"><?= htmlspecialchars($lead['full_name'] ?? '') ?></span>
-                        <?php
-                        $cleanPhone = preg_replace('/[^0-9]/', '', $lead['phone_number'] ?? $lead['phone'] ?? '');
-                        $cleanEmail = trim(strtolower($lead['email'] ?? ''));
-                        $leadDuplicates = [];
-                        $dupIds = [];
-                        if ($cleanPhone !== '' && isset($phoneMap[$cleanPhone])) {
-                            foreach ($phoneMap[$cleanPhone] as $item) {
-                                if (!in_array($item['id'], $dupIds)) {
-                                    $leadDuplicates[] = $item;
-                                    $dupIds[] = $item['id'];
-                                }
-                            }
-                        }
-                        if ($cleanEmail !== '' && isset($emailMap[$cleanEmail])) {
-                            foreach ($emailMap[$cleanEmail] as $item) {
-                                if (!in_array($item['id'], $dupIds)) {
-                                    $leadDuplicates[] = $item;
-                                    $dupIds[] = $item['id'];
-                                }
-                            }
-                        }
-                        if (count($leadDuplicates) > 1):
-                        ?>
+                        <?php if ($isDup): ?>
                             <span class="badge bg-danger cursor-pointer duplicate-badge-click" 
                                   data-duplicates="<?= htmlspecialchars(json_encode($leadDuplicates), ENT_QUOTES, 'UTF-8') ?>"
                                   data-current-lead-id="<?= $lead['id'] ?>"
@@ -1407,6 +1434,11 @@
 
 <!-- ══ Duplicate Assigned Leads Modal (Team-scoped) ════════════════════════════════════════════════════ -->
 <?php if (!empty($duplicateGroups)): ?>
+<style>
+.swal2-container {
+    z-index: 99999 !important;
+}
+</style>
 <div class="modal fade" id="dupAssignedModal" tabindex="-1" aria-labelledby="dupAssignedModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content" style="border-radius:14px;overflow:hidden;">
@@ -1485,9 +1517,22 @@
                     <th>Assigned To (Member)</th>
                     <th>Team</th>
                     <th>Assigned Date</th>
+                    <th class="pe-3 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
+                  <?php
+                    // Find the index of the oldest assignment
+                    $oldestIndex = 0;
+                    $minTime = null;
+                    foreach ($grp['rows'] as $idx => $r) {
+                        $time = !empty($r['assigned_date']) ? strtotime($r['assigned_date']) : PHP_INT_MAX;
+                        if ($minTime === null || $time < $minTime) {
+                            $minTime = $time;
+                            $oldestIndex = $idx;
+                        }
+                    }
+                  ?>
                   <?php foreach ($grp['rows'] as $ri => $r): ?>
                   <tr class="dup-row <?= ($r['is_mine'] ?? 0) ? 'table-success' : '' ?>"
                       data-member="<?= htmlspecialchars($r['assigned_to_name'] ?? '') ?>">
@@ -1538,7 +1583,25 @@
                       <?php if (!empty($r['assigned_date'])): ?>
                         <div class="fw-semibold text-dark" style="font-size:.8rem;"><?= date('M d, Y', strtotime($r['assigned_date'])) ?></div>
                         <small class="text-muted"><?= date('h:i A', strtotime($r['assigned_date'])) ?></small>
+                        <?php if ($ri === $oldestIndex): ?>
+                          <div class="mt-1">
+                            <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.65rem; font-weight: bold;">
+                              <i class="bi bi-clock-history me-1"></i>First Assigned
+                            </span>
+                          </div>
+                        <?php endif; ?>
                       <?php else: ?>—<?php endif; ?>
+                    </td>
+                    <td class="pe-3 text-center">
+                      <button class="btn btn-xs btn-outline-primary py-1 px-2 fw-semibold assign-dup-all-btn"
+                              onclick="handleReassignGroup(this, event)"
+                              data-user-id="<?= $r['assigned_id'] ?>"
+                              data-user-name="<?= htmlspecialchars($r['assigned_to_name'] ?? '') ?>"
+                              data-phone-or-email="<?= htmlspecialchars($grp['label']) ?>"
+                              data-lead-name="<?= htmlspecialchars($grp['name']) ?>"
+                              style="font-size:0.75rem;">
+                        Assign Group Here
+                      </button>
                     </td>
                   </tr>
                   <?php endforeach; ?>
@@ -1581,6 +1644,51 @@ document.addEventListener('DOMContentLoaded', function () {
         if (noRes) noRes.classList.toggle('d-none', anyVisible);
     });
 });
+
+// Global function for assigning duplicate lead group
+window.handleReassignGroup = function (btn, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var targetUserId = btn.getAttribute('data-user-id');
+    var targetUserName = btn.getAttribute('data-user-name');
+    var phoneOrEmail = btn.getAttribute('data-phone-or-email');
+    var leadName = btn.getAttribute('data-lead-name');
+
+    Swal.fire({
+        title: 'Assign Duplicate Group',
+        text: 'Are you sure you want to assign all duplicate leads for "' + leadName + '" (' + phoneOrEmail + ') to ' + targetUserName + '?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Assign All',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#0d6efd',
+        cancelButtonColor: '#6c757d'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            var baseUrl = window.base_url || '<?= $GLOBALS['base_url'] ?>';
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = baseUrl + '/reassign-duplicate-group';
+
+            var input1 = document.createElement('input');
+            input1.type = 'hidden';
+            input1.name = 'target_user_id';
+            input1.value = targetUserId;
+            form.appendChild(input1);
+
+            var input2 = document.createElement('input');
+            input2.type = 'hidden';
+            input2.name = 'phone_or_email';
+            input2.value = phoneOrEmail;
+            form.appendChild(input2);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+};
 </script>
 <?php endif; ?>
 
@@ -1685,7 +1793,7 @@ document.addEventListener('DOMContentLoaded', function () {
 </div>
 
 <script>
-    $(document).ready(function() {
+    document.addEventListener('DOMContentLoaded', function() {
         $(document).on('click', '.duplicate-badge-click', function() {
             const duplicates = $(this).data('duplicates');
             const currentLeadId = $(this).data('current-lead-id');
@@ -1722,6 +1830,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
         }
+
+
     });
 </script>
 

@@ -803,10 +803,17 @@ $activeCard = $_GET['filter_card'] ?? '';
                         <!-- Agent Name -->
                         <div class="d-flex align-items-center gap-2 mt-2">
                             <div class="info-label flex-shrink-0">Executive Name</div>
-                            <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
-                                <i class="bi bi-person me-1"></i>
-                                <?= $lead['agent_name'] ?? 'No Agent Assigned' ?>
-                            </span>
+                            <?php if (empty($lead['agent_name'])): ?>
+                                <span class="badge rounded-pill px-2 py-1 text-danger" style="font-size: 0.75rem; background-color: #fde8e8; border: 1px solid #f8b4b4;">
+                                    <i class="bi bi-person me-1"></i>
+                                    No Agent Assigned
+                                </span>
+                            <?php else: ?>
+                                <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                                    <i class="bi bi-person me-1"></i>
+                                    <?= htmlspecialchars($lead['agent_name']) ?>
+                                </span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -1336,6 +1343,18 @@ document.addEventListener('DOMContentLoaded', function () {
             bestTimeStr = `<div class="text-info small mt-1"><i class="bi bi-clock me-1"></i>Best Contact Time: ${lead.when_is_the_best_time_to_contact_you.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`;
         }
 
+        let agentBadge = '';
+        if (lead.agent_name) {
+            const agentNameClean = lead.agent_name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            agentBadge = `<span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size:.75rem;">
+                <i class="bi bi-person me-1"></i>${agentNameClean}
+            </span>`;
+        } else {
+            agentBadge = `<span class="badge rounded-pill px-2 py-1 text-danger" style="font-size:.75rem; background-color: #fde8e8; border: 1px solid #f8b4b4;">
+                <i class="bi bi-person me-1"></i>No Agent Assigned
+            </span>`;
+        }
+
         return `
         <div class="col-12 col-sm-6">
           <div id="lead-${lead.id}" class="lead-card h-100" data-id="${lead.id}">
@@ -1383,9 +1402,7 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
             <div class="d-flex align-items-center gap-2 mt-2">
               <div class="info-label flex-shrink-0">Executive</div>
-              <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size:.75rem;">
-                <i class="bi bi-person me-1"></i>${lead.agent_name || 'No Agent'}
-              </span>
+              ${agentBadge}
             </div>
           </div>
         </div>`;

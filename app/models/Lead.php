@@ -2136,25 +2136,6 @@ class Lead extends Model
             LEFT JOIN projects p ON l.project_id = p.id
             WHERE l.assigned_id = ?
               AND l.deleted_at IS NULL
-              AND (
-                  (l.phone_number IS NOT NULL AND l.phone_number != '' AND l.phone_number IN (
-                      SELECT phone_number FROM leads 
-                      WHERE assigned_id = ? AND deleted_at IS NULL AND phone_number IS NOT NULL AND phone_number != ''
-                      GROUP BY phone_number HAVING COUNT(*) > 1
-                  ))
-                  OR
-                  (l.phone IS NOT NULL AND l.phone != '' AND l.phone IN (
-                      SELECT phone FROM leads 
-                      WHERE assigned_id = ? AND deleted_at IS NULL AND phone IS NOT NULL AND phone != ''
-                      GROUP BY phone HAVING COUNT(*) > 1
-                  ))
-                  OR
-                  (l.email IS NOT NULL AND l.email != '' AND l.email IN (
-                      SELECT email FROM leads 
-                      WHERE assigned_id = ? AND deleted_at IS NULL AND email IS NOT NULL AND email != ''
-                      GROUP BY email HAVING COUNT(*) > 1
-                  ))
-              )
             ORDER BY l.created_at DESC
         ";
 
@@ -2162,12 +2143,56 @@ class Lead extends Model
         if (!$stmt) {
             return [];
         }
-        $stmt->bind_param("iiii", $userId, $userId, $userId, $userId);
+        $stmt->bind_param("i", $userId);
         $stmt->execute();
         $result = $stmt->get_result();
-        $leads = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+        $allLeads = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
         $stmt->close();
-        return $leads;
+
+        // 1. Build counts of phone numbers and emails
+        $phonesCount = [];
+        $emailsCount = [];
+
+        foreach ($allLeads as $lead) {
+            $phone1 = preg_replace('/[^0-9]/', '', $lead['phone_number'] ?? '');
+            $phone2 = preg_replace('/[^0-9]/', '', $lead['phone'] ?? '');
+            $email = trim(strtolower($lead['email'] ?? ''));
+
+            if ($phone1 !== '') {
+                $phonesCount[$phone1] = ($phonesCount[$phone1] ?? 0) + 1;
+            }
+            if ($phone2 !== '' && $phone2 !== $phone1) {
+                $phonesCount[$phone2] = ($phonesCount[$phone2] ?? 0) + 1;
+            }
+            if ($email !== '') {
+                $emailsCount[$email] = ($emailsCount[$email] ?? 0) + 1;
+            }
+        }
+
+        // 2. Filter list in memory to keep only those that have duplicate values
+        $duplicates = [];
+        foreach ($allLeads as $lead) {
+            $phone1 = preg_replace('/[^0-9]/', '', $lead['phone_number'] ?? '');
+            $phone2 = preg_replace('/[^0-9]/', '', $lead['phone'] ?? '');
+            $email = trim(strtolower($lead['email'] ?? ''));
+
+            $isDup = false;
+            if ($phone1 !== '' && ($phonesCount[$phone1] ?? 0) > 1) {
+                $isDup = true;
+            }
+            if ($phone2 !== '' && ($phonesCount[$phone2] ?? 0) > 1) {
+                $isDup = true;
+            }
+            if ($email !== '' && ($emailsCount[$email] ?? 0) > 1) {
+                $isDup = true;
+            }
+
+            if ($isDup) {
+                $duplicates[] = $lead;
+            }
+        }
+
+        return $duplicates;
     }
 }
 
