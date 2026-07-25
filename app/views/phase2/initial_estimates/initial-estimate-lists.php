@@ -13,6 +13,9 @@
                     <button type="button" class="btn btn-outline-success text-nowrap" data-bs-toggle="modal" data-bs-target="#importEstimateCsvModal">
                         <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
                     </button>
+                    <button type="button" class="btn btn-outline-success text-nowrap" data-bs-toggle="modal" data-bs-target="#importEstimateExcelModal">
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Import Excel
+                    </button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -222,3 +225,92 @@
         </div>
     </div>
 </div>
+
+<!-- Import Excel Modal -->
+<div class="modal fade" id="importEstimateExcelModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Import Initial Estimates (Excel)</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal"><i class="fa-solid fa-xmark-large"></i></button>
+            </div>
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/con-estimate-import-excel" method="post" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Select Project <span class="text-danger">*</span></label>
+                            <select name="project_id" class="form-select" required>
+                                <option value="">-- Select Project --</option>
+                                <?php if (!empty($projects)): ?>
+                                    <?php foreach ($projects as $proj): ?>
+                                        <option value="<?= $proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Upload Excel File (.xlsx, .xls) <span class="text-danger">*</span></label>
+                            <input type="file" name="excel_file" class="form-control" accept=".xlsx, .xls" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Estimator Email <span class="text-danger">*</span></label>
+                            <input type="email" name="estimator_email" class="form-control" value="<?= htmlspecialchars($_SESSION['user']['email'] ?? '') ?>" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Approved By (Manager) Email</label>
+                            <input type="email" name="approved_by_email" class="form-control" placeholder="manager@example.com">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Start Date</label>
+                            <input type="date" name="start_date" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">End Date</label>
+                            <input type="date" name="end_date" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Drive Link</label>
+                        <input type="url" name="budget_link" class="form-control" placeholder="https://drive.google.com/...">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold">Other Costs (approx)</label>
+                            <input type="number" name="other_costs" class="form-control" step="0.01" value="0.00">
+                        </div>
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label fw-semibold">Other Cost Details</label>
+                            <textarea name="other_cost_detail" class="form-control" rows="2" placeholder="Fencing, temporary shed, site setup costs etc."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning py-2 px-3 mb-2 fs-11" style="border: 1px solid rgba(255, 193, 7, 0.3); background-color: #fffdf5;">
+                        <div class="fw-bold text-warning-emphasis mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i> Excel Import Rules:</div>
+                        <ul class="mb-0 ps-3">
+                            <li><strong>Design Type Mapping:</strong> BOQ sheets matching `Structural work`, `Finshing work`, `Electric item`, etc. will be imported automatically.</li>
+                            <li><strong>Labor Cost:</strong> Labor costs are extracted from the `Sub-Contractor Bill` sheet.</li>
+                            <li><strong>Architect Setup:</strong> The selected project must have an active Architect Engineering setup.</li>
+                            <li><strong>Estimator & Manager Validation:</strong> Emails entered must belong to registered ERP users.</li>
+                        </ul>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-3">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success btn-sm ms-2">
+                            <i class="bi bi-upload me-1"></i> Import Excel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+

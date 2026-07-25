@@ -328,6 +328,7 @@ return [
     'con-labor-req-mark-paid/(\d+)' => ['controller' => 'Phase2\Con_LaborRequisitionController', 'method' => 'markPaid'],
     'con-labor-req-mgmt-approve-remaining/(\d+)' => ['controller' => 'Phase2\Con_LaborRequisitionController', 'method' => 'mgmtApproveRemaining'],
     'con-labor-req-labor-disbursed/(\d+)' => ['controller' => 'Phase2\Con_LaborRequisitionController', 'method' => 'markLaborDisbursed'],
+    'con-labor-requisition-delete/(\d+)' => ['controller' => 'Phase2\Con_LaborRequisitionController', 'method' => 'delete'],
 
     // =========================================================================
     // Controller: Phase2\Con_MaterialController
@@ -506,6 +507,7 @@ return [
     // Controller: Phase2\Con_InitialEstimateController
     // =========================================================================
     'con-estimate-import' => ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'importCsv'],
+    'con-estimate-import-excel' => ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'importExcel'],
     'con-estimates' => ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'index'],
     'con-estimate-create' => ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'create'],
     'con-estimate-store' => ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'store'],
