@@ -191,7 +191,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                         $selectedYear = $selectedYear ?? '';
                         ?>
                         <select class="form-select form-select-sm" name="year">
-                            <option value="">Year Select</option>
+                            <option value="">Year: All</option>
                             <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
                                 <option value="<?= $year ?>" <?= $selectedYear == $year ? 'selected' : '' ?>>
                                     <?= $year ?>
@@ -212,7 +212,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                         $selectedMonth = $_GET['month'] ?? '';
                         ?>
                         <select class="form-select form-select-sm" name="month">
-                            <option value="">Month Select</option>
+                            <option value="">Month: All</option>
                             <?php foreach ($months as $id => $name): ?>
                                 <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>>
                                     <?= $name ?>
@@ -242,8 +242,8 @@ $activeCard = $_GET['filter_card'] ?? '';
                     ?>
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Team</label>
-                        <select class="form-select form-select-sm filter-select select2" name="team_id">
-                            <option value="">Select Team</option>
+                        <select class="form-select form-select-sm filter-select select2" name="team_id" data-placeholder="Team: All">
+                            <option value="">Team: All</option>
                             <?php foreach ($teams as $t): ?>
                                 <option value="<?= $t['id'] ?>" <?= ($selectedTeam ?? '') == $t['id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($t['name']) ?>
@@ -257,8 +257,8 @@ $activeCard = $_GET['filter_card'] ?? '';
                     <?php if (!empty($projects)): ?>
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Project</label>
-                        <select class="form-select form-select-sm filter-select select2" name="project_id">
-                            <option value="">Select Project</option>
+                        <select class="form-select form-select-sm filter-select select2" name="project_id" data-placeholder="Project: All">
+                            <option value="">Project: All</option>
                             <?php foreach ($projects as $p): ?>
                                 <option value="<?= $p['id'] ?>" <?= ($selectedProject ?? '') == $p['id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($p['name']) ?>
@@ -277,8 +277,8 @@ $activeCard = $_GET['filter_card'] ?? '';
                     <?php if (!empty($categories)): ?>
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Category</label>
-                        <select class="form-select form-select-sm filter-select select2" name="project_category_id">
-                            <option value="">Select Category</option>
+                        <select class="form-select form-select-sm filter-select select2" name="project_category_id" data-placeholder="Category: All">
+                            <option value="">Category: All</option>
                             <?php foreach ($categories as $cat): ?>
                                 <option value="<?= $cat['id'] ?>" <?= ($selectedCategory ?? '') == $cat['id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($cat['name']) ?>
@@ -292,8 +292,8 @@ $activeCard = $_GET['filter_card'] ?? '';
                     <?php if (!empty($countries)): ?>
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Country</label>
-                        <select class="form-select form-select-sm filter-select select2" name="filter_country">
-                            <option value="">Select Country</option>
+                        <select class="form-select form-select-sm filter-select select2" name="filter_country" data-placeholder="Country: All">
+                            <option value="">Country: All</option>
                             <?php foreach ($countries as $c): ?>
                                 <option value="<?= htmlspecialchars($c) ?>" <?= ($selectedCountry ?? '') == $c ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($c) ?>
@@ -306,8 +306,8 @@ $activeCard = $_GET['filter_card'] ?? '';
                     <!-- Sales Executive Filter -->
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Sales Executive</label>
-                        <select class="form-select form-select-sm filter-select select2" name="assigned_user">
-                            <option value="">Select Sales Executive</option>
+                        <select class="form-select form-select-sm filter-select select2" name="assigned_user" data-placeholder="Sales Executive: All">
+                            <option value="">Sales Executive: All</option>
                             <?php foreach ($assignedUsers as $user): ?>
                                 <option value="<?= $user['id'] ?>" <?= ($selectedAssignedUser ?? '') == $user['id'] ? 'selected' : '' ?>>
                                     <?= $user['full_name'] ?>
@@ -502,7 +502,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                     $selectedYear = $_GET['year'] ?? '';
                     ?>
                     <select class="form-select form-select-sm" name="year">
-                        <option value="">Select Year</option>
+                        <option value="">Year: All</option>
                         <?php for ($y = $currentYear; $y >= $startYear; $y--): ?>
                             <option value="<?= $y ?>" <?= $selectedYear == $y ? 'selected' : '' ?>>
                                 <?= $y ?>
@@ -529,7 +529,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                     $selectedMonth = $_GET['month'] ?? '';
                     ?>
                     <select class="form-select form-select-sm" name="month">
-                        <option value="">Select Month</option>
+                        <option value="">Month: All</option>
                         <?php foreach ($months as $id => $name): ?>
                             <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>>
                                 <?= $name ?>
@@ -555,8 +555,8 @@ $activeCard = $_GET['filter_card'] ?? '';
                         placeholder="To Date">
 
                     <!-- Assigned User -->
-                    <select class="form-select form-select-sm select2" name="assigned_user">
-                        <option value="">Select Sales Executive</option>
+                    <select class="form-select form-select-sm select2" name="assigned_user" data-placeholder="Sales Executive: All">
+                        <option value="">Sales Executive: All</option>
                         <?php foreach ($assignedUsers as $user): ?>
                             <option value="<?= $user['id'] ?>"
                                 <?= ($_GET['assigned_user'] ?? '') == $user['id'] ? 'selected' : '' ?>>

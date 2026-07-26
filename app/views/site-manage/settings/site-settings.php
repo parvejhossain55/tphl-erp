@@ -80,8 +80,8 @@ $settings = $settings ?? []; // Controller থেকে পাঠানো হ�
         <div class="col-md-6">
             <div class="from__input-box">
                 <label>Alter Email </label>
-                <input type="email" name="email" class="form-control"
-                       value="<?= $settings['email'] ?? '' ?>">
+                <input type="email" name="alt_email" class="form-control"
+                       value="<?= $settings['alt_email'] ?? '' ?>">
             </div>
         </div>
 

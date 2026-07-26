@@ -37,7 +37,7 @@ class ApprovalRequestController extends Controller
         $roles = $roleMap[strtolower($sessionRole)] ?? [strtolower($sessionRole)];
         
         // Let's add management for Admins
-        if(in_array($_SESSION['user']['role_id'], [1, 3])) {
+        if(in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])) {
             $roles[] = 'management';
         }
 
@@ -45,9 +45,36 @@ class ApprovalRequestController extends Controller
         $pendingRequests = $this->approvalModel->getPendingForRole($roles, 100);
 
         $this->view("approval-requests", [
-            "current_route" => "approval-requests",
-            "page_title"    => "Pending Approval Requests",
+            "current_route"   => "approval-requests",
+            "page_title"      => "Pending Approval Requests",
             "pendingRequests" => $pendingRequests
+        ]);
+    }
+
+    /**
+     * All System Approval Requests & Payout Tracking Dashboard
+     */
+    public function allApprovalRequests()
+    {
+        $status = $_GET['status'] ?? '';
+        $department = $_GET['department'] ?? '';
+        $sourceTable = $_GET['source_table'] ?? '';
+
+        $filters = [
+            'status'       => $status,
+            'department'   => $department,
+            'source_table' => $sourceTable
+        ];
+
+        $metrics = $this->approvalModel->getApprovalDashboardMetrics();
+        $history = $this->approvalModel->getAllApprovalHistory($filters);
+
+        $this->view("approvals/all-approval-requests", [
+            "current_route"   => "all-approval-requests",
+            "page_title"      => "All System Approval Requests & Payout Tracking",
+            "companyMetrics"  => $metrics,
+            "approvalHistory" => $history,
+            "filters"         => $filters
         ]);
     }
 }
