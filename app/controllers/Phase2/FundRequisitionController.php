@@ -25,6 +25,9 @@ class FundRequisitionController extends Controller {
             // Start with: own requisitions
             $conditions = ["fr.requested_by = $userId"];
 
+            // Include requisitions where this user is the designated Reporting Boss
+            $conditions[] = "e_req.reporting_user_id = $userId";
+
             // Also include requisitions for projects they are assigned to
             $assignedIds = $this->getAssignedProjectIds($userId);
             if (!empty($assignedIds)) {
@@ -77,15 +80,33 @@ class FundRequisitionController extends Controller {
                    p.name as project_name,
                    d.name as department_name,
                    u_req.full_name as requester_name,
+                   des_req.name as requester_designation_name,
                    u_app.full_name as approved_by_name,
+                   des_app.name as approved_by_designation_name,
                    u_paid.full_name as paid_by_name,
+                   des_paid.name as paid_by_designation_name,
+                   u_dept_app.full_name as dept_head_approved_by_name,
+                   des_dept_app.name as dept_head_approved_by_designation_name,
+                   u_boss.full_name as reporting_boss_name,
+                   des_boss.name as reporting_boss_designation_name,
+                   e_req.reporting_user_id as requester_reporting_boss_id,
+                   e_req.is_dept_head as requester_is_dept_head,
                    {$assetSelect}
             FROM fund_requisitions fr
             LEFT JOIN projects p ON fr.project_id = p.id
             LEFT JOIN departments d ON fr.department_id = d.id
             LEFT JOIN users u_req ON fr.requested_by = u_req.id
+            LEFT JOIN employees e_req ON (e_req.user_id = u_req.id OR e_req.id = u_req.employee_id)
+            LEFT JOIN designations des_req ON des_req.id = COALESCE(e_req.designation_id, u_req.designation_id)
             LEFT JOIN users u_app ON fr.approved_by = u_app.id
+            LEFT JOIN designations des_app ON u_app.designation_id = des_app.id
             LEFT JOIN users u_paid ON fr.paid_by = u_paid.id
+            LEFT JOIN designations des_paid ON u_paid.designation_id = des_paid.id
+            LEFT JOIN users u_dept_app ON fr.dept_head_approved_by = u_dept_app.id
+            LEFT JOIN designations des_dept_app ON u_dept_app.designation_id = des_dept_app.id
+            LEFT JOIN users u_boss ON e_req.reporting_user_id = u_boss.id
+            LEFT JOIN employees e_boss ON (e_boss.user_id = u_boss.id OR e_boss.id = u_boss.employee_id)
+            LEFT JOIN designations des_boss ON des_boss.id = COALESCE(e_boss.designation_id, u_boss.designation_id)
             {$assetJoin}
             WHERE $where
             ORDER BY fr.id DESC
@@ -182,8 +203,17 @@ class FundRequisitionController extends Controller {
                    p.name      AS project_name,
                    d.name      AS department_name,
                    u_req.full_name  AS requester_name,
+                   des_req.name AS requester_designation_name,
                    u_app.full_name  AS approved_by_name,
+                   des_app.name AS approved_by_designation_name,
                    u_paid.full_name AS paid_by_name,
+                   des_paid.name AS paid_by_designation_name,
+                   u_dept_app.full_name AS dept_head_approved_by_name,
+                   des_dept_app.name AS dept_head_approved_by_designation_name,
+                   u_boss.full_name AS reporting_boss_name,
+                   des_boss.name AS reporting_boss_designation_name,
+                   e_req.reporting_user_id AS requester_reporting_boss_id,
+                   e_req.is_dept_head AS requester_is_dept_head,
                    oa.asset_code,
                    oa.item_name AS asset_item_name
             FROM fund_requisitions fr
@@ -191,8 +221,17 @@ class FundRequisitionController extends Controller {
             LEFT JOIN departments d ON fr.department_id = d.id
             LEFT JOIN office_assets oa ON fr.asset_id   = oa.id
             LEFT JOIN users u_req   ON fr.requested_by  = u_req.id
+            LEFT JOIN employees e_req ON (e_req.user_id = u_req.id OR e_req.id = u_req.employee_id)
+            LEFT JOIN designations des_req ON des_req.id = COALESCE(e_req.designation_id, u_req.designation_id)
             LEFT JOIN users u_app   ON fr.approved_by   = u_app.id
+            LEFT JOIN designations des_app ON u_app.designation_id = des_app.id
             LEFT JOIN users u_paid  ON fr.paid_by       = u_paid.id
+            LEFT JOIN designations des_paid ON u_paid.designation_id = des_paid.id
+            LEFT JOIN users u_dept_app ON fr.dept_head_approved_by = u_dept_app.id
+            LEFT JOIN designations des_dept_app ON u_dept_app.designation_id = des_dept_app.id
+            LEFT JOIN users u_boss ON e_req.reporting_user_id = u_boss.id
+            LEFT JOIN employees e_boss ON (e_boss.user_id = u_boss.id OR e_boss.id = u_boss.employee_id)
+            LEFT JOIN designations des_boss ON des_boss.id = COALESCE(e_boss.designation_id, u_boss.designation_id)
             WHERE fr.id = $id
         ";
         $req = $this->db->query($sql)->fetch_assoc();
@@ -288,12 +327,35 @@ class FundRequisitionController extends Controller {
             }
         }
 
+        // Check employee record for requested_by user to see if Dept Head approval is required
+        $empRes = $this->db->query("
+            SELECT e.is_dept_head, e.reporting_user_id 
+            FROM employees e 
+            LEFT JOIN users u ON (u.employee_id = e.id OR e.user_id = u.id)
+            WHERE u.id = $requested_by 
+            LIMIT 1
+        ");
+        $empData = ($empRes && $empRes->num_rows > 0) ? $empRes->fetch_assoc() : null;
+
+        $isDeptHead = (int)($empData['is_dept_head'] ?? 0);
+        $reportingUserId = !empty($empData['reporting_user_id']) ? (int)$empData['reporting_user_id'] : null;
+
+        if ($isDeptHead === 0 && !empty($reportingUserId)) {
+            $isDeptApprovalRequired = 1;
+            $deptHeadStatus = 'pending';
+            $status = 'pending_dept';
+        } else {
+            $isDeptApprovalRequired = 0;
+            $deptHeadStatus = 'not_required';
+            $status = 'pending';
+        }
+
         $stmt = $this->db->prepare("
             INSERT INTO fund_requisitions 
-            (department_id, project_id, requested_by, requisition_type, category, amount, purpose, receipt_path, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+            (department_id, project_id, requested_by, requisition_type, category, amount, purpose, receipt_path, status, is_dept_approval_required, dept_head_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("iiissdss", $department_id, $project_id, $requested_by, $requisition_type, $category, $amount, $purpose, $receipt_path);
+        $stmt->bind_param("iiissdsssis", $department_id, $project_id, $requested_by, $requisition_type, $category, $amount, $purpose, $receipt_path, $status, $isDeptApprovalRequired, $deptHeadStatus);
 
         if ($stmt->execute()) {
             setSuccess("Fund Requisition submitted successfully.");
@@ -302,6 +364,69 @@ class FundRequisitionController extends Controller {
         }
 
         header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+        exit;
+    }
+
+    public function approveDept() {
+        $sessionUserId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        $id = (int)($_POST['id'] ?? 0);
+        $status = $_POST['status'] ?? 'approved'; // 'approved' or 'rejected'
+        $approval_note = trim($_POST['approval_note'] ?? '');
+
+        if (!$id || !in_array($status, ['approved', 'rejected'])) {
+            setError('Invalid request or status.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        // Fetch requisition & check if user is allowed (reporting boss OR admin/management)
+        $sql = "
+            SELECT fr.*, e.reporting_user_id
+            FROM fund_requisitions fr
+            LEFT JOIN users u ON u.id = fr.requested_by
+            LEFT JOIN employees e ON (e.user_id = u.id OR u.employee_id = e.id)
+            WHERE fr.id = $id
+        ";
+        $req = $this->db->query($sql)->fetch_assoc();
+        if (!$req) {
+            setError('Requisition not found.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        $reportingBossId = (int)($req['reporting_user_id'] ?? 0);
+        $isAllowed = ($sessionUserId === $reportingBossId || in_array($roleId, [1, 3]));
+
+        if (!$isAllowed) {
+            setError('Only the designated Reporting Boss or Admin can approve this stage.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        $newDeptStatus = ($status === 'approved') ? 'approved' : 'rejected';
+        $newMainStatus = ($status === 'approved') ? 'pending' : 'rejected';
+
+        $stmt = $this->db->prepare("
+            UPDATE fund_requisitions 
+            SET dept_head_status = ?, 
+                dept_head_approved_by = ?, 
+                dept_head_approval_note = ?, 
+                dept_head_approved_at = CURRENT_TIMESTAMP,
+                status = ?
+            WHERE id = ?
+        ");
+        $stmt->bind_param("sissi", $newDeptStatus, $sessionUserId, $approval_note, $newMainStatus, $id);
+
+        if ($stmt->execute()) {
+            setSuccess("Department Head status updated: " . $newDeptStatus);
+        } else {
+            setError("Failed to update status: " . $this->db->error);
+        }
+
+        $referer = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/fund-requisitions");
+        header("Location: " . $referer);
         exit;
     }
 

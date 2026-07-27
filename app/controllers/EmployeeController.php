@@ -70,6 +70,7 @@ class EmployeeController extends Controller
         $roles = $this->roleModel->getAllFilterRole();
         $designations = $this->designationModel->getAll();
         $teams = $this->teamsModel->getAll();
+        $reportingBosses = $this->userModel->getPotentialReportingBosses();
         
         $payslipItemModel = new PayslipItem($this->db);
         $payslipItems = $payslipItemModel->getAll();
@@ -83,6 +84,7 @@ class EmployeeController extends Controller
             "designations"    => $designations,
             "roles"           => $roles,
             "teams"           => $teams,
+            "reportingBosses" => $reportingBosses,
             "payslipItems"    => $payslipItems
         ]);
     }
@@ -145,6 +147,8 @@ class EmployeeController extends Controller
                 'responsibilities' => $_POST['responsibilities'],
                 'team_id' => (int)($_POST['team_id'] ?? 0),
                 'is_sales_co_leader' => (int)($_POST['is_sales_co_leader'] ?? 0),
+                'is_dept_head' => (int)($_POST['is_dept_head'] ?? 0),
+                'reporting_user_id' => ((int)($_POST['is_dept_head'] ?? 0) == 1) ? null : (!empty($_POST['reporting_user_id']) ? (int)$_POST['reporting_user_id'] : null),
             ];
 
             $photoInputName = 'photo';
@@ -252,6 +256,7 @@ class EmployeeController extends Controller
         $departments = $this->departmentModel->getAll();
         $designations = $this->designationModel->getAll();
         $roles = $this->roleModel->getAll();
+        $reportingBosses = $this->userModel->getPotentialReportingBosses();
 
         $payslipItemModel = new PayslipItem($this->db);
         $payslipItems = $payslipItemModel->getAll();
@@ -270,9 +275,10 @@ class EmployeeController extends Controller
             "employee"        => $employee,
             "departments"     => $departments,
             "designations"    => $designations,
-            "roles"    => $roles,
-            "teams"    => $teams,
-            "payslipItems" => $payslipItems,
+            "roles"           => $roles,
+            "teams"           => $teams,
+            "reportingBosses" => $reportingBosses,
+            "payslipItems"    => $payslipItems,
             "employeeSalaryItems" => $employeeSalaryItems
         ]);
     }
@@ -376,6 +382,8 @@ class EmployeeController extends Controller
             'responsibilities'     => $_POST['responsibilities'],
             'team_id'              => (int)($_POST['team_id'] ?? 0),
             'is_sales_co_leader'   => (int)($_POST['is_sales_co_leader'] ?? 0),
+            'is_dept_head'         => (int)($_POST['is_dept_head'] ?? 0),
+            'reporting_user_id'    => ((int)($_POST['is_dept_head'] ?? 0) == 1) ? null : (!empty($_POST['reporting_user_id']) ? (int)$_POST['reporting_user_id'] : null),
             'make_user'            => $makeUser,
             'password'             => $hashedPassword
         ];

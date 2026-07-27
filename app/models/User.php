@@ -305,6 +305,23 @@ public function getUsersByTeamAndRole($teamId)
     return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 }
 
+    public function getPotentialReportingBosses()
+    {
+        $sql = "SELECT u.id, u.full_name, r.name as role_name, d.name as designation_name
+                FROM users u
+                LEFT JOIN roles r ON r.id = u.role_id
+                LEFT JOIN designations d ON d.id = u.designation_id
+                WHERE u.role_id NOT IN (1, 2, 8, 23) OR u.role_id IS NULL
+                ORDER BY u.full_name ASC";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt || !$stmt->execute()) {
+            return [];
+        }
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+
 
     public function create($data)
     {

@@ -264,6 +264,40 @@
                      </div>
                  </div>
 
+                 <!-- Is Department Head & Reporting Boss -->
+                 <div class="col-lg-6">
+                     <div class="from__input-box">
+                         <div class="form__input-title">
+                             <label class="form-label">Is Department Head?</label>
+                         </div>
+                         <div class="form__input pt-1">
+                             <label class="d-flex align-items-center gap-2">
+                                 <input type="checkbox" name="is_dept_head" id="is_dept_head" value="1"
+                                     <?= ((int)($employee['is_dept_head'] ?? 0) === 1) ? 'checked' : '' ?>> Yes, this employee is a Department Head
+                             </label>
+                         </div>
+                     </div>
+                 </div>
+
+                 <div class="col-lg-6" id="reporting_boss_container">
+                     <div class="from__input-box">
+                         <div class="form__input-title">
+                             <label for="reporting_user_id">Report To (Reporting Boss)</label>
+                         </div>
+                         <div class="form__input">
+                             <select name="reporting_user_id" id="reporting_user_id" class="form-select select2">
+                                 <option value="">-- Select Reporting Boss --</option>
+                                 <?php foreach ($reportingBosses as $boss): ?>
+                                     <option value="<?= $boss['id'] ?>"
+                                         <?= (isset($employee['reporting_user_id']) && $employee['reporting_user_id'] == $boss['id']) ? 'selected' : '' ?>>
+                                         <?= htmlspecialchars($boss['full_name'] . (!empty($boss['designation_name']) ? ' (' . $boss['designation_name'] . ')' : '')) ?>
+                                     </option>
+                                 <?php endforeach; ?>
+                             </select>
+                         </div>
+                     </div>
+                 </div>
+
                  <div class="col-lg-6">
                     <div class="form__input-box">
                         <div class="form__input-box">
@@ -363,4 +397,27 @@
              document.getElementById("password_box").style.display = "none";
          }
      });
+
+     const isDeptHeadCheckbox = document.getElementById("is_dept_head");
+     const reportingBossContainer = document.getElementById("reporting_boss_container");
+     const reportingUserSelect = document.getElementById("reporting_user_id");
+
+     function toggleReportingBoss() {
+         if (isDeptHeadCheckbox.checked) {
+             reportingBossContainer.style.display = "none";
+             if (reportingUserSelect) {
+                 reportingUserSelect.value = "";
+                 if (typeof $ !== 'undefined' && $.fn.select2 && $(reportingUserSelect).hasClass('select2')) {
+                     $(reportingUserSelect).val("").trigger("change");
+                 }
+             }
+         } else {
+             reportingBossContainer.style.display = "block";
+         }
+     }
+
+     if (isDeptHeadCheckbox) {
+         isDeptHeadCheckbox.addEventListener("change", toggleReportingBoss);
+         toggleReportingBoss();
+     }
  </script>
