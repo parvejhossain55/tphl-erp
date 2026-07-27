@@ -75,6 +75,7 @@ return [
     'fund-requisitions' => ['controller' => 'Phase2\FundRequisitionController', 'method' => 'index'],
     'fund-requisitions/store' => ['controller' => 'Phase2\FundRequisitionController', 'method' => 'store'],
     'fund-requisitions/approve' => ['controller' => 'Phase2\FundRequisitionController', 'method' => 'approve'],
+    'fund-requisitions/approve-dept' => ['controller' => 'Phase2\FundRequisitionController', 'method' => 'approveDept'],
     'fund-requisitions/pay' => ['controller' => 'Phase2\FundRequisitionController', 'method' => 'pay'],
     'fund-requisitions/delete' => ['controller' => 'Phase2\FundRequisitionController', 'method' => 'delete'],
     'fund-requisitions/show/(\d+)' => ['controller' => 'Phase2\FundRequisitionController', 'method' => 'show'],

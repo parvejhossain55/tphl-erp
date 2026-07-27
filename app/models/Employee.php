@@ -175,8 +175,9 @@ class Employee extends Model
             account_holder_name, account_number, bank_name, branch_name,
             social_media1, social_media2, social_media3,
             photo, make_user, password, created_by,
-            employee_type, employee_status, workplace, responsibilities, team_id, is_sales_co_leader
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            employee_type, employee_status, workplace, responsibilities, team_id, is_sales_co_leader,
+            is_dept_head, reporting_user_id
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
         $dob = !empty($data['dob']) ? $data['dob'] : null;
@@ -186,8 +187,11 @@ class Employee extends Model
             ? password_hash($data['password'], PASSWORD_DEFAULT)
             : '';
 
+        $is_dept_head = (int)($data['is_dept_head'] ?? 0);
+        $reporting_user_id = ($is_dept_head == 1) ? null : (!empty($data['reporting_user_id']) ? (int)$data['reporting_user_id'] : null);
+
         $stmt->bind_param(
-            "sssdssssssssssiissssssssssisisssiii",
+            "sssdssssssssssiissssssssssisisssiiiii",
             $data['employee_id'],
             $data['full_name'],
             $data['gross_salary'],
@@ -222,7 +226,9 @@ class Employee extends Model
             $data['workplace'],
             $data['responsibilities'],
             $data['team_id'],
-            $data['is_sales_co_leader']
+            $data['is_sales_co_leader'],
+            $is_dept_head,
+            $reporting_user_id
         );
 
         if (!$stmt->execute()) {
@@ -275,12 +281,14 @@ class Employee extends Model
     u.role_id as role_id, 
     desg.name AS designation_name, 
     dept.name AS department_name,
-    t.name AS team_name
+    t.name AS team_name,
+    rb.full_name AS reporting_boss_name
 FROM employees AS e
 LEFT JOIN designations AS desg ON e.designation_id = desg.id
 LEFT JOIN departments AS dept ON e.department_id = dept.id
 LEFT JOIN teams AS t ON e.team_id = t.id
 LEFT JOIN users AS u ON u.id = e.user_id
+LEFT JOIN users AS rb ON rb.id = e.reporting_user_id
 WHERE e.id = ?
 ");
         $stmt->bind_param("i", $id);
@@ -350,7 +358,9 @@ WHERE e.id = ?
         employee_status = ?,
         responsibilities = ?,
         team_id = ?,
-        is_sales_co_leader = ?
+        is_sales_co_leader = ?,
+        is_dept_head = ?,
+        reporting_user_id = ?
     WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -360,8 +370,11 @@ WHERE e.id = ?
             return false;
         }
 
+        $is_dept_head = (int)($data['is_dept_head'] ?? 0);
+        $reporting_user_id = ($is_dept_head == 1) ? null : (!empty($data['reporting_user_id']) ? (int)$data['reporting_user_id'] : null);
+
         $stmt->bind_param(
-            "ssddsssssssssiissssssssssssisssiii",
+            "ssddsssssssssiissssssssssssisssiiiii",
             $data['employee_id'],         // s  1
             $data['full_name'],           // s  2
             $data['gross_salary'],        // d  3
@@ -395,7 +408,9 @@ WHERE e.id = ?
             $data['responsibilities'],    // s  31
             $data['team_id'],             // i  32
             $data['is_sales_co_leader'],  // i  33
-            $id                           // i  34
+            $is_dept_head,                // i  34
+            $reporting_user_id,           // i  35
+            $id                           // i  36
         );
 
 

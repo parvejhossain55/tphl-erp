@@ -1346,13 +1346,13 @@
                         <ul class="sidebar-menu child2" style="display:block;">
                             <li class="slide <?= isActive('clients-cash-in', $current_route) ?>">
                                 <a href="<?= $base_url ?>/clients-cash-in"
-                                    class="sidebar__menu-item <?= isActive('clients-cash-in', $current_route) ?>" style="display:flex; justify-content:space-between; align-items:center; padding-right:15px;">
-                                    <span>Clients</span>
-<<<<<<< HEAD
-                                    <span class="badge <?= $pendingVerificationsCount > 0 ? 'bg-dark text-white' : 'bg-secondary text-white' ?> rounded-pill" style="font-size:10px; padding: 2px 6px;"><?= $pendingVerificationsCount ?> Pending Verification</span>
-=======
-                                    <span class="badge <?= $pendingVerificationsCount > 0 ? 'text-dark' : 'bg-secondary text-white' ?> rounded-pill" style="font-size:10px; padding: 2px 6px; <?= $pendingVerificationsCount > 0 ? 'background-color: #ffb300;' : '' ?>"><?= $pendingVerificationsCount ?> Pending Verifications</span>
->>>>>>> 43d7febc5e6f3efdfd5317828173b91381dceb93
+                                    class="sidebar__menu-item <?= isActive('clients-cash-in', $current_route) ?>" style="display:flex; justify-content:space-between; align-items:center; padding-right:12px;">
+                                    <span class="text-truncate">Clients</span>
+                                    <?php if (!empty($pendingVerificationsCount) && $pendingVerificationsCount > 0): ?>
+                                        <span class="badge text-dark rounded-pill ms-2 flex-shrink-0" style="font-size:10px; padding: 2px 6px; background-color: #ffb300;" title="<?= $pendingVerificationsCount ?> Pending Verifications">
+                                            <?= $pendingVerificationsCount ?> Pending
+                                        </span>
+                                    <?php endif; ?>
                                 </a>
                             </li>
                             <li class="slide <?= isActive('management-cash-in', $current_route) ?>">

@@ -447,6 +447,61 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
 </div>
 
 <!-- ========================================================================= -->
+<!-- MODAL: PROCESS REQUISITION APPROVAL (DEPARTMENT HEAD ACTION) -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="deptApproveRequisitionModal" tabindex="-1" aria-labelledby="deptApproveRequisitionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form action="<?= $GLOBALS['base_url'] ?>/fund-requisitions/approve-dept" method="POST">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deptApproveRequisitionModalLabel">Department Head Approval</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="deptApproveRequisitionId">
+                    
+                    <div class="mb-3">
+                        <div class="bg-light p-3 rounded mb-3 border">
+                            <p class="mb-1 text-muted fs-11 uppercase fw-semibold">Requester Details</p>
+                            <h6 class="mb-2" id="deptApproveRequesterInfo">John Doe - Civil Engineering</h6>
+                            
+                            <div class="row">
+                                <div class="col-6">
+                                    <p class="mb-0 text-muted fs-11">Requisition Type</p>
+                                    <span class="badge bg-secondary-transparent" id="deptApproveRequisitionType">General</span>
+                                </div>
+                                <div class="col-6">
+                                    <p class="mb-0 text-muted fs-11 text-end">Amount</p>
+                                    <h5 class="mb-0 text-success text-end fw-bold" id="deptApproveAmountInfo">BDT 5,000.00</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="deptApproveStatusSelect" class="form-label">Action <span class="text-danger">*</span></label>
+                        <select name="status" id="deptApproveStatusSelect" class="form-select" required>
+                            <option value="approved" selected>Approve (Send to Management)</option>
+                            <option value="rejected">Reject Request</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="dept_approval_note" class="form-label">Remarks / Note</label>
+                        <textarea name="approval_note" id="dept_approval_note" class="form-control" rows="2" placeholder="Provide remarks..."></textarea>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-warning btn-sm">Submit Decision</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
 <!-- MODAL: VIEW DETAILS & EXPENSES -->
 <!-- ========================================================================= -->
 <div class="modal fade" id="viewRequisitionModal" tabindex="-1" aria-labelledby="viewRequisitionModalLabel" aria-hidden="true">
@@ -762,6 +817,28 @@ document.getElementById('requisitionForm').addEventListener('submit', function(e
         return false;
     }
 });
+
+function openDeptApproveModal(id, requesterName, deptName, type, amount) {
+    document.getElementById('deptApproveRequisitionId').value = id;
+    document.getElementById('deptApproveRequesterInfo').innerText = requesterName + ' - ' + deptName;
+    document.getElementById('deptApproveAmountInfo').innerText = 'BDT ' + parseFloat(amount).toLocaleString('en-US', {minimumFractionDigits: 2});
+    
+    var typeLabel = type === 'petty_cash' ? 'Petty Cash' : 'General Requisition';
+    var typeSpan = document.getElementById('deptApproveRequisitionType');
+    typeSpan.innerText = typeLabel;
+    
+    if (type === 'petty_cash') {
+        typeSpan.className = 'badge bg-warning-transparent';
+    } else {
+        typeSpan.className = 'badge bg-info-transparent';
+    }
+    
+    document.getElementById('deptApproveStatusSelect').value = 'approved';
+    document.getElementById('dept_approval_note').value = '';
+    
+    var myModal = new bootstrap.Modal(document.getElementById('deptApproveRequisitionModal'));
+    myModal.show();
+}
 
 function openApproveModal(id, requesterName, deptName, type, amount) {
     document.getElementById('approveRequisitionId').value = id;
@@ -1288,13 +1365,23 @@ document.addEventListener("DOMContentLoaded", function() {
 
 // Helper function to render a single table row
 function renderRow($req, $userId, $roleId, $isSiteEngineer) {
-    $statusClass = 'bg-warning-transparent';
-    if ($req['status'] === 'approved') {
-        $statusClass = 'bg-info-transparent';
+    $statusClass = 'bg-warning-transparent text-warning';
+    $statusText = 'Pending';
+    if ($req['status'] === 'pending_dept') {
+        $statusClass = 'bg-warning-transparent text-dark border border-warning';
+        $statusText = 'Pending Dept Head';
+    } elseif ($req['status'] === 'pending') {
+        $statusClass = 'bg-info-transparent text-info border border-info';
+        $statusText = 'Pending Management';
+    } elseif ($req['status'] === 'approved') {
+        $statusClass = 'bg-primary-transparent text-primary border border-primary';
+        $statusText = 'Approved';
     } elseif ($req['status'] === 'paid') {
-        $statusClass = 'bg-success-transparent';
+        $statusClass = 'bg-success-transparent text-success border border-success';
+        $statusText = 'Paid';
     } elseif ($req['status'] === 'rejected') {
-        $statusClass = 'bg-danger-transparent';
+        $statusClass = 'bg-danger-transparent text-danger border border-danger';
+        $statusText = 'Rejected';
     }
     
     $badgeType = ($req['requisition_type'] === 'petty_cash') ? 'badge bg-warning' : 'badge bg-info';
@@ -1305,6 +1392,9 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
         <td><?= date('d M Y', strtotime($req['created_at'])) ?></td>
         <td>
             <div class="fw-semibold"><?= htmlspecialchars($req['requester_name'] ?? 'System User') ?></div>
+            <?php if (!empty($req['requester_designation_name'])): ?>
+                <div class="fs-11 text-secondary"><?= htmlspecialchars($req['requester_designation_name']) ?></div>
+            <?php endif; ?>
             <span class="fs-10 text-muted"><?= htmlspecialchars($req['department_name'] ?? 'N/A') ?></span>
         </td>
         <td>
@@ -1325,6 +1415,11 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
         </td>
         <td class="text-wrap" style="max-width: 200px;">
             <div class="fs-12"><?= htmlspecialchars($req['purpose']) ?></div>
+            <?php if (!empty($req['dept_head_approval_note'])): ?>
+                <div class="fs-10 text-warning mt-1">
+                    <strong>Dept Note:</strong> <?= htmlspecialchars($req['dept_head_approval_note']) ?>
+                </div>
+            <?php endif; ?>
             <?php if (!empty($req['approval_note'])): ?>
                 <div class="fs-10 text-info mt-1">
                     <strong>Mgr Note:</strong> <?= htmlspecialchars($req['approval_note']) ?>
@@ -1351,31 +1446,46 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
             </div>
         </td>
         <td>
-            <span class="badge <?= $statusClass ?> fs-11 text-capitalize">
-                <?= htmlspecialchars($req['status']) ?>
+            <span class="badge <?= $statusClass ?> fs-11">
+                <?= $statusText ?>
             </span>
-            <?php if ($req['status'] === 'pending'): ?>
+            <?php if ($req['status'] === 'pending_dept'): ?>
+                <div class="fs-9 text-muted mt-1">
+                    Pending: <?= htmlspecialchars(($req['reporting_boss_name'] ?? 'Dept Head') . (!empty($req['reporting_boss_designation_name']) ? ' (' . $req['reporting_boss_designation_name'] . ')' : '')) ?>
+                </div>
+            <?php elseif ($req['status'] === 'pending'): ?>
                 <div class="fs-9 text-muted mt-1">
                     Pending: Management or Operation
                 </div>
             <?php elseif ($req['status'] === 'approved' && !empty($req['approved_by_name'])): ?>
                 <div class="fs-9 text-muted mt-1">
-                    Approved by <?= htmlspecialchars($req['approved_by_name']) ?>
+                    Approved by <?= htmlspecialchars($req['approved_by_name'] . (!empty($req['approved_by_designation_name']) ? ' (' . $req['approved_by_designation_name'] . ')' : '')) ?>
                 </div>
             <?php elseif ($req['status'] === 'paid' && !empty($req['paid_by_name'])): ?>
                 <div class="fs-9 text-muted mt-1">
                     Paid via <?= htmlspecialchars($req['payment_method'] ?? 'Cash') ?><br>
-                    By <?= htmlspecialchars($req['paid_by_name']) ?>
+                    By <?= htmlspecialchars($req['paid_by_name'] . (!empty($req['paid_by_designation_name']) ? ' (' . $req['paid_by_designation_name'] . ')' : '')) ?>
                 </div>
             <?php endif; ?>
         </td>
         <td class="no-print">
             <div class="btn-list">
-                <!-- View Details button — goes to dedicated view page -->
+                <!-- View Details button -->
                 <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions/view/<?= $req['id'] ?>"
                    class="btn btn-icon btn-sm btn-info border" title="View Details & Log Expenses">
                     <i class="fa-solid fa-eye"></i>
                 </a>
+
+                <!-- Dept Head Approval button -->
+                <?php 
+                $canApproveDept = ($userId == ($req['requester_reporting_boss_id'] ?? 0) || in_array($roleId, [1, 3]));
+                if ($req['status'] === 'pending_dept' && $canApproveDept): 
+                ?>
+                    <button type="button" class="btn btn-sm btn-warning d-inline-flex align-items-center gap-1 text-dark" 
+                            onclick="openDeptApproveModal(<?= $req['id'] ?>, '<?= addslashes($req['requester_name']) ?>', '<?= addslashes($req['department_name']) ?>', '<?= $req['requisition_type'] ?>', <?= $req['amount'] ?>)">
+                        <i class="fa-solid fa-stamp"></i> Dept Approve
+                    </button>
+                <?php endif; ?>
 
                 <!-- Management Approval button (role 1, 3, 20 for pending requisitions) -->
                 <?php if ($req['status'] === 'pending' && in_array($roleId, [1, 3, 20])): ?>
@@ -1394,9 +1504,9 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
                 <?php endif; ?>
                 
                 <?php 
-                // Only creator (if pending) or Admin/Super Admin can delete
+                // Only creator (if pending or pending_dept) or Admin/Super Admin can delete
                 $canDelete = (
-                    ($req['requested_by'] === $userId && $req['status'] === 'pending') || 
+                    ($req['requested_by'] === $userId && in_array($req['status'], ['pending', 'pending_dept'])) || 
                     in_array($roleId, [1, 3])
                 );
                 if ($canDelete): 
