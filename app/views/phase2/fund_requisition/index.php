@@ -1557,11 +1557,15 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
                 <?php endif; ?>
                 
                 <?php 
-                // Only creator (if pending or pending_dept) or Admin/Super Admin can delete
-                $canDelete = (
-                    ($req['requested_by'] === $userId && in_array($req['status'], ['pending', 'pending_dept'])) || 
-                    in_array($roleId, [1, 3])
+                // Can delete ONLY IF no approval (Dept Head or Management or Paid) has been granted yet
+                $isApproved = (
+                    ($req['dept_head_status'] ?? '') === 'approved' ||
+                    !empty($req['dept_head_approved_by']) ||
+                    in_array($req['status'] ?? '', ['approved', 'paid']) ||
+                    !empty($req['approved_by']) ||
+                    !empty($req['paid_by'])
                 );
+                $canDelete = !$isApproved && (($req['requested_by'] ?? 0) == $userId || in_array($roleId, [1, 3]));
                 if ($canDelete): 
                 ?>
                     <form action="<?= $GLOBALS['base_url'] ?>/fund-requisitions/delete" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this requisition request?')">

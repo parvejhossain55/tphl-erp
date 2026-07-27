@@ -533,7 +533,7 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
-        // Fetch request to check owner/status
+        // Fetch request to check owner and approval status
         $req = $this->db->query("SELECT * FROM fund_requisitions WHERE id = $id")->fetch_assoc();
         if (!$req) {
             setError("Request not found.");
@@ -541,17 +541,27 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
-        // Only owner (if pending) or Admin/Super Admin can delete
-        if ($req['requested_by'] === $userId && $req['status'] === 'pending') {
-            $allow = true;
-        } elseif (in_array($roleId, [1, 3])) {
-            $allow = true;
-        } else {
-            $allow = false;
+        // Check if any approval has already been granted
+        $isApproved = (
+            $req['dept_head_status'] === 'approved' ||
+            !empty($req['dept_head_approved_by']) ||
+            in_array($req['status'], ['approved', 'paid']) ||
+            !empty($req['approved_by']) ||
+            !empty($req['paid_by'])
+        );
+
+        if ($isApproved) {
+            setError("This requisition cannot be deleted because an approval has already been granted.");
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
         }
+
+        // Only creator or Admin/Super Admin can delete before approval
+        $allow = ($req['requested_by'] == $userId || in_array($roleId, [1, 3]));
 
         if ($allow) {
             $this->db->query("DELETE FROM fund_requisitions WHERE id = $id");
+            $this->db->query("DELETE FROM approval_requests WHERE source_table = 'fund_requisitions' AND source_id = $id");
             setSuccess("Request deleted successfully.");
         } else {
             setError("Unauthorized to delete this request.");

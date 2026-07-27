@@ -444,6 +444,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                                 <th>Status</th>
                                 <th>Next Follow-Up</th>
                                 <th>Sales Executive & Note</th>
+                                <th>Assigned By</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -716,13 +717,6 @@ $activeCard = $_GET['filter_card'] ?? '';
                                             <i class="bi bi-eye me-2 text-success"></i> View
                                         </a>
                                     </li>
-                                    <li>
-                                        <button class="dropdown__item text-danger removeBtnCust w-100 text-start d-flex align-items-center" data-name="<?= $lead['full_name'] ?>"
-                                            data-action="lead-delete"
-                                            data-id="<?= $lead['id'] ?>">
-                                            <i class="bi bi-trash me-2"></i> Delete
-                                        </button>
-                                    </li>
                                 </ul>
                             </div>
                         </div>
@@ -815,6 +809,15 @@ $activeCard = $_GET['filter_card'] ?? '';
                                     <?= htmlspecialchars($lead['agent_name']) ?>
                                 </span>
                             <?php endif; ?>
+                        </div>
+
+                        <!-- Assigned By Name -->
+                        <div class="d-flex align-items-center gap-2 mt-2">
+                            <div class="info-label flex-shrink-0">Assigned By</div>
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                                <i class="bi bi-person-check me-1"></i>
+                                <?= htmlspecialchars($lead['assigned_by_name'] ?? 'System') ?>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -1212,7 +1215,8 @@ document.addEventListener('DOMContentLoaded', function () {
             columnDefs   : [
                 { targets: 0, orderable: false },
                 { targets: 10, orderable: false },
-                { targets: 11, orderable: false }
+                { targets: 11, orderable: false },
+                { targets: 12, orderable: false }
             ],
             drawCallback: function () {
                 // After each page draw: re-sync checkbox states

@@ -449,12 +449,28 @@ public function getUsersByTeamAndRole($teamId)
         // Password - Hash if provided
         $password = !empty($data['password']) ? password_hash($data['password'], PASSWORD_DEFAULT) : null;
 
+        $email = $data['email'] ?? '';
+        if (!empty($email)) {
+            $checkEmail = $this->db->prepare("SELECT id FROM users WHERE email = ? AND id != ? LIMIT 1");
+            if ($checkEmail) {
+                $checkEmail->bind_param("si", $email, $id);
+                $checkEmail->execute();
+                $dupRes = $checkEmail->get_result();
+                if ($dupRes && $dupRes->num_rows > 0) {
+                    $currRes = $this->db->query("SELECT email FROM users WHERE id = $id");
+                    if ($currRes && $cRow = $currRes->fetch_assoc()) {
+                        $email = $cRow['email'];
+                    }
+                }
+                $checkEmail->close();
+            }
+        }
+
         // Variables for bind_param (ensuring correct types)
         $full_name      = $data['full_name'] ?? '';
         // employee_id should be integer or null
         $emp_id         = ($data['employee_id'] && (int)$data['employee_id'] > 0) ? (int)$data['employee_id'] : null;
         $phone          = $data['phone'] ?? '';
-        $email          = $data['email'] ?? '';
         $designation_id = (int)($data['designation_id'] ?? 0);
         $address        = $data['address'] ?? '';
         $nid            = $data['nid'] ?? '';

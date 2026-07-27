@@ -401,6 +401,7 @@ class Lead extends Model
         $sql = "SELECT 
         l.*,
         u.full_name AS agent_name,
+        u_by.full_name AS assigned_by_name,
         COALESCE(p.name, lp.name) AS project_name,
         lpc.name AS project_category_name,
         lf.next_action,
@@ -408,6 +409,7 @@ class Lead extends Model
         lf.next_follow_up_date
     FROM leads AS l
     LEFT JOIN users AS u ON l.assigned_id = u.id
+    LEFT JOIN users AS u_by ON l.created_by = u_by.id
     LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
     LEFT JOIN (
         SELECT lf1.lead_id, lf1.next_action, lf1.follow_up_type, lf1.next_follow_up_date
@@ -708,6 +710,7 @@ class Lead extends Model
         $sql = "
         SELECT 
             l.*,
+            u_by.full_name AS assigned_by_name,
             p.name AS project_name,
             lpc.name AS project_category_name,
             lf.status AS last_follow_up_status,
@@ -715,6 +718,7 @@ class Lead extends Model
             lf.next_follow_up_date,
             lf.follow_up_type
         FROM leads AS l
+        LEFT JOIN users AS u_by ON l.created_by = u_by.id
         LEFT JOIN projects AS p ON l.project_id = p.id
         LEFT JOIN project_categories AS lpc ON l.project_category_id = lpc.id
         LEFT JOIN (
@@ -757,6 +761,7 @@ class Lead extends Model
     public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $call_status = null, $only_missing_followup = false)
     {
         $sql = "SELECT leads.*, 
+        u_by.full_name AS assigned_by_name,
         lf.next_action,
         lf.follow_up_type,
         lf.status AS last_follow_up_status,
@@ -766,6 +771,7 @@ class Lead extends Model
         f.flat_name,
         lf.next_follow_up_date
     FROM leads
+    LEFT JOIN users AS u_by ON leads.created_by = u_by.id
     LEFT JOIN (
         SELECT t1.*
         FROM lead_follow_ups t1
