@@ -1197,6 +1197,33 @@ class LeadController extends Controller
     }
 
 // form DMT executive dashboard CSV import
+    private function cleanCsvValueEncoding($val)
+    {
+        if ($val === null) return '';
+        $val = trim((string)$val);
+        if ($val === '') return '';
+
+        // Remove UTF-8 BOM if present
+        $val = preg_replace('/^\xEF\xBB\xBF/', '', $val);
+
+        // Fix UTF-8 Mojibake double encoding (e.g. â‡¨â™¡â™¥)
+        if (strpos($val, 'â') !== false || strpos($val, 'Ã') !== false) {
+            $converted = @mb_convert_encoding($val, 'ISO-8859-1', 'UTF-8');
+            if (!empty($converted) && mb_check_encoding($converted, 'UTF-8')) {
+                $val = $converted;
+            }
+        }
+
+        if (!mb_check_encoding($val, 'UTF-8')) {
+            $val = mb_convert_encoding($val, 'UTF-8', 'Windows-1252');
+        }
+
+        // Clean decorative symbols/emojis from FB bio text
+        $val = preg_replace('/[\x{2190}-\x{21FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}\x{1F300}-\x{1F9FF}â‡¨â™¡â™¥â–’â–“â˜☆â†→â™ªâ™©â™¬♡♥▒▓█]+/u', ' ', $val);
+
+        return trim(preg_replace('/\s+/', ' ', $val));
+    }
+
     public function importCsv()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -1209,9 +1236,10 @@ class LeadController extends Controller
             exit;
         }
 
-        // FORM থেকে team_id & project_category_id
+        // FORM থেকে team_id, project_category_id & project_id
         $team_id = $_POST['team_id'] ?? null;
         $project_category_id = !empty($_POST['project_category_id']) ? (int)$_POST['project_category_id'] : null;
+        $project_id = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
 
         if (!$team_id) {
             setError("Please select a team");
@@ -1250,8 +1278,7 @@ class LeadController extends Controller
             //  HEADER read + encoding fix
             $header = fgetcsv($handle);
             $header = array_map(function ($value) {
-                $val = trim($value);
-                return mb_check_encoding($val, 'UTF-8') ? $val : mb_convert_encoding($val, 'UTF-8', 'Windows-1252');
+                return $this->cleanCsvValueEncoding($value);
             }, $header);
 
             while (($row = fgetcsv($handle, 1000, ",")) !== false) {
@@ -1270,8 +1297,7 @@ class LeadController extends Controller
 
                 //  ROW encoding fix
                 $row = array_map(function ($value) {
-                    $val = trim($value);
-                    return mb_check_encoding($val, 'UTF-8') ? $val : mb_convert_encoding($val, 'UTF-8', 'Windows-1252');
+                    return $this->cleanCsvValueEncoding($value);
                 }, $row);
 
                 $data = array_combine($header, $row);
@@ -1301,7 +1327,8 @@ class LeadController extends Controller
             $_SESSION['dm_csv_temp_file'] = $tempPath;
             $_SESSION['dm_csv_metadata'] = [
                 'team_id' => $team_id,
-                'project_category_id' => $project_category_id
+                'project_category_id' => $project_category_id,
+                'project_id' => $project_id
             ];
             $_SESSION['dm_csv_issues'] = $issues;
             header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
@@ -1309,7 +1336,7 @@ class LeadController extends Controller
         }
 
         // Otherwise, import directly
-        $this->executeImport($tempPath, $team_id, $project_category_id);
+        $this->executeImport($tempPath, $team_id, $project_category_id, $project_id);
         unlink($tempPath);
 
         setSuccess("CSV imported successfully");
@@ -1317,19 +1344,17 @@ class LeadController extends Controller
         exit;
     }
 
-    private function executeImport($filePath, $team_id, $project_category_id)
+    private function executeImport($filePath, $team_id, $project_category_id, $project_id = null)
     {
         if (($handle = fopen($filePath, "r")) !== false) {
             $header = fgetcsv($handle);
             $header = array_map(function ($value) {
-                $val = trim($value);
-                return mb_check_encoding($val, 'UTF-8') ? $val : mb_convert_encoding($val, 'UTF-8', 'Windows-1252');
+                return $this->cleanCsvValueEncoding($value);
             }, $header);
 
             while (($row = fgetcsv($handle, 1000, ",")) !== false) {
                 $row = array_map(function ($value) {
-                    $val = trim($value);
-                    return mb_check_encoding($val, 'UTF-8') ? $val : mb_convert_encoding($val, 'UTF-8', 'Windows-1252');
+                    return $this->cleanCsvValueEncoding($value);
                 }, $row);
 
                 if (count(array_filter($row)) === 0) continue;
@@ -1341,6 +1366,7 @@ class LeadController extends Controller
                 $data['visibility'] = $data['visibility'] ?? 'public';
                 $data['team_id'] = (int)$team_id;
                 $data['project_category_id'] = $project_category_id;
+                $data['project_id'] = $project_id ? (int)$project_id : (!empty($data['project_id']) ? (int)$data['project_id'] : null);
                 $data['created_by'] = $_SESSION['user']['id'] ?? null;
                 $data['country'] = $data['country'] ?? null;
 
@@ -1368,7 +1394,7 @@ class LeadController extends Controller
             exit;
         }
 
-        $this->executeImport($tempFile, $meta['team_id'], $meta['project_category_id']);
+        $this->executeImport($tempFile, $meta['team_id'], $meta['project_category_id'], $meta['project_id'] ?? null);
 
         // Cleanup
         unlink($tempFile);

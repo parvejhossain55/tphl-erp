@@ -694,6 +694,19 @@
             </select>
           </div>
 
+          <!-- Project Filter -->
+          <div class="col-md-3 col-6">
+            <label class="form-label small text-muted fw-semibold">Project</label>
+            <select name="project_id" class="form-select form-select-sm select2">
+              <option value="">All Projects</option>
+              <?php foreach (($projects ?? []) as $proj): ?>
+                <option value="<?= $proj['id'] ?>" <?= ($selected_project_id ?? '') == $proj['id'] ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($proj['name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
           <!-- Lead Age -->
           <div class="col-md-2 col-6">
             <label class="form-label small text-muted fw-semibold">Lead Age</label>
@@ -824,24 +837,24 @@
               </button>
             </div>
 
-            <table class="table no-border-table mt-20" id="dmLeadTable">
+            <table class="table no-border-table align-middle mt-20" id="dmLeadTable" style="font-size:0.85rem;">
               <thead class="py-3">
                 <tr>
-                  <th class="text-center"><input type="checkbox" id="selectAll"></th>
-                  <th class="text-center" style="width:42px">#</th>
-                  <th class="ps-4">Lead Name & Job/Company name</th>
-                  <th>Best Time to Contact</th>
-                  <th>Contact Info</th>
-                  <th>Address & Country </th>
-                  <th class="text-center">Follow Up</th>
-                  <th>Contact Status</th>
-                  <th>Lead Type</th>
-                  <th>Platform &amp; Campaign Project</th>
-                  <th>Team Name</th>
-                  <th>Sales Team Lead</th>
-                  <th>Assigned To</th>
-                  <th class="pe-4 text-end">Upload Date</th>
-                  <th class="pe-4 text-center">Action</th>
+                  <th class="text-center" style="width:36px;"><input type="checkbox" id="selectAll"></th>
+                  <th class="text-center" style="width:36px;">#</th>
+                  <th style="min-width:180px; max-width:240px;">Lead Name &amp; Job/Company</th>
+                  <th style="min-width:130px; max-width:160px;">Best Time to Contact</th>
+                  <th style="min-width:150px;">Contact Info</th>
+                  <th style="min-width:150px;">Address, City &amp; Country</th>
+                  <th class="text-center" style="width:80px;">Follow Up</th>
+                  <th style="min-width:140px;">Contact Status</th>
+                  <th style="min-width:90px;">Lead Type</th>
+                  <th style="min-width:170px;">Platform &amp; Campaign Project</th>
+                  <th style="min-width:110px;">Team Name</th>
+                  <th style="min-width:120px;">Sales Team Lead</th>
+                  <th style="min-width:120px;">Assigned To</th>
+                  <th class="pe-4 text-end" style="min-width:110px;">Upload Date</th>
+                  <th class="pe-4 text-center" style="width:90px;">Action</th>
                 </tr>
               </thead>
               <tbody id="dmLeadTbody">
@@ -897,6 +910,17 @@
               <?php endforeach; ?>
             </select>
           </div>
+          <div class="mb-3">
+            <label class="form-label">Select Project</label>
+            <select name="project_id" class="form-select select2-no-scroll" data-placeholder="-- Select Project (Optional) --">
+              <option value="">-- Select Project (Optional) --</option>
+              <?php foreach (($projects ?? []) as $proj): ?>
+                <option value="<?= $proj['id'] ?>">
+                  <?= htmlspecialchars($proj['name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
           <div class="text-center">
             <button type="submit" class="btn btn-primary">Import</button>
           </div>
@@ -922,6 +946,7 @@
     from_date      : "<?= htmlspecialchars($_GET['from_date']      ?? '') ?>",
     to_date        : "<?= htmlspecialchars($_GET['to_date']        ?? '') ?>",
     project_category_id : "<?= htmlspecialchars($_GET['project_category_id'] ?? '') ?>",
+    project_id     : "<?= htmlspecialchars($_GET['project_id']          ?? '') ?>",
   };
 
   let dmCurrentPage = 1;
@@ -970,7 +995,7 @@
           <tr>
             <td class="text-center">${row.checkbox}</td>
             <td class="text-center text-muted" style="font-size:.8rem;font-weight:600">${startIndex + i + 1}</td>
-            <td class="ps-4">${row.name}</td>
+            <td>${row.name}</td>
             <td>${row.best_time_to_contact}</td>
             <td>${row.contact}</td>
             <td>${row.country_address || '—'}</td>

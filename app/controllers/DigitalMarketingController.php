@@ -266,6 +266,7 @@ public function deleteBudget($id)
         $teams = $this->teamsModel->getAll();
         $teamId = $_GET['team_id'] ?? null;
         $projectCategoryId = !empty($_GET['project_category_id']) ? (int)$_GET['project_category_id'] : null;
+        $projectId = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null;
 
         // Filters (passed to view for filter form state only)
         $dateAge             = $_GET['date_age']      ?? 'all';
@@ -276,7 +277,7 @@ public function deleteBudget($id)
         $toDate              = $_GET['to_date']       ?? '';
 
         // Only load summary counts (not full lead list) — AJAX will fetch leads per page
-        $totalLeads    = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate, false, $projectCategoryId);
+        $totalLeads    = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate, false, $projectCategoryId, $projectId);
         $contactedCount    = 0;
         $notContactedCount = 0;
 
@@ -315,6 +316,12 @@ public function deleteBudget($id)
         if ($projectCategoryId) {
             $cSql .= " AND l.project_category_id = ?";
             $cParams[] = $projectCategoryId;
+            $cTypes   .= "i";
+        }
+
+        if ($projectId) {
+            $cSql .= " AND l.project_id = ?";
+            $cParams[] = $projectId;
             $cTypes   .= "i";
         }
 
@@ -373,16 +380,19 @@ public function deleteBudget($id)
         ");
         $duplicateLeadsCount = $dupStmt ? (int)($dupStmt->fetch_assoc()['total'] ?? 0) : 0;
         $categories = (new ProjectCategory($this->db))->getAll();
+        $projects   = (new Project($this->db))->getAll();
 
         return $this->view("digital-marketing-team/digital-marketing-executive", [
             "current_route"        => "digital-marketing-executive-dashboard",
             "page_title"           => "Digital Marketing Executive Dashboard",
             "teams"                => $teams,
             "categories"           => $categories,
+            "projects"             => $projects,
             "stats"                => $stats,
             "leads"                => [], // AJAX loads leads now
             "selected_team_id"     => $teamId,
             "selected_project_category_id" => $projectCategoryId,
+            "selected_project_id"  => $projectId,
             "phoneFreq"            => [],
             "duplicateLeadsCount"  => $duplicateLeadsCount,
             "date_age"             => $dateAge,
@@ -419,6 +429,7 @@ public function deleteBudget($id)
         $offset         = ($page - 1) * $perPage;
         $teamId         = !empty($_GET['team_id'])        ? (int)$_GET['team_id'] : null;
         $projectCategoryId = !empty($_GET['project_category_id']) ? (int)$_GET['project_category_id'] : null;
+        $projectId      = !empty($_GET['project_id'])     ? (int)$_GET['project_id'] : null;
         $dateAge        = $_GET['date_age']               ?? 'all';
         $sortOrder      = ($_GET['sort'] ?? 'newest') === 'oldest' ? 'ASC' : 'DESC';
         $contactStatus  = $_GET['contact_status']         ?? '';
@@ -429,11 +440,11 @@ public function deleteBudget($id)
         $toDate         = $_GET['to_date']                ?? '';
 
         // Total count — include duplicatesOnly for correct pagination total
-        $total = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, $search, $fromDate, $toDate, $duplicatesOnly, $projectCategoryId);
+        $total = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, $search, $fromDate, $toDate, $duplicatesOnly, $projectCategoryId, $projectId);
 
         // Fetch paginated leads — duplicate filter applied at DB level
         $leads = $this->leadModel->getMarketingLeadsPaginated(
-            $teamId, $dateAge, $sortOrder, $perPage, $offset, $search, $fromDate, $toDate, $duplicatesOnly, $projectCategoryId
+            $teamId, $dateAge, $sortOrder, $perPage, $offset, $search, $fromDate, $toDate, $duplicatesOnly, $projectCategoryId, $projectId
         );
 
         // ── Duplicate detection: phone_number OR email appears > 1 time in leads table ──
@@ -564,8 +575,25 @@ public function deleteBudget($id)
                 $campProj = 'N/A';
             }
 
-            $jt = !empty($lead['job_title']) ? $lead['job_title'] : (!empty($lead['designation']) ? $lead['designation'] : '');
-            $co = !empty($lead['company_name']) ? $lead['company_name'] : (!empty($lead['company']) ? $lead['company'] : '');
+            $rawJt = !empty($lead['job_title']) ? $lead['job_title'] : (!empty($lead['designation']) ? $lead['designation'] : '');
+            $rawCo = !empty($lead['company_name']) ? $lead['company_name'] : (!empty($lead['company']) ? $lead['company'] : '');
+
+            // Clean Mojibake / garbled symbols
+            $cleanText = function($text) {
+                if (empty($text)) return '';
+                if (strpos($text, 'â') !== false || strpos($text, 'Ã') !== false) {
+                    $conv = @mb_convert_encoding($text, 'ISO-8859-1', 'UTF-8');
+                    if (!empty($conv) && mb_check_encoding($conv, 'UTF-8')) {
+                        $text = $conv;
+                    }
+                }
+                $text = preg_replace('/[\x{2190}-\x{21FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}\x{1F300}-\x{1F9FF}â‡¨â™¡â™¥â–’â–“â˜☆â†→â™ªâ™©â™¬♡♥▒▓█]+/u', ' ', $text);
+                return trim(preg_replace('/\s+/', ' ', $text));
+            };
+
+            $jt = $cleanText($rawJt);
+            $co = $cleanText($rawCo);
+
             $jobCompanyStr = '';
             if ($jt !== '' || $co !== '') {
                 $jobCompanyStr = '<div class="text-muted" style="font-size: .75rem;"><i class="bi bi-briefcase me-1"></i>' . htmlspecialchars($jt);
@@ -579,19 +607,22 @@ public function deleteBudget($id)
             if (!empty($lead['address'])) {
                 $parts[] = htmlspecialchars($lead['address']);
             }
-            if (!empty($lead['country'])) {
-                $parts[] = htmlspecialchars($lead['country']);
-            }
             if (!empty($lead['city'])) {
                 $parts[] = htmlspecialchars($lead['city']);
             }
-            $countryAddressStr = !empty($parts) ? implode(', ', $parts) : '—';
+            if (!empty($lead['country'])) {
+                $parts[] = htmlspecialchars($lead['country']);
+            }
+            $countryAddressStr = !empty($parts) ? '<i class="bi bi-geo-alt me-1 text-danger"></i>' . implode(', ', $parts) : '—';
+
+            $rawBestTime = $lead['when_is_the_best_time_to_contact_you'] ?? '';
+            $bestTimeFormatted = !empty($rawBestTime) ? htmlspecialchars(str_replace('_', ' ', $rawBestTime)) : '—';
 
             $rows[] = [
                 'id'            => $lead['id'],
                 'checkbox'      => '<input type="checkbox" class="rowCheckbox" value="' . $lead['id'] . '">',
                 'name'          => '<div class="fw-bold text-dark">' . htmlspecialchars($lead['full_name'] ?? 'N/A') . '</div>' . $jobCompanyStr,
-                'best_time_to_contact' => htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? '—'),
+                'best_time_to_contact' => '<span class="text-muted small">' . $bestTimeFormatted . '</span>',
                 'contact'       => '<div class="d-flex flex-column"><span><i class="bi bi-telephone text-muted me-2"></i>' . $phoneHtml . '</span><small class="text-muted"><i class="bi bi-envelope me-2"></i>' . htmlspecialchars($lead['email'] ?? 'N/A') . '</small></div>',
                 'country_address' => '<div class="text-muted" style="font-size: .8rem;">' . $countryAddressStr . '</div>',
                 'follow_up'     => $fuBadge,

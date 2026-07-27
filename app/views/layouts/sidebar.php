@@ -272,13 +272,13 @@
                         </li>
 
                         <!-- Incentive Module Menu Links -->
-                        <li class="slide">
+                        <li class="slide d-none">
                             <a href="<?= $base_url ?>/my-incentives" class="sidebar__menu-item <?= isActive('my-incentives', $current_route) ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
                                 <span class="sidebar__menu-label">My Incentives</span>
                             </a>
                         </li>
-                        <li class="slide">
+                        <li class="slide d-none">
                             <a href="<?= $base_url ?>/incentive-management" class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-coins"></i></div>
                                 <span class="sidebar__menu-label">Sales Incentive Accounts</span>
@@ -1279,14 +1279,14 @@
                             </a>
                         </li>
                     <?php endif; ?>
-                    <li class="slide <?= isActive('central-statement', $current_route) ?>">
+                    <li class="slide   <?= isActive('central-statement', $current_route) ?>">
                         <a href="<?= $base_url ?>/central-statement"
                             class="sidebar__menu-item <?= isActive('central-statement', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-book"></i></div>
                             <span class="sidebar__menu-label">Central Statement</span>
                         </a>
                     </li>
-                    <li class="slide <?= isActive('incentive-management', $current_route) ?>">
+                    <li class="slide d-none <?= isActive('incentive-management', $current_route) ?>">
                         <a href="<?= $base_url ?>/incentive-management"
                             class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-coins text-warning"></i></div>
