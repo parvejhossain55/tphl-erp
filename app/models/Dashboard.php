@@ -458,9 +458,33 @@ class Dashboard extends Model
         }
         $stmt->close();
 
+        // Get procurement returns cashin
+        $sqlProcReturns = "
+        SELECT COALESCE(SUM(return_amount), 0) as total
+        FROM project_extra_assets
+        WHERE overall_status = 'purchased'
+        AND return_amount > 0
+        AND purchase_confirmed_at BETWEEN ? AND ?
+    ";
+        if ($projectId) {
+            $sqlProcReturns .= " AND project_id = ?";
+        }
+        $stmt = $this->db->prepare($sqlProcReturns);
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $row = $result->fetch_assoc()) {
+            $stats['procurement_returns_cashin'] = floatval($row['total']);
+        }
+        $stmt->close();
+
         // Calculate Total Cash In (matches CentralStatement formula exactly)
         $stats['total_cashin'] = $stats['total_landshare'] + $stats['total_registration'] +
-            $stats['total_booking_money'] + $stats['total_emi_amount'] + $stats['total_development_charge'] + $stats['total_shop_service_charge'] + $stats['management_cashin'] + $stats['expense_adjustment_cashin'];
+            $stats['total_booking_money'] + $stats['total_emi_amount'] + $stats['total_development_charge'] + $stats['total_shop_service_charge'] + $stats['management_cashin'];
 
         // Calculate Total Revenue (includes registration — mirrors Central Statement formula)
         $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'] + $stats['total_development_charge'] + $stats['total_registration'];
@@ -527,6 +551,12 @@ class Dashboard extends Model
             LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
             WHERE lfr.mgmt_status = 'Approved'
             AND lfr.accounts_status = 'Paid'
+            
+            UNION ALL
+            
+            SELECT paid_amount as total_amount, paid_at as date, project_id
+            FROM project_extra_assets
+            WHERE payment_status = 'paid'
         ) combined
         WHERE date BETWEEN ? AND ?
     ";
@@ -544,7 +574,7 @@ class Dashboard extends Model
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
-            $stats['total_cashout'] = floatval($row['total']);
+            $stats['total_cashout'] = floatval($row['total']) - ($stats['expense_adjustment_cashin'] ?? 0) - ($stats['procurement_returns_cashin'] ?? 0);
         }
         $stmt->close();
 
@@ -894,7 +924,7 @@ class Dashboard extends Model
         $stmt->close();
 
         // total_amount = all lead payments + management cash in (no discount subtraction)
-        $stats['total_amount'] = $stats['lead_payments'] + $stats['management_cashin'] + $stats['expense_adjustment_cashin'];
+        $stats['total_amount'] = $stats['lead_payments'] + $stats['management_cashin'];
 
         // Calculate total revenue (development charges + registration included as revenue — mirrors Central Statement)
         $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'] + ($stats['development_charges'] ?? 0) + $stats['total_registration'];
@@ -2317,6 +2347,9 @@ LIMIT ?
 
                 case 'pending':
                 default:
+                    if ($cashoutStatus === 'qc_approved') {
+                        return 'qc_approved';
+                    }
                     return 'pending';
             }
         }

@@ -1348,7 +1348,7 @@
                                 <a href="<?= $base_url ?>/clients-cash-in"
                                     class="sidebar__menu-item <?= isActive('clients-cash-in', $current_route) ?>" style="display:flex; justify-content:space-between; align-items:center; padding-right:15px;">
                                     <span>Clients</span>
-                                    <span class="badge <?= $pendingVerificationsCount > 0 ? 'text-dark' : 'bg-secondary text-white' ?> rounded-pill" style="font-size:10px; padding: 2px 6px; <?= $pendingVerificationsCount > 0 ? 'background-color: #ffb300;' : '' ?>"><?= $pendingVerificationsCount ?> Pending</span>
+                                    <span class="badge <?= $pendingVerificationsCount > 0 ? 'text-dark' : 'bg-secondary text-white' ?> rounded-pill" style="font-size:10px; padding: 2px 6px; <?= $pendingVerificationsCount > 0 ? 'background-color: #ffb300;' : '' ?>"><?= $pendingVerificationsCount ?> Pending Verifications</span>
                                 </a>
                             </li>
                             <li class="slide <?= isActive('management-cash-in', $current_route) ?>">
@@ -2359,7 +2359,7 @@
                             </li>
 
                             <!-- Labor Requisition shortcut inside Bills menu -->
-                            <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 13, 15, 22, 24, 25])): ?>
+                            <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 22])): ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/con-labor-requisitions"
                                         class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
@@ -2383,7 +2383,7 @@
                 <?php endif; ?>
 
                 <!-- ====== Labor Requisitions ====== -->
-                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 13, 15, 22, 24, 25])): ?>
+                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 22])): ?>
                     <li
                         class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
@@ -2619,6 +2619,13 @@
                     </li>
                 <?php endif; ?>
                 <!-- FOR Task Manage  -->
+                <li class="slide <?= isActive('asset-extra-purchases', $current_route) ?>">
+                    <a href="<?= $base_url ?>/asset-extra-purchases"
+                        class="sidebar__menu-item <?= isActive('asset-extra-purchases', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-cart-shopping"></i></div>
+                        <span class="sidebar__menu-label">Office Procurement Request</span>
+                    </a>
+                </li>
                 <li class="slide ">
                     <a href="<?= $base_url ?>/task-sheets"
                         class="sidebar__menu-item <?= isActive('task-sheets', $current_route) ?>">
@@ -2676,9 +2683,9 @@
                 <!-- ====== ASSET MANAGEMENT ====== -->
                 <?php if (hasPermission('Asset Management') || hasPermission('QC & Internal Audit') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20])): ?>
                     <li
-                        class="slide has-sub <?= isActive(['asset-products', 'office-assets', 'asset-extra-purchases'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['asset-products', 'office-assets'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['asset-products', 'office-assets', 'asset-extra-purchases'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['asset-products', 'office-assets'], $current_route) ? 'menu-open active' : '' ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             <div class="side-menu__icon"><i class="fa-solid fa-boxes-stacked"></i></div>
                             <span class="sidebar__menu-label">Asset Management</span>
@@ -2689,14 +2696,8 @@
                                 <a class="sidebar__menu-item <?= isActive('office-assets', $current_route) ?>"
                                     href="<?= $base_url ?>/office-assets">All Assets</a>
                             </li>
-                            <li class="slide <?= isActive('asset-products', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('asset-products', $current_route) ?>"
-                                    href="<?= $base_url ?>/asset-products">Products Master</a>
-                            </li>
-                            <li class="slide <?= isActive('asset-extra-purchases', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('asset-extra-purchases', $current_route) ?>"
-                                    href="<?= $base_url ?>/asset-extra-purchases">Extra Purchases</a>
-                            </li>
+
+
                         </ul>
                     </li>
                 <?php endif; ?>

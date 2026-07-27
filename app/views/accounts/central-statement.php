@@ -313,6 +313,8 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                                     <option value="registration" <?= ($category ?? '') === 'registration' ? 'selected' : '' ?>>Registration Only</option>
                                     <option value="booking_money" <?= ($category ?? '') === 'booking_money' ? 'selected' : '' ?>>Booking Money Only</option>
                                     <option value="management_cashin" <?= ($category ?? '') === 'management_cashin' ? 'selected' : '' ?>>Management Cashin Only</option>
+                                    <option value="expense_adjustment_cashin" <?= ($category ?? '') === 'expense_adjustment_cashin' ? 'selected' : '' ?>>Expense Adjustment Returns</option>
+                                    <option value="procurement_returns_cashin" <?= ($category ?? '') === 'procurement_returns_cashin' ? 'selected' : '' ?>>Procurement Returns</option>
                                 </optgroup>
                                 <optgroup label="Bank Categories">
                                     <option value="bank_cashin" <?= ($category ?? '') === 'bank_cashin' ? 'selected' : '' ?>>Bank Cash In</option>
@@ -323,6 +325,9 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                                     <option value="utilities" <?= ($category ?? '') === 'utilities' ? 'selected' : '' ?>>Utilities</option>
                                     <option value="vendor_payment" <?= ($category ?? '') === 'vendor_payment' ? 'selected' : '' ?>>Vendor Payments</option>
                                     <option value="contractor_bill" <?= ($category ?? '') === 'contractor_bill' ? 'selected' : '' ?>>Contractor Bills</option>
+                                    <option value="office_procurement_assets" <?= ($category ?? '') === 'office_procurement_assets' ? 'selected' : '' ?>>Office Procurement Assets</option>
+                                    <option value="assets_repairing" <?= ($category ?? '') === 'assets_repairing' ? 'selected' : '' ?>>Assets Repairing</option>
+                                    <option value="fund_requisitions" <?= ($category ?? '') === 'fund_requisitions' ? 'selected' : '' ?>>Fund Requisitions</option>
                                 </optgroup>
                             </select>
                         </div>
@@ -460,7 +465,7 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                         $card_amount += (float)($bt['amount'] ?? 0);
                     }
                     $card_label = 'Total Bank Cash Out';
-                } elseif (in_array($category, ['cashout', 'utilities', 'other'])) {
+                } elseif (in_array($category, ['cashout', 'utilities', 'other', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions', 'land_fund_requisitions'])) {
                     $card_amount = $overall_stats['total_cash_out'] ?? 0;
                     $card_label = 'Total ' . ucfirst($category);
                 } elseif ($category === 'vendor_payment') {
@@ -505,7 +510,7 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                     // For revenue categories, use the calculated card_amount from the first card
                     $revenue_amount = $card_amount;
                     $revenue_label = 'Total ' . ucfirst(str_replace('_', ' ', $category));
-                } elseif (in_array($category, ['cashout', 'utilities', 'other'])) {
+                } elseif (in_array($category, ['cashout', 'utilities', 'other', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions', 'land_fund_requisitions'])) {
                     // For expense categories, revenue should show as 0 (not negative)
                     $revenue_amount = 0;
                     $revenue_label = 'Total ' . ucfirst($category) . ' Expense';
@@ -539,7 +544,7 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                 
                 if ($category === 'all') {
                     $cashout_amount = $overall_stats['total_cash_out'] ?? 0;
-                } elseif (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill'])) {
+                } elseif (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions', 'land_fund_requisitions'])) {
                     // For cashout categories, sum the displayed data
                     if (isset($statement_data['daily_data'])) {
                         foreach ($statement_data['daily_data'] as $row) {
@@ -586,7 +591,7 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                 } elseif (in_array($category, ['emi', 'landshare', 'service_fee', 'registration', 'booking_money', 'agreement', 'management_cashin', 'total_cashin'])) {
                     // For revenue categories: Net Balance = Category Amount - 0 (since no cashout for revenue categories)
                     $net_balance = $card_amount;
-                } elseif (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill'])) {
+                } elseif (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions', 'land_fund_requisitions'])) {
                     // For expense categories: Net Balance = 0 - Category Amount (negative balance)
                     $net_balance = -$card_amount;
                 }
@@ -716,7 +721,13 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                                     <!-- For management cashin only -->
                                     <th>Management Cashin (TK.)</th>
                                     <th>Amount (TK.)</th>
-                                <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
+                                <?php elseif ($category === 'expense_adjustment_cashin'): ?>
+                                    <th>Expense Adjustment Returns (TK.)</th>
+                                    <th>Amount (TK.)</th>
+                                <?php elseif ($category === 'procurement_returns_cashin'): ?>
+                                    <th>Procurement Returns (TK.)</th>
+                                    <th>Amount (TK.)</th>
+                                <?php elseif (in_array($category, ['cashout', 'utilities', 'other', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions'])): ?>
                                     <!-- For cashout/expense categories -->
                                     <th>Cash Out (TK.)</th>
                                     <th>Amount (TK.)</th>
@@ -792,7 +803,13 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                                         <!-- Show only management cashin data -->
                                         <td class="positive"><strong>৳<?= number_format($row['management_cashin'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['management_cashin'] ?? 0, 2) ?></strong></td>
-                                    <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
+                                    <?php elseif ($category === 'expense_adjustment_cashin'): ?>
+                                        <td class="positive"><strong>৳<?= number_format($row['expense_adjustment_cashin'] ?? 0, 2) ?></strong></td>
+                                        <td class="positive"><strong>৳<?= number_format($row['expense_adjustment_cashin'] ?? 0, 2) ?></strong></td>
+                                    <?php elseif ($category === 'procurement_returns_cashin'): ?>
+                                        <td class="positive"><strong>৳<?= number_format($row['procurement_returns_cashin'] ?? 0, 2) ?></strong></td>
+                                        <td class="positive"><strong>৳<?= number_format($row['procurement_returns_cashin'] ?? 0, 2) ?></strong></td>
+                                    <?php elseif (in_array($category, ['cashout', 'utilities', 'other', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions'])): ?>
                                         <!-- Show only cashout data -->
                                         <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
                                         <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
@@ -938,7 +955,13 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                                     <!-- For management cashin only -->
                                     <th>Management Cashin (TK.)</th>
                                     <th>Amount (TK.)</th>
-                                <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
+                                <?php elseif ($category === 'expense_adjustment_cashin'): ?>
+                                    <th>Expense Adjustment Returns (TK.)</th>
+                                    <th>Amount (TK.)</th>
+                                <?php elseif ($category === 'procurement_returns_cashin'): ?>
+                                    <th>Procurement Returns (TK.)</th>
+                                    <th>Amount (TK.)</th>
+                                <?php elseif (in_array($category, ['cashout', 'utilities', 'other', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions'])): ?>
                                     <!-- For cashout/expense categories -->
                                     <th>Cash Out (TK.)</th>
                                     <th>Amount (TK.)</th>
@@ -1012,7 +1035,13 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                                         <!-- Show only management cashin data -->
                                         <td class="positive"><strong>৳<?= number_format($row['management_cashin'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['management_cashin'] ?? 0, 2) ?></strong></td>
-                                    <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
+                                    <?php elseif ($category === 'expense_adjustment_cashin'): ?>
+                                        <td class="positive"><strong>৳<?= number_format($row['expense_adjustment_cashin'] ?? 0, 2) ?></strong></td>
+                                        <td class="positive"><strong>৳<?= number_format($row['expense_adjustment_cashin'] ?? 0, 2) ?></strong></td>
+                                    <?php elseif ($category === 'procurement_returns_cashin'): ?>
+                                        <td class="positive"><strong>৳<?= number_format($row['procurement_returns_cashin'] ?? 0, 2) ?></strong></td>
+                                        <td class="positive"><strong>৳<?= number_format($row['procurement_returns_cashin'] ?? 0, 2) ?></strong></td>
+                                    <?php elseif (in_array($category, ['cashout', 'utilities', 'other', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions'])): ?>
                                         <!-- Show only cashout data -->
                                         <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
                                         <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>

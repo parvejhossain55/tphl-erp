@@ -378,7 +378,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                         <?php endif; ?>
 
                         <!-- Quick Actions -->
-                        <?php if ($isAdmin): ?>
+                        <?php if ($isAdmin || $canApproveQC): ?>
                             <div class="card mb-4">
                                 <div class="card-header">
                                     <h6 class="mb-0">Quick Actions</h6>
@@ -511,7 +511,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                 </div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <label class="form-label">Approval Status:</label>
+                                        <label class="form-label">Management Approval:</label>
                                         <p class="form-control-static">
                                             <?php
                                             $approvalStatusClass = 'status-pending';
@@ -535,8 +535,11 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
 
                                     <?php if (!empty($request['qc_approved_by_id'])): ?>
                                         <div class="mb-3">
-                                            <label class="form-label">QC Approved By (ID):</label>
-                                            <p class="form-control-static fw-bold"><?= htmlspecialchars($request['qc_approved_by_id']) ?></p>
+                                            <label class="form-label">QC Approved By:</label>
+                                            <p class="form-control-static fw-bold">
+                                                <?= htmlspecialchars($request['qc_approved_by_name'] ?? 'Unknown') ?> 
+                                                <span class="text-muted fw-normal">(ID: <?= htmlspecialchars($request['qc_approved_by_id']) ?>)</span>
+                                            </p>
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label">QC Approved At:</label>
@@ -632,7 +635,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
 </div>
 
 <!-- Reject Modal -->
-<?php if ($isAdmin && ($isPending || $isQCApproved) && !$isAlreadyApproved && ($canApproveOrReject || $canApproveQC)): ?>
+<?php if (($isAdmin || $canApproveQC) && ($isPending || $isQCApproved) && !$isAlreadyApproved && ($canApproveOrReject || $canApproveQC)): ?>
     <div class="modal fade" id="rejectModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">

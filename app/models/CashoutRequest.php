@@ -453,7 +453,8 @@ public function createRequest($data)
                 ar.approved_by as approval_user_id,
                 ar.id as approval_id,
                 approver.full_name as approved_by_name,
-                rejector.full_name as rejected_by_name
+                rejector.full_name as rejected_by_name,
+                qc_approver.full_name as qc_approved_by_name
                 FROM {$this->table} cr
                 LEFT JOIN users u ON cr.requested_by = u.id
                 LEFT JOIN (
@@ -466,6 +467,7 @@ public function createRequest($data)
                 ) ar ON ar.source_table = 'cashout_requests' AND ar.source_id = cr.id
                 LEFT JOIN users approver ON ar.approved_by = approver.id
                 LEFT JOIN users rejector ON cr.rejected_by = rejector.id
+                LEFT JOIN users qc_approver ON cr.qc_approved_by_id = qc_approver.id
                 WHERE cr.id = ?
                 LIMIT 1";
 
@@ -721,6 +723,9 @@ public function createRequest($data)
 
                 case 'pending':
                 default:
+                    if ($cashoutStatus === 'qc_approved') {
+                        return 'qc_approved';
+                    }
                     return 'pending';
             }
         }

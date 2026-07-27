@@ -21,7 +21,7 @@ class FundRequisitionController extends Controller {
 
         // Management (role 3), Admin (role 1), Accounts (role 6) see everything
         $where = "1=1";
-        if (!in_array($roleId, [1, 3, 6, 17, 20, 22])) {
+        if (!in_array($roleId, [1, 3, 6])) {
             // Start with: own requisitions
             $conditions = ["fr.requested_by = $userId"];
 
@@ -66,13 +66,16 @@ class FundRequisitionController extends Controller {
                    d.name as department_name,
                    u_req.full_name as requester_name,
                    u_app.full_name as approved_by_name,
-                   u_paid.full_name as paid_by_name
+                   u_paid.full_name as paid_by_name,
+                   oa.asset_code,
+                   oa.item_name as asset_name
             FROM fund_requisitions fr
             LEFT JOIN projects p ON fr.project_id = p.id
             LEFT JOIN departments d ON fr.department_id = d.id
             LEFT JOIN users u_req ON fr.requested_by = u_req.id
             LEFT JOIN users u_app ON fr.approved_by = u_app.id
             LEFT JOIN users u_paid ON fr.paid_by = u_paid.id
+            LEFT JOIN office_assets oa ON fr.asset_id = oa.id
             WHERE $where
             ORDER BY fr.id DESC
             $limitClause
@@ -89,7 +92,7 @@ class FundRequisitionController extends Controller {
 
         // Projects for create form — restrict to assigned projects for site engineers
         $assignedIds = isset($assignedIds) ? $assignedIds : $this->getAssignedProjectIds($userId);
-        if (!in_array($roleId, [1, 3, 6, 17, 20, 22]) && !empty($assignedIds)) {
+        if (!in_array($roleId, [1, 3, 6]) && !empty($assignedIds)) {
             $idList = implode(',', $assignedIds);
             $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND id IN ($idList) ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
         } else {
@@ -155,10 +158,13 @@ class FundRequisitionController extends Controller {
                    d.name      AS department_name,
                    u_req.full_name  AS requester_name,
                    u_app.full_name  AS approved_by_name,
-                   u_paid.full_name AS paid_by_name
+                   u_paid.full_name AS paid_by_name,
+                   oa.asset_code,
+                   oa.item_name AS asset_item_name
             FROM fund_requisitions fr
             LEFT JOIN projects p    ON fr.project_id    = p.id
             LEFT JOIN departments d ON fr.department_id = d.id
+            LEFT JOIN office_assets oa ON fr.asset_id   = oa.id
             LEFT JOIN users u_req   ON fr.requested_by  = u_req.id
             LEFT JOIN users u_app   ON fr.approved_by   = u_app.id
             LEFT JOIN users u_paid  ON fr.paid_by       = u_paid.id
@@ -185,7 +191,7 @@ class FundRequisitionController extends Controller {
         $balance    = max(0, (float)$req['amount'] - $totalSpent);
 
         // Projects dropdown — restrict for restricted roles
-        if (!in_array($sessionRoleId, [1, 3, 6, 17, 20, 22])) {
+        if (!in_array($sessionRoleId, [1, 3, 6])) {
             $assignedIds = $this->getAssignedProjectIds($sessionUserId);
             if (!empty($assignedIds)) {
                 $idList   = implode(',', $assignedIds);
@@ -312,7 +318,7 @@ class FundRequisitionController extends Controller {
 
     public function pay() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 6])) {
+        if (!in_array($roleId, [1, 6, 30])) {
             setError('Only Accounts or Admins can pay requisitions.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
@@ -482,7 +488,7 @@ class FundRequisitionController extends Controller {
         // For restricted roles, only show their assigned projects in the dropdown
         $sessionUserId  = (int)$_SESSION['user']['id'];
         $sessionRoleId  = (int)$_SESSION['user']['role_id'];
-        if (!in_array($sessionRoleId, [1, 3, 6, 17, 20, 22])) {
+        if (!in_array($sessionRoleId, [1, 3, 6])) {
             $assignedIds = $this->getAssignedProjectIds($sessionUserId);
             if (!empty($assignedIds)) {
                 $idList   = implode(',', $assignedIds);
@@ -513,21 +519,14 @@ class FundRequisitionController extends Controller {
         $fund_requisition_id = (int)($_POST['fund_requisition_id'] ?? 0);
         $amount = (float)($_POST['amount'] ?? 0);
         $purpose = $_POST['purpose'] ?? '';
-        $project_type = $_POST['project_type'] ?? 'by_project'; // 'by_project' or 'other_project'
+        $req = $this->db->query("SELECT * FROM fund_requisitions WHERE id = $fund_requisition_id")->fetch_assoc();
         
-        $project_id = null;
+        $project_id = $req ? $req['project_id'] : null;
         $other_project_name = null;
-        
-        if ($project_type === 'by_project') {
-            $project_id = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
-        } else {
-            $other_project_name = $_POST['other_project_name'] ?? null;
-        }
 
         $userId = (int)$_SESSION['user']['id'];
 
         // Validate that the requisition exists and is paid
-        $req = $this->db->query("SELECT * FROM fund_requisitions WHERE id = $fund_requisition_id")->fetch_assoc();
         if (!$req || $req['status'] !== 'paid') {
             setError('Expenses can only be logged for paid requisitions.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
@@ -547,7 +546,7 @@ class FundRequisitionController extends Controller {
         $remaining = $req['amount'] - $total_spent;
         if ($amount > $remaining) {
             setError('Expense amount (BDT ' . number_format($amount, 2) . ') exceeds the remaining requisition balance (BDT ' . number_format($remaining, 2) . ').');
-            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $fund_requisition_id);
             exit;
         }
 
@@ -603,7 +602,7 @@ class FundRequisitionController extends Controller {
             setError("Failed to log expense: " . $this->db->error);
         }
 
-        header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+        header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $fund_requisition_id);
         exit;
     }
 
@@ -625,8 +624,12 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
-        // Only owner (created_by) or Admin/Super Admin can delete
-        if ($expense['created_by'] === $userId || in_array($roleId, [1, 3])) {
+        $fundReqId = (int)$expense['fund_requisition_id'];
+        $req = $this->db->query("SELECT requested_by FROM fund_requisitions WHERE id = $fundReqId")->fetch_assoc();
+        $isReqOwner = $req && $req['requested_by'] == $userId;
+
+        // Only owner of expense, owner of requisition, or Admin/Management can delete
+        if ($expense['created_by'] === $userId || $isReqOwner || in_array($roleId, [1, 3])) {
             // Delete file if exists
             if (!empty($expense['attachment_path'])) {
                 $file = dirname(dirname(dirname(__DIR__))) . '/public/' . $expense['attachment_path'];
@@ -640,7 +643,7 @@ class FundRequisitionController extends Controller {
             setError("Unauthorized to delete this expense.");
         }
 
-        header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+        header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $fundReqId);
         exit;
     }
 

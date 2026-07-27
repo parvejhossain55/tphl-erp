@@ -65,9 +65,11 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>Submission Date</th>
+                                        <th>Requested By</th>
                                         <th>Project</th>
                                         <th>Request Type</th>
                                         <th>Ref ID</th>
+                                        <th>Amount</th>
                                         <th>Current Status</th>
                                         <th>Action</th>
                                     </tr>
@@ -79,7 +81,7 @@
                                             $details_url = '#';
                                             if ($req['type'] === 'Material Requisition') {
                                                 $details_url = $GLOBALS['base_url'] . "/con-purchase-request/" . $req['id'];
-                                            } elseif ($req['type'] === 'Cashout') {
+                                            } elseif ($req['type'] === 'Cashout Request') {
                                                 $details_url = $GLOBALS['base_url'] . "/view-cashout-request?id=" . $req['id'];
                                             } elseif ($req['type'] === 'Vendor Payment') {
                                                 $details_url = $GLOBALS['base_url'] . "/con-vendor-payment-show/" . $req['id'];
@@ -91,9 +93,11 @@
                                             ?>
                                             <tr>
                                                 <td><?= htmlspecialchars($req['created_at']) ?></td>
+                                                <td><?= htmlspecialchars($req['requester_name'] ?? 'System / N/A') ?></td>
                                                 <td><?= htmlspecialchars($req['project_name'] ?? 'N/A') ?></td>
                                                 <td><span class="badge bg-warning text-dark border"><?= htmlspecialchars($req['type']) ?></span></td>
                                                 <td class="fw-bold">#<?= htmlspecialchars($req['id']) ?></td>
+                                                <td class="fw-semibold">৳<?= number_format((float)($req['amount'] ?? 0), 2) ?></td>
                                                 <td><span class="badge bg-secondary"><?= htmlspecialchars($req['status']) ?></span></td>
                                                 <td>
                                                     <a href="<?= $details_url ?>" target="_blank" class="btn btn-sm btn-outline-info me-1">

@@ -88,6 +88,9 @@ $statusBadges = [
             <div class="card-title">All Assets</div>
             <div class="d-flex gap-2">
                 <?php if (!empty($canEdit)): ?>
+                    <button type="button" class="btn btn-warning btn-sm d-none align-items-center gap-1" id="bulkAssignBtn" data-bs-toggle="modal" data-bs-target="#bulkAssignModal">
+                        <i class="fa-solid fa-people-arrows"></i> Bulk Assign (<span id="bulkAssignCount">0</span>)
+                    </button>
                     <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addAssetModal">
                         <i class="fa-solid fa-plus"></i> Register Asset
                     </button>
@@ -142,11 +145,16 @@ $statusBadges = [
                 <table class="table text-nowrap table-hover">
                     <thead>
                         <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" class="form-check-input" id="selectAllAssets">
+                            </th>
                             <th>#</th>
                             <th>Asset Code</th>
                             <th>Product Code</th>
                             <th>Item Name</th>
-                            <th>Project / Location</th>
+                            <th class="text-center">Qty</th>
+                            <th>Project</th>
+                            <th>Office/Location</th>
                             <th>Assigned To</th>
                             <th class="text-end">Price (BDT)</th>
                             <th>Condition</th>
@@ -157,11 +165,14 @@ $statusBadges = [
                     <tbody>
                         <?php if (empty($assets)): ?>
                             <tr>
-                                <td colspan="10" class="text-center py-4 text-muted">No assets found.</td>
+                                <td colspan="11" class="text-center py-4 text-muted">No assets found.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($assets as $i => $a): ?>
                                 <tr>
+                                    <td>
+                                        <input type="checkbox" class="form-check-input asset-checkbox" value="<?= $a['id'] ?>">
+                                    </td>
                                     <td class="fw-semibold text-muted"><?= $i + 1 ?></td>
                                     <td>
                                         <a href="<?= $GLOBALS['base_url'] ?>/office-assets/show/<?= $a['id'] ?>" class="fw-semibold text-primary text-decoration-underline">
@@ -172,9 +183,14 @@ $statusBadges = [
                                     <td>
                                         <span class="d-block fs-13 fw-semibold"><?= htmlspecialchars($a['item_name']) ?></span>
                                     </td>
+                                    <td class="text-center fw-semibold text-dark">
+                                        1
+                                    </td>
                                     <td>
-                                        <span class="d-block fs-12"><?= htmlspecialchars($a['project_name'] ?? 'Head Office') ?></span>
-                                        <span class="text-muted fs-11"><?= htmlspecialchars($a['location'] ?? '') ?></span>
+                                        <span class="d-block fs-12 fw-semibold text-dark"><?= htmlspecialchars($a['project_name'] ?? 'Head Office') ?></span>
+                                    </td>
+                                    <td>
+                                        <span class="fs-12 text-muted"><?= htmlspecialchars($a['location'] ?? 'Head Office') ?></span>
                                     </td>
                                     <td class="fs-12"><?= htmlspecialchars($a['assigned_to_name'] ?? '—') ?></td>
                                     <td class="text-end fw-semibold"><?= number_format($a['purchase_price'], 2) ?></td>
@@ -192,6 +208,19 @@ $statusBadges = [
                                         <a href="<?= $GLOBALS['base_url'] ?>/office-assets/show/<?= $a['id'] ?>" class="btn btn-sm btn-outline-primary btn-icon" title="View Details">
                                             <i class="fa-solid fa-eye"></i>
                                         </a>
+                                        <button type="button" class="btn btn-sm btn-outline-warning btn-icon ms-1 position-relative" title="View Transfer Logs" onclick="openTransferLogModal(<?= $a['id'] ?>)">
+                                            <i class="fa-solid fa-clock-rotate-left"></i>
+                                            <?php if (($a['transfer_count'] ?? 0) > 0): ?>
+                                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem; padding: 0.25em 0.4em;">
+                                                    <?= $a['transfer_count'] ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        </button>
+                                        <?php if (in_array($a['condition_status'], ['need_repair', 'repairing', 'repaired'])): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-primary btn-icon ms-1" title="Request Repair Fund" onclick="openRepairFundModal(<?= $a['id'] ?>, '<?= htmlspecialchars($a['asset_code']) ?>', '<?= htmlspecialchars($a['item_name']) ?>')">
+                                                <i class="fa-solid fa-money-bill-wave"></i>
+                                            </button>
+                                        <?php endif; ?>
                                         <?php if ($roleId === 20): ?>
                                         <button type="button" class="btn btn-sm btn-outline-info btn-icon ms-1" title="Edit Asset" data-asset-b64="<?= base64_encode(json_encode($a)) ?>" onclick="openEditModal(this)"><i class="fa-solid fa-pencil"></i></button>
                                         <?php endif; ?>
@@ -257,7 +286,12 @@ $statusBadges = [
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Location</label>
-                            <input type="text" name="location" class="form-control" value="Head Office" placeholder="Where is this asset?">
+                            <select name="location" class="form-select">
+                                <option value="Head Office">Head Office</option>
+                                <?php foreach ($locations ?? [] as $loc): ?>
+                                    <option value="<?= htmlspecialchars($loc) ?>"><?= htmlspecialchars($loc) ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Assigned To</label>
@@ -353,7 +387,12 @@ $statusBadges = [
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Location</label>
-                            <input type="text" name="location" id="edit_location" class="form-control">
+                            <select name="location" id="edit_location" class="form-select">
+                                <option value="Head Office">Head Office</option>
+                                <?php foreach ($locations ?? [] as $loc): ?>
+                                    <option value="<?= htmlspecialchars($loc) ?>"><?= htmlspecialchars($loc) ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Purchase Price (BDT)</label>
@@ -388,6 +427,132 @@ $statusBadges = [
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bulk Assign Modal -->
+<div class="modal fade" id="bulkAssignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form action="<?= $GLOBALS['base_url'] ?>/office-assets/bulk-transfer" method="POST" id="bulkAssignForm">
+            <input type="hidden" name="asset_ids" id="bulk_asset_ids" value="">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Bulk Assign Assets</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2">
+                        You have selected <strong id="bulkSelectedCountText">0</strong> asset(s) to transfer.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Transfer to Project</label>
+                        <select name="project_id" class="form-select">
+                            <option value="">Head Office (No Project)</option>
+                            <?php foreach ($projects ?? [] as $proj): ?>
+                                <option value="<?= $proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Assign To</label>
+                        <select name="assigned_to" class="form-select">
+                            <option value="">Unassigned</option>
+                            <?php foreach ($users ?? [] as $u): ?>
+                                <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">New Location</label>
+                        <select name="location" class="form-select">
+                            <option value="">-- Same as current or Head Office --</option>
+                            <?php foreach ($locations ?? [] as $loc): ?>
+                                <option value="<?= htmlspecialchars($loc) ?>"><?= htmlspecialchars($loc) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Reason for transfer..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Transfer Assets</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- MODAL: VIEW TRANSFER LOGS -->
+<div class="modal fade" id="transferLogModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Transfer History</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover mb-0 text-nowrap">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="fs-11 text-muted">Date</th>
+                                <th class="fs-11 text-muted">Action</th>
+                                <th class="fs-11 text-muted">Condition</th>
+                                <th class="fs-11 text-muted">From &rarr; To</th>
+                                <th class="fs-11 text-muted">Performed By</th>
+                                <th class="fs-11 text-muted">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transferLogTableBody">
+                            <tr><td colspan="6" class="text-center py-3">Loading logs...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- MODAL: REQUEST REPAIR FUND -->
+<div class="modal fade" id="repairFundModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="repairFundForm" method="POST" action="" enctype="multipart/form-data">
+            <div class="modal-content">
+                <div class="modal-header bg-primary-transparent">
+                    <h5 class="modal-title text-primary"><i class="fa-solid fa-money-bill-wave me-2"></i>Request Repair Fund</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="fs-13 text-muted mb-3">Requesting repair fund for: <strong id="repair_asset_code_display"></strong> - <span id="repair_asset_name_display"></span></p>
+                    <div class="mb-3">
+                        <label class="form-label fs-12">Amount (BDT)</label>
+                        <input type="number" step="0.01" name="amount" class="form-control form-control-sm" required placeholder="0.00">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fs-12">Purpose / Vendor</label>
+                        <textarea name="purpose" class="form-control form-control-sm" rows="3" placeholder="Repair details and vendor name" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fs-12">Receipt / Quotation (Optional)</label>
+                        <input type="file" name="receipt" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.pdf">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-paper-plane me-1"></i> Submit Requisition</button>
                 </div>
             </div>
         </form>
@@ -434,6 +599,107 @@ function openEditModal(button) {
     }
     
     var modal = new bootstrap.Modal(document.getElementById('editAssetModal'));
+    modal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllBtn = document.getElementById('selectAllAssets');
+    const checkboxes = document.querySelectorAll('.asset-checkbox');
+    const bulkAssignBtn = document.getElementById('bulkAssignBtn');
+    const bulkAssignCount = document.getElementById('bulkAssignCount');
+    const bulkSelectedCountText = document.getElementById('bulkSelectedCountText');
+    const bulkAssetIdsInput = document.getElementById('bulk_asset_ids');
+
+    function updateBulkButton() {
+        let selectedCount = 0;
+        let selectedIds = [];
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                selectedCount++;
+                selectedIds.push(cb.value);
+            }
+        });
+
+        if (selectedCount > 0) {
+            bulkAssignBtn.classList.remove('d-none');
+            bulkAssignBtn.classList.add('d-flex');
+            bulkAssignCount.textContent = selectedCount;
+            bulkSelectedCountText.textContent = selectedCount;
+            bulkAssetIdsInput.value = selectedIds.join(',');
+        } else {
+            bulkAssignBtn.classList.add('d-none');
+            bulkAssignBtn.classList.remove('d-flex');
+        }
+    }
+
+    if(selectAllBtn) {
+        selectAllBtn.addEventListener('change', function() {
+            checkboxes.forEach(cb => cb.checked = this.checked);
+            updateBulkButton();
+        });
+    }
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            if (!this.checked && selectAllBtn) selectAllBtn.checked = false;
+            updateBulkButton();
+        });
+    });
+});
+
+function openTransferLogModal(assetId) {
+    const tbody = document.getElementById('transferLogTableBody');
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading...</td></tr>';
+    
+    var myModal = new bootstrap.Modal(document.getElementById('transferLogModal'));
+    myModal.show();
+
+    fetch('<?= $GLOBALS['base_url'] ?>/office-assets/logs/' + assetId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No transfer history found.</td></tr>';
+                return;
+            }
+            
+            let html = '';
+            data.forEach(log => {
+                let from = log.from_location || 'N/A';
+                if (log.from_project_name) from += ` (${log.from_project_name})`;
+                
+                let to = log.to_location || 'N/A';
+                if (log.to_project_name) to += ` (${log.to_project_name})`;
+                
+                let condition = log.new_condition ? log.new_condition.replace('_', ' ') : '-';
+                
+                html += `
+                    <tr>
+                        <td class="fs-12">${log.created_at}</td>
+                        <td><span class="badge bg-secondary">${log.action}</span></td>
+                        <td class="fs-12 text-capitalize">${condition}</td>
+                        <td class="fs-12">
+                            <span class="text-muted">From:</span> ${from}<br>
+                            <span class="text-muted">To:</span> <span class="fw-medium">${to}</span>
+                        </td>
+                        <td class="fs-12">${log.performed_by_name || 'System'}</td>
+                        <td class="fs-12 text-wrap" style="max-width: 200px;">${log.notes || '-'}</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        })
+        .catch(err => {
+            console.error('Error fetching logs:', err);
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Failed to load logs.</td></tr>';
+        });
+}
+
+function openRepairFundModal(assetId, assetCode, assetName) {
+    document.getElementById('repair_asset_code_display').textContent = assetCode;
+    document.getElementById('repair_asset_name_display').textContent = assetName;
+    document.getElementById('repairFundForm').action = '<?= $GLOBALS['base_url'] ?>/office-assets/repair-requisition/' + assetId;
+    
+    var modal = new bootstrap.Modal(document.getElementById('repairFundModal'));
     modal.show();
 }
 </script>
