@@ -78,6 +78,46 @@
             }
             $stmt->close();
         }
+
+        // Calculate pending Fund Requisition action counts for logged-in user
+        $pendingFundReqDeptCount = 0;
+        $pendingFundReqMgmtCount = 0;
+        $pendingFundReqAccountsCount = 0;
+        $pendingFundReqTotalCount = 0;
+
+        $loggedUserId = (int)$_SESSION['user']['id'];
+        $loggedRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // 1. Dept Head Pending Count (waiting for this user's approval or Admin)
+        $resDept = $db->query("
+            SELECT COUNT(DISTINCT fr.id) AS total 
+            FROM fund_requisitions fr
+            LEFT JOIN users u ON fr.requested_by = u.id
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            WHERE fr.status = 'pending_dept' 
+              AND (e.reporting_user_id = $loggedUserId OR $loggedRoleId IN (1, 3))
+        ");
+        if ($resDept) {
+            $pendingFundReqDeptCount = (int)($resDept->fetch_assoc()['total'] ?? 0);
+        }
+
+        // 2. Management Pending Count (Management roles 1, 3, 20)
+        if (in_array($loggedRoleId, [1, 3, 20])) {
+            $resMgmt = $db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status = 'pending'");
+            if ($resMgmt) {
+                $pendingFundReqMgmtCount = (int)($resMgmt->fetch_assoc()['total'] ?? 0);
+            }
+        }
+
+        // 3. Accounts Pending Pay Count (Accounts roles 1, 6)
+        if (in_array($loggedRoleId, [1, 6])) {
+            $resAccts = $db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status = 'approved'");
+            if ($resAccts) {
+                $pendingFundReqAccountsCount = (int)($resAccts->fetch_assoc()['total'] ?? 0);
+            }
+        }
+
+        $pendingFundReqTotalCount = $pendingFundReqDeptCount + $pendingFundReqMgmtCount + $pendingFundReqAccountsCount;
     }
     ?>
 
@@ -96,8 +136,8 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if ($isManagement): ?>
-                    <!-- All Approval Requests for Management -->
+                <?php if ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [6])): ?>
+                    <!-- All Approval Requests for Management & Accounts -->
                     <li class="slide <?= isActive('all-approval-requests', $current_route) ?>">
                         <a href="<?= $base_url ?>/all-approval-requests" class="sidebar__menu-item <?= isActive('all-approval-requests', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-list-check text-primary"></i></div>
@@ -1444,6 +1484,11 @@
                                 <a href="<?= $base_url ?>/fund-requisitions"
                                     class="sidebar__menu-item <?= isActive('fund-requisitions', $current_route) ?>">
                                     <i class="fa-solid fa-file-invoice-dollar me-1"></i> Fund Requisitions
+                                    <?php if (!empty($pendingFundReqTotalCount)): ?>
+                                        <span class="badge bg-warning text-dark rounded-pill ms-2" style="font-size: 10px; padding: 2px 6px;" title="Pending Actions: <?= $pendingFundReqDeptCount ?> Dept Head, <?= $pendingFundReqMgmtCount ?> Mgmt, <?= $pendingFundReqAccountsCount ?> Accounts">
+                                            <?= $pendingFundReqTotalCount ?>
+                                        </span>
+                                    <?php endif; ?>
                                 </a>
                             </li>
                         </ul>
@@ -2724,6 +2769,11 @@
                         class="sidebar__menu-item <?= isActive('fund-requisitions', $current_route) ?>">
                         <div class="side-menu__icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
                         <span class="sidebar__menu-label">Fund Requisitions</span>
+                        <?php if (!empty($pendingFundReqTotalCount)): ?>
+                            <span class="badge bg-warning text-dark rounded-pill ms-auto" style="font-size: 10px; padding: 2px 6px;" title="Pending Actions: <?= $pendingFundReqDeptCount ?> Dept Head, <?= $pendingFundReqMgmtCount ?> Mgmt, <?= $pendingFundReqAccountsCount ?> Accounts">
+                                <?= $pendingFundReqTotalCount ?>
+                            </span>
+                        <?php endif; ?>
                     </a>
                 </li>
 

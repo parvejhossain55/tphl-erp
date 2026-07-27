@@ -20,7 +20,8 @@ class ApprovalRequest extends Model
         'vendor_payment_requests',
         'contractor_bill_requests',
         'lead_payments',
-        'project_incentive_claims'
+        'project_incentive_claims',
+        'fund_requisitions'
     ];
     public function create($data)
     {
@@ -498,10 +499,11 @@ class ApprovalRequest extends Model
         $res = $this->db->query($sql);
         $row = $res ? $res->fetch_assoc() : [];
 
-        // Check Accounts total disbursed across incentive payments & vendor payment requests
+        // Check Accounts total disbursed across incentive payments, vendor payment requests & fund requisitions
         $sqlDisbursed = "SELECT 
                             (SELECT IFNULL(SUM(payment_amount), 0) FROM project_incentive_payments) + 
-                            (SELECT IFNULL(SUM(approved_amount), 0) FROM vendor_payment_requests WHERE status = 'Approved') AS total_disbursed";
+                            (SELECT IFNULL(SUM(approved_amount), 0) FROM vendor_payment_requests WHERE status = 'Approved') +
+                            (SELECT IFNULL(SUM(amount), 0) FROM fund_requisitions WHERE status = 'paid') AS total_disbursed";
         $resD = $this->db->query($sqlDisbursed);
         $totalDisbursed = $resD ? (float)($resD->fetch_assoc()['total_disbursed'] ?? 0) : 0.00;
 
@@ -529,9 +531,11 @@ class ApprovalRequest extends Model
         }
 
         if (!empty($filters['department'])) {
-            $where[] = "LOWER(ar.department) = ?";
-            $params[] = strtolower($filters['department']);
-            $types .= "s";
+            $where[] = "(LOWER(ar.department) LIKE ? OR LOWER(d_req.name) LIKE ?)";
+            $deptParam = '%' . strtolower($filters['department']) . '%';
+            $params[] = $deptParam;
+            $params[] = $deptParam;
+            $types .= "ss";
         }
 
         if (!empty($filters['source_table'])) {
@@ -621,6 +625,24 @@ class ApprovalRequest extends Model
                             $payoutAmount = (float)$vRow['app_amt'];
                             $payoutDate = $vRow['updated_at'];
                         } else if ($row['status'] === 'approved') {
+                            $payoutStatus = 'Pending Accounts Payout';
+                        }
+                    }
+                }
+            } else if ($sourceTable === 'fund_requisitions') {
+                $frSql = "SELECT status, amount, paid_at, paid_by FROM fund_requisitions WHERE id = ? LIMIT 1";
+                $frStmt = $this->db->prepare($frSql);
+                if ($frStmt) {
+                    $frStmt->bind_param("i", $sourceId);
+                    $frStmt->execute();
+                    $frRow = $frStmt->get_result()->fetch_assoc();
+                    $frStmt->close();
+                    if ($frRow) {
+                        if ($frRow['status'] === 'paid' || !empty($frRow['paid_by'])) {
+                            $payoutStatus = 'Paid & Settled';
+                            $payoutAmount = (float)$frRow['amount'];
+                            $payoutDate = $frRow['paid_at'];
+                        } else if ($frRow['status'] === 'approved' || $row['status'] === 'approved') {
                             $payoutStatus = 'Pending Accounts Payout';
                         }
                     }

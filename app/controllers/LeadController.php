@@ -66,7 +66,13 @@ class LeadController extends Controller
         $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int)$_GET['team_id'] : null;
         $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
         $filterCategoryId = isset($_GET['project_category_id']) && $_GET['project_category_id'] !== '' ? (int)$_GET['project_category_id'] : null;
-        $filterCountry = isset($_GET['filter_country']) && $_GET['filter_country'] !== '' ? $_GET['filter_country'] : null;
+        $filterCountry = !empty($_GET['filter_country']) ? $_GET['filter_country'] : null;
+        if (is_array($filterCountry)) {
+            $filterCountry = array_values(array_filter($filterCountry, fn($val) => trim($val) !== ''));
+            if (empty($filterCountry)) $filterCountry = null;
+        } elseif (is_string($filterCountry) && trim($filterCountry) === '') {
+            $filterCountry = null;
+        }
 
         // Determine team restriction: roles 1, 3, 9 see all by default (unless filtered), others filter by team.
         if (in_array($userRoleId, [1, 3, 9])) {
@@ -466,7 +472,13 @@ class LeadController extends Controller
         $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int)$_GET['team_id'] : null;
         $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
         $filterCategoryId = isset($_GET['project_category_id']) && $_GET['project_category_id'] !== '' ? (int)$_GET['project_category_id'] : null;
-        $filterCountry = isset($_GET['filter_country']) && $_GET['filter_country'] !== '' ? $_GET['filter_country'] : null;
+        $filterCountry = !empty($_GET['filter_country']) ? $_GET['filter_country'] : null;
+        if (is_array($filterCountry)) {
+            $filterCountry = array_values(array_filter($filterCountry, fn($val) => trim($val) !== ''));
+            if (empty($filterCountry)) $filterCountry = null;
+        } elseif (is_string($filterCountry) && trim($filterCountry) === '') {
+            $filterCountry = null;
+        }
 
         // Determine team restriction: role 9 sees all by default, but can filter.
         if (in_array($userRoleId, [1, 3, 9])) {

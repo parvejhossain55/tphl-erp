@@ -349,26 +349,35 @@ class Lead extends Model
             $types .= "i";
         }
         if (!empty($country)) {
-            $synonyms = [$country];
-            if (strcasecmp($country, 'UAE') === 0 || strcasecmp($country, 'United Arab Emirates') === 0) {
-                $synonyms = ['UAE', 'United Arab Emirates'];
-            } elseif (strcasecmp($country, 'USA') === 0 || strcasecmp($country, 'United States') === 0) {
-                $synonyms = ['USA', 'United States'];
-            } elseif (strcasecmp($country, 'UK') === 0 || strcasecmp($country, 'United Kingdom') === 0) {
-                $synonyms = ['UK', 'United Kingdom'];
-            }
+            $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
+            if (!empty($countryList)) {
+                $allConds = [];
+                foreach ($countryList as $cItem) {
+                    $synonyms = [$cItem];
+                    if (strcasecmp($cItem, 'UAE') === 0 || strcasecmp($cItem, 'United Arab Emirates') === 0) {
+                        $synonyms = ['UAE', 'United Arab Emirates'];
+                    } elseif (strcasecmp($cItem, 'USA') === 0 || strcasecmp($cItem, 'United States') === 0) {
+                        $synonyms = ['USA', 'United States'];
+                    } elseif (strcasecmp($cItem, 'UK') === 0 || strcasecmp($cItem, 'United Kingdom') === 0) {
+                        $synonyms = ['UK', 'United Kingdom'];
+                    }
 
-            $conds = [];
-            foreach ($synonyms as $syn) {
-                $conds[] = "l.country = ?";
-                $conds[] = "l.city = ?";
-                $conds[] = "l.city LIKE ?";
-                $params[] = $syn;
-                $params[] = $syn;
-                $params[] = "%" . $syn . "%";
-                $types .= "sss";
+                    $subConds = [];
+                    foreach ($synonyms as $syn) {
+                        $subConds[] = "l.country = ?";
+                        $subConds[] = "l.city = ?";
+                        $subConds[] = "l.city LIKE ?";
+                        $params[] = $syn;
+                        $params[] = $syn;
+                        $params[] = "%" . $syn . "%";
+                        $types .= "sss";
+                    }
+                    $allConds[] = "(" . implode(" OR ", $subConds) . ")";
+                }
+                if (!empty($allConds)) {
+                    $sql .= " AND (" . implode(" OR ", $allConds) . ")";
+                }
             }
-            $sql .= " AND (" . implode(" OR ", $conds) . ")";
         }
 
         $stmt = $this->db->prepare($sql);
@@ -542,26 +551,35 @@ class Lead extends Model
             $types .= "i";
         }
         if (!empty($country)) {
-            $synonyms = [$country];
-            if (strcasecmp($country, 'UAE') === 0 || strcasecmp($country, 'United Arab Emirates') === 0) {
-                $synonyms = ['UAE', 'United Arab Emirates'];
-            } elseif (strcasecmp($country, 'USA') === 0 || strcasecmp($country, 'United States') === 0) {
-                $synonyms = ['USA', 'United States'];
-            } elseif (strcasecmp($country, 'UK') === 0 || strcasecmp($country, 'United Kingdom') === 0) {
-                $synonyms = ['UK', 'United Kingdom'];
-            }
+            $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
+            if (!empty($countryList)) {
+                $allConds = [];
+                foreach ($countryList as $cItem) {
+                    $synonyms = [$cItem];
+                    if (strcasecmp($cItem, 'UAE') === 0 || strcasecmp($cItem, 'United Arab Emirates') === 0) {
+                        $synonyms = ['UAE', 'United Arab Emirates'];
+                    } elseif (strcasecmp($cItem, 'USA') === 0 || strcasecmp($cItem, 'United States') === 0) {
+                        $synonyms = ['USA', 'United States'];
+                    } elseif (strcasecmp($cItem, 'UK') === 0 || strcasecmp($cItem, 'United Kingdom') === 0) {
+                        $synonyms = ['UK', 'United Kingdom'];
+                    }
 
-            $conds = [];
-            foreach ($synonyms as $syn) {
-                $conds[] = "l.country = ?";
-                $conds[] = "l.city = ?";
-                $conds[] = "l.city LIKE ?";
-                $params[] = $syn;
-                $params[] = $syn;
-                $params[] = "%" . $syn . "%";
-                $types .= "sss";
+                    $subConds = [];
+                    foreach ($synonyms as $syn) {
+                        $subConds[] = "l.country = ?";
+                        $subConds[] = "l.city = ?";
+                        $subConds[] = "l.city LIKE ?";
+                        $params[] = $syn;
+                        $params[] = $syn;
+                        $params[] = "%" . $syn . "%";
+                        $types .= "sss";
+                    }
+                    $allConds[] = "(" . implode(" OR ", $subConds) . ")";
+                }
+                if (!empty($allConds)) {
+                    $sql .= " AND (" . implode(" OR ", $allConds) . ")";
+                }
             }
-            $sql .= " AND (" . implode(" OR ", $conds) . ")";
         }
 
         //  Order by created_at DESC for latest leads first
