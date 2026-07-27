@@ -104,7 +104,7 @@ class Con_VendorPaymentRequestController extends Controller
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         return (
-            in_array($this->userRole, [1, 3, 6]) 
+            in_array($this->userRole, [1, 3, 6, 30]) 
             || strpos($roleName, 'admin') !== false 
             || strpos($roleName, 'management') !== false 
             || strpos($roleName, 'accounts') !== false

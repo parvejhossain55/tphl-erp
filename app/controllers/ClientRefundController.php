@@ -52,7 +52,7 @@ class ClientRefundController extends Controller
     public function index()
     {
         $filterUserId = null;
-        if (!in_array($this->userRole, [1, 3, 6])) {
+        if (!in_array($this->userRole, [1, 3, 6, 30])) {
             $filterUserId = $this->userId;
         }
 

@@ -1062,7 +1062,7 @@ public function updateTransaction()
         // Determine redirect based on role
         $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
         $isCED = ($roleId === 5);
-        $isAccounts = in_array($roleId, [1, 3, 6]);
+        $isAccounts = in_array($roleId, [1, 3, 6, 30]);
         $redirectUrl = $isCED
             ? "{$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}"
             : "{$GLOBALS['base_url']}/clients-cash-in-history?booking_id={$bookingId}";

@@ -19,9 +19,9 @@ class FundRequisitionController extends Controller {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Management (role 3), Admin (role 1), Accounts (role 6) see everything
+        // Management (role 3), Admin (role 1), Accounts (role 6), Accounts Head (role 30) see everything
         $where = "1=1";
-        if (!in_array($roleId, [1, 3, 6])) {
+        if (!in_array($roleId, [1, 3, 6, 30])) {
             // Start with: own requisitions
             $conditions = ["fr.requested_by = $userId"];
 
@@ -135,7 +135,7 @@ class FundRequisitionController extends Controller {
 
         // Projects for create form — restrict to assigned projects for site engineers
         $assignedIds = isset($assignedIds) ? $assignedIds : $this->getAssignedProjectIds($userId);
-        if (!in_array($roleId, [1, 3, 6]) && !empty($assignedIds)) {
+        if (!in_array($roleId, [1, 3, 6, 30]) && !empty($assignedIds)) {
             $idList = implode(',', $assignedIds);
             $pRes = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND id IN ($idList) ORDER BY name ASC");
             $projects = $pRes ? $pRes->fetch_all(MYSQLI_ASSOC) : [];
@@ -255,7 +255,7 @@ class FundRequisitionController extends Controller {
         $balance    = max(0, (float)$req['amount'] - $totalSpent);
 
         // Projects dropdown — restrict for restricted roles
-        if (!in_array($sessionRoleId, [1, 3, 6])) {
+        if (!in_array($sessionRoleId, [1, 3, 6, 30])) {
             $assignedIds = $this->getAssignedProjectIds($sessionUserId);
             if (!empty($assignedIds)) {
                 $idList   = implode(',', $assignedIds);
@@ -638,7 +638,7 @@ class FundRequisitionController extends Controller {
         // For restricted roles, only show their assigned projects in the dropdown
         $sessionUserId  = (int)$_SESSION['user']['id'];
         $sessionRoleId  = (int)$_SESSION['user']['role_id'];
-        if (!in_array($sessionRoleId, [1, 3, 6])) {
+        if (!in_array($sessionRoleId, [1, 3, 6, 30])) {
             $assignedIds = $this->getAssignedProjectIds($sessionUserId);
             if (!empty($assignedIds)) {
                 $idList   = implode(',', $assignedIds);

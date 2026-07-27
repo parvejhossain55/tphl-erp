@@ -45,7 +45,7 @@ class Con_FundRequestController extends Controller
     /** Roles 1, 3, 6 (Accounts) can process payments */
     private function canProcessPayment()
     {
-        return in_array($this->userRole, [1, 3, 6]);
+        return in_array($this->userRole, [1, 3, 6, 30]);
     }
 
     /* =====================
