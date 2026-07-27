@@ -239,7 +239,7 @@ $conditionStatuses = ['new','ok','need_repair','repairing','repaired','damaged',
                                             </td>
                                             <td class="fs-12">
                                                 <?php if ($req['receipt_path']): ?>
-                                                    <a href="<?= $GLOBALS['base_url'] ?>/<?= $req['receipt_path'] ?>" target="_blank" class="btn btn-sm btn-light"><i class="fa-solid fa-file-pdf text-danger"></i></a>
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/public/<?= $req['receipt_path'] ?>" target="_blank" class="btn btn-sm btn-light"><i class="fa-solid fa-file-pdf text-danger"></i></a>
                                                 <?php else: ?>
                                                     —
                                                 <?php endif; ?>

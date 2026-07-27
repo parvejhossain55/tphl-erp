@@ -1008,7 +1008,7 @@ function fetchModalExpensesData(id, startDate = '', endDate = '') {
             
             if (req.receipt_path) {
                 document.getElementById('vReceiptLink').innerHTML = `
-                    <a href="<?= $GLOBALS['base_url'] ?>/${req.receipt_path}" target="_blank" class="btn btn-sm btn-light border px-2">
+                    <a href="<?= $GLOBALS['base_url'] ?>/public/${req.receipt_path}" target="_blank" class="btn btn-sm btn-light border px-2">
                         <i class="fa-solid fa-paperclip me-1"></i> View Receipt
                     </a>
                 `;
@@ -1487,7 +1487,7 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
         <td>
             <div class="d-flex gap-1">
                 <?php if (!empty($req['receipt_path'])): ?>
-                    <a href="<?= $GLOBALS['base_url'] . '/' . $req['receipt_path'] ?>" target="_blank" class="btn btn-icon btn-sm btn-light border no-print" title="Requisition Receipt">
+                    <a href="<?= $GLOBALS['base_url'] . '/public/' . $req['receipt_path'] ?>" target="_blank" class="btn btn-icon btn-sm btn-light border no-print" title="Requisition Receipt">
                         <i class="fa-solid fa-paperclip"></i>
                     </a>
                 <?php endif; ?>

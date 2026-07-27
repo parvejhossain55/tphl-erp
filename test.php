@@ -1,0 +1,6 @@
+<?php
+require 'c:\xampp\htdocs\TPHL-ERP\app\config\config.php';
+require 'c:\xampp\htdocs\TPHL-ERP\app\config\database.php';
+$db = db();
+$res = $db->query("SELECT * FROM lead_payments LIMIT 5");
+print_r($res->fetch_all(MYSQLI_ASSOC));

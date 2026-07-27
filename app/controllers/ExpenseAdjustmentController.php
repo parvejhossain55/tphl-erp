@@ -33,7 +33,7 @@ class ExpenseAdjustmentController extends Controller
     private function isAccounts()
     {
         // Typically Accounts role is 6, or Admins (1, 3)
-        return in_array($this->userRole, [1, 3, 6]);
+        return in_array($this->userRole, [1, 3, 6, 30]);
     }
 
     private function canApprove($type = null)
