@@ -776,9 +776,45 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
 </div>
 
 <!-- ========================================================================= -->
+<!-- MODAL: VIEW PURPOSE DETAILS -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="purposeModal" tabindex="-1" aria-labelledby="purposeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header ">
+                <h5 class="modal-title fs-14 fw-bold" id="purposeModalLabel">
+                    <i class="fa-solid fa-align-left text-primary me-2"></i>Requisition Purpose Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3 p-3  rounded border">
+                    <small class="text-muted fs-11 text-uppercase fw-semibold d-block">Requester</small>
+                    <span class="fw-bold text-dark fs-13" id="purposeRequesterName">---</span>
+                </div>
+                <div>
+                    <label class="form-label fs-11 text-uppercase fw-semibold text-muted mb-1">Full Purpose Description</label>
+                    <div class="p-3 bg-light-subtle rounded border fs-12 text-wrap" style="white-space: pre-wrap; max-height: 300px; overflow-y: auto;" id="purposeFullText"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
 <!-- JAVASCRIPT LOGIC -->
 <!-- ========================================================================= -->
 <script>
+function openPurposeModal(id, fullPurpose, requesterName) {
+    document.getElementById('purposeRequesterName').innerText = requesterName;
+    document.getElementById('purposeFullText').innerText = fullPurpose;
+    var myModal = new bootstrap.Modal(document.getElementById('purposeModal'));
+    myModal.show();
+}
+
 function toggleRequisitionType() {
     var type = document.getElementById('requisition_type').value;
     var categoryGroup = document.getElementById('categoryGroup');
@@ -1414,7 +1450,24 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
             BDT <?= number_format($req['amount'], 2) ?>
         </td>
         <td class="text-wrap" style="max-width: 200px;">
-            <div class="fs-12"><?= htmlspecialchars($req['purpose']) ?></div>
+            <?php 
+            $purposeText = trim($req['purpose'] ?? '');
+            $words = preg_split('/\s+/', $purposeText);
+            if (count($words) > 20) {
+                $shortPurpose = implode(' ', array_slice($words, 0, 20)) . '...';
+                ?>
+                <div class="fs-12"><?= htmlspecialchars($shortPurpose) ?></div>
+                <button type="button" class="btn btn-link btn-sm p-0 fs-11 text-primary text-decoration-none fw-semibold d-inline-flex align-items-center gap-1 mt-1"
+                        onclick="openPurposeModal(<?= $req['id'] ?>, <?= htmlspecialchars(json_encode($purposeText), ENT_QUOTES, 'UTF-8') ?>, '<?= addslashes($req['requester_name'] ?? 'Requester') ?>')">
+                    <i class="fa-solid fa-eye"></i> View Details
+                </button>
+                <?php
+            } else {
+                ?>
+                <div class="fs-12"><?= htmlspecialchars($purposeText) ?></div>
+                <?php
+            }
+            ?>
             <?php if (!empty($req['dept_head_approval_note'])): ?>
                 <div class="fs-10 text-warning mt-1">
                     <strong>Dept Note:</strong> <?= htmlspecialchars($req['dept_head_approval_note']) ?>

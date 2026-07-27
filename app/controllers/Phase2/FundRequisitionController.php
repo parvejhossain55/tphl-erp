@@ -358,6 +358,8 @@ class FundRequisitionController extends Controller {
         $stmt->bind_param("iiissdsssis", $department_id, $project_id, $requested_by, $requisition_type, $category, $amount, $purpose, $receipt_path, $status, $isDeptApprovalRequired, $deptHeadStatus);
 
         if ($stmt->execute()) {
+            $newReqId = $stmt->insert_id;
+            $this->syncApprovalRequest($newReqId);
             setSuccess("Fund Requisition submitted successfully.");
         } else {
             setError("Failed to submit request: " . $this->db->error);
@@ -420,6 +422,7 @@ class FundRequisitionController extends Controller {
         $stmt->bind_param("sissi", $newDeptStatus, $sessionUserId, $approval_note, $newMainStatus, $id);
 
         if ($stmt->execute()) {
+            $this->syncApprovalRequest($id);
             setSuccess("Department Head status updated: " . $newDeptStatus);
         } else {
             setError("Failed to update status: " . $this->db->error);
@@ -457,6 +460,7 @@ class FundRequisitionController extends Controller {
         $stmt->bind_param("sisi", $status, $approved_by, $approval_note, $id);
 
         if ($stmt->execute()) {
+            $this->syncApprovalRequest($id);
             setSuccess("Requisition status updated to: " . $status);
         } else {
             setError("Failed to update requisition: " . $this->db->error);
@@ -508,6 +512,7 @@ class FundRequisitionController extends Controller {
         $stmt->bind_param("sisssi", $status, $paid_by, $payment_method, $accounts_note, $payment_attachment_path, $id);
 
         if ($stmt->execute()) {
+            $this->syncApprovalRequest($id);
             setSuccess("Requisition payment status updated to: " . $status);
         } else {
             setError("Failed to update payment status: " . $this->db->error);
@@ -961,5 +966,60 @@ class FundRequisitionController extends Controller {
         }
         header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
         exit;
+    }
+
+    private function syncApprovalRequest($fundReqId) {
+        $fundReqId = (int)$fundReqId;
+        $sql = "
+            SELECT fr.*, d.name AS dept_name
+            FROM fund_requisitions fr
+            LEFT JOIN departments d ON fr.department_id = d.id
+            WHERE fr.id = $fundReqId
+            LIMIT 1
+        ";
+        $res = $this->db->query($sql);
+        if (!$res || $res->num_rows == 0) {
+            $this->db->query("DELETE FROM approval_requests WHERE source_table = 'fund_requisitions' AND source_id = $fundReqId");
+            return;
+        }
+        $row = $res->fetch_assoc();
+
+        $check = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'fund_requisitions' AND source_id = $fundReqId");
+        
+        $deptName = !empty($row['dept_name']) ? $row['dept_name'] : 'General';
+        $requestType = $row['requisition_type'];
+        $title = "Fund Requisition: " . (mb_strlen($row['purpose']) > 80 ? mb_substr($row['purpose'], 0, 80) . '...' : $row['purpose']);
+        $amount = (float)$row['amount'];
+        $requestedBy = (int)$row['requested_by'];
+        $status = ($row['status'] === 'pending_dept') ? 'pending' : $row['status'];
+        $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
+        $approvedAt = !empty($row['approved_at']) ? $row['approved_at'] : null;
+        $approvalNote = !empty($row['approval_note']) ? $row['approval_note'] : null;
+        $metaData = json_encode(['purpose' => $row['purpose'], 'category' => $row['category']]);
+        $createdAt = $row['created_at'];
+
+        if ($check && $check->num_rows == 0) {
+            $stmt = $this->db->prepare("
+                INSERT INTO approval_requests 
+                (department, request_type, title, source_table, source_id, request_amount, approved_amount, requested_by, approve_role, status, approved_by, approved_at, approval_note, meta_data, created_at)
+                VALUES (?, ?, ?, 'fund_requisitions', ?, ?, ?, ?, 'management', ?, ?, ?, ?, ?, ?)
+            ");
+            if ($stmt) {
+                $stmt->bind_param("sssiddisissss", $deptName, $requestType, $title, $fundReqId, $amount, $amount, $requestedBy, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                $stmt->execute();
+                $stmt->close();
+            }
+        } else {
+            $stmt = $this->db->prepare("
+                UPDATE approval_requests 
+                SET department = ?, request_type = ?, title = ?, request_amount = ?, approved_amount = ?, status = ?, approved_by = ?, approved_at = ?, approval_note = ?
+                WHERE source_table = 'fund_requisitions' AND source_id = ?
+            ");
+            if ($stmt) {
+                $stmt->bind_param("sssddsissi", $deptName, $requestType, $title, $amount, $amount, $status, $approvedBy, $approvedAt, $approvalNote, $fundReqId);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
     }
 }

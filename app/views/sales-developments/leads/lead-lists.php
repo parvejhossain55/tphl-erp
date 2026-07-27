@@ -255,7 +255,7 @@ $activeCard = $_GET['filter_card'] ?? '';
 
                     <!-- Project Filter -->
                     <?php if (!empty($projects)): ?>
-                    <div class="col-6 col-md-2 d-none">
+                    <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Project</label>
                         <select class="form-select form-select-sm filter-select select2" name="project_id" data-placeholder="Project: All">
                             <option value="">Project: All</option>
@@ -285,14 +285,18 @@ $activeCard = $_GET['filter_card'] ?? '';
                     </div>
                     <?php endif; ?>
 
-                    <!-- Country Filter -->
+                    <!-- Country Filter (Multi-Select) -->
                     <?php if (!empty($countries)): ?>
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Country</label>
-                        <select class="form-select form-select-sm filter-select select2" name="filter_country" data-placeholder="Country: All">
-                            <option value="">Country: All</option>
+                        <?php 
+                        $selectedCountriesArr = is_array($selectedCountry ?? null) 
+                            ? $selectedCountry 
+                            : (!empty($selectedCountry) ? (array)$selectedCountry : []);
+                        ?>
+                        <select class="form-select form-select-sm filter-select select2" name="filter_country[]" multiple data-placeholder="Country: All">
                             <?php foreach ($countries as $c): ?>
-                                <option value="<?= htmlspecialchars($c) ?>" <?= ($selectedCountry ?? '') == $c ? 'selected' : '' ?>>
+                                <option value="<?= htmlspecialchars($c) ?>" <?= in_array($c, $selectedCountriesArr) ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($c) ?>
                                 </option>
                             <?php endforeach; ?>
