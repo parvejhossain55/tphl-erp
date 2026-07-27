@@ -11,7 +11,8 @@ $roleNames = [
     4 => 'HR',
     5 => 'Sales Head',
     6 => 'Accounts',
-    7 => 'Clients Experiment'
+    7 => 'Clients Experiment',
+    30 => 'Accounts Head'
 ];
 $userRoleName = $roleNames[$userRole ?? 1] ?? 'Admin';
 
@@ -590,6 +591,11 @@ $currentUserId = $_SESSION['user']['id'] ?? null;
                             <td>
                                 <div><?= htmlspecialchars($fr['department_name'] ?? '---') ?></div>
                                 <small class="text-muted"><?= $fr['project_name'] ? htmlspecialchars($fr['project_name']) : 'Office General' ?></small>
+                                <?php if (!empty($fr['asset_code'])): ?>
+                                    <div class="mt-1">
+                                        <span class="badge bg-secondary-transparent text-dark border fs-10"><i class="fa-solid fa-cube me-1"></i> <?= htmlspecialchars($fr['asset_code']) ?></span>
+                                    </div>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <?php if ($fr['requisition_type'] === 'petty_cash'): ?>

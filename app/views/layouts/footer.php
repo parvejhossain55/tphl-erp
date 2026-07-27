@@ -417,10 +417,11 @@
 
         var hasEmptyOption = $(this).find('option[value=""]').length > 0;
         var placeholder = $(this).data('placeholder');
+        var modalParent = $(this).closest('.modal');
 
         var opts = {
             width: '100%',
-            dropdownParent: $('body'),
+            dropdownParent: modalParent.length ? modalParent : $('body'),
             scrollAfterSelect: false
         };
         if (placeholder || hasEmptyOption) {

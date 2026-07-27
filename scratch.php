@@ -1,0 +1,1 @@
+<?php $c=require 'app/config/config.php'; $db=new mysqli($c['db_host'], $c['db_user'], $c['db_pass'], $c['db_name']); print_r($db->query('SELECT * FROM fund_requisitions ORDER BY id DESC LIMIT 1')->fetch_assoc());

@@ -1,0 +1,2 @@
+ client_name, client_phone,project_name,flat_name, amount,payment_date,payment_type,payment_method,verification_status,transaction_ref,bank_name,bank_account_no,cheque_no,document,online_type,bulk_emi_discount,emi_due_date,emi_no
+Abdul Latif Suhal,447453158053,The Premium Urban Residence,UNIT 7-A,"61,381",21-07-2026,emi,cash,verified,,,,,,,,,

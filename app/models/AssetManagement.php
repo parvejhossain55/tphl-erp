@@ -15,9 +15,10 @@ class AssetManagement
 
     public function getAllProducts($filters = [])
     {
-        $sql = "SELECT p.*, u.full_name AS created_by_name
+        $sql = "SELECT p.*, u.full_name AS created_by_name, cat.name AS category_name
                 FROM office_asset_products p
                 LEFT JOIN users u ON u.id = p.created_by
+                LEFT JOIN office_procurement_categories cat ON cat.id = p.category_id
                 WHERE 1=1";
                 
         $params = [];
@@ -30,10 +31,10 @@ class AssetManagement
             $types .= 'ss';
         }
 
-        if (!empty($filters['category'])) {
-            $sql .= " AND p.category = ?";
-            $params[] = $filters['category'];
-            $types .= 's';
+        if (!empty($filters['category_id'])) {
+            $sql .= " AND p.category_id = ?";
+            $params[] = $filters['category_id'];
+            $types .= 'i';
         }
 
         if (!empty($filters['status'])) {
@@ -92,15 +93,15 @@ class AssetManagement
     {
         $stmt = $this->db->prepare(
             "INSERT INTO office_asset_products 
-            (product_code, name, category, brand, model, unit, unit_price, description, image_path, status, created_by)
+            (product_code, name, category_id, brand, model, unit, unit_price, description, image_path, status, created_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
 
         $stmt->bind_param(
-            'ssssssdsssi',
+            'ssisssdsssi',
             $data['product_code'],
             $data['name'],
-            $data['category'],
+            $data['category_id'],
             $data['brand'],
             $data['model'],
             $data['unit'],
@@ -117,14 +118,14 @@ class AssetManagement
     public function updateProduct($id, $data)
     {
         $sql = "UPDATE office_asset_products SET 
-                product_code = ?, name = ?, category = ?, brand = ?, model = ?, unit = ?, 
+                product_code = ?, name = ?, category_id = ?, brand = ?, model = ?, unit = ?, 
                 unit_price = ?, description = ?, status = ?";
         $params = [
-            $data['product_code'], $data['name'], $data['category'], $data['brand'], 
+            $data['product_code'], $data['name'], $data['category_id'], $data['brand'], 
             $data['model'], $data['unit'], $data['unit_price'], $data['description'], 
             $data['status']
         ];
-        $types = "ssssssdss";
+        $types = "ssisssdss";
 
         if (array_key_exists('image_path', $data) && $data['image_path'] !== null) {
             $sql .= ", image_path = ?";
@@ -169,7 +170,8 @@ class AssetManagement
         $sql = "SELECT oa.*, 
                        p.name AS project_name,
                        u_assigned.full_name AS assigned_to_name,
-                       u_created.full_name AS created_by_name
+                       u_created.full_name AS created_by_name,
+                       (SELECT COUNT(*) FROM asset_movement_logs WHERE asset_id = oa.id AND action = 'transferred') AS transfer_count
                 FROM office_assets oa
                 LEFT JOIN projects p ON p.id = oa.project_id
                 LEFT JOIN users u_assigned ON u_assigned.id = oa.assigned_to
@@ -408,17 +410,25 @@ class AssetManagement
         $sql = "SELECT pea.*, 
                        p.name AS project_name,
                                               u_req.full_name AS requested_by_name,
+                       u_op.full_name AS operations_by_name,
                        u_ph.full_name AS purchase_head_by_name,
                        u_qc.full_name AS qc_audit_by_name,
                        u_mgmt.full_name AS mgmt_by_name,
-                       u_paid.full_name AS paid_by_name
+                       u_paid.full_name AS paid_by_name,
+                       u_purchased.full_name AS purchased_by_name,
+                       u_assign.full_name AS assigned_to_name,
+                       cat.name AS category_name
                 FROM project_extra_assets pea
+                LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
                 LEFT JOIN projects p ON p.id = pea.project_id
                                 LEFT JOIN users u_req ON u_req.id = pea.requested_by
+                LEFT JOIN users u_op ON u_op.id = pea.operations_by
                 LEFT JOIN users u_ph ON u_ph.id = pea.purchase_head_by
                 LEFT JOIN users u_qc ON u_qc.id = pea.qc_audit_by
                 LEFT JOIN users u_mgmt ON u_mgmt.id = pea.mgmt_by
                 LEFT JOIN users u_paid ON u_paid.id = pea.paid_by
+                LEFT JOIN users u_purchased ON u_purchased.id = pea.purchase_confirmed_by
+                LEFT JOIN users u_assign ON u_assign.id = pea.assigned_to
                 WHERE 1=1";
 
         $params = [];
@@ -434,6 +444,12 @@ class AssetManagement
             $sql .= " AND pea.overall_status = ?";
             $params[] = $filters['overall_status'];
             $types .= 's';
+        }
+
+        if (!empty($filters['created_by'])) {
+            $sql .= " AND pea.requested_by = ?";
+            $params[] = (int)$filters['created_by'];
+            $types .= 'i';
         }
 
         $sql .= " ORDER BY pea.id DESC";
@@ -457,10 +473,18 @@ class AssetManagement
         $stmt = $this->db->prepare(
             "SELECT pea.*, 
                     p.name AS project_name,
-                                        u_req.full_name AS requested_by_name
+                                        u_req.full_name AS requested_by_name,
+                    u_op.full_name AS operations_by_name,
+                    u_purchased.full_name AS purchased_by_name,
+                    u_assign.full_name AS assigned_to_name,
+                    cat.name AS category_name
              FROM project_extra_assets pea
+             LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
              LEFT JOIN projects p ON p.id = pea.project_id
                           LEFT JOIN users u_req ON u_req.id = pea.requested_by
+             LEFT JOIN users u_op ON u_op.id = pea.operations_by
+             LEFT JOIN users u_purchased ON u_purchased.id = pea.purchase_confirmed_by
+             LEFT JOIN users u_assign ON u_assign.id = pea.assigned_to
              WHERE pea.id = ?"
         );
         $stmt->bind_param('i', $id);
@@ -475,16 +499,18 @@ class AssetManagement
     {
         $stmt = $this->db->prepare(
             "INSERT INTO project_extra_assets 
-            (project_id, asset_location, item_name, quantity, unit_price, total_price, justification, attachment, requested_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            (project_id, asset_location, assigned_to, item_category_id, item_name, quantity, unit_price, total_price, justification, attachment, requested_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
 
         $totalPrice = $data['quantity'] * $data['unit_price'];
 
         $stmt->bind_param(
-            'issiddssi',
+            'isiisiddssi',
             $data['project_id'],
             $data['asset_location'],
+            $data['assigned_to'],
+            $data['item_category_id'],
             $data['item_name'],
             $data['quantity'],
             $data['unit_price'],
@@ -508,9 +534,9 @@ class AssetManagement
      * @param int $userId Approver user ID
      * @param string $note Approval/rejection note
      */
-    public function approveStep($id, $step, $status, $userId, $note = '')
+    public function approveStep($id, $step, $status, $userId, $note = '', $document = null)
     {
-        $validSteps = ['purchase_head', 'qc_audit', 'mgmt'];
+        $validSteps = ['operations', 'purchase_head', 'qc_audit', 'mgmt'];
         if (!in_array($step, $validSteps)) return false;
 
         $statusCol = $step . '_status';
@@ -518,12 +544,20 @@ class AssetManagement
         $atCol = $step . '_at';
         $noteCol = $step . '_note';
 
-        $sql = "UPDATE project_extra_assets SET 
-                    `{$statusCol}` = ?, `{$byCol}` = ?, `{$atCol}` = NOW(), `{$noteCol}` = ?
-                WHERE id = ?";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('sisi', $status, $userId, $note, $id);
+        if ($step === 'purchase_head' && $document !== null) {
+            $sql = "UPDATE project_extra_assets SET 
+                        `{$statusCol}` = ?, `{$byCol}` = ?, `{$atCol}` = NOW(), `{$noteCol}` = ?, `purchase_head_document` = ?
+                    WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param('sissi', $status, $userId, $note, $document, $id);
+        } else {
+            $sql = "UPDATE project_extra_assets SET 
+                        `{$statusCol}` = ?, `{$byCol}` = ?, `{$atCol}` = NOW(), `{$noteCol}` = ?
+                    WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param('sisi', $status, $userId, $note, $id);
+        }
+        
         $result = $stmt->execute();
 
         if ($result) {
@@ -554,7 +588,7 @@ class AssetManagement
     /**
      * Operations confirms purchase received → registers assets into All Assets
      */
-    public function confirmPurchased($id, $userId, $document = null, $note = '')
+    public function confirmPurchased($id, $userId, $document = null, $note = '', $assignedTo = null, $location = null, $returnAmount = 0, $returnNote = '')
     {
         // Mark as purchased with document and note
         $stmt = $this->db->prepare(
@@ -562,23 +596,55 @@ class AssetManagement
                 overall_status = 'purchased', 
                 purchase_document = ?, 
                 purchase_note = ?,
+                return_amount = ?,
+                return_note = ?,
                 purchase_confirmed_by = ?,
                 purchase_confirmed_at = NOW()
             WHERE id = ?"
         );
-        $stmt->bind_param('ssii', $document, $note, $userId, $id);
+        $stmt->bind_param('ssdsii', $document, $note, $returnAmount, $returnNote, $userId, $id);
         $res = $stmt->execute();
 
         if ($res) {
-            // Auto-register assets
             $req = $this->findExtraPurchase($id);
             if ($req) {
+                // Auto-register to Product Master if it doesn't exist
+                $stmtCheck = $this->db->prepare("SELECT id FROM office_asset_products WHERE name = ? LIMIT 1");
+                $stmtCheck->bind_param('s', $req['item_name']);
+                $stmtCheck->execute();
+                $resCheck = $stmtCheck->get_result();
+                
+                $productId = 0;
+                if ($resCheck->num_rows > 0) {
+                    $productId = $resCheck->fetch_assoc()['id'];
+                } else {
+                    // Create new product
+                    $productCode = 'PROD-' . time() . '-' . rand(10, 99);
+                    $stmtProd = $this->db->prepare("INSERT INTO office_asset_products (product_code, name, category_id, unit_price, status, created_by) VALUES (?, ?, ?, ?, 'active', ?)");
+                    $stmtProd->bind_param('ssidi', $productCode, $req['item_name'], $req['item_category_id'], $req['unit_price'], $userId);
+                    if ($stmtProd->execute()) {
+                        $productId = $this->db->insert_id;
+                    }
+                }
+
                 $qty = (int)$req['quantity'];
                 for ($i = 0; $i < $qty; $i++) {
                     $code = $this->generateAssetCode();
-                    $insertStmt = $this->db->prepare("INSERT INTO office_assets (asset_code, item_name, project_id, location, purchase_price, purchase_date, condition_status, asset_status, created_by, created_at) VALUES (?, ?, ?, ?, ?, NOW(), 'new', 'in_store', ?, NOW())");
-                    $insertStmt->bind_param('ssisdi', $code, $req['item_name'], $req['project_id'], $req['asset_location'], $req['unit_price'], $userId);
+                    
+                    $finalAssignedTo = $assignedTo !== null ? $assignedTo : ($req['assigned_to'] ? (int)$req['assigned_to'] : null);
+                    $finalLocation = $location !== null && $location !== '' ? $location : $req['asset_location'];
+                    $assetStatus = $finalAssignedTo ? 'in_use' : 'in_store';
+                    
+                    $insertStmt = $this->db->prepare("INSERT INTO office_assets (asset_code, product_id, item_name, project_id, location, assigned_to, purchase_price, purchase_date, condition_status, asset_status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'new', ?, ?, NOW())");
+                    $insertStmt->bind_param('sisisisdi', $code, $productId, $req['item_name'], $req['project_id'], $finalLocation, $finalAssignedTo, $req['unit_price'], $assetStatus, $userId);
                     $insertStmt->execute();
+                }
+
+                // Update project_extra_assets with product_id
+                if ($productId > 0) {
+                    $updReq = $this->db->prepare("UPDATE project_extra_assets SET product_id = ? WHERE id = ?");
+                    $updReq->bind_param('ii', $productId, $id);
+                    $updReq->execute();
                 }
             }
         }
@@ -643,5 +709,35 @@ class AssetManagement
         $stats['total_value'] = $r ? $r->fetch_assoc()['total'] : 0;
 
         return $stats;
+    }
+    // =========================================================================
+    // OFFICE PROCUREMENT CATEGORIES (Phase 2 Addition)
+    // =========================================================================
+
+    public function getProcurementCategories()
+    {
+        $stmt = $this->db->query("SELECT * FROM office_procurement_categories ORDER BY name ASC");
+        return $stmt ? $stmt->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    public function addProcurementCategory($name)
+    {
+        $stmt = $this->db->prepare("INSERT INTO office_procurement_categories (name) VALUES (?)");
+        $stmt->bind_param('s', $name);
+        return $stmt->execute();
+    }
+
+    public function updateProcurementCategory($id, $name)
+    {
+        $stmt = $this->db->prepare("UPDATE office_procurement_categories SET name = ? WHERE id = ?");
+        $stmt->bind_param('si', $name, $id);
+        return $stmt->execute();
+    }
+
+    public function deleteProcurementCategory($id)
+    {
+        $stmt = $this->db->prepare("DELETE FROM office_procurement_categories WHERE id = ?");
+        $stmt->bind_param('i', $id);
+        return $stmt->execute();
     }
 }
