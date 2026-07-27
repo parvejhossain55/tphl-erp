@@ -60,6 +60,18 @@ class FundRequisitionController extends Controller {
             $isDefaultLimit = true;
         }
 
+        // Auto-check and add asset_id to fund_requisitions if missing
+        $checkCol = $this->db->query("SHOW COLUMNS FROM fund_requisitions LIKE 'asset_id'");
+        $hasAssetId = ($checkCol && $checkCol->num_rows > 0);
+        if (!$hasAssetId) {
+            @$this->db->query("ALTER TABLE fund_requisitions ADD COLUMN asset_id INT(11) NULL AFTER project_id");
+            $checkCol = $this->db->query("SHOW COLUMNS FROM fund_requisitions LIKE 'asset_id'");
+            $hasAssetId = ($checkCol && $checkCol->num_rows > 0);
+        }
+
+        $assetSelect = $hasAssetId ? "oa.asset_code, oa.item_name as asset_name" : "NULL as asset_code, NULL as asset_name";
+        $assetJoin = $hasAssetId ? "LEFT JOIN office_assets oa ON fr.asset_id = oa.id" : "";
+
         $sql = "
             SELECT fr.*, 
                    p.name as project_name,
@@ -67,39 +79,52 @@ class FundRequisitionController extends Controller {
                    u_req.full_name as requester_name,
                    u_app.full_name as approved_by_name,
                    u_paid.full_name as paid_by_name,
-                   oa.asset_code,
-                   oa.item_name as asset_name
+                   {$assetSelect}
             FROM fund_requisitions fr
             LEFT JOIN projects p ON fr.project_id = p.id
             LEFT JOIN departments d ON fr.department_id = d.id
             LEFT JOIN users u_req ON fr.requested_by = u_req.id
             LEFT JOIN users u_app ON fr.approved_by = u_app.id
             LEFT JOIN users u_paid ON fr.paid_by = u_paid.id
-            LEFT JOIN office_assets oa ON fr.asset_id = oa.id
+            {$assetJoin}
             WHERE $where
             ORDER BY fr.id DESC
             $limitClause
         ";
 
+        $requests = [];
         if (!empty($params)) {
             $stmt = $this->db->prepare($sql);
-            $stmt->bind_param($types, ...$params);
-            $stmt->execute();
-            $requests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            if ($stmt) {
+                $stmt->bind_param($types, ...$params);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res) {
+                    $requests = $res->fetch_all(MYSQLI_ASSOC);
+                }
+            }
         } else {
-            $requests = $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
+            $res = $this->db->query($sql);
+            if ($res) {
+                $requests = $res->fetch_all(MYSQLI_ASSOC);
+            } else {
+                error_log("FundRequisition Index SQL Error: " . $this->db->error);
+            }
         }
 
         // Projects for create form — restrict to assigned projects for site engineers
         $assignedIds = isset($assignedIds) ? $assignedIds : $this->getAssignedProjectIds($userId);
         if (!in_array($roleId, [1, 3, 6]) && !empty($assignedIds)) {
             $idList = implode(',', $assignedIds);
-            $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND id IN ($idList) ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+            $pRes = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND id IN ($idList) ORDER BY name ASC");
+            $projects = $pRes ? $pRes->fetch_all(MYSQLI_ASSOC) : [];
         } else {
-            $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+            $pRes = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
+            $projects = $pRes ? $pRes->fetch_all(MYSQLI_ASSOC) : [];
         }
 
-        $departments = $this->db->query("SELECT id, name FROM departments ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        $dRes = $this->db->query("SELECT id, name FROM departments ORDER BY name ASC");
+        $departments = $dRes ? $dRes->fetch_all(MYSQLI_ASSOC) : [];
 
         $this->view('phase2/fund_requisition/index', [
             'current_route' => 'fund-requisitions',

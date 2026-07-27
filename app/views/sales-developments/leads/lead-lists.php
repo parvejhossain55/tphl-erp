@@ -255,7 +255,7 @@ $activeCard = $_GET['filter_card'] ?? '';
 
                     <!-- Project Filter -->
                     <?php if (!empty($projects)): ?>
-                    <div class="col-6 col-md-2">
+                    <div class="col-6 col-md-2 d-none">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Project</label>
                         <select class="form-select form-select-sm filter-select select2" name="project_id" data-placeholder="Project: All">
                             <option value="">Project: All</option>
@@ -268,10 +268,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                     </div>
                     <?php endif; ?>
 
-                </div>
-
-                <!-- Line 2 -->
-                <div class="row  mt-1 align-items-end">
+             
 
                     <!-- Category Filter -->
                     <?php if (!empty($categories)): ?>

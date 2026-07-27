@@ -65,7 +65,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                             <label class="form-label">Project *</label>
                         </div>
-                        <select name="project_id" id="projectSelect" class="form-select" required>
+                        <select name="project_id" id="projectSelect" class="form-select select2-no-scroll" data-placeholder="Select Project" required>
                             <option value="">Select Project</option>
                             <?php foreach ($projects as $project): ?>
                                 <?php 
@@ -86,7 +86,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                             <label class="form-label">Flat / Unit *</label>
                         </div>
-                        <select id="flatSelect" name="flat_id" class="form-select" data-live-search="true">
+                        <select id="flatSelect" name="flat_id" class="form-select select2-no-scroll" data-placeholder="Select Flat">
 
                             <option value="">Select Flat</option>
                         </select>
@@ -310,7 +310,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     <!-- Project -->
                     <div class="mb-3">
                         <label class="form-label">Project *</label>
-                        <select name="project_id" id="edit_project" class="form-select" required>
+                        <select name="project_id" id="edit_project" class="form-select select2-no-scroll" data-placeholder="Select Project" required>
                             <option value="">Select Project</option>
                             <?php foreach ($projects as $project): ?>
                                 <?php 
@@ -328,7 +328,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     <!-- Flat -->
                     <div class="mb-3">
                         <label class="form-label">Flat / Unit *</label>
-                        <select name="flat_id" id="edit_flat" class="form-select" required>
+                        <select name="flat_id" id="edit_flat" class="form-select select2-no-scroll" data-placeholder="Select Flat" required>
                             <option value="">Select Flat</option>
                         </select>
                     </div>
@@ -350,20 +350,29 @@ if (session_status() === PHP_SESSION_NONE) session_start();
         const flatPriceInput = document.getElementById('flatPrice');
         const landValueInput = document.getElementById('landValue');
 
+        function refreshSelect2(el) {
+            if (window.jQuery && $(el).data('select2')) {
+                $(el).trigger('change.select2');
+            }
+        }
+
         let flatData = []; // store flats
 
         if (projectSelect) {
-            projectSelect.addEventListener('change', function() {
+            $(projectSelect).on('change', function() {
                 const projectId = this.value;
-                flatSelect.innerHTML = '<option>Loading...</option>';
+                flatSelect.innerHTML = '<option value="">Loading...</option>';
+                refreshSelect2(flatSelect);
+
                 flatPriceInput.value = '';
                 landValueInput.value = '';
 
                 if (!projectId) {
                     flatSelect.innerHTML = '<option value="">Select Flat</option>';
+                    refreshSelect2(flatSelect);
                     return;
                 }
-                //strat fetch
+
                 fetch("<?= $GLOBALS['base_url'] ?>/get-flats-by-project/" + projectId)
                     .then(res => {
                         if (!res.ok) throw new Error('Network response was not ok');
@@ -375,6 +384,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                         if (data.length === 0) {
                             flatSelect.innerHTML = '<option value="">No flats available</option>';
+                            refreshSelect2(flatSelect);
                             return;
                         }
 
@@ -391,7 +401,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                 option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Locked for 48 hours]`;
                                 option.className = 'locked-option';
                                 option.disabled = true;
-                                option.style.color = 'red'; // ensure visibility in basic select
+                                option.style.color = 'red';
                             } else if (flat.is_booked == 1) {
                                 option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
                                 option.className = 'booked-option';
@@ -400,21 +410,21 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                 option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
                             }
 
-                            flatSelect.appendChild(option)
+                            flatSelect.appendChild(option);
                         });
+                        refreshSelect2(flatSelect);
                     })
                     .catch(error => {
                         console.error('Error fetching flats:', error);
                         flatSelect.innerHTML = '<option value="">Error loading flats</option>';
+                        refreshSelect2(flatSelect);
                     });
-                //end fetch
             });
         }
 
         // Show price when flat selected
-        flatSelect.addEventListener('change', function() {
+        $(flatSelect).on('change', function() {
             const selectedFlatId = this.value;
-
             const flat = flatData.find(f => f.flat_id == selectedFlatId);
             flatPriceInput.value = flat ? Number(flat.price_value).toLocaleString() : '';
             landValueInput.value = flat ? Number(flat.land_share_value).toLocaleString() : '';
@@ -424,22 +434,30 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-
         let flatDataEdit = []; // store flats for edit modal
 
         const editProjectSelect = document.getElementById('edit_project');
         const editFlatSelect = document.getElementById('edit_flat');
-        const editFlatPriceInput = document.getElementById('edit_flatPrice'); // optional price display
+        const editFlatPriceInput = document.getElementById('edit_flatPrice');
 
-        // Load flats on project change in edit modal
+        function refreshSelect2(el) {
+            if (window.jQuery && $(el).data('select2')) {
+                $(el).trigger('change.select2');
+            }
+        }
+
         if (editProjectSelect) {
-            editProjectSelect.addEventListener('change', function() {
+            $(editProjectSelect).on('change', function() {
                 const projectId = this.value;
-                editFlatSelect.innerHTML = '<option>Loading...</option>';
+                editFlatSelect.innerHTML = '<option value="">Loading...</option>';
+                refreshSelect2(editFlatSelect);
+
                 if (!projectId) {
                     editFlatSelect.innerHTML = '<option value="">Select Flat</option>';
+                    refreshSelect2(editFlatSelect);
                     return;
                 }
+
                 fetch("<?= $GLOBALS['base_url'] ?>/get-flats-by-project/" + projectId)
                     .then(res => {
                         if (!res.ok) throw new Error('Network response was not ok');
@@ -453,7 +471,6 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             const opt = document.createElement('option');
                             opt.value = flat.flat_id;
 
-                            // Calculate 48-hour lock
                             const now = new Date();
                             const bTime = flat.booking_time ? new Date(flat.booking_time) : null;
                             const isLocked = flat.booking_status === 'booked' && bTime && (now - bTime < 48 * 60 * 60 * 1000);
@@ -471,31 +488,24 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             editFlatSelect.appendChild(opt);
                         });
 
-                        // Set flat after options loaded
-                        if (typeof flatId !== 'undefined') { 
-                            editFlatSelect.value = flatId;
-                        }
+                        refreshSelect2(editFlatSelect);
                     })
                     .catch(error => {
                         console.error('Error fetching flats (edit):', error);
                         editFlatSelect.innerHTML = '<option value="">Error loading flats</option>';
+                        refreshSelect2(editFlatSelect);
                     });
-
             });
         }
 
-        // Optional: show price when flat selected
         if (editFlatSelect && editFlatPriceInput) {
-            editFlatSelect.addEventListener('change', function() {
+            $(editFlatSelect).on('change', function() {
                 const selectedFlatId = this.value;
                 const flat = flatDataEdit.find(f => f.flat_id == selectedFlatId);
                 editFlatPriceInput.value = flat ? Number(flat.price_value).toLocaleString() : '';
             });
         }
 
-        // ===============================
-        // Populate edit modal when button clicked
-        // ===============================
         document.querySelectorAll('.editBookingBtn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const bookingId = this.dataset.id;
@@ -506,17 +516,12 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 document.getElementById('edit_booking_id').value = bookingId;
                 document.getElementById('edit_agreement').value = agreement;
 
-                // set project and trigger change to load flats
-                editProjectSelect.value = projectId;
-                const event = new Event('change');
-                editProjectSelect.dispatchEvent(event);
+                $(editProjectSelect).val(projectId).trigger('change');
 
-                // Wait for flats to load then select the flat
                 setTimeout(() => {
-                    editFlatSelect.value = flatId;
-                }, 300); // 300ms delay to ensure flats are loaded
+                    $(editFlatSelect).val(flatId).trigger('change');
+                }, 400);
             });
         });
-
     });
 </script>
