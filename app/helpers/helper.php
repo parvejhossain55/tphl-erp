@@ -641,7 +641,7 @@ function getSetting($key, $default = null)
 
     if ($settings === null) {
         $db = $GLOBALS['db'];
-        $stmt = $db->prepare("SELECT * FROM site_settings WHERE id = 1 LIMIT 1");
+        $stmt = $db->prepare("SELECT * FROM site_settings ORDER BY id ASC LIMIT 1");
         if ($stmt && $stmt->execute()) {
             $result = $stmt->get_result();
             $settings = $result ? $result->fetch_assoc() : [];

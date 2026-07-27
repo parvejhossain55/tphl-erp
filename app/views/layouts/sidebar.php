@@ -46,6 +46,24 @@
         }
     }
 
+    // Calculate pending system approval requests count for Management & Accounts badge
+    $pendingApprovalCount = 0;
+    if (isset($db)) {
+        $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending'");
+        if ($resApp) {
+            $pendingApprovalCount = (int)($resApp->fetch_assoc()['total'] ?? 0);
+        }
+    }
+
+    // Calculate pending / incomplete sales incentive claims count for Accounts badge
+    $pendingIncentiveClaimsCount = 0;
+    if (isset($db)) {
+        $resInc = $db->query("SELECT COUNT(*) AS total FROM project_incentive_claims WHERE claim_status IN ('claimed', 'approved')");
+        if ($resInc) {
+            $pendingIncentiveClaimsCount = (int)($resInc->fetch_assoc()['total'] ?? 0);
+        }
+    }
+
     // Calculate pending tasks count for logged in user
     $pendingTasksCount = 0;
     if (isset($db) && isset($_SESSION['user']['id'])) {
@@ -74,6 +92,21 @@
                         <a href="<?= $base_url ?>/home" class="sidebar__menu-item <?= isActive('home', $current_route) ?>">
                             <div class="side-menu__icon"><i class="icon-house"></i></div>
                             <span class="sidebar__menu-label">Home</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
+                <?php if ($isManagement): ?>
+                    <!-- All Approval Requests for Management -->
+                    <li class="slide <?= isActive('all-approval-requests', $current_route) ?>">
+                        <a href="<?= $base_url ?>/all-approval-requests" class="sidebar__menu-item <?= isActive('all-approval-requests', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-list-check text-primary"></i></div>
+                            <span class="sidebar__menu-label">
+                                All Approval Requests
+                                <?php if ($pendingApprovalCount > 0): ?>
+                                    <span class="badge bg-danger rounded-pill ms-2"><?= $pendingApprovalCount ?></span>
+                                <?php endif; ?>
+                            </span>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -250,6 +283,20 @@
                                         Refunds</a>
                                 </li>
                             </ul>
+                        </li>
+
+                        <!-- Incentive Module Menu Links -->
+                        <li class="slide d-none">
+                            <a href="<?= $base_url ?>/my-incentives" class="sidebar__menu-item <?= isActive('my-incentives', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                                <span class="sidebar__menu-label">My Incentives</span>
+                            </a>
+                        </li>
+                        <li class="slide d-none">
+                            <a href="<?= $base_url ?>/incentive-management" class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-coins"></i></div>
+                                <span class="sidebar__menu-label">Sales Incentive Accounts</span>
+                            </a>
                         </li>
                     <?php endif; ?>
 
@@ -1232,11 +1279,37 @@
                             <?php endif; ?>
                         </a>
                     </li>
-                    <li class="slide <?= isActive('central-statement', $current_route) ?>">
+                    <?php if (!$isManagement): ?>
+                        <li class="slide <?= isActive('all-approval-requests', $current_route) ?>">
+                            <a href="<?= $base_url ?>/all-approval-requests"
+                                class="sidebar__menu-item <?= isActive('all-approval-requests', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-list-check text-primary"></i></div>
+                                <span class="sidebar__menu-label">
+                                    All Approval Requests
+                                    <?php if ($pendingApprovalCount > 0): ?>
+                                        <span class="badge bg-danger rounded-pill ms-2"><?= $pendingApprovalCount ?></span>
+                                    <?php endif; ?>
+                                </span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                    <li class="slide   <?= isActive('central-statement', $current_route) ?>">
                         <a href="<?= $base_url ?>/central-statement"
                             class="sidebar__menu-item <?= isActive('central-statement', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-book"></i></div>
                             <span class="sidebar__menu-label">Central Statement</span>
+                        </a>
+                    </li>
+                    <li class="slide d-none <?= isActive('incentive-management', $current_route) ?>">
+                        <a href="<?= $base_url ?>/incentive-management"
+                            class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-coins text-warning"></i></div>
+                            <span class="sidebar__menu-label">
+                                Sales Incentive Accounts
+                                <?php if ($pendingIncentiveClaimsCount > 0): ?>
+                                    <span class="badge bg-warning text-dark rounded-pill ms-2"><?= $pendingIncentiveClaimsCount ?></span>
+                                <?php endif; ?>
+                            </span>
                         </a>
                     </li>
                     <li class="slide d-none <?= isActive('projects-cashout', $current_route) ?>">
@@ -2027,7 +2100,7 @@
                 <?php endif; ?>
                 <!-- ====== END Site Operations ====== -->
 
-                <?php if (hasPermission('Material Manage')): ?>
+                <?php if (hasPermission('Material Manage') || hasPermission('Estimator dashboard')): ?>
                     <!-- Module 3: Materials & Inventory -->
                     <li
                         class="slide has-sub <?= isActive(['con-materials', 'con-material-create', 'con-warehouses', 'con-warehouse-create', 'con-stocks'], $current_route) ? 'active' : '' ?>">
@@ -2043,6 +2116,7 @@
                                     class="sidebar__menu-item <?= isActive('con-materials', $current_route) ?>">Material
                                     Master</a>
                             </li>
+                            <?php if (hasPermission('Material Manage')): ?>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/con-material-create"
                                     class="sidebar__menu-item <?= isActive('con-material-create', $current_route) ?>">Add
@@ -2057,6 +2131,7 @@
                                     class="sidebar__menu-item <?= isActive('con-warehouse-create', $current_route) ?>">Add
                                     Warehouse</a>
                             </li>
+                            <?php endif; ?>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/con-stocks"
                                     class="sidebar__menu-item <?= isActive('con-stocks', $current_route) ?>">Stock

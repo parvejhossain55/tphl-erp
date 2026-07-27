@@ -19,7 +19,8 @@ class ApprovalRequest extends Model
         'con_work_orders',
         'vendor_payment_requests',
         'contractor_bill_requests',
-        'lead_payments'
+        'lead_payments',
+        'project_incentive_claims'
     ];
     public function create($data)
     {
@@ -402,7 +403,11 @@ class ApprovalRequest extends Model
         $params = [];
         $types  = '';
 
-        if (in_array('approval_status', $columns)) {
+        if (in_array('claim_status', $columns)) {
+            $updateFields[] = "claim_status = ?";
+            $types .= 's';
+            $params[] = $sourceStatus;
+        } elseif (in_array('approval_status', $columns)) {
             $updateFields[] = "approval_status = ?";
             $types .= 's';
             $params[] = $sourceStatus;
@@ -477,5 +482,164 @@ class ApprovalRequest extends Model
         $stmt->execute();
         $result = $stmt->get_result(); // get_result() needed for mysqli
         return $result->fetch_assoc(); // fetch_assoc() instead of fetch()
+    }
+
+    public function getApprovalDashboardMetrics()
+    {
+        $sql = "SELECT 
+                    COUNT(*) AS total_requests,
+                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
+                    SUM(CASE WHEN status = 'pending' THEN IFNULL(request_amount, 0) ELSE 0 END) AS pending_amount,
+                    SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved_count,
+                    SUM(CASE WHEN status = 'approved' THEN IFNULL(approved_amount, IFNULL(request_amount, 0)) ELSE 0 END) AS approved_amount,
+                    SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected_count
+                FROM approval_requests";
+
+        $res = $this->db->query($sql);
+        $row = $res ? $res->fetch_assoc() : [];
+
+        // Check Accounts total disbursed across incentive payments & vendor payment requests
+        $sqlDisbursed = "SELECT 
+                            (SELECT IFNULL(SUM(payment_amount), 0) FROM project_incentive_payments) + 
+                            (SELECT IFNULL(SUM(approved_amount), 0) FROM vendor_payment_requests WHERE status = 'Approved') AS total_disbursed";
+        $resD = $this->db->query($sqlDisbursed);
+        $totalDisbursed = $resD ? (float)($resD->fetch_assoc()['total_disbursed'] ?? 0) : 0.00;
+
+        return [
+            'total_requests'  => (int)($row['total_requests'] ?? 0),
+            'pending_count'   => (int)($row['pending_count'] ?? 0),
+            'pending_amount'  => (float)($row['pending_amount'] ?? 0.00),
+            'approved_count'  => (int)($row['approved_count'] ?? 0),
+            'approved_amount' => (float)($row['approved_amount'] ?? 0.00),
+            'rejected_count'  => (int)($row['rejected_count'] ?? 0),
+            'total_disbursed' => $totalDisbursed
+        ];
+    }
+
+    public function getAllApprovalHistory($filters = [])
+    {
+        $where = ["1=1"];
+        $params = [];
+        $types = "";
+
+        if (!empty($filters['status'])) {
+            $where[] = "ar.status = ?";
+            $params[] = $filters['status'];
+            $types .= "s";
+        }
+
+        if (!empty($filters['department'])) {
+            $where[] = "LOWER(ar.department) = ?";
+            $params[] = strtolower($filters['department']);
+            $types .= "s";
+        }
+
+        if (!empty($filters['source_table'])) {
+            $where[] = "ar.source_table = ?";
+            $params[] = $filters['source_table'];
+            $types .= "s";
+        }
+
+        $whereClause = implode(" AND ", $where);
+
+        $sql = "SELECT 
+                    ar.id,
+                    ar.department,
+                    ar.request_type,
+                    ar.title,
+                    ar.source_table,
+                    ar.source_id,
+                    IFNULL(ar.request_amount, 0.00) AS request_amount,
+                    IFNULL(ar.approved_amount, ar.request_amount) AS approved_amount,
+                    ar.status,
+                    ar.created_at AS requested_at,
+                    ar.approved_at,
+                    ar.approval_note,
+                    u_req.full_name AS requester_name,
+                    IFNULL(e_req.employee_id, CONCAT('EMP-', u_req.id)) AS requester_code,
+                    d_req.name AS requester_dept,
+                    u_app.full_name AS approver_name,
+                    u_app.email AS approver_email,
+                    IFNULL(des_app.name, 'Management Executive') AS approver_designation
+                FROM approval_requests ar
+                LEFT JOIN users u_req ON ar.requested_by = u_req.id
+                LEFT JOIN employees e_req ON u_req.id = e_req.user_id
+                LEFT JOIN departments d_req ON e_req.department_id = d_req.id
+                LEFT JOIN users u_app ON ar.approved_by = u_app.id
+                LEFT JOIN employees e_app ON u_app.id = e_app.user_id
+                LEFT JOIN designations des_app ON e_app.designation_id = des_app.id
+                WHERE {$whereClause}
+                ORDER BY ar.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $list = [];
+        while ($row = $result->fetch_assoc()) {
+            $sourceTable = $row['source_table'];
+            $sourceId = (int)$row['source_id'];
+
+            // Payout status resolution
+            $payoutStatus = 'N/A';
+            $payoutAmount = 0.00;
+            $payoutDate = null;
+
+            if ($sourceTable === 'project_incentive_claims') {
+                $paySql = "SELECT SUM(payment_amount) AS total_paid, MAX(payment_date) AS pay_date 
+                           FROM project_incentive_payments WHERE claim_id = ?";
+                $pStmt = $this->db->prepare($paySql);
+                if ($pStmt) {
+                    $pStmt->bind_param("i", $sourceId);
+                    $pStmt->execute();
+                    $pRow = $pStmt->get_result()->fetch_assoc();
+                    $pStmt->close();
+                    $totalPaid = (float)($pRow['total_paid'] ?? 0.00);
+                    if ($totalPaid > 0) {
+                        $payoutStatus = 'Paid & Settled';
+                        $payoutAmount = $totalPaid;
+                        $payoutDate = $pRow['pay_date'];
+                    } else if ($row['status'] === 'approved') {
+                        $payoutStatus = 'Pending Accounts Payout';
+                    }
+                }
+            } else if ($sourceTable === 'vendor_payment_requests') {
+                $vSql = "SELECT status, IFNULL(approved_amount, 0.00) AS app_amt, updated_at 
+                         FROM vendor_payment_requests WHERE id = ? LIMIT 1";
+                $vStmt = $this->db->prepare($vSql);
+                if ($vStmt) {
+                    $vStmt->bind_param("i", $sourceId);
+                    $vStmt->execute();
+                    $vRow = $vStmt->get_result()->fetch_assoc();
+                    $vStmt->close();
+                    if ($vRow) {
+                        if (in_array(strtolower($vRow['status']), ['approved', 'paid', 'completed'])) {
+                            $payoutStatus = 'Paid & Settled';
+                            $payoutAmount = (float)$vRow['app_amt'];
+                            $payoutDate = $vRow['updated_at'];
+                        } else if ($row['status'] === 'approved') {
+                            $payoutStatus = 'Pending Accounts Payout';
+                        }
+                    }
+                }
+            } else if ($row['status'] === 'approved') {
+                $payoutStatus = 'Approved';
+            }
+
+            $row['payout_status'] = $payoutStatus;
+            $row['payout_amount'] = $payoutAmount;
+            $row['payout_date'] = $payoutDate;
+
+            $list[] = $row;
+        }
+
+        if (isset($stmt) && $stmt) {
+            $stmt->close();
+        }
+
+        return $list;
     }
 }

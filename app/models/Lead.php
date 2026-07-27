@@ -1580,7 +1580,7 @@ class Lead extends Model
     /**
      * Count marketing leads for AJAX pagination (mirrors getMarketingLeadsFlexible filters)
      */
-    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null)
+    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null, $projectId = null)
     {
         $sql = "SELECT COUNT(*) AS total FROM leads l WHERE l.deleted_at IS NULL AND l.uploaded_from = 'From Campaign'";
 
@@ -1616,6 +1616,12 @@ class Lead extends Model
         if ($projectCategoryId) {
             $sql .= " AND l.project_category_id = ?";
             $params[] = $projectCategoryId;
+            $types   .= "i";
+        }
+
+        if ($projectId) {
+            $sql .= " AND l.project_id = ?";
+            $params[] = $projectId;
             $types   .= "i";
         }
 
@@ -1659,7 +1665,7 @@ class Lead extends Model
     /**
      * Paginated marketing leads for AJAX (same contact_status logic, adds LIMIT/OFFSET + search)
      */
-    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null)
+    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null, $projectId = null)
     {
         $sql = "
         SELECT
@@ -1745,6 +1751,12 @@ class Lead extends Model
         if ($projectCategoryId) {
             $sql .= " AND l.project_category_id = ?";
             $params[] = $projectCategoryId;
+            $types   .= "i";
+        }
+
+        if ($projectId) {
+            $sql .= " AND l.project_id = ?";
+            $params[] = $projectId;
             $types   .= "i";
         }
 
