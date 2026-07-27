@@ -109,7 +109,7 @@ public function getPendingCount($year = null, $month = null)
         
         $status = $data['status'] ?? 'pending';
         $companyBankId = isset($data['company_bank_id']) ? $data['company_bank_id'] : null;
-        $paymentMethod = isset($data['payment_method']) ? $data['payment_method'] : null;
+        $paymentMethod = !empty($data['payment_method']) ? $data['payment_method'] : 'bank';
         $uploadBy = $data['upload_by'] ?? 'manual';
 
         $stmt->bind_param(
@@ -302,11 +302,14 @@ public function getPendingCount($year = null, $month = null)
                     p.company_bank_id,
                     p.upload_by,
                     ar.approved_at AS approval_time,
-                    ar.status AS approval_status
+                    ar.status AS approval_status,
+                    pd.amount AS lwp_amount,
+                    e.gross_salary AS emp_gross_salary
                 FROM employees AS e
                 LEFT JOIN designations AS desg ON e.designation_id = desg.id
                 LEFT JOIN departments AS dept ON e.department_id = dept.id
                 LEFT JOIN payslips AS p ON p.employee_id = e.id AND YEAR(p.payslip_month) = ? AND MONTH(p.payslip_month) = ?
+                LEFT JOIN payslip_details AS pd ON pd.payslip_id = p.id AND pd.payslip_item_id = 4
                 LEFT JOIN (
                     SELECT *
                     FROM (
@@ -340,11 +343,14 @@ public function getPendingCount($year = null, $month = null)
                     p.company_bank_id,
                     p.upload_by,
                     ar.approved_at AS approval_time,
-                    ar.status AS approval_status
+                    ar.status AS approval_status,
+                    pd.amount AS lwp_amount,
+                    e.gross_salary AS emp_gross_salary
                 FROM payslips AS p
                 LEFT JOIN employees AS e ON p.employee_id = e.id
                 LEFT JOIN designations AS d ON e.designation_id = d.id
                 LEFT JOIN departments AS dept ON e.department_id = dept.id
+                LEFT JOIN payslip_details AS pd ON pd.payslip_id = p.id AND pd.payslip_item_id = 4
                 LEFT JOIN (
                     SELECT *
                     FROM (

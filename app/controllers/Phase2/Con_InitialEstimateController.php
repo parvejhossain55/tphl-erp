@@ -45,11 +45,20 @@ class Con_InitialEstimateController extends Controller
         $budgets = $this->model->getAll($userId, $roleId);
         $spentMap = $this->model->getSpentTotalsGroupedByProject();
 
+        $filter = "1=1";
+        if (!in_array($roleId, [1, 3, 22])) {
+            $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
+        }
+
+        $rProjs = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND $filter ORDER BY name ASC");
+        $projects = $rProjs ? $rProjs->fetch_all(MYSQLI_ASSOC) : [];
+
         $this->view('phase2/initial_estimates/initial-estimate-lists', [
             'current_route' => 'con-estimates',
             'page_title'    => 'Initial Estimate Budgets',
             'budgets'       => $budgets,
             'spentMap'      => $spentMap,
+            'projects'      => $projects,
         ]);
     }
 
@@ -1075,24 +1084,22 @@ class Con_InitialEstimateController extends Controller
     // =========================================================================
     public function importCsv()
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: ' . $GLOBALS['base_url'] . '/con-estimates');
-            exit;
-        }
-
         // ── Sample CSV download ───────────────────────────────────────────────
         if (isset($_GET['sample'])) {
             header('Content-Type: text/csv; charset=utf-8');
             header('Content-Disposition: attachment; filename="initial_estimate_sample.csv"');
             echo "\xEF\xBB\xBF"; // UTF-8 BOM for Excel
-            echo "Row_Type,Project_Name,Work_Type_Name,Total_Area_Sqft,Other_Costs,Start_Date,End_Date,Material_Name,Material_Unit,Estimated_Qty,Unit_Cost,Item_Remarks,Labor_Type_Name,Rate_Per_Sqft,Area_Sqft,Labor_Description\n";
-            echo "BUDGET,Ashuliya Model Town,Brick Work,1200.00,5000,2025-01-01,2025-06-30,,,,,,,,,\n";
-            echo "ITEM,,,,,,,,,Rod (12mm),kg,500,85.00,Main structure,,,,\n";
-            echo "ITEM,,,,,,,,Cement (50kg bag),bag,120,650.00,Foundation,,,,\n";
-            echo "LABOR,,,,,,,,,,,,,Mason,45.00,1200.00,Ground floor masonry\n";
-            echo "LABOR,,,,,,,,,,,,,Helper,25.00,1200.00,Support work\n";
-            echo "BUDGET,Mirpur Housing Project,,800.00,2000,2025-03-01,2025-09-30,,,,,,,,,\n";
-            echo "ITEM,,,,,,,,Sand (cubic ft),cft,300,120.00,,,,,\n";
+            echo "Row_Type,Project_Name,Estimator_Email,Approved_By_Email,Total_Area_Sqft,Other_Costs,Other_Cost_Detail,Drive_Link,Start_Date,End_Date,Work_Type_Name,Default_Phase_Name,Phase_Item_Name,Material_Name,Material_Unit,Estimated_Qty,Unit_Cost,Item_Remarks,Labor_Type_Name,Rate_Per_Sqft,Area_Sqft,Labor_Description,Floor_Type,Floor_No,Location\n";
+            echo "BUDGET,test project from developer2,estimator1@gmail.com,project.manager1@gmail.com,1200.00,5000,Fencing and security,https://drive.google.com/...,2026-01-01,2026-06-30,,,,,,,,,,,,,,,\n";
+            echo "ITEM,,,,,,,,,,Brick Work,Structure,Foundation Slab,Rod (12mm),kg,500,85.00,Main structure,,,,,Typical_Floor,0,Basement Lift Core\n";
+            echo "ITEM,,,,,,,,,,Plaster Work,Structure,Superstructure,Cement (50kg bag),bag,120,650.00,Foundation,,,,,Typical_Floor,0,Basement Wall\n";
+            echo "LABOR,,,,,,,,,,Mason Work,Structure,Foundation Slab,,,,,,Mason,45.00,1200.00,Ground floor masonry,,,\n";
+            echo "LABOR,,,,,,,,,,Helper Work,Structure,Superstructure,,,,,,Helper,25.00,1200.00,Support work,,,\n";
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . $GLOBALS['base_url'] . '/con-estimates');
             exit;
         }
 
@@ -1105,7 +1112,7 @@ class Con_InitialEstimateController extends Controller
         // ── Read file with UTF-8 support (Bengali fix) ────────────────────────
         $raw = file_get_contents($_FILES['csv_file']['tmp_name']);
         
-        // Strip UTF-8 BOM if present (exactly like Con_MaterialController)
+        // Strip UTF-8 BOM if present
         $raw = ltrim($raw, "\xEF\xBB\xBF");
         
         // Normalize line endings
@@ -1129,19 +1136,11 @@ class Con_InitialEstimateController extends Controller
             exit;
         }
 
-        $db     = $this->db;
+        $db = $this->db;
         $db->set_charset('utf8mb4'); // Ensure connection uses UTF-8 for Bengali support
-        $userId = (int)($_SESSION['user']['id'] ?? 0);
 
-        $successBudgets = 0;
-        $successItems   = 0;
-        $successLabors  = 0;
-        $errorCount     = 0;
-        $errors         = [];
-
-        // Current budget state (carried across ITEM/LABOR rows)
-        $currentBudgetId  = null;
-        $currentProjectId = null;
+        $csvErrors = [];
+        $parsedRows = [];
 
         // ── Helper: resolve project_id ────────────────────────────────────────
         $resolveProject = function (string $name) use ($db): ?int {
@@ -1152,47 +1151,6 @@ class Con_InitialEstimateController extends Controller
             $s->execute();
             $r = $s->get_result()->fetch_assoc();
             return $r ? (int)$r['id'] : null;
-        };
-
-        // ── Helper: resolve architecture_id from project_id ──────────────────
-        $resolveArch = function (int $projectId) use ($db): int {
-            $s = $db->prepare("SELECT id FROM architect_engineering WHERE project_id = ? ORDER BY id ASC LIMIT 1");
-            $s->bind_param('i', $projectId);
-            $s->execute();
-            $r = $s->get_result()->fetch_assoc();
-            return $r ? (int)$r['id'] : 0;
-        };
-
-        // ── Helper: resolve work_type_id ──────────────────────────────────────
-        $resolveWorkType = function (string $name) use ($db): ?int {
-            $name = trim($name);
-            if (!$name) return null;
-            $s = $db->prepare("SELECT id FROM work_types WHERE work_type_name = ? LIMIT 1");
-            $s->bind_param('s', $name);
-            $s->execute();
-            $r = $s->get_result()->fetch_assoc();
-            return $r ? (int)$r['id'] : null;
-        };
-
-        // ── Helper: resolve material_id and unit ─────────────────────────────
-        $resolveMaterial = function (string $name) use ($db): ?array {
-            $name = trim($name);
-            if (!$name) return null;
-            $s = $db->prepare("SELECT id, unit FROM con_materials WHERE name = ? LIMIT 1");
-            $s->bind_param('s', $name);
-            $s->execute();
-            $r = $s->get_result()->fetch_assoc();
-            return $r ?: null;
-        };
-
-        // ── Helper: resolve design_type_id from work_type_id ─────────────────
-        $resolveDesignType = function (?int $wtId) use ($db): int {
-            if (!$wtId) return 0;
-            $s = $db->prepare("SELECT design_type_id FROM work_types WHERE id = ? LIMIT 1");
-            $s->bind_param('i', $wtId);
-            $s->execute();
-            $r = $s->get_result()->fetch_assoc();
-            return $r ? (int)($r['design_type_id'] ?? 0) : 0;
         };
 
         // ── Helper: resolve user_id from email ─────────────────────────────
@@ -1206,249 +1164,1047 @@ class Con_InitialEstimateController extends Controller
             return $r ? (int)$r['id'] : null;
         };
 
-        // ── Process rows ──────────────────────────────────────────────────────
+        // ── Helper: check if architect engineering exists ──────────────────
+        $hasArchitectSetup = function (int $projectId) use ($db): bool {
+            $s = $db->prepare("SELECT id FROM architect_engineering WHERE project_id = ? LIMIT 1");
+            $s->bind_param('i', $projectId);
+            $s->execute();
+            return (bool)$s->get_result()->fetch_assoc();
+        };
+
+        // ── Phase 1: Parse and Validate all rows (First Pass) ────────────────
+        $currentProjectName = null;
+        $currentProjectId = null;
+        $hasActiveBudget = false;
+        $budgetExists = false;
+        $lastBudgetLineNo = null;
+
         foreach ($lines as $lineNo => $line) {
             $line = trim($line);
             if ($line === '') continue;
 
             $cols = array_map('trim', str_getcsv($line));
             $hCount = count($headerRow);
-            // Ensure col count matches header exactly (pad if short, truncate if long)
             if (count($cols) < $hCount) {
                 $cols = array_pad($cols, $hCount, '');
             } elseif (count($cols) > $hCount) {
                 $cols = array_slice($cols, 0, $hCount);
             }
             $row = array_combine($headerRow, $cols);
-            if ($row === false) continue; // safety guard
-  
-          $rowType = strtoupper(trim($row['Row_Type'] ?? ''));
+            if ($row === false) continue;
 
-            // ─ BUDGET row ────────────────────────────────────────────────────
+            $actualLineNo = $lineNo + 2; // 1-indexed plus header row offset
+            $row['__line_no'] = $actualLineNo;
+            $rowType = strtoupper(trim($row['Row_Type'] ?? ''));
+
             if ($rowType === 'BUDGET') {
-                $projectName  = trim($row['Project_Name']  ?? '');
-                $workTypeName = trim($row['Work_Type_Name'] ?? '');
+                $budgetExists = true;
+                $lastBudgetLineNo = $actualLineNo;
+                $projectName = trim($row['Project_Name'] ?? '');
+                $estimatorEmail = trim($row['Estimator_Email'] ?? '');
+                $approvedByEmail = trim($row['Approved_By_Email'] ?? '');
 
                 if (!$projectName) {
-                    $errorCount++;
-                    $errors[] = "Line " . ($lineNo + 2) . ": Missing Project_Name in BUDGET row";
-                    $currentBudgetId = null;
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Project_Name', 'message' => 'Project Name is required for BUDGET.'];
+                    $hasActiveBudget = false;
                     continue;
                 }
 
                 $projectId = $resolveProject($projectName);
                 if (!$projectId) {
-                    $errorCount++;
-                    $errors[] = "Line " . ($lineNo + 2) . ": Project '$projectName' not found";
-                    $currentBudgetId = null;
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Project_Name', 'message' => "Project '$projectName' not found in ERP."];
+                    $hasActiveBudget = false;
                     continue;
                 }
 
-                $archId = $resolveArch($projectId);
-
-                // Budget-level fields (no work_type_id at budget level)
-                $areaSqft        = (float)($row['Total_Area_Sqft']    ?? 0);
-                $otherCost       = (float)($row['Other_Costs']         ?? 0);
-                $otherCostDetail = trim($row['Other_Cost_Detail']      ?? '');
-                $budgetLink      = trim($row['Budget_Link']            ?? '');
-                $startDate       = trim($row['Start_Date']             ?? '') ?: null;
-                $endDate         = trim($row['End_Date']               ?? '') ?: null;
-                $statusVal       = strtolower(trim($row['Status']      ?? 'pending'));
-                $statusVal       = in_array($statusVal, ['pending','approved','cancelled']) ? $statusVal : 'pending';
-                $approvalDate    = trim($row['Approval_Date']          ?? '') ?: null;
-
-                // Resolve approved_by from email
-                $approvedByEmail = trim($row['Approved_By_Email'] ?? '');
-                $approvedById    = $approvedByEmail ? $resolveUserByEmail($approvedByEmail) : null;
-
-                $ins = $db->prepare("
-                    INSERT INTO initial_estimate_budgets
-                        (project_id, architecture_id, total_area_sqft,
-                         other_costs, other_cost_detail, budget_link, work_details,
-                         start_date, end_date,
-                         status, approved_by, approval_date,
-                         created_by,
-                         material_cost_total, labor_cost_total, total_estimated_cost)
-                    VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, 0, 0, 0)
-                ");
-
-                if (!$ins) {
-                    $errorCount++;
-                    $errors[] = "Line " . ($lineNo + 2) . ": DB prepare error: " . $db->error;
-                    $currentBudgetId = null;
+                if (!$hasArchitectSetup($projectId)) {
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Project_Name', 'message' => "Project '$projectName' has no Architect Engineering setup."];
+                    $hasActiveBudget = false;
                     continue;
                 }
 
-                $ins->bind_param('iiddssssssi',
-                    $projectId, $archId, $areaSqft,
-                    $otherCost, $otherCostDetail, $budgetLink,
-                    $startDate, $endDate,
-                    $statusVal, $approvedById, $approvalDate,
-                    $userId
-                );
-
-                if ($ins->execute()) {
-                    $currentBudgetId  = (int)$db->insert_id;
-                    $currentProjectId = $projectId;
-                    $successBudgets++;
-                } else {
-                    $errorCount++;
-                    $errors[] = "Line " . ($lineNo + 2) . ": Budget insert failed: " . $ins->error;
-                    $currentBudgetId = null;
+                if (!$estimatorEmail) {
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Estimator_Email', 'message' => 'Estimator Email is required for BUDGET.'];
+                    $hasActiveBudget = false;
+                    continue;
                 }
 
-            // ─ ITEM row ──────────────────────────────────────────────────────
+                $estimatorId = $resolveUserByEmail($estimatorEmail);
+                if (!$estimatorId) {
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Estimator_Email', 'message' => "Estimator email '$estimatorEmail' not found in ERP."];
+                    $hasActiveBudget = false;
+                    continue;
+                }
+
+                if ($approvedByEmail) {
+                    $approvedById = $resolveUserByEmail($approvedByEmail);
+                    if (!$approvedById) {
+                        $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Approved_By_Email', 'message' => "Approved By email '$approvedByEmail' not found in ERP."];
+                        $hasActiveBudget = false;
+                        continue;
+                    }
+                }
+
+                $currentProjectName = $projectName;
+                $currentProjectId = $projectId;
+                $hasActiveBudget = true;
+                $parsedRows[] = ['type' => 'BUDGET', 'data' => $row, 'project_id' => $projectId];
+
             } elseif ($rowType === 'ITEM') {
-                if (!$currentBudgetId) {
-                    $errorCount++;
-                    $errors[] = "Line " . ($lineNo + 2) . ": ITEM row has no active BUDGET above it";
+                if (!$hasActiveBudget) {
+                    if ($budgetExists) {
+                        $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Row_Type', 'message' => "ITEM row cannot be imported because the BUDGET row defined above it (Row $lastBudgetLineNo) has validation errors."];
+                    } else {
+                        $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Row_Type', 'message' => 'ITEM row does not have any BUDGET row defined above it. Every CSV must start with a BUDGET row.'];
+                    }
                     continue;
                 }
 
                 $materialName = trim($row['Material_Name'] ?? '');
-                if (!$materialName) {
-                    $errorCount++;
-                    $errors[] = "Line " . ($lineNo + 2) . ": Missing Material_Name in ITEM row";
-                    continue;
-                }
-
-                $mat = $resolveMaterial($materialName);
-                if (!$mat) {
-                    $errorCount++;
-                    $errors[] = "Line " . ($lineNo + 2) . ": Material '$materialName' not found in con_materials";
-                    continue;
-                }
-
-                $materialId   = (int)$mat['id'];
-                $materialUnit = trim($row['Material_Unit'] ?? '') ?: $mat['unit'];
-                $qty          = (float)($row['Estimated_Qty'] ?? 0);
-                $unitCost     = (float)($row['Unit_Cost']     ?? 0);
-                $remarks      = trim($row['Item_Remarks']     ?? '');
-
-                // design_type_id from ITEM's work_type
                 $workTypeName = trim($row['Work_Type_Name'] ?? '');
-                $wtId = $resolveWorkType($workTypeName);
-                $dtId = $resolveDesignType($wtId);
+                $phaseItemName = trim($row['Phase_Item_Name'] ?? '');
+                $qty = $row['Estimated_Qty'] ?? '';
+                $unitCost = $row['Unit_Cost'] ?? '';
+                $unit = trim($row['Material_Unit'] ?? '');
 
-                // fallback: first design_type
-                if (!$dtId) {
-                    $r = $db->query("SELECT id FROM design_types ORDER BY id ASC LIMIT 1");
-                    $dtId = $r ? (int)($r->fetch_assoc()['id'] ?? 1) : 1;
+                if (!$materialName) {
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Material_Name', 'message' => 'Material Name is required for ITEM.'];
+                }
+                if (!$unit) {
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Material_Unit', 'message' => 'Material Unit is required for ITEM.'];
+                }
+                if (!$workTypeName) {
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Work_Type_Name', 'message' => 'Work Type Name is required for ITEM.'];
+                }
+                if (!$phaseItemName) {
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Phase_Item_Name', 'message' => 'Phase Item Name is required for ITEM.'];
+                }
+                if ($qty === '' || !is_numeric($qty) || (float)$qty <= 0) {
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Estimated_Qty', 'message' => 'Estimated Qty must be a positive number.'];
+                }
+                if ($unitCost === '' || !is_numeric($unitCost) || (float)$unitCost <= 0) {
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Unit_Cost', 'message' => 'Unit Cost must be a positive number.'];
                 }
 
-                $ins = $db->prepare("
-                    INSERT INTO initial_estimate_items
-                        (budget_id, design_type_id, material_id, material_unit,
-                         estimated_qty, unit_cost_approx, remarks, work_type_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ");
+                $parsedRows[] = ['type' => 'ITEM', 'data' => $row, 'project_id' => $currentProjectId];
 
-                if (!$ins) {
-                    $errorCount++;
-                    $errors[] = "Line " . ($lineNo + 2) . ": Item DB prepare error: " . $db->error;
-                    continue;
-                }
-
-                $ins->bind_param('iiisddsi',
-                    $currentBudgetId, $dtId, $materialId, $materialUnit,
-                    $qty, $unitCost, $remarks, $wtId
-                );
-
-                if ($ins->execute()) {
-                    $successItems++;
-                } else {
-                    $errorCount++;
-                    $errors[] = "Line " . ($lineNo + 2) . ": Item insert failed: " . $ins->error;
-                }
-
-            // ─ LABOR row ─────────────────────────────────────────────────────
             } elseif ($rowType === 'LABOR') {
-                if (!$currentBudgetId) {
-                    $errorCount++;
-                    $errors[] = "Line " . ($lineNo + 2) . ": LABOR row has no active BUDGET above it";
+                if (!$hasActiveBudget) {
+                    if ($budgetExists) {
+                        $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Row_Type', 'message' => "LABOR row cannot be imported because the BUDGET row defined above it (Row $lastBudgetLineNo) has validation errors."];
+                    } else {
+                        $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Row_Type', 'message' => 'LABOR row does not have any BUDGET row defined above it. Every CSV must start with a BUDGET row.'];
+                    }
                     continue;
                 }
 
                 $laborName = trim($row['Labor_Type_Name'] ?? '');
-                if (!$laborName) {
-                    $errorCount++;
-                    $errors[] = "Line " . ($lineNo + 2) . ": Missing Labor_Type_Name in LABOR row";
-                    continue;
-                }
-
-                $rate  = (float)($row['Rate_Per_Sqft']     ?? 0);
-                $area  = (float)($row['Area_Sqft']          ?? 0);
-                $desc  = trim($row['Labor_Description']     ?? '');
-
-                // design_type_id from LABOR's work_type
                 $workTypeName = trim($row['Work_Type_Name'] ?? '');
-                $wtId = $resolveWorkType($workTypeName);
-                $dtId = $resolveDesignType($wtId);
+                $phaseItemName = trim($row['Phase_Item_Name'] ?? '');
+                $rate = $row['Rate_Per_Sqft'] ?? '';
+                $area = $row['Area_Sqft'] ?? '';
 
-                if (!$dtId) {
-                    $r = $db->query("SELECT id FROM design_types ORDER BY id ASC LIMIT 1");
-                    $dtId = $r ? (int)($r->fetch_assoc()['id'] ?? 1) : 1;
+                if (!$laborName) {
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Labor_Type_Name', 'message' => 'Labor Type Name is required for LABOR.'];
+                }
+                if (!$workTypeName) {
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Work_Type_Name', 'message' => 'Work Type Name is required for LABOR.'];
+                }
+                if (!$phaseItemName) {
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Phase_Item_Name', 'message' => 'Phase Item Name is required for LABOR.'];
+                }
+                if ($rate === '' || !is_numeric($rate) || (float)$rate <= 0) {
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Rate_Per_Sqft', 'message' => 'Rate Per Sqft must be a positive number.'];
+                }
+                if ($area === '' || !is_numeric($area) || (float)$area <= 0) {
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Area_Sqft', 'message' => 'Area Sqft must be a positive number.'];
                 }
 
-                $ins = $db->prepare("
-                    INSERT INTO initial_estimate_labors
-                        (budget_id, design_type_id, labor_type_name,
-                         rate_per_sqft, area_sqft, description, work_type_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ");
-
-                if (!$ins) {
-                    $errorCount++;
-                    $errors[] = "Line " . ($lineNo + 2) . ": Labor DB prepare error: " . $db->error;
-                    continue;
-                }
-
-                $ins->bind_param('iisddsi',
-                    $currentBudgetId, $dtId, $laborName,
-                    $rate, $area, $desc, $wtId
-                );
-
-                if ($ins->execute()) {
-                    $successLabors++;
-                } else {
-                    $errorCount++;
-                    $errors[] = "Line " . ($lineNo + 2) . ": Labor insert failed: " . $ins->error;
-                }
+                $parsedRows[] = ['type' => 'LABOR', 'data' => $row, 'project_id' => $currentProjectId];
 
             } else {
-                // Unknown row type — skip silently (empty rows etc.)
                 if ($rowType !== '') {
-                    $errors[] = "Line " . ($lineNo + 2) . ": Unknown Row_Type '$rowType' — skipped";
+                    $csvErrors[] = ['row' => $actualLineNo, 'column' => 'Row_Type', 'message' => "Unknown Row_Type '$rowType'. Must be BUDGET, ITEM, or LABOR."];
                 }
             }
         }
 
-        // ── Sync totals for ALL budgets that were created in this import ──────
-        // Re-fetch budget IDs inserted in this session by querying recent ones
-        // (simpler: syncTotals already does UPDATE via SUM from items/labors)
-        // We track budgetIds via a helper approach:
-        if ($successBudgets > 0) {
-            // Sync last N budgets created by this user (safe approach)
-            $recent = $db->query("
-                SELECT id FROM initial_estimate_budgets
-                WHERE created_by = $userId
-                ORDER BY id DESC
-                LIMIT $successBudgets
+        // If there are validation errors, halt immediately
+        if (!empty($csvErrors)) {
+            $_SESSION['csv_import_errors'] = $csvErrors;
+            setError("CSV validation failed. No records were imported.");
+            header('Location: ' . $GLOBALS['base_url'] . '/con-estimates');
+            exit;
+        }
+
+        // ── Phase 2: Transaction and Dynamic Insertion (Second Pass) ─────────
+        $db->begin_transaction();
+
+        try {
+            // Helper resolved cache arrays to prevent repeating queries
+            $cachedWorkTypes = [];
+            $cachedPhases = [];
+            $cachedPhaseItems = [];
+            $cachedMaterials = [];
+
+            // Helper to get or create Design Type ID
+            $getDesignTypeId = function(string $name) use ($db): int {
+                $name = trim($name);
+                if (!$name) return 1; // Default Construction
+                $s = $db->prepare("SELECT id FROM design_types WHERE name = ? LIMIT 1");
+                $s->bind_param('s', $name);
+                $s->execute();
+                $r = $s->get_result()->fetch_assoc();
+                if ($r) return (int)$r['id'];
+
+                // Create dynamic design type
+                $ins = $db->prepare("INSERT INTO design_types (name, status) VALUES (?, 'active')");
+                $ins->bind_param('s', $name);
+                $ins->execute();
+                return (int)$db->insert_id;
+            };
+
+            // Helper to get or create Work Type ID
+            $getOrCreateWorkType = function(string $name, int $dtId, ?string $defaultPhase, int $createdBy) use ($db, &$cachedWorkTypes): int {
+                $key = strtolower($name) . '_' . $dtId;
+                if (isset($cachedWorkTypes[$key])) return $cachedWorkTypes[$key];
+
+                $s = $db->prepare("SELECT id FROM work_types WHERE work_type_name = ? AND design_type_id = ? LIMIT 1");
+                $s->bind_param('si', $name, $dtId);
+                $s->execute();
+                $r = $s->get_result()->fetch_assoc();
+                if ($r) {
+                    $cachedWorkTypes[$key] = (int)$r['id'];
+                    return (int)$r['id'];
+                }
+
+                $ins = $db->prepare("INSERT INTO work_types (work_type_name, design_type_id, default_phase_name, created_by) VALUES (?, ?, ?, ?)");
+                if (!$ins) {
+                    throw new \Exception("Prepare work_types insert failed: " . $db->error);
+                }
+                $ins->bind_param('sisi', $name, $dtId, $defaultPhase, $createdBy);
+                $ins->execute();
+                $id = (int)$db->insert_id;
+                $cachedWorkTypes[$key] = $id;
+                return $id;
+            };
+
+            // Helper to get or create Project Phase ID
+            $getOrCreatePhase = function(int $projectId) use ($db, &$cachedPhases): int {
+                if (isset($cachedPhases[$projectId])) return $cachedPhases[$projectId];
+
+                $s = $db->prepare("SELECT id FROM project_phases WHERE project_id = ? ORDER BY id ASC LIMIT 1");
+                $s->bind_param('i', $projectId);
+                $s->execute();
+                $r = $s->get_result()->fetch_assoc();
+                if ($r) {
+                    $cachedPhases[$projectId] = (int)$r['id'];
+                    return (int)$r['id'];
+                }
+
+                $ins = $db->prepare("INSERT INTO project_phases (project_id, phase_name, status) VALUES (?, 'Construction Phase', 'In Progress')");
+                $ins->bind_param('i', $projectId);
+                $ins->execute();
+                $id = (int)$db->insert_id;
+                $cachedPhases[$projectId] = $id;
+                return $id;
+            };
+
+            // Helper to get or create Phase Item ID
+            $getOrCreatePhaseItem = function(int $phaseId, string $name, int $dtId, int $wtId) use ($db, &$cachedPhaseItems): int {
+                $key = $phaseId . '_' . strtolower($name);
+                if (isset($cachedPhaseItems[$key])) return $cachedPhaseItems[$key];
+
+                $s = $db->prepare("SELECT id FROM project_phase_items WHERE phase_id = ? AND item_name = ? LIMIT 1");
+                $s->bind_param('is', $phaseId, $name);
+                $s->execute();
+                $r = $s->get_result()->fetch_assoc();
+                if ($r) {
+                    $cachedPhaseItems[$key] = (int)$r['id'];
+                    return (int)$r['id'];
+                }
+
+                $ins = $db->prepare("INSERT INTO project_phase_items (phase_id, item_name, design_type_id, work_type_id, status) VALUES (?, ?, ?, ?, 'Not Started')");
+                $ins->bind_param('isii', $phaseId, $name, $dtId, $wtId);
+                $ins->execute();
+                $id = (int)$db->insert_id;
+                $cachedPhaseItems[$key] = $id;
+                return $id;
+            };
+
+            // Helper to get or create Material ID
+            $getOrCreateMaterial = function(string $name, string $unit, int $createdBy) use ($db, &$cachedMaterials): int {
+                $key = strtolower($name);
+                if (isset($cachedMaterials[$key])) return $cachedMaterials[$key];
+
+                $s = $db->prepare("SELECT id FROM con_materials WHERE name = ? LIMIT 1");
+                $s->bind_param('s', $name);
+                $s->execute();
+                $r = $s->get_result()->fetch_assoc();
+                if ($r) {
+                    $cachedMaterials[$key] = (int)$r['id'];
+                    return (int)$r['id'];
+                }
+
+                // Get or create a default category
+                $catId = null;
+                $cs = $db->query("SELECT id FROM con_material_categories LIMIT 1");
+                if ($cs && $cr = $cs->fetch_assoc()) {
+                    $catId = (int)$cr['id'];
+                } else {
+                    $db->query("INSERT INTO con_material_categories (name) VALUES ('General Materials')");
+                    $catId = (int)$db->insert_id;
+                }
+
+                $ins = $db->prepare("INSERT INTO con_materials (category_id, name, unit, created_by) VALUES (?, ?, ?, ?)");
+                $ins->bind_param('issi', $catId, $name, $unit, $createdBy);
+                $ins->execute();
+                $id = (int)$db->insert_id;
+                $cachedMaterials[$key] = $id;
+                return $id;
+            };
+
+            // Helper to resolve drawing_id
+            $resolveDrawing = function(int $projectId, ?string $designTypeName) use ($db): ?int {
+                $designTypeId = null;
+                if ($designTypeName) {
+                    $s = $db->prepare("SELECT id FROM design_types WHERE name = ? LIMIT 1");
+                    $s->bind_param('s', $designTypeName);
+                    $s->execute();
+                    $r = $s->get_result()->fetch_assoc();
+                    if ($r) $designTypeId = (int)$r['id'];
+                }
+
+                if ($designTypeId) {
+                    $s = $db->prepare("SELECT id FROM project_drawings WHERE project_id = ? AND design_type_id = ? LIMIT 1");
+                    $s->bind_param('ii', $projectId, $designTypeId);
+                    $s->execute();
+                    $r = $s->get_result()->fetch_assoc();
+                    if ($r) return (int)$r['id'];
+                }
+
+                $s = $db->prepare("
+                    SELECT pd.id 
+                    FROM project_drawings pd
+                    LEFT JOIN design_types dt ON pd.design_type_id = dt.id
+                    WHERE pd.project_id = ? 
+                    ORDER BY (LOWER(dt.name) LIKE '%architecture%' OR LOWER(dt.name) LIKE '%architectural%') DESC, pd.id ASC 
+                    LIMIT 1
+                ");
+                $s->bind_param('i', $projectId);
+                $s->execute();
+                $r = $s->get_result()->fetch_assoc();
+                return $r ? (int)$r['id'] : null;
+            };
+
+            $successBudgets = 0;
+            $successItems = 0;
+            $successLabors = 0;
+
+            $activeBudgetId = null;
+            $activeProjectId = null;
+            $activeEstimatorId = null;
+            $activeDesignTypesUsed = [];
+
+            foreach ($parsedRows as $pRow) {
+                $type = $pRow['type'];
+                $row = $pRow['data'];
+
+                if ($type === 'BUDGET') {
+                    $projectId = (int)$pRow['project_id'];
+                    $estimatorEmail = trim($row['Estimator_Email']);
+                    $approvedByEmail = trim($row['Approved_By_Email'] ?? '');
+
+                    $estimatorId = $resolveUserByEmail($estimatorEmail);
+                    $approvedById = $approvedByEmail ? $resolveUserByEmail($approvedByEmail) : null;
+                    
+                    // Fetch architecture_id
+                    $s = $db->prepare("SELECT id FROM architect_engineering WHERE project_id = ? LIMIT 1");
+                    $s->bind_param('i', $projectId);
+                    $s->execute();
+                    $ae = $s->get_result()->fetch_assoc();
+                    $archId = (int)$ae['id'];
+
+                    $drawingId = $resolveDrawing($projectId, trim($row['Design_Type'] ?? ''));
+
+                    $areaSqft = (float)($row['Total_Area_Sqft'] ?? 0);
+                    $otherCost = (float)($row['Other_Costs'] ?? 0);
+                    $otherCostDetail = trim($row['Other_Cost_Detail'] ?? '') ?: null;
+                    $budgetLink = trim($row['Drive_Link'] ?? '') ?: null;
+                    $startDate = trim($row['Start_Date'] ?? '') ?: null;
+                    $endDate = trim($row['End_Date'] ?? '') ?: null;
+                    $status = $approvedById ? 'approved' : 'pending';
+                    $approvalDate = $approvedById ? date('Y-m-d H:i:s') : null;
+
+                    $ins = $db->prepare("
+                        INSERT INTO initial_estimate_budgets
+                            (project_id, architecture_id, drawing_id, total_area_sqft,
+                             other_costs, other_cost_detail, budget_link,
+                             start_date, end_date, status, approved_by, approval_date, created_by)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    $ins->bind_param('iiidssssssisi',
+                        $projectId, $archId, $drawingId, $areaSqft,
+                        $otherCost, $otherCostDetail, $budgetLink,
+                        $startDate, $endDate, $status, $approvedById, $approvalDate, $estimatorId
+                    );
+                    $ins->execute();
+
+                    $activeBudgetId = (int)$db->insert_id;
+                    $activeProjectId = $projectId;
+                    $activeEstimatorId = $estimatorId;
+                    $activeDesignTypesUsed = [];
+                    $successBudgets++;
+
+                } elseif ($type === 'ITEM') {
+                    $designTypeName = trim($row['Design_Type'] ?? '');
+                    $dtId = $getDesignTypeId($designTypeName);
+                    $activeDesignTypesUsed[$dtId] = true;
+
+                    $workTypeName = trim($row['Work_Type_Name']);
+                    $defaultPhaseName = trim($row['Default_Phase_Name'] ?? '') ?: null;
+                    $wtId = $getOrCreateWorkType($workTypeName, $dtId, $defaultPhaseName, $activeEstimatorId);
+
+                    $phaseId = $getOrCreatePhase($activeProjectId);
+                    $phaseItemName = trim($row['Phase_Item_Name']);
+                    $phaseItemId = $getOrCreatePhaseItem($phaseId, $phaseItemName, $dtId, $wtId);
+
+                    $materialName = trim($row['Material_Name']);
+                    $unit = trim($row['Material_Unit']);
+                    $materialId = $getOrCreateMaterial($materialName, $unit, $activeEstimatorId);
+
+                    $qty = (float)$row['Estimated_Qty'];
+                    $unitCost = (float)$row['Unit_Cost'];
+                    $remarks = trim($row['Item_Remarks'] ?? '') ?: null;
+                    $location = trim($row['Location'] ?? '') ?: '';
+                    $floorType = trim($row['Floor_Type'] ?? '') ?: 'Typical_Floor';
+                    $floorNo = (int)($row['Floor_No'] ?? 0);
+
+                    // Auto-increment serial number within budget
+                    $sr = $db->query("SELECT IFNULL(MAX(sl_no), 0) + 1 AS next_sl FROM initial_estimate_items WHERE budget_id = $activeBudgetId");
+                    $slNo = $sr ? (int)$sr->fetch_assoc()['next_sl'] : 1;
+
+                    $ins = $db->prepare("
+                        INSERT INTO initial_estimate_items
+                            (budget_id, design_type_id, work_type_id, phase_item_id,
+                             sl_no, location_desc, floor_type, floor_no,
+                             material_id, material_unit, estimated_qty, unit_cost_approx, remarks)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    $ins->bind_param('iiiisssiisdds',
+                        $activeBudgetId, $dtId, $wtId, $phaseItemId,
+                        $slNo, $location, $floorType, $floorNo,
+                        $materialId, $unit, $qty, $unitCost, $remarks
+                    );
+                    $ins->execute();
+                    $successItems++;
+
+                } elseif ($type === 'LABOR') {
+                    $designTypeName = trim($row['Design_Type'] ?? '');
+                    $dtId = $getDesignTypeId($designTypeName);
+                    $activeDesignTypesUsed[$dtId] = true;
+
+                    $workTypeName = trim($row['Work_Type_Name']);
+                    $defaultPhaseName = trim($row['Default_Phase_Name'] ?? '') ?: null;
+                    $wtId = $getOrCreateWorkType($workTypeName, $dtId, $defaultPhaseName, $activeEstimatorId);
+
+                    $phaseId = $getOrCreatePhase($activeProjectId);
+                    $phaseItemName = trim($row['Phase_Item_Name']);
+                    $phaseItemId = $getOrCreatePhaseItem($phaseId, $phaseItemName, $dtId, $wtId);
+
+                    $laborName = trim($row['Labor_Type_Name']);
+                    $rate = (float)$row['Rate_Per_Sqft'];
+                    $area = (float)$row['Area_Sqft'];
+                    $desc = trim($row['Labor_Description'] ?? '') ?: null;
+
+                    $ins = $db->prepare("
+                        INSERT INTO initial_estimate_labors
+                            (budget_id, design_type_id, work_type_id, phase_item_id,
+                             labor_type_name, rate_per_sqft, area_sqft, description)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    $ins->bind_param('iiiisdds',
+                        $activeBudgetId, $dtId, $wtId, $phaseItemId,
+                        $laborName, $rate, $area, $desc
+                    );
+                    $ins->execute();
+                    $successLabors++;
+                }
+
+                // Sync Totals for the current budget header
+                if ($activeBudgetId) {
+                    $this->model->syncTotals($activeBudgetId);
+
+                    // Note: project_working_plans table was migrated to phase_monthly_targets in Module 3, so working plans are managed via monthly target planning.
+                }
+            }
+
+            $db->commit();
+            setSuccess("✅ Bulk Import Successful! Imported: $successBudgets budget(s), $successItems item(s), $successLabors labor(s).");
+
+        } catch (\Exception $e) {
+            $db->rollback();
+            setError("❌ Database Transaction Error: " . $e->getMessage() . ". No records were imported.");
+        }
+
+        header('Location: ' . $GLOBALS['base_url'] . '/con-estimates');
+        exit;
+    }
+
+    // =========================================================================
+    // EXCEL IMPORT (Direct xlsx parsing)
+    // POST /con-estimate-import-excel
+    // =========================================================================
+    public function importExcel()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . $GLOBALS['base_url'] . '/con-estimates');
+            exit;
+        }
+
+        if (!isset($_FILES['excel_file']) || $_FILES['excel_file']['error'] !== UPLOAD_ERR_OK) {
+            setError('Please upload a valid Excel file.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-estimates');
+            exit;
+        }
+
+        $projectId = isset($_POST['project_id']) ? (int)$_POST['project_id'] : 0;
+        $estimatorEmail = isset($_POST['estimator_email']) ? trim($_POST['estimator_email']) : '';
+        $approvedByEmail = isset($_POST['approved_by_email']) ? trim($_POST['approved_by_email']) : '';
+        $startDate = isset($_POST['start_date']) ? trim($_POST['start_date']) : null;
+        $endDate = isset($_POST['end_date']) ? trim($_POST['end_date']) : null;
+        $budgetLink = isset($_POST['budget_link']) ? trim($_POST['budget_link']) : null;
+        $otherCosts = isset($_POST['other_costs']) ? (float)$_POST['other_costs'] : 0.0;
+        $otherCostDetail = isset($_POST['other_cost_detail']) ? trim($_POST['other_cost_detail']) : null;
+
+        if (!$projectId) {
+            setError('Project is required.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-estimates');
+            exit;
+        }
+
+        if (!$estimatorEmail) {
+            setError('Estimator Email is required.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-estimates');
+            exit;
+        }
+
+        $db = $this->db;
+        $db->set_charset('utf8mb4');
+
+        // Resolve estimator
+        $s = $db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+        $s->bind_param('s', $estimatorEmail);
+        $s->execute();
+        $r = $s->get_result()->fetch_assoc();
+        $estimatorId = $r ? (int)$r['id'] : null;
+
+        if (!$estimatorId) {
+            setError("Estimator email '$estimatorEmail' not found in ERP.");
+            header('Location: ' . $GLOBALS['base_url'] . '/con-estimates');
+            exit;
+        }
+
+        // Resolve approved_by
+        $approvedById = null;
+        if ($approvedByEmail) {
+            $s = $db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+            $s->bind_param('s', $approvedByEmail);
+            $s->execute();
+            $r = $s->get_result()->fetch_assoc();
+            $approvedById = $r ? (int)$r['id'] : null;
+
+            if (!$approvedById) {
+                setError("Approved By email '$approvedByEmail' not found in ERP.");
+                header('Location: ' . $GLOBALS['base_url'] . '/con-estimates');
+                exit;
+            }
+        }
+
+        // Fetch architecture_id
+        $s = $db->prepare("SELECT id FROM architect_engineering WHERE project_id = ? LIMIT 1");
+        $s->bind_param('i', $projectId);
+        $s->execute();
+        $ae = $s->get_result()->fetch_assoc();
+        if (!$ae) {
+            setError("Selected project has no active Architect Engineering setup.");
+            header('Location: ' . $GLOBALS['base_url'] . '/con-estimates');
+            exit;
+        }
+        $archId = (int)$ae['id'];
+
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($_FILES['excel_file']['tmp_name']);
+            
+            // ---------------------------------------------------------
+            // 1. Identify and Parse BOQ Sheets
+            // ---------------------------------------------------------
+            $boqSheets = [
+                'Structural work' => 'Structure',
+                'Finshing work' => 'Finishing',
+                'Electric item' => 'Electrical',
+                'Electro Machanical' => 'Mechanical',
+                'Utility and Security' => 'Utility & Security',
+                'Paint work' => 'Paint',
+                'Tiles works' => 'Tiles',
+                'Wood,Metal,Aluminium' => 'Wood & Metal',
+                'Sanitary' => 'Sanitary'
+            ];
+
+            $parsedItems = [];
+
+            foreach ($boqSheets as $sheetName => $designType) {
+                $sheet = $spreadsheet->getSheetByName($sheetName);
+                if (!$sheet) continue;
+
+                $highestRow = $sheet->getHighestRow();
+                $highestColumn = $sheet->getHighestColumn();
+                
+                $headerRowNo = null;
+                $colMap = [];
+                
+                for ($r = 1; $r <= min($highestRow, 15); $r++) {
+                    $rowVals = [];
+                    for ($c = 'A'; $c <= $highestColumn; $c++) {
+                        $rowVals[$c] = trim($sheet->getCell($c . $r)->getValue() ?? '');
+                    }
+                    $hasMat = false;
+                    foreach ($rowVals as $c => $val) {
+                        $lval = strtolower($val);
+                        if (strpos($lval, 'material') !== false || strpos($lval, 'item name') !== false || strpos($lval, 'description') !== false || strpos($lval, 'work name') !== false) {
+                            $hasMat = true;
+                        }
+                    }
+                    if ($hasMat) {
+                        $headerRowNo = $r;
+                        foreach ($rowVals as $c => $val) {
+                            $lval = strtolower($val);
+                            if ($lval === 'sl' || $lval === 'sl no' || $lval === 'sl.') $colMap['sl'] = $c;
+                            elseif (strpos($lval, 'work description') !== false || strpos($lval, 'work desc') !== false || strpos($lval, 'description of work') !== false) $colMap['work_desc'] = $c;
+                            elseif (strpos($lval, 'material') !== false || strpos($lval, 'item name') !== false || strpos($lval, 'item description') !== false || $lval === 'description') $colMap['material_name'] = $c;
+                            elseif (strpos($lval, 'unit price') !== false || strpos($lval, 'price') !== false || strpos($lval, 'rate') !== false) $colMap['rate'] = $c;
+                            elseif (strpos($lval, 'unit') !== false) $colMap['unit'] = $c;
+                            elseif ($lval === 'qty' || strpos($lval, 'quantity') !== false || strpos($lval, 'estimated qty') !== false) $colMap['qty'] = $c;
+                            elseif (strpos($lval, 'floor') !== false) $colMap['floor'] = $c;
+                            elseif (strpos($lval, 'remark') !== false) $colMap['remarks'] = $c;
+                        }
+                        break;
+                    }
+                }
+                
+                if (!$headerRowNo) continue;
+
+                $activeWorkDesc = '';
+                for ($r = $headerRowNo + 1; $r <= $highestRow; $r++) {
+                    $workDesc = isset($colMap['work_desc']) ? trim($sheet->getCell($colMap['work_desc'] . $r)->getValue() ?? '') : '';
+                    $materialName = isset($colMap['material_name']) ? trim($sheet->getCell($colMap['material_name'] . $r)->getValue() ?? '') : '';
+                    $unit = isset($colMap['unit']) ? trim($sheet->getCell($colMap['unit'] . $r)->getValue() ?? '') : '';
+                    $qty = isset($colMap['qty']) ? $sheet->getCell($colMap['qty'] . $r)->getCalculatedValue() : '';
+                    $rate = isset($colMap['rate']) ? $sheet->getCell($colMap['rate'] . $r)->getCalculatedValue() : '';
+                    $floor = isset($colMap['floor']) ? trim($sheet->getCell($colMap['floor'] . $r)->getValue() ?? '') : '';
+                    $remarks = isset($colMap['remarks']) ? trim($sheet->getCell($colMap['remarks'] . $r)->getValue() ?? '') : '';
+
+                    if (!$materialName && !$workDesc && !$qty && !$rate) continue;
+                    if ($workDesc) $activeWorkDesc = $workDesc;
+                    if (strpos(strtolower($materialName), 'total') !== false || strpos(strtolower($workDesc), 'total') !== false) continue;
+
+                    if ($materialName && $qty && $rate && is_numeric($qty) && is_numeric($rate) && (float)$qty > 0 && (float)$rate > 0) {
+                        $parsedItems[] = [
+                            'design_type' => $designType,
+                            'work_desc' => $activeWorkDesc ?: 'General Works',
+                            'material_name' => $materialName,
+                            'unit' => $unit,
+                            'qty' => (float)$qty,
+                            'rate' => (float)$rate,
+                            'floor' => $floor,
+                            'remarks' => $remarks
+                        ];
+                    }
+                }
+            }
+
+            // ---------------------------------------------------------
+            // 2. Identify and Parse Labor Sheet (Sub-Contractor Bill)
+            // ---------------------------------------------------------
+            $laborSheet = $spreadsheet->getSheetByName('Sub-Contractor Bill');
+            $parsedLabors = [];
+            if ($laborSheet) {
+                $highestRow = $laborSheet->getHighestRow();
+                $headerRowNo = null;
+                $colMap = [];
+                for ($r = 1; $r <= 10; $r++) {
+                    $vals = [];
+                    for ($col = 'A'; $col <= 'K'; $col++) {
+                        $vals[$col] = strtolower(trim($laborSheet->getCell($col . $r)->getValue() ?? ''));
+                    }
+                    if (in_array('description', $vals) || in_array('bill type', $vals)) {
+                        $headerRowNo = $r;
+                        foreach ($vals as $col => $val) {
+                            if ($val === 'sl') $colMap['sl'] = $col;
+                            elseif ($val === 'description') $colMap['desc'] = $col;
+                            elseif ($val === 'bill type') $colMap['bill_type'] = $col;
+                            elseif ($val === 'unit') $colMap['unit'] = $col;
+                            elseif ($val === 'rate') $colMap['rate'] = $col;
+                            elseif ($val === 'sft' || $val === 'qty') $colMap['sft'] = $col;
+                            elseif ($val === 'floor') $colMap['floor'] = $col;
+                            elseif ($val === 'remarks') $colMap['remarks'] = $col;
+                        }
+                        break;
+                    }
+                }
+
+                if ($headerRowNo) {
+                    $activeDesc = '';
+                    for ($r = $headerRowNo + 1; $r <= $highestRow; $r++) {
+                        $desc = isset($colMap['desc']) ? trim($laborSheet->getCell($colMap['desc'] . $r)->getValue() ?? '') : '';
+                        $billType = isset($colMap['bill_type']) ? trim($laborSheet->getCell($colMap['bill_type'] . $r)->getValue() ?? '') : '';
+                        $unit = isset($colMap['unit']) ? trim($laborSheet->getCell($colMap['unit'] . $r)->getValue() ?? '') : '';
+                        $rate = isset($colMap['rate']) ? $laborSheet->getCell($colMap['rate'] . $r)->getCalculatedValue() : '';
+                        $sft = isset($colMap['sft']) ? $laborSheet->getCell($colMap['sft'] . $r)->getCalculatedValue() : '';
+                        $floor = isset($colMap['floor']) ? $laborSheet->getCell($colMap['floor'] . $r)->getCalculatedValue() : '';
+                        $remarks = isset($colMap['remarks']) ? trim($laborSheet->getCell($colMap['remarks'] . $r)->getValue() ?? '') : '';
+
+                        if (!$desc && !$billType && !$rate) continue;
+                        if ($desc) $activeDesc = $desc;
+                        if (strpos(strtolower($activeDesc), 'total') !== false || strpos(strtolower($billType), 'total') !== false) continue;
+
+                        if ($rate && is_numeric($rate) && (float)$rate > 0) {
+                            $parsedLabors[] = [
+                                'contractor' => $activeDesc,
+                                'bill_type' => $billType,
+                                'unit' => $unit,
+                                'rate' => (float)$rate,
+                                'sft' => $sft ? (float)$sft : 1.0,
+                                'floor' => $floor ? (int)$floor : 1,
+                                'remarks' => $remarks
+                            ];
+                        }
+                    }
+                }
+            }
+
+            if (empty($parsedItems) && empty($parsedLabors)) {
+                setError('No valid estimate items or labors found in the Excel workbook.');
+                header('Location: ' . $GLOBALS['base_url'] . '/con-estimates');
+                exit;
+            }
+
+            // ---------------------------------------------------------
+            // 3. Database Transaction & Insertions
+            // ---------------------------------------------------------
+            $db->begin_transaction();
+
+            $cachedWorkTypes = [];
+            $cachedPhases = [];
+            $cachedPhaseItems = [];
+            $cachedMaterials = [];
+
+            $getDesignTypeId = function(string $name) use ($db): int {
+                $name = trim($name);
+                if (!$name) return 1;
+                $s = $db->prepare("SELECT id FROM design_types WHERE name = ? LIMIT 1");
+                $s->bind_param('s', $name);
+                $s->execute();
+                $r = $s->get_result()->fetch_assoc();
+                if ($r) return (int)$r['id'];
+
+                $ins = $db->prepare("INSERT INTO design_types (name, status) VALUES (?, 'active')");
+                $ins->bind_param('s', $name);
+                $ins->execute();
+                return (int)$db->insert_id;
+            };
+
+            $getOrCreateWorkType = function(string $name, int $dtId, ?string $defaultPhase, int $createdBy) use ($db, &$cachedWorkTypes): int {
+                $key = strtolower($name) . '_' . $dtId;
+                if (isset($cachedWorkTypes[$key])) return $cachedWorkTypes[$key];
+
+                $s = $db->prepare("SELECT id, default_phase_name FROM work_types WHERE work_type_name = ? AND design_type_id = ? LIMIT 1");
+                $s->bind_param('si', $name, $dtId);
+                $s->execute();
+                $r = $s->get_result()->fetch_assoc();
+                if ($r) {
+                    $existingId = (int)$r['id'];
+                    if (empty($r['default_phase_name']) && $defaultPhase) {
+                        $upd = $db->prepare("UPDATE work_types SET default_phase_name = ? WHERE id = ?");
+                        $upd->bind_param('si', $defaultPhase, $existingId);
+                        $upd->execute();
+                    }
+                    $cachedWorkTypes[$key] = $existingId;
+                    return $existingId;
+                }
+
+                $ins = $db->prepare("INSERT INTO work_types (work_type_name, design_type_id, default_phase_name, created_by) VALUES (?, ?, ?, ?)");
+                $ins->bind_param('sisi', $name, $dtId, $defaultPhase, $createdBy);
+                $ins->execute();
+                $id = (int)$db->insert_id;
+                $cachedWorkTypes[$key] = $id;
+                return $id;
+            };
+
+            $getPhaseName = function(string $designType, string $workDesc) {
+                $dt = strtolower(trim($designType));
+                $wd = strtolower(trim($workDesc));
+                
+                if (strpos($dt, 'struct') !== false) {
+                    return 'Structure';
+                }
+                if (strpos($dt, 'electri') !== false) {
+                    return 'Electrical Work';
+                }
+                if (strpos($dt, 'mechanic') !== false) {
+                    return 'EME';
+                }
+                if (strpos($dt, 'utility') !== false) {
+                    return 'Utility Connection & Bill';
+                }
+                if (strpos($dt, 'paint') !== false) {
+                    return 'Paint Work';
+                }
+                if (strpos($dt, 'tiles') !== false) {
+                    return 'General Floor Tiles';
+                }
+                if (strpos($dt, 'sanitary') !== false || strpos($dt, 'plumb') !== false) {
+                    return 'Plumbing & Sanitary';
+                }
+                if (strpos($dt, 'wood') !== false || strpos($dt, 'metal') !== false) {
+                    if (strpos($wd, 'metal') !== false || strpos($wd, 'gate') !== false || strpos($wd, 'grill') !== false) {
+                        return 'Metal Work';
+                    }
+                    if (strpos($wd, 'aluminium') !== false || strpos($wd, 'thai') !== false) {
+                        return 'Aluminium Work';
+                    }
+                    return 'Wood Work';
+                }
+                if (strpos($dt, 'finish') !== false) {
+                    if (strpos($wd, 'brick') !== false) {
+                        return 'Brick Work';
+                    }
+                    if (strpos($wd, 'plaster') !== false) {
+                        return 'Plaster Work';
+                    }
+                    return 'Others Civil Work';
+                }
+                return 'Others Civil Work';
+            };
+
+            $getOrCreatePhase = function(int $projectId, string $phaseName) use ($db, &$cachedPhases): int {
+                $key = $projectId . '_' . strtolower($phaseName);
+                if (isset($cachedPhases[$key])) return $cachedPhases[$key];
+
+                $s = $db->prepare("SELECT id FROM project_phases WHERE project_id = ? AND phase_name = ? LIMIT 1");
+                $s->bind_param('is', $projectId, $phaseName);
+                $s->execute();
+                $r = $s->get_result()->fetch_assoc();
+                if ($r) {
+                    $cachedPhases[$key] = (int)$r['id'];
+                    return (int)$r['id'];
+                }
+
+                $ins = $db->prepare("INSERT INTO project_phases (project_id, phase_name, status) VALUES (?, ?, 'In Progress')");
+                $ins->bind_param('is', $projectId, $phaseName);
+                $ins->execute();
+                $id = (int)$db->insert_id;
+                $cachedPhases[$key] = $id;
+                return $id;
+            };
+
+            $getOrCreatePhaseItem = function(int $phaseId, string $name, int $dtId, int $wtId) use ($db, &$cachedPhaseItems): int {
+                $key = $phaseId . '_' . strtolower($name);
+                if (isset($cachedPhaseItems[$key])) return $cachedPhaseItems[$key];
+
+                $s = $db->prepare("SELECT id FROM project_phase_items WHERE phase_id = ? AND item_name = ? LIMIT 1");
+                $s->bind_param('is', $phaseId, $name);
+                $s->execute();
+                $r = $s->get_result()->fetch_assoc();
+                if ($r) {
+                    $cachedPhaseItems[$key] = (int)$r['id'];
+                    return (int)$r['id'];
+                }
+
+                $ins = $db->prepare("INSERT INTO project_phase_items (phase_id, item_name, design_type_id, work_type_id, status) VALUES (?, ?, ?, ?, 'Not Started')");
+                $ins->bind_param('isii', $phaseId, $name, $dtId, $wtId);
+                $ins->execute();
+                $id = (int)$db->insert_id;
+                $cachedPhaseItems[$key] = $id;
+                return $id;
+            };
+
+            $getOrCreateMaterial = function(string $name, string $unit, int $createdBy) use ($db, &$cachedMaterials): int {
+                $key = strtolower($name);
+                if (isset($cachedMaterials[$key])) return $cachedMaterials[$key];
+
+                $s = $db->prepare("SELECT id FROM con_materials WHERE name = ? LIMIT 1");
+                $s->bind_param('s', $name);
+                $s->execute();
+                $r = $s->get_result()->fetch_assoc();
+                if ($r) {
+                    $cachedMaterials[$key] = (int)$r['id'];
+                    return (int)$r['id'];
+                }
+
+                $catId = null;
+                $cs = $db->query("SELECT id FROM con_material_categories LIMIT 1");
+                if ($cs && $cr = $cs->fetch_assoc()) {
+                    $catId = (int)$cr['id'];
+                } else {
+                    $db->query("INSERT INTO con_material_categories (name) VALUES ('General Materials')");
+                    $catId = (int)$db->insert_id;
+                }
+
+                $ins = $db->prepare("INSERT INTO con_materials (category_id, name, unit, created_by) VALUES (?, ?, ?, ?)");
+                $ins->bind_param('issi', $catId, $name, $unit, $createdBy);
+                $ins->execute();
+                $id = (int)$db->insert_id;
+                $cachedMaterials[$key] = $id;
+                return $id;
+            };
+
+            $resolveDrawing = function(int $projectId, ?string $designTypeName) use ($db): ?int {
+                $designTypeId = null;
+                if ($designTypeName) {
+                    $s = $db->prepare("SELECT id FROM design_types WHERE name = ? LIMIT 1");
+                    $s->bind_param('s', $designTypeName);
+                    $s->execute();
+                    $r = $s->get_result()->fetch_assoc();
+                    if ($r) $designTypeId = (int)$r['id'];
+                }
+
+                if ($designTypeId) {
+                    $s = $db->prepare("SELECT id FROM project_drawings WHERE project_id = ? AND design_type_id = ? LIMIT 1");
+                    $s->bind_param('ii', $projectId, $designTypeId);
+                    $s->execute();
+                    $r = $s->get_result()->fetch_assoc();
+                    if ($r) return (int)$r['id'];
+                }
+
+                $s = $db->prepare("
+                    SELECT pd.id 
+                    FROM project_drawings pd
+                    LEFT JOIN design_types dt ON pd.design_type_id = dt.id
+                    WHERE pd.project_id = ? 
+                    ORDER BY (LOWER(dt.name) LIKE '%architecture%' OR LOWER(dt.name) LIKE '%architectural%') DESC, pd.id ASC 
+                    LIMIT 1
+                ");
+                $s->bind_param('i', $projectId);
+                $s->execute();
+                $r = $s->get_result()->fetch_assoc();
+                return $r ? (int)$r['id'] : null;
+            };
+
+            // Read Selling Floor Area from Budget Summary Sheet (Row 5)
+            $totalAreaSqft = 0.0;
+            $summarySheet = $spreadsheet->getSheetByName('Budget Summary');
+            if ($summarySheet) {
+                for ($r = 1; $r <= 10; $r++) {
+                    $val = trim($summarySheet->getCell('B' . $r)->getValue() ?? '');
+                    if (strpos(strtolower($val), 'selling floor area') !== false || strpos(strtolower($val), 'floor area') !== false) {
+                        $totalAreaSqft = (float)$summarySheet->getCell('F' . $r)->getCalculatedValue();
+                        break;
+                    }
+                }
+            }
+
+            $drawingId = $resolveDrawing($projectId, 'Structure');
+            $status = $approvedById ? 'approved' : 'pending';
+            $approvalDate = $approvedById ? date('Y-m-d H:i:s') : null;
+
+            // Insert Budget Header
+            $ins = $db->prepare("
+                INSERT INTO initial_estimate_budgets
+                    (project_id, architecture_id, drawing_id, total_area_sqft,
+                     other_costs, other_cost_detail, budget_link,
+                     start_date, end_date, status, approved_by, approval_date, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            if ($recent) {
-                while ($br = $recent->fetch_assoc()) {
-                    $this->model->syncTotals((int)$br['id']);
-                }
-            }
-        }
+            $ins->bind_param('iiidssssssisi',
+                $projectId, $archId, $drawingId, $totalAreaSqft,
+                $otherCosts, $otherCostDetail, $budgetLink,
+                $startDate, $endDate, $status, $approvedById, $approvalDate, $estimatorId
+            );
+            $ins->execute();
+            $budgetId = (int)$db->insert_id;
 
-        // ── Flash result ──────────────────────────────────────────────────────
-        $msg = "✅ Imported: $successBudgets budget(s), $successItems item(s), $successLabors labor(s).";
-        if ($errorCount > 0) {
-            $msg .= " ❌ $errorCount error(s): " . implode(' | ', array_slice($errors, 0, 5));
-            setError($msg);
-        } else {
-            setSuccess($msg);
+            // Insert parsed BOQ items
+            $successItems = 0;
+            foreach ($parsedItems as $item) {
+                $dtId = $getDesignTypeId($item['design_type']);
+                $defaultPhase = $getPhaseName($item['design_type'], $item['work_desc']);
+                $wtId = $getOrCreateWorkType($item['work_desc'], $dtId, $defaultPhase, $estimatorId);
+                $phaseId = $getOrCreatePhase($projectId, $defaultPhase);
+                $phaseItemId = $getOrCreatePhaseItem($phaseId, $item['work_desc'], $dtId, $wtId);
+                $materialId = $getOrCreateMaterial($item['material_name'], $item['unit'], $estimatorId);
+
+                $floorType = 'Typical_Floor';
+                $floorNo = 0;
+                $floorStr = strtolower($item['floor']);
+                if (strpos($floorStr, 'basement') !== false) {
+                    $floorType = 'Basement';
+                } elseif (strpos($floorStr, 'ground') !== false) {
+                    $floorType = 'Ground_Floor';
+                } elseif (strpos($floorStr, 'roof') !== false) {
+                    $floorType = 'Roof';
+                }
+
+                if (preg_replace('/[^0-9]/', '', $floorStr) !== '') {
+                    $floorNo = (int)preg_replace('/[^0-9]/', '', $floorStr);
+                }
+
+                $sr = $db->query("SELECT IFNULL(MAX(sl_no), 0) + 1 AS next_sl FROM initial_estimate_items WHERE budget_id = $budgetId");
+                $slNo = $sr ? (int)$sr->fetch_assoc()['next_sl'] : 1;
+
+                $insItem = $db->prepare("
+                    INSERT INTO initial_estimate_items
+                        (budget_id, design_type_id, work_type_id, phase_item_id,
+                         sl_no, location_desc, floor_type, floor_no,
+                         material_id, material_unit, estimated_qty, unit_cost_approx, remarks, nos)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                ");
+                $insItem->bind_param('iiiisssiisdds',
+                    $budgetId, $dtId, $wtId, $phaseItemId,
+                    $slNo, $item['work_desc'], $floorType, $floorNo,
+                    $materialId, $item['unit'], $item['qty'], $item['rate'], $item['remarks']
+                );
+                $insItem->execute();
+                $successItems++;
+            }
+
+            // Insert parsed labors
+            $successLabors = 0;
+            foreach ($parsedLabors as $labor) {
+                $dtId = $getDesignTypeId('Structure');
+                $defaultPhase = $getPhaseName('Structure', $labor['contractor']);
+                $wtId = $getOrCreateWorkType($labor['contractor'], $dtId, $defaultPhase, $estimatorId);
+                $phaseId = $getOrCreatePhase($projectId, $defaultPhase);
+                $phaseItemId = $getOrCreatePhaseItem($phaseId, $labor['contractor'], $dtId, $wtId);
+
+                $insLabor = $db->prepare("
+                    INSERT INTO initial_estimate_labors
+                        (budget_id, design_type_id, work_type_id, phase_item_id,
+                         labor_type_name, rate_per_sqft, area_sqft, description, floor_no)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $laborName = $labor['contractor'] . ($labor['bill_type'] ? ' - ' . $labor['bill_type'] : '');
+                $totalArea = $labor['sft'] * $labor['floor'];
+
+                $insLabor->bind_param('iiiisddsi',
+                    $budgetId, $dtId, $wtId, $phaseItemId,
+                    $laborName, $labor['rate'], $totalArea, $labor['remarks'], $labor['floor']
+                );
+                $insLabor->execute();
+                $successLabors++;
+            }
+
+            // Sync Totals for the budget header
+            $this->model->syncTotals($budgetId);
+
+            $db->commit();
+            setSuccess("✅ Excel Import Successful! Mapped and imported: $successItems items and $successLabors labor records.");
+
+        } catch (\Exception $e) {
+            $db->rollback();
+            setError("❌ Excel Upload Error: " . $e->getMessage());
         }
 
         header('Location: ' . $GLOBALS['base_url'] . '/con-estimates');

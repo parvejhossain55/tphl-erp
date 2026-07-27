@@ -45,6 +45,40 @@
             $pendingVerificationsCount = (int)$res->fetch_assoc()['total'];
         }
     }
+
+    // Calculate pending system approval requests count for Management & Accounts badge
+    $pendingApprovalCount = 0;
+    if (isset($db)) {
+        $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending'");
+        if ($resApp) {
+            $pendingApprovalCount = (int)($resApp->fetch_assoc()['total'] ?? 0);
+        }
+    }
+
+    // Calculate pending / incomplete sales incentive claims count for Accounts badge
+    $pendingIncentiveClaimsCount = 0;
+    if (isset($db)) {
+        $resInc = $db->query("SELECT COUNT(*) AS total FROM project_incentive_claims WHERE claim_status IN ('claimed', 'approved')");
+        if ($resInc) {
+            $pendingIncentiveClaimsCount = (int)($resInc->fetch_assoc()['total'] ?? 0);
+        }
+    }
+
+    // Calculate pending tasks count for logged in user
+    $pendingTasksCount = 0;
+    if (isset($db) && isset($_SESSION['user']['id'])) {
+        $loggedUserId = (int)$_SESSION['user']['id'];
+        $stmt = $db->prepare("SELECT COUNT(*) AS total FROM tasks WHERE user_id = ? AND progress < 100 AND status != 'completed'");
+        if ($stmt) {
+            $stmt->bind_param("i", $loggedUserId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res) {
+                $pendingTasksCount = (int)$res->fetch_assoc()['total'];
+            }
+            $stmt->close();
+        }
+    }
     ?>
 
 
@@ -58,6 +92,21 @@
                         <a href="<?= $base_url ?>/home" class="sidebar__menu-item <?= isActive('home', $current_route) ?>">
                             <div class="side-menu__icon"><i class="icon-house"></i></div>
                             <span class="sidebar__menu-label">Home</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
+                <?php if ($isManagement): ?>
+                    <!-- All Approval Requests for Management -->
+                    <li class="slide <?= isActive('all-approval-requests', $current_route) ?>">
+                        <a href="<?= $base_url ?>/all-approval-requests" class="sidebar__menu-item <?= isActive('all-approval-requests', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-list-check text-primary"></i></div>
+                            <span class="sidebar__menu-label">
+                                All Approval Requests
+                                <?php if ($pendingApprovalCount > 0): ?>
+                                    <span class="badge bg-danger rounded-pill ms-2"><?= $pendingApprovalCount ?></span>
+                                <?php endif; ?>
+                            </span>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -234,6 +283,20 @@
                                         Refunds</a>
                                 </li>
                             </ul>
+                        </li>
+
+                        <!-- Incentive Module Menu Links -->
+                        <li class="slide d-none">
+                            <a href="<?= $base_url ?>/my-incentives" class="sidebar__menu-item <?= isActive('my-incentives', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                                <span class="sidebar__menu-label">My Incentives</span>
+                            </a>
+                        </li>
+                        <li class="slide d-none">
+                            <a href="<?= $base_url ?>/incentive-management" class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-coins"></i></div>
+                                <span class="sidebar__menu-label">Sales Incentive Accounts</span>
+                            </a>
                         </li>
                     <?php endif; ?>
 
@@ -486,6 +549,9 @@
                             <a href="<?= $base_url ?>/task-dashboard"
                                 class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
                                 <span class="sidebar__menu-label">Task Dashbaord</span>
+                                <?php if ($pendingTasksCount > 0): ?>
+                                    <span class="badge bg-danger ms-2 rounded-pill" style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
+                                <?php endif; ?>
                             </a>
                         </li>
 
@@ -603,6 +669,9 @@
                             class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
                             <span class="sidebar__menu-label">Task Dashbaord</span>
+                            <?php if ($pendingTasksCount > 0): ?>
+                                <span class="badge bg-danger ms-2 rounded-pill" style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
+                            <?php endif; ?>
                         </a>
                     </li>
 
@@ -706,6 +775,9 @@
                             class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
                             <span class="sidebar__menu-label">Task Dashbaord</span>
+                            <?php if ($pendingTasksCount > 0): ?>
+                                <span class="badge bg-danger ms-2 rounded-pill" style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
+                            <?php endif; ?>
                         </a>
                     </li>
                     <?php if (!$isManagement): ?>
@@ -1049,7 +1121,7 @@
 
 
                 <!-- My Profile (Accessible by all logged-in users) -->
-                <li class="slide <?= isActive('my-profile', $current_route) ?>">
+                <li class="slide d-none<?= isActive('my-profile', $current_route) ?>">
                     <a href="<?= $base_url ?>/my-profile"
                         class="sidebar__menu-item <?= isActive('my-profile', $current_route) ?>">
                         <div class="side-menu__icon"><i class="fas fa-user"></i></div>
@@ -1057,7 +1129,13 @@
                     </a>
                 </li>
 
-                <?php if (checkTipsoiEmployeeMatch(db())): ?>
+                <?php 
+                $showTipsoiMyData = checkTipsoiEmployeeMatch(db()) 
+                    || !empty($_SESSION['user']['employee_id']) 
+                    || (($_SESSION['user']['role_id'] ?? 0) == 9) 
+                    || hasPermission("Employee Dashboard");
+                if ($showTipsoiMyData): 
+                ?>
                     <!-- Tipsoi My Data -->
                     <li class="slide has-sub <?= isActive('my-tipsoi-info', $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
@@ -1085,6 +1163,11 @@
                             <li class="slide">
                                 <a href="<?= $base_url ?>/my-tipsoi-info#requests" class="sidebar__menu-item">
                                     Pending Request
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/my-tipsoi-info#approvals" class="sidebar__menu-item">
+                                    Approval Pending
                                 </a>
                             </li>
                         </ul>
@@ -1196,11 +1279,37 @@
                             <?php endif; ?>
                         </a>
                     </li>
-                    <li class="slide <?= isActive('central-statement', $current_route) ?>">
+                    <?php if (!$isManagement): ?>
+                        <li class="slide <?= isActive('all-approval-requests', $current_route) ?>">
+                            <a href="<?= $base_url ?>/all-approval-requests"
+                                class="sidebar__menu-item <?= isActive('all-approval-requests', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-list-check text-primary"></i></div>
+                                <span class="sidebar__menu-label">
+                                    All Approval Requests
+                                    <?php if ($pendingApprovalCount > 0): ?>
+                                        <span class="badge bg-danger rounded-pill ms-2"><?= $pendingApprovalCount ?></span>
+                                    <?php endif; ?>
+                                </span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                    <li class="slide   <?= isActive('central-statement', $current_route) ?>">
                         <a href="<?= $base_url ?>/central-statement"
                             class="sidebar__menu-item <?= isActive('central-statement', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-book"></i></div>
                             <span class="sidebar__menu-label">Central Statement</span>
+                        </a>
+                    </li>
+                    <li class="slide d-none <?= isActive('incentive-management', $current_route) ?>">
+                        <a href="<?= $base_url ?>/incentive-management"
+                            class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-coins text-warning"></i></div>
+                            <span class="sidebar__menu-label">
+                                Sales Incentive Accounts
+                                <?php if ($pendingIncentiveClaimsCount > 0): ?>
+                                    <span class="badge bg-warning text-dark rounded-pill ms-2"><?= $pendingIncentiveClaimsCount ?></span>
+                                <?php endif; ?>
+                            </span>
                         </a>
                     </li>
                     <li class="slide d-none <?= isActive('projects-cashout', $current_route) ?>">
@@ -1239,7 +1348,11 @@
                                 <a href="<?= $base_url ?>/clients-cash-in"
                                     class="sidebar__menu-item <?= isActive('clients-cash-in', $current_route) ?>" style="display:flex; justify-content:space-between; align-items:center; padding-right:15px;">
                                     <span>Clients</span>
+<<<<<<< HEAD
                                     <span class="badge <?= $pendingVerificationsCount > 0 ? 'bg-dark text-white' : 'bg-secondary text-white' ?> rounded-pill" style="font-size:10px; padding: 2px 6px;"><?= $pendingVerificationsCount ?> Pending Verification</span>
+=======
+                                    <span class="badge <?= $pendingVerificationsCount > 0 ? 'text-dark' : 'bg-secondary text-white' ?> rounded-pill" style="font-size:10px; padding: 2px 6px; <?= $pendingVerificationsCount > 0 ? 'background-color: #ffb300;' : '' ?>"><?= $pendingVerificationsCount ?> Pending Verifications</span>
+>>>>>>> 43d7febc5e6f3efdfd5317828173b91381dceb93
                                 </a>
                             </li>
                             <li class="slide <?= isActive('management-cash-in', $current_route) ?>">
@@ -1461,7 +1574,7 @@
 
 
                 <!-- Others-->
-                <?php if (hasPermission("others") && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
+                <?php if ((hasPermission("others") || hasPermission("Hr Manage")) && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
                     <li class="sidebar__menu-category">
                         <span class="category-name">Others</span>
                     </li>
@@ -1471,6 +1584,7 @@
 
 
                     <!-- Location -->
+                    <?php if (hasPermission("others")): ?>
                     <li class="slide ">
                         <a href="<?= $base_url ?>/company-bank-accounts"
                             class="sidebar__menu-item <?= isActive('company-bank-accounts', $current_route) ?>">
@@ -1478,9 +1592,11 @@
                             <span class="sidebar__menu-label">Company Bank Accounts</span>
                         </a>
                     </li>
+                    <?php endif; ?>
 
 
                     <!-- Site Manage -->
+                    <?php if (hasPermission("others") || hasPermission("Hr Manage")): ?>
                     <li
                         class="slide has-sub <?= isActive(['site-settings', 'home-footer-setting', 'flat-purchase-rules'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
@@ -1509,6 +1625,7 @@
                             </li>
                         </ul>
                     </li>
+                    <?php endif; ?>
 
 
 
@@ -1987,7 +2104,7 @@
                 <?php endif; ?>
                 <!-- ====== END Site Operations ====== -->
 
-                <?php if (hasPermission('Material Manage')): ?>
+                <?php if (hasPermission('Material Manage') || hasPermission('Estimator dashboard')): ?>
                     <!-- Module 3: Materials & Inventory -->
                     <li
                         class="slide has-sub <?= isActive(['con-materials', 'con-material-create', 'con-warehouses', 'con-warehouse-create', 'con-stocks'], $current_route) ? 'active' : '' ?>">
@@ -2003,6 +2120,7 @@
                                     class="sidebar__menu-item <?= isActive('con-materials', $current_route) ?>">Material
                                     Master</a>
                             </li>
+                            <?php if (hasPermission('Material Manage')): ?>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/con-material-create"
                                     class="sidebar__menu-item <?= isActive('con-material-create', $current_route) ?>">Add
@@ -2017,6 +2135,7 @@
                                     class="sidebar__menu-item <?= isActive('con-warehouse-create', $current_route) ?>">Add
                                     Warehouse</a>
                             </li>
+                            <?php endif; ?>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/con-stocks"
                                     class="sidebar__menu-item <?= isActive('con-stocks', $current_route) ?>">Stock
@@ -2244,7 +2363,7 @@
                             </li>
 
                             <!-- Labor Requisition shortcut inside Bills menu -->
-                            <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 13, 15, 22, 24, 25])): ?>
+                            <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 22])): ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/con-labor-requisitions"
                                         class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
@@ -2268,7 +2387,7 @@
                 <?php endif; ?>
 
                 <!-- ====== Labor Requisitions ====== -->
-                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 13, 15, 22, 24, 25])): ?>
+                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 22])): ?>
                     <li
                         class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
@@ -2504,6 +2623,13 @@
                     </li>
                 <?php endif; ?>
                 <!-- FOR Task Manage  -->
+                <li class="slide <?= isActive('asset-extra-purchases', $current_route) ?>">
+                    <a href="<?= $base_url ?>/asset-extra-purchases"
+                        class="sidebar__menu-item <?= isActive('asset-extra-purchases', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-cart-shopping"></i></div>
+                        <span class="sidebar__menu-label">Office Procurement Request</span>
+                    </a>
+                </li>
                 <li class="slide ">
                     <a href="<?= $base_url ?>/task-sheets"
                         class="sidebar__menu-item <?= isActive('task-sheets', $current_route) ?>">
@@ -2520,12 +2646,18 @@
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
                             <span class="sidebar__menu-label">Task Manage</span>
+                            <?php if ($pendingTasksCount > 0): ?>
+                                <span class="badge bg-danger ms-2 rounded-pill" style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
+                            <?php endif; ?>
                         </a>
                         <ul class="sidebar-menu child2" style="display:block;">
                             <li class="slide">
                                 <a href="<?= $base_url ?>/task-dashboard"
                                     class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
                                     <span class="sidebar__menu-label">Task Dashbaord</span>
+                                    <?php if ($pendingTasksCount > 0): ?>
+                                        <span class="badge bg-danger ms-2 rounded-pill" style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
+                                    <?php endif; ?>
                                 </a>
                             </li>
                             <li class="slide <?= isActive('create-task', $current_route) ?>">
@@ -2555,9 +2687,9 @@
                 <!-- ====== ASSET MANAGEMENT ====== -->
                 <?php if (hasPermission('Asset Management') || hasPermission('QC & Internal Audit') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20])): ?>
                     <li
-                        class="slide has-sub <?= isActive(['asset-products', 'office-assets', 'asset-extra-purchases'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['asset-products', 'office-assets'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['asset-products', 'office-assets', 'asset-extra-purchases'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['asset-products', 'office-assets'], $current_route) ? 'menu-open active' : '' ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             <div class="side-menu__icon"><i class="fa-solid fa-boxes-stacked"></i></div>
                             <span class="sidebar__menu-label">Asset Management</span>
@@ -2568,14 +2700,8 @@
                                 <a class="sidebar__menu-item <?= isActive('office-assets', $current_route) ?>"
                                     href="<?= $base_url ?>/office-assets">All Assets</a>
                             </li>
-                            <li class="slide <?= isActive('asset-products', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('asset-products', $current_route) ?>"
-                                    href="<?= $base_url ?>/asset-products">Products Master</a>
-                            </li>
-                            <li class="slide <?= isActive('asset-extra-purchases', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('asset-extra-purchases', $current_route) ?>"
-                                    href="<?= $base_url ?>/asset-extra-purchases">Extra Purchases</a>
-                            </li>
+
+
                         </ul>
                     </li>
                 <?php endif; ?>

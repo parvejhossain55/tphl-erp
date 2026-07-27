@@ -328,6 +328,7 @@ return [
     'con-labor-req-mark-paid/(\d+)' => ['controller' => 'Phase2\Con_LaborRequisitionController', 'method' => 'markPaid'],
     'con-labor-req-mgmt-approve-remaining/(\d+)' => ['controller' => 'Phase2\Con_LaborRequisitionController', 'method' => 'mgmtApproveRemaining'],
     'con-labor-req-labor-disbursed/(\d+)' => ['controller' => 'Phase2\Con_LaborRequisitionController', 'method' => 'markLaborDisbursed'],
+    'con-labor-requisition-delete/(\d+)' => ['controller' => 'Phase2\Con_LaborRequisitionController', 'method' => 'delete'],
 
     // =========================================================================
     // Controller: Phase2\Con_MaterialController
@@ -506,6 +507,7 @@ return [
     // Controller: Phase2\Con_InitialEstimateController
     // =========================================================================
     'con-estimate-import' => ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'importCsv'],
+    'con-estimate-import-excel' => ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'importExcel'],
     'con-estimates' => ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'index'],
     'con-estimate-create' => ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'create'],
     'con-estimate-store' => ['controller' => 'Phase2\Con_InitialEstimateController', 'method' => 'store'],
@@ -575,20 +577,26 @@ return [
     'office-assets' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'index'],
     'office-assets/store' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'store'],
     'office-assets/show/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'show'],
+    'office-assets/logs/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'getLogs'],
     'office-assets/update-code/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'updateAssetCode'],
     'office-assets/update/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'update'],
     'office-assets/transfer/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'transfer'],
+    'office-assets/bulk-transfer' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'bulkTransfer'],
     'office-assets/condition/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'updateCondition'],
     'office-assets/dispose/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'dispose'],
     'asset-products' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'products'],
     'asset-products/store' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'storeProduct'],
     'asset-products/update' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'updateProduct'],
     'asset-products/delete' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'deleteProduct'],
+    'office-assets/repair-requisition/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'storeRepairRequisition'],
     'asset-extra-purchases' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'extraPurchases'],
     'asset-extra-purchases/store' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'storeExtraPurchase'],
     'asset-extra-purchases/approve/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'approveExtraPurchase'],
     'asset-extra-purchases/purchased/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'markPurchased'],
     'asset-extra-purchases/confirm/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'confirmPurchased'],
+    'asset-extra-purchases/category/store' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'storeProcurementCategory'],
+    'asset-extra-purchases/category/update' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'updateProcurementCategory'],
+    'asset-extra-purchases/category/delete' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'deleteProcurementCategory'],
 
     // =========================================================================
     // Controller: Phase2\Con_ProgressReportController

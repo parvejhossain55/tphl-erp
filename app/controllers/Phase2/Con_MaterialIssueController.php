@@ -285,7 +285,7 @@ class Con_MaterialIssueController extends Controller
         $materialMap   = [];
         $contractorMap = [];
 
-        foreach ($this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL")->fetch_all(MYSQLI_ASSOC) as $r)
+        foreach ($this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1")->fetch_all(MYSQLI_ASSOC) as $r)
             $projectMap[$r['name']] = $r['id'];
         foreach ($this->db->query("SELECT id, name FROM con_warehouses")->fetch_all(MYSQLI_ASSOC) as $r)
             $warehouseMap[$r['name']] = $r['id'];

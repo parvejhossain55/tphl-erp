@@ -251,6 +251,7 @@ class Con_MaterialReceivingImportController extends Controller
                     'unit_price' => $data['unit_price'] ?? '0',
                     'vendor_name' => $vendorName,
                     'vendor_phone' => $vendorPhone,
+                    'remarks' => $data['remarks'] ?? '',
                     'payment_amount' => $data['payment_amount'] ?? '',
                     'payment_method' => $data['payment_method'] ?? '',
                     'payment_date' => $data['payment_date'] ?? '',
@@ -440,8 +441,8 @@ class Con_MaterialReceivingImportController extends Controller
                 // ── 1. purchase_requests ──────────────────────────────────
                 $stmt = $this->db->prepare(
                     "INSERT INTO purchase_requests
-                        (project_id, created_by, status, approved_by_id, approved_at, notes)
-                     VALUES (?, ?, 'PO Issued', ?, NOW(), 'CSV Import')"
+                        (project_id, created_by, status, approved_by_id, approved_at, notes, upload_from)
+                     VALUES (?, ?, 'PO Issued', ?, NOW(), 'CSV Import', 'from CSV')"
                 );
                 $stmt->bind_param('iii', $projectId, $createdById, $pmApprovedId);
                 $stmt->execute();
@@ -460,6 +461,15 @@ class Con_MaterialReceivingImportController extends Controller
                     $priStmt->execute();
                 }
 
+                // Resolve remarks for the PO. If there are multiple rows, we can concatenate their remarks.
+                $poRemarksArr = [];
+                foreach ($groupRows as $r) {
+                    if (!empty($r['remarks'])) {
+                        $poRemarksArr[] = trim($r['remarks']);
+                    }
+                }
+                $poRemarks = !empty($poRemarksArr) ? implode('; ', array_unique($poRemarksArr)) : null;
+
                 // ── 3. purchase_orders ────────────────────────────────────
                 $today = date('Y-m-d');
                 $stmt2 = $this->db->prepare(
@@ -469,10 +479,10 @@ class Con_MaterialReceivingImportController extends Controller
                          approved_by_se, se_approved_at,
                          qc_approved_by_id, qc_approved_at, qc_note,
                          mgmt_approved_by_id, mgmt_approved_at, mgmt_note,
-                         vendor_id)
-                     VALUES (?, ?, 'Fully Received', ?, ?, NOW(), ?, NOW(), ?, NOW(), 'CSV Import', ?, NOW(), 'CSV Import', ?)"
+                         vendor_id, upload_from, remarks)
+                     VALUES (?, ?, 'Fully Received', ?, ?, NOW(), ?, NOW(), ?, NOW(), 'CSV Import', ?, NOW(), 'CSV Import', ?, 'from CSV', ?)"
                 );
-                $stmt2->bind_param('iisiiiii', $prId, $createdById, $today, $pmApprovedId, $pmApprovedId, $pmApprovedId, $mgmtApprovedId, $vendorId);
+                $stmt2->bind_param('iisiiiiis', $prId, $createdById, $today, $pmApprovedId, $pmApprovedId, $pmApprovedId, $mgmtApprovedId, $vendorId, $poRemarks);
                 $stmt2->execute();
                 $poId = $this->db->insert_id;
                 $summary['po']++;
@@ -784,14 +794,14 @@ class Con_MaterialReceivingImportController extends Controller
         fputcsv($out, [
             'project_name', 'purchase_request_email', 'pm_approved_email', 'management_approved_email', 'accounts_paid_email',
             'receiving_date', 'warehouse_name', 'material_name', 'material_category', 'unit', 'qty', 'unit_price',
-            'vendor_name', 'vendor_phone', 'payment_amount', 'payment_method', 'payment_date', 'payment_reference', 'payment_attachment'
+            'vendor_name', 'vendor_phone', 'remarks', 'payment_amount', 'payment_method', 'payment_date', 'payment_reference', 'payment_attachment'
         ]);
 
         // Sample data row
         fputcsv($out, [
             'Mirpur Housing Project', 'site.engineer@tphl.com', 'pm@tphl.com', 'management@tphl.com', 'accounts@tphl.com',
             date('Y-m-d'), 'Main Warehouse', 'Brick (1000pcs)', 'Civil Materials', 'pcs', '50', '12.00',
-            'ABC Suppliers Ltd', '01712345678', '600.00', 'BankTransfer', date('Y-m-d'), 'TXN987654321', 'receipt.pdf'
+            'ABC Suppliers Ltd', '01712345678', 'Remarks for this purchase order', '600.00', 'BankTransfer', date('Y-m-d'), 'TXN987654321', 'receipt.pdf'
         ]);
 
         fclose($out);

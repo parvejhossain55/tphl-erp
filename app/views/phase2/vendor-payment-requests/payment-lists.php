@@ -21,6 +21,78 @@ $page_title = $page_title ?? 'Vendor Payment Requests';
         </div>
     </div>
 
+    <!-- QC Approved Purchase Orders Section -->
+    <div class="card custom-card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="card-title mb-0"><i class="bi bi-shield-check me-2 text-success"></i> QC Audited Purchase Orders (Pending Payment / Requisitions)</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="qcPoTable" class="table table-bordered table-hover text-nowrap align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>PO ID</th>
+                            <th>Date</th>
+                            <th>Project</th>
+                            <th>Vendor</th>
+                            <th class="text-end">PO Value (৳)</th>
+                            <th class="text-end">Total Paid (৳)</th>
+                            <th class="text-end">Due Balance (৳)</th>
+                            <th>Status</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (!empty($qc_approved_pos)): ?>
+                            <?php foreach ($qc_approved_pos as $po): ?>
+                                <?php
+                                $totalVal = (float)$po['total_amount'];
+                                $totalPaid = (float)$po['total_paid'];
+                                $dueAmt = max(0, $totalVal - $totalPaid);
+
+                                if ($dueAmt <= 0 && $totalPaid > 0) {
+                                    $statusBadge = '<span class="badge bg-success">Fully Paid</span>';
+                                } elseif ($totalPaid > 0) {
+                                    $statusBadge = '<span class="badge bg-warning text-dark">Partially Paid</span>';
+                                } else {
+                                    $statusBadge = '<span class="badge bg-info text-white">Pending Payment</span>';
+                                }
+                                ?>
+                                <tr>
+                                    <td class="fw-bold">PO-<?= $po['id'] ?></td>
+                                    <td><?= !empty($po['created_at']) ? date('d M Y', strtotime($po['created_at'])) : '—' ?></td>
+                                    <td><?= htmlspecialchars($po['project_name'] ?? '—') ?></td>
+                                    <td>
+                                        <span class="fw-bold"><?= htmlspecialchars($po['vendor_name'] ?? '—') ?></span>
+                                        <?php if (!empty($po['vendor_company'])): ?>
+                                            <br><small class="text-muted"><?= htmlspecialchars($po['vendor_company']) ?></small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-end fw-semibold">৳ <?= number_format($totalVal, 2) ?></td>
+                                    <td class="text-end text-success">৳ <?= number_format($totalPaid, 2) ?></td>
+                                    <td class="text-end fw-bold text-danger">৳ <?= number_format($dueAmt, 2) ?></td>
+                                    <td><?= $statusBadge ?></td>
+                                    <td class="text-center">
+                                        <a href="<?= $base_url ?>/con-vendor-payment-create?po_id=<?= $po['id'] ?>&project_id=<?= $po['project_id'] ?>&vendor_id=<?= $po['vendor_id'] ?>" 
+                                           class="btn btn-sm btn-success me-1" title="Create Payment Request">
+                                            <i class="bi bi-plus-circle me-1"></i> Create Request
+                                        </a>
+                                        <a href="<?= $base_url ?>/con-purchase-order/<?= $po['id'] ?>" 
+                                           class="btn btn-sm btn-outline-primary" title="Show PO Details">
+                                            <i class="bi bi-eye me-1"></i> Show PO
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr><td colspan="9" class="text-center text-muted py-4">No QC Audited Purchase Orders found.</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <div class="card custom-card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h6 class="card-title mb-0"><i class="bi bi-card-list me-2 text-primary"></i> Vendor Payment List</h6>
@@ -143,5 +215,6 @@ $page_title = $page_title ?? 'Vendor Payment Requests';
 <script>
 $(document).ready(function () {
     $('#vprTable').DataTable({ responsive: true, pageLength: 25, order: [[2, 'desc']] });
+    $('#qcPoTable').DataTable({ responsive: true, pageLength: 10, order: [[0, 'desc']] });
 });
 </script>

@@ -895,7 +895,7 @@ function fetchModalExpensesData(id, startDate = '', endDate = '') {
             
             if (req.receipt_path) {
                 document.getElementById('vReceiptLink').innerHTML = `
-                    <a href="<?= $GLOBALS['base_url'] ?>/${req.receipt_path}" target="_blank" class="btn btn-sm btn-light border px-2">
+                    <a href="<?= $GLOBALS['base_url'] ?>/public/${req.receipt_path}" target="_blank" class="btn btn-sm btn-light border px-2">
                         <i class="fa-solid fa-paperclip me-1"></i> View Receipt
                     </a>
                 `;
@@ -930,7 +930,7 @@ function fetchModalExpensesData(id, startDate = '', endDate = '') {
             } else {
                 mgmtStatusBadge.innerText = 'Pending';
                 mgmtStatusBadge.className = 'badge bg-warning-transparent fs-11 text-capitalize';
-                document.getElementById('vMgmtNote').innerText = 'Awaiting Management Approval';
+                document.getElementById('vMgmtNote').innerText = 'Awaiting Approval (Management or Operation)';
             }
             
             var acctsStatusBadge = document.getElementById('vAcctsStatus');
@@ -1309,6 +1309,12 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
         </td>
         <td>
             <?= !empty($req['project_name']) ? htmlspecialchars($req['project_name']) : '<span class="text-muted fs-11">Office General</span>' ?>
+            <?php if (!empty($req['asset_code'])): ?>
+                <div class="mt-1">
+                    <span class="badge bg-secondary-transparent text-dark border"><i class="fa-solid fa-cube me-1"></i> <?= htmlspecialchars($req['asset_code']) ?></span>
+                    <div class="fs-11 text-muted mt-1"><?= htmlspecialchars($req['asset_name']) ?></div>
+                </div>
+            <?php endif; ?>
         </td>
         <td>
             <span class="<?= $badgeType ?> mb-1"><?= $typeText ?></span>
@@ -1333,7 +1339,7 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
         <td>
             <div class="d-flex gap-1">
                 <?php if (!empty($req['receipt_path'])): ?>
-                    <a href="<?= $GLOBALS['base_url'] . '/' . $req['receipt_path'] ?>" target="_blank" class="btn btn-icon btn-sm btn-light border no-print" title="Requisition Receipt">
+                    <a href="<?= $GLOBALS['base_url'] . '/public/' . $req['receipt_path'] ?>" target="_blank" class="btn btn-icon btn-sm btn-light border no-print" title="Requisition Receipt">
                         <i class="fa-solid fa-paperclip"></i>
                     </a>
                 <?php endif; ?>
@@ -1348,7 +1354,11 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
             <span class="badge <?= $statusClass ?> fs-11 text-capitalize">
                 <?= htmlspecialchars($req['status']) ?>
             </span>
-            <?php if ($req['status'] === 'approved' && !empty($req['approved_by_name'])): ?>
+            <?php if ($req['status'] === 'pending'): ?>
+                <div class="fs-9 text-muted mt-1">
+                    Pending: Management or Operation
+                </div>
+            <?php elseif ($req['status'] === 'approved' && !empty($req['approved_by_name'])): ?>
                 <div class="fs-9 text-muted mt-1">
                     Approved by <?= htmlspecialchars($req['approved_by_name']) ?>
                 </div>
@@ -1367,8 +1377,8 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
                     <i class="fa-solid fa-eye"></i>
                 </a>
 
-                <!-- Management Approval button (role 1, 3 for pending requisitions) -->
-                <?php if ($req['status'] === 'pending' && in_array($roleId, [1, 3])): ?>
+                <!-- Management Approval button (role 1, 3, 20 for pending requisitions) -->
+                <?php if ($req['status'] === 'pending' && in_array($roleId, [1, 3, 20])): ?>
                     <button type="button" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1" 
                             onclick="openApproveModal(<?= $req['id'] ?>, '<?= addslashes($req['requester_name']) ?>', '<?= addslashes($req['department_name']) ?>', '<?= $req['requisition_type'] ?>', <?= $req['amount'] ?>)">
                         <i class="fa-solid fa-stamp"></i> Approve

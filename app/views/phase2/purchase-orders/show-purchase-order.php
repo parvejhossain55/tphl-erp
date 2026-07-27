@@ -170,6 +170,17 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
   <!-- Left: Items + Delivery Tracker -->
   <div class="col-xl-8">
 
+    <!-- PO Remarks -->
+    <?php if (!empty($po['remarks'])): ?>
+      <div class="po-panel" style="border-left: 4px solid #3b82f6;">
+        <div class="po-panel-title">
+          <div class="po-dot" style="background:#3b82f6"></div>
+          PO Remarks
+        </div>
+        <div style="font-size:13px; color:var(--text-color, #4b5563); line-height:1.5; white-space:pre-wrap;"><?= htmlspecialchars($po['remarks']) ?></div>
+      </div>
+    <?php endif; ?>
+
     <!-- Order Items -->
     <div class="po-panel">
       <div class="po-panel-title">

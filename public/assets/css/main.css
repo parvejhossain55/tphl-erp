@@ -4861,7 +4861,7 @@ input[type=month]::-webkit-calendar-picker-indicator:hover {
 }
 
 .text-muted {
-  color: #adb5bd !important;
+  color: #27282a !important;
 }
 
 .bg_success {
@@ -15540,7 +15540,7 @@ strong ~ p {
 .alert-warning {
   background-color: #dd7e2a;
   border-color: #ffb200;
-  color: #FFFFFF;
+  color: #181414;
 }
 .alert-warning p {
   color: #FFFFFF;

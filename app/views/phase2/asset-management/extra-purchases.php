@@ -12,7 +12,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
 <div class="container-fluid">
     <!-- Page Header -->
     <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-        <h1 class="page-title fw-semibold fs-18 mb-0">Extra Asset Purchase Requests</h1>
+        <h1 class="page-title fw-semibold fs-18 mb-0">Office Procurement Requests</h1>
     </div>
 
     <!-- Alert Messages -->
@@ -33,11 +33,15 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
         </div>
     </div>
 
-    <!-- Approval Flow Info -->
+    <!-- Service Manual Note & Approval Flow -->
+    <div class="alert alert-warning-transparent border fs-12 mb-3">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        <strong>Service Manual:</strong> No construction materials requisition is allowed here for this system.
+    </div>
     <div class="alert alert-info-transparent border fs-12 mb-4">
         <i class="fa-solid fa-circle-info me-1"></i>
         <strong>Approval Flow:</strong> 
-        Operations (Request) → Purchase Head (Step 1) → QC & Internal Audit (Step 2) → Management (Step 3) → Accounts (Payment)
+        Requisition → Operations (Step 1) → Purchase Head (Step 2) → QC & Internal Audit (Step 3) → Management (Step 4) → Accounts (Payment)
     </div>
 
     <!-- Main Card -->
@@ -50,12 +54,33 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                         <i class="fa-solid fa-plus"></i> New Request
                     </button>
                 <?php endif; ?>
+                <?php if (!empty($isOperations)): ?>
+                    <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#manageCategoryModal">
+                        <i class="fa-solid fa-gear"></i> Manage Categories
+                    </button>
+                <?php endif; ?>
             </div>
         </div>
+
+        <?php if (!empty($isApprover)): ?>
+        <div class="card-body border-bottom pb-0 pt-3 px-3">
+            <ul class="nav nav-tabs mb-0 border-bottom-0">
+                <li class="nav-item">
+                    <a class="nav-link <?= $activeTab === 'my_requests' ? 'active' : '' ?>" href="?tab=my_requests<?= !empty($_GET['project_id']) ? '&project_id='.$_GET['project_id'] : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>">My Requests</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?= $activeTab === 'all_requests' ? 'active' : '' ?>" href="?tab=all_requests<?= !empty($_GET['project_id']) ? '&project_id='.$_GET['project_id'] : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>">All Requests</a>
+                </li>
+            </ul>
+        </div>
+        <?php endif; ?>
 
         <!-- Filters -->
         <div class="card-body border-bottom pb-3">
             <form method="GET" class="row g-2 align-items-end">
+                <?php if (!empty($isApprover)): ?>
+                    <input type="hidden" name="tab" value="<?= htmlspecialchars($activeTab) ?>">
+                <?php endif; ?>
                 <div class="col-md-3">
                     <label class="form-label fs-11 fw-semibold mb-1">Project</label>
                     <select name="project_id" class="form-select form-select-sm">
@@ -98,6 +123,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                             <th class="text-center">Qty</th>
                             <th class="text-end">Total (BDT)</th>
                             <th>Requested By</th>
+                            <th class="text-center">Operations</th>
                             <th class="text-center">Purchase Head</th>
                             <th class="text-center">QC & Audit</th>
                             <th class="text-center">Management</th>
@@ -119,6 +145,9 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                     <td class="fs-12 fw-semibold"><?= htmlspecialchars($r['project_name'] ?? '—') ?></td>
                                     <td>
                                         <span class="fs-12 fw-semibold"><?= htmlspecialchars($r['item_name']) ?></span>
+                                        <?php if (!empty($r['category_name'])): ?>
+                                            <br><small class="text-muted fs-10"><?= htmlspecialchars($r['category_name']) ?></small>
+                                        <?php endif; ?>
                                     </td>
                                     <td class="text-center"><?= $r['quantity'] ?></td>
                                     <td class="text-end fw-semibold">
@@ -128,6 +157,16 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         <?php endif; ?>
                                     </td>
                                     <td class="fs-12"><?= htmlspecialchars($r['requested_by_name'] ?? '—') ?></td>
+                                    <!-- Step 0: Operations -->
+                                    <td class="text-center">
+                                        <?php
+                                        $opColor = $r['operations_status'] === 'approved' ? '#198754' : ($r['operations_status'] === 'rejected' ? '#dc3545' : '#e6a817');
+                                        $opBg = $r['operations_status'] === 'approved' ? '#d1e7dd' : ($r['operations_status'] === 'rejected' ? '#f8d7da' : '#fff3cd');
+                                        ?>
+                                        <span class="badge fs-10 px-2 py-1" style="background:<?= $opBg ?>;color:<?= $opColor ?>;font-weight:600;">
+                                            <?= ucfirst($r['operations_status']) ?>
+                                        </span>
+                                    </td>
                                     <!-- Step 1: Purchase Head -->
                                     <td class="text-center">
                                         <?php
@@ -188,7 +227,9 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         $canApprove = false;
                                         $step = '';
                                         
-                                        if (!empty($isPurchaseHead) && $r['purchase_head_status'] === 'pending') {
+                                        if (!empty($isOperations) && $r['operations_status'] === 'pending') {
+                                            $canApprove = true; $step = 'operations';
+                                        } elseif (!empty($isPurchaseHead) && $r['operations_status'] === 'approved' && $r['purchase_head_status'] === 'pending') {
                                             $canApprove = true; $step = 'purchase_head';
                                         } elseif (!empty($isQcAudit) && $r['purchase_head_status'] === 'approved' && $r['qc_audit_status'] === 'pending') {
                                             $canApprove = true; $step = 'qc_audit';
@@ -197,7 +238,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         }
                                         
                                         $canPay = !empty($isAccounts) && $r['mgmt_status'] === 'approved' && $r['payment_status'] === 'unpaid';
-                                        $canConfirmPurchase = !empty($canCreate) && $r['payment_status'] === 'paid' && $r['overall_status'] === 'paid';
+                                        $canConfirmPurchase = !empty($isOperations) && $r['payment_status'] === 'paid' && $r['overall_status'] === 'paid';
                                         ?>
 
                                         <!-- Always show View button -->
@@ -223,7 +264,8 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             </button>
                                         <?php elseif ($canConfirmPurchase): ?>
                                             <button type="button" class="btn btn-sm btn-outline-success" title="Mark as Purchased"
-                                                onclick="openConfirmPurchaseModal(<?= $r['id'] ?>)">
+                                                data-info='<?= htmlspecialchars(json_encode($r), ENT_QUOTES, "UTF-8") ?>'
+                                                onclick="openConfirmPurchaseModal(this)">
                                                 <i class="fa-solid fa-box-check me-1"></i> Mark Purchased
                                             </button>
                                         <?php endif; ?>
@@ -247,28 +289,46 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
         <form action="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/store" method="POST" enctype="multipart/form-data">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">New Extra Asset Purchase Request</h5>
+                    <h5 class="modal-title">New Office Procurement Request</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-md-12">
-                            <label class="form-label">Project <span class="text-danger">*</span></label>
-                            <select name="project_id" class="form-select" required>
+                            <label class="form-label">Project</label>
+                            <select name="project_id" class="form-select">
                                 <option value="">-- Select Project --</option>
                                 <?php foreach ($projects ?? [] as $proj): ?>
                                     <option value="<?= $proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-12">
-                            <label class="form-label">Location <span class="text-danger">*</span></label>
-                            <select name="asset_location" class="form-select" required>
+                        <div class="col-md-6">
+                            <label class="form-label">Location</label>
+                            <select name="asset_location" class="form-select">
                                 <option value="">-- Select Location --</option>
                                 <option value="Site Office">Site Office</option>
                                 <option value="Site Office 2">Site Office 2</option>
                                 <option value="Zonal Office">Zonal Office</option>
                                 <option value="Corporate Office">Corporate Office</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Assign To (Person)</label>
+                            <select name="assigned_to" class="form-select">
+                                <option value="">-- Optional: Assign to Person --</option>
+                                <?php foreach ($users ?? [] as $u): ?>
+                                    <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label mb-1">Item Category <span class="text-danger">*</span></label>
+                            <select name="item_category_id" class="form-select" required>
+                                <option value="">-- Select Category --</option>
+                                <?php foreach ($categories ?? [] as $cat): ?>
+                                    <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-12">
@@ -308,12 +368,130 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
 </div>
 <?php endif; ?>
 
+<?php if (!empty($canCreate)): ?>
+<!-- ========================================================================= -->
+<!-- MODAL: MANAGE CATEGORIES -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="manageCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Manage Item Categories</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="p-3 bg-light border-bottom">
+                    <form action="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/category/store" method="POST" class="row gx-2 align-items-center">
+                        <div class="col">
+                            <input type="text" name="name" class="form-control form-control-sm" placeholder="New Category Name" required>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                <i class="fa-solid fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Category Name</th>
+                                <th class="text-end" width="100">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($categories)): ?>
+                                <tr>
+                                    <td colspan="2" class="text-center py-3 text-muted">No categories found.</td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($categories as $cat): ?>
+                                    <tr>
+                                        <td class="fw-semibold align-middle"><?= htmlspecialchars($cat['name']) ?></td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-primary btn-icon" title="Edit"
+                                                onclick="openEditCategoryModal(<?= $cat['id'] ?>, '<?= htmlspecialchars(addslashes($cat['name'])) ?>')">
+                                                <i class="fa-solid fa-pen"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger btn-icon" title="Delete"
+                                                onclick="openDeleteCategoryModal(<?= $cat['id'] ?>)">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- ========================================================================= -->
+<!-- MODAL: EDIT CATEGORY -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <form action="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/category/update" method="POST">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Category</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="editCategoryId">
+                    <label class="form-label">Category Name <span class="text-danger">*</span></label>
+                    <input type="text" name="name" id="editCategoryName" class="form-control" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#manageCategoryModal" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: DELETE CATEGORY -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="deleteCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <form action="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/category/delete" method="POST">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">Delete Category</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <input type="hidden" name="id" id="deleteCategoryId">
+                    <i class="fa-solid fa-triangle-exclamation text-danger fs-1 mb-3"></i>
+                    <p class="mb-0">Are you sure you want to delete this category? This cannot be undone.</p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#manageCategoryModal" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-danger">Yes, Delete</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- ========================================================================= -->
 <!-- MODAL: APPROVAL ACTION -->
 <!-- ========================================================================= -->
 <div class="modal fade" id="approvalModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <form id="approvalForm" method="POST">
+        <form id="approvalForm" method="POST" enctype="multipart/form-data">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="approvalModalTitle">Approve Request</h5>
@@ -321,9 +499,15 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                 </div>
                 <div class="modal-body">
                     <input type="hidden" name="approval_status" id="approvalStatus">
+                    <input type="hidden" name="step" id="approvalStep">
                     <div class="mb-3">
-                        <label class="form-label">Note / Remarks</label>
-                        <textarea name="approval_note" class="form-control" rows="3" placeholder="Add your comments..."></textarea>
+                        <label class="form-label fs-12 fw-semibold">Remarks / Notes</label>
+                        <textarea name="approval_note" class="form-control" rows="3" placeholder="Enter your reason or remarks..."></textarea>
+                    </div>
+                    <div class="mb-3 d-none" id="purchaseHeadDocGroup">
+                        <label class="form-label fs-12 fw-semibold">Purchase Head Document</label>
+                        <input type="file" name="purchase_head_document" class="form-control form-control-sm">
+                        <div class="form-text fs-11">Optional document to attach (e.g. final quotation)</div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -426,10 +610,39 @@ function calcTotal() {
     document.getElementById('totalDisplay').textContent = (qty * price).toLocaleString('en-US', {minimumFractionDigits: 2});
 }
 
+function openEditCategoryModal(id, name) {
+    document.getElementById('editCategoryId').value = id;
+    document.getElementById('editCategoryName').value = name;
+    
+    // Hide the manage modal and show the edit modal
+    var manageModalEl = document.getElementById('manageCategoryModal');
+    var manageModal = bootstrap.Modal.getInstance(manageModalEl);
+    if(manageModal) manageModal.hide();
+    
+    new bootstrap.Modal(document.getElementById('editCategoryModal')).show();
+}
+
+function openDeleteCategoryModal(id) {
+    document.getElementById('deleteCategoryId').value = id;
+    
+    var manageModalEl = document.getElementById('manageCategoryModal');
+    var manageModal = bootstrap.Modal.getInstance(manageModalEl);
+    if(manageModal) manageModal.hide();
+    
+    new bootstrap.Modal(document.getElementById('deleteCategoryModal')).show();
+}
+
 function openApprovalModal(id, status, step) {
     var form = document.getElementById('approvalForm');
     form.action = '<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/approve/' + id;
     document.getElementById('approvalStatus').value = status;
+    document.getElementById('approvalStep').value = step;
+    
+    if (step === 'purchase_head' && status === 'approved') {
+        document.getElementById('purchaseHeadDocGroup').classList.remove('d-none');
+    } else {
+        document.getElementById('purchaseHeadDocGroup').classList.add('d-none');
+    }
     
     var title = status === 'approved' ? 'Approve Request #' + id : 'Reject Request #' + id;
     document.getElementById('approvalModalTitle').textContent = title;
@@ -482,18 +695,21 @@ function openDetailModal(btn) {
 
     var nextStep = getNextStep(data);
     
-    // Determine waiting step for animation
+    var opClass = getStepClass(data.operations_status);
     var phClass = getStepClass(data.purchase_head_status);
     var qcClass = getStepClass(data.qc_audit_status);
     var mgClass = getStepClass(data.mgmt_status);
     var pyClass = data.payment_status === 'paid' ? 'approved' : 'pending';
+    var pcClass = data.overall_status === 'purchased' ? 'approved' : 'pending';
     
     // Add "waiting" animation to the current active step
     if (data.overall_status !== 'rejected' && data.overall_status !== 'purchased') {
-        if (data.purchase_head_status === 'pending') phClass = 'waiting';
+        if (data.operations_status === 'pending') opClass = 'waiting';
+        else if (data.purchase_head_status === 'pending') phClass = 'waiting';
         else if (data.qc_audit_status === 'pending') qcClass = 'waiting';
         else if (data.mgmt_status === 'pending') mgClass = 'waiting';
         else if (data.payment_status === 'unpaid') pyClass = 'waiting';
+        else if (data.overall_status !== 'purchased' && data.payment_status === 'paid') pcClass = 'waiting';
     }
 
     var body = document.getElementById('detailModalBody');
@@ -509,19 +725,27 @@ function openDetailModal(btn) {
         <!-- Request Info Card -->
         <div class="detail-info-card mb-3">
             <div class="row g-2">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="detail-label">Project</div>
                     <div class="detail-value"><i class="fa-solid fa-building text-primary me-1 fs-11"></i>${data.project_name || '—'}</div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <div class="detail-label">Location</div>
+                    <div class="detail-value"><i class="fa-solid fa-location-dot text-info me-1 fs-11"></i>${data.asset_location || '—'}</div>
+                </div>
+                <div class="col-md-4">
                     <div class="detail-label">Requested By</div>
                     <div class="detail-value"><i class="fa-solid fa-user text-secondary me-1 fs-11"></i>${data.requested_by_name || '—'}</div>
                 </div>
-                <div class="col-md-6 mt-2">
+                <div class="col-md-4 mt-2">
+                    <div class="detail-label">Assign To</div>
+                    <div class="detail-value"><i class="fa-solid fa-user-check text-success me-1 fs-11"></i>${data.assigned_to_name || '—'}</div>
+                </div>
+                <div class="col-md-8 mt-2">
                     <div class="detail-label">Item</div>
                     <div class="detail-value">
                         ${data.item_name || '—'}
-
+                        ${data.category_name ? `<br><small class="text-muted fs-10">${data.category_name}</small>` : ''}
                     </div>
                 </div>
                 <div class="col-md-3 mt-2">
@@ -532,6 +756,16 @@ function openDetailModal(btn) {
                     <div class="detail-label">Total Amount</div>
                     <div class="detail-value text-success">৳ ${parseFloat(data.total_price).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
                 </div>
+                ${data.return_amount > 0 ? `
+                <div class="col-md-3 mt-2">
+                    <div class="detail-label text-danger">Returned Bal.</div>
+                    <div class="detail-value text-danger">৳ ${parseFloat(data.return_amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                </div>
+                <div class="col-md-3 mt-2">
+                    <div class="detail-label text-primary">Spent Amount</div>
+                    <div class="detail-value text-primary">৳ ${(parseFloat(data.paid_amount) - parseFloat(data.return_amount)).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                </div>
+                ` : ''}
                 <div class="col-12 mt-2">
                     <div class="detail-label">Justification</div>
                     <div class="bg-white border rounded p-2 fs-12 mt-1">${data.justification || 'No justification provided.'}</div>
@@ -547,6 +781,12 @@ function openDetailModal(btn) {
                 <div class="step-label">Requested</div>
                 <div class="step-person">${data.requested_by_name || '—'}</div>
                 <div class="step-time">${data.created_at ? formatDate(data.created_at) : ''}</div>
+            </div>
+            <div class="approval-step">
+                <div class="step-circle ${opClass}">${getStepIcon(data.operations_status)}</div>
+                <div class="step-label">Operations</div>
+                <div class="step-person">${data.operations_by_name || '<span class="text-muted">Awaiting</span>'}</div>
+                <div class="step-time">${data.operations_at ? formatDate(data.operations_at) : ''}</div>
             </div>
             <div class="approval-step">
                 <div class="step-circle ${phClass}">${getStepIcon(data.purchase_head_status)}</div>
@@ -572,26 +812,36 @@ function openDetailModal(btn) {
                 <div class="step-person">${data.paid_by_name || '<span class="text-muted">Awaiting</span>'}</div>
                 <div class="step-time">${data.paid_at ? formatDate(data.paid_at) : ''}</div>
             </div>
+            <div class="approval-step">
+                <div class="step-circle ${pcClass}">${data.overall_status === 'purchased' ? '<i class="fa-solid fa-box-open"></i>' : '<i class="fa-solid fa-box" style="font-size:14px"></i>'}</div>
+                <div class="step-label">Purchased</div>
+                <div class="step-person">${data.purchased_by_name || '<span class="text-muted">Awaiting</span>'}</div>
+                <div class="step-time">${data.purchase_confirmed_at ? formatDate(data.purchase_confirmed_at) : ''}</div>
+            </div>
         </div>
 
         <!-- Approval Notes (if any) -->
-        ${(data.purchase_head_note || data.qc_audit_note || data.mgmt_note) ? `
+        ${(data.operations_note || data.purchase_head_note || data.qc_audit_note || data.mgmt_note || data.purchase_note || data.return_note) ? `
         <div class="mt-3">
             <div class="detail-label mb-1 px-1">APPROVAL NOTES</div>
             <div class="bg-light rounded p-2">
+                ${data.operations_note ? '<div class="fs-11 mb-1"><strong class="text-secondary">Operations:</strong> ' + data.operations_note + '</div>' : ''}
                 ${data.purchase_head_note ? '<div class="fs-11 mb-1"><strong class="text-primary">Purchase Head:</strong> ' + data.purchase_head_note + '</div>' : ''}
                 ${data.qc_audit_note ? '<div class="fs-11 mb-1"><strong class="text-info">QC & Audit:</strong> ' + data.qc_audit_note + '</div>' : ''}
-                ${data.mgmt_note ? '<div class="fs-11"><strong class="text-warning">Management:</strong> ' + data.mgmt_note + '</div>' : ''}
+                ${data.mgmt_note ? '<div class="fs-11 mb-1"><strong class="text-warning">Management:</strong> ' + data.mgmt_note + '</div>' : ''}
+                ${data.purchase_note ? '<div class="fs-11 mb-1"><strong class="text-success">Operations / Purchaser:</strong> ' + data.purchase_note + '</div>' : ''}
+                ${data.return_note ? '<div class="fs-11"><strong class="text-danger">Return Note:</strong> ' + data.return_note + '</div>' : ''}
             </div>
         </div>
         ` : ''}
 
         <!-- Documents -->
-        ${(data.attachment || data.payment_attachment || data.purchase_document) ? `
+        ${(data.attachment || data.payment_attachment || data.purchase_document || data.purchase_head_document) ? `
         <div class="mt-3">
             <div class="detail-label mb-1 px-1">SUBMITTED DOCUMENTS</div>
             <div class="d-flex flex-wrap gap-2">
                 ${data.attachment ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.attachment + '" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-file-pdf me-1"></i> Request Doc</a>' : ''}
+                ${data.purchase_head_document ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.purchase_head_document + '" target="_blank" class="btn btn-sm btn-outline-info"><i class="fa-solid fa-file-invoice me-1"></i> Purchase Head Doc</a>' : ''}
                 ${data.payment_attachment ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.payment_attachment + '" target="_blank" class="btn btn-sm btn-outline-success"><i class="fa-solid fa-receipt me-1"></i> Payment Receipt</a>' : ''}
                 ${data.purchase_document ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.purchase_document + '" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-file-invoice me-1"></i> Purchase Document</a>' : ''}
             </div>
@@ -601,10 +851,13 @@ function openDetailModal(btn) {
     new bootstrap.Modal(document.getElementById('detailModal')).show();
 }
 
-function openConfirmPurchaseModal(id) {
-    document.getElementById('confirmPurchaseForm').action = '<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/confirm/' + id;
+function openConfirmPurchaseModal(btn) {
+    var data = JSON.parse(btn.getAttribute('data-info'));
+    document.getElementById('confirmPurchaseForm').action = '<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/confirm/' + data.id;
     document.getElementById('confirm_purchase_note').value = '';
     document.getElementById('confirm_purchase_document').value = '';
+    
+    // Set default assignment based on request data if available
     new bootstrap.Modal(document.getElementById('confirmPurchaseModal')).show();
 }
 </script>
@@ -622,12 +875,22 @@ function openConfirmPurchaseModal(id) {
                 </div>
                 <div class="modal-body">
                     <p class="text-muted fs-12 mb-3">Confirm that the purchased items have been received. This will register the assets in the system.</p>
+                    
+
                     <div class="mb-3">
                         <label class="form-label">Upload Document <span class="text-muted fs-11">(Invoice, Receipt, Challan etc.)</span></label>
                         <input type="file" name="purchase_document" id="confirm_purchase_document" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Returned Balance <span class="text-muted fs-11">(optional, if money was saved)</span></label>
+                        <input type="number" name="return_amount" class="form-control" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Return Note <span class="text-muted fs-11">(optional)</span></label>
+                        <input type="text" name="return_note" class="form-control" placeholder="E.g., Vendor discount applied">
+                    </div>
                     <div class="mb-0">
-                        <label class="form-label">Notes <span class="text-muted fs-11">(optional)</span></label>
+                        <label class="form-label">Purchase Notes <span class="text-muted fs-11">(optional)</span></label>
                         <textarea name="purchase_note" id="confirm_purchase_note" class="form-control" rows="2" placeholder="Any remarks about the received items..."></textarea>
                     </div>
                 </div>

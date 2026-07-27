@@ -226,6 +226,12 @@ class ProjectDrawingController extends Controller {
             exit;
         }
 
+        if (($record['status'] ?? 'Draft') !== 'Draft') {
+            setError("Only Draft drawings can be edited.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
+            exit;
+        }
+
         $projects     = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
         $design_types = $this->db->query("SELECT id, name FROM design_types ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
         $users        = $this->db->query("SELECT id, full_name FROM users ORDER BY full_name ASC")->fetch_all(MYSQLI_ASSOC);
@@ -249,6 +255,19 @@ class ProjectDrawingController extends Controller {
         }
 
         $id   = $_POST['id'] ?? 0;
+        $record = $this->model->find($id);
+        if (!$record) {
+            setError("Record not found.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
+            exit;
+        }
+
+        if (($record['status'] ?? 'Draft') !== 'Draft') {
+            setError("Only Draft drawings can be updated.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
+            exit;
+        }
+
         $data = [
             'project_id'              => $_POST['project_id'] ?? 0,
             'design_type_id'          => $_POST['design_type_id'] ?? null,
@@ -293,6 +312,19 @@ class ProjectDrawingController extends Controller {
         }
 
         $id = $_POST['id'] ?? 0;
+        $record = $this->model->find($id);
+        if (!$record) {
+            setError("Record not found.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
+            exit;
+        }
+
+        if (($record['status'] ?? 'Draft') === 'Draft') {
+            setError("Draft drawings cannot be deleted. You can edit them.");
+            header("Location: " . $GLOBALS['base_url'] . "/con-project-drawings");
+            exit;
+        }
+
         if ($this->model->delete($id)) {
             setSuccess("Deleted successfully.");
         } else {
@@ -311,14 +343,14 @@ class ProjectDrawingController extends Controller {
 
     private function getMyAssignedProjects(int $userId, int $roleId, string $roleCol): array
     {
-        if (in_array($roleId, [1, 2, 3, 13, 15, 22])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 20, 22])) {
             return $this->db->query(
-                "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC"
+                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name ASC"
             )->fetch_all(MYSQLI_ASSOC);
         }
         $stmt = $this->db->prepare(
             "SELECT id, name FROM projects 
-             WHERE deleted_at IS NULL 
+             WHERE deleted_at IS NULL AND under_construction = 1
                AND (pm_id = ? OR site_engineer_id = ? OR landman_id = ? OR struct_engineer_id = ? 
                     OR operation_head_id = ? OR draftsman_id = ? OR architect_id = ? 
                     OR estimator_id = ? OR qc_id = ? OR operator_id = ? OR created_by = ?)
@@ -444,12 +476,23 @@ class ProjectDrawingController extends Controller {
             if ($res->num_rows === 0) { $errorCount++; $errors[] = "Project '$projectName' not found"; continue; }
             $projectId = $res->fetch_assoc()['id'];
 
-            // Validate Design Type ID
-            $stmtD = $db->prepare('SELECT id FROM design_types WHERE name = ? LIMIT 1');
+            // Validate or Auto-create Design Type ID
+            $stmtD = $db->prepare('SELECT id FROM design_types WHERE LOWER(name) = LOWER(?) LIMIT 1');
             $stmtD->bind_param('s', $designType); $stmtD->execute();
             $resD = $stmtD->get_result();
-            if ($resD->num_rows === 0) { $errorCount++; $errors[] = "Design Type '$designType' not found"; continue; }
-            $designTypeId = $resD->fetch_assoc()['id'];
+            if ($resD->num_rows > 0) {
+                $designTypeId = (int)$resD->fetch_assoc()['id'];
+            } else {
+                // Auto-create new Design Type if not exists in database
+                $statusActive = 'active';
+                $stmtInsD = $db->prepare('INSERT INTO design_types (name, status, created_by) VALUES (?, ?, ?)');
+                $stmtInsD->bind_param('ssi', $designType, $statusActive, $sessionUserId);
+                if ($stmtInsD->execute()) {
+                    $designTypeId = (int)$db->insert_id;
+                } else {
+                    $errorCount++; $errors[] = "Failed to auto-create Design Type '$designType'"; continue;
+                }
+            }
 
             // Handle Is In House Logic
             $isInHouse = ($isInHouseRaw === '0' || strtolower($isInHouseRaw) === 'false' || strtolower($isInHouseRaw) === 'no') ? 0 : 1;

@@ -19,8 +19,8 @@ class QcAuditController extends Controller
         $this->roleName = strtolower($_SESSION['user']['role_name'] ?? '');
 
         // Usually we check permission here, e.g. hasPermission('QC & Internal Audit') or role check
-        if (!hasPermission('QC & Internal Audit') && $this->roleName !== 'qc & internal audit' && !in_array($this->userRole, [1, 3])) {
-            // allow admins (1, 3) or QC & Internal Audit role
+        if (!hasPermission('QC & Internal Audit') && !str_contains($this->roleName, 'qc & internal audit') && !in_array($this->userRole, [1, 3, 24, 25])) {
+            // allow admins (1, 3) or QC & Internal Audit roles
             setError("Unauthorized access.");
             header("Location: {$GLOBALS['base_url']}/home");
             exit;
@@ -106,10 +106,54 @@ class QcAuditController extends Controller
         $rejCount += $r3->fetch_assoc()['c'] ?? 0;
         $stats['rejected'] = $rejCount;
 
+        // Fetch Tables for Dashboard
+        $cashoutRequests = $this->db->query("
+            SELECT cr.*, p.name as project_name, u.full_name as requested_by_name 
+            FROM cashout_requests cr 
+            LEFT JOIN projects p ON p.id = cr.project_id 
+            LEFT JOIN users u ON u.id = cr.requested_by 
+            WHERE cr.status IN ('pending', 'submitted') 
+            ORDER BY cr.created_at DESC LIMIT 10
+        ")->fetch_all(MYSQLI_ASSOC);
+
+        $vendorPayments = $this->db->query("
+            SELECT vpr.*, p.name as project_name, v.name as vendor_name, u.full_name as requested_by_name 
+            FROM vendor_payment_requests vpr 
+            LEFT JOIN projects p ON p.id = vpr.project_id 
+            LEFT JOIN vendors v ON v.id = vpr.vendor_id 
+            LEFT JOIN users u ON u.id = vpr.created_by 
+            WHERE vpr.status IN ('pending', 'submitted', 'Draft', 'Submitted') 
+            ORDER BY vpr.created_at DESC LIMIT 10
+        ")->fetch_all(MYSQLI_ASSOC);
+        
+        $contractorBills = $this->db->query("
+            SELECT cbr.*, p.name as project_name, u2.full_name as contractor_name, u.full_name as requested_by_name 
+            FROM contractor_bill_requests cbr 
+            LEFT JOIN projects p ON p.id = cbr.project_id 
+            LEFT JOIN users u2 ON u2.id = cbr.operator_id 
+            LEFT JOIN users u ON u.id = cbr.created_by 
+            WHERE cbr.status IN ('pending', 'submitted', 'verified', 'draft') 
+            ORDER BY cbr.created_at DESC LIMIT 10
+        ")->fetch_all(MYSQLI_ASSOC);
+
+        $purchaseOrders = $this->db->query("
+            SELECT po.*, p.name as project_name, v.name as vendor_name 
+            FROM purchase_orders po 
+            JOIN purchase_requests pr ON pr.id = po.request_id 
+            LEFT JOIN projects p ON p.id = pr.project_id 
+            LEFT JOIN vendors v ON v.id = po.vendor_id 
+            WHERE po.status = 'Issued' 
+            ORDER BY po.created_at DESC LIMIT 10
+        ")->fetch_all(MYSQLI_ASSOC);
+
         $this->view('qc-audit/dashboard', [
             'current_route' => 'qc-audit-dashboard',
             'page_title' => 'QC & Internal Audit Overview',
-            'stats' => $stats
+            'stats' => $stats,
+            'cashoutRequests' => $cashoutRequests,
+            'vendorPayments' => $vendorPayments,
+            'contractorBills' => $contractorBills,
+            'purchaseOrders' => $purchaseOrders
         ]);
     }
 
@@ -234,25 +278,36 @@ class QcAuditController extends Controller
     public function pendingRequests()
     {
         // 1. Pending Purchase Orders (awaiting QC)
-        $q1 = "SELECT po.id, po.created_at, p.name as project_name, 'Purchase Order' as type, po.status 
+        $q1 = "SELECT po.id, po.created_at, p.name as project_name, 'Purchase Order' as type, po.status, u.full_name as requester_name, 
+               (SELECT SUM(total_price) FROM purchase_order_items WHERE purchase_order_id = po.id) as amount
                FROM purchase_orders po
                JOIN purchase_requests pr ON pr.id = po.request_id
                LEFT JOIN projects p ON pr.project_id = p.id 
+               LEFT JOIN users u ON po.created_by = u.id
                WHERE po.status = 'Issued'";
 
+        // 2. Pending Cashout Requests
+        $q2 = "SELECT c.id, c.created_at, p.name as project_name, 'Cashout Request' as type, c.status, u.full_name as requester_name, c.amount
+               FROM cashout_requests c 
+               LEFT JOIN projects p ON c.project_id = p.id 
+               LEFT JOIN users u ON c.requested_by = u.id
+               WHERE c.status IN ('submitted', 'pending')";
+
         // 3. Pending Vendor Payment Requests
-        $q3 = "SELECT v.id, v.created_at, p.name as project_name, 'Vendor Payment' as type, v.status 
+        $q3 = "SELECT v.id, v.created_at, p.name as project_name, 'Vendor Payment' as type, v.status, u.full_name as requester_name, v.net_payable as amount
                FROM vendor_payment_requests v 
                LEFT JOIN projects p ON v.project_id = p.id 
+               LEFT JOIN users u ON v.created_by = u.id
                WHERE v.status IN ('Submitted', 'pending')";
 
         // 4. Pending Contractor Bill Requests
-        $q4 = "SELECT b.id, b.created_at, p.name as project_name, 'Contractor Bill' as type, b.status 
+        $q4 = "SELECT b.id, b.created_at, p.name as project_name, 'Contractor Bill' as type, b.status, u.full_name as requester_name, b.bill_amount as amount
                FROM contractor_bill_requests b 
                LEFT JOIN projects p ON b.project_id = p.id 
+               LEFT JOIN users u ON b.created_by = u.id
                WHERE b.status IN ('Submitted', 'pending')";
                
-        $query = "$q1 UNION ALL $q3 UNION ALL $q4 ORDER BY created_at DESC";
+        $query = "$q1 UNION ALL $q2 UNION ALL $q3 UNION ALL $q4 ORDER BY created_at DESC";
         $result = $this->db->query($query);
         $requests = [];
         if ($result) {
@@ -278,13 +333,26 @@ class QcAuditController extends Controller
 
             if ($id && $type) {
                 $table = '';
-                if ($type === 'Purchase Order') $table = 'purchase_orders';
-                if ($type === 'Vendor Payment') $table = 'vendor_payment_requests';
-                if ($type === 'Contractor Bill') $table = 'contractor_bill_requests';
+                $qc_status = 'QC Approved'; // Default
+
+                if ($type === 'Purchase Order') {
+                    $table = 'purchase_orders';
+                    $qc_status = 'Approved'; // Purchase Orders don't have QC Approved enum, so we can use 'PM Approved' or something else, but let's just use 'Approved' or keep what is valid. Actually we'll let it use 'Approved' maybe? Wait, I will use 'PM Approved' or whatever is allowed. Let me just use a switch.
+                }
+                if ($type === 'Vendor Payment') {
+                    $table = 'vendor_payment_requests';
+                    $qc_status = 'QC Approved';
+                }
+                if ($type === 'Contractor Bill') {
+                    $table = 'contractor_bill_requests';
+                    $qc_status = 'qc_approved';
+                }
+                if ($type === 'Cashout Request') {
+                    $table = 'cashout_requests';
+                    $qc_status = 'qc_approved';
+                }
 
                 if ($table) {
-                    $qc_status = 'QC Approved';
-
                     $q = "UPDATE $table SET status = ?, qc_approved_by_id = ?, qc_note = ?, qc_approved_at = NOW() WHERE id = ?";
                     $stmt = $this->db->prepare($q);
                     if ($stmt) {

@@ -4,8 +4,9 @@ $sessionRoleId = $sessionRoleId ?? (int)($_SESSION['user']['role_id'] ?? 0);
 $base          = $GLOBALS['base_url'];
 
 $isOwner    = ($req['requested_by'] == $sessionUserId);
-$isAccounts = in_array($sessionRoleId, [1, 6]);
+$isAccounts = in_array($sessionRoleId, [1, 6, 30]);
 $isAdmin    = in_array($sessionRoleId, [1, 3]);
+$canApprove = in_array($sessionRoleId, [1, 3, 20]);
 $isVerified = !empty($req['accounts_settlement_verified']);
 
 $statusColors = ['pending'=>'bg-warning text-dark','approved'=>'bg-info','paid'=>'bg-success','rejected'=>'bg-danger'];
@@ -106,48 +107,51 @@ $settleBadgeMap = [
     <?php endif; ?>
     <?php if (isset($_SESSION['error'])): ?>
         <div class="alert alert-danger alert-dismissible fade show">
-            <?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+        <div class="alert alert-danger fs-13"><i class="fa-solid fa-triangle-exclamation me-1"></i> <?php echo $_SESSION['error']; unset($_SESSION['error']); ?></div>
     <?php endif; ?>
 
     <div class="row print-area">
+        <!-- Left Column: Primary Details & Actions -->
         <div class="col-lg-4">
             <div class="card custom-card mb-3">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <div class="card-title fs-13 text-primary">Requisition Info</div>
-                    <span class="badge <?php echo $statusClass; ?> ms-auto fs-11 text-capitalize"><?php echo htmlspecialchars($req['status']); ?></span>
+                    <span class="badge <?php echo $statusClass; ?> fs-11"><?php echo ucfirst($req['status']); ?></span>
                 </div>
                 <div class="card-body">
-                    <div class="row g-2">
+                    <div class="row g-3">
                         <div class="col-6">
                             <small class="text-muted d-block fs-11 text-uppercase fw-semibold">Requisition ID</small>
-                            <span class="fw-bold fs-14">REQ-<?php echo $req['id']; ?></span>
+                            <span class="fw-bold fs-13">REQ-<?php echo $req['id']; ?></span>
                         </div>
                         <div class="col-6">
                             <small class="text-muted d-block fs-11 text-uppercase fw-semibold">Date</small>
-                            <span><?php echo date('d M Y', strtotime($req['created_at'])); ?></span>
+                            <span class="fs-13"><?php echo date('d M Y', strtotime($req['created_at'])); ?></span>
                         </div>
                         <div class="col-6">
                             <small class="text-muted d-block fs-11 text-uppercase fw-semibold">Requested By</small>
-                            <span class="fw-semibold"><?php echo htmlspecialchars($req['requester_name'] ?? '---'); ?></span>
+                            <span class="fs-13 fw-semibold"><?php echo htmlspecialchars($req['requester_name']); ?></span>
                         </div>
                         <div class="col-6">
                             <small class="text-muted d-block fs-11 text-uppercase fw-semibold">Department</small>
-                            <span><?php echo htmlspecialchars($req['department_name'] ?? '---'); ?></span>
+                            <span class="fs-13"><?php echo htmlspecialchars($req['department_name'] ?? '---'); ?></span>
                         </div>
                         <div class="col-6">
                             <small class="text-muted d-block fs-11 text-uppercase fw-semibold">Project</small>
-                            <?php if ($req['project_name']): ?>
-                                <span><?php echo htmlspecialchars($req['project_name']); ?></span>
-                            <?php else: ?>
-                                <em class="text-muted fs-12">Office General</em>
+                            <span class="fs-13 fst-italic text-muted"><?php echo htmlspecialchars($req['project_name'] ?? 'Office General'); ?></span>
+                            
+                            <?php if (!empty($req['asset_code'])): ?>
+                                <div class="mt-2 p-2 bg-primary-transparent border border-primary border-opacity-25 rounded fs-12">
+                                    <i class="fa-solid fa-cube text-primary me-1"></i>
+                                    <strong><?= htmlspecialchars($req['asset_code']) ?></strong>
+                                    <div class="text-muted fs-11 mt-1"><?= htmlspecialchars($req['asset_item_name'] ?? '') ?></div>
+                                </div>
                             <?php endif; ?>
                         </div>
                         <div class="col-6">
                             <small class="text-muted d-block fs-11 text-uppercase fw-semibold">Type</small>
                             <?php if ($req['requisition_type'] === 'petty_cash'): ?>
-                                <span class="badge bg-warning fs-11">Petty Cash</span>
+                                <span class="badge bg-warning fs-11 text-dark">Petty Cash</span>
                             <?php else: ?>
                                 <span class="badge bg-info fs-11">General</span>
                             <?php endif; ?>
@@ -161,11 +165,11 @@ $settleBadgeMap = [
                             <p class="mb-0 bg-light p-2 rounded fs-12"><?php echo nl2br(htmlspecialchars($req['purpose'])); ?></p>
                         </div>
                         <?php if (!empty($req['receipt_path'])): ?>
-                        <div class="col-12">
-                            <a href="<?php echo $base . '/' . $req['receipt_path']; ?>" target="_blank" class="btn btn-sm btn-light border">
-                                <i class="fa-solid fa-paperclip me-1"></i> View Receipt
-                            </a>
-                        </div>
+                            <div class="col-12">
+                                <a href="<?php echo $base . '/public/' . $req['receipt_path']; ?>" target="_blank" class="btn btn-sm btn-light border">
+                                    <i class="fa-solid fa-paperclip me-1"></i> View Receipt
+                                </a>
+                            </div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -186,7 +190,10 @@ $settleBadgeMap = [
                         <p class="fs-12 mb-0 bg-light p-2 rounded"><?php echo htmlspecialchars($req['approval_note'] ?? '---'); ?></p>
                     <?php else: ?>
                         <span class="badge bg-warning-transparent fs-11 mb-2">Awaiting Approval</span>
-                        <?php if ($req['status'] === 'pending' && $isAdmin): ?>
+                        <div class="fs-12 text-muted mt-1">
+                            Pending Approval: Management or Operation
+                        </div>
+                        <?php if ($req['status'] === 'pending' && $canApprove): ?>
                         <div class="mt-2">
                             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#approveModal">
                                 <i class="fa-solid fa-stamp me-1"></i> Approve / Reject
@@ -214,14 +221,14 @@ $settleBadgeMap = [
                             </a>
                         <?php endif; ?>
                     <?php elseif ($req['status'] === 'approved' && $isAccounts): ?>
-                        <span class="badge bg-info-transparent fs-11 mb-2">Ready to Pay</span>
+                        <span class="badge bg-info-transparent fs-11 mb-2 text-dark">Ready to Pay</span>
                         <div class="mt-2">
                             <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#payModal">
                                 <i class="fa-solid fa-file-invoice-dollar me-1"></i> Process Payment
                             </button>
                         </div>
                     <?php else: ?>
-                        <span class="badge bg-warning-transparent fs-11">Awaiting Payment</span>
+                        <span class="badge bg-warning-transparent text-dark fs-11">Awaiting Payment</span>
                     <?php endif; ?>
                 </div>
             </div>
@@ -304,52 +311,7 @@ $settleBadgeMap = [
                 </div>
             </div>
 
-            <?php if ($req['status'] === 'paid'): ?>
-            <div class="card custom-card mb-3">
-                <div class="card-header justify-content-between align-items-center">
-                    <div class="card-title fs-13 text-success fw-bold"><i class="bi bi-patch-check me-1"></i> Settlement &amp; Accountability</div>
-                    <span class="badge <?php echo $settleClass; ?> fs-11"><?php echo $settleLabel; ?></span>
-                </div>
-                <div class="card-body">
-                    <?php if ($isVerified): ?>
-                        <div class="alert alert-success py-2 mb-0 fs-12">
-                            <i class="bi bi-check-circle-fill me-1"></i> Settlement fully verified by Accounts.
-                            <?php if (!empty($req['accounts_verified_at'])): ?><small class="d-block text-muted">Verified: <?php echo date('d M Y, h:i A', strtotime($req['accounts_verified_at'])); ?></small><?php endif; ?>
-                        </div>
-                    <?php else: ?>
-                        <div class="d-flex flex-wrap gap-2 align-items-center">
-                            <?php if (($isOwner||$isAdmin) && ($req['settlement_status']??'pending')==='pending'): ?>
-                            <form action="<?php echo $base; ?>/fund-requisitions/settle/<?php echo $req['id']; ?>" method="POST" onsubmit="return confirm('Mark as settled?')">
-                                <button class="btn btn-sm btn-success fw-semibold"><i class="bi bi-check2-circle me-1"></i> Mark as Settled</button>
-                            </form>
-                            <?php endif; ?>
 
-                            <?php if (($isOwner||$isAdmin) && $balance>0 && empty($req['balance_returned'])): ?>
-                            <form action="<?php echo $base; ?>/fund-requisitions/balance-return/<?php echo $req['id']; ?>" method="POST" onsubmit="return confirm('Confirm balance returned?')">
-                                <button class="btn btn-sm btn-outline-warning fw-semibold"><i class="bi bi-arrow-return-left me-1"></i> Return Balance (&#2547; <?php echo number_format($balance,2); ?>)</button>
-                            </form>
-                            <?php elseif (!empty($req['balance_returned'])): ?>
-                                <span class="badge bg-info text-dark"><i class="bi bi-check me-1"></i>Balance Returned</span>
-                            <?php endif; ?>
-
-                            <?php if (($isOwner||$isAdmin) && $balance<=0 && ($req['settlement_status']??'pending')!=='extra_requested'): ?>
-                            <button class="btn btn-sm btn-outline-danger fw-semibold" data-bs-toggle="modal" data-bs-target="#extraFundModal">
-                                <i class="bi bi-plus-circle me-1"></i> Request Extra Fund
-                            </button>
-                            <?php elseif (($req['settlement_status']??'')==='extra_requested'): ?>
-                                <span class="badge bg-danger fs-11">Extra Fund Requested</span>
-                            <?php endif; ?>
-
-                            <?php if ($isAccounts && (($req['settlement_status']??'')==='settled' || !empty($req['balance_returned']))): ?>
-                            <form action="<?php echo $base; ?>/fund-requisitions/verify-settle/<?php echo $req['id']; ?>" method="POST" onsubmit="return confirm('Verify settlement?')">
-                                <button class="btn btn-sm btn-primary fw-semibold"><i class="bi bi-check2-all me-1"></i> Verify Settlement</button>
-                            </form>
-                            <?php endif; ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -405,13 +367,7 @@ $settleBadgeMap = [
                     <input type="number" name="amount" class="form-control" step="0.01" min="0.01" max="<?php echo $balance; ?>" placeholder="0.00" required></div>
                 <div class="mb-3"><label class="form-label">Purpose <span class="text-danger">*</span></label>
                     <textarea name="purpose" class="form-control" rows="2" required></textarea></div>
-                <div class="mb-3"><label class="form-label">System Project</label>
-                    <select name="project_id" class="form-select">
-                        <option value="">-- Office General / No Project --</option>
-                        <?php foreach ($projects as $p): ?>
-                            <option value="<?php echo $p['id']; ?>"><?php echo htmlspecialchars($p['name']); ?></option>
-                        <?php endforeach; ?>
-                    </select></div>
+
                 <div class="mb-3"><label class="form-label">Receipt (Optional)</label><input type="file" name="attachment" class="form-control" accept="image/*,application/pdf"></div>
             </div>
             <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>

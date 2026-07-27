@@ -1051,6 +1051,46 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
 <div style="height:30px"></div>
 
+<style>
+/* ── Pagination styling ── */
+.sib-pagination-controls {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+.sib-page-btn {
+    border: 1px solid var(--clr-border-1, rgba(0,0,0,.08));
+    background: #fff;
+    color: var(--text-dark, #333);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+}
+.sib-page-btn:hover:not(:disabled) {
+    background: rgba(var(--clr-theme-primary-rgb, 59,130,246), 0.08);
+    border-color: var(--clr-theme-primary, #3b82f6);
+    color: var(--clr-theme-primary, #3b82f6);
+}
+.sib-page-btn.active {
+    background: var(--clr-theme-primary, #3b82f6);
+    border-color: var(--clr-theme-primary, #3b82f6);
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(59,130,246, 0.25);
+}
+.sib-page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f5f5f5;
+}
+</style>
+
 <script>
 function sibTab(btn, tabId) {
     document.querySelectorAll('.sib-tab-btn').forEach(b => b.classList.remove('active'));
@@ -1058,4 +1098,130 @@ function sibTab(btn, tabId) {
     btn.classList.add('active');
     document.getElementById(tabId).classList.add('active');
 }
+
+function paginateTable(containerId, rowsPerPage) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const table = container.querySelector('table.sib-table');
+    if (!table) return;
+    
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const totalRows = rows.length;
+    if (totalRows <= rowsPerPage) return; // No pagination needed
+    
+    let currentPage = 1;
+    const totalPages = Math.ceil(totalRows / rowsPerPage);
+    
+    // Create pagination controls container
+    const nav = document.createElement('div');
+    nav.className = 'sib-pagination-controls';
+    nav.style.display = 'flex';
+    nav.style.justifyContent = 'center';
+    nav.style.alignItems = 'center';
+    nav.style.gap = '8px';
+    nav.style.marginTop = '20px';
+    
+    container.appendChild(nav);
+    
+    function showPage(page) {
+        currentPage = page;
+        const start = (page - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        
+        rows.forEach((row, index) => {
+            if (index >= start && index < end) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        renderControls();
+    }
+    
+    function renderControls() {
+        nav.innerHTML = '';
+        
+        // Prev button
+        const prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.innerHTML = '<i class="fal fa-chevron-left"></i>';
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.className = 'sib-page-btn prev-btn';
+        prevBtn.onclick = () => showPage(currentPage - 1);
+        nav.appendChild(prevBtn);
+        
+        // Page numbers
+        const maxVisible = 5;
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+        
+        if (endPage - startPage < maxVisible - 1) {
+            startPage = Math.max(1, endPage - maxVisible + 1);
+        }
+        
+        if (startPage > 1) {
+            const firstBtn = document.createElement('button');
+            firstBtn.type = 'button';
+            firstBtn.innerText = '1';
+            firstBtn.className = 'sib-page-btn';
+            firstBtn.onclick = () => showPage(1);
+            nav.appendChild(firstBtn);
+            
+            if (startPage > 2) {
+                const dots = document.createElement('span');
+                dots.innerText = '...';
+                dots.style.margin = '0 5px';
+                dots.style.color = '#888';
+                nav.appendChild(dots);
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.innerText = i;
+            btn.className = `sib-page-btn ${i === currentPage ? 'active' : ''}`;
+            btn.onclick = () => showPage(i);
+            nav.appendChild(btn);
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                const dots = document.createElement('span');
+                dots.innerText = '...';
+                dots.style.margin = '0 5px';
+                dots.style.color = '#888';
+                nav.appendChild(dots);
+            }
+            
+            const lastBtn = document.createElement('button');
+            lastBtn.type = 'button';
+            lastBtn.innerText = totalPages;
+            lastBtn.className = 'sib-page-btn';
+            lastBtn.onclick = () => showPage(totalPages);
+            nav.appendChild(lastBtn);
+        }
+        
+        // Next button
+        const nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.innerHTML = '<i class="fal fa-chevron-right"></i>';
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.className = 'sib-page-btn next-btn';
+        nextBtn.onclick = () => showPage(currentPage + 1);
+        nav.appendChild(nextBtn);
+    }
+    
+    showPage(1);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    paginateTable('tab-materials', 20);
+    paginateTable('tab-labor', 20);
+});
 </script>

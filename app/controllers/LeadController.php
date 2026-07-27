@@ -34,7 +34,14 @@ class LeadController extends Controller
         $userId     = $_SESSION['user']['id']      ?? null;
         $isCoLeader = isSalesCoLeader();
 
-        if (in_array($userRoleId, [5]) || $isCoLeader) {
+        // Block Sales Executives (role 8) who are not co-leaders from accessing lead-lists
+        if ($userRoleId === 8 && !$isCoLeader) {
+            setError("You do not have permission to access the Lead List page.");
+            header("Location: " . $GLOBALS['base_url'] . "/my-dashboard");
+            exit;
+        }
+
+        if (in_array($userRoleId, [5, 9]) || $isCoLeader) {
             if (!empty($userTeamId)) {
                 // team wise users
                 $assignedUsers = $this->userModel->getUsersByTeamAndRole($userTeamId);
@@ -43,7 +50,7 @@ class LeadController extends Controller
                 $assignedUsers = $this->userModel->getAllRoleUser();
             }
         } else {
-            // admin / role 9 / others
+            // admin / others
             $assignedUsers = $this->userModel->getAllRoleUser();
         }
         $date = $_GET['date'] ?? null;
@@ -61,11 +68,11 @@ class LeadController extends Controller
         $filterCategoryId = isset($_GET['project_category_id']) && $_GET['project_category_id'] !== '' ? (int)$_GET['project_category_id'] : null;
         $filterCountry = isset($_GET['filter_country']) && $_GET['filter_country'] !== '' ? $_GET['filter_country'] : null;
 
-        // Determine team restriction: role 9 sees all by default, but can filter.
+        // Determine team restriction: roles 1, 3, 9 see all by default (unless filtered), others filter by team.
         if (in_array($userRoleId, [1, 3, 9])) {
             $teamIdForQuery = $filterTeamId;
         } else {
-            $teamIdForQuery = $userTeamId;
+            $teamIdForQuery = !empty($userTeamId) ? (int)$userTeamId : $filterTeamId;
         }
 
         $owners = $this->userModel->getAll();
@@ -107,11 +114,9 @@ class LeadController extends Controller
             session_start();
         }
         $message = "";
-        $prevPeriodLeads = $this->leadModel->getAllByDate(
-            $year ? ($month ? "$year-$month-01" : "$year-01-01") : null,
-            $year ? ($month ? date("Y-m-t", strtotime("$year-$month-01")) : "$year-12-31") : null
-        );
-        $prevCount = count($prevPeriodLeads);
+        $startDate = $year ? ($month ? "$year-$month-01" : "$year-01-01") : null;
+        $endDate = $year ? ($month ? date("Y-m-t", strtotime("$year-$month-01")) : "$year-12-31") : null;
+        $prevCount = $this->leadModel->countAllByDateRange($startDate, $endDate);
 
         if ($prevCount == 0) {
             $leadsPercentChange = $leadCounts > 0 ? 100 : 0;
@@ -235,8 +240,6 @@ class LeadController extends Controller
             // 6. Recalculate Conversion Rate with filtered booking count
             $conversionRate = $leadCounts > 0 ? ($totalBookingCount / $leadCounts) * 100 : 0;
         }
-
-
         // ── Duplicate Leads Detection ─────────────────────────────────────────
         // My team leads assigned to me whose phone/email also appears in OTHER assigned_ids
         $dupGroups  = [];
@@ -447,6 +450,18 @@ class LeadController extends Controller
 
         $userRoleId = $_SESSION['user']['role_id'] ?? null;
         $userTeamId = $_SESSION['user']['team_id'] ?? null;
+        $isCoLeader = isSalesCoLeader();
+
+        // Block Sales Executives (role 8) who are not co-leaders from fetching lead data via AJAX
+        if ($userRoleId === 8 && !$isCoLeader) {
+            echo json_encode([
+                "draw"            => $draw,
+                "recordsTotal"    => 0,
+                "recordsFiltered" => 0,
+                "data"            => []
+            ]);
+            exit;
+        }
         
         $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int)$_GET['team_id'] : null;
         $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
@@ -601,9 +616,14 @@ class LeadController extends Controller
             $next_date = (!empty($lead['next_follow_up_date']) && $lead['next_follow_up_date'] !== '0000-00-00') ? date('d-M-Y', strtotime($lead['next_follow_up_date'])) : 'No Schedule';
             $row[] = '<div>' . $next_date . '</div>';
 
-            $agent_name = htmlspecialchars($lead['agent_name'] ?? 'No Agent Assigned');
+            if (empty($lead['agent_name'])) {
+                $agentBadge = '<span class="bd-badge text-danger text-truncate" style="max-width: 150px; background-color: #fde8e8; border: 1px solid #f8b4b4;">No Agent Assigned</span>';
+            } else {
+                $agentBadge = '<span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">' . htmlspecialchars($lead['agent_name']) . '</span>';
+            }
+
             $noteHtml = '<div class="d-flex align-items-center gap-2 flex-nowrap">
-                <span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">' . $agent_name . '</span>
+                ' . $agentBadge . '
                 <span class="bd-badge bg-success">';
             if (!empty($lead['call_note'])) {
                 $noteHtml .= '<button type="button" class="btn btn-sm p-0  note-view-btn" style="font-size:11px; vertical-align:baseline; color:#fff;" data-note="' . htmlspecialchars($lead['call_note'], ENT_QUOTES, 'UTF-8') . '" data-bs-toggle="modal" data-bs-target="#viewNoteModal">View Note</button>';
@@ -690,9 +710,21 @@ class LeadController extends Controller
                 t.name AS original_team_name
             FROM leads l
             JOIN leads orig ON (
-                (orig.phone_number IS NOT NULL AND orig.phone_number != '' AND (orig.phone_number = l.phone_number OR orig.phone_number = l.phone))
-                OR (orig.phone IS NOT NULL AND orig.phone != '' AND (orig.phone = l.phone_number OR orig.phone = l.phone))
-                OR (orig.email IS NOT NULL AND orig.email != '' AND orig.email = l.email)
+                (
+                    (orig.phone_number IS NOT NULL AND orig.phone_number != '') AND 
+                    (
+                        (l.phone_number IS NOT NULL AND l.phone_number != '' AND RIGHT(orig.phone_number, 10) = RIGHT(l.phone_number, 10)) OR
+                        (l.phone IS NOT NULL AND l.phone != '' AND RIGHT(orig.phone_number, 10) = RIGHT(l.phone, 10))
+                    )
+                ) OR (
+                    (orig.phone IS NOT NULL AND orig.phone != '') AND
+                    (
+                        (l.phone_number IS NOT NULL AND l.phone_number != '' AND RIGHT(orig.phone, 10) = RIGHT(l.phone_number, 10)) OR
+                        (l.phone IS NOT NULL AND l.phone != '' AND RIGHT(orig.phone, 10) = RIGHT(l.phone, 10))
+                    )
+                ) OR (
+                    orig.email IS NOT NULL AND orig.email != '' AND orig.email = l.email
+                )
             )
             JOIN users u ON orig.assigned_id = u.id
             JOIN employees emp ON emp.user_id = u.id
@@ -771,7 +803,11 @@ class LeadController extends Controller
         $idsStr = implode(',', $ids);
 
         // Final assigned datetime
-        $assignedAt = $assignedDate . ' ' . date('H:i:s');
+        $formattedDate = date('Y-m-d', strtotime($assignedDate));
+        if (!$formattedDate || $formattedDate === '1970-01-01') {
+            $formattedDate = date('Y-m-d');
+        }
+        $assignedAt = $formattedDate . ' ' . date('H:i:s');
 
         if ($routeMode === 'existing') {
             // Reassign duplicates to their existing owners, and others to the selected userId
@@ -787,9 +823,15 @@ class LeadController extends Controller
                 
                 $firstAssignee = $this->leadModel->findFirstAssignee($leadPhone, $leadEmail);
                 
-                if ($firstAssignee) {
+                if ($firstAssignee && !empty($firstAssignee['assigned_id'])) {
                     $targetUid = $firstAssignee['assigned_id'];
-                    $targetTid = $firstAssignee['team_id'];
+                    
+                    // Fetch current team_id of this assignee from users table
+                    $userTeamStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
+                    $userTeamStmt->bind_param("i", $targetUid);
+                    $userTeamStmt->execute();
+                    $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
+                    $targetTid = ($userTeamRes && $userTeamRes['team_id'] !== null) ? (int)$userTeamRes['team_id'] : $firstAssignee['team_id'];
                 } else {
                     $targetUid = $userId;
                     // Get team_id of selected user
@@ -919,7 +961,7 @@ class LeadController extends Controller
 
             // Existing fields
             'full_name' => $_POST['full_name'] ?? null,
-            'lead_type' => $_POST['lead_type'] ?? null,
+            'lead_type' => (!empty($_POST['lead_type']) && trim((string)$_POST['lead_type']) !== '') ? trim((string)$_POST['lead_type']) : null,
             'father_name' => $_POST['father_name'] ?? null,
             'mother_name' => $_POST['mother_name'] ?? null,
             'dob' => $_POST['dob'] ?? null,
@@ -1155,6 +1197,33 @@ class LeadController extends Controller
     }
 
 // form DMT executive dashboard CSV import
+    private function cleanCsvValueEncoding($val)
+    {
+        if ($val === null) return '';
+        $val = trim((string)$val);
+        if ($val === '') return '';
+
+        // Remove UTF-8 BOM if present
+        $val = preg_replace('/^\xEF\xBB\xBF/', '', $val);
+
+        // Fix UTF-8 Mojibake double encoding (e.g. â‡¨â™¡â™¥)
+        if (strpos($val, 'â') !== false || strpos($val, 'Ã') !== false) {
+            $converted = @mb_convert_encoding($val, 'ISO-8859-1', 'UTF-8');
+            if (!empty($converted) && mb_check_encoding($converted, 'UTF-8')) {
+                $val = $converted;
+            }
+        }
+
+        if (!mb_check_encoding($val, 'UTF-8')) {
+            $val = mb_convert_encoding($val, 'UTF-8', 'Windows-1252');
+        }
+
+        // Clean decorative symbols/emojis from FB bio text
+        $val = preg_replace('/[\x{2190}-\x{21FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}\x{1F300}-\x{1F9FF}â‡¨â™¡â™¥â–’â–“â˜☆â†→â™ªâ™©â™¬♡♥▒▓█]+/u', ' ', $val);
+
+        return trim(preg_replace('/\s+/', ' ', $val));
+    }
+
     public function importCsv()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -1167,9 +1236,10 @@ class LeadController extends Controller
             exit;
         }
 
-        // FORM থেকে team_id & project_category_id
+        // FORM থেকে team_id, project_category_id & project_id
         $team_id = $_POST['team_id'] ?? null;
         $project_category_id = !empty($_POST['project_category_id']) ? (int)$_POST['project_category_id'] : null;
+        $project_id = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
 
         if (!$team_id) {
             setError("Please select a team");
@@ -1208,7 +1278,7 @@ class LeadController extends Controller
             //  HEADER read + encoding fix
             $header = fgetcsv($handle);
             $header = array_map(function ($value) {
-                return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
+                return $this->cleanCsvValueEncoding($value);
             }, $header);
 
             while (($row = fgetcsv($handle, 1000, ",")) !== false) {
@@ -1227,7 +1297,7 @@ class LeadController extends Controller
 
                 //  ROW encoding fix
                 $row = array_map(function ($value) {
-                    return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
+                    return $this->cleanCsvValueEncoding($value);
                 }, $row);
 
                 $data = array_combine($header, $row);
@@ -1257,7 +1327,8 @@ class LeadController extends Controller
             $_SESSION['dm_csv_temp_file'] = $tempPath;
             $_SESSION['dm_csv_metadata'] = [
                 'team_id' => $team_id,
-                'project_category_id' => $project_category_id
+                'project_category_id' => $project_category_id,
+                'project_id' => $project_id
             ];
             $_SESSION['dm_csv_issues'] = $issues;
             header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
@@ -1265,7 +1336,7 @@ class LeadController extends Controller
         }
 
         // Otherwise, import directly
-        $this->executeImport($tempPath, $team_id, $project_category_id);
+        $this->executeImport($tempPath, $team_id, $project_category_id, $project_id);
         unlink($tempPath);
 
         setSuccess("CSV imported successfully");
@@ -1273,17 +1344,17 @@ class LeadController extends Controller
         exit;
     }
 
-    private function executeImport($filePath, $team_id, $project_category_id)
+    private function executeImport($filePath, $team_id, $project_category_id, $project_id = null)
     {
         if (($handle = fopen($filePath, "r")) !== false) {
             $header = fgetcsv($handle);
             $header = array_map(function ($value) {
-                return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
+                return $this->cleanCsvValueEncoding($value);
             }, $header);
 
             while (($row = fgetcsv($handle, 1000, ",")) !== false) {
                 $row = array_map(function ($value) {
-                    return mb_convert_encoding(trim($value), 'UTF-8', 'Windows-1252');
+                    return $this->cleanCsvValueEncoding($value);
                 }, $row);
 
                 if (count(array_filter($row)) === 0) continue;
@@ -1295,6 +1366,7 @@ class LeadController extends Controller
                 $data['visibility'] = $data['visibility'] ?? 'public';
                 $data['team_id'] = (int)$team_id;
                 $data['project_category_id'] = $project_category_id;
+                $data['project_id'] = $project_id ? (int)$project_id : (!empty($data['project_id']) ? (int)$data['project_id'] : null);
                 $data['created_by'] = $_SESSION['user']['id'] ?? null;
                 $data['country'] = $data['country'] ?? null;
 
@@ -1322,7 +1394,7 @@ class LeadController extends Controller
             exit;
         }
 
-        $this->executeImport($tempFile, $meta['team_id'], $meta['project_category_id']);
+        $this->executeImport($tempFile, $meta['team_id'], $meta['project_category_id'], $meta['project_id'] ?? null);
 
         // Cleanup
         unlink($tempFile);
@@ -1654,6 +1726,64 @@ class LeadController extends Controller
         }
 
         header("Location:{$GLOBALS['base_url']}/lead-lists");
+        exit;
+    }
+
+    public function reassignDuplicateGroup()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        
+        $phoneOrEmail = $_POST['phone_or_email'] ?? '';
+        $targetUserId = (int)($_POST['target_user_id'] ?? 0);
+        
+        if (empty($phoneOrEmail) || !$targetUserId) {
+            setError("Invalid parameters!");
+            header("Location: " . $GLOBALS['base_url'] . "/lead-lists");
+            exit;
+        }
+        
+        // Find team_id of target user
+        $userTeamStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
+        $userTeamStmt->bind_param("i", $targetUserId);
+        $userTeamStmt->execute();
+        $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
+        $teamId = $userTeamRes ? (int)$userTeamRes['team_id'] : 0;
+        
+        // Clean phone/email and check if it's email or phone
+        $isEmail = filter_var($phoneOrEmail, FILTER_VALIDATE_EMAIL);
+        
+        $assignedAt = date('Y-m-d H:i:s');
+        $assignedBy = $_SESSION['user']['id'] ?? 0;
+        
+        if ($isEmail) {
+            $stmt = $this->db->prepare("
+                UPDATE leads 
+                SET assigned_id = ?, team_id = ?, assigned_at = ?, created_by = ? 
+                WHERE email = ? AND deleted_at IS NULL
+            ");
+            $stmt->bind_param("iisis", $targetUserId, $teamId, $assignedAt, $assignedBy, $phoneOrEmail);
+        } else {
+            // It's a phone number. We match by 10-digit suffix!
+            $digits = preg_replace('/\D/', '', $phoneOrEmail);
+            $suffix = strlen($digits) >= 10 ? substr($digits, -10) : $digits;
+            $likePattern = '%' . $suffix;
+            
+            $stmt = $this->db->prepare("
+                UPDATE leads 
+                SET assigned_id = ?, team_id = ?, assigned_at = ?, created_by = ? 
+                WHERE (phone_number LIKE ? OR phone LIKE ?) AND deleted_at IS NULL
+            ");
+            $stmt->bind_param("iisiss", $targetUserId, $teamId, $assignedAt, $assignedBy, $likePattern, $likePattern);
+        }
+        
+        if ($stmt && $stmt->execute()) {
+            setSuccess("All duplicate leads reassigned successfully!");
+        } else {
+            setError("Failed to reassign duplicate leads.");
+        }
+        
+        $redirectUrl = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/lead-lists");
+        header("Location: " . $redirectUrl);
         exit;
     }
 }

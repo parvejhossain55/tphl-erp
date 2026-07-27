@@ -46,6 +46,15 @@ if (!function_exists('getBengaliMonthName')) {
   }
 }
 
+if (!function_exists('getImage')) {
+  function getImage($folder, $img) {
+    if (empty($img)) return '';
+    return ($GLOBALS['base_url'] ?? '') . '/uploads/' . $folder . '/' . $img;
+  }
+}
+
+$base = $GLOBALS['base_url'] ?? '';
+$base_url = $base_url ?? $base;
 $stats = $stats ?? [];
 $projects = $projects ?? [];
 $selectedProjId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
@@ -55,7 +64,7 @@ foreach ($projects as $pr) {
     $filteredProjects[] = $pr;
   }
 }
-$budgetUtil = $budgetUtil ?? ['total' => 0, 'spent' => 0, 'pct' => 0, 'remaining' => 0];
+$budgetUtil = array_merge(['total' => 0, 'spent' => 0, 'pct' => 0, 'remaining' => 0], $budgetUtil ?? []);
 $stockAlerts = $stockAlerts ?? [];
 $pendingAlerts = $pendingAlerts ?? [];
 $soilAlerts = $soilAlerts ?? [];
@@ -580,106 +589,363 @@ $statusColor = [
       </div>
     </div>
 
-    <!-- ══════════════════════ ROW 1: 4 KPI CARDS ═══════════════════════════════ -->
-    <div class="kpi-grid">
+    <!-- ══════════════════════ OVERVIEW KPI CARDS ═══════════════════════════════ -->
+    <style>
+      .modern-kpi-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        text-decoration: none !important;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 100%;
+      }
+      .modern-kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      }
+      .modern-kpi-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+      .modern-kpi-label {
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: #6b7280;
+        letter-spacing: 0.5px;
+        line-height: 1.2;
+      }
+      .modern-kpi-val {
+        font-size: 20px;
+        font-weight: 800;
+        color: #111827;
+        margin: 2px 0;
+        line-height: 1.2;
+      }
+      .modern-kpi-sub {
+        font-size: 11px;
+        color: #9ca3af;
+        white-space: nowrap;
+      }
+      .pending-nav-card {
+        cursor: pointer;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 14px;
+        background: #ffffff;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        transition: all 0.2s ease;
+      }
+      .pending-nav-card:hover {
+        border-color: #4f46e5;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+        transform: translateY(-2px);
+      }
+    </style>
 
+    <!-- 8 Main KPI Cards (Matching Image Layout) -->
+    <div class="row  mb-4">
       <!-- 1. Total Projects -->
-      <a href="<?= $base ?>/con-projects" class="kpi-card card__wrapper">
-        <div class="kpi-accent" style="background:var(--cd-blue)"></div>
-        <div class="kpi-icon" style="background:rgba(59,130,246,.12);color:var(--cd-blue)"><i
-            class="fal fa-building"></i></div>
-        <div class="kpi-label" style="color:var(--text-muted)">Total Projects</div>
-        <div class="kpi-value" style="color:var(--cd-blue)"><?= $stats['total_projects'] ?? 0 ?></div>
-        <div class="kpi-sub" style="color:var(--text-muted)">Active construction sites</div>
-      </a>
+      <div class="col-xl-3 col-lg-4 col-md-6 mb-2 col-sm-6">
+        <a href="<?= $base ?>/con-projects" class="modern-kpi-card">
+          <div class="modern-kpi-icon" style="background: rgba(79, 70, 229, 0.1); color: #4f46e5;">
+            <i class="fa-solid fa-city"></i>
+          </div>
+          <div>
+            <div class="modern-kpi-label">TOTAL PROJECTS</div>
+            <div class="modern-kpi-val"><?= $stats['total_projects'] ?? 0 ?></div>
+            <div class="modern-kpi-sub">Active Construction Sites</div>
+          </div>
+        </a>
+      </div>
 
-      <!-- 2. Total Initial Budget -->
-      <a href="<?= $base ?>/con-estimates" class="kpi-card card__wrapper">
-        <div class="kpi-accent" style="background:var(--cd-green)"></div>
-        <div class="kpi-icon" style="background:rgba(16,185,129,.12);color:var(--cd-green)"><i
-            class="fal fa-money-bill-wave"></i></div>
-        <div class="kpi-label" style="color:var(--text-muted)">Total Initial Budget</div>
-        <div class="kpi-value" style="color:var(--cd-green)"><?= conFmt($stats['total_budget'] ?? 0) ?></div>
-        <div class="kpi-sub" style="color:var(--text-muted)">Approved estimates total</div>
-      </a>
+      <!-- 2. On Track -->
+      <div class="col-xl-3 col-lg-4 col-md-6 mb-2 col-sm-6">
+        <a href="<?= $base ?>/con-projects" class="modern-kpi-card">
+          <div class="modern-kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+            <i class="fa-solid fa-circle-check"></i>
+          </div>
+          <div>
+            <div class="modern-kpi-label">ON TRACK</div>
+            <div class="modern-kpi-val" style="color: #10b981;"><?= $stats['total_projects'] ?? 0 ?></div>
+            <div class="modern-kpi-sub">100% of total</div>
+          </div>
+        </a>
+      </div>
 
-      <!-- 3. Material Budget -->
-      <a href="<?= $base ?>/con-estimates" class="kpi-card card__wrapper">
-        <div class="kpi-accent" style="background:var(--cd-amber)"></div>
-        <div class="kpi-icon" style="background:rgba(245,158,11,.12);color:var(--cd-amber)"><i class="fal fa-boxes"></i>
+      <!-- 3. At Risk -->
+      <div class="col-xl-3 col-lg-4 col-md-6 mb-2 col-sm-6">
+        <a href="<?= $base ?>/con-projects" class="modern-kpi-card">
+          <div class="modern-kpi-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <div>
+            <div class="modern-kpi-label">AT RISK</div>
+            <div class="modern-kpi-val" style="color: #f59e0b;">0</div>
+            <div class="modern-kpi-sub">0% of total</div>
+          </div>
+        </a>
+      </div>
+
+      <!-- 4. Delayed -->
+      <div class="col-xl-3 col-lg-4 col-md-6 mb-2 col-sm-6">
+        <a href="<?= $base ?>/con-projects" class="modern-kpi-card">
+          <div class="modern-kpi-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+            <i class="fa-solid fa-clock"></i>
+          </div>
+          <div>
+            <div class="modern-kpi-label">DELAYED</div>
+            <div class="modern-kpi-val" style="color: #ef4444;">0</div>
+            <div class="modern-kpi-sub">0% of total</div>
+          </div>
+        </a>
+      </div>
+
+      <!-- 5. In Construction -->
+      <div class="col-xl-3 col-lg-4 col-md-6 mb-2 col-sm-6">
+        <a href="<?= $base ?>/con-projects" class="modern-kpi-card">
+          <div class="modern-kpi-icon" style="background: rgba(6, 182, 212, 0.1); color: #06b6d4;">
+            <i class="fa-solid fa-helmet-safety"></i>
+          </div>
+          <div>
+            <div class="modern-kpi-label">IN CONSTRUCTION</div>
+            <div class="modern-kpi-val" style="color: #06b6d4;"><?= $stats['total_projects'] ?? 0 ?></div>
+            <div class="modern-kpi-sub">Active Sites</div>
+          </div>
+        </a>
+      </div>
+
+      <!-- 6. Approved Budget -->
+      <div class="col-xl-3 col-lg-4 col-md-6 mb-2 col-sm-6">
+        <a href="<?= $base ?>/con-estimates" class="modern-kpi-card">
+          <div class="modern-kpi-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
+            <i class="fa-solid fa-wallet"></i>
+          </div>
+          <div>
+            <div class="modern-kpi-label">APPROVED BUDGET</div>
+            <div class="modern-kpi-val" style="color: #8b5cf6;">৳<?= conFmt($stats['total_budget'] ?? 0) ?></div>
+            <div class="modern-kpi-sub">Total Approved</div>
+          </div>
+        </a>
+      </div>
+
+      <!-- 7. Budget Used -->
+      <div class="col-xl-3 col-lg-4 col-md-6 mb-2 col-sm-6">
+        <a href="<?= $base ?>/con-estimates" class="modern-kpi-card">
+          <div class="modern-kpi-icon" style="background: rgba(20, 184, 166, 0.1); color: #14b8a6;">
+            <i class="fa-solid fa-chart-pie"></i>
+          </div>
+          <div>
+            <div class="modern-kpi-label">BUDGET USED</div>
+            <div class="modern-kpi-val" style="color: #14b8a6;">৳<?= conFmt($stats['total_spent'] ?? 0) ?></div>
+            <div class="modern-kpi-sub"><?= ($stats['total_budget'] ?? 0) > 0 ? round(($stats['total_spent'] ?? 0) / $stats['total_budget'] * 100, 1) : 0 ?>% of budget</div>
+          </div>
+        </a>
+      </div>
+
+      <!-- 8. Pending Approvals -->
+      <div class="col-xl-3 col-lg-4 col-md-6 mb-2 col-sm-6">
+        <div class="modern-kpi-card" style="cursor: pointer;" onclick="scrollToApprovalSection('sec-pending-breakdown')">
+          <div class="modern-kpi-icon" style="background: rgba(249, 115, 22, 0.1); color: #f97316;">
+            <i class="fa-solid fa-file-signature"></i>
+          </div>
+          <div>
+            <div class="modern-kpi-label">PENDING APPROVALS</div>
+            <div class="modern-kpi-val" style="color: #f97316;"><?= $stats['pending_approvals'] ?? 0 ?></div>
+            <div class="modern-kpi-sub">Requires action</div>
+          </div>
         </div>
-        <div class="kpi-label" style="color:var(--text-muted)">Total Material Budget</div>
-        <div class="kpi-value" style="color:var(--cd-amber)"><?= conFmt($stats['total_material'] ?? 0) ?></div>
-        <div class="kpi-sub" style="color:var(--text-muted)">Construction materials cost</div>
-      </a>
-
-      <!-- 4. Manpower Budget -->
-      <a href="<?= $base ?>/con-estimates" class="kpi-card card__wrapper">
-        <div class="kpi-accent" style="background:var(--cd-purple)"></div>
-        <div class="kpi-icon" style="background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--cd-purple)"><i
-            class="fal fa-hard-hat"></i></div>
-        <div class="kpi-label" style="color:var(--text-muted)">Total Manpower Budget</div>
-        <div class="kpi-value" style="color:var(--cd-purple)"><?= conFmt($stats['total_labour'] ?? 0) ?></div>
-        <div class="kpi-sub" style="color:var(--text-muted)">Labour &amp; workforce cost</div>
-      </a>
-
+      </div>
     </div>
 
-    <!-- ══════════════════════ ROW 2: 4 MORE CARDS ══════════════════════════════ -->
-    <div class="kpi-grid mb-4">
-
-      <!-- 5. Stock Alerts -->
-      <a href="<?= $base ?>/con-stocks" class="kpi-card card__wrapper">
-        <div class="kpi-accent" style="background:var(--cd-red)"></div>
-        <div class="kpi-icon" style="background:rgba(239,68,68,.12);color:var(--cd-red)"><i
-            class="fal fa-warehouse"></i></div>
-        <div class="kpi-label" style="color:var(--text-muted)">Stock Alerts</div>
-        <div class="kpi-value" style="color:var(--cd-red)"><?= $stats['stock_alerts'] ?? 0 ?></div>
-        <div class="kpi-sub" style="color:var(--text-muted)">Items below minimum level</div>
-        <?php if (($stats['stock_alerts'] ?? 0) > 0): ?>
-          <span class="kpi-badge" style="background:rgba(239,68,68,.12);color:var(--cd-red)"><i
-              class="fas fa-exclamation-triangle me-1"></i>ALERT</span>
-        <?php endif; ?>
-      </a>
-
-      <!-- 6. Pending Approvals -->
-      <a href="<?= $base ?>/con-pending-payments" class="kpi-card card__wrapper">
-        <div class="kpi-accent" style="background:var(--cd-indigo)"></div>
-        <div class="kpi-icon" style="background:rgba(var(--clr-theme-primary-rgb),.12);color:var(--cd-indigo)"><i
-            class="fal fa-check-circle"></i></div>
-        <div class="kpi-label" style="color:var(--text-muted)">Pending Approvals</div>
-        <div class="kpi-value" style="color:var(--cd-indigo)"><?= $stats['pending_approvals'] ?? 0 ?></div>
-        <div class="kpi-sub" style="color:var(--text-muted)">Bills, funds &amp; vendor payments</div>
-        <?php if (($stats['pending_approvals'] ?? 0) > 0): ?>
-          <span class="kpi-badge" style="background:rgba(var(--clr-theme-primary-rgb),.12);color:var(--cd-indigo)">PENDING</span>
-        <?php endif; ?>
-      </a>
-
-      <!-- 7. Budget Requests -->
-      <a href="<?= $base ?>/con-budget-extends" class="kpi-card card__wrapper">
-        <div class="kpi-accent" style="background:var(--cd-teal)"></div>
-        <div class="kpi-icon" style="background:rgba(20,184,166,.12);color:var(--cd-teal)"><i
-            class="fal fa-file-invoice-dollar"></i></div>
-        <div class="kpi-label" style="color:var(--text-muted)">Budget Requests</div>
-        <div class="kpi-value" style="color:var(--cd-teal)"><?= $stats['budget_requests'] ?? 0 ?></div>
-        <div class="kpi-sub" style="color:var(--text-muted)">Pending extension requests</div>
-        <?php if (($stats['budget_requests'] ?? 0) > 0): ?>
-          <span class="kpi-badge" style="background:rgba(20,184,166,.12);color:var(--cd-teal)">REVIEW</span>
-        <?php endif; ?>
-      </a>
-
-    
-      <!-- 8. Lab Testing Alerts -->
-      <a href="<?= $base ?>/con-soil-tests" class="kpi-card card__wrapper">
-        <div class="kpi-accent" style="background:var(--cd-pink)"></div>
-        <div class="kpi-icon" style="background:rgba(236,72,153,.12);color:var(--cd-pink)"><i class="fal fa-flask"></i>
+    <!-- ══════════════════════ PENDING APPROVALS BREAKDOWN CARDS ══════════════════════ -->
+    <div class="con-panel card__wrapper mb-4" id="sec-pending-breakdown" style="border: 1px solid rgba(249, 115, 22, 0.25); background: rgba(249, 115, 22, 0.02);">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="sec-title mb-0">
+          <div class="sec-title-dot" style="background: #f97316;"></div>
+          <i class="fa-solid fa-file-signature me-2" style="color: #f97316;"></i>
+          Pending Approvals Breakdown (Click to Scroll To Table)
         </div>
-        <div class="kpi-label" style="color:var(--text-muted)">Lab Testing Alerts</div>
-        <div class="kpi-value" style="color:var(--cd-pink)"><?= $stats['lab_alerts'] ?? 0 ?></div>
-        <div class="kpi-sub" style="color:var(--text-muted)">Soil test records</div>
-      </a>
+        <span class="badge bg-warning text-dark px-3 py-2 fs-12 fw-bold">
+          Total <?= $stats['pending_approvals'] ?? 0 ?> Pending
+        </span>
+      </div>
 
+      <div class="row">
+        <!-- 1. Purchase Requests -->
+        <div class="col-xl-3 col-lg-4 col-md-6 mb-2">
+          <div class="pending-nav-card d-flex align-items-center justify-content-between" onclick="scrollToApprovalSection('sec-pr-approvals')">
+            <div class="d-flex align-items-center gap-2">
+              <div class="avatar-xs bg-danger-subtle text-danger rounded-circle d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
+                <i class="fa-solid fa-file-invoice"></i>
+              </div>
+              <div>
+                <span class="fw-bold d-block text-dark fs-12">Purchase Requests</span>
+                <span class="text-muted fs-11">Awaiting Approval</span>
+              </div>
+            </div>
+            <span class="badge <?= !empty($prsForApproval) ? 'bg-danger' : 'bg-secondary' ?> rounded-pill px-2.5 py-1 fw-bold fs-12">
+              <?= count($prsForApproval ?? []) ?>
+            </span>
+          </div>
+        </div>
+
+        <!-- 2. Work Orders -->
+        <div class="col-xl-3 col-lg-4 col-md-6 mb-2">
+          <div class="pending-nav-card d-flex align-items-center justify-content-between" onclick="scrollToApprovalSection('sec-work-orders')">
+            <div class="d-flex align-items-center gap-2">
+              <div class="avatar-xs bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
+                <i class="fa-solid fa-file-contract"></i>
+              </div>
+              <div>
+                <span class="fw-bold d-block text-dark fs-12">Work Orders</span>
+                <span class="text-muted fs-11">Draft / Pending Approval</span>
+              </div>
+            </div>
+            <span class="badge <?= !empty($pendingWorkOrders) ? 'bg-primary' : 'bg-secondary' ?> rounded-pill px-2.5 py-1 fw-bold fs-12">
+              <?= count($pendingWorkOrders ?? []) ?>
+            </span>
+          </div>
+        </div>
+
+        <!-- 3. Contractor Bills -->
+        <div class="col-xl-3 col-lg-4 col-md-6 mb-2">
+          <div class="pending-nav-card d-flex align-items-center justify-content-between" onclick="scrollToApprovalSection('sec-contractor-bills')">
+            <div class="d-flex align-items-center gap-2">
+              <div class="avatar-xs bg-purple-subtle text-purple rounded-circle d-flex align-items-center justify-content-center" style="width:36px;height:36px;background:rgba(147,51,234,0.1);color:#9333ea;">
+                <i class="fa-solid fa-file-circle-check"></i>
+              </div>
+              <div>
+                <span class="fw-bold d-block text-dark fs-12">Contractor Bills</span>
+                <span class="text-muted fs-11">Submitted / Pending</span>
+              </div>
+            </div>
+            <span class="badge <?= !empty($pendingContractorBills) ? 'bg-purple text-white' : 'bg-secondary' ?>" style="background:#9333ea;font-size:12px;border-radius:20px;padding:3px 9px;">
+              <?= count($pendingContractorBills ?? []) ?>
+            </span>
+          </div>
+        </div>
+
+        <!-- 4. Vendor Payments -->
+        <div class="col-xl-3 col-lg-4 col-md-6 mb-2">
+          <div class="pending-nav-card d-flex align-items-center justify-content-between" onclick="scrollToApprovalSection('sec-vendor-payments')">
+            <div class="d-flex align-items-center gap-2">
+              <div class="avatar-xs bg-warning-subtle text-warning rounded-circle d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
+                <i class="fa-solid fa-money-bill-wave"></i>
+              </div>
+              <div>
+                <span class="fw-bold d-block text-dark fs-12">Vendor Payments</span>
+                <span class="text-muted fs-11">Awaiting Review</span>
+              </div>
+            </div>
+            <span class="badge <?= !empty($pendingAlerts) ? 'bg-warning text-dark' : 'bg-secondary' ?> rounded-pill px-2.5 py-1 fw-bold fs-12">
+              <?= count($pendingAlerts ?? []) ?>
+            </span>
+          </div>
+        </div>
+
+        <!-- 5. Labor Requisitions -->
+        <div class="col-xl-3 col-lg-4 col-md-6 mb-2">
+          <div class="pending-nav-card d-flex align-items-center justify-content-between" onclick="scrollToApprovalSection('sec-labor-requisitions')">
+            <div class="d-flex align-items-center gap-2">
+              <div class="avatar-xs bg-info-subtle text-info rounded-circle d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
+                <i class="fa-solid fa-people-group"></i>
+              </div>
+              <div>
+                <span class="fw-bold d-block text-dark fs-12">Labor Requisitions</span>
+                <span class="text-muted fs-11">Awaiting Review</span>
+              </div>
+            </div>
+            <span class="badge <?= !empty($pendingLaborRequisitions) ? 'bg-info text-dark' : 'bg-secondary' ?> rounded-pill px-2.5 py-1 fw-bold fs-12">
+              <?= count($pendingLaborRequisitions ?? []) ?>
+            </span>
+          </div>
+        </div>
+
+        <!-- 6. Weekly Progress Reports -->
+        <div class="col-xl-3 col-lg-4 col-md-6 mb-2">
+          <div class="pending-nav-card d-flex align-items-center justify-content-between" onclick="scrollToApprovalSection('sec-weekly-reports')">
+            <div class="d-flex align-items-center gap-2">
+              <div class="avatar-xs bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
+                <i class="fa-solid fa-calendar-check"></i>
+              </div>
+              <div>
+                <span class="fw-bold d-block text-dark fs-12">Weekly Reports</span>
+                <span class="text-muted fs-11">PM Review Pending</span>
+              </div>
+            </div>
+            <span class="badge <?= !empty($pendingWeeklyReportsPM) ? 'bg-success' : 'bg-secondary' ?> rounded-pill px-2.5 py-1 fw-bold fs-12">
+              <?= count($pendingWeeklyReportsPM ?? []) ?>
+            </span>
+          </div>
+        </div>
+
+        <!-- 7. BOQ Approvals -->
+        <div class="col-xl-3 col-lg-4 col-md-6 mb-2">
+          <div class="pending-nav-card d-flex align-items-center justify-content-between" onclick="scrollToApprovalSection('sec-boq-approvals')">
+            <div class="d-flex align-items-center gap-2">
+              <div class="avatar-xs bg-secondary-subtle text-dark rounded-circle d-flex align-items-center justify-content-center" style="width:36px;height:36px;">
+                <i class="fa-solid fa-clipboard-list"></i>
+              </div>
+              <div>
+                <span class="fw-bold d-block text-dark fs-12">BOQ Approvals</span>
+                <span class="text-muted fs-11">Submitted BOQs</span>
+              </div>
+            </div>
+            <span class="badge <?= !empty($pendingBoqs) ? 'bg-dark' : 'bg-secondary' ?> rounded-pill px-2.5 py-1 fw-bold fs-12">
+              <?= count($pendingBoqs ?? []) ?>
+            </span>
+          </div>
+        </div>
+
+        <!-- 8. Fund Requisitions -->
+        <div class="col-xl-3 col-lg-4 col-md-6 mb-2">
+          <div class="pending-nav-card d-flex align-items-center justify-content-between" onclick="scrollToApprovalSection('sec-fund-requisitions')">
+            <div class="d-flex align-items-center gap-2">
+              <div class="avatar-xs bg-teal-subtle text-teal rounded-circle d-flex align-items-center justify-content-center" style="width:36px;height:36px;background:rgba(20,184,166,0.1);color:#14b8a6;">
+                <i class="fa-solid fa-hand-holding-dollar"></i>
+              </div>
+              <div>
+                <span class="fw-bold d-block text-dark fs-12">Fund Requisitions</span>
+                <span class="text-muted fs-11">Petty Cash & General</span>
+              </div>
+            </div>
+            <span class="badge <?= !empty($pendingPettyCash) ? 'bg-teal text-white' : 'bg-secondary' ?>" style="background:#14b8a6;font-size:12px;border-radius:20px;padding:3px 9px;">
+              <?= count($pendingPettyCash ?? []) ?>
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <script>
+      function scrollToApprovalSection(sectionId) {
+        const el = document.getElementById(sectionId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          const card = el.classList.contains('card__wrapper') ? el : el.closest('.card__wrapper');
+          if (card) {
+            const origShadow = card.style.boxShadow;
+            card.style.transition = 'box-shadow 0.4s ease';
+            card.style.boxShadow = '0 0 0 4px rgba(79, 70, 229, 0.4)';
+            setTimeout(() => {
+              card.style.boxShadow = origShadow;
+            }, 1500);
+          }
+        }
+      }
+    </script>
 
     <!-- ══════════════════════ THIS MONTH'S PROJECT TARGETS ══════════════════════ -->
     <?php 
@@ -714,7 +980,7 @@ $statusColor = [
             </thead>
             <tbody>
               <?php foreach ($thisMonthTargets as $ti => $targetPlan): 
-                $tStatus = $targetPlan['planning_status'];
+                $tStatus = $targetPlan['planning_status'] ?? 'Draft';
                 $tBadgeBg = 'rgba(148,163,184,.12)';
                 $tBadgeColor = '#94a3b8';
                 if ($tStatus === 'Approved') {
@@ -760,7 +1026,7 @@ $statusColor = [
 
     <!-- ══════════════════════ PENDING CONTRACTOR BILLS ══════════════════════ -->
     <?php if (!empty($pendingContractorBills)): ?>
-      <div class="con-panel card__wrapper mb-4" style="border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.03)">
+      <div class="con-panel card__wrapper mb-4" id="sec-contractor-bills" style="border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.03)">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <div class="sec-title" style="margin-bottom:0">
             <div class="sec-title-dot" style="background:var(--cd-blue)"></div>
@@ -827,7 +1093,7 @@ $statusColor = [
 
     <!-- ══════════════════════ PENDING LABOR REQUISITIONS ══════════════════════ -->
     <?php if (!empty($pendingLaborRequisitions ?? [])): ?>
-      <div class="con-panel card__wrapper mb-4" style="border-color:rgba(253,126,20,.4);background:rgba(253,126,20,.04)">
+      <div class="con-panel card__wrapper mb-4" id="sec-labor-requisitions" style="border-color:rgba(253,126,20,.4);background:rgba(253,126,20,.04)">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <div class="sec-title" style="margin-bottom:0">
             <div class="sec-title-dot" style="background:#fd7e14"></div>
@@ -918,7 +1184,7 @@ $statusColor = [
 
     <!-- ══════════════════════ PENDING INITIAL BUDGET APPROVALS ══════════════════════ -->
     <?php if (!empty($pendingInitialBudgets)): ?>
-      <div class="con-panel card__wrapper mb-4" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03)">
+      <div class="con-panel card__wrapper mb-4" id="sec-initial-budgets" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03)">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <div class="sec-title" style="margin-bottom:0">
             <div class="sec-title-dot" style="background:var(--cd-amber)"></div>
@@ -993,15 +1259,13 @@ $statusColor = [
       </div>
     <?php endif; ?>
 
-
-
     <?php
     // ── PRs Awaiting Approval (roles 3, 15, 22) ──────────────────────────────
     $prsForApproval = $prsForApproval ?? [];
     $sessionRoleId  = (int)($_SESSION['user']['role_id'] ?? 0);
     if (!empty($prsForApproval) && in_array($sessionRoleId, [3, 15, 22])):
     ?>
-        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.03)">
+        <div class="con-panel card__wrapper mb-4" id="sec-pr-approvals" style="border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.03)">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="sec-title" style="margin-bottom:0">
               <div class="sec-title-dot" style="background:#ef4444;animation:pulse 1.5s infinite"></div>
@@ -1073,19 +1337,11 @@ $statusColor = [
                         $btnLabel = 'Approve';
                         $pmApproved = !empty($apr['approved_by_id']);
                         $qcApproved = !empty($apr['qc_approved_by_id']);
-                        $mgmtApproved = !empty($apr['mgmt_approved_by_id']);
 
                         if (!$pmApproved) {
                             if (in_array($sessionRoleId, [15, 22])) {
                                 $showApproveBtn = true;
                                 $btnLabel = 'Approve PM';
-                            }
-                        } elseif (!$qcApproved) {
-                            $showApproveBtn = false;
-                        } elseif (!$mgmtApproved) {
-                            if ($sessionRoleId === 3) {
-                                $showApproveBtn = true;
-                                $btnLabel = 'Final Approve';
                             }
                         }
                         ?>
@@ -1118,7 +1374,7 @@ $statusColor = [
     $pendingLandRequisitions = $pendingLandRequisitions ?? [];
     if (!empty($pendingLandRequisitions) && in_array($sessionRoleId, [1, 3])):
     ?>
-        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.03)">
+        <div class="con-panel card__wrapper mb-4" id="sec-land-requisitions" style="border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.03)">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="sec-title" style="margin-bottom:0">
               <div class="sec-title-dot" style="background:#10b981;animation:pulse 1.5s infinite"></div>
@@ -1175,7 +1431,7 @@ $statusColor = [
     $pendingPettyCash = $pendingPettyCash ?? [];
     if (!empty($pendingPettyCash) && in_array($sessionRoleId, [1, 3])):
     ?>
-        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.03)">
+        <div class="con-panel card__wrapper mb-4" id="sec-fund-requisitions" style="border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.03)">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="sec-title" style="margin-bottom:0">
               <div class="sec-title-dot" style="background:#f59e0b;animation:pulse 1.5s infinite"></div>
@@ -1237,13 +1493,11 @@ $statusColor = [
         </div>
     <?php endif; ?>
 
-
-
     <?php
     $pendingBudgetExtends = $pendingBudgetExtends ?? [];
     if (!empty($pendingBudgetExtends)):
       ?>
-        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(168,85,247,.3);background:rgba(168,85,247,.03)">
+        <div class="con-panel card__wrapper mb-4" id="sec-budget-adjustments" style="border-color:rgba(168,85,247,.3);background:rgba(168,85,247,.03)">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="sec-title" style="margin-bottom:0">
               <div class="sec-title-dot" style="background:#a855f7"></div>
@@ -1322,7 +1576,7 @@ $statusColor = [
     $pendingBoqs = $pendingBoqs ?? [];
     if (!empty($pendingBoqs)):
       ?>
-        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(var(--clr-theme-secondary-rgb),.3);background:rgba(var(--clr-theme-secondary-rgb),.03)">
+        <div class="con-panel card__wrapper mb-4" id="sec-boq-approvals" style="border-color:rgba(var(--clr-theme-secondary-rgb),.3);background:rgba(var(--clr-theme-secondary-rgb),.03)">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="sec-title" style="margin-bottom:0">
               <div class="sec-title-dot" style="background:var(--cd-purple)"></div>
@@ -1621,7 +1875,7 @@ $statusColor = [
     <?php
     $pendingWeeklyReportsPM = $pendingWeeklyReportsPM ?? [];
     ?>
-    <div class="con-panel card__wrapper mb-4" style="border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.03)">
+    <div class="con-panel card__wrapper mb-4" id="sec-weekly-reports" style="border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.03)">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="sec-title" style="margin-bottom:0">
           <div class="sec-title-dot" style="background:#0f5132"></div>
@@ -1786,7 +2040,7 @@ $statusColor = [
     $pendingWorkOrders = $pendingWorkOrders ?? [];
     if (!empty($pendingWorkOrders)):
       ?>
-        <div class="con-panel card__wrapper mb-4" style="border-color:rgba(14,165,233,.35);background:rgba(14,165,233,.03)">
+        <div class="con-panel card__wrapper mb-4" id="sec-work-orders" style="border-color:rgba(14,165,233,.35);background:rgba(14,165,233,.03)">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="sec-title" style="margin-bottom:0">
               <div class="sec-title-dot" style="background:#0ea5e9"></div>
@@ -2195,7 +2449,7 @@ $statusColor = [
 
       <!-- Smart Alerts -->
       <div class="col-12 col-md-6 col-lg-4 mb-3 mb-lg-0">
-        <div class="con-panel card__wrapper h-100">
+        <div class="con-panel card__wrapper h-100" id="sec-vendor-payments">
           <div class="sec-title">
             <div class="sec-title-dot" style="background:var(--cd-red)"></div>
             Smart Alerts
@@ -2852,81 +3106,7 @@ $statusColor = [
       </div>
     </div>
 
-    <!-- ══════════════════════ ROW 4: PROJECT STATUS TABLE ══════════════════════ -->
-    <div class="con-panel card__wrapper mb-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="sec-title" style="margin-bottom:0">
-          <div class="sec-title-dot" style="background:var(--cd-indigo)"></div>
-          Project Status Overview
-        </div>
-        <a href="<?= $base ?>/con-projects" style="font-size:11px;color:var(--cd-blue);text-decoration:none">View All <i
-            class="fal fa-arrow-right ms-1"></i></a>
-      </div>
-      <table class="proj-table">
-        <thead>
-          <tr>
-            <th>Project</th>
-            <th>Floors</th>
-            <th>Progress</th>
-            <th>Budget Used</th>
-            <th>Status</th>
-            <th style="text-align:right">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php if (empty($filteredProjects)): ?>
-              <tr>
-                <td colspan="6" class="empty-state">
-                  <div class="empty-state-icon"><i class="fal fa-hard-hat"></i></div>
-                  <div class="empty-state-text">No projects yet</div>
-                </td>
-              </tr>
-          <?php else: ?>
-              <?php foreach ($filteredProjects as $pr):
-                $raw_pct = (float) ($pr['progress_pct'] ?? 0);
-                $pct = round($raw_pct, 1);
-                $clr = $raw_pct >= 75 ? 'var(--cd-green)' : ($raw_pct >= 40 ? 'var(--cd-amber)' : 'var(--cd-red)');
-                $pclr = $raw_pct >= 75 ? 'var(--cd-green)' : ($raw_pct >= 40 ? 'var(--cd-amber)' : 'var(--cd-red)');
-                $grad = $raw_pct >= 75 ? 'linear-gradient(90deg,#059669,#10b981)' : ($raw_pct >= 40 ? 'linear-gradient(90deg,#d97706,#f59e0b)' : 'linear-gradient(90deg,#dc2626,#ef4444)');
-                $sc = $statusColor[$pr['project_status'] ?? ''] ?? ['bg' => 'rgba(0,0,0,.06)', 'text' => 'var(--text-muted)'];
-                $budgetUsedPct = ($pr['total_budget'] > 0) ? round($pr['total_spent'] / $pr['total_budget'] * 100, 1) : 0;
-                ?>
-                  <tr class="proj-row" onclick="location.href='<?= $base ?>/con-project/<?= $pr['id'] ?>'">
-                    <td>
-                      <div class="proj-name-cell"><?= htmlspecialchars($pr['name']) ?></div>
-                      <div class="proj-loc-cell" style="color:var(--text-muted)"><i
-                          class="fal fa-map-marker-alt me-1"></i><?= htmlspecialchars($pr['location_name'] ?: 'N/A') ?></div>
-                    </td>
-                    <td style="font-weight:600"><?= $pr['total_floors'] ?: '—' ?></td>
-                    <td>
-                      <div style="display:flex;align-items:center;gap:8px;min-width:130px">
-                        <div class="prog-track" style="flex:1">
-                          <div class="prog-fill" style="width:<?= min(100, $raw_pct) ?>%;background:<?= $grad ?>"></div>
-                        </div>
-                        <span style="font-weight:700;font-size:12px;color:<?= $pclr ?>"><?= cpFmtPct($raw_pct) ?></span>
-                      </div>
-                    </td>
-                    <td>
-                      <div style="font-weight:600"><?= conFmt($pr['total_spent']) ?></div>
-                      <div style="font-size:10.5px;color:var(--text-muted)">of <?= conFmt($pr['total_budget']) ?>
-                        (<?= $budgetUsedPct ?>%)</div>
-                    </td>
-                    <td>
-                      <span class="status-pill" style="background:<?= $sc['bg'] ?>;color:<?= $sc['text'] ?>">
-                        <?= htmlspecialchars($pr['project_status'] ?? 'Unknown') ?>
-                      </span>
-                    </td>
-                    <td style="text-align:right">
-                      <a href="<?= $base ?>/con-project/<?= $pr['id'] ?>" class="btn btn-sm"
-                        style="font-size:11px;padding:4px 12px;background:rgba(59,130,246,.1);color:var(--cd-blue);border-radius:6px;text-decoration:none"
-                        onclick="event.stopPropagation()">View <i class="fal fa-arrow-right ms-1"></i></a>
-                    </td>
-                  </tr>
-              <?php endforeach; ?>
-          <?php endif; ?>
-        </tbody>
-      </table>
-    </div>
+
 
    
 

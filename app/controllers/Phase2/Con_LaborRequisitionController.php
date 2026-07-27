@@ -46,10 +46,10 @@ class Con_LaborRequisitionController extends Controller
         // SE sees only their assigned projects in filter dropdown; others see all
         if ($this->isSiteEngineer() && $this->userRole !== 1) {
             $rPrj = $this->db->query(
-                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND site_engineer_id = {$this->userId} ORDER BY name"
+                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 AND site_engineer_id = {$this->userId} ORDER BY name"
             );
         } else {
-            $rPrj = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
+            $rPrj = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name");
         }
         $projects = $rPrj ? $rPrj->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -77,11 +77,11 @@ class Con_LaborRequisitionController extends Controller
         // SE sees only their assigned projects; PM/Mgmt/Admin see all
         if ($this->isSiteEngineer() && $this->userRole !== 1) {
             $rProjects = $this->db->query(
-                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND site_engineer_id = {$this->userId} ORDER BY name"
+                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 AND site_engineer_id = {$this->userId} ORDER BY name"
             );
         } else {
             $rProjects = $this->db->query(
-                "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name"
+                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name"
             );
         }
         $projects = $rProjects ? $rProjects->fetch_all(MYSQLI_ASSOC) : [];
@@ -366,5 +366,42 @@ class Con_LaborRequisitionController extends Controller
             $_SESSION['error'] = 'Could not confirm disbursement. Requisition may not be in paid status.';
         }
         $this->back($id);
+    }
+
+    public function delete($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $id = (int)$id;
+
+        $requisition = $this->model->find($id);
+        if (!$requisition) {
+            $_SESSION['error'] = 'Requisition not found.';
+            header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisitions');
+            exit;
+        }
+
+        // Only allow deleting pending requisitions
+        if ($requisition['status'] !== 'pending') {
+            $_SESSION['error'] = 'Processed or approved requisitions cannot be deleted.';
+            $this->back($id);
+        }
+
+        // Check permissions: only creator or Admin (role 1)
+        if ($requisition['requested_by'] !== $this->userId && ($_SESSION['user']['role_id'] ?? 0) !== 1) {
+            $_SESSION['error'] = 'You do not have permission to delete this requisition.';
+            $this->back($id);
+        }
+
+        // Delete from database
+        $stmt = $this->db->prepare("DELETE FROM con_labor_requisitions WHERE id = ?");
+        $stmt->bind_param('i', $id);
+        if ($stmt->execute()) {
+            $_SESSION['success'] = '✅ Labor requisition deleted successfully!';
+            header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisitions');
+            exit;
+        } else {
+            $_SESSION['error'] = 'Failed to delete requisition.';
+            $this->back($id);
+        }
     }
 }

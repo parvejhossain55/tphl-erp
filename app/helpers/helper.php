@@ -517,10 +517,11 @@ function setErrors(array $errors)
  * @param string $name
  * @param string $table
  * @param string $column
+ * @param int|null $excludeId
  * @return string
  */
 
-function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug')
+function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug', $excludeId = null)
 {
     $name = trim($name);
 
@@ -532,11 +533,14 @@ function generateUniqueSlug($db, $name, $table = 'lead_sources', $column = 'slug
 
     // Lowercase English letters only
     $slug = mb_strtolower($slug, 'UTF-8');
+    if (empty($slug)) {
+        $slug = 'project-' . time();
+    }
 
     $originalSlug = $slug;
     $i = 1;
 
-    while (slugExists($db, $slug, $table, $column)) {
+    while (slugExists($db, $slug, $table, $column, $excludeId)) {
         $slug = $originalSlug . '-' . $i;
         $i++;
     }
@@ -605,10 +609,15 @@ function addCameraWithHls($db, $project_id, $project_name, $camera_name, $rtsp_u
  * @param string $column
  * @return bool
  */
-function slugExists($db, $slug, $table = 'lead_sources', $column = 'slug')
+function slugExists($db, $slug, $table = 'lead_sources', $column = 'slug', $excludeId = null)
 {
-    $stmt = $db->prepare("SELECT id FROM $table WHERE $column = ?");
-    $stmt->bind_param("s", $slug);
+    if ($excludeId !== null) {
+        $stmt = $db->prepare("SELECT id FROM $table WHERE $column = ? AND id != ?");
+        $stmt->bind_param("si", $slug, $excludeId);
+    } else {
+        $stmt = $db->prepare("SELECT id FROM $table WHERE $column = ?");
+        $stmt->bind_param("s", $slug);
+    }
     $stmt->execute();
     $result = $stmt->get_result();
     return $result && $result->num_rows > 0;
@@ -632,7 +641,7 @@ function getSetting($key, $default = null)
 
     if ($settings === null) {
         $db = $GLOBALS['db'];
-        $stmt = $db->prepare("SELECT * FROM site_settings WHERE id = 1 LIMIT 1");
+        $stmt = $db->prepare("SELECT * FROM site_settings ORDER BY id ASC LIMIT 1");
         if ($stmt && $stmt->execute()) {
             $result = $stmt->get_result();
             $settings = $result ? $result->fetch_assoc() : [];

@@ -59,15 +59,15 @@ class Con_ContractorBillController extends Controller
     private function canApproveQC()
     {
         if (in_array($this->userRole, [3, 22])) return false;
-        if ($this->userRole === 1) return true;
+        if (in_array($this->userRole, [1, 24, 25])) return true;
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        return ($roleName === 'qc & internal audit' || hasPermission('QC & Internal Audit'));
+        return (str_contains($roleName, 'qc & internal audit') || hasPermission('QC & Internal Audit'));
     }
 
     /** Roles 1, 3, 6 (Accounts) can process payments */
     private function canProcessPayment()
     {
-        return in_array($this->userRole, [1, 3, 6]);
+        return in_array($this->userRole, [1, 3, 6, 30]);
     }
 
     // =========================================================================

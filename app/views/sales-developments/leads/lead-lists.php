@@ -191,7 +191,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                         $selectedYear = $selectedYear ?? '';
                         ?>
                         <select class="form-select form-select-sm" name="year">
-                            <option value="">Year Select</option>
+                            <option value="">Year: All</option>
                             <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
                                 <option value="<?= $year ?>" <?= $selectedYear == $year ? 'selected' : '' ?>>
                                     <?= $year ?>
@@ -212,7 +212,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                         $selectedMonth = $_GET['month'] ?? '';
                         ?>
                         <select class="form-select form-select-sm" name="month">
-                            <option value="">Month Select</option>
+                            <option value="">Month: All</option>
                             <?php foreach ($months as $id => $name): ?>
                                 <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>>
                                     <?= $name ?>
@@ -242,8 +242,8 @@ $activeCard = $_GET['filter_card'] ?? '';
                     ?>
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Team</label>
-                        <select class="form-select form-select-sm filter-select select2" name="team_id">
-                            <option value="">Select Team</option>
+                        <select class="form-select form-select-sm filter-select select2" name="team_id" data-placeholder="Team: All">
+                            <option value="">Team: All</option>
                             <?php foreach ($teams as $t): ?>
                                 <option value="<?= $t['id'] ?>" <?= ($selectedTeam ?? '') == $t['id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($t['name']) ?>
@@ -255,10 +255,10 @@ $activeCard = $_GET['filter_card'] ?? '';
 
                     <!-- Project Filter -->
                     <?php if (!empty($projects)): ?>
-                    <div class="col-6 col-md-2">
+                    <div class="col-6 col-md-2 d-none">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Project</label>
-                        <select class="form-select form-select-sm filter-select select2" name="project_id">
-                            <option value="">Select Project</option>
+                        <select class="form-select form-select-sm filter-select select2" name="project_id" data-placeholder="Project: All">
+                            <option value="">Project: All</option>
                             <?php foreach ($projects as $p): ?>
                                 <option value="<?= $p['id'] ?>" <?= ($selectedProject ?? '') == $p['id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($p['name']) ?>
@@ -268,17 +268,14 @@ $activeCard = $_GET['filter_card'] ?? '';
                     </div>
                     <?php endif; ?>
 
-                </div>
-
-                <!-- Line 2 -->
-                <div class="row  mt-1 align-items-end">
+             
 
                     <!-- Category Filter -->
                     <?php if (!empty($categories)): ?>
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Category</label>
-                        <select class="form-select form-select-sm filter-select select2" name="project_category_id">
-                            <option value="">Select Category</option>
+                        <select class="form-select form-select-sm filter-select select2" name="project_category_id" data-placeholder="Category: All">
+                            <option value="">Category: All</option>
                             <?php foreach ($categories as $cat): ?>
                                 <option value="<?= $cat['id'] ?>" <?= ($selectedCategory ?? '') == $cat['id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($cat['name']) ?>
@@ -292,8 +289,8 @@ $activeCard = $_GET['filter_card'] ?? '';
                     <?php if (!empty($countries)): ?>
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Country</label>
-                        <select class="form-select form-select-sm filter-select select2" name="filter_country">
-                            <option value="">Select Country</option>
+                        <select class="form-select form-select-sm filter-select select2" name="filter_country" data-placeholder="Country: All">
+                            <option value="">Country: All</option>
                             <?php foreach ($countries as $c): ?>
                                 <option value="<?= htmlspecialchars($c) ?>" <?= ($selectedCountry ?? '') == $c ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($c) ?>
@@ -306,8 +303,8 @@ $activeCard = $_GET['filter_card'] ?? '';
                     <!-- Sales Executive Filter -->
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Sales Executive</label>
-                        <select class="form-select form-select-sm filter-select select2" name="assigned_user">
-                            <option value="">Select Sales Executive</option>
+                        <select class="form-select form-select-sm filter-select select2" name="assigned_user" data-placeholder="Sales Executive: All">
+                            <option value="">Sales Executive: All</option>
                             <?php foreach ($assignedUsers as $user): ?>
                                 <option value="<?= $user['id'] ?>" <?= ($selectedAssignedUser ?? '') == $user['id'] ? 'selected' : '' ?>>
                                     <?= $user['full_name'] ?>
@@ -502,7 +499,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                     $selectedYear = $_GET['year'] ?? '';
                     ?>
                     <select class="form-select form-select-sm" name="year">
-                        <option value="">Select Year</option>
+                        <option value="">Year: All</option>
                         <?php for ($y = $currentYear; $y >= $startYear; $y--): ?>
                             <option value="<?= $y ?>" <?= $selectedYear == $y ? 'selected' : '' ?>>
                                 <?= $y ?>
@@ -529,7 +526,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                     $selectedMonth = $_GET['month'] ?? '';
                     ?>
                     <select class="form-select form-select-sm" name="month">
-                        <option value="">Select Month</option>
+                        <option value="">Month: All</option>
                         <?php foreach ($months as $id => $name): ?>
                             <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>>
                                 <?= $name ?>
@@ -555,8 +552,8 @@ $activeCard = $_GET['filter_card'] ?? '';
                         placeholder="To Date">
 
                     <!-- Assigned User -->
-                    <select class="form-select form-select-sm select2" name="assigned_user">
-                        <option value="">Select Sales Executive</option>
+                    <select class="form-select form-select-sm select2" name="assigned_user" data-placeholder="Sales Executive: All">
+                        <option value="">Sales Executive: All</option>
                         <?php foreach ($assignedUsers as $user): ?>
                             <option value="<?= $user['id'] ?>"
                                 <?= ($_GET['assigned_user'] ?? '') == $user['id'] ? 'selected' : '' ?>>
@@ -803,10 +800,17 @@ $activeCard = $_GET['filter_card'] ?? '';
                         <!-- Agent Name -->
                         <div class="d-flex align-items-center gap-2 mt-2">
                             <div class="info-label flex-shrink-0">Executive Name</div>
-                            <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
-                                <i class="bi bi-person me-1"></i>
-                                <?= $lead['agent_name'] ?? 'No Agent Assigned' ?>
-                            </span>
+                            <?php if (empty($lead['agent_name'])): ?>
+                                <span class="badge rounded-pill px-2 py-1 text-danger" style="font-size: 0.75rem; background-color: #fde8e8; border: 1px solid #f8b4b4;">
+                                    <i class="bi bi-person me-1"></i>
+                                    No Agent Assigned
+                                </span>
+                            <?php else: ?>
+                                <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                                    <i class="bi bi-person me-1"></i>
+                                    <?= htmlspecialchars($lead['agent_name']) ?>
+                                </span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -1053,13 +1057,15 @@ document.addEventListener('DOMContentLoaded', function () {
                             html: `<div class="text-start mb-3" style="font-size:0.85rem;">
                                     Some of the selected leads are already assigned:<br><br>
                                     ${dupInfo}<br><br>
-                                    Would you like to assign them to their <strong>Existing Executive</strong> or proceed with the <strong>New Executive</strong>?
+                                    Please choose how to assign them:<br><br>
+                                    • <strong>Split Assign:</strong> Assign duplicate leads back to their <strong>Existing Executive(s)</strong> (e.g. Shafia), and assign the remaining leads to the <strong>New Executive</strong>.<br><br>
+                                    • <strong>Assign All to New:</strong> Override and assign all selected leads (including duplicates) to the <strong>New Executive</strong>.
                                    </div>`,
                             icon: 'warning',
                             showCancelButton: true,
                             showDenyButton: true,
-                            confirmButtonText: 'Existing Executive',
-                            denyButtonText: 'New Executive',
+                            confirmButtonText: 'Split Assign (Existing + Rest to New)',
+                            denyButtonText: 'Assign All to New',
                             cancelButtonText: 'Cancel',
                             confirmButtonColor: '#198754',
                             denyButtonColor: '#0d6efd',
@@ -1107,13 +1113,15 @@ document.addEventListener('DOMContentLoaded', function () {
                             html: `<div class="text-start mb-3" style="font-size:0.85rem;">
                                     Some of the selected leads are already assigned:<br><br>
                                     ${dupInfo}<br><br>
-                                    Would you like to assign them to their <strong>Existing Executive</strong> or proceed with the <strong>New Executive</strong>?
+                                    Please choose how to assign them:<br><br>
+                                    • <strong>Split Assign:</strong> Assign duplicate leads back to their <strong>Existing Executive(s)</strong> (e.g. Shafia), and assign the remaining leads to the <strong>New Executive</strong>.<br><br>
+                                    • <strong>Assign All to New:</strong> Override and assign all selected leads (including duplicates) to the <strong>New Executive</strong>.
                                    </div>`,
                             icon: 'warning',
                             showCancelButton: true,
                             showDenyButton: true,
-                            confirmButtonText: 'Existing Executive',
-                            denyButtonText: 'New Executive',
+                            confirmButtonText: 'Split Assign (Existing + Rest to New)',
+                            denyButtonText: 'Assign All to New',
                             cancelButtonText: 'Cancel',
                             confirmButtonColor: '#198754',
                             denyButtonColor: '#0d6efd',
@@ -1332,6 +1340,18 @@ document.addEventListener('DOMContentLoaded', function () {
             bestTimeStr = `<div class="text-info small mt-1"><i class="bi bi-clock me-1"></i>Best Contact Time: ${lead.when_is_the_best_time_to_contact_you.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`;
         }
 
+        let agentBadge = '';
+        if (lead.agent_name) {
+            const agentNameClean = lead.agent_name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            agentBadge = `<span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size:.75rem;">
+                <i class="bi bi-person me-1"></i>${agentNameClean}
+            </span>`;
+        } else {
+            agentBadge = `<span class="badge rounded-pill px-2 py-1 text-danger" style="font-size:.75rem; background-color: #fde8e8; border: 1px solid #f8b4b4;">
+                <i class="bi bi-person me-1"></i>No Agent Assigned
+            </span>`;
+        }
+
         return `
         <div class="col-12 col-sm-6">
           <div id="lead-${lead.id}" class="lead-card h-100" data-id="${lead.id}">
@@ -1379,9 +1399,7 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
             <div class="d-flex align-items-center gap-2 mt-2">
               <div class="info-label flex-shrink-0">Executive</div>
-              <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size:.75rem;">
-                <i class="bi bi-person me-1"></i>${lead.agent_name || 'No Agent'}
-              </span>
+              ${agentBadge}
             </div>
           </div>
         </div>`;
@@ -1570,6 +1588,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <!-- ══ Lead Lists — Duplicate Leads Modal ══════════════════════════════════ -->
 <?php if (!empty($dupGroups)): ?>
+<style>
+.swal2-container {
+    z-index: 99999 !important;
+}
+</style>
 <div class="modal fade" id="leadDupModal" tabindex="-1" aria-labelledby="leadDupModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content" style="border-radius:14px;overflow:hidden;">
@@ -1643,9 +1666,22 @@ document.addEventListener('DOMContentLoaded', function () {
                     <th>Assigned To (Member)</th>
                     <th>Team</th>
                     <th>Assigned Date</th>
+                    <th class="pe-3 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
+                  <?php
+                    // Find the index of the oldest assignment
+                    $oldestIndex = 0;
+                    $minTime = null;
+                    foreach ($grp['rows'] as $idx => $r) {
+                        $time = !empty($r['assigned_date']) ? strtotime($r['assigned_date']) : PHP_INT_MAX;
+                        if ($minTime === null || $time < $minTime) {
+                            $minTime = $time;
+                            $oldestIndex = $idx;
+                        }
+                    }
+                  ?>
                   <?php foreach ($grp['rows'] as $ri => $r): ?>
                   <tr class="ld-dup-row" data-member="<?= htmlspecialchars($r['assigned_to_name'] ?? '') ?>">
                     <td class="ps-3 text-muted"><?= $ri + 1 ?></td>
@@ -1688,7 +1724,25 @@ document.addEventListener('DOMContentLoaded', function () {
                       <?php if (!empty($r['assigned_date'])): ?>
                         <div class="fw-semibold text-dark" style="font-size:.8rem;"><?= date('M d, Y', strtotime($r['assigned_date'])) ?></div>
                         <small><?= date('h:i A', strtotime($r['assigned_date'])) ?></small>
+                        <?php if ($ri === $oldestIndex): ?>
+                          <div class="mt-1">
+                            <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.65rem; font-weight: bold;">
+                              <i class="bi bi-clock-history me-1"></i>First Assigned
+                            </span>
+                          </div>
+                        <?php endif; ?>
                       <?php else: ?>&mdash;<?php endif; ?>
+                    </td>
+                    <td class="pe-3 text-center">
+                      <button class="btn btn-xs btn-outline-primary py-1 px-2 fw-semibold assign-dup-all-btn"
+                              onclick="handleReassignGroup(this, event)"
+                              data-user-id="<?= $r['assigned_id'] ?>"
+                              data-user-name="<?= htmlspecialchars($r['assigned_to_name'] ?? '') ?>"
+                              data-phone-or-email="<?= htmlspecialchars($grp['label']) ?>"
+                              data-lead-name="<?= htmlspecialchars($grp['name']) ?>"
+                              style="font-size:0.75rem;">
+                        Assign Group Here
+                      </button>
                     </td>
                   </tr>
                   <?php endforeach; ?>
@@ -1717,20 +1771,66 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var filterEl = document.getElementById('leadDupMemberFilter');
-    if (!filterEl) return;
-    filterEl.addEventListener('change', function () {
-        var selected = this.value.toLowerCase();
-        var anyVisible = false;
-        document.querySelectorAll('.ld-dup-group').forEach(function (grp) {
-            var members = (grp.getAttribute('data-members') || '').toLowerCase();
-            var show = !selected || members.includes(selected);
-            grp.style.display = show ? '' : 'none';
-            if (show) anyVisible = true;
+    if (filterEl) {
+        filterEl.addEventListener('change', function () {
+            var selected = this.value.toLowerCase();
+            var anyVisible = false;
+            document.querySelectorAll('.ld-dup-group').forEach(function (grp) {
+                var members = (grp.getAttribute('data-members') || '').toLowerCase();
+                var show = !selected || members.includes(selected);
+                grp.style.display = show ? '' : 'none';
+                if (show) anyVisible = true;
+            });
+            var noRes = document.getElementById('leadDupNoResult');
+            if (noRes) noRes.classList.toggle('d-none', anyVisible);
         });
-        var noRes = document.getElementById('leadDupNoResult');
-        if (noRes) noRes.classList.toggle('d-none', anyVisible);
-    });
+    }
 });
+
+// Global function for assigning duplicate lead group
+window.handleReassignGroup = function (btn, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    var targetUserId = btn.getAttribute('data-user-id');
+    var targetUserName = btn.getAttribute('data-user-name');
+    var phoneOrEmail = btn.getAttribute('data-phone-or-email');
+    var leadName = btn.getAttribute('data-lead-name');
+
+    Swal.fire({
+        title: 'Assign Duplicate Group',
+        text: 'Are you sure you want to assign all duplicate leads for "' + leadName + '" (' + phoneOrEmail + ') to ' + targetUserName + '?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Assign All',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#0d6efd',
+        cancelButtonColor: '#6c757d'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            var baseUrl = window.base_url || '<?= $GLOBALS['base_url'] ?>';
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = baseUrl + '/reassign-duplicate-group';
+
+            var input1 = document.createElement('input');
+            input1.type = 'hidden';
+            input1.name = 'target_user_id';
+            input1.value = targetUserId;
+            form.appendChild(input1);
+
+            var input2 = document.createElement('input');
+            input2.type = 'hidden';
+            input2.name = 'phone_or_email';
+            input2.value = phoneOrEmail;
+            form.appendChild(input2);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+};
 </script>
 <?php endif; ?>
 
@@ -1783,11 +1883,20 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             confirmModal.show();
 
-            fetch((typeof base_url !== 'undefined' ? base_url : window.base_url || '') + '/bulk-payments-validate-csv', {
+            fetch('<?= $GLOBALS['base_url'] ?>/bulk-payments-validate-csv', {
                 method: 'POST',
                 body: formData
             })
-            .then(res => res.json())
+            .then(res => res.text().then(text => {
+                let resData;
+                try {
+                    resData = JSON.parse(text);
+                } catch (e) {
+                    console.error("Invalid JSON response:", text);
+                    throw new Error("Server response error: " + (text ? text.replace(/<[^>]*>?/gm, '').trim().substring(0, 150) : 'Empty server response'));
+                }
+                return resData;
+            }))
             .then(res => {
                 if (!res.success) {
                     tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger fw-semibold">${escapeHTML(res.message || 'Validation failed')}</td></tr>`;
@@ -1812,12 +1921,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     let typeBadge = '';
-                    if (rowData.payment_type === 'booking_money') {
+                    const pt = (rowData.payment_type || '').toLowerCase();
+                    if (pt === 'booking_money') {
                         typeBadge = '<span class="badge bg-success-subtle text-success">Booking Money</span>';
-                    } else if (rowData.payment_type === 'registration') {
+                    } else if (pt === 'registration') {
                         typeBadge = '<span class="badge bg-info-subtle text-info">Registration</span>';
+                    } else if (pt === 'land_share') {
+                        typeBadge = '<span class="badge bg-warning-subtle text-dark">Land Share</span>';
+                    } else if (pt === 'emi') {
+                        typeBadge = '<span class="badge bg-primary-subtle text-primary">EMI</span>';
+                    } else if (pt === 'development_charge') {
+                        typeBadge = '<span class="badge bg-secondary-subtle text-dark">Development Charge</span>';
                     } else {
-                        typeBadge = `<span class="badge bg-danger-subtle text-danger">${rowData.payment_type || 'empty'}</span>`;
+                        typeBadge = `<span class="badge bg-light text-dark border">${escapeHTML(rowData.payment_type || 'empty')}</span>`;
                     }
 
                     // Normalize method display
@@ -1861,9 +1977,9 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .catch(err => {
                 console.error("AJAX validation error:", err);
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger fw-semibold">Error verifying CSV file with the server.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger fw-semibold">${escapeHTML(err.message || 'Error verifying CSV file with the server.')}</td></tr>`;
                 alertEl.className = 'alert alert-danger d-block';
-                alertEl.innerHTML = `<i class="bi bi-x-circle-fill me-2"></i><strong>Error:</strong> Failed to connect to verification server.`;
+                alertEl.innerHTML = `<i class="bi bi-x-circle-fill me-2"></i><strong>Error:</strong> ${escapeHTML(err.message || 'Failed to connect to verification server.')}`;
                 submitBtn.disabled = true;
             });
         });

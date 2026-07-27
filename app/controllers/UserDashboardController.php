@@ -42,6 +42,62 @@ class UserDashboardController extends Controller
         // only assigned today leads for logged user
         $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId);
 
+        // Fetch duplicate leads for the logged in user
+        $userDuplicates = $this->leadModel->getDuplicateLeadsForUser($loggedUserId);
+        $phoneMap = [];
+        $emailMap = [];
+        foreach ($userDuplicates as $row) {
+            $phone1 = preg_replace('/[^0-9]/', '', $row['phone_number'] ?? '');
+            $phone2 = preg_replace('/[^0-9]/', '', $row['phone'] ?? '');
+            $email = trim(strtolower($row['email'] ?? ''));
+            
+            $dupInfo = [
+                'id' => $row['id'],
+                'full_name' => $row['full_name'],
+                'created_at' => $row['created_at'] ? date('d F, Y', strtotime($row['created_at'])) : '',
+                'project_name' => $row['project_name'] ?? 'N/A',
+                'last_lead_action' => $row['last_lead_action'] ?? 'N/A',
+                'lead_type' => $row['lead_type'] ?? 'N/A'
+            ];
+
+            if ($phone1 !== '') {
+                if (!isset($phoneMap[$phone1])) {
+                    $phoneMap[$phone1] = [];
+                }
+                $exists = false;
+                foreach ($phoneMap[$phone1] as $item) {
+                    if ($item['id'] == $row['id']) { $exists = true; break; }
+                }
+                if (!$exists) {
+                    $phoneMap[$phone1][] = $dupInfo;
+                }
+            }
+            if ($phone2 !== '' && $phone2 !== $phone1) {
+                if (!isset($phoneMap[$phone2])) {
+                    $phoneMap[$phone2] = [];
+                }
+                $exists = false;
+                foreach ($phoneMap[$phone2] as $item) {
+                    if ($item['id'] == $row['id']) { $exists = true; break; }
+                }
+                if (!$exists) {
+                    $phoneMap[$phone2][] = $dupInfo;
+                }
+            }
+            if ($email !== '') {
+                if (!isset($emailMap[$email])) {
+                    $emailMap[$email] = [];
+                }
+                $exists = false;
+                foreach ($emailMap[$email] as $item) {
+                    if ($item['id'] == $row['id']) { $exists = true; break; }
+                }
+                if (!$exists) {
+                    $emailMap[$email][] = $dupInfo;
+                }
+            }
+        }
+
         $myAllLeads = $this->leadModel->getAllMyLeads($loggedUserId);
         $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
         $this->view("sales-executive/today-leads", [
@@ -51,6 +107,8 @@ class UserDashboardController extends Controller
             "followUpCounts" => $followUpCounts,
             "bookingCount"    => $bookingCount,
             "todayFollowUp"    => $todayFollowUp,
+            "phoneMap"        => $phoneMap,
+            "emailMap"        => $emailMap,
         ]);
     }
 
@@ -519,6 +577,60 @@ class UserDashboardController extends Controller
                 }
             }
         }
+        $userDuplicates = $this->leadModel->getDuplicateLeadsForUser($userId);
+        $phoneMap = [];
+        $emailMap = [];
+        foreach ($userDuplicates as $row) {
+            $phone1 = preg_replace('/[^0-9]/', '', $row['phone_number'] ?? '');
+            $phone2 = preg_replace('/[^0-9]/', '', $row['phone'] ?? '');
+            $email = trim(strtolower($row['email'] ?? ''));
+            
+            $dupInfo = [
+                'id' => $row['id'],
+                'full_name' => $row['full_name'],
+                'created_at' => $row['created_at'] ? date('d F, Y', strtotime($row['created_at'])) : '',
+                'project_name' => $row['project_name'] ?? 'N/A',
+                'last_lead_action' => $row['last_lead_action'] ?? 'N/A',
+                'lead_type' => $row['lead_type'] ?? 'N/A'
+            ];
+
+            if ($phone1 !== '') {
+                if (!isset($phoneMap[$phone1])) {
+                    $phoneMap[$phone1] = [];
+                }
+                $exists = false;
+                foreach ($phoneMap[$phone1] as $item) {
+                    if ($item['id'] == $row['id']) { $exists = true; break; }
+                }
+                if (!$exists) {
+                    $phoneMap[$phone1][] = $dupInfo;
+                }
+            }
+            if ($phone2 !== '' && $phone2 !== $phone1) {
+                if (!isset($phoneMap[$phone2])) {
+                    $phoneMap[$phone2] = [];
+                }
+                $exists = false;
+                foreach ($phoneMap[$phone2] as $item) {
+                    if ($item['id'] == $row['id']) { $exists = true; break; }
+                }
+                if (!$exists) {
+                    $phoneMap[$phone2][] = $dupInfo;
+                }
+            }
+            if ($email !== '') {
+                if (!isset($emailMap[$email])) {
+                    $emailMap[$email] = [];
+                }
+                $exists = false;
+                foreach ($emailMap[$email] as $item) {
+                    if ($item['id'] == $row['id']) { $exists = true; break; }
+                }
+                if (!$exists) {
+                    $emailMap[$email][] = $dupInfo;
+                }
+            }
+        }
 
         $this->view('sales-executive/my-assigned-leads', [
             'page_title'          => 'My Assigned Leads',
@@ -532,6 +644,8 @@ class UserDashboardController extends Controller
             'duplicateCount'      => $duplicateCount,
             'missingFollowUpCount'=> $missingFollowUpCount,
             'isFilterMissing'     => $onlyMissingFollowup,
+            'phoneMap'            => $phoneMap,
+            'emailMap'            => $emailMap,
             'page_script'         => "
                 const urlParams = new URLSearchParams(window.location.search);
                 const pageFromUrl = parseInt(urlParams.get('page') || '1', 10);

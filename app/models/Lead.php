@@ -119,6 +119,113 @@ class Lead extends Model
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
+    public function countAll($period = null, $roleId = null, $teamId = null)
+    {
+        $sqlQuery = "
+            SELECT COUNT(l.id) AS total
+            FROM leads AS l
+            LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
+            WHERE l.deleted_at IS NULL
+              AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+        ";
+        
+        $params = [];
+        $types = "";
+        
+        // Handle flexible parameter passing: countAll($period, $teamId) or countAll($period, $roleId, $teamId)
+        $actualTeamId = !empty($teamId) ? $teamId : (!empty($roleId) ? $roleId : null);
+
+        if (!empty($actualTeamId)) {
+            $sqlQuery .= " AND l.team_id = ?";
+            $params[] = $actualTeamId;
+            $types .= "i";
+        }
+        
+        if ($period) {
+            switch ($period) {
+                case 'daily':
+                    $sqlQuery .= " AND DATE(l.created_at) = CURDATE()";
+                    break;
+                case 'weekly':
+                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                    break;
+                case 'monthly':
+                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    break;
+                case 'yearly':
+                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    break;
+            }
+        }
+        
+        $stmt = $this->db->prepare($sqlQuery);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        return $res ? (int)$res['total'] : 0;
+    }
+
+    public function countAllByDate($period, $previous = false)
+    {
+        $sqlQuery = "
+            SELECT COUNT(l.id) AS total FROM leads AS l
+            WHERE l.status = 'active' AND l.deleted_at IS NULL
+        ";
+        
+        $today = date('Y-m-d');
+        if ($period) {
+            switch ($period) {
+                case 'daily':
+                    $date = $previous ? date('Y-m-d', strtotime('-1 day')) : $today;
+                    $sqlQuery .= " AND DATE(l.created_at) = '$date'";
+                    break;
+                case 'weekly':
+                    if ($previous) {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 14 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                    } else {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                    }
+                    break;
+                case 'monthly':
+                    if ($previous) {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    } else {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    }
+                    break;
+                case 'yearly':
+                    if ($previous) {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 2 YEAR) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    } else {
+                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    }
+                    break;
+            }
+        }
+        
+        $stmt = $this->db->prepare($sqlQuery);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        return $res ? (int)$res['total'] : 0;
+    }
+
+    public function countAllByDateRange($startDate, $endDate)
+    {
+        if (empty($startDate) || empty($endDate)) {
+            return 0;
+        }
+        $sql = "SELECT COUNT(id) AS total FROM leads WHERE status = 'active' AND deleted_at IS NULL AND created_at BETWEEN ? AND ?";
+        $stmt = $this->db->prepare($sql);
+        $startStr = $startDate . ' 00:00:00';
+        $endStr = $endDate . ' 23:59:59';
+        $stmt->bind_param("ss", $startStr, $endStr);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        return $res ? (int)$res['total'] : 0;
+    }
+
 
     public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null)
     {
@@ -130,8 +237,8 @@ class Lead extends Model
         $params = [];
         $types  = "";
 
-        // ROLE BASED FILTER
-        if (in_array($roleId, [1, 3, 5, 9]) && !empty($teamId)) {
+        // TEAM BASED FILTER
+        if (!empty($teamId)) {
             $sql .= " AND l.team_id = ?";
             $params[] = $teamId;
             $types .= "i";
@@ -320,8 +427,8 @@ class Lead extends Model
         $params = [];
         $types  = "";
 
-        //  ROLE BASED FILTER
-        if (in_array($roleId, [1, 3, 5, 9]) && !empty($teamId)) {
+        // TEAM BASED FILTER
+        if (!empty($teamId)) {
             $sql .= " AND l.team_id = ?";
             $params[] = $teamId;
             $types .= "i";
@@ -901,12 +1008,14 @@ class Lead extends Model
 
     public function create($data)
     {
-        // Auto-assign duplicates to the first owner
-        if (empty($data['assigned_id'])) {
-            $firstAssignee = $this->findFirstAssignee($data['phone_number'] ?? $data['phone'] ?? null, $data['email'] ?? null);
-            if ($firstAssignee) {
-                $data['assigned_id'] = $firstAssignee['assigned_id'];
-                $data['team_id']     = $firstAssignee['team_id'];
+        // Auto-assign duplicates to the first owner or team
+        $firstAssignee = $this->findFirstAssignee($data['phone_number'] ?? $data['phone'] ?? null, $data['email'] ?? null);
+        if ($firstAssignee) {
+            if (!empty($firstAssignee['team_id'])) {
+                $data['team_id'] = (int)$firstAssignee['team_id'];
+            }
+            if (empty($data['assigned_id']) && !empty($firstAssignee['assigned_id'])) {
+                $data['assigned_id'] = (int)$firstAssignee['assigned_id'];
             }
         }
 
@@ -991,7 +1100,7 @@ class Lead extends Model
         $visibility = $data['visibility'] ?? 'public';
         $status = $data['status'] ?? 'active';
         $lead_quality = $data['lead_quality'] ?? 'Pending';
-        $lead_type = $data['lead_type'] ?? null;
+        $lead_type = (!empty($data['lead_type']) && trim((string)$data['lead_type']) !== '') ? trim((string)$data['lead_type']) : null;
         $company_name = isset($data['company_name']) ? mb_substr((string)$data['company_name'], 0, 255, 'UTF-8') : null;
         $team_id = $data['team_id'] ?? null;
         $created_by = $data['created_by'] ?? null;
@@ -1087,12 +1196,14 @@ class Lead extends Model
      */
     public function createFromCsvBulk(&$data)
     {
-        // Auto-assign duplicates to the first owner
-        if (empty($data['assigned_id'])) {
-            $firstAssignee = $this->findFirstAssignee($data['phone'] ?? $data['phone_number'] ?? null, $data['email'] ?? null);
-            if ($firstAssignee) {
-                $data['assigned_id'] = $firstAssignee['assigned_id'];
-                $data['team_id']     = $firstAssignee['team_id'];
+        // Auto-assign duplicates to the first owner or team
+        $firstAssignee = $this->findFirstAssignee($data['phone'] ?? $data['phone_number'] ?? null, $data['email'] ?? null);
+        if ($firstAssignee) {
+            if (!empty($firstAssignee['team_id'])) {
+                $data['team_id'] = (int)$firstAssignee['team_id'];
+            }
+            if (empty($data['assigned_id']) && !empty($firstAssignee['assigned_id'])) {
+                $data['assigned_id'] = (int)$firstAssignee['assigned_id'];
             }
         }
 
@@ -1449,7 +1560,7 @@ class Lead extends Model
     /**
      * Count marketing leads for AJAX pagination (mirrors getMarketingLeadsFlexible filters)
      */
-    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null)
+    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null, $projectId = null)
     {
         $sql = "SELECT COUNT(*) AS total FROM leads l WHERE l.deleted_at IS NULL AND l.uploaded_from = 'From Campaign'";
 
@@ -1485,6 +1596,12 @@ class Lead extends Model
         if ($projectCategoryId) {
             $sql .= " AND l.project_category_id = ?";
             $params[] = $projectCategoryId;
+            $types   .= "i";
+        }
+
+        if ($projectId) {
+            $sql .= " AND l.project_id = ?";
+            $params[] = $projectId;
             $types   .= "i";
         }
 
@@ -1528,7 +1645,7 @@ class Lead extends Model
     /**
      * Paginated marketing leads for AJAX (same contact_status logic, adds LIMIT/OFFSET + search)
      */
-    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null)
+    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null, $projectId = null)
     {
         $sql = "
         SELECT
@@ -1614,6 +1731,12 @@ class Lead extends Model
         if ($projectCategoryId) {
             $sql .= " AND l.project_category_id = ?";
             $params[] = $projectCategoryId;
+            $types   .= "i";
+        }
+
+        if ($projectId) {
+            $sql .= " AND l.project_id = ?";
+            $params[] = $projectId;
             $types   .= "i";
         }
 
@@ -1876,39 +1999,52 @@ class Lead extends Model
         }
         
         $sql = "
-            SELECT l.assigned_id, l.team_id 
+            SELECT l.assigned_id, l.team_id, l.created_at
             FROM leads l
-            JOIN users u ON l.assigned_id = u.id
-            LEFT JOIN employees emp ON emp.user_id = u.id
             WHERE l.deleted_at IS NULL 
-              AND l.assigned_id IS NOT NULL 
-              AND u.role_id IS NOT NULL 
-              AND u.role_id != 0 
-              AND u.role_id != ''
-              AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+              AND (l.assigned_id IS NOT NULL OR l.team_id IS NOT NULL)
         ";
         
         $params = [];
         $types = "";
         
         if (!empty($phoneNumber) && !empty($email)) {
-            $sql .= " AND (l.phone_number = ? OR l.phone = ? OR l.email = ?)";
-            $params[] = $phoneNumber;
-            $params[] = $phoneNumber;
-            $params[] = $email;
-            $types .= "sss";
+            $digits = preg_replace('/\D/', '', $phoneNumber);
+            if (strlen($digits) >= 10) {
+                $suffix = substr($digits, -10);
+                $sql .= " AND (RIGHT(REGEXP_REPLACE(l.phone_number, '[^0-9]', ''), 10) = ? OR RIGHT(REGEXP_REPLACE(l.phone, '[^0-9]', ''), 10) = ? OR l.email = ?)";
+                $params[] = $suffix;
+                $params[] = $suffix;
+                $params[] = $email;
+                $types .= "sss";
+            } else {
+                $sql .= " AND (l.phone_number = ? OR l.phone = ? OR l.email = ?)";
+                $params[] = $phoneNumber;
+                $params[] = $phoneNumber;
+                $params[] = $email;
+                $types .= "sss";
+            }
         } elseif (!empty($phoneNumber)) {
-            $sql .= " AND (l.phone_number = ? OR l.phone = ?)";
-            $params[] = $phoneNumber;
-            $params[] = $phoneNumber;
-            $types .= "ss";
+            $digits = preg_replace('/\D/', '', $phoneNumber);
+            if (strlen($digits) >= 10) {
+                $suffix = substr($digits, -10);
+                $sql .= " AND (RIGHT(REGEXP_REPLACE(l.phone_number, '[^0-9]', ''), 10) = ? OR RIGHT(REGEXP_REPLACE(l.phone, '[^0-9]', ''), 10) = ?)";
+                $params[] = $suffix;
+                $params[] = $suffix;
+                $types .= "ss";
+            } else {
+                $sql .= " AND (l.phone_number = ? OR l.phone = ?)";
+                $params[] = $phoneNumber;
+                $params[] = $phoneNumber;
+                $types .= "ss";
+            }
         } else {
             $sql .= " AND l.email = ?";
             $params[] = $email;
             $types .= "s";
         }
         
-        $sql .= " ORDER BY l.created_at ASC LIMIT 1";
+        $sql .= " ORDER BY l.created_at ASC, l.id ASC LIMIT 1";
         
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
@@ -1966,4 +2102,83 @@ class Lead extends Model
         sort($countries);
         return $countries;
     }
+
+    public function getDuplicateLeadsForUser(int $userId)
+    {
+        $userId = (int) $userId;
+        $sql = "
+            SELECT 
+                l.id,
+                l.full_name,
+                l.phone_number,
+                l.phone,
+                l.email,
+                l.created_at,
+                l.assigned_at,
+                l.last_lead_action,
+                l.lead_type,
+                p.name AS project_name
+            FROM leads l
+            LEFT JOIN projects p ON l.project_id = p.id
+            WHERE l.assigned_id = ?
+              AND l.deleted_at IS NULL
+            ORDER BY l.created_at DESC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $allLeads = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+        $stmt->close();
+
+        // 1. Build counts of phone numbers and emails
+        $phonesCount = [];
+        $emailsCount = [];
+
+        foreach ($allLeads as $lead) {
+            $phone1 = preg_replace('/[^0-9]/', '', $lead['phone_number'] ?? '');
+            $phone2 = preg_replace('/[^0-9]/', '', $lead['phone'] ?? '');
+            $email = trim(strtolower($lead['email'] ?? ''));
+
+            if ($phone1 !== '') {
+                $phonesCount[$phone1] = ($phonesCount[$phone1] ?? 0) + 1;
+            }
+            if ($phone2 !== '' && $phone2 !== $phone1) {
+                $phonesCount[$phone2] = ($phonesCount[$phone2] ?? 0) + 1;
+            }
+            if ($email !== '') {
+                $emailsCount[$email] = ($emailsCount[$email] ?? 0) + 1;
+            }
+        }
+
+        // 2. Filter list in memory to keep only those that have duplicate values
+        $duplicates = [];
+        foreach ($allLeads as $lead) {
+            $phone1 = preg_replace('/[^0-9]/', '', $lead['phone_number'] ?? '');
+            $phone2 = preg_replace('/[^0-9]/', '', $lead['phone'] ?? '');
+            $email = trim(strtolower($lead['email'] ?? ''));
+
+            $isDup = false;
+            if ($phone1 !== '' && ($phonesCount[$phone1] ?? 0) > 1) {
+                $isDup = true;
+            }
+            if ($phone2 !== '' && ($phonesCount[$phone2] ?? 0) > 1) {
+                $isDup = true;
+            }
+            if ($email !== '' && ($emailsCount[$email] ?? 0) > 1) {
+                $isDup = true;
+            }
+
+            if ($isDup) {
+                $duplicates[] = $lead;
+            }
+        }
+
+        return $duplicates;
+    }
 }
+

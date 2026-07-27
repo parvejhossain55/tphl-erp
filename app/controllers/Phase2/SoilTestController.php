@@ -185,14 +185,14 @@ class SoilTestController extends Controller {
 
     private function getMyAssignedProjects(int $userId, int $roleId, string $roleCol): array
     {
-        if (in_array($roleId, [1, 2, 3, 13, 15, 22])) {
+        if (in_array($roleId, [1, 2, 3, 13, 15, 20, 22])) {
             return $this->db->query(
-                "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC"
+                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name ASC"
             )->fetch_all(MYSQLI_ASSOC);
         }
         $stmt = $this->db->prepare(
             "SELECT id, name FROM projects 
-             WHERE deleted_at IS NULL 
+             WHERE deleted_at IS NULL AND under_construction = 1
                AND (pm_id = ? OR site_engineer_id = ? OR landman_id = ? OR struct_engineer_id = ? 
                     OR operation_head_id = ? OR draftsman_id = ? OR architect_id = ? 
                     OR estimator_id = ? OR qc_id = ? OR operator_id = ? OR created_by = ?)

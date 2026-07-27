@@ -152,8 +152,11 @@ class Con_PurchaseOrderController extends Controller
                 "UPDATE purchase_orders SET qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ?, status = 'QC Approved' WHERE id = ?"
             );
             $stmt->bind_param('isi', $userId, $note, $id);
-            $stmt->execute();
-            setSuccess('Purchase Order approved by QC & Internal Audit. Awaiting Management approval.');
+            if ($stmt->execute()) {
+                setSuccess('Purchase Order approved by QC & Internal Audit. Awaiting Management approval.');
+            } else {
+                setError('Failed to approve Purchase Order: ' . $stmt->error);
+            }
 
         // 2. Management Approval (role 3)
         } elseif ($roleId === 3) {
@@ -171,14 +174,16 @@ class Con_PurchaseOrderController extends Controller
                 "UPDATE purchase_orders SET mgmt_approved_by_id = ?, mgmt_approved_at = NOW(), mgmt_note = ?, status = 'Approved' WHERE id = ?"
             );
             $stmt->bind_param('isi', $userId, $note, $id);
-            $stmt->execute();
+            if ($stmt->execute()) {
+                // ── Notify Site Operator ─────────────────────────
+                require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+                $mailService = new \ProjectWorkflowMailService($this->db);
+                $mailService->notifySiteOperatorForApprovedPO($id, $po['project_name']);
 
-            // ── Notify Site Operator ─────────────────────────
-            require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
-            $mailService = new \ProjectWorkflowMailService($this->db);
-            $mailService->notifySiteOperatorForApprovedPO($id, $po['project_name']);
-
-            setSuccess('Purchase Order approved by Management. Status updated to Fully Approved!');
+                setSuccess('Purchase Order approved by Management. Status updated to Fully Approved!');
+            } else {
+                setError('Failed to approve Purchase Order: ' . $stmt->error);
+            }
 
         } else {
             setError('You are not authorized to approve Purchase Orders.');

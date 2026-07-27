@@ -388,7 +388,7 @@ CREATE TABLE `purchase_orders` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `request_id` int(10) unsigned NOT NULL,
   `created_by` int(11) NOT NULL,
-  `status` enum('Draft','Issued','Partially Received','Fully Received','Cancelled','PM Approved','Approved') NOT NULL DEFAULT 'Draft',
+  `status` enum('Draft','Issued','Partially Received','Fully Received','Cancelled','PM Approved','QC Approved','Approved') NOT NULL DEFAULT 'Draft',
   `order_date` date NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),

@@ -55,7 +55,7 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 22]);
                                             <div class="text-muted small" style="font-size:11px;"><?= htmlspecialchars($row['purpose']) ?></div>
                                             <?php if (!empty($row['req_attachment_path'])): ?>
                                                 <div class="mt-1">
-                                                    <a href="<?= $base_url ?>/<?= htmlspecialchars($row['req_attachment_path']) ?>" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:10px;">
+                                                    <a href="<?= $base_url ?>/public/<?= htmlspecialchars($row['req_attachment_path']) ?>" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:10px;">
                                                         <i class="fa-light fa-paperclip me-1"></i>Req Attachment
                                                     </a>
                                                 </div>
@@ -113,7 +113,7 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 22]);
                                                 <small class="text-muted" style="font-size:10px;">Paid at: <?= date('d M Y', strtotime($row['accounts_paid_at'])) ?></small>
                                                 <?php if (!empty($row['attachment_path'])): ?>
                                                     <div class="mt-1">
-                                                        <a href="<?= $base_url ?>/<?= htmlspecialchars($row['attachment_path']) ?>" target="_blank" class="btn btn-sm btn-outline-info py-0 px-2" style="font-size:10px;">
+                                                        <a href="<?= $base_url ?>/public/<?= htmlspecialchars($row['attachment_path']) ?>" target="_blank" class="btn btn-sm btn-outline-info py-0 px-2" style="font-size:10px;">
                                                             <i class="fa-light fa-paperclip me-1"></i>View Attachment
                                                         </a>
                                                     </div>

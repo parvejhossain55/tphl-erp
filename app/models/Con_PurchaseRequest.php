@@ -12,7 +12,7 @@ class Con_PurchaseRequest extends Model
     // READ
     // =========================================================================
 
-    public function getAll($executiveId = null)
+    public function getAll($executiveId = null, $pmId = null)
     {
         $sql = "SELECT pr.*, p.name AS project_name, u.full_name AS created_by_name,
                        exec.full_name AS assigned_executive_name,
@@ -28,8 +28,16 @@ class Con_PurchaseRequest extends Model
                 LEFT JOIN users u ON u.id = pr.created_by
                 LEFT JOIN users exec ON exec.id = pr.assigned_executive_id ";
         
+        $where = [];
         if ($executiveId) {
-            $sql .= " WHERE pr.assigned_executive_id = " . (int)$executiveId . " ";
+            $where[] = "pr.assigned_executive_id = " . (int)$executiveId;
+        }
+        if ($pmId) {
+            $where[] = "p.pm_id = " . (int)$pmId;
+        }
+
+        if (!empty($where)) {
+            $sql .= " WHERE " . implode(" AND ", $where);
         }
                 
         $sql .= " ORDER BY pr.id DESC";

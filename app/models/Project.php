@@ -382,8 +382,9 @@ class Project extends Model
         $operator_id       = !empty($data['operator_id']) ? (int)$data['operator_id'] : null;
         $purchase_user_id  = !empty($data['purchase_user_id']) ? (int)$data['purchase_user_id'] : null;
         $under_construction = isset($data['under_construction']) ? (int)$data['under_construction'] : 0;
+        $swimming_pool      = isset($data['swimming_pool']) ? (int)$data['swimming_pool'] : 0;
         $category_id        = !empty($data['category_id']) ? (int)$data['category_id'] : null;
-        $incentive_percentage = !empty($data['incentive_percentage']) ? (float)$data['incentive_percentage'] : null;
+        $incentive_percentage = (isset($data['incentive_percentage']) && $data['incentive_percentage'] !== '') ? (float)$data['incentive_percentage'] : null;
 
         $stmt->bind_param(
             "ssiiidsssisssssdssissssiiiissssssssssdiiiiiiiiiiii",
@@ -413,7 +414,7 @@ class Project extends Model
             $data['passenger_lift'],
             $data['cargo_lift'],
             $data['rooftop_gardening'],
-            $data['swimming_pool'],
+            $swimming_pool,
             $data['convention'],
             $data['electricity_backup'],
             $image,

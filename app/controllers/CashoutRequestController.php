@@ -94,13 +94,16 @@ class CashoutRequestController extends Controller
                    d.name          AS department_name,
                    u_req.full_name AS requester_name,
                    u_app.full_name AS approved_by_name,
-                   u_paid.full_name AS paid_by_name
+                   u_paid.full_name AS paid_by_name,
+                   oa.asset_code,
+                   oa.item_name    AS asset_name
             FROM fund_requisitions fr
             LEFT JOIN projects p     ON fr.project_id    = p.id
             LEFT JOIN departments d  ON fr.department_id = d.id
             LEFT JOIN users u_req    ON fr.requested_by  = u_req.id
             LEFT JOIN users u_app    ON fr.approved_by   = u_app.id
             LEFT JOIN users u_paid   ON fr.paid_by       = u_paid.id
+            LEFT JOIN office_assets oa ON fr.asset_id    = oa.id
             ORDER BY
                 FIELD(fr.status, 'approved', 'pending', 'paid', 'rejected'),
                 fr.id DESC
@@ -259,9 +262,9 @@ class CashoutRequestController extends Controller
             exit;
         }
 
-        // Authorization check — admin users AND the request owner can view
+        // Authorization check — admin users, QC users, AND the request owner can view
         $canView = false;
-        if ($this->isAdminUser()) {
+        if ($this->isAdminUser() || $this->canApproveQC()) {
             $canView = true;
         } elseif ($request['requested_by'] == $this->userId) {
             $canView = true;
@@ -743,7 +746,7 @@ class CashoutRequestController extends Controller
      */
     private function isAdminUser()
     {
-        return in_array($this->userRole, [1, 3, 6, 10]);
+        return in_array($this->userRole, [1, 3, 6, 10, 30]);
     }
 
     /**
@@ -756,8 +759,9 @@ class CashoutRequestController extends Controller
 
     private function canApproveQC()
     {
+        if (in_array($this->userRole, [1, 24, 25])) return true;
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        return ($roleName === 'qc & internal audit' || hasPermission('QC & Internal Audit') || $this->canApproveOrReject());
+        return (str_contains($roleName, 'qc & internal audit') || hasPermission('QC & Internal Audit') || $this->canApproveOrReject());
     }
 
     /**
@@ -765,7 +769,7 @@ class CashoutRequestController extends Controller
      */
     private function canAddPayment()
     {
-        return in_array($this->userRole, [1, 3, 6, 10]);
+        return in_array($this->userRole, [1, 3, 6, 10, 30]);
     }
 
     // -------------------------------------------------------

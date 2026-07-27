@@ -113,6 +113,7 @@ $show_breadcrumb = true;
                     <label class="form-label fw-bold text-secondary" style="font-size: 0.75rem;">Request Type</label>
                     <select class="form-select form-select-sm" id="requestTypeFilter">
                         <option value="all_pending">All Pending Requests</option>
+                        <option value="my_approvals">Pending My Approval Only</option>
                         <option value="pending_leaves">Pending Leave Requests</option>
                         <option value="manual_entry">Manual Attendance Correction</option>
                         <option value="late_excuse">Late Excuse Requests</option>
@@ -226,6 +227,7 @@ document.addEventListener("DOMContentLoaded", function() {
     let allRecords = [];
     let filteredRecords = [];
     let localEmployees = [];
+    let loggedUserApproverInfo = null;
     let normalizedLocalIds = [];
     let normalizedLocalEmails = [];
 
@@ -257,6 +259,7 @@ document.addEventListener("DOMContentLoaded", function() {
             if (res.success) {
                 allRecords = res.data || [];
                 localEmployees = res.local_employees || [];
+                loggedUserApproverInfo = res.logged_user || null;
                 const localIds = res.local_employee_ids || [];
                 const localEmails = res.local_employee_emails || [];
                 normalizedLocalIds = localIds.map(id => normalizeId(id));
@@ -332,7 +335,30 @@ document.addEventListener("DOMContentLoaded", function() {
 
             // Request Type filter
             let matchesType = true;
-            if (reqTypeVal === 'pending_leaves') {
+            if (reqTypeVal === 'my_approvals') {
+                const loggedUser = loggedUserApproverInfo;
+                const userName = loggedUser ? (loggedUser.full_name || '').toLowerCase().trim() : '';
+                const userOfficeId = loggedUser ? (loggedUser.employee_id || loggedUser.tipsoi_office_id || '').trim() : '';
+                const userTipsoiId = loggedUser ? String(loggedUser.tipsoi_id || '') : '';
+
+                const firstAppName = String(rec.firstApproverName || '').toLowerCase().trim();
+                const firstAppId = String(rec.firstApproverId || '');
+                const firstStatus = rec.firstApprovalStatus;
+
+                const secondAppName = String(rec.secondApproverName || '').toLowerCase().trim();
+                const secondAppId = String(rec.secondApproverId || '');
+                const secondStatus = rec.secondApprovalStatus;
+
+                const isFirstApprover = (userTipsoiId && firstAppId && userTipsoiId === firstAppId) ||
+                    (userName && firstAppName && (userName.includes(firstAppName) || firstAppName.includes(userName))) ||
+                    (userOfficeId && firstAppName && firstAppName.includes(userOfficeId));
+
+                const isSecondApprover = (userTipsoiId && secondAppId && userTipsoiId === secondAppId) ||
+                    (userName && secondAppName && (userName.includes(secondAppName) || secondAppName.includes(userName))) ||
+                    (userOfficeId && secondAppName && secondAppName.includes(userOfficeId));
+
+                matchesType = (isFirstApprover && firstStatus == 0) || (isSecondApprover && secondStatus == 0);
+            } else if (reqTypeVal === 'pending_leaves') {
                 matchesType = rec.requestType === 'Leave Request';
             } else if (reqTypeVal === 'manual_entry') {
                 matchesType = rec.requestType === 'Manual Entry';

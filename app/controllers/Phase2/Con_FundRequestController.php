@@ -36,16 +36,16 @@ class Con_FundRequestController extends Controller
     // ROLE HELPERS
     // =========================================================================
 
-    /** Roles 1 (Admin), 3 (Super Admin) can approve */
+    /** Roles 1 (Admin), 3 (Super Admin), 20 (Site Operator) can approve */
     private function canApprove()
     {
-        return in_array($this->userRole, [1, 3]);
+        return in_array($this->userRole, [1, 3, 20]);
     }
 
     /** Roles 1, 3, 6 (Accounts) can process payments */
     private function canProcessPayment()
     {
-        return in_array($this->userRole, [1, 3, 6]);
+        return in_array($this->userRole, [1, 3, 6, 30]);
     }
 
     /* =====================
@@ -76,7 +76,7 @@ class Con_FundRequestController extends Controller
     public function create()
     {
         $operators = $this->operatorModel->getAll();
-        $projects  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name")->fetch_all(MYSQLI_ASSOC);
+        $projects  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name")->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/fund-requests/create-fund', [
             'current_route' => 'con-fund-requests',
@@ -116,7 +116,7 @@ class Con_FundRequestController extends Controller
         if ($fundId) {
             $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$data['project_id'])->fetch_assoc();
 
-            // Auto-create approval_request — goes to management
+            // Auto-create approval_request — goes to management & operation
             $this->approvalModel->create([
                 'department'    => 'construction',
                 'request_type'  => 'operational_fund',
@@ -125,7 +125,7 @@ class Con_FundRequestController extends Controller
                 'source_id'     => $fundId,
                 'requested_days'=> 0,
                 'requested_by'  => $_SESSION['user']['id'] ?? null,
-                'approve_role'  => 'management',
+                'approve_role'  => 'management,site operator',
                 'meta_data'     => null,
                 'request_amount'=> $data['amount'],
             ]);

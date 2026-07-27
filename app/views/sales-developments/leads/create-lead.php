@@ -12,7 +12,7 @@ $page = "create Lead"
                 <div class="col-lg-6">
                     <div class="from__input-box">
                         <label class="form__input-title" for="leadName">Lead Name <span class="text-danger">*</span></label>
-                        <input class="form-control" name="full_name" id="leadName" type="text">
+                        <input class="form-control" name="full_name" id="leadName" type="text" required>
                     </div>
                 </div>
                 <div class="col-lg-6">
@@ -114,7 +114,7 @@ $page = "create Lead"
                 <!-- Lead Type -->
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="leadType">Lead Type*</label>
+                        <label class="form__input-title" for="leadType">Lead Type <span class="text-mute">(optional)</span></label>
                         <select name="lead_type" id="leadType" class="form-select">
                             <option value="">Select Lead</option>
                             <option value="Hot">Hot</option>
@@ -180,7 +180,7 @@ $page = "create Lead"
                     <div class="from__input-box">
                         <label>Preferred Location <span class="text-danger">*</span></label>
                         <div class="d-flex gap-2">
-                            <select name="sourcepref_location_id_type_id" class="form-control" required style="flex:1;">
+                            <select name="pref_location_id" class="form-control" required style="flex:1;">
                                 <option value="">Select Location</option>
                                 <?php foreach ($locations as $location): ?>
                                     <option value="<?= $location['id']; ?>"><?= $location['name']; ?></option>

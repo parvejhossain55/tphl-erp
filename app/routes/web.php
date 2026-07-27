@@ -179,5 +179,21 @@ return [
     'erp-tracker/champions/add' => ['controller' => 'ErpTrackerController', 'method' => 'addChampion'],
     'erp-tracker/champions/remove/(\d+)' => ['controller' => 'ErpTrackerController', 'method' => 'removeChampion'],
     'erp-tracker/api/get-dept-users/(\d+)' => ['controller' => 'ErpTrackerController', 'method' => 'getDepartmentUsers'],
+
+    // =========================================================================
+    // Controller: IncentiveController
+    // =========================================================================
+    'my-incentives' => ['controller' => 'IncentiveController', 'method' => 'myIncentives'],
+    'incentive-management' => ['controller' => 'IncentiveController', 'method' => 'manageIncentives'],
+    'incentives/claim' => ['controller' => 'IncentiveController', 'method' => 'claimIncentive'],
+    'incentives/assign-external' => ['controller' => 'IncentiveController', 'method' => 'assignExternalIncentive'],
+    'incentives/approve' => ['controller' => 'IncentiveController', 'method' => 'approveClaim'],
+    'incentives/reject' => ['controller' => 'IncentiveController', 'method' => 'rejectClaim'],
+    'incentives/disburse' => ['controller' => 'IncentiveController', 'method' => 'disbursePayment'],
+
+    // =========================================================================
+    // Controller: ApprovalRequestController (All Approval Requests Dashboard)
+    // =========================================================================
+    'all-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'allApprovalRequests'],
 ];
 
