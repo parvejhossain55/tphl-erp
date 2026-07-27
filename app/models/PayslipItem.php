@@ -31,24 +31,23 @@ public function getAll() {
 
 public function create($data)
 {
-    // Module name দিয়ে photo upload
-   
-
+    $percentage = isset($data['percentage']) && $data['percentage'] !== '' ? (float)$data['percentage'] : null;
     $stmt = $this->db->prepare(
         "INSERT INTO payslip_items
-        (name, type,created_by)
-        VALUES (?, ?,?)"
+        (name, type, percentage, created_by)
+        VALUES (?, ?, ?, ?)"
     );
 
+    $stmt->bind_param(
+        "ssdi",
+        $data['name'],
+        $data['type'],
+        $percentage,
+        $data['created_by']
+    );
 
-$stmt->bind_param(
-    "ssi",
-    $data['name'],
-    $data['type'],
-    $data['created_by']
-    
-);
     if ($stmt->execute()) {
+        $stmt->close();
         return true;
     } else {
         echo "ERROR: " . $stmt->error;
@@ -56,22 +55,20 @@ $stmt->bind_param(
     }
 }
 
-
-
- // Update role name + permissions
 public function update($data)
 {
-    // Prepare update statement
-    $stmt = $this->db->prepare("UPDATE payslip_items SET name = ?, type = ? WHERE id = ?");
+    $percentage = isset($data['percentage']) && $data['percentage'] !== '' ? (float)$data['percentage'] : null;
+    $stmt = $this->db->prepare("UPDATE payslip_items SET name = ?, type = ?, percentage = ? WHERE id = ?");
     if (!$stmt) {
         echo "Prepare failed: " . $this->db->error;
         return false;
     }
 
     $stmt->bind_param(
-        "ssi",
+        "ssdi",
         $data['name'],    
         $data['type'],  
+        $percentage,
         $data['id']       
     );
 

@@ -45,6 +45,25 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
         </div>
         
         <div class="d-flex flex-wrap gap-2 no-print align-items-center">
+            <?php 
+            $isRequisitionApproved = (
+                ($req['dept_head_status'] ?? '') === 'approved' ||
+                !empty($req['dept_head_approved_by']) ||
+                in_array($req['status'] ?? '', ['approved', 'paid']) ||
+                !empty($req['approved_by']) ||
+                !empty($req['paid_by'])
+            );
+            $canDeleteReq = !$isRequisitionApproved && ($isOwner || $isAdmin);
+            if ($canDeleteReq): 
+            ?>
+                <form action="<?php echo $base; ?>/fund-requisitions/delete" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this requisition request?')">
+                    <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                    <button type="submit" class="btn btn-outline-danger btn-sm px-3 shadow-sm">
+                        <i class="fa-solid fa-trash-can me-1"></i> Delete Request
+                    </button>
+                </form>
+            <?php endif; ?>
+
             <?php if ($req['status'] === 'paid' && ($isOwner || $isAdmin)): ?>
                 <button class="btn btn-primary btn-sm px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
                     <i class="fa-solid fa-plus me-1"></i> Log Expense

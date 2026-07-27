@@ -30,6 +30,7 @@ $show_breadcrumb = true;
                             <th>S/L</th>
                             <th>Payslip Item</th>
                             <th>Type</th>
+                            <th>Percentage (%)</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -41,7 +42,8 @@ $show_breadcrumb = true;
                                 <!-- Serial number -->
                                 <td>#<?= $index + 1 ?></td>
                                 <td><?= htmlspecialchars($item['name']) ?></td>
-                                <td><?= $item['type'] ?? '' ?></td>
+                                <td><span class="badge <?= ($item['type'] ?? '') === 'earning' ? 'bg-success-transparent text-success' : 'bg-danger-transparent text-danger' ?>"><?= ucfirst($item['type'] ?? '') ?></span></td>
+                                <td><?= !empty($item['percentage']) && $item['percentage'] > 0 ? number_format($item['percentage'], 2) . '%' : '<span class="text-muted">-</span>' ?></td>
                                 <!-- Action buttons -->
                                 <td>
                                     <div class="d-flex align-items-center justify-content-start gap-10">
@@ -51,7 +53,8 @@ $show_breadcrumb = true;
                                             data-bs-target="#editPayslipItemModal"
                                             data-id="<?= $item['id'] ?>"
                                             data-name="<?= htmlspecialchars($item['name'], ENT_QUOTES) ?>"
-                                            data-type="<?= $item['type'] ?>">
+                                            data-type="<?= $item['type'] ?>"
+                                            data-percentage="<?= $item['percentage'] ?? '' ?>">
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </button>
 
@@ -103,13 +106,19 @@ $show_breadcrumb = true;
                                         </div>
                                     </div>
 
-                                    <div class="col-md-12">
+                                    <div class="col-md-6">
                                         <div class="from__input-box">
                                             <label>Item Type *</label>
-                                            <select name="type" class="form-select">
+                                            <select name="type" class="form-select" required>
                                                 <option value="earning">Earning</option>
                                                 <option value="deduction">Deduction</option>
                                             </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="from__input-box">
+                                            <label>Percentage of Gross Salary (%) <span class="text-muted" style="font-size:11px;">(Optional)</span></label>
+                                            <input class="form-control" name="percentage" type="number" step="0.01" min="0" max="100" placeholder="e.g. 50">
                                         </div>
                                     </div>
                                 </div>
@@ -161,9 +170,9 @@ $show_breadcrumb = true;
                         </div>
 
                         <!-- Type -->
-                        <div class="col-md-12">
+                        <div class="col-md-6">
                             <div class="from__input-box">
-                                <label>Type</label>
+                                <label>Type <span>*</span></label>
                                 <select name="type"
                                     class="form-select"
                                     id="edit_payslip_item_type"
@@ -172,6 +181,21 @@ $show_breadcrumb = true;
                                     <option value="earning">Earning</option>
                                     <option value="deduction">Deduction</option>
                                 </select>
+                            </div>
+                        </div>
+
+                        <!-- Percentage -->
+                        <div class="col-md-6">
+                            <div class="from__input-box">
+                                <label>Percentage of Gross Salary (%) <span class="text-muted" style="font-size:11px;">(Optional)</span></label>
+                                <input type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max="100"
+                                    class="form-control"
+                                    name="percentage"
+                                    id="edit_payslip_item_percentage"
+                                    placeholder="e.g. 50">
                             </div>
                         </div>
 
@@ -204,10 +228,12 @@ $show_breadcrumb = true;
             const id = button.getAttribute('data-id');
             const name = button.getAttribute('data-name');
             const type = button.getAttribute('data-type');
+            const percentage = button.getAttribute('data-percentage') || '';
 
             document.getElementById('edit_payslip_item_id').value = id;
             document.getElementById('edit_payslip_item_name').value = name;
             document.getElementById('edit_payslip_item_type').value = type;
+            document.getElementById('edit_payslip_item_percentage').value = percentage;
         });
 
     });

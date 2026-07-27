@@ -47,6 +47,7 @@
                                        <th style="min-width: 120px;">Lead Date</th>
                                        <th style="min-width: 130px;">Duplicate</th>
                                        <th style="min-width: 160px;">Lead & Job Title/company</th>
+                                       <th style="min-width: 140px;">Assigned By</th>
                                        <th style="min-width: 150px;">Best Time to Contact</th>
                                        <th style="min-width: 140px;">Address & City</th>
                                        <th style="min-width: 180px;">Project Campaign</th>
@@ -140,6 +141,13 @@
                                                     <?= htmlspecialchars($jt) ?><?= ($jt !== '' && $co !== '') ? ' at ' : '' ?><strong><?= htmlspecialchars($co) ?></strong>
                                                 </div>
                                                 <?php endif; ?>
+                                            </td>
+
+                                            <!-- Assigned By -->
+                                            <td>
+                                                <span class="badge bg-secondary-subtle text-dark border px-2 py-1" style="font-size: 11px;">
+                                                    <i class="bi bi-person-check me-1"></i><?= htmlspecialchars($lead['assigned_by_name'] ?? 'System') ?>
+                                                </span>
                                             </td>
 
                                             <!-- Best Time to Contact -->

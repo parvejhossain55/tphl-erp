@@ -523,6 +523,7 @@ class LeadController extends Controller
                     'last_lead_action' => $lead['last_lead_action'] ?? '',
                     'next_follow_up'   => $lead['next_follow_up_date'] ?? '',
                     'agent_name'       => $lead['agent_name'] ?? '',
+                    'assigned_by_name' => $lead['assigned_by_name'] ?? 'System',
                     'follow_up_count'  => $followUpCounts[$lead['id']] ?? 0,
                     'booking_count'    => $bookingCounts[$lead['id']] ?? 0,
                     'created_at'       => $lead['created_at'] ?? '',
@@ -645,6 +646,9 @@ class LeadController extends Controller
             $noteHtml .= '</span></div>';
             $row[] = $noteHtml;
 
+            $assignedByStr = !empty($lead['assigned_by_name']) ? htmlspecialchars($lead['assigned_by_name']) : 'System';
+            $row[] = '<span class="bd-badge bg-secondary text-truncate" style="max-width: 150px;"><i class="bi bi-person-check me-1"></i>' . $assignedByStr . '</span>';
+
             $actionHtml = '';
             if ((isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9])) || isSalesCoLeader()) {
                 $fu_count = !empty($followUpCounts[$lead['id']]) ? '<span class="action-badge">' . $followUpCounts[$lead['id']] . '</span>' : '';
@@ -660,7 +664,6 @@ class LeadController extends Controller
                         <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
                             <li><a class="dropdown__item" href="' . $base_url . '/edit-lead/' . $lead['id'] . '"><i class="bi bi-pencil-square me-2 text-primary"></i> Edit</a></li>
                             <li><a class="dropdown__item" href="' . $base_url . '/view-lead/' . $lead['id'] . '"><i class="bi bi-eye me-2 text-success"></i> View</a></li>
-                            <li><button class="dropdown__item text-danger removeBtnCust w-50 text-start d-flex align-items-center" data-name="' . htmlspecialchars($lead['full_name'] ?? '', ENT_QUOTES, 'UTF-8') . '" data-action="lead-delete" data-id="' . $lead['id'] . '"><i class="bi bi-trash me-2"></i> Delete</button></li>
                         </ul>
                     </div>
                 </div>';
