@@ -1009,23 +1009,13 @@ class Lead extends Model
     public function create($data)
     {
         // Auto-assign duplicates to the first owner or team
-        if (empty($data['assigned_id'])) {
-            $firstAssignee = $this->findFirstAssignee($data['phone_number'] ?? $data['phone'] ?? null, $data['email'] ?? null);
-            if ($firstAssignee) {
-                if (!empty($firstAssignee['assigned_id'])) {
-                    $data['assigned_id'] = $firstAssignee['assigned_id'];
-                    
-                    // Fetch current team_id of this assignee from users table
-                    $userTeamStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
-                    $userTeamStmt->bind_param("i", $firstAssignee['assigned_id']);
-                    $userTeamStmt->execute();
-                    $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
-                    $currentTeamId = $userTeamRes ? $userTeamRes['team_id'] : null;
-                    
-                    $data['team_id'] = $currentTeamId !== null ? (int)$currentTeamId : $firstAssignee['team_id'];
-                } elseif (!empty($firstAssignee['team_id'])) {
-                    $data['team_id']     = $firstAssignee['team_id'];
-                }
+        $firstAssignee = $this->findFirstAssignee($data['phone_number'] ?? $data['phone'] ?? null, $data['email'] ?? null);
+        if ($firstAssignee) {
+            if (!empty($firstAssignee['team_id'])) {
+                $data['team_id'] = (int)$firstAssignee['team_id'];
+            }
+            if (empty($data['assigned_id']) && !empty($firstAssignee['assigned_id'])) {
+                $data['assigned_id'] = (int)$firstAssignee['assigned_id'];
             }
         }
 
@@ -1110,7 +1100,7 @@ class Lead extends Model
         $visibility = $data['visibility'] ?? 'public';
         $status = $data['status'] ?? 'active';
         $lead_quality = $data['lead_quality'] ?? 'Pending';
-        $lead_type = $data['lead_type'] ?? null;
+        $lead_type = (!empty($data['lead_type']) && trim((string)$data['lead_type']) !== '') ? trim((string)$data['lead_type']) : null;
         $company_name = isset($data['company_name']) ? mb_substr((string)$data['company_name'], 0, 255, 'UTF-8') : null;
         $team_id = $data['team_id'] ?? null;
         $created_by = $data['created_by'] ?? null;
@@ -1207,23 +1197,13 @@ class Lead extends Model
     public function createFromCsvBulk(&$data)
     {
         // Auto-assign duplicates to the first owner or team
-        if (empty($data['assigned_id'])) {
-            $firstAssignee = $this->findFirstAssignee($data['phone'] ?? $data['phone_number'] ?? null, $data['email'] ?? null);
-            if ($firstAssignee) {
-                if (!empty($firstAssignee['assigned_id'])) {
-                    $data['assigned_id'] = $firstAssignee['assigned_id'];
-                    
-                    // Fetch current team_id of this assignee from users table
-                    $userTeamStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
-                    $userTeamStmt->bind_param("i", $firstAssignee['assigned_id']);
-                    $userTeamStmt->execute();
-                    $userTeamRes = $userTeamStmt->get_result()->fetch_assoc();
-                    $currentTeamId = $userTeamRes ? $userTeamRes['team_id'] : null;
-                    
-                    $data['team_id'] = $currentTeamId !== null ? (int)$currentTeamId : $firstAssignee['team_id'];
-                } elseif (!empty($firstAssignee['team_id'])) {
-                    $data['team_id']     = $firstAssignee['team_id'];
-                }
+        $firstAssignee = $this->findFirstAssignee($data['phone'] ?? $data['phone_number'] ?? null, $data['email'] ?? null);
+        if ($firstAssignee) {
+            if (!empty($firstAssignee['team_id'])) {
+                $data['team_id'] = (int)$firstAssignee['team_id'];
+            }
+            if (empty($data['assigned_id']) && !empty($firstAssignee['assigned_id'])) {
+                $data['assigned_id'] = (int)$firstAssignee['assigned_id'];
             }
         }
 
@@ -2019,14 +1999,8 @@ class Lead extends Model
         }
         
         $sql = "
-            SELECT l.assigned_id, l.team_id,
-                   CASE 
-                       WHEN u.id IS NOT NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
-                       THEN 1 ELSE 0 
-                   END AS is_assignee_active
+            SELECT l.assigned_id, l.team_id, l.created_at
             FROM leads l
-            LEFT JOIN users u ON l.assigned_id = u.id
-            LEFT JOIN employees emp ON emp.user_id = u.id
             WHERE l.deleted_at IS NULL 
               AND (l.assigned_id IS NOT NULL OR l.team_id IS NOT NULL)
         ";
@@ -2038,9 +2012,9 @@ class Lead extends Model
             $digits = preg_replace('/\D/', '', $phoneNumber);
             if (strlen($digits) >= 10) {
                 $suffix = substr($digits, -10);
-                $sql .= " AND (l.phone_number LIKE ? OR l.phone LIKE ? OR l.email = ?)";
-                $params[] = '%' . $suffix;
-                $params[] = '%' . $suffix;
+                $sql .= " AND (RIGHT(REGEXP_REPLACE(l.phone_number, '[^0-9]', ''), 10) = ? OR RIGHT(REGEXP_REPLACE(l.phone, '[^0-9]', ''), 10) = ? OR l.email = ?)";
+                $params[] = $suffix;
+                $params[] = $suffix;
                 $params[] = $email;
                 $types .= "sss";
             } else {
@@ -2054,9 +2028,9 @@ class Lead extends Model
             $digits = preg_replace('/\D/', '', $phoneNumber);
             if (strlen($digits) >= 10) {
                 $suffix = substr($digits, -10);
-                $sql .= " AND (l.phone_number LIKE ? OR l.phone LIKE ?)";
-                $params[] = '%' . $suffix;
-                $params[] = '%' . $suffix;
+                $sql .= " AND (RIGHT(REGEXP_REPLACE(l.phone_number, '[^0-9]', ''), 10) = ? OR RIGHT(REGEXP_REPLACE(l.phone, '[^0-9]', ''), 10) = ?)";
+                $params[] = $suffix;
+                $params[] = $suffix;
                 $types .= "ss";
             } else {
                 $sql .= " AND (l.phone_number = ? OR l.phone = ?)";
@@ -2070,7 +2044,7 @@ class Lead extends Model
             $types .= "s";
         }
         
-        $sql .= " ORDER BY (l.assigned_id IS NOT NULL) DESC, l.created_at ASC LIMIT 1";
+        $sql .= " ORDER BY l.created_at ASC, l.id ASC LIMIT 1";
         
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {

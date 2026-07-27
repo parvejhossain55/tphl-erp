@@ -1121,7 +1121,7 @@
 
 
                 <!-- My Profile (Accessible by all logged-in users) -->
-                <li class="slide <?= isActive('my-profile', $current_route) ?>">
+                <li class="slide d-none<?= isActive('my-profile', $current_route) ?>">
                     <a href="<?= $base_url ?>/my-profile"
                         class="sidebar__menu-item <?= isActive('my-profile', $current_route) ?>">
                         <div class="side-menu__icon"><i class="fas fa-user"></i></div>

@@ -8,6 +8,26 @@ class Dashboard extends Model
         $this->db = $db;
     }
 
+    private function executePreparedQuery($sql, $params = [], $types = "")
+    {
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("Dashboard prepare failed: " . $this->db->error . " | SQL: " . substr($sql, 0, 150));
+            return false;
+        }
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        if (!$stmt->execute()) {
+            error_log("Dashboard execute failed: " . $stmt->error);
+            $stmt->close();
+            return false;
+        }
+        $res = $stmt->get_result();
+        $stmt->close();
+        return $res;
+    }
+
     /**
      * Get date range based on period
      */
@@ -394,19 +414,13 @@ class Dashboard extends Model
     ";
         if ($projectId) {
             $sqlOperationalFund .= " AND project_id = ?";
-        }
-        $stmt = $this->db->prepare($sqlOperationalFund);
-        if ($projectId) {
-            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+            $res = $this->executePreparedQuery($sqlOperationalFund, [$startDate, $endDate, $projectId], "ssi");
         } else {
-            $stmt->bind_param("ss", $startDate, $endDate);
+            $res = $this->executePreparedQuery($sqlOperationalFund, [$startDate, $endDate], "ss");
         }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
+        if ($res && $row = $res->fetch_assoc()) {
             $stats['operational_fund'] = floatval($row['total']);
         }
-        $stmt->close();
 
         // Get expense adjustment cashin (refunds received)
         $sqlAdjCashin = "
@@ -419,19 +433,13 @@ class Dashboard extends Model
     ";
         if ($projectId) {
             $sqlAdjCashin .= " AND ea.project_id = ?";
-        }
-        $stmt = $this->db->prepare($sqlAdjCashin);
-        if ($projectId) {
-            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+            $res = $this->executePreparedQuery($sqlAdjCashin, [$startDate, $endDate, $projectId], "ssi");
         } else {
-            $stmt->bind_param("ss", $startDate, $endDate);
+            $res = $this->executePreparedQuery($sqlAdjCashin, [$startDate, $endDate], "ss");
         }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
+        if ($res && $row = $res->fetch_assoc()) {
             $stats['expense_adjustment_cashin'] = floatval($row['total']);
         }
-        $stmt->close();
 
         // Get expense adjustment cashout (additional payments)
         $sqlAdjCashout = "
@@ -444,43 +452,37 @@ class Dashboard extends Model
     ";
         if ($projectId) {
             $sqlAdjCashout .= " AND ea.project_id = ?";
-        }
-        $stmt = $this->db->prepare($sqlAdjCashout);
-        if ($projectId) {
-            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+            $res = $this->executePreparedQuery($sqlAdjCashout, [$startDate, $endDate, $projectId], "ssi");
         } else {
-            $stmt->bind_param("ss", $startDate, $endDate);
+            $res = $this->executePreparedQuery($sqlAdjCashout, [$startDate, $endDate], "ss");
         }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
+        if ($res && $row = $res->fetch_assoc()) {
             $stats['expense_adjustment_cashout'] = floatval($row['total']);
         }
-        $stmt->close();
+
+        // Check if project_extra_assets table exists
+        $checkPea = $this->db->query("SHOW TABLES LIKE 'project_extra_assets'");
+        $hasPeaTable = ($checkPea && $checkPea->num_rows > 0);
 
         // Get procurement returns cashin
-        $sqlProcReturns = "
-        SELECT COALESCE(SUM(return_amount), 0) as total
-        FROM project_extra_assets
-        WHERE overall_status = 'purchased'
-        AND return_amount > 0
-        AND purchase_confirmed_at BETWEEN ? AND ?
-    ";
-        if ($projectId) {
-            $sqlProcReturns .= " AND project_id = ?";
+        if ($hasPeaTable) {
+            $sqlProcReturns = "
+            SELECT COALESCE(SUM(return_amount), 0) as total
+            FROM project_extra_assets
+            WHERE overall_status = 'purchased'
+            AND return_amount > 0
+            AND purchase_confirmed_at BETWEEN ? AND ?
+        ";
+            if ($projectId) {
+                $sqlProcReturns .= " AND project_id = ?";
+                $res = $this->executePreparedQuery($sqlProcReturns, [$startDate, $endDate, $projectId], "ssi");
+            } else {
+                $res = $this->executePreparedQuery($sqlProcReturns, [$startDate, $endDate], "ss");
+            }
+            if ($res && $row = $res->fetch_assoc()) {
+                $stats['procurement_returns_cashin'] = floatval($row['total']);
+            }
         }
-        $stmt = $this->db->prepare($sqlProcReturns);
-        if ($projectId) {
-            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
-        } else {
-            $stmt->bind_param("ss", $startDate, $endDate);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
-            $stats['procurement_returns_cashin'] = floatval($row['total']);
-        }
-        $stmt->close();
 
         // Calculate Total Cash In (matches CentralStatement formula exactly)
         $stats['total_cashin'] = $stats['total_landshare'] + $stats['total_registration'] +
@@ -488,6 +490,8 @@ class Dashboard extends Model
 
         // Calculate Total Revenue (includes registration — mirrors Central Statement formula)
         $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'] + $stats['total_development_charge'] + $stats['total_registration'];
+
+        $peaUnion = $hasPeaTable ? "UNION ALL SELECT paid_amount as total_amount, paid_at as date, project_id FROM project_extra_assets WHERE payment_status = 'paid'" : "";
 
         // Get Cash Out with project filtering
         $sqlCashOut = "
@@ -552,31 +556,21 @@ class Dashboard extends Model
             WHERE lfr.mgmt_status = 'Approved'
             AND lfr.accounts_status = 'Paid'
             
-            UNION ALL
-            
-            SELECT paid_amount as total_amount, paid_at as date, project_id
-            FROM project_extra_assets
-            WHERE payment_status = 'paid'
+            {$peaUnion}
         ) combined
         WHERE date BETWEEN ? AND ?
     ";
 
         if ($projectId) {
             $sqlCashOut .= " AND (project_id = ? OR project_id IS NULL)";
+            $res = $this->executePreparedQuery($sqlCashOut, [$startDate, $endDate, $projectId], "ssi");
+        } else {
+            $res = $this->executePreparedQuery($sqlCashOut, [$startDate, $endDate], "ss");
         }
 
-        $stmt = $this->db->prepare($sqlCashOut);
-        if ($projectId) {
-            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
-        } else {
-            $stmt->bind_param("ss", $startDate, $endDate);
-        }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
+        if ($res && $row = $res->fetch_assoc()) {
             $stats['total_cashout'] = floatval($row['total']) - ($stats['expense_adjustment_cashin'] ?? 0) - ($stats['procurement_returns_cashin'] ?? 0);
         }
-        $stmt->close();
 
         // Net Balance
         $stats['net_balance'] = $stats['total_cashin'] - $stats['total_cashout'];

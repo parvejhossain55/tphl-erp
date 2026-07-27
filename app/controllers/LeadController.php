@@ -961,7 +961,7 @@ class LeadController extends Controller
 
             // Existing fields
             'full_name' => $_POST['full_name'] ?? null,
-            'lead_type' => $_POST['lead_type'] ?? null,
+            'lead_type' => (!empty($_POST['lead_type']) && trim((string)$_POST['lead_type']) !== '') ? trim((string)$_POST['lead_type']) : null,
             'father_name' => $_POST['father_name'] ?? null,
             'mother_name' => $_POST['mother_name'] ?? null,
             'dob' => $_POST['dob'] ?? null,
