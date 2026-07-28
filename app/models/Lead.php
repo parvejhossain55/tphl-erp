@@ -703,7 +703,7 @@ class Lead extends Model
     }
 
 
-    public function getTodayLeadsByUser(int $userId)
+    public function getTodayLeadsByUser(int $userId, $projectId = null, $projectCategoryId = null)
     {
         $userId = (int) $userId;
 
@@ -737,10 +737,30 @@ class Lead extends Model
                 OR
                 (l.assigned_at IS NOT NULL AND l.assigned_at >= CURDATE() AND l.assigned_at < CURDATE() + INTERVAL 1 DAY)
               )
-        ORDER BY l.id DESC
-    ";
+        ";
 
-        $result = $this->db->query($sql);
+        $params = [];
+        $types = "";
+
+        if (!empty($projectId)) {
+            $sql .= " AND l.project_id = ?";
+            $params[] = (int)$projectId;
+            $types .= "i";
+        }
+        if (!empty($projectCategoryId)) {
+            $sql .= " AND l.project_category_id = ?";
+            $params[] = (int)$projectCategoryId;
+            $types .= "i";
+        }
+
+        $sql .= " ORDER BY l.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
     public function getAllLeadsByUser(int $userId)
@@ -758,7 +778,7 @@ class Lead extends Model
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
-    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $call_status = null, $only_missing_followup = false)
+    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $call_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null)
     {
         $sql = "SELECT leads.*, 
         u_by.full_name AS assigned_by_name,
@@ -802,15 +822,27 @@ class Lead extends Model
             $types .= "i";
         }
 
+        $contactedCond = "(LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked') OR leads.call_status IN ('called', 'received') OR (leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select') OR lf.id IS NOT NULL)";
+
         if (!empty($lastAction)) {
-            $sql .= " AND leads.last_lead_action = ?";
-            $params[] = $lastAction;
-            $types .= "s";
+            if (strtolower($lastAction) === 'contacted') {
+                $sql .= " AND " . $contactedCond;
+            } elseif (strtolower($lastAction) === 'not_contacted') {
+                $sql .= " AND NOT " . $contactedCond;
+            } else {
+                $sql .= " AND leads.last_lead_action = ?";
+                $params[] = $lastAction;
+                $types .= "s";
+            }
         }
         if (!empty($call_status)) {
+            if ($call_status === 'not_called' || $call_status === 'not_contacted') {
+                $sql .= " AND NOT " . $contactedCond;
+            } else {
                 $sql .= " AND leads.call_status = ?";
                 $params[] = $call_status;
                 $types .= "s";
+            }
         }
 
         if ($only_missing_followup) {
@@ -818,6 +850,47 @@ class Lead extends Model
                       AND lf.next_follow_up_date > '1000-01-01'
                       AND DATE(lf.next_follow_up_date) <= CURDATE()
                       AND lf.deleted_at IS NULL";
+        }
+
+        if (!empty($projectId)) {
+            $sql .= " AND leads.project_id = ?";
+            $params[] = (int)$projectId;
+            $types .= "i";
+        }
+        if (!empty($projectCategoryId)) {
+            $sql .= " AND leads.project_category_id = ?";
+            $params[] = (int)$projectCategoryId;
+            $types .= "i";
+        }
+
+        // Search Filter
+        if (!empty($search)) {
+            $sql .= " AND (leads.full_name LIKE ? OR leads.phone LIKE ? OR leads.phone_number LIKE ? OR leads.email LIKE ? OR leads.company_name LIKE ?)";
+            $sParam = "%" . trim($search) . "%";
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $types .= "sssss";
+        }
+
+        // Next Follow-Up Date Filter
+        if (!empty($followup_date)) {
+            $sql .= " AND DATE(lf.next_follow_up_date) = ?";
+            $params[] = trim($followup_date);
+            $types .= "s";
+        }
+
+        // Card Quick Filter
+        if (!empty($filter_card)) {
+            if ($filter_card === 'contacted') {
+                $sql .= " AND " . $contactedCond;
+            } elseif ($filter_card === 'not_called' || $filter_card === 'not_contacted') {
+                $sql .= " AND NOT " . $contactedCond;
+            } elseif ($filter_card === 'booked') {
+                $sql .= " AND LOWER(leads.last_lead_action) = 'booked'";
+            }
         }
 
         // Try sorting by created_at instead

@@ -243,7 +243,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Team</label>
                         <select class="form-select form-select-sm filter-select select2" name="team_id" data-placeholder="Team: All">
-                            <option value="">Team: All</option>
+                            <option value=""></option>
                             <?php foreach ($teams as $t): ?>
                                 <option value="<?= $t['id'] ?>" <?= ($selectedTeam ?? '') == $t['id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($t['name']) ?>
@@ -258,7 +258,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Project</label>
                         <select class="form-select form-select-sm filter-select select2" name="project_id" data-placeholder="Project: All">
-                            <option value="">Project: All</option>
+                            <option value=""></option>
                             <?php foreach ($projects as $p): ?>
                                 <option value="<?= $p['id'] ?>" <?= ($selectedProject ?? '') == $p['id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($p['name']) ?>
@@ -275,7 +275,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Category</label>
                         <select class="form-select form-select-sm filter-select select2" name="project_category_id" data-placeholder="Category: All">
-                            <option value="">Category: All</option>
+                            <option value=""></option>
                             <?php foreach ($categories as $cat): ?>
                                 <option value="<?= $cat['id'] ?>" <?= ($selectedCategory ?? '') == $cat['id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($cat['name']) ?>
@@ -1029,7 +1029,7 @@ document.addEventListener('DOMContentLoaded', function () {
         addHidden('redirect_page', finalPage);
         addHidden('route_mode',    routeMode);
         // Also preserve all current GET filters
-        const filterParams = ['year','month','assigned_user','last_action','assigned','q','from_date','to_date'];
+        const filterParams = ['year','month','assigned_user','last_action','assigned','q','from_date','to_date','project_id','project_category_id'];
         filterParams.forEach(p => {
             const v = urlParams.get(p);
             if (v) addHidden('redirect_' + p, v);

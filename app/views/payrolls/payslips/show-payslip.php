@@ -569,7 +569,11 @@
         <!-- PERIOD -->
         <div class="period-info-bar">
             <div><span class="period-label">Created:</span> <?= date('d M Y', strtotime($payslip['created_at'])) ?></div>
-            <div><span class="period-label">Due:</span> <?= date('d M Y', strtotime($payslip['updated_at'])) ?></div>
+            <?php if ($payslip['status'] === 'draft'): ?>
+                <div><span class="period-label">Type:</span> Salary Certificate (Draft)</div>
+            <?php else: ?>
+                <div><span class="period-label">Due:</span> <?= date('d M Y', strtotime($payslip['updated_at'])) ?></div>
+            <?php endif; ?>
             <div><span class="period-label">Payslip No:</span> PS-<?= $payslip['id'] ?></div>
         </div>
 
@@ -682,6 +686,8 @@
                         <div class="payment-item"><span class="payment-label">Account Number</span><?= htmlspecialchars($payslip['account_number'] ?? '-') ?></div>
                     <?php endif; ?>
 
+                <?php elseif ($payslip['status'] === 'draft'): ?>
+                    <!-- Status hidden for draft salary certificates -->
                 <?php else: ?>
                     <div class="payslip-status-wrapper">
                         <p class="fw-semibold fs-6">Payment Status</p>

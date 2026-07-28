@@ -350,31 +350,34 @@ function getFollowUpCount(int $userId, string $type = 'today'): int
         // Only today pending
         $sql = "
             SELECT COUNT(*) AS total
-            FROM lead_follow_ups
-            WHERE deleted_at IS NULL
-              AND assigned_with = ?
-              AND DATE(next_follow_up_date) = CURDATE()
-              AND status = 'pending'
+            FROM lead_follow_ups f
+            LEFT JOIN leads l ON f.lead_id = l.id
+            WHERE f.deleted_at IS NULL
+              AND (f.assigned_with = ? OR (f.assigned_with IS NULL AND l.assigned_id = ?))
+              AND DATE(f.next_follow_up_date) = CURDATE()
+              AND (f.status IS NULL OR f.status = 'pending')
         ";
+        $stmt = $db->prepare($sql);
+        if (!$stmt) return 0;
+        $stmt->bind_param("ii", $userId, $userId);
     } elseif ($type === 'upcoming') {
-        // Next 3 days pending
+        // Next 3 days upcoming
         $sql = "
             SELECT COUNT(*) AS total
-            FROM lead_follow_ups
-            WHERE deleted_at IS NULL
-              AND assigned_with = ?
-              AND DATE(next_follow_up_date) > CURDATE()
-              AND DATE(next_follow_up_date) <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)
-              AND status = 'pending'
+            FROM lead_follow_ups f
+            LEFT JOIN leads l ON f.lead_id = l.id
+            WHERE f.deleted_at IS NULL
+              AND (f.assigned_with = ? OR (f.assigned_with IS NULL AND l.assigned_id = ?))
+              AND f.next_follow_up_date > CURDATE()
+              AND f.next_follow_up_date <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)
         ";
+        $stmt = $db->prepare($sql);
+        if (!$stmt) return 0;
+        $stmt->bind_param("ii", $userId, $userId);
     } else {
         return 0;
     }
 
-    $stmt = $db->prepare($sql);
-    if (!$stmt) return 0;
-
-    $stmt->bind_param("i", $userId);
     $stmt->execute();
     $result = $stmt->get_result();
     $row = $result->fetch_assoc();

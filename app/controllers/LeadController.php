@@ -786,7 +786,7 @@ class LeadController extends Controller
         $redirectPage = (int)($_POST['redirect_page'] ?? 1);
         if ($redirectPage < 1) $redirectPage = 1;
 
-        $filterKeys = ['year','month','date','assigned_user','last_action','assigned','q','from_date','to_date'];
+        $filterKeys = ['year','month','date','assigned_user','last_action','assigned','q','from_date','to_date','project_id','project_category_id'];
         $queryParts = [];
         foreach ($filterKeys as $key) {
             $val = $_POST['redirect_' . $key] ?? '';

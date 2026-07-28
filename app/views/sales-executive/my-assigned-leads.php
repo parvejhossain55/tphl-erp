@@ -259,145 +259,284 @@ foreach ($myAllleads as $lead) {
 </div>
 
 <!-- Stats Grid -->
-<div class="row  mb-4 align-items-stretch">
+<div class="row g-3 mb-4 align-items-stretch">
+    <!-- Total My Leads Card -->
+    <div class="col-6 col-md-4 col-xl mb-2">
+        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads" class="stat-card-link">
+            <div class="card__wrapper stat-card shadow-sm <?= (empty($filterCard) && empty($selectedAction) && empty($selectedCallStatus) && empty($search) && empty($followup_date) && !($isFilterMissing ?? false)) ? 'border-primary' : '' ?>" 
+                 style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1.5px solid #bfdbfe !important; min-height: 85px;">
+                <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-primary"></i></span>
+                <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
+                    <div>
+                        <p class="stat-label mb-1 text-primary"><i class="fa-solid fa-users me-1"></i> Total My Leads</p>
+                        <h2 class="stat-value text-primary mb-1" style="font-size: 1.6rem; font-weight: 800;"><?= $totalLeadsCount ?? count($myAllleads) ?></h2>
+                        <span class="card-hint text-primary" style="font-size: 10px; margin-top: 0;">Click for all leads &rarr;</span>
+                    </div>
+                    <div class="card__icon text-primary" style="opacity: 0.15; font-size: 1.8rem;"><i class="fa-solid fa-users"></i></div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Contacted Card (Includes Contacted & Follow Up) -->
+    <div class="col-6 col-md-4 col-xl mb-2">
+        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=contacted" class="stat-card-link">
+            <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'contacted' || ($selectedAction ?? '') === 'Contacted') ? 'border-success' : '' ?>" 
+                 style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1.5px solid #bbf7d0 !important; min-height: 85px;">
+                <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-success"></i></span>
+                <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
+                    <div>
+                        <p class="stat-label mb-1 text-success"><i class="fa-solid fa-phone-volume me-1"></i> Contacted</p>
+                        <h2 class="stat-value text-success mb-1" style="font-size: 1.6rem; font-weight: 800;"><?= $contactedLeadsCount ?? 0 ?></h2>
+                        <span class="card-hint text-success" style="font-size: 10px; margin-top: 0;">Inc. Follow Up, Booked & Comm &rarr;</span>
+                    </div>
+                    <div class="card__icon text-success" style="opacity: 0.15; font-size: 1.8rem;"><i class="fa-solid fa-phone-volume"></i></div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Not Contacted Card -->
+    <div class="col-6 col-md-4 col-xl mb-2">
+        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=not_contacted" class="stat-card-link">
+            <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'not_contacted' || ($filterCard ?? '') === 'not_called' || ($selectedCallStatus ?? '') === 'not_called') ? 'border-warning' : '' ?>" 
+                 style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border: 1.5px solid #fed7aa !important; min-height: 85px;">
+                <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-warning"></i></span>
+                <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
+                    <div>
+                        <p class="stat-label mb-1 text-warning-emphasis"><i class="fa-solid fa-phone-slash me-1"></i> Not Contacted</p>
+                        <h2 class="stat-value text-warning-emphasis mb-1" style="font-size: 1.6rem; font-weight: 800;"><?= $notContactedLeadsCount ?? $notCalledLeadsCount ?? 0 ?></h2>
+                        <span class="card-hint text-warning-emphasis" style="font-size: 10px; margin-top: 0;">Click to view not contacted &rarr;</span>
+                    </div>
+                    <div class="card__icon text-warning" style="opacity: 0.2; font-size: 1.8rem;"><i class="fa-solid fa-phone-slash"></i></div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Booked Card -->
+    <div class="col-6 col-md-4 col-xl mb-2">
+        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=booked" class="stat-card-link">
+            <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'booked' || ($selectedAction ?? '') === 'Booked') ? 'border-purple' : '' ?>" 
+                 style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border: 1.5px solid #e9d5ff !important; min-height: 85px;">
+                <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-purple"></i></span>
+                <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
+                    <div>
+                        <p class="stat-label mb-1" style="color: #6b21a8;"><i class="fa-solid fa-bookmark me-1"></i> Booked Leads</p>
+                        <h2 class="stat-value mb-1" style="font-size: 1.6rem; font-weight: 800; color: #6b21a8;"><?= $bookedLeadsCount ?? 0 ?></h2>
+                        <span class="card-hint" style="color: #6b21a8; font-size: 10px; margin-top: 0;">Click to view booked &rarr;</span>
+                    </div>
+                    <div class="card__icon" style="color: #6b21a8; opacity: 0.15; font-size: 1.8rem;"><i class="fa-solid fa-bookmark"></i></div>
+                </div>
+            </div>
+        </a>
+    </div>
+
     <!-- Missing Follow-ups Stats Card -->
-    <div class="col-12 col-md-4 mb-3">
+    <div class="col-6 col-md-4 col-xl mb-2">
         <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter=missing_followup" class="stat-card-link">
-            <div class="card__wrapper stat-card shadow-sm <?= ($isFilterMissing ?? false) ? 'border-danger' : '' ?>" style="background: linear-gradient(135deg, #fff5f5 0%, #ffe3e3 100%); border: 1.5px solid <?= ($isFilterMissing ?? false) ? '#dc3545' : '#fecaca' ?> !important; min-height: 85px;">
+            <div class="card__wrapper stat-card shadow-sm <?= ($isFilterMissing ?? false) ? 'border-danger' : '' ?>" 
+                 style="background: linear-gradient(135deg, #fff5f5 0%, #ffe3e3 100%); border: 1.5px solid <?= ($isFilterMissing ?? false) ? '#dc3545' : '#fecaca' ?> !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-danger"></i></span>
                 <div class="card-body d-flex justify-content-between align-items-center p-2 px-3">
                     <div>
                         <p class="stat-label mb-1 text-danger"><i class="fa-solid fa-bell-slash me-1"></i> Missing Follow-Ups</p>
                         <h2 class="stat-value text-danger mb-1" style="font-size: 1.6rem; font-weight: 800;"><?= $missingFollowUpCount ?? 0 ?></h2>
-                        <span class="card-hint text-danger" style="font-size: 10px; margin-top: 0;">Click to view missing follow-ups →</span>
+                        <span class="card-hint text-danger" style="font-size: 10px; margin-top: 0;">Click to view missing &rarr;</span>
                     </div>
                     <div class="card__icon text-danger" style="opacity: 0.15; font-size: 1.8rem;"><i class="fa-solid fa-bell-slash"></i></div>
                 </div>
             </div>
         </a>
     </div>
+</div>
 
-    <!-- Duplicate Assigned Leads Card (Team-based) -->
-    <?php if (!empty($duplicateGroups)): ?>
-    <div class="col-12 col-md-8 mb-3">
-        <div class="alert alert-danger border-0 shadow-sm mb-0 p-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2 h-100"
-             style="background:linear-gradient(135deg,#fff5f5,#ffe0e0);border-left:4px solid #dc3545 !important;border-radius:10px;">
-            <div class="d-flex align-items-center gap-3">
-                <div class="rounded-circle d-flex align-items-center justify-content-center"
-                     style="width:36px;height:36px;background:#dc3545;flex-shrink:0;">
-                    <i class="bi bi-exclamation-triangle-fill text-white" style="font-size:1rem;"></i>
+<!-- Duplicate Assigned Leads Card (Team-based) -->
+<?php if (!empty($duplicateGroups)): ?>
+<div class="col-12 mb-3">
+    <div class="alert alert-danger border-0 shadow-sm mb-0 p-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2"
+         style="background:linear-gradient(135deg,#fff5f5,#ffe0e0);border-left:4px solid #dc3545 !important;border-radius:10px;">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle d-flex align-items-center justify-content-center"
+                 style="width:36px;height:36px;background:#dc3545;flex-shrink:0;">
+                <i class="bi bi-exclamation-triangle-fill text-white" style="font-size:1rem;"></i>
+            </div>
+            <div>
+                <div class="fw-bold text-danger" style="font-size:.9rem; line-height: 1.2;">
+                    &#9888; Duplicate Leads &mdash; In Your Team &amp; Also in Other Teams
                 </div>
-                <div>
-                    <div class="fw-bold text-danger" style="font-size:.9rem; line-height: 1.2;">
-                        &#9888; Duplicate Leads &mdash; In Your Team &amp; Also in Other Teams
-                    </div>
-                    <div class="text-muted" style="font-size:.75rem;">
-                        <strong><?= $duplicateCount ?></strong> leads from your team are also assigned in
-                        <span class="fw-semibold text-danger">other teams</span> or
-                        <span class="fw-semibold text-danger">other members</span>
-                        &nbsp;&middot;&nbsp; by Phone &amp; Email
-                    </div>
+                <div class="text-muted" style="font-size:.75rem;">
+                    <strong><?= $duplicateCount ?></strong> leads from your team are also assigned in
+                    <span class="fw-semibold text-danger">other teams</span> or
+                    <span class="fw-semibold text-danger">other members</span>
+                    &nbsp;&middot;&nbsp; by Phone &amp; Email
                 </div>
             </div>
-            <button class="btn btn-danger btn-sm px-3" data-bs-toggle="modal" data-bs-target="#dupAssignedModal">
-                <i class="bi bi-eye me-1"></i> View Details
-            </button>
         </div>
+        <button class="btn btn-danger btn-sm px-3" data-bs-toggle="modal" data-bs-target="#dupAssignedModal">
+            <i class="bi bi-eye me-1"></i> View Details
+        </button>
     </div>
-    <?php endif; ?>
+</div>
+<?php endif; ?>
 
-    <!-- Active Filter Warning Alert -->
-    <?php if ($isFilterMissing ?? false): ?>
-    <div class="col-12 mb-3">
-        <div class="alert alert-warning border-0 shadow-sm mb-0 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2"
-             style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border-left:4px solid #d97706 !important;border-radius:10px;">
-            <div class="d-flex align-items-center gap-3">
-                <i class="bi bi-funnel-fill text-warning fs-4"></i>
-                <div>
-                    <div class="fw-bold text-warning-emphasis">Showing Missing Follow-Ups Only</div>
-                    <div class="text-muted small">Showing leads scheduled for today where no follow-up has been logged.</div>
-                </div>
-            </div>
-            <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads" class="btn btn-warning btn-sm">Show All Leads</a>
+<!-- Active Filter Info Alert -->
+<?php 
+$hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterCard) || !empty($selectedAction) || !empty($selectedCallStatus) || ($isFilterMissing ?? false);
+?>
+<?php if ($hasActiveFilters): ?>
+<div class="col-12 mb-3">
+    <div class="alert alert-info border-0 shadow-sm mb-0 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2"
+         style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-left:4px solid #0284c7 !important;border-radius:10px;">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <i class="bi bi-funnel-fill text-info fs-5 me-1"></i>
+            <span class="fw-bold text-dark me-2">Active Filters:</span>
+            <?php if (!empty($search)): ?>
+                <span class="badge bg-primary rounded-pill px-3 py-2"><i class="bi bi-search me-1"></i> Search: "<?= htmlspecialchars($search) ?>"</span>
+            <?php endif; ?>
+            <?php if (!empty($followup_date)): ?>
+                <span class="badge bg-success rounded-pill px-3 py-2"><i class="bi bi-calendar-event me-1"></i> Follow-Up Date: <?= date('d M, Y', strtotime($followup_date)) ?></span>
+            <?php endif; ?>
+            <?php if (!empty($filterCard)): ?>
+                <span class="badge bg-dark rounded-pill px-3 py-2"><i class="bi bi-tag me-1"></i> Card Filter: <?= ucwords(str_replace('_', ' ', $filterCard)) ?></span>
+            <?php endif; ?>
+            <?php if (!empty($selectedAction)): ?>
+                <span class="badge bg-secondary rounded-pill px-3 py-2"><i class="bi bi-lightning me-1"></i> Action: <?= htmlspecialchars($selectedAction) ?></span>
+            <?php endif; ?>
+            <?php if (!empty($selectedCallStatus)): ?>
+                <span class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="bi bi-telephone me-1"></i> Call Status: <?= htmlspecialchars($selectedCallStatus) ?></span>
+            <?php endif; ?>
+            <?php if ($isFilterMissing ?? false): ?>
+                <span class="badge bg-danger rounded-pill px-3 py-2"><i class="bi bi-bell-slash me-1"></i> Missing Follow-Ups</span>
+            <?php endif; ?>
         </div>
+        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-x-circle me-1"></i> Clear All Filters
+        </a>
     </div>
-    <?php endif; ?>
+</div>
+<?php endif; ?>
 
-    <!-- Desktop View: Filters and Table -->
-    <div class="desktop-only">
-        <!-- Filters -->
-        <div class="filters">
-            <form action="" method="get">
+<!-- Desktop View: Filters and Table -->
+<div class="desktop-only">
+    <!-- Filters -->
+    <div class="filters mb-3">
+        <form action="" method="get">
 
-                <div class="row g-2 align-items-center flex-wrap">
+            <div class="row g-2 align-items-center flex-wrap">
 
-                    <!-- Year Select -->
-                    <div class="col-auto col-sm-6 col-md-auto">
-                        <?php
-                        $currentYear = date('Y');
-                        $startYear   = $currentYear - 10;
-                        $selectedYear = $slectedYear ?? '';
-                        ?>
-                        <select class="form-control" name="year">
-                            <option value="">Year Select</option>
-                            <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
-                                <option value="<?= $year ?>" <?= $selectedYear == $year ? 'selected' : '' ?>><?= $year ?></option>
-                            <?php endfor; ?>
-                        </select>
+                <!-- Follow Up Date Filter -->
+                <div class="col-12 col-sm-6 col-md-auto">
+                    <div class="input-group input-group-sm" title="Filter by Next Follow-Up Date">
+                        <span class="input-group-text bg-white" style="font-size: 11px;"><i class="bi bi-calendar-event me-1"></i> Next Follow-Up</span>
+                        <input type="date" name="followup_date" class="form-control form-control-sm" value="<?= htmlspecialchars($followup_date ?? '') ?>">
                     </div>
+                </div>
 
-                    <!-- Month Select -->
+                <!-- Project Filter -->
+                <?php if (!empty($projects)): ?>
+                <div class="col-12 col-sm-6 col-md-3">
+                    <?php $selectedProject = $_GET['project_id'] ?? ''; ?>
+                    <select class="form-select form-select-sm filter-select select2" name="project_id" data-placeholder="Project: All">
+                        <option value=""></option>
+                        <?php foreach ($projects as $p): ?>
+                            <option value="<?= $p['id'] ?>" <?= $selectedProject == $p['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($p['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+
+                <!-- Category Filter -->
+                <?php if (!empty($projectCategories)): ?>
+                <div class="col-12 col-sm-6 col-md-3">
+                    <?php $selectedCategory = $_GET['project_category_id'] ?? ''; ?>
+                    <select class="form-select form-select-sm filter-select select2" name="project_category_id" data-placeholder="Category: All">
+                        <option value=""></option>
+                        <?php foreach ($projectCategories as $cat): ?>
+                            <option value="<?= $cat['id'] ?>" <?= $selectedCategory == $cat['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($cat['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+
+                <!-- Client Action Select -->
+                <div class="col-auto col-sm-6 col-md-auto">
+                    <select class="form-select form-select-sm" name="last_action">
+                        <option value="">Client Action: All</option>
+                        <option value="Contacted" <?= ($selectedAction ?? '') == 'Contacted' ? 'selected' : '' ?>>Contacted</option>
+                        <option value="Follow Up" <?= ($selectedAction ?? '') == 'Follow Up' ? 'selected' : '' ?>>Follow Up</option>
+                        <option value="Visited" <?= ($selectedAction ?? '') == 'Visited' ? 'selected' : '' ?>>Visited</option>
+                        <option value="Booked" <?= ($selectedAction ?? '') == 'Booked' ? 'selected' : '' ?>>Booked</option>
+                        <option value="New" <?= ($selectedAction ?? '') == 'New' ? 'selected' : '' ?>>New</option>
+                        <option value="Cancel" <?= ($selectedAction ?? '') == 'Cancel' ? 'selected' : '' ?>>Cancel</option>
+                    </select>
+                </div>
+
+                <!-- Call Status Select -->
+                <div class="col-auto col-sm-6 col-md-auto">
+                    <select class="form-select form-select-sm" name="call_status">
+                        <option value="">Call Status: All</option>
+                        <option value="not_called" <?= ($selectedCallStatus ?? '') == 'not_called' ? 'selected' : '' ?>>Not Called</option>
+                        <option value="called" <?= ($selectedCallStatus ?? '') == 'called' ? 'selected' : '' ?>>Called</option>
+                        <option value="received" <?= ($selectedCallStatus ?? '') == 'received' ? 'selected' : '' ?>>Received</option>
+                        <option value="not_received" <?= ($selectedCallStatus ?? '') == 'not_received' ? 'selected' : '' ?>>Not Received</option>
+                    </select>
+                </div>
+
+                <!-- Year Select -->
+                <div class="col-auto col-sm-6 col-md-auto">
                     <?php
-                    $months = [
-                        1 => 'January',
-                        2 => 'February',
-                        3 => 'March',
-                        4 => 'April',
-                        5 => 'May',
-                        6 => 'June',
-                        7 => 'July',
-                        8 => 'August',
-                        9 => 'September',
-                        10 => 'October',
-                        11 => 'November',
-                        12 => 'December'
-                    ];
-                    $selectedMonth = $_GET['month'] ?? '';
+                    $currentYear = date('Y');
+                    $startYear   = $currentYear - 10;
+                    $selectedYear = $_GET['year'] ?? '';
                     ?>
-                    <div class="col-auto col-sm-6 col-md-auto">
-                        <select class="form-control" name="month">
-                            <option value="">Month Select</option>
-                            <?php foreach ($months as $id => $name): ?>
-                                <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>><?= $name ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <!-- Call Status Select -->
-                    <div class="col-auto col-sm-6 col-md-auto">
-                        <select class="form-select form-select-sm" name="call_status">
-                            <option value="">Call Status: All</option>
-                            <option value="not_called" <?= ($selectedCallStatus ?? '') == 'not_called' ? 'selected' : '' ?>>Not Called</option>
-                            <option value="called" <?= ($selectedCallStatus ?? '') == 'called' ? 'selected' : '' ?>>Called</option>
-                            <option value="received" <?= ($selectedCallStatus ?? '') == 'received' ? 'selected' : '' ?>>Received</option>
-                            <option value="not_received" <?= ($selectedCallStatus ?? '') == 'not_received' ? 'selected' : '' ?>>Not Received</option>
-                        </select>
-                    </div>
-
-                    <!-- Search & Reset Buttons Next to Select -->
-                    <div class="col-auto d-flex align-items-center gap-2 flex-wrap">
-                        <button type="submit" class="btn btn-outline-secondary btn-sm py-1">
-                            Search
-                        </button>
-                        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads" class="btn btn-primary btn-sm">
-                            Reset
-                        </a>
-
-                    </div>
-
+                    <select class="form-select form-select-sm" name="year">
+                        <option value="">Year Select</option>
+                        <?php for ($yearVal = $currentYear; $yearVal >= $startYear; $yearVal--): ?>
+                            <option value="<?= $yearVal ?>" <?= $selectedYear == $yearVal ? 'selected' : '' ?>><?= $yearVal ?></option>
+                        <?php endfor; ?>
+                    </select>
                 </div>
-            </form>
-        </div>
+
+                <!-- Month Select -->
+                <?php
+                $months = [
+                    1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+                    5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+                    9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+                ];
+                $selectedMonth = $_GET['month'] ?? '';
+                ?>
+                <div class="col-auto col-sm-6 col-md-auto">
+                    <select class="form-select form-select-sm" name="month">
+                        <option value="">Month Select</option>
+                        <?php foreach ($months as $id => $name): ?>
+                            <option value="<?= $id ?>" <?= $selectedMonth == $id ? 'selected' : '' ?>><?= $name ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <?php if (!empty($filterCard)): ?>
+                    <input type="hidden" name="filter_card" value="<?= htmlspecialchars($filterCard) ?>">
+                <?php endif; ?>
+
+                <!-- Filter & Reset Buttons -->
+                <div class="col-auto d-flex align-items-center gap-2 flex-wrap">
+                    <button type="submit" class="btn btn-primary btn-sm px-3 py-1">
+                        <i class="bi bi-funnel me-1"></i> Filter
+                    </button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads" class="btn btn-outline-secondary btn-sm px-3 py-1">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                    </a>
+                </div>
+
+            </div>
+        </form>
+    </div>
 
         <!-- Table -->
         <div class="col-xxl-12">

@@ -176,9 +176,15 @@
                       </div>
 
                       <input type="hidden" name="payslip_payload" id="payslipPayload">
+                      <input type="hidden" name="is_draft" id="isDraftInput" value="0">
 
-                      <div class="text-center my-4">
-                          <button type="submit" class="btn btn-primary">Save Payslip</button>
+                      <div class="text-center my-4 d-flex justify-content-center gap-3 flex-wrap">
+                          <button type="submit" name="submit_action" value="approval" id="saveApprovalBtn" class="btn btn-primary px-4" onclick="setDraftMode(false);">
+                              <i class="fa-light fa-paper-plane me-1"></i> Save & Submit for Approval
+                          </button>
+                          <button type="submit" name="submit_action" value="draft" id="saveDraftBtn" class="btn btn-outline-secondary px-4" onclick="setDraftMode(true);">
+                              <i class="fa-light fa-file-lines me-1"></i> Save as Draft (Salary Certificate)
+                          </button>
                       </div>
                   </form>
               </div>
@@ -186,6 +192,27 @@
       </div>
   </div>
   <script>
+  window.IS_DRAFT_SUBMISSION = false;
+  function setDraftMode(isDraft) {
+      window.IS_DRAFT_SUBMISSION = !!isDraft;
+      var inp = document.getElementById('isDraftInput');
+      if (inp) inp.value = isDraft ? '1' : '0';
+      try {
+          var saved = localStorage.getItem('payslip_data');
+          if (saved) {
+              var sData = JSON.parse(saved);
+              sData.is_draft = isDraft ? 1 : 0;
+              localStorage.setItem('payslip_data', JSON.stringify(sData));
+          }
+          var payloadInp = document.getElementById('payslipPayload');
+          if (payloadInp && payloadInp.value) {
+              var data = JSON.parse(payloadInp.value);
+              data.is_draft = isDraft ? 1 : 0;
+              payloadInp.value = JSON.stringify(data);
+          }
+      } catch(e) {}
+  }
+
   // jQuery and Select2 are loaded in footer — use window.load to run AFTER them
   window.addEventListener('load', function () {
 
@@ -272,7 +299,8 @@
               ).toFixed(2),
               earnings,
               deductions,
-              paydate
+              paydate,
+              is_draft: parseInt(document.getElementById('isDraftInput').value || 0)
           };
 
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -331,8 +359,18 @@
       document.getElementById('paydate').addEventListener('change', collectPayslipData);
 
       // ── Form submit — ensure payload is up to date ───────────────────────────
-      document.getElementById('payslipForm').addEventListener('submit', () => {
-          const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      document.getElementById('payslipForm').addEventListener('submit', function (e) {
+          const isDraft = window.IS_DRAFT_SUBMISSION || 
+                          (document.getElementById('isDraftInput') && document.getElementById('isDraftInput').value == '1') || 
+                          (e.submitter && e.submitter.value === 'draft');
+          
+          let data = {};
+          try {
+              data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+          } catch(err) {}
+
+          data.is_draft = isDraft ? 1 : 0;
+          document.getElementById('isDraftInput').value = isDraft ? '1' : '0';
           document.getElementById('payslipPayload').value = JSON.stringify(data);
       });
 

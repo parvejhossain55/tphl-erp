@@ -87,6 +87,7 @@ $show_breadcrumb = true;
                         <option value="">Status Select</option>
                         <option value="paid" <?= (isset($selectedStatus) && $selectedStatus == 'paid') ? 'selected' : '' ?>>Paid</option>
                         <option value="unpaid" <?= (isset($selectedStatus) && $selectedStatus == 'unpaid') ? 'selected' : '' ?>>Unpaid</option>
+                        <option value="draft" <?= (isset($selectedStatus) && $selectedStatus == 'draft') ? 'selected' : '' ?>>Draft / Certificate</option>
                     </select>
                 </div>
             </div>
@@ -272,6 +273,7 @@ $show_breadcrumb = true;
                     <tbody class="table__body">
                         <?php $sl = 1; ?>
                         <?php foreach ($payslips as $payslip): ?>
+                            <?php if ($payslip['status'] == 'draft') continue; ?>
                             <tr>
                                 <td><?= $sl++ ?></td>
                                 <td class="td_1">
@@ -312,10 +314,12 @@ $show_breadcrumb = true;
                                     <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
                                 </td>
                                 <td class="table__approval-time">
-                                    <?= !empty($payslip['approval_time']) ? date('d M Y H:i', strtotime($payslip['approval_time'])) : 'Not Approved' ?>
+                                    <?= ($payslip['status'] == 'draft') ? 'N/A (Draft)' : (!empty($payslip['approval_time']) ? date('d M Y H:i', strtotime($payslip['approval_time'])) : 'Not Approved') ?>
                                 </td>
                                  <td class="table__delivery ">
-                                     <?php if ($payslip['status'] == 'paid'): ?>
+                                     <?php if ($payslip['status'] == 'draft'): ?>
+                                         <span class="bd-badge bg-secondary">Draft / Certificate</span>
+                                     <?php elseif ($payslip['status'] == 'paid'): ?>
                                          <span class="bd-badge bg-success">Paid</span>
                                      <?php elseif ($payslip['status'] == 'approved'): ?>
                                          <span class="bd-badge bg-primary">Approved</span>
@@ -337,7 +341,9 @@ $show_breadcrumb = true;
                                                  <i class="fa-light fa-plus me-1"></i> Create Payslip
                                              </a>
                                          <?php else: ?>
-                                             <?php if ($payslip['status'] != 'paid'): ?>
+                                             <?php if ($payslip['status'] == 'draft'): ?>
+                                                 <span class="badge bg-secondary-subtle text-secondary border py-2 px-2" style="font-size: 11px;">Draft Certificate</span>
+                                             <?php elseif ($payslip['status'] != 'paid'): ?>
                                                  <button
                                                      class="btn btn-warning btn-sm payPayslipBtn"
                                                      data-id="<?= $payslip['id'] ?>"
@@ -353,11 +359,14 @@ $show_breadcrumb = true;
                                                  </button>
                                              <?php endif; ?>
 
-                                             <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>" class="table__icon download">
+                                             <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>" class="table__icon download" title="View Payslip">
                                                  <i class="fa-regular fa-eye"></i>
                                              </a>
-                                             <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>?print=1" class="table__icon download">
+                                             <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>?print=1" class="table__icon download" title="Print Payslip">
                                                  <i class="fas fa-print"></i>
+                                             </a>
+                                             <a href="<?= $GLOBALS['base_url'] ?>/delete-payslip/<?= $payslip['id'] ?>" onclick="return confirm('Are you sure you want to delete this payslip?')" class="table__icon text-danger" title="Delete Payslip">
+                                                 <i class="fa-regular fa-trash-can"></i>
                                              </a>
                                          <?php endif; ?>
                                      </div>
@@ -371,6 +380,61 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
+</div>
+
+<div class="col-xxl-12 animate__animated animate__fadeIn mt-4">
+    <div class="card__wrapper">
+        <div class="d-flex justify-content-between align-items-center mb-15 flex-wrap gap-2">
+            <h5 class="fw-bold m-0 text-dark" style="font-size: 1rem;">Draft Salary Certificates</h5>
+        </div>
+        <div class="table__wrapper table-responsive">
+            <table class="table hover mb-20" id="draftPayslipListTable">
+                <thead>
+                    <tr class="table__title">
+                        <th>SL</th>
+                        <th class="th_1">Employee</th>
+                        <th>Designation</th>
+                        <th>Department</th>
+                        <th>Email</th>
+                        <th>Joining Date</th>
+                        <th>Gross Salary (Monthly)</th>
+                        <th>Status</th>
+                        <th class="">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="table__body">
+                    <?php $sl2 = 1; ?>
+                    <?php foreach ($payslips as $payslip): ?>
+                        <?php if ($payslip['status'] != 'draft') continue; ?>
+                        <tr>
+                            <td><?= $sl2++ ?></td>
+                            <td class="td_1">
+                                <span class="table-avatar">
+                                    <a class="employee__avatar mr-5" href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $payslip['employee_id'] ?>"><img class="img-48 border-circle" src="<?= getImage('employees', $payslip['photo']) ?>" alt="User Image"><strong class="ps-2"><?= htmlspecialchars($payslip['employee_office_id'] ?? '') ?></strong></a>
+                                    <a href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $payslip['employee_id'] ?>"><?= $payslip['employee_name'] ?></a>
+                                </span>
+                            </td>
+                            <td class="table__employee-position"><?= $payslip['desgination_name'] ?></td>
+                            <td class="table__employee-department"><?= htmlspecialchars($payslip['department_name'] ?? 'N/A') ?></td>
+                            <td class="table__employee-email"><a href="mailto:<?= htmlspecialchars($payslip['email']) ?>"><?= htmlspecialchars($payslip['email']) ?></a></td>
+                            <td class="table__joining-date"><?= $payslip['joining_date'] ?></td>
+                            <td class="table__salary"><?= $payslip['net_salary'] ?></td>
+                            <td class="table__delivery"><span class="bd-badge bg-secondary">Draft / Certificate</span></td>
+                            <td class="able__icon-box">
+                                <div class="d-flex align-items-center justify-content-start gap-10">
+                                    <span class="badge bg-secondary-subtle text-secondary border py-2 px-2" style="font-size: 11px;">Draft Certificate</span>
+                                    <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>" class="table__icon download" title="View Payslip"><i class="fa-regular fa-eye"></i></a>
+                                    <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>?print=1" class="table__icon download" title="Print Payslip"><i class="fas fa-print"></i></a>
+                                    <a href="<?= $GLOBALS['base_url'] ?>/delete-payslip/<?= $payslip['id'] ?>" onclick="return confirm('Are you sure you want to delete this payslip?')" class="table__icon text-danger" title="Delete Payslip"><i class="fa-regular fa-trash-can"></i></a>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 </div>
 <!-- Pay Payslip Modal -->
 <div id="payPayslipModal" class="modal custom-modal fade" role="dialog">
