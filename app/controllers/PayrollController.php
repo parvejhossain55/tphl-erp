@@ -100,6 +100,11 @@ class PayrollController extends Controller
         $detailsModel = new PayslipDetail($this->db);
         $approvalModel = new ApprovalRequest($this->db);
 
+        $isDraft = (!empty($payload['is_draft']) && $payload['is_draft'] == 1)
+            || (!empty($_POST['is_draft']) && $_POST['is_draft'] == 1)
+            || (!empty($_POST['submit_action']) && $_POST['submit_action'] === 'draft');
+        $status  = $isDraft ? 'draft' : 'pending';
+
         $payslipId = $payslipModel->create([
             'employee_id'     => $payload['employee_id'],
             'designation_id'  => $payload['designation_id'],
@@ -107,7 +112,7 @@ class PayrollController extends Controller
             'total_earning'   => $payload['total_earning'],
             'total_deduction' => $payload['total_deduction'],
             'net_salary'      => $payload['net_salary'],
-            'status'          => 'pending',
+            'status'          => $status,
             'upload_by'       => 'manual',
             'created_by'      => $_SESSION['user']['id'],
         ]);
@@ -124,27 +129,45 @@ class PayrollController extends Controller
             }
         }
 
-        //  CREATE APPROVAL REQUEST
-        $approvalModel->create([
-            'department'      => 'HR',
-            'request_type'    => 'salary',
-            'title'           => 'Salary Approval',
-            'source_table'    => 'payslips',
-            'source_id'       => $payslipId,
-            'request_amount'  => $payload['net_salary'],
-            'requested_by'    => $_SESSION['user']['id'],
-            'approve_role'    => 'management',
-            'meta_data'       => json_encode([
-                'employee_id' => $payload['employee_id'],
-                'month' => date('d F Y')
-            ])
-        ]);
+        // CREATE APPROVAL REQUEST ONLY IF NOT DRAFT
+        if (!$isDraft) {
+            $approvalModel->create([
+                'department'      => 'HR',
+                'request_type'    => 'salary',
+                'title'           => 'Salary Approval',
+                'source_table'    => 'payslips',
+                'source_id'       => $payslipId,
+                'request_amount'  => $payload['net_salary'],
+                'requested_by'    => $_SESSION['user']['id'],
+                'approve_role'    => 'management',
+                'meta_data'       => json_encode([
+                    'employee_id' => $payload['employee_id'],
+                    'month' => date('d F Y')
+                ])
+            ]);
+        }
 
 
         echo "<script>
         localStorage.removeItem('payslip_data');
         window.location.href = '{$GLOBALS['base_url']}/payslip-lists';
     </script>";
+    }
+
+    public function delete($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $payslipId = (int)$id;
+        if ($payslipId) {
+            $this->paymentModel->delete($payslipId);
+            $_SESSION['success'] = "Payslip deleted successfully.";
+        }
+
+        header("Location: " . $GLOBALS['base_url'] . "/payslip-lists");
+        exit;
     }
 
 

@@ -165,11 +165,15 @@ public function getPendingCount($year = null, $month = null)
         $stmt1->execute();
         $stmt1->close();
 
-        //  Delete the department
         $stmt2 = $this->db->prepare("DELETE FROM payslips WHERE id = ?");
         $stmt2->bind_param("i", $id);
         $stmt2->execute();
         $stmt2->close();
+
+        $stmt3 = $this->db->prepare("DELETE FROM approval_requests WHERE source_table = 'payslips' AND source_id = ?");
+        $stmt3->bind_param("i", $id);
+        $stmt3->execute();
+        $stmt3->close();
 
         return true;
     }
@@ -320,8 +324,8 @@ public function getPendingCount($year = null, $month = null)
                     ) AS t
                     WHERE rn = 1
                 ) AS ar ON ar.source_id = p.id
-                WHERE (p.id IS NOT NULL AND p.status != 'paid') OR (p.id IS NULL)
-                ORDER BY p.id DESC, e.full_name ASC
+                WHERE (p.id IS NOT NULL AND p.status NOT IN ('paid', 'draft')) OR (p.id IS NULL)
+                ORDER BY CASE WHEN p.status = 'draft' THEN 1 ELSE 0 END ASC, p.id DESC, e.full_name ASC
             ";
         } else {
             $sql = "
@@ -366,9 +370,11 @@ public function getPendingCount($year = null, $month = null)
 
             if ($status === 'paid') {
                 $sql .= " AND p.status = 'paid'";
+            } elseif ($status === 'draft') {
+                $sql .= " AND p.status = 'draft'";
             }
 
-            $sql .= " ORDER BY p.id DESC";
+            $sql .= " ORDER BY CASE WHEN p.status = 'draft' THEN 1 ELSE 0 END ASC, p.id DESC";
         }
 
         $stmt = $this->db->prepare($sql);

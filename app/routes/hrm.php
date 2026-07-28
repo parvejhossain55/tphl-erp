@@ -197,6 +197,7 @@ return [
     'pay-payslip' => ['controller' => 'PayrollController', 'method' => 'updatePay'],
     'show-payslip/(\d+)' => ['controller' => 'PayrollController', 'method' => 'show'],
     'print-payslip/(\d+)' => ['controller' => 'PayrollController', 'method' => 'print'],
+    'delete-payslip/(\d+)' => ['controller' => 'PayrollController', 'method' => 'delete'],
     'get-due-employees' => ['controller' => 'PayrollController', 'method' => 'dueEmployeePayslip'],
     'import-payslips' => ['controller' => 'PayrollController', 'method' => 'showImportForm'],
     'execute-import-payslips' => ['controller' => 'PayrollController', 'method' => 'importCSV'],
