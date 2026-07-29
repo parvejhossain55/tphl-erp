@@ -41,9 +41,16 @@ class UserDashboardController extends Controller
 
         $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
         $filterCategoryId = isset($_GET['project_category_id']) && $_GET['project_category_id'] !== '' ? (int)$_GET['project_category_id'] : null;
+        $filterCountry = !empty($_GET['filter_country']) ? $_GET['filter_country'] : null;
+        if (is_array($filterCountry)) {
+            $filterCountry = array_values(array_filter($filterCountry, fn($val) => trim($val) !== ''));
+            if (empty($filterCountry)) $filterCountry = null;
+        } elseif (is_string($filterCountry) && trim($filterCountry) === '') {
+            $filterCountry = null;
+        }
 
         // only assigned today leads for logged user
-        $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId, $filterProjectId, $filterCategoryId);
+        $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId, $filterProjectId, $filterCategoryId, $filterCountry);
 
         // Fetch duplicate leads for the logged in user
         $userDuplicates = $this->leadModel->getDuplicateLeadsForUser($loggedUserId);
@@ -108,6 +115,8 @@ class UserDashboardController extends Controller
         $projectCategoryModel = new ProjectCategory($this->db);
         $projectCategories = $projectCategoryModel->getAll();
 
+        $countries = $this->leadModel->getDistinctCountries();
+
         $this->view("sales-executive/today-leads", [
             "current_route" => "today-leads",
             "page_title"    => "Leads Today Assign",
@@ -119,6 +128,8 @@ class UserDashboardController extends Controller
             "emailMap"        => $emailMap,
             "projects"        => $projects,
             "projectCategories" => $projectCategories,
+            "countries"       => $countries,
+            "selectedCountry" => $filterCountry,
         ]);
     }
 
@@ -445,16 +456,36 @@ class UserDashboardController extends Controller
 
         $userId = $_SESSION['user']['id'] ?? null;
 
+        $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+        $filterCategoryId = isset($_GET['project_category_id']) && $_GET['project_category_id'] !== '' ? (int)$_GET['project_category_id'] : null;
+        $filterCountry = !empty($_GET['filter_country']) ? $_GET['filter_country'] : null;
+        if (is_array($filterCountry)) {
+            $filterCountry = array_values(array_filter($filterCountry, fn($val) => trim($val) !== ''));
+            if (empty($filterCountry)) $filterCountry = null;
+        } elseif (is_string($filterCountry) && trim($filterCountry) === '') {
+            $filterCountry = null;
+        }
+
+        $countries = $this->leadModel->getDistinctCountries();
+        $projectModel = new Project($this->db);
+        $projects = $projectModel->getAll();
+        $projectCategoryModel = new ProjectCategory($this->db);
+        $projectCategories = $projectCategoryModel->getAll();
+
         $todayFollowUpLeads = [];
         if ($userId) {
             $todayFollowUpLeads = $this->followUpModel
-                ->getTodayFollowUpLoginUser((int)$userId);
+                ->getTodayFollowUpLoginUser((int)$userId, $filterProjectId, $filterCategoryId, $filterCountry);
         }
 
         $this->view("sales-executive/today-followup", [
             "current_route"       => "today-follow-up",
             "page_title"          => "Today Follow Up",
             "todayFollowUpLeads"  => $todayFollowUpLeads,
+            "countries"           => $countries,
+            "selectedCountry"     => $filterCountry,
+            "projects"            => $projects,
+            "projectCategories"   => $projectCategories,
         ]);
     }
 
@@ -503,8 +534,16 @@ class UserDashboardController extends Controller
         $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
         $filterCategoryId = isset($_GET['project_category_id']) && $_GET['project_category_id'] !== '' ? (int)$_GET['project_category_id'] : null;
 
+        $filterCountry = !empty($_GET['filter_country']) ? $_GET['filter_country'] : null;
+        if (is_array($filterCountry)) {
+            $filterCountry = array_values(array_filter($filterCountry, fn($val) => trim($val) !== ''));
+            if (empty($filterCountry)) $filterCountry = null;
+        } elseif (is_string($filterCountry) && trim($filterCountry) === '') {
+            $filterCountry = null;
+        }
+
         // Calculate card statistics from unfiltered assigned leads for the user
-        $unfilteredAssignedLeads = $this->leadModel->getAllMyLeads($userId, $year, $month, null, null, false, '', null, null, $filterProjectId, $filterCategoryId);
+        $unfilteredAssignedLeads = $this->leadModel->getAllMyLeads($userId, $year, $month, null, null, false, '', null, null, $filterProjectId, $filterCategoryId, $filterCountry);
 
         $totalLeadsCount        = count($unfilteredAssignedLeads);
         $contactedLeadsCount    = 0;
@@ -536,7 +575,7 @@ class UserDashboardController extends Controller
         }
 
         $myAssignedClients = $this->leadModel
-            ->getAllMyLeads($userId, $year, $month, $lastAction, $call_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId);
+            ->getAllMyLeads($userId, $year, $month, $lastAction, $call_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry);
 
         $missingFollowUpCount = $followUpModel->getMissingFollowUpCount($userId);
 
@@ -684,6 +723,7 @@ class UserDashboardController extends Controller
         $projects = $projectModel->getAll();
         $projectCategoryModel = new ProjectCategory($this->db);
         $projectCategories = $projectCategoryModel->getAll();
+        $countries = $this->leadModel->getDistinctCountries();
 
         $this->view('sales-executive/my-assigned-leads', [
             'page_title'          => 'My Assigned Leads',
@@ -698,6 +738,8 @@ class UserDashboardController extends Controller
             'missingFollowUpCount'=> $missingFollowUpCount,
             'projects'            => $projects,
             'projectCategories'   => $projectCategories,
+            'countries'           => $countries,
+            'selectedCountry'     => $filterCountry,
             'isFilterMissing'     => $onlyMissingFollowup,
             'phoneMap'            => $phoneMap,
             'emailMap'            => $emailMap,

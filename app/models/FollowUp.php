@@ -393,7 +393,7 @@ class FollowUp extends Model
 
         return $followUps;
     }
-    public function getTodayFollowUpLoginUser(int $userId)
+    public function getTodayFollowUpLoginUser(int $userId, $projectId = null, $projectCategoryId = null, $country = null)
     {
         $userId = (int) $userId;
         $today = date('Y-m-d');
@@ -418,22 +418,79 @@ class FollowUp extends Model
         LEFT JOIN flats fl ON f.flat_id = fl.id
         LEFT JOIN users creator ON f.created_by = creator.id
         LEFT JOIN users assignee ON f.assigned_with = assignee.id
-        WHERE DATE(f.next_follow_up_date) = '{$today}'
-          AND f.assigned_with = {$userId}
+        WHERE DATE(f.next_follow_up_date) = ?
+          AND f.assigned_with = ?
           AND f.deleted_at IS NULL
-        ORDER BY f.follow_up_date DESC, f.follow_up_time DESC
     ";
 
-        $result = $this->db->query($sql);
+        $params = [$today, $userId];
+        $types  = "si";
 
-        $followUps = [];
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $followUps[] = $row;
+        if (!empty($projectId)) {
+            $sql .= " AND (f.project_id = ? OR l.project_id = ?)";
+            $params[] = (int)$projectId;
+            $params[] = (int)$projectId;
+            $types .= "ii";
+        }
+
+        if (!empty($projectCategoryId)) {
+            $sql .= " AND l.project_category_id = ?";
+            $params[] = (int)$projectCategoryId;
+            $types .= "i";
+        }
+
+        if (!empty($country)) {
+            $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
+            if (!empty($countryList)) {
+                $allConds = [];
+                foreach ($countryList as $cItem) {
+                    $synonyms = [$cItem];
+                    if (strcasecmp($cItem, 'UAE') === 0 || strcasecmp($cItem, 'United Arab Emirates') === 0) {
+                        $synonyms = ['UAE', 'United Arab Emirates'];
+                    } elseif (strcasecmp($cItem, 'USA') === 0 || strcasecmp($cItem, 'United States') === 0) {
+                        $synonyms = ['USA', 'United States'];
+                    } elseif (strcasecmp($cItem, 'UK') === 0 || strcasecmp($cItem, 'United Kingdom') === 0) {
+                        $synonyms = ['UK', 'United Kingdom'];
+                    }
+
+                    $subConds = [];
+                    foreach ($synonyms as $syn) {
+                        $subConds[] = "l.country = ?";
+                        $subConds[] = "l.city = ?";
+                        $subConds[] = "l.city LIKE ?";
+                        $subConds[] = "l.address LIKE ?";
+                        $params[] = $syn;
+                        $params[] = $syn;
+                        $params[] = "%" . $syn . "%";
+                        $params[] = "%" . $syn . "%";
+                        $types .= "ssss";
+                    }
+                    $allConds[] = "(" . implode(" OR ", $subConds) . ")";
+                }
+                if (!empty($allConds)) {
+                    $sql .= " AND (" . implode(" OR ", $allConds) . ")";
+                }
             }
         }
 
-        return $followUps;
+        $sql .= " ORDER BY f.follow_up_date DESC, f.follow_up_time DESC";
+
+        $stmt = $this->db->prepare($sql);
+        if ($stmt) {
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $followUps = [];
+            if ($result) {
+                while ($row = $result->fetch_assoc()) {
+                    $followUps[] = $row;
+                }
+            }
+            $stmt->close();
+            return $followUps;
+        }
+
+        return [];
     }
 
 
