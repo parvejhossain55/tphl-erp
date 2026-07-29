@@ -771,6 +771,7 @@ $show_breadcrumb = true;
                                     <th>Due Amount</th>
                                     <th>Payment Status</th>
                                     <th>Maturity Status</th>
+                                    <th>Follow Up</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -797,6 +798,14 @@ $show_breadcrumb = true;
                                     <td>TK. <?= number_format($emi['due_amount'], 2) ?></td>
                                     <td><?= $statusBadge ?></td>
                                     <td><?= $maturityBadge ?></td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEmiFollowupModal(<?= $clientDetails['booking_id'] ?? 0 ?>, <?= $emi['emi_no'] ?>)">
+                                            <i class="fa-light fa-comment-dots"></i> Follow Up 
+                                            <?php if (($emi['followup_count'] ?? 0) > 0): ?>
+                                                <span class="badge bg-secondary rounded-pill ms-1"><?= $emi['followup_count'] ?></span>
+                                            <?php endif; ?>
+                                        </button>
+                                    </td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -845,6 +854,37 @@ $show_breadcrumb = true;
                     style="background:#dc2626; color:#fff; border:none;">
                     <i class="fa-light fa-times-circle me-1"></i> Confirm Rejection
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== EMI FOLLOW UP MODAL ===== -->
+<div class="modal fade" id="emiFollowupModal" tabindex="-1" aria-labelledby="emiFollowupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="emiFollowupModalLabel">EMI Follow Up Notes</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal"><i class="fa-solid fa-xmark-large"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-5 border-end">
+                        <h6 class="mb-3">Add New Note</h6>
+                        <input type="hidden" id="followupBookingId">
+                        <input type="hidden" id="followupEmiNo">
+                        <div class="mb-3">
+                            <textarea id="followupNoteInput" class="form-control" rows="4" placeholder="Type your follow up note here..."></textarea>
+                        </div>
+                        <button type="button" class="btn btn-primary w-100" onclick="saveEmiFollowup()">Save Note</button>
+                    </div>
+                    <div class="col-md-7">
+                        <h6 class="mb-3">Follow Up History</h6>
+                        <div id="followupHistoryContainer" style="max-height: 300px; overflow-y: auto;">
+                            <div class="text-center text-muted py-4">Loading history...</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1387,6 +1427,9 @@ $show_breadcrumb = true;
         .payment-filter[data-filter="development_charge"].active { background:#ffc107; color:#000; border-color:#ffc107; }
         .payment-filter[data-filter="emi"].active { background:#dc3545; color:#fff; border-color:#dc3545; }
         .payment-filter[data-filter="emi_due_settlement"].active { background:#212529; color:#fff; border-color:#212529; }
+        
+        /* Fix SweetAlert z-index behind bootstrap modals */
+        .swal2-container { z-index: 99999 !important; }
     </style>
 
     <script>
@@ -1410,4 +1453,97 @@ $show_breadcrumb = true;
             });
         });
     });
+
+    function openEmiFollowupModal(bookingId, emiNo) {
+        $('#followupBookingId').val(bookingId);
+        $('#followupEmiNo').val(emiNo);
+        $('#followupNoteInput').val('');
+        $('#followupHistoryContainer').html('<div class="text-center text-muted py-4">Loading history...</div>');
+        
+        var modal = new bootstrap.Modal(document.getElementById('emiFollowupModal'));
+        modal.show();
+        
+        loadEmiFollowups(bookingId, emiNo);
+    }
+    
+    function loadEmiFollowups(bookingId, emiNo) {
+        $.ajax({
+            url: '<?= $GLOBALS['base_url'] ?>/account-client/getEmiFollowups',
+            type: 'GET',
+            data: { booking_id: bookingId, emi_no: emiNo },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    var html = '';
+                    if (response.data.length === 0) {
+                        html = '<div class="text-center text-muted py-4">No follow up notes yet.</div>';
+                    } else {
+                        response.data.forEach(function(note) {
+                            html += '<div class="card mb-2 shadow-sm border-0 bg-light">';
+                            html += '<div class="card-body p-3">';
+                            html += '<p class="mb-2" style="font-size: 14px;">' + note.note + '</p>';
+                            html += '<div class="d-flex justify-content-between text-muted" style="font-size: 12px;">';
+                            html += '<span><i class="fa-light fa-user me-1"></i> ' + note.author_name + '</span>';
+                            html += '<span><i class="fa-light fa-clock me-1"></i> ' + note.created_at_formatted + '</span>';
+                            html += '</div></div></div>';
+                        });
+                    }
+                    $('#followupHistoryContainer').html(html);
+                } else {
+                    $('#followupHistoryContainer').html('<div class="text-danger p-3">Failed to load history.</div>');
+                }
+            },
+            error: function() {
+                $('#followupHistoryContainer').html('<div class="text-danger p-3">Error connecting to server.</div>');
+            }
+        });
+    }
+    
+    function saveEmiFollowup() {
+        var bookingId = $('#followupBookingId').val();
+        var emiNo = $('#followupEmiNo').val();
+        var note = $('#followupNoteInput').val().trim();
+        
+        if (!note) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Oops...',
+                text: 'Please enter a note.',
+            });
+            return;
+        }
+        
+        $.ajax({
+            url: '<?= $GLOBALS['base_url'] ?>/account-client/saveEmiFollowup',
+            type: 'POST',
+            data: { booking_id: bookingId, emi_no: emiNo, note: note },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: 'Follow up note saved successfully.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    $('#followupNoteInput').val('');
+                    loadEmiFollowups(bookingId, emiNo);
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Failed',
+                        text: response.message || "Failed to save note."
+                    });
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Server Error',
+                    text: 'Please try again later.'
+                });
+            }
+        });
+    }
     </script>

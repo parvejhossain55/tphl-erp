@@ -627,6 +627,15 @@ class Con_VendorPaymentRequestController extends Controller
                 // Sync approval_requests table
                 $this->syncApprovalRequest($id, 'approved');
 
+                // AUTO-GENERATE ACCRUAL JOURNAL
+                try {
+                    require_once __DIR__ . '/../../services/JournalIntegrationService.php';
+                    $journalService = new \Services\JournalIntegrationService($this->db);
+                    $journalService->generateVendorAccrual($id, $this->userId);
+                } catch (\Exception $e) {
+                    error_log("Failed to auto-generate vendor accrual journal: " . $e->getMessage());
+                }
+
                 // Send email notification on approval
                 try {
                     $updatedRequest = $this->model->find($id);

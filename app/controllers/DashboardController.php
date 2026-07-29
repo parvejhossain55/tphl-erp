@@ -228,6 +228,7 @@ class DashboardController extends Controller
             $stats['pending_land_requisition_amt'] = (float)$row['amt'];
         }
 
+
         // 8. Pending Fund Requisitions (pending Accounts disbursement)
         $r = $this->db->query("
             SELECT COUNT(*) AS c, COALESCE(SUM(amount), 0) AS amt

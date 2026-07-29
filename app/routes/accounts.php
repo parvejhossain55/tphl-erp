@@ -72,6 +72,37 @@ return [
     'ced-add-transaction-form' => ['controller' => 'AccountClientController', 'method' => 'showCedTransactionForm'],
     'ced-add-transaction-form/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'showCedTransactionForm'],
     'ced-add-transaction' => ['controller' => 'AccountClientController', 'method' => 'addCedTransaction'],
+    
+    // EMI Followups
+    'account-client/getEmiFollowups' => ['controller' => 'AccountClientController', 'method' => 'getEmiFollowups'],
+    'account-client/saveEmiFollowup' => ['controller' => 'AccountClientController', 'method' => 'saveEmiFollowup'],
+    
+    // Financial Dashboard
+    'financial-dashboard' => ['controller' => 'AccountFinancialController', 'method' => 'index'],
+    'financial-dashboard/get-vouchers' => ['controller' => 'AccountFinancialController', 'method' => 'getExpenseVouchers'],
+    'financial-dashboard/get-adjustments' => ['controller' => 'AccountFinancialController', 'method' => 'getAdjustments'],
+    'financial-dashboard/get-receipts' => ['controller' => 'AccountFinancialController', 'method' => 'getReceipts'],
+    'financial-dashboard/get-clients' => ['controller' => 'AccountFinancialController', 'method' => 'getClients'],
+    'financial-dashboard/get-refunds' => ['controller' => 'AccountFinancialController', 'method' => 'getRefunds'],
+
+    // General Journal
+    'general-journal/create' => ['controller' => 'GeneralJournalController', 'method' => 'create'],
+    'general-journal/store' => ['controller' => 'GeneralJournalController', 'method' => 'store'],
+    'general-journal/view/(\d+)' => ['controller' => 'GeneralJournalController', 'method' => 'show'],
+    'general-journal/edit/(\d+)' => ['controller' => 'GeneralJournalController', 'method' => 'edit'],
+    'general-journal/update/(\d+)' => ['controller' => 'GeneralJournalController', 'method' => 'update'],
+    'general-journal/approve/(\d+)' => ['controller' => 'GeneralJournalController', 'method' => 'approve'],
+    'financial-dashboard/get-general-journals' => ['controller' => 'GeneralJournalController', 'method' => 'getJournals'],
+
+    // Chart of Accounts Management
+    'accounts/coa' => ['controller' => 'ChartOfAccountsController', 'method' => 'index'],
+    'accounts/coa/store' => ['controller' => 'ChartOfAccountsController', 'method' => 'store'],
+    'accounts/coa/update' => ['controller' => 'ChartOfAccountsController', 'method' => 'update'],
+
+    // Financial Reports
+    'reports/balance-sheet' => ['controller' => 'ReportsController', 'method' => 'balanceSheet'],
+    'reports/profit-loss' => ['controller' => 'ReportsController', 'method' => 'profitLoss'],
+    'reports/cashflow' => ['controller' => 'ReportsController', 'method' => 'cashflow'],
 
     // =========================================================================
     // Controller: AccountShopClientController

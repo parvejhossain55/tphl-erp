@@ -1321,6 +1321,13 @@
                             <?php endif; ?>
                         </a>
                     </li>
+                    <li class="slide <?= isActive('financial-dashboard', $current_route) ?>">
+                        <a href="<?= $base_url ?>/financial-dashboard"
+                            class="sidebar__menu-item <?= isActive('financial-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                            <span class="sidebar__menu-label">Project Expense</span>
+                        </a>
+                    </li>
                     <?php if (!$isManagement): ?>
                         <li class="slide <?= isActive('all-approval-requests', $current_route) ?>">
                             <a href="<?= $base_url ?>/all-approval-requests"
