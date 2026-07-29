@@ -21,6 +21,13 @@ $myProjects = $myProjects ?? [];
 $recentWorkingPlans = $recentWorkingPlans ?? [];
 $recentMaterialIssues = $recentMaterialIssues ?? [];
 $recentVendorPayments = $recentVendorPayments ?? [];
+$prsForApproval = $prsForApproval ?? [];
+$posForApproval = $posForApproval ?? [];
+$pendingWorkOrders = $pendingWorkOrders ?? [];
+$prsCount = $prsCount ?? 0;
+$posCount = $posCount ?? 0;
+$wosCount = $wosCount ?? 0;
+$roleId = $roleId ?? 0;
 ?>
 <div class="row"><div class="col-12">
 <style>
@@ -67,8 +74,7 @@ $recentVendorPayments = $recentVendorPayments ?? [];
 .op-hero-title { font-size: 28px; font-weight: 900; color: #fff; margin: 0 0 6px; }
 .op-hero-sub   { font-size: 13px; color: rgba(255,255,255,.7); margin: 0; }
 
-.kpi-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
-@media(max-width:992px){ .kpi-grid-4 { grid-template-columns: repeat(2,1fr); } }
+.kpi-grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 22px; }
 .kpi-card {
   border-radius: 14px; padding: 18px 20px;
   position: relative; overflow: hidden;
@@ -93,14 +99,48 @@ $recentVendorPayments = $recentVendorPayments ?? [];
 </style>
 
 <!-- HERO HEADER -->
-<div class="op-hero">
-  <div style="position:relative;z-index:2;">
-    <div class="op-role-badge">
-      <i class="fa-solid fa-hard-hat"></i>
-      Site Operations
+<div class="op-hero" style="position:relative;z-index:1">
+  <div style="position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px">
+    <div>
+      <div class="op-role-badge">
+        <i class="fa-solid fa-hard-hat"></i>
+        Site Operations
+      </div>
+      <h4 class="op-hero-title">Operations Dashboard</h4>
+      <p class="op-hero-sub">Site execution and management overview · <?= date('d M Y, h:i A') ?></p>
     </div>
-    <h4 class="op-hero-title">Operations Dashboard</h4>
-    <p class="op-hero-sub">Site execution and management overview · <?= date('d M Y, h:i A') ?></p>
+    
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <?php if (!empty($prsForApproval)): ?>
+      <div style="background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.35);border-radius:12px;padding:10px 18px;display:flex;align-items:center;gap:10px">
+        <i class="fal fa-bell" style="color:#fca5a5;font-size:20px"></i>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#fca5a5;letter-spacing:1px">PENDING PR APPROVAL</div>
+          <div style="font-size:22px;font-weight:900;color:#fff;line-height:1"><?= count($prsForApproval) ?> PR<?= count($prsForApproval) > 1 ? 's' : '' ?></div>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      <?php if (!empty($posForApproval)): ?>
+      <div style="background:rgba(245,158,11,.18);border:1px solid rgba(245,158,11,.35);border-radius:12px;padding:10px 18px;display:flex;align-items:center;gap:10px">
+        <i class="fal fa-bell" style="color:#fcd34d;font-size:20px"></i>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#fcd34d;letter-spacing:1px">PENDING PO APPROVAL</div>
+          <div style="font-size:22px;font-weight:900;color:#fff;line-height:1"><?= count($posForApproval) ?> PO<?= count($posForApproval) > 1 ? 's' : '' ?></div>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      <?php if (!empty($pendingWorkOrders)): ?>
+      <div style="background:rgba(59,130,246,.18);border:1px solid rgba(59,130,246,.35);border-radius:12px;padding:10px 18px;display:flex;align-items:center;gap:10px">
+        <i class="fal fa-bell" style="color:#93c5fd;font-size:20px"></i>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#93c5fd;letter-spacing:1px">PENDING WO APPROVAL</div>
+          <div style="font-size:22px;font-weight:900;color:#fff;line-height:1"><?= count($pendingWorkOrders) ?> WO<?= count($pendingWorkOrders) > 1 ? 's' : '' ?></div>
+        </div>
+      </div>
+      <?php endif; ?>
+    </div>
   </div>
 </div>
 
@@ -133,11 +173,36 @@ $recentVendorPayments = $recentVendorPayments ?? [];
     <div class="kpi-label" style="color:var(--text-muted)">Pending Vendor Payments</div>
     <div class="kpi-value" style="color:var(--op-purple)"><?= $pendingVendorPayments ?></div>
   </a>
+
+  <?php if ($roleId === 20 || $roleId === 3 || $isAdmin): ?>
+  <a href="#pending-prs" class="kpi-card">
+    <div class="kpi-accent" style="background:var(--op-amber)"></div>
+    <div class="kpi-icon" style="background:rgba(245,158,11,.12);color:var(--op-amber)"><i class="fal fa-file-alt"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Pending PR Approvals</div>
+    <div class="kpi-value" style="color:var(--op-amber)"><?= $prsCount ?></div>
+  </a>
+
+  <a href="#pending-pos" class="kpi-card">
+    <div class="kpi-accent" style="background:var(--op-green)"></div>
+    <div class="kpi-icon" style="background:rgba(16,185,129,.12);color:var(--op-green)"><i class="fal fa-shopping-cart"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Pending PO Approvals</div>
+    <div class="kpi-value" style="color:var(--op-green)"><?= $posCount ?></div>
+  </a>
+  <?php endif; ?>
+
+  <?php if ($roleId === 20 || $roleId === 12 || $isAdmin): ?>
+  <a href="#pending-wos" class="kpi-card">
+    <div class="kpi-accent" style="background:var(--op-blue)"></div>
+    <div class="kpi-icon" style="background:rgba(59,130,246,.12);color:var(--op-blue)"><i class="fal fa-file-contract"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Pending WO Approvals</div>
+    <div class="kpi-value" style="color:var(--op-blue)"><?= $wosCount ?></div>
+  </a>
+  <?php endif; ?>
 </div>
 
 <!-- PENDING PURCHASE REQUESTS FOR FINAL APPROVAL -->
 <?php if (!empty($prsForApproval)): ?>
-<div class="rd-panel">
+<div class="rd-panel" id="pending-prs">
   <div class="rd-panel-title">
     <div class="rd-dot" style="background:var(--op-amber)"></div>
     Pending Purchase Requests for Final Approval
@@ -176,9 +241,53 @@ $recentVendorPayments = $recentVendorPayments ?? [];
 </div>
 <?php endif; ?>
 
+<!-- PENDING PURCHASE ORDERS FOR APPROVAL -->
+<?php if (!empty($posForApproval)): ?>
+<div class="rd-panel" id="pending-pos" style="border:2px solid rgba(245,158,11,.4);background:rgba(245,158,11,.03);margin-bottom:22px">
+  <div class="rd-panel-title" style="color:#d97706">
+    <div class="rd-dot" style="background:var(--op-amber);animation:pulse 1.5s infinite"></div>
+    <i class="bi bi-file-earmark-check me-2" style="color:var(--op-amber)"></i>
+    Pending Purchase Orders for Approval
+    <span class="badge bg-warning text-dark ms-2" style="font-size: 11px;"><?= count($posForApproval) ?></span>
+  </div>
+  <div class="table-responsive">
+    <table class="rd-table">
+      <thead>
+        <tr>
+          <th>#PO</th>
+          <th>Project</th>
+          <th>Amount</th>
+          <th>Created By</th>
+          <th>Date</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($posForApproval as $apo): ?>
+        <tr>
+          <td class="fw-bold" style="color:var(--clr-theme-primary)">PO-<?= $apo['id'] ?></td>
+          <td><strong><?= htmlspecialchars($apo['project_name'] ?? 'N/A') ?></strong></td>
+          <td><strong style="color:var(--op-green)"><?= opFmt($apo['total_amount'] ?? 0) ?></strong></td>
+          <td style="font-size:11px;color:var(--text-muted)">
+            <?= htmlspecialchars($apo['created_by_name'] ?? '—') ?>
+          </td>
+          <td class="text-muted" style="font-size:11.5px"><?= !empty($apo['order_date']) ? date('d M Y', strtotime($apo['order_date'])) : '—' ?></td>
+          <td class="text-end">
+            <a href="<?= $base ?>/con-purchase-order/<?= $apo['id'] ?>" class="btn btn-sm btn-primary py-1 px-3">
+              <i class="bi bi-shield-check"></i> View &amp; Act
+            </a>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
 <!-- PENDING WORK ORDERS FOR APPROVAL -->
 <?php if (!empty($pendingWorkOrders)): ?>
-<div class="rd-panel">
+<div class="rd-panel" id="pending-wos">
   <div class="rd-panel-title">
     <div class="rd-dot" style="background:var(--op-amber)"></div>
     Pending Work Orders for Approval

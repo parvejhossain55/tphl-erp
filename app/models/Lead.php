@@ -1755,6 +1755,7 @@ class Lead extends Model
             lpc.name AS project_category_name,
             t.name   AS team_name,
             au.full_name AS assigned_user_name,
+            cu.full_name AS uploaded_by_name,
             (SELECT u2.full_name
              FROM users u2
              INNER JOIN employees e2 ON u2.id = e2.user_id
@@ -1784,6 +1785,7 @@ class Lead extends Model
         LEFT JOIN project_categories lpc ON l.project_category_id = lpc.id
         LEFT JOIN teams        t  ON l.team_id    = t.id
         LEFT JOIN users        au ON l.assigned_id = au.id
+        LEFT JOIN users        cu ON l.created_by = cu.id
         LEFT JOIN (
             SELECT lf1.lead_id, lf1.follow_up_type
             FROM lead_follow_ups lf1
@@ -2276,6 +2278,131 @@ class Lead extends Model
         }
 
         return $duplicates;
+    }
+
+    public function getUploadReportStats($filters = [])
+    {
+        $created_by = !empty($filters['created_by']) ? (int)$filters['created_by'] : null;
+        $project_category_id = !empty($filters['project_category_id']) ? (int)$filters['project_category_id'] : null;
+        $project_id = !empty($filters['project_id']) ? (int)$filters['project_id'] : null;
+        $platform = !empty($filters['platform']) ? $filters['platform'] : null;
+        $date_filter = $filters['date_filter'] ?? 'today';
+        $month = !empty($filters['month']) ? $filters['month'] : date('Y-m');
+        $year = !empty($filters['year']) ? $filters['year'] : date('Y');
+
+        $where = "l.deleted_at IS NULL AND l.uploaded_from = 'From Campaign'";
+        $params = [];
+        $types = "";
+
+        if ($created_by) {
+            $where .= " AND l.created_by = ?";
+            $params[] = $created_by;
+            $types .= "i";
+        }
+        if ($project_category_id) {
+            $where .= " AND l.project_category_id = ?";
+            $params[] = $project_category_id;
+            $types .= "i";
+        }
+        if ($project_id) {
+            $where .= " AND l.project_id = ?";
+            $params[] = $project_id;
+            $types .= "i";
+        }
+        if ($platform) {
+            $where .= " AND l.platform = ?";
+            $params[] = $platform;
+            $types .= "s";
+        }
+
+        if ($date_filter === 'today') {
+            $where .= " AND DATE(l.created_at) = CURDATE()";
+        } elseif ($date_filter === 'this_month') {
+            $where .= " AND DATE_FORMAT(l.created_at, '%Y-%m') = ?";
+            $params[] = date('Y-m');
+            $types .= "s";
+        } elseif ($date_filter === 'this_year') {
+            $where .= " AND YEAR(l.created_at) = ?";
+            $params[] = date('Y');
+            $types .= "s";
+        } elseif ($date_filter === 'date_range') {
+            $where .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+            $params[] = !empty($filters['from_date']) ? $filters['from_date'] : date('Y-m-d');
+            $params[] = !empty($filters['to_date']) ? $filters['to_date'] : date('Y-m-d');
+            $types .= "ss";
+        } elseif ($date_filter === 'custom_month') {
+            $where .= " AND DATE_FORMAT(l.created_at, '%Y-%m') = ?";
+            $month_val = !empty($filters['specific_month']) ? str_pad($filters['specific_month'], 2, '0', STR_PAD_LEFT) : date('m');
+            $year_val = !empty($filters['specific_month_year']) ? $filters['specific_month_year'] : date('Y');
+            $params[] = $year_val . '-' . $month_val;
+            $types .= "s";
+        } elseif ($date_filter === 'custom_year') {
+            $where .= " AND YEAR(l.created_at) = ?";
+            $params[] = !empty($filters['year']) ? $filters['year'] : date('Y');
+            $types .= "s";
+        } elseif ($date_filter === 'all') {
+            // no extra date filter
+        }
+
+        $baseSql = "FROM leads l
+                    LEFT JOIN projects p ON l.project_id = p.id
+                    LEFT JOIN project_categories pc ON l.project_category_id = pc.id
+                    WHERE $where";
+
+        $results = [];
+
+        // 1. Total count
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS total $baseSql");
+        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $results['total'] = $stmt->get_result()->fetch_assoc()['total'];
+
+        // 2. By Project Category
+        $stmt = $this->db->prepare("SELECT pc.name, COUNT(*) AS total $baseSql GROUP BY l.project_category_id ORDER BY total DESC");
+        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $results['by_category'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 3. By Project
+        $stmt = $this->db->prepare("SELECT p.name, COUNT(*) AS total $baseSql GROUP BY l.project_id ORDER BY total DESC");
+        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $results['by_project'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 4. By Platform
+        $stmt = $this->db->prepare("SELECT l.platform AS name, COUNT(*) AS total $baseSql GROUP BY l.platform ORDER BY total DESC");
+        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $results['by_platform'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 5. By Campaign
+        $stmt = $this->db->prepare("SELECT l.campaign_name AS name, COUNT(*) AS total $baseSql GROUP BY l.campaign_name ORDER BY total DESC");
+        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $results['by_campaign'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 6. Time Breakdown
+        if ($date_filter === 'custom_month' || $date_filter === 'this_month') {
+            $stmt = $this->db->prepare("SELECT DATE(l.created_at) AS date_label, COUNT(*) AS total $baseSql GROUP BY DATE(l.created_at) ORDER BY date_label ASC");
+            if (!empty($params)) $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $results['time_breakdown'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        } elseif ($date_filter === 'custom_year' || $date_filter === 'this_year') {
+            $stmt = $this->db->prepare("SELECT DATE_FORMAT(l.created_at, '%Y-%m') AS date_label, COUNT(*) AS total $baseSql GROUP BY DATE_FORMAT(l.created_at, '%Y-%m') ORDER BY date_label ASC");
+            if (!empty($params)) $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $results['time_breakdown'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        } else {
+             $results['time_breakdown'] = [];
+        }
+
+        // 7. Actual Lead List
+        $stmt = $this->db->prepare("SELECT l.id, l.full_name, l.phone_number, l.email, l.platform, l.campaign_name, l.created_at, p.name AS project_name, pc.name AS category_name $baseSql ORDER BY l.id DESC");
+        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $results['leads'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        return $results;
     }
 }
 

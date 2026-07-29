@@ -199,6 +199,7 @@ return [
     'operations-dashboard' => ['controller' => 'Phase2\Con_DashboardController', 'method' => 'operationsDashboard'],
     'con-site-engineer-dashboard' => ['controller' => 'Phase2\Con_DashboardController', 'method' => 'siteEngineerDashboard'],
     'purchase-team-lead-dashboard' => ['controller' => 'Phase2\Con_DashboardController', 'method' => 'purchaseTeamLeadDashboard'],
+    'sr-executive-dashboard' => ['controller' => 'Phase2\Con_DashboardController', 'method' => 'srExecutiveDashboard'],
     'draft-dashboard' => ['controller' => 'Phase2\Con_DashboardController', 'method' => 'draftDashboard'],
     'land-dashboard' => ['controller' => 'Phase2\Con_DashboardController', 'method' => 'landDashboard'],
     'project-architecture-dashboard' => ['controller' => 'Phase2\Con_DashboardController', 'method' => 'projectArchitectureDashboard'],

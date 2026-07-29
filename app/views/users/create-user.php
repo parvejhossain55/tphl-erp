@@ -69,7 +69,7 @@ $show_breadcrumb = true;
                     <div class="col-xl-6">
                         <label>Role *</label>
                         <div class="d-flex gap-2">
-                            <select name="role_id" class="form-control" required style="flex:1;">
+                            <select name="role_id" class="form-control select2" required style="flex:1;">
                                 <option value="">Select Role</option>
                                 <?php foreach ($roles as $role): ?>
                                     <option value="<?= $role['id']; ?>"><?= $role['name']; ?></option>

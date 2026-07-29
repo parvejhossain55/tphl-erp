@@ -659,7 +659,7 @@
         <div class="row align-items-end g-2">
 
           <!-- Team Filter -->
-          <div class="col-md-3 col-6">
+          <div class="col-md-2 col-6">
             <label class="form-label small text-muted fw-semibold">Team</label>
             <select name="team_id" class="form-select form-select-sm select2">
               <option value="">All Teams</option>
@@ -672,13 +672,26 @@
           </div>
 
           <!-- Project Category Filter -->
-          <div class="col-md-3 col-6">
+          <div class="col-md-2 col-6">
             <label class="form-label small text-muted fw-semibold">Project Category</label>
             <select name="project_category_id" class="form-select form-select-sm select2">
               <option value="">All Categories</option>
               <?php foreach ($categories as $category): ?>
                 <option value="<?= $category['id'] ?>" <?= ($selected_project_category_id ?? '') == $category['id'] ? 'selected' : '' ?>>
                   <?= htmlspecialchars($category['name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
+          <!-- Project Filter -->
+          <div class="col-md-2 col-6">
+            <label class="form-label small text-muted fw-semibold">Project</label>
+            <select name="project_id" class="form-select form-select-sm select2">
+              <option value="">All Projects</option>
+              <?php foreach (($projects ?? []) as $proj): ?>
+                <option value="<?= $proj['id'] ?>" <?= ($selected_project_id ?? '') == $proj['id'] ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($proj['name']) ?>
                 </option>
               <?php endforeach; ?>
             </select>
@@ -799,6 +812,7 @@
                   <th>Team Name</th>
                   <th>Sales Team Lead</th>
                   <th class="pe-4 text-end">Upload Date</th>
+                  <th class="pe-4 text-end">Created By</th>
                 </tr>
               </thead>
               <tbody id="dmHeadLeadTbody">
@@ -855,6 +869,7 @@
     from_date      : "<?= htmlspecialchars($_GET['from_date']      ?? '') ?>",
     to_date        : "<?= htmlspecialchars($_GET['to_date']        ?? '') ?>",
     project_category_id : "<?= htmlspecialchars($_GET['project_category_id'] ?? '') ?>",
+    project_id          : "<?= htmlspecialchars($_GET['project_id'] ?? '') ?>",
   };
 
   let dmHeadPage      = 1;
@@ -865,7 +880,7 @@
   function dmHeadLoad(page = 1) {
     dmHeadPage = page;
     const tbody = document.getElementById('dmHeadLeadTbody');
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
 
     const params = new URLSearchParams({
       ...dmHeadFilters,
@@ -878,7 +893,7 @@
       .then(r => r.json())
       .then(data => {
         if (data.error) {
-          tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger">${data.error}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-danger">${data.error}</td></tr>`;
           return;
         }
 
@@ -891,7 +906,7 @@
         if (totalHeadCardVal) totalHeadCardVal.textContent = data.total.toLocaleString();
 
         if (!data.rows || data.rows.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="9" class="text-center py-5"><i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i><div class="text-muted">No leads found.</div></td></tr>';
+          tbody.innerHTML = '<tr><td colspan="10" class="text-center py-5"><i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i><div class="text-muted">No leads found.</div></td></tr>';
           document.getElementById('dmHeadPaginationInfo').textContent = '';
           document.getElementById('dmHeadPagination').innerHTML = '';
           return;
@@ -908,6 +923,7 @@
             <td>${row.team}</td>
             <td>${row.sales_lead}</td>
             <td class="pe-4 text-end">${row.upload_date}</td>
+            <td class="pe-4 text-end">${row.uploaded_by}</td>
           </tr>
         `).join('');
 
@@ -938,7 +954,7 @@
         addBtn('»', totalPages, page === totalPages);
       })
       .catch(() => {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-danger">Failed to load leads.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-danger">Failed to load leads.</td></tr>';
       });
   }
 

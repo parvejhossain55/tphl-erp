@@ -1,12 +1,6 @@
 <?php
 return [
 
-    // =========================================================================
-    // Controller: LeadWebhookController (Freshsales Integration)
-    // =========================================================================
-    'freshsales-webhook'                    => ['controller' => 'LeadWebhookController', 'method' => 'receive'],
-    'digital-marketing/freshsales-leads'    => ['controller' => 'DigitalMarketingController', 'method' => 'freshsalesLeadsPage'],
-    'digital-marketing/freshsales-export'   => ['controller' => 'LeadWebhookController', 'method' => 'exportCsv'],
 
     // =========================================================================
     // Controller: CustomerController
@@ -54,6 +48,7 @@ return [
     'brochure-leads' => ['controller' => 'DigitalMarketingController', 'method' => 'brochureLeads'],
     'forms' => ['controller' => 'DigitalMarketingController', 'method' => 'forms'],
     'forms/(\d+)/responses' => ['controller' => 'DigitalMarketingController', 'method' => 'formResponses'],
+    'digital-marketing-upload-report' => ['controller' => 'DigitalMarketingController', 'method' => 'uploadReport'],
 
     // =========================================================================
     // Controller: OnboardClientController
