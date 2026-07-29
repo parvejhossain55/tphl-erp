@@ -746,6 +746,22 @@ ORDER BY lb.booking_date DESC
             }
         }
 
+        $followupStmt = $this->db->prepare("
+            SELECT emi_no, COUNT(*) as cnt 
+            FROM emi_followups 
+            WHERE booking_id = ? 
+            GROUP BY emi_no
+        ");
+        $followupStmt->bind_param("i", $bookingId);
+        $followupStmt->execute();
+        $followupRes = $followupStmt->get_result();
+        $followupCounts = [];
+        if ($followupRes) {
+            while ($f = $followupRes->fetch_assoc()) {
+                $followupCounts[(int)$f['emi_no']] = (int)$f['cnt'];
+            }
+        }
+
         $schedule = [];
         $currentDate = new \DateTime();
         $currentMonth = (int)$currentDate->format('Ym'); // e.g., 202606
@@ -810,7 +826,8 @@ ORDER BY lb.booking_date DESC
                     'due_amount' => $record['due_emi_amount'],
                     'status' => $record['payment_status'],
                     'maturity_status' => $maturityStatus,
-                    'is_virtual' => false
+                    'is_virtual' => false,
+                    'followup_count' => $followupCounts[$i] ?? 0
                 ];
                 
                 $runnerDate = clone $dueDateObj;
@@ -838,7 +855,8 @@ ORDER BY lb.booking_date DESC
                     'due_amount' => $clientDetails['per_emi_amount'],
                     'status' => 'unpaid',
                     'maturity_status' => $maturityStatus,
-                    'is_virtual' => true
+                    'is_virtual' => true,
+                    'followup_count' => $followupCounts[$i] ?? 0
                 ];
             }
         }

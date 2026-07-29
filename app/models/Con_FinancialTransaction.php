@@ -238,6 +238,11 @@ class Con_FinancialTransaction extends Model
             // 5. Update source record with new status and due_amount
             $this->updateSourceRecord($refType, $refId, $newStatus, $dueAmount);
 
+            // 6. Generate Disbursement Journal Entry
+            require_once __DIR__ . '/../services/JournalIntegrationService.php';
+            $journalService = new \Services\JournalIntegrationService($this->db);
+            $journalService->generateDisbursementJournal($txnId, $processedBy);
+
             $this->db->commit();
             return $txnId;
         } catch (\Exception $e) {

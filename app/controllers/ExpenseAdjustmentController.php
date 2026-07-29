@@ -391,7 +391,17 @@ class ExpenseAdjustmentController extends Controller
             'created_by' => $this->userId
         ];
 
-        if ($this->model->addTransaction($data)) {
+        $txnId = $this->model->addTransaction($data);
+        if ($txnId) {
+            // AUTO-GENERATE ADJUSTMENT JOURNAL
+            try {
+                require_once __DIR__ . '/../services/JournalIntegrationService.php';
+                $journalService = new \Services\JournalIntegrationService($this->db);
+                $journalService->generateAdjustmentJournal($txnId, $this->userId);
+            } catch (\Exception $e) {
+                error_log("Failed to auto-generate adjustment journal: " . $e->getMessage());
+            }
+
             setSuccess('Transaction recorded successfully.');
         } else {
             setError('Failed to record transaction.');

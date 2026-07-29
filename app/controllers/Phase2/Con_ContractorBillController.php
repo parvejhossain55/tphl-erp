@@ -443,6 +443,15 @@ class Con_ContractorBillController extends Controller
             if ($this->billModel->approve($id, $this->userId, $approvedAmount, $managementNote)) {
                 $this->syncApprovalRequest($id, 'approved');
 
+                // AUTO-GENERATE ACCRUAL JOURNAL
+                try {
+                    require_once __DIR__ . '/../../services/JournalIntegrationService.php';
+                    $journalService = new \Services\JournalIntegrationService($this->db);
+                    $journalService->generateContractorAccrual($id, $this->userId);
+                } catch (\Exception $e) {
+                    error_log("Failed to auto-generate contractor accrual journal: " . $e->getMessage());
+                }
+
                 // Send email notification on approval
                 try {
                     $updatedBill = $this->billModel->find($id);

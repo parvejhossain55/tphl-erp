@@ -2364,4 +2364,70 @@ public function discountStatement($bookingId = null)
         }
         exit;
     }
+
+    public function saveEmiFollowup()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request']);
+            exit;
+        }
+
+        $bookingId = (int)($_POST['booking_id'] ?? 0);
+        $emiNo = (int)($_POST['emi_no'] ?? 0);
+        $note = trim($_POST['note'] ?? '');
+        $userId = $_SESSION['user']['id'] ?? 0;
+
+        if (!$bookingId || !$emiNo || empty($note)) {
+            echo json_encode(['success' => false, 'message' => 'Missing required fields']);
+            exit;
+        }
+
+        $stmt = $this->db->prepare("INSERT INTO emi_followups (booking_id, emi_no, note, added_by) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("iisi", $bookingId, $emiNo, $note, $userId);
+        
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Database error']);
+        }
+        exit;
+    }
+
+    public function getEmiFollowups()
+    {
+        header('Content-Type: application/json');
+        $bookingId = (int)($_GET['booking_id'] ?? 0);
+        $emiNo = (int)($_GET['emi_no'] ?? 0);
+
+        if (!$bookingId || !$emiNo) {
+            echo json_encode(['success' => false, 'data' => []]);
+            exit;
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT f.*, u.full_name as author_name 
+            FROM emi_followups f 
+            LEFT JOIN users u ON f.added_by = u.id 
+            WHERE f.booking_id = ? AND f.emi_no = ? 
+            ORDER BY f.created_at DESC
+        ");
+        $stmt->bind_param("ii", $bookingId, $emiNo);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        
+        $data = [];
+        if ($res) {
+            $data = $res->fetch_all(MYSQLI_ASSOC);
+            foreach ($data as &$row) {
+                $row['created_at_formatted'] = date('M d, Y h:i A', strtotime($row['created_at']));
+            }
+        }
+
+        echo json_encode(['success' => true, 'data' => $data]);
+        exit;
+    }
 }
+

@@ -288,6 +288,15 @@ class Con_FinancialTransactionController extends Controller
         $txnId = $this->txnModel->create($data);
 
         if ($txnId) {
+            // AUTO-GENERATE DISBURSEMENT JOURNAL
+            try {
+                require_once __DIR__ . '/../../services/JournalIntegrationService.php';
+                $journalService = new \Services\JournalIntegrationService($this->db);
+                $journalService->generateDisbursement($txnId, $this->userId);
+            } catch (\Exception $e) {
+                error_log("Failed to auto-generate disbursement journal: " . $e->getMessage());
+            }
+
             setSuccess('Payment processed successfully! Transaction #' . $txnId);
             header("Location: {$GLOBALS['base_url']}/con-transaction/{$txnId}");
         } else {
