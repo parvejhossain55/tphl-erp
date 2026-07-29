@@ -382,7 +382,10 @@ foreach ($myAllleads as $lead) {
 
 <!-- Active Filter Info Alert -->
 <?php 
-$hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterCard) || !empty($selectedAction) || !empty($selectedCallStatus) || ($isFilterMissing ?? false);
+$selectedCountriesArr = is_array($selectedCountry ?? null) 
+    ? $selectedCountry 
+    : (!empty($selectedCountry) ? (array)$selectedCountry : []);
+$hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterCard) || !empty($selectedAction) || !empty($selectedCallStatus) || !empty($selectedCountriesArr) || ($isFilterMissing ?? false);
 ?>
 <?php if ($hasActiveFilters): ?>
 <div class="col-12 mb-3">
@@ -405,6 +408,9 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
             <?php endif; ?>
             <?php if (!empty($selectedCallStatus)): ?>
                 <span class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="bi bi-telephone me-1"></i> Call Status: <?= htmlspecialchars($selectedCallStatus) ?></span>
+            <?php endif; ?>
+            <?php if (!empty($selectedCountriesArr)): ?>
+                <span class="badge bg-info text-dark rounded-pill px-3 py-2"><i class="bi bi-globe me-1"></i> Country: <?= htmlspecialchars(implode(', ', $selectedCountriesArr)) ?></span>
             <?php endif; ?>
             <?php if ($isFilterMissing ?? false): ?>
                 <span class="badge bg-danger rounded-pill px-3 py-2"><i class="bi bi-bell-slash me-1"></i> Missing Follow-Ups</span>
@@ -435,7 +441,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 
                 <!-- Project Filter -->
                 <?php if (!empty($projects)): ?>
-                <div class="col-12 col-sm-6 col-md-3">
+                <div class="col-12 col-sm-6 col-md-2">
                     <?php $selectedProject = $_GET['project_id'] ?? ''; ?>
                     <select class="form-select form-select-sm filter-select select2" name="project_id" data-placeholder="Project: All">
                         <option value=""></option>
@@ -450,13 +456,26 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 
                 <!-- Category Filter -->
                 <?php if (!empty($projectCategories)): ?>
-                <div class="col-12 col-sm-6 col-md-3">
+                <div class="col-12 col-sm-6 col-md-2">
                     <?php $selectedCategory = $_GET['project_category_id'] ?? ''; ?>
                     <select class="form-select form-select-sm filter-select select2" name="project_category_id" data-placeholder="Category: All">
                         <option value=""></option>
                         <?php foreach ($projectCategories as $cat): ?>
                             <option value="<?= $cat['id'] ?>" <?= $selectedCategory == $cat['id'] ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($cat['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+
+                <!-- Country Filter (Multi-Select) -->
+                <?php if (!empty($countries)): ?>
+                <div class="col-12 col-sm-6 col-md-2">
+                    <select class="form-select form-select-sm filter-select select2" name="filter_country[]" multiple data-placeholder="Country: All">
+                        <?php foreach ($countries as $c): ?>
+                            <option value="<?= htmlspecialchars($c) ?>" <?= in_array($c, $selectedCountriesArr) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($c) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

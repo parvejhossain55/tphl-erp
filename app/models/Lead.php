@@ -367,10 +367,12 @@ class Lead extends Model
                         $subConds[] = "l.country = ?";
                         $subConds[] = "l.city = ?";
                         $subConds[] = "l.city LIKE ?";
+                        $subConds[] = "l.address LIKE ?";
                         $params[] = $syn;
                         $params[] = $syn;
                         $params[] = "%" . $syn . "%";
-                        $types .= "sss";
+                        $params[] = "%" . $syn . "%";
+                        $types .= "ssss";
                     }
                     $allConds[] = "(" . implode(" OR ", $subConds) . ")";
                 }
@@ -571,10 +573,12 @@ class Lead extends Model
                         $subConds[] = "l.country = ?";
                         $subConds[] = "l.city = ?";
                         $subConds[] = "l.city LIKE ?";
+                        $subConds[] = "l.address LIKE ?";
                         $params[] = $syn;
                         $params[] = $syn;
                         $params[] = "%" . $syn . "%";
-                        $types .= "sss";
+                        $params[] = "%" . $syn . "%";
+                        $types .= "ssss";
                     }
                     $allConds[] = "(" . implode(" OR ", $subConds) . ")";
                 }
@@ -703,7 +707,7 @@ class Lead extends Model
     }
 
 
-    public function getTodayLeadsByUser(int $userId, $projectId = null, $projectCategoryId = null)
+    public function getTodayLeadsByUser(int $userId, $projectId = null, $projectCategoryId = null, $country = null)
     {
         $userId = (int) $userId;
 
@@ -752,6 +756,39 @@ class Lead extends Model
             $params[] = (int)$projectCategoryId;
             $types .= "i";
         }
+        if (!empty($country)) {
+            $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
+            if (!empty($countryList)) {
+                $allConds = [];
+                foreach ($countryList as $cItem) {
+                    $synonyms = [$cItem];
+                    if (strcasecmp($cItem, 'UAE') === 0 || strcasecmp($cItem, 'United Arab Emirates') === 0) {
+                        $synonyms = ['UAE', 'United Arab Emirates'];
+                    } elseif (strcasecmp($cItem, 'USA') === 0 || strcasecmp($cItem, 'United States') === 0) {
+                        $synonyms = ['USA', 'United States'];
+                    } elseif (strcasecmp($cItem, 'UK') === 0 || strcasecmp($cItem, 'United Kingdom') === 0) {
+                        $synonyms = ['UK', 'United Kingdom'];
+                    }
+
+                    $subConds = [];
+                    foreach ($synonyms as $syn) {
+                        $subConds[] = "l.country = ?";
+                        $subConds[] = "l.city = ?";
+                        $subConds[] = "l.city LIKE ?";
+                        $subConds[] = "l.address LIKE ?";
+                        $params[] = $syn;
+                        $params[] = $syn;
+                        $params[] = "%" . $syn . "%";
+                        $params[] = "%" . $syn . "%";
+                        $types .= "ssss";
+                    }
+                    $allConds[] = "(" . implode(" OR ", $subConds) . ")";
+                }
+                if (!empty($allConds)) {
+                    $sql .= " AND (" . implode(" OR ", $allConds) . ")";
+                }
+            }
+        }
 
         $sql .= " ORDER BY l.id DESC";
 
@@ -778,7 +815,7 @@ class Lead extends Model
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
-    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $call_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null)
+    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $call_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null)
     {
         $sql = "SELECT leads.*, 
         u_by.full_name AS assigned_by_name,
@@ -861,6 +898,39 @@ class Lead extends Model
             $sql .= " AND leads.project_category_id = ?";
             $params[] = (int)$projectCategoryId;
             $types .= "i";
+        }
+        if (!empty($country)) {
+            $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
+            if (!empty($countryList)) {
+                $allConds = [];
+                foreach ($countryList as $cItem) {
+                    $synonyms = [$cItem];
+                    if (strcasecmp($cItem, 'UAE') === 0 || strcasecmp($cItem, 'United Arab Emirates') === 0) {
+                        $synonyms = ['UAE', 'United Arab Emirates'];
+                    } elseif (strcasecmp($cItem, 'USA') === 0 || strcasecmp($cItem, 'United States') === 0) {
+                        $synonyms = ['USA', 'United States'];
+                    } elseif (strcasecmp($cItem, 'UK') === 0 || strcasecmp($cItem, 'United Kingdom') === 0) {
+                        $synonyms = ['UK', 'United Kingdom'];
+                    }
+
+                    $subConds = [];
+                    foreach ($synonyms as $syn) {
+                        $subConds[] = "leads.country = ?";
+                        $subConds[] = "leads.city = ?";
+                        $subConds[] = "leads.city LIKE ?";
+                        $subConds[] = "leads.address LIKE ?";
+                        $params[] = $syn;
+                        $params[] = $syn;
+                        $params[] = "%" . $syn . "%";
+                        $params[] = "%" . $syn . "%";
+                        $types .= "ssss";
+                    }
+                    $allConds[] = "(" . implode(" OR ", $subConds) . ")";
+                }
+                if (!empty($allConds)) {
+                    $sql .= " AND (" . implode(" OR ", $allConds) . ")";
+                }
+            }
         }
 
         // Search Filter

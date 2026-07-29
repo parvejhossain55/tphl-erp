@@ -1,12 +1,79 @@
- <!-- Todays Follow up -->
+<!-- Todays Follow up -->
  <div class="col-12 mt-3">
      <div class="card__wrapper">
-         <div class="card__header d-flex justify-content-between align-items-center mb-3">
-             <h5 class="card__title mb-0" id="transactionsTitle">
-                 Today's Follow-ups
-             </h5>
+          <div class="card__header d-flex justify-content-between align-items-center mb-3">
+              <h5 class="card__title mb-0" id="transactionsTitle">
+                  Today's Follow-ups
+              </h5>
+          </div>
 
-         </div>
+          <!-- Filters -->
+          <div class="filters mb-3">
+              <form action="" method="get">
+                  <div class="row g-2 align-items-center flex-wrap">
+                      <!-- Project Filter -->
+                      <?php if (!empty($projects)): ?>
+                      <div class="col-auto col-sm-6 col-md-3">
+                          <?php $selectedProject = $_GET['project_id'] ?? ''; ?>
+                          <select class="form-select form-select-sm filter-select select2" name="project_id" data-placeholder="Project: All">
+                              <option value=""></option>
+                              <?php foreach ($projects as $p): ?>
+                                  <option value="<?= $p['id'] ?>" <?= $selectedProject == $p['id'] ? 'selected' : '' ?>>
+                                      <?= htmlspecialchars($p['name']) ?>
+                                  </option>
+                              <?php endforeach; ?>
+                          </select>
+                      </div>
+                      <?php endif; ?>
+
+                      <!-- Category Filter -->
+                      <?php if (!empty($projectCategories)): ?>
+                      <div class="col-auto col-sm-6 col-md-3">
+                          <?php $selectedCategory = $_GET['project_category_id'] ?? ''; ?>
+                          <select class="form-select form-select-sm filter-select select2" name="project_category_id" data-placeholder="Category: All">
+                              <option value=""></option>
+                              <?php foreach ($projectCategories as $cat): ?>
+                                  <option value="<?= $cat['id'] ?>" <?= $selectedCategory == $cat['id'] ? 'selected' : '' ?>>
+                                      <?= htmlspecialchars($cat['name']) ?>
+                                  </option>
+                              <?php endforeach; ?>
+                          </select>
+                      </div>
+                      <?php endif; ?>
+
+                      <!-- Country Filter (Multi-Select) -->
+                      <?php if (!empty($countries)): ?>
+                      <div class="col-auto col-sm-6 col-md-3">
+                          <?php 
+                          $selectedCountry = $_GET['filter_country'] ?? [];
+                          $selectedCountriesArr = is_array($selectedCountry) ? $selectedCountry : (array)$selectedCountry;
+                          ?>
+                          <select class="form-select form-select-sm filter-select select2" name="filter_country[]" multiple data-placeholder="Country: All">
+                              <?php foreach ($countries as $c): ?>
+                                  <option value="<?= htmlspecialchars($c) ?>" <?= in_array($c, $selectedCountriesArr) ? 'selected' : '' ?>>
+                                      <?= htmlspecialchars($c) ?>
+                                  </option>
+                              <?php endforeach; ?>
+                          </select>
+                      </div>
+                      <?php endif; ?>
+
+                      <!-- Submit & Clear buttons -->
+                      <div class="col-auto">
+                          <div class="d-flex gap-2">
+                              <button type="submit" class="btn btn-primary btn-sm px-3 shadow-sm d-flex align-items-center gap-1" style="height: 31px;">
+                                  <i class="bi bi-filter" style="font-size: 14px;"></i> Filter
+                              </button>
+                              <?php if (!empty($_GET['project_id']) || !empty($_GET['project_category_id']) || !empty($_GET['filter_country'])): ?>
+                              <a href="<?= $GLOBALS['base_url'] ?>/today-follow-up" class="btn btn-outline-danger btn-sm px-2 shadow-sm d-flex align-items-center gap-1" style="height: 31px;" title="Clear Filters">
+                                  <i class="bi bi-x-circle" style="font-size: 14px;"></i> Clear
+                              </a>
+                              <?php endif; ?>
+                          </div>
+                      </div>
+                  </div>
+              </form>
+          </div>
 
          <div class="table__wrapper table-responsive">
              <table class="table mb-20">

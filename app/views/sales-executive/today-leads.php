@@ -73,13 +73,31 @@
                                     </div>
                                     <?php endif; ?>
 
+                                    <!-- Country Filter (Multi-Select) -->
+                                    <?php if (!empty($countries)): ?>
+                                    <div class="col-auto col-sm-6 col-md-3">
+                                        <?php 
+                                        $selectedCountriesArr = is_array($selectedCountry ?? null) 
+                                            ? $selectedCountry 
+                                            : (!empty($selectedCountry) ? (array)$selectedCountry : []);
+                                        ?>
+                                        <select class="form-select form-select-sm filter-select select2" name="filter_country[]" multiple data-placeholder="Country: All">
+                                            <?php foreach ($countries as $c): ?>
+                                                <option value="<?= htmlspecialchars($c) ?>" <?= in_array($c, $selectedCountriesArr) ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($c) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <?php endif; ?>
+
                                     <!-- Submit & Clear buttons -->
                                     <div class="col-auto">
                                         <div class="d-flex gap-2">
                                             <button type="submit" class="btn btn-primary btn-sm px-3 shadow-sm d-flex align-items-center gap-1" style="height: 31px;">
                                                 <i class="bi bi-filter" style="font-size: 14px;"></i> Filter
                                             </button>
-                                            <?php if (!empty($_GET['project_id']) || !empty($_GET['project_category_id'])): ?>
+                                            <?php if (!empty($_GET['project_id']) || !empty($_GET['project_category_id']) || !empty($_GET['filter_country'])): ?>
                                             <a href="<?= $GLOBALS['base_url'] ?>/today-leads" class="btn btn-outline-danger btn-sm px-2 shadow-sm d-flex align-items-center gap-1" style="height: 31px;" title="Clear Filters">
                                                 <i class="bi bi-x-circle" style="font-size: 14px;"></i> Clear
                                             </a>
