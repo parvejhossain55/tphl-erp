@@ -112,6 +112,9 @@ class EmployeeController extends Controller
                 : '';
 
             // Employee data
+            $grossSalary = !empty($_POST['gross_salary']) ? (float)$_POST['gross_salary'] : 0;
+            $basicSalary = $grossSalary > 0 ? ($grossSalary * 0.50) : (!empty($_POST['basic_salary']) ? (float)$_POST['basic_salary'] : 0);
+
             $employeeData = [
                 'employee_id'     => trim($_POST['employee_id'] ?? ''),
                 'full_name'       => trim($_POST['full_name'] ?? ''),
@@ -121,8 +124,8 @@ class EmployeeController extends Controller
                 'phone'           => trim($_POST['phone'] ?? ''),
                 'emergency_contact' => trim($_POST['emergency_contact'] ?? ''),
                 'qualification'   => trim($_POST['qualification'] ?? ''),
-                'gross_salary'    => trim($_POST['gross_salary'] ?? ''),
-                'basic_salary'    => trim($_POST['basic_salary'] ?? ''),
+                'gross_salary'    => $grossSalary,
+                'basic_salary'    => $basicSalary,
                 'experience'      => trim($_POST['experience'] ?? ''),
                 'workplace'       => trim($_POST['workplace'] ?? ''),
                 'nid'             => trim($_POST['nid'] ?? ''),
@@ -311,27 +314,26 @@ class EmployeeController extends Controller
 
         $makeUser = $_POST['make_user'] ?? 0;
         $plainPassword = trim($_POST['password'] ?? '');
+        $submittedEmail = trim($_POST['email'] ?? '');
         $existingUserId = $existingEmployee['user_id'] ?? null;
 
-        // User account linking check
+        // User account linking check by email
+        if ($submittedEmail) {
+            $matchedUserByEmail = $this->userModel->getByEmail($submittedEmail);
+            if ($matchedUserByEmail && $matchedUserByEmail['id'] != $existingUserId) {
+                $existingUserId = (int)$matchedUserByEmail['id'];
+                $this->db->query("UPDATE employees SET user_id = $existingUserId WHERE id = $id");
+                $this->db->query("UPDATE users SET employee_id = $id WHERE id = $existingUserId");
+            }
+        }
+
         if (!$existingUserId) {
-            // First check by employee_id 
+            // Check by employee_id 
             $userByEmpResult = $this->db->query("SELECT id FROM users WHERE employee_id = $id LIMIT 1");
             if ($userByEmpResult && $userByEmpResult->num_rows > 0) {
                 $userRow = $userByEmpResult->fetch_assoc();
-                $existingUserId = $userRow['id'];
+                $existingUserId = (int)$userRow['id'];
                 $this->db->query("UPDATE employees SET user_id = $existingUserId WHERE id = $id");
-            } elseif ($makeUser == 1) {
-                // Check if user already exists with this email but is not linked
-                $emailToCheck = trim($_POST['email'] ?? '');
-                if ($emailToCheck) {
-                    $existingUserByEmail = $this->userModel->getByEmail($emailToCheck);
-                    if ($existingUserByEmail) {
-                        $existingUserId = $existingUserByEmail['id'];
-                        // Link them now
-                        $this->db->query("UPDATE employees SET user_id = $existingUserId WHERE id = $id");
-                    }
-                }
             }
         }
 
@@ -347,6 +349,9 @@ class EmployeeController extends Controller
             $hashedPassword = password_hash($plainPassword, PASSWORD_DEFAULT);
         }
 
+        $grossSalary = !empty($_POST['gross_salary']) ? (float)$_POST['gross_salary'] : 0;
+        $basicSalary = $grossSalary > 0 ? ($grossSalary * 0.50) : (!empty($_POST['basic_salary']) ? (float)$_POST['basic_salary'] : 0);
+
         // Employee data
         $employeeData = [
             'employee_id'          => trim($_POST['employee_id'] ?? ''),
@@ -357,8 +362,8 @@ class EmployeeController extends Controller
             'phone'                => trim($_POST['phone'] ?? ''),
             'emergency_contact'    => trim($_POST['emergency_contact'] ?? ''),
             'qualification'        => trim($_POST['qualification'] ?? ''),
-            'gross_salary'         => trim($_POST['gross_salary'] ?? ''),
-            'basic_salary'         => trim($_POST['basic_salary'] ?? ''),
+            'gross_salary'         => $grossSalary,
+            'basic_salary'         => $basicSalary,
             'experience'           => trim($_POST['experience'] ?? ''),
             'nid'                  => trim($_POST['nid'] ?? ''),
             'address' => !empty($_POST['address'])

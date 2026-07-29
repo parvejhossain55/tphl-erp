@@ -66,6 +66,15 @@ class ApprovalRequestController extends Controller
             'source_table' => $sourceTable
         ];
 
+        // Fetch dynamic list of departments from departments table
+        $departmentsList = [];
+        $deptRes = $this->db->query("SELECT DISTINCT name FROM departments ORDER BY name ASC");
+        if ($deptRes) {
+            while ($dRow = $deptRes->fetch_assoc()) {
+                $departmentsList[] = $dRow['name'];
+            }
+        }
+
         $metrics = $this->approvalModel->getApprovalDashboardMetrics();
         $history = $this->approvalModel->getAllApprovalHistory($filters);
 
@@ -74,6 +83,7 @@ class ApprovalRequestController extends Controller
             "page_title"      => "All System Approval Requests & Payout Tracking",
             "companyMetrics"  => $metrics,
             "approvalHistory" => $history,
+            "departmentsList" => $departmentsList,
             "filters"         => $filters
         ]);
     }

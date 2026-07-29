@@ -854,6 +854,7 @@
                   <th style="min-width:120px;">Sales Team Lead</th>
                   <th style="min-width:120px;">Assigned To</th>
                   <th class="pe-4 text-end" style="min-width:110px;">Upload Date</th>
+                  <th class="pe-4 text-end" style="min-width:130px;">Creates By</th>
                   <th class="pe-4 text-center" style="width:90px;">Action</th>
                 </tr>
               </thead>
@@ -1007,6 +1008,7 @@
             <td>${row.sales_lead}</td>
             <td>${row.assigned_to}</td>
             <td class="pe-4 text-end">${row.upload_date}</td>
+            <td class="pe-4 text-end">${row.uploaded_by}</td>
             <td class="pe-4 text-center">${row.action}</td>
           </tr>
         `).join('');

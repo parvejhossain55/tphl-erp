@@ -1814,6 +1814,73 @@ $project = $stmt->get_result()->fetch_assoc();
             $prsForApproval = $rPRApproval ? $rPRApproval->fetch_all(MYSQLI_ASSOC) : [];
         }
 
+        // ── POs awaiting approval by Operation Head (role 20) ───────────────
+        $posForApproval = [];
+        if ($roleId === 20 || $roleId === 3) {
+            $projFilterPart = $selectedProjectId ? " AND pr.project_id = $selectedProjectId " : "";
+            $rPOApproval = $this->db->query("
+                SELECT po.id, po.status, po.order_date, po.remarks,
+                       p.name AS project_name,
+                       u.full_name AS created_by_name,
+                       (SELECT COALESCE(SUM(poi2.total_price),0)
+                        FROM purchase_order_items poi2
+                        WHERE poi2.purchase_order_id = po.id) AS total_amount
+                FROM purchase_orders po
+                LEFT JOIN purchase_requests pr ON pr.id = po.request_id
+                LEFT JOIN projects p ON p.id = pr.project_id
+                LEFT JOIN users u ON u.id = po.created_by
+                WHERE po.qc_approved_by_id IS NOT NULL
+                  AND po.op_head_approved_by_id IS NULL
+                  AND (u.role_id NOT IN (23, 31) OR po.purchase_head_approved_by_id IS NOT NULL)
+                  AND po.status != 'Cancelled'
+                  {$projFilterPart}
+                ORDER BY po.id DESC
+                LIMIT 15");
+            $posForApproval = $rPOApproval ? $rPOApproval->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
+        // Calculate counts for KPI cards
+        $prsCount = 0;
+        if ($roleId === 20 || $roleId === 3 || $isAdmin) {
+            $projFilterPart = $selectedProjectId ? " AND pr.project_id = $selectedProjectId " : "";
+            $rPRCount = $this->db->query("
+                SELECT COUNT(DISTINCT pr.id) AS c
+                FROM purchase_requests pr
+                WHERE pr.status = 'Submitted'
+                  AND pr.approved_by_id IS NOT NULL
+                  AND pr.qc_approved_by_id IS NULL
+                  {$projFilterPart}");
+            $prsCount = $rPRCount ? (int)$rPRCount->fetch_assoc()['c'] : 0;
+        }
+
+        $posCount = 0;
+        if ($roleId === 20 || $roleId === 3 || $isAdmin) {
+            $projFilterPart = $selectedProjectId ? " AND pr.project_id = $selectedProjectId " : "";
+            $rPOCount = $this->db->query("
+                SELECT COUNT(po.id) AS c
+                FROM purchase_orders po
+                LEFT JOIN purchase_requests pr ON pr.id = po.request_id
+                LEFT JOIN users u ON u.id = po.created_by
+                WHERE po.qc_approved_by_id IS NOT NULL
+                  AND po.op_head_approved_by_id IS NULL
+                  AND (u.role_id NOT IN (23, 31) OR po.purchase_head_approved_by_id IS NOT NULL)
+                  AND po.status != 'Cancelled'
+                  {$projFilterPart}");
+            $posCount = $rPOCount ? (int)$rPOCount->fetch_assoc()['c'] : 0;
+        }
+
+        $wosCount = 0;
+        if ($roleId === 20 || $roleId === 12 || $isAdmin) {
+            $moRoleId = ($roleId == 20) ? 20 : 12;
+            $rWOCount = $this->db->query("
+                SELECT COUNT(wo.id) AS c
+                FROM con_work_orders wo
+                JOIN con_work_order_approvals wa ON wa.work_order_id = wo.id AND wa.role_id = {$moRoleId}
+                WHERE wo.status = 'draft'
+                  AND wa.status = 'pending'");
+            $wosCount = $rWOCount ? (int)$rWOCount->fetch_assoc()['c'] : 0;
+        }
+
         return $this->view('phase2/dashboard/operations-dashboard', [
             'current_route'         => 'operations-dashboard',
             'page_title'            => 'Operations Dashboard',
@@ -1828,6 +1895,11 @@ $project = $stmt->get_result()->fetch_assoc();
             'recentVendorPayments'  => $recentVendorPayments,
             'pendingWorkOrders'     => $pendingWorkOrders,
             'prsForApproval'        => $prsForApproval,
+            'posForApproval'        => $posForApproval,
+            'prsCount'              => $prsCount,
+            'posCount'              => $posCount,
+            'wosCount'              => $wosCount,
+            'roleId'                => $roleId,
         ]);
     }
 
@@ -2119,6 +2191,27 @@ $project = $stmt->get_result()->fetch_assoc();
             LIMIT 20");
         $prsForApproval = $rPRsForApproval ? $rPRsForApproval->fetch_all(MYSQLI_ASSOC) : [];
 
+        // ── POs awaiting approval by Purchase Team Lead (role 17) ───────────
+        $rPOsForApproval = $this->db->query("
+            SELECT po.id, po.status, po.order_date, po.remarks,
+                   p.name  AS project_name,
+                   u.full_name AS created_by_name,
+                   r.name  AS created_by_role,
+                   (SELECT COALESCE(SUM(poi2.total_price),0)
+                    FROM purchase_order_items poi2
+                    WHERE poi2.purchase_order_id = po.id) AS total_amount
+            FROM purchase_orders po
+            LEFT JOIN purchase_requests pr ON pr.id = po.request_id
+            LEFT JOIN projects p    ON p.id  = pr.project_id
+            LEFT JOIN users u       ON u.id  = po.created_by
+            LEFT JOIN roles r       ON r.id  = u.role_id
+            WHERE u.role_id IN (23, 31)
+              AND po.purchase_head_approved_by_id IS NULL
+              AND po.status != 'Cancelled'
+            ORDER BY po.id DESC
+            LIMIT 20");
+        $posForApproval = $rPOsForApproval ? $rPOsForApproval->fetch_all(MYSQLI_ASSOC) : [];
+
         return $this->view('phase2/dashboard/purchase-team-lead-dashboard', [
             'current_route'    => 'purchase-team-lead-dashboard',
             'page_title'       => 'Purchase Team Dashboard',
@@ -2135,6 +2228,150 @@ $project = $stmt->get_result()->fetch_assoc();
             'pendingPRsForPO'  => $pendingPRsForPO,
             'allBOQs'          => $allBOQs,
             'prsForApproval'   => $prsForApproval,
+            'posForApproval'   => $posForApproval,
+        ]);
+    }
+
+    // =========================================================================
+    // SENIOR PURCHASE EXECUTIVE DASHBOARD
+    // Mirror of PTL dashboard, but no approvals
+    // =========================================================================
+    public function srExecutiveDashboard()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        // KPI: Total Purchase Orders
+        $r1 = $this->db->query("SELECT COUNT(*) AS c FROM purchase_orders");
+        $totalPOs = $r1 ? (int)$r1->fetch_assoc()['c'] : 0;
+
+        // KPI: Total Vendors
+        $r2 = $this->db->query("SELECT COUNT(*) AS c FROM vendors");
+        $totalVendors = $r2 ? (int)$r2->fetch_assoc()['c'] : 0;
+
+        // KPI: Vendor Penalties
+        $r3 = $this->db->query("SELECT COUNT(*) AS c FROM vendor_penalties");
+        if (!$r3) { $totalPenalties = 0; } else { $totalPenalties = (int)$r3->fetch_assoc()['c']; }
+
+        // KPI: Total Material Issues
+        $r4 = $this->db->query("SELECT COUNT(*) AS c FROM con_material_issues");
+        $totalIssues = $r4 ? (int)$r4->fetch_assoc()['c'] : 0;
+
+        // KPI: Total Materials
+        $r5 = $this->db->query("SELECT COUNT(*) AS c FROM con_materials");
+        $totalMaterials = $r5 ? (int)$r5->fetch_assoc()['c'] : 0;
+
+        // KPI: Pending Payment Requests
+        $r6 = $this->db->query("SELECT COUNT(*) AS c FROM vendor_payment_requests WHERE status IN ('Submitted','Approved')");
+        $pendingPayments = $r6 ? (int)$r6->fetch_assoc()['c'] : 0;
+
+        // Recent Vendors
+        $rVend = $this->db->query("SELECT * FROM vendors ORDER BY id DESC LIMIT 5");
+        $recentVendors = $rVend ? $rVend->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Recent Purchase Orders
+        $rPO = $this->db->query("
+            SELECT po.*,
+                   pr.project_id,
+                   p.name  AS project_name,
+                   v.name  AS vendor_name,
+                   (SELECT COALESCE(SUM(poi2.total_price),0)
+                    FROM purchase_order_items poi2
+                    WHERE poi2.purchase_order_id = po.id) AS total_amount
+            FROM purchase_orders po
+            LEFT JOIN purchase_requests pr ON pr.id = po.request_id
+            LEFT JOIN projects p  ON p.id  = pr.project_id
+            LEFT JOIN (
+                SELECT purchase_order_id, MIN(selected_vendor_id) AS vendor_id
+                FROM purchase_order_items GROUP BY purchase_order_id
+            ) vi ON vi.purchase_order_id = po.id
+            LEFT JOIN vendors v ON v.id = vi.vendor_id
+            ORDER BY po.id DESC LIMIT 5");
+        $recentPOs = $rPO ? $rPO->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Material Stock Overview
+        $rStock = $this->db->query("
+            SELECT m.name AS material_name, m.unit, m.min_stock_level,
+                   COALESCE(SUM(s.current_quantity),0) AS total_qty
+            FROM con_materials m
+            LEFT JOIN con_stocks s ON s.material_id=m.id
+            GROUP BY m.id ORDER BY total_qty ASC LIMIT 8");
+        $stockOverview = $rStock ? $rStock->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Approved BOQs that have NO purchase request yet
+        $rPendingBOQs = $this->db->query("
+            SELECT bm.id AS boq_id, bm.version, bm.approved_at,
+                   p.id  AS project_id, p.name AS project_name,
+                   u.full_name  AS creator_name,
+                   COUNT(bi.id) AS item_count,
+                   COALESCE(SUM(bi.total_cost), 0) AS grand_total
+            FROM boq_master bm
+            LEFT JOIN projects p   ON p.id  = bm.project_id
+            LEFT JOIN users u      ON u.id  = bm.created_by
+            LEFT JOIN boq_items bi ON bi.boq_id = bm.id
+            WHERE bm.status = 'Approved'
+              AND NOT EXISTS (
+                    SELECT 1 FROM purchase_requests pr
+                    WHERE pr.bom_id = bm.id
+              )
+            GROUP BY bm.id, bm.version, bm.approved_at,
+                     p.id, p.name, u.full_name
+            ORDER BY bm.approved_at DESC
+            LIMIT 15");
+        $pendingBOQsForPR = $rPendingBOQs ? $rPendingBOQs->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Pending Purchase Requests
+        $rPendingPRs = $this->db->query("
+            SELECT pr.id, pr.status, pr.created_at, pr.notes,
+                   p.name AS project_name,
+                   u.full_name AS created_by_name,
+                   COUNT(pri.id) AS item_count
+            FROM purchase_requests pr
+            LEFT JOIN projects p ON p.id = pr.project_id
+            LEFT JOIN users u ON u.id = pr.created_by
+            LEFT JOIN purchase_request_items pri ON pri.request_id = pr.id
+            WHERE pr.status IN ('Draft','Submitted','Approved')
+              AND NOT EXISTS (
+                    SELECT 1 FROM purchase_orders po WHERE po.request_id = pr.id
+              )
+            GROUP BY pr.id, pr.status, pr.created_at, pr.notes, p.name, u.full_name
+            ORDER BY pr.id DESC LIMIT 10");
+        $pendingPRsForPO = $rPendingPRs ? $rPendingPRs->fetch_all(MYSQLI_ASSOC) : [];
+
+        // ALL BOQs
+        $rAllBOQs = $this->db->query("
+            SELECT bm.id AS boq_id, bm.version, bm.status, bm.created_at, bm.approved_at,
+                   p.id  AS project_id, p.name AS project_name,
+                   u.full_name  AS creator_name,
+                   au.full_name AS approver_name,
+                   COUNT(bi.id)                    AS item_count,
+                   COALESCE(SUM(bi.total_cost), 0) AS grand_total
+            FROM boq_master bm
+            LEFT JOIN projects  p   ON p.id  = bm.project_id
+            LEFT JOIN users     u   ON u.id  = bm.created_by
+            LEFT JOIN users     au  ON au.id = bm.approved_by
+            LEFT JOIN boq_items bi  ON bi.boq_id = bm.id
+            GROUP BY bm.id, bm.version, bm.status, bm.created_at, bm.approved_at,
+                     p.id, p.name, u.full_name, au.full_name
+            ORDER BY bm.created_at DESC
+            LIMIT 30");
+        $allBOQs = $rAllBOQs ? $rAllBOQs->fetch_all(MYSQLI_ASSOC) : [];
+
+        return $this->view('phase2/dashboard/sr-executive-dashboard', [
+            'current_route'    => 'sr-executive-dashboard',
+            'page_title'       => 'Sr. Purchase Executive Dashboard',
+            'totalPOs'         => $totalPOs,
+            'totalVendors'     => $totalVendors,
+            'totalPenalties'   => $totalPenalties,
+            'totalIssues'      => $totalIssues,
+            'totalMaterials'   => $totalMaterials,
+            'pendingPayments'  => $pendingPayments,
+            'recentVendors'    => $recentVendors,
+            'recentPOs'        => $recentPOs,
+            'stockOverview'    => $stockOverview,
+            'pendingBOQsForPR' => $pendingBOQsForPR,
+            'pendingPRsForPO'  => $pendingPRsForPO,
+            'allBOQs'          => $allBOQs,
+            'prsForApproval'   => [],
         ]);
     }
 

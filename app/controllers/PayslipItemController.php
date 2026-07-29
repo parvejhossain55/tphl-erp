@@ -31,46 +31,39 @@ class PayslipItemController extends Controller
     public function store()
     {
         $data = [
-            'name'   => $_POST['name'] ?? '',
-            'type' => $_POST['type'] ?? '',
-            'created_by'      => $_SESSION['user']['id'] ?? null,
+            'name'       => $_POST['name'] ?? '',
+            'type'       => $_POST['type'] ?? '',
+            'percentage' => isset($_POST['percentage']) && $_POST['percentage'] !== '' ? $_POST['percentage'] : null,
+            'created_by' => $_SESSION['user']['id'] ?? null,
         ];
 
         if ($this->payslipItemModel->create($data)) {
             setSuccess("Payslip item created successfully.");
-            header("Location: {$GLOBALS['base_url']}/payslip-items");
-            exit;
         } else {
             setError("Failed to create payslip item.");
         }
+        header("Location: {$GLOBALS['base_url']}/payslip-items");
+        exit;
     }
-    public function update($data, $id)
+
+    public function update()
     {
-        $stmt = $this->db->prepare("
-        UPDATE bookings SET
-            lead_id = ?,
-            project_id = ?,
-            flat_id = ?,
-            created_by = ?,
-            agreement_value = ?,
-            booking_date = ?,
-            booking_status = ?
-        WHERE id = ?
-    ");
+        $id = $_POST['id'] ?? 0;
+        $data = [
+            'id'         => $id,
+            'name'       => $_POST['name'] ?? '',
+            'type'       => $_POST['type'] ?? '',
+            'percentage' => isset($_POST['percentage']) && $_POST['percentage'] !== '' ? $_POST['percentage'] : null,
+        ];
 
-        $stmt->bind_param(
-            "iiiidssi",
-            $data['lead_id'],
-            $data['project_id'],
-            $data['flat_id'],
-            $data['created_by'],
-            $data['agreement_value'],
-            $data['booking_date'],
-            $data['booking_status'],
-            $id
-        );
+        if ($this->payslipItemModel->update($data)) {
+            setSuccess("Payslip item updated successfully.");
+        } else {
+            setError("Failed to update payslip item.");
+        }
 
-        return $stmt->execute();
+        header("Location: {$GLOBALS['base_url']}/payslip-items");
+        exit;
     }
 
 

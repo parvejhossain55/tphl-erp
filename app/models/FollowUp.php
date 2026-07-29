@@ -530,7 +530,7 @@ class FollowUp extends Model
         LEFT JOIN users usr ON f.created_by = usr.id
         LEFT JOIN users aw ON f.assigned_with = aw.id
         WHERE f.deleted_at IS NULL
-          AND f.assigned_with = ?
+          AND (f.assigned_with = ? OR (f.assigned_with IS NULL AND l.assigned_id = ?))
           AND f.next_follow_up_date > CURDATE()
           AND f.next_follow_up_date <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)
         ORDER BY f.next_follow_up_date ASC, f.follow_up_time ASC
@@ -543,7 +543,7 @@ class FollowUp extends Model
             return [];
         }
 
-        $stmt->bind_param("i", $userID);
+        $stmt->bind_param("ii", $userID, $userID);
         $stmt->execute();
         $result = $stmt->get_result();
 

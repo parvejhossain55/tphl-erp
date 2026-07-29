@@ -39,8 +39,11 @@ class UserDashboardController extends Controller
 
         $loggedUserId = (int) $_SESSION['user']['id'];
 
+        $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+        $filterCategoryId = isset($_GET['project_category_id']) && $_GET['project_category_id'] !== '' ? (int)$_GET['project_category_id'] : null;
+
         // only assigned today leads for logged user
-        $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId);
+        $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId, $filterProjectId, $filterCategoryId);
 
         // Fetch duplicate leads for the logged in user
         $userDuplicates = $this->leadModel->getDuplicateLeadsForUser($loggedUserId);
@@ -100,6 +103,11 @@ class UserDashboardController extends Controller
 
         $myAllLeads = $this->leadModel->getAllMyLeads($loggedUserId);
         $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
+        $projectModel = new Project($this->db);
+        $projects = $projectModel->getAll();
+        $projectCategoryModel = new ProjectCategory($this->db);
+        $projectCategories = $projectCategoryModel->getAll();
+
         $this->view("sales-executive/today-leads", [
             "current_route" => "today-leads",
             "page_title"    => "Leads Today Assign",
@@ -109,6 +117,8 @@ class UserDashboardController extends Controller
             "todayFollowUp"    => $todayFollowUp,
             "phoneMap"        => $phoneMap,
             "emailMap"        => $emailMap,
+            "projects"        => $projects,
+            "projectCategories" => $projectCategories,
         ]);
     }
 
@@ -480,15 +490,53 @@ class UserDashboardController extends Controller
         $bookingCount   = $this->bookingModel->getBookingCountByLead();
         $followUpModel  = new FollowUp($this->db);
         $followUpCounts = $followUpModel->getFollowUpCountByLead();
-        $year        = $_GET['year']        ?? null;
-        $month       = $_GET['month']       ?? null;
-        $lastAction  = $_GET['last_action'] ?? null;
-        $call_status = $_GET['call_status'] ?? null;
+        $year                 = $_GET['year']          ?? null;
+        $month                = $_GET['month']         ?? null;
+        $lastAction           = $_GET['last_action']   ?? null;
+        $call_status          = $_GET['call_status']   ?? null;
+        $search               = trim($_GET['search'] ?? '');
+        $followup_date        = $_GET['followup_date'] ?? null;
+        $filterCard           = $_GET['filter_card']   ?? null;
 
         $onlyMissingFollowup = isset($_GET['filter']) && $_GET['filter'] === 'missing_followup';
 
+        $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+        $filterCategoryId = isset($_GET['project_category_id']) && $_GET['project_category_id'] !== '' ? (int)$_GET['project_category_id'] : null;
+
+        // Calculate card statistics from unfiltered assigned leads for the user
+        $unfilteredAssignedLeads = $this->leadModel->getAllMyLeads($userId, $year, $month, null, null, false, '', null, null, $filterProjectId, $filterCategoryId);
+
+        $totalLeadsCount        = count($unfilteredAssignedLeads);
+        $contactedLeadsCount    = 0;
+        $notContactedLeadsCount = 0;
+        $bookedLeadsCount       = 0;
+
+        foreach ($unfilteredAssignedLeads as $l) {
+            $act      = strtolower(trim($l['last_lead_action'] ?? ''));
+            $cStat    = strtolower(trim($l['call_status'] ?? ''));
+            $commType = strtolower(trim($l['communication_type'] ?? ''));
+            $fStat    = $l['last_follow_up_status'] ?? null;
+
+            $hasComm  = (!empty($commType) && $commType !== 'not select');
+
+            $isContacted = in_array($act, ['contacted', 'follow up', 'visited', 'booked']) 
+                        || in_array($cStat, ['called', 'received']) 
+                        || !empty($fStat) 
+                        || $hasComm;
+
+            if ($isContacted) {
+                $contactedLeadsCount++;
+            } else {
+                $notContactedLeadsCount++;
+            }
+
+            if ($act === 'booked') {
+                $bookedLeadsCount++;
+            }
+        }
+
         $myAssignedClients = $this->leadModel
-            ->getAllMyLeads($userId, $year, $month, $lastAction, $call_status, $onlyMissingFollowup);
+            ->getAllMyLeads($userId, $year, $month, $lastAction, $call_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId);
 
         $missingFollowUpCount = $followUpModel->getMissingFollowUpCount($userId);
 
@@ -632,6 +680,11 @@ class UserDashboardController extends Controller
             }
         }
 
+        $projectModel = new Project($this->db);
+        $projects = $projectModel->getAll();
+        $projectCategoryModel = new ProjectCategory($this->db);
+        $projectCategories = $projectCategoryModel->getAll();
+
         $this->view('sales-executive/my-assigned-leads', [
             'page_title'          => 'My Assigned Leads',
             'myAllleads'          => $myAssignedClients,
@@ -643,9 +696,19 @@ class UserDashboardController extends Controller
             'duplicateGroups'     => $duplicateGroups,
             'duplicateCount'      => $duplicateCount,
             'missingFollowUpCount'=> $missingFollowUpCount,
+            'projects'            => $projects,
+            'projectCategories'   => $projectCategories,
             'isFilterMissing'     => $onlyMissingFollowup,
             'phoneMap'            => $phoneMap,
             'emailMap'            => $emailMap,
+            'totalLeadsCount'        => $totalLeadsCount,
+            'contactedLeadsCount'    => $contactedLeadsCount,
+            'notContactedLeadsCount' => $notContactedLeadsCount,
+            'notCalledLeadsCount'    => $notContactedLeadsCount,
+            'bookedLeadsCount'       => $bookedLeadsCount,
+            'search'              => $search,
+            'followup_date'       => $followup_date,
+            'filterCard'          => $filterCard,
             'page_script'         => "
                 const urlParams = new URLSearchParams(window.location.search);
                 const pageFromUrl = parseInt(urlParams.get('page') || '1', 10);

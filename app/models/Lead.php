@@ -349,26 +349,35 @@ class Lead extends Model
             $types .= "i";
         }
         if (!empty($country)) {
-            $synonyms = [$country];
-            if (strcasecmp($country, 'UAE') === 0 || strcasecmp($country, 'United Arab Emirates') === 0) {
-                $synonyms = ['UAE', 'United Arab Emirates'];
-            } elseif (strcasecmp($country, 'USA') === 0 || strcasecmp($country, 'United States') === 0) {
-                $synonyms = ['USA', 'United States'];
-            } elseif (strcasecmp($country, 'UK') === 0 || strcasecmp($country, 'United Kingdom') === 0) {
-                $synonyms = ['UK', 'United Kingdom'];
-            }
+            $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
+            if (!empty($countryList)) {
+                $allConds = [];
+                foreach ($countryList as $cItem) {
+                    $synonyms = [$cItem];
+                    if (strcasecmp($cItem, 'UAE') === 0 || strcasecmp($cItem, 'United Arab Emirates') === 0) {
+                        $synonyms = ['UAE', 'United Arab Emirates'];
+                    } elseif (strcasecmp($cItem, 'USA') === 0 || strcasecmp($cItem, 'United States') === 0) {
+                        $synonyms = ['USA', 'United States'];
+                    } elseif (strcasecmp($cItem, 'UK') === 0 || strcasecmp($cItem, 'United Kingdom') === 0) {
+                        $synonyms = ['UK', 'United Kingdom'];
+                    }
 
-            $conds = [];
-            foreach ($synonyms as $syn) {
-                $conds[] = "l.country = ?";
-                $conds[] = "l.city = ?";
-                $conds[] = "l.city LIKE ?";
-                $params[] = $syn;
-                $params[] = $syn;
-                $params[] = "%" . $syn . "%";
-                $types .= "sss";
+                    $subConds = [];
+                    foreach ($synonyms as $syn) {
+                        $subConds[] = "l.country = ?";
+                        $subConds[] = "l.city = ?";
+                        $subConds[] = "l.city LIKE ?";
+                        $params[] = $syn;
+                        $params[] = $syn;
+                        $params[] = "%" . $syn . "%";
+                        $types .= "sss";
+                    }
+                    $allConds[] = "(" . implode(" OR ", $subConds) . ")";
+                }
+                if (!empty($allConds)) {
+                    $sql .= " AND (" . implode(" OR ", $allConds) . ")";
+                }
             }
-            $sql .= " AND (" . implode(" OR ", $conds) . ")";
         }
 
         $stmt = $this->db->prepare($sql);
@@ -392,6 +401,7 @@ class Lead extends Model
         $sql = "SELECT 
         l.*,
         u.full_name AS agent_name,
+        u_by.full_name AS assigned_by_name,
         COALESCE(p.name, lp.name) AS project_name,
         lpc.name AS project_category_name,
         lf.next_action,
@@ -399,6 +409,7 @@ class Lead extends Model
         lf.next_follow_up_date
     FROM leads AS l
     LEFT JOIN users AS u ON l.assigned_id = u.id
+    LEFT JOIN users AS u_by ON l.created_by = u_by.id
     LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
     LEFT JOIN (
         SELECT lf1.lead_id, lf1.next_action, lf1.follow_up_type, lf1.next_follow_up_date
@@ -542,26 +553,35 @@ class Lead extends Model
             $types .= "i";
         }
         if (!empty($country)) {
-            $synonyms = [$country];
-            if (strcasecmp($country, 'UAE') === 0 || strcasecmp($country, 'United Arab Emirates') === 0) {
-                $synonyms = ['UAE', 'United Arab Emirates'];
-            } elseif (strcasecmp($country, 'USA') === 0 || strcasecmp($country, 'United States') === 0) {
-                $synonyms = ['USA', 'United States'];
-            } elseif (strcasecmp($country, 'UK') === 0 || strcasecmp($country, 'United Kingdom') === 0) {
-                $synonyms = ['UK', 'United Kingdom'];
-            }
+            $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
+            if (!empty($countryList)) {
+                $allConds = [];
+                foreach ($countryList as $cItem) {
+                    $synonyms = [$cItem];
+                    if (strcasecmp($cItem, 'UAE') === 0 || strcasecmp($cItem, 'United Arab Emirates') === 0) {
+                        $synonyms = ['UAE', 'United Arab Emirates'];
+                    } elseif (strcasecmp($cItem, 'USA') === 0 || strcasecmp($cItem, 'United States') === 0) {
+                        $synonyms = ['USA', 'United States'];
+                    } elseif (strcasecmp($cItem, 'UK') === 0 || strcasecmp($cItem, 'United Kingdom') === 0) {
+                        $synonyms = ['UK', 'United Kingdom'];
+                    }
 
-            $conds = [];
-            foreach ($synonyms as $syn) {
-                $conds[] = "l.country = ?";
-                $conds[] = "l.city = ?";
-                $conds[] = "l.city LIKE ?";
-                $params[] = $syn;
-                $params[] = $syn;
-                $params[] = "%" . $syn . "%";
-                $types .= "sss";
+                    $subConds = [];
+                    foreach ($synonyms as $syn) {
+                        $subConds[] = "l.country = ?";
+                        $subConds[] = "l.city = ?";
+                        $subConds[] = "l.city LIKE ?";
+                        $params[] = $syn;
+                        $params[] = $syn;
+                        $params[] = "%" . $syn . "%";
+                        $types .= "sss";
+                    }
+                    $allConds[] = "(" . implode(" OR ", $subConds) . ")";
+                }
+                if (!empty($allConds)) {
+                    $sql .= " AND (" . implode(" OR ", $allConds) . ")";
+                }
             }
-            $sql .= " AND (" . implode(" OR ", $conds) . ")";
         }
 
         //  Order by created_at DESC for latest leads first
@@ -683,13 +703,14 @@ class Lead extends Model
     }
 
 
-    public function getTodayLeadsByUser(int $userId)
+    public function getTodayLeadsByUser(int $userId, $projectId = null, $projectCategoryId = null)
     {
         $userId = (int) $userId;
 
         $sql = "
         SELECT 
             l.*,
+            u_by.full_name AS assigned_by_name,
             p.name AS project_name,
             lpc.name AS project_category_name,
             lf.status AS last_follow_up_status,
@@ -697,6 +718,7 @@ class Lead extends Model
             lf.next_follow_up_date,
             lf.follow_up_type
         FROM leads AS l
+        LEFT JOIN users AS u_by ON l.created_by = u_by.id
         LEFT JOIN projects AS p ON l.project_id = p.id
         LEFT JOIN project_categories AS lpc ON l.project_category_id = lpc.id
         LEFT JOIN (
@@ -715,10 +737,30 @@ class Lead extends Model
                 OR
                 (l.assigned_at IS NOT NULL AND l.assigned_at >= CURDATE() AND l.assigned_at < CURDATE() + INTERVAL 1 DAY)
               )
-        ORDER BY l.id DESC
-    ";
+        ";
 
-        $result = $this->db->query($sql);
+        $params = [];
+        $types = "";
+
+        if (!empty($projectId)) {
+            $sql .= " AND l.project_id = ?";
+            $params[] = (int)$projectId;
+            $types .= "i";
+        }
+        if (!empty($projectCategoryId)) {
+            $sql .= " AND l.project_category_id = ?";
+            $params[] = (int)$projectCategoryId;
+            $types .= "i";
+        }
+
+        $sql .= " ORDER BY l.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
     public function getAllLeadsByUser(int $userId)
@@ -736,9 +778,10 @@ class Lead extends Model
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
-    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $call_status = null, $only_missing_followup = false)
+    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $call_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null)
     {
         $sql = "SELECT leads.*, 
+        u_by.full_name AS assigned_by_name,
         lf.next_action,
         lf.follow_up_type,
         lf.status AS last_follow_up_status,
@@ -748,6 +791,7 @@ class Lead extends Model
         f.flat_name,
         lf.next_follow_up_date
     FROM leads
+    LEFT JOIN users AS u_by ON leads.created_by = u_by.id
     LEFT JOIN (
         SELECT t1.*
         FROM lead_follow_ups t1
@@ -778,15 +822,27 @@ class Lead extends Model
             $types .= "i";
         }
 
+        $contactedCond = "(LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked') OR leads.call_status IN ('called', 'received') OR (leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select') OR lf.id IS NOT NULL)";
+
         if (!empty($lastAction)) {
-            $sql .= " AND leads.last_lead_action = ?";
-            $params[] = $lastAction;
-            $types .= "s";
+            if (strtolower($lastAction) === 'contacted') {
+                $sql .= " AND " . $contactedCond;
+            } elseif (strtolower($lastAction) === 'not_contacted') {
+                $sql .= " AND NOT " . $contactedCond;
+            } else {
+                $sql .= " AND leads.last_lead_action = ?";
+                $params[] = $lastAction;
+                $types .= "s";
+            }
         }
         if (!empty($call_status)) {
+            if ($call_status === 'not_called' || $call_status === 'not_contacted') {
+                $sql .= " AND NOT " . $contactedCond;
+            } else {
                 $sql .= " AND leads.call_status = ?";
                 $params[] = $call_status;
                 $types .= "s";
+            }
         }
 
         if ($only_missing_followup) {
@@ -794,6 +850,47 @@ class Lead extends Model
                       AND lf.next_follow_up_date > '1000-01-01'
                       AND DATE(lf.next_follow_up_date) <= CURDATE()
                       AND lf.deleted_at IS NULL";
+        }
+
+        if (!empty($projectId)) {
+            $sql .= " AND leads.project_id = ?";
+            $params[] = (int)$projectId;
+            $types .= "i";
+        }
+        if (!empty($projectCategoryId)) {
+            $sql .= " AND leads.project_category_id = ?";
+            $params[] = (int)$projectCategoryId;
+            $types .= "i";
+        }
+
+        // Search Filter
+        if (!empty($search)) {
+            $sql .= " AND (leads.full_name LIKE ? OR leads.phone LIKE ? OR leads.phone_number LIKE ? OR leads.email LIKE ? OR leads.company_name LIKE ?)";
+            $sParam = "%" . trim($search) . "%";
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $types .= "sssss";
+        }
+
+        // Next Follow-Up Date Filter
+        if (!empty($followup_date)) {
+            $sql .= " AND DATE(lf.next_follow_up_date) = ?";
+            $params[] = trim($followup_date);
+            $types .= "s";
+        }
+
+        // Card Quick Filter
+        if (!empty($filter_card)) {
+            if ($filter_card === 'contacted') {
+                $sql .= " AND " . $contactedCond;
+            } elseif ($filter_card === 'not_called' || $filter_card === 'not_contacted') {
+                $sql .= " AND NOT " . $contactedCond;
+            } elseif ($filter_card === 'booked') {
+                $sql .= " AND LOWER(leads.last_lead_action) = 'booked'";
+            }
         }
 
         // Try sorting by created_at instead
@@ -1658,6 +1755,7 @@ class Lead extends Model
             lpc.name AS project_category_name,
             t.name   AS team_name,
             au.full_name AS assigned_user_name,
+            cu.full_name AS uploaded_by_name,
             (SELECT u2.full_name
              FROM users u2
              INNER JOIN employees e2 ON u2.id = e2.user_id
@@ -1687,6 +1785,7 @@ class Lead extends Model
         LEFT JOIN project_categories lpc ON l.project_category_id = lpc.id
         LEFT JOIN teams        t  ON l.team_id    = t.id
         LEFT JOIN users        au ON l.assigned_id = au.id
+        LEFT JOIN users        cu ON l.created_by = cu.id
         LEFT JOIN (
             SELECT lf1.lead_id, lf1.follow_up_type
             FROM lead_follow_ups lf1
@@ -2179,6 +2278,131 @@ class Lead extends Model
         }
 
         return $duplicates;
+    }
+
+    public function getUploadReportStats($filters = [])
+    {
+        $created_by = !empty($filters['created_by']) ? (int)$filters['created_by'] : null;
+        $project_category_id = !empty($filters['project_category_id']) ? (int)$filters['project_category_id'] : null;
+        $project_id = !empty($filters['project_id']) ? (int)$filters['project_id'] : null;
+        $platform = !empty($filters['platform']) ? $filters['platform'] : null;
+        $date_filter = $filters['date_filter'] ?? 'today';
+        $month = !empty($filters['month']) ? $filters['month'] : date('Y-m');
+        $year = !empty($filters['year']) ? $filters['year'] : date('Y');
+
+        $where = "l.deleted_at IS NULL AND l.uploaded_from = 'From Campaign'";
+        $params = [];
+        $types = "";
+
+        if ($created_by) {
+            $where .= " AND l.created_by = ?";
+            $params[] = $created_by;
+            $types .= "i";
+        }
+        if ($project_category_id) {
+            $where .= " AND l.project_category_id = ?";
+            $params[] = $project_category_id;
+            $types .= "i";
+        }
+        if ($project_id) {
+            $where .= " AND l.project_id = ?";
+            $params[] = $project_id;
+            $types .= "i";
+        }
+        if ($platform) {
+            $where .= " AND l.platform = ?";
+            $params[] = $platform;
+            $types .= "s";
+        }
+
+        if ($date_filter === 'today') {
+            $where .= " AND DATE(l.created_at) = CURDATE()";
+        } elseif ($date_filter === 'this_month') {
+            $where .= " AND DATE_FORMAT(l.created_at, '%Y-%m') = ?";
+            $params[] = date('Y-m');
+            $types .= "s";
+        } elseif ($date_filter === 'this_year') {
+            $where .= " AND YEAR(l.created_at) = ?";
+            $params[] = date('Y');
+            $types .= "s";
+        } elseif ($date_filter === 'date_range') {
+            $where .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+            $params[] = !empty($filters['from_date']) ? $filters['from_date'] : date('Y-m-d');
+            $params[] = !empty($filters['to_date']) ? $filters['to_date'] : date('Y-m-d');
+            $types .= "ss";
+        } elseif ($date_filter === 'custom_month') {
+            $where .= " AND DATE_FORMAT(l.created_at, '%Y-%m') = ?";
+            $month_val = !empty($filters['specific_month']) ? str_pad($filters['specific_month'], 2, '0', STR_PAD_LEFT) : date('m');
+            $year_val = !empty($filters['specific_month_year']) ? $filters['specific_month_year'] : date('Y');
+            $params[] = $year_val . '-' . $month_val;
+            $types .= "s";
+        } elseif ($date_filter === 'custom_year') {
+            $where .= " AND YEAR(l.created_at) = ?";
+            $params[] = !empty($filters['year']) ? $filters['year'] : date('Y');
+            $types .= "s";
+        } elseif ($date_filter === 'all') {
+            // no extra date filter
+        }
+
+        $baseSql = "FROM leads l
+                    LEFT JOIN projects p ON l.project_id = p.id
+                    LEFT JOIN project_categories pc ON l.project_category_id = pc.id
+                    WHERE $where";
+
+        $results = [];
+
+        // 1. Total count
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS total $baseSql");
+        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $results['total'] = $stmt->get_result()->fetch_assoc()['total'];
+
+        // 2. By Project Category
+        $stmt = $this->db->prepare("SELECT pc.name, COUNT(*) AS total $baseSql GROUP BY l.project_category_id ORDER BY total DESC");
+        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $results['by_category'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 3. By Project
+        $stmt = $this->db->prepare("SELECT p.name, COUNT(*) AS total $baseSql GROUP BY l.project_id ORDER BY total DESC");
+        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $results['by_project'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 4. By Platform
+        $stmt = $this->db->prepare("SELECT l.platform AS name, COUNT(*) AS total $baseSql GROUP BY l.platform ORDER BY total DESC");
+        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $results['by_platform'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 5. By Campaign
+        $stmt = $this->db->prepare("SELECT l.campaign_name AS name, COUNT(*) AS total $baseSql GROUP BY l.campaign_name ORDER BY total DESC");
+        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $results['by_campaign'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 6. Time Breakdown
+        if ($date_filter === 'custom_month' || $date_filter === 'this_month') {
+            $stmt = $this->db->prepare("SELECT DATE(l.created_at) AS date_label, COUNT(*) AS total $baseSql GROUP BY DATE(l.created_at) ORDER BY date_label ASC");
+            if (!empty($params)) $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $results['time_breakdown'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        } elseif ($date_filter === 'custom_year' || $date_filter === 'this_year') {
+            $stmt = $this->db->prepare("SELECT DATE_FORMAT(l.created_at, '%Y-%m') AS date_label, COUNT(*) AS total $baseSql GROUP BY DATE_FORMAT(l.created_at, '%Y-%m') ORDER BY date_label ASC");
+            if (!empty($params)) $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $results['time_breakdown'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        } else {
+             $results['time_breakdown'] = [];
+        }
+
+        // 7. Actual Lead List
+        $stmt = $this->db->prepare("SELECT l.id, l.full_name, l.phone_number, l.email, l.platform, l.campaign_name, l.created_at, p.name AS project_name, pc.name AS category_name $baseSql ORDER BY l.id DESC");
+        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $results['leads'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        return $results;
     }
 }
 

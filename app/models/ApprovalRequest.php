@@ -20,7 +20,8 @@ class ApprovalRequest extends Model
         'vendor_payment_requests',
         'contractor_bill_requests',
         'lead_payments',
-        'project_incentive_claims'
+        'project_incentive_claims',
+        'fund_requisitions'
     ];
     public function create($data)
     {
@@ -319,6 +320,30 @@ class ApprovalRequest extends Model
     {
         $approvedBy = $_SESSION['user']['id'] ?? null;
 
+        $request = $this->find($id);
+        if (!$request) {
+            return false;
+        }
+
+        $sourceTable = $request['source_table'];
+        $sourceId    = (int) $request['source_id'];
+
+        if ($sourceTable === 'vendor_payment_requests' && strpos(strtolower($request['approve_role'] ?? ''), 'purchase team leader') !== false && $status === 'approved') {
+            // Forward to management instead of marking as approved
+            $sqlForward = "UPDATE {$this->table}
+                SET 
+                    approve_role = 'management',
+                    status = 'pending',
+                    approved_amount = NULL,
+                    approved_by = NULL,
+                    approval_note = ?,
+                    approved_at = NULL
+                WHERE id = ?";
+            $stmtForward = $this->db->prepare($sqlForward);
+            $phNote = "Approved by Purchase Head. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('si', $phNote, $id);
+            return $stmtForward->execute();
+        }
 
         $sql = "UPDATE {$this->table}
             SET 
@@ -486,6 +511,8 @@ class ApprovalRequest extends Model
 
     public function getApprovalDashboardMetrics()
     {
+        $this->syncMissingFundRequisitions();
+
         $sql = "SELECT 
                     COUNT(*) AS total_requests,
                     SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
@@ -498,10 +525,11 @@ class ApprovalRequest extends Model
         $res = $this->db->query($sql);
         $row = $res ? $res->fetch_assoc() : [];
 
-        // Check Accounts total disbursed across incentive payments & vendor payment requests
+        // Check Accounts total disbursed across incentive payments, vendor payment requests & fund requisitions
         $sqlDisbursed = "SELECT 
                             (SELECT IFNULL(SUM(payment_amount), 0) FROM project_incentive_payments) + 
-                            (SELECT IFNULL(SUM(approved_amount), 0) FROM vendor_payment_requests WHERE status = 'Approved') AS total_disbursed";
+                            (SELECT IFNULL(SUM(approved_amount), 0) FROM vendor_payment_requests WHERE status = 'Approved') +
+                            (SELECT IFNULL(SUM(amount), 0) FROM fund_requisitions WHERE status = 'paid') AS total_disbursed";
         $resD = $this->db->query($sqlDisbursed);
         $totalDisbursed = $resD ? (float)($resD->fetch_assoc()['total_disbursed'] ?? 0) : 0.00;
 
@@ -518,6 +546,8 @@ class ApprovalRequest extends Model
 
     public function getAllApprovalHistory($filters = [])
     {
+        $this->syncMissingFundRequisitions();
+
         $where = ["1=1"];
         $params = [];
         $types = "";
@@ -529,9 +559,11 @@ class ApprovalRequest extends Model
         }
 
         if (!empty($filters['department'])) {
-            $where[] = "LOWER(ar.department) = ?";
-            $params[] = strtolower($filters['department']);
-            $types .= "s";
+            $where[] = "(LOWER(ar.department) LIKE ? OR LOWER(d_req.name) LIKE ?)";
+            $deptParam = '%' . strtolower($filters['department']) . '%';
+            $params[] = $deptParam;
+            $params[] = $deptParam;
+            $types .= "ss";
         }
 
         if (!empty($filters['source_table'])) {
@@ -563,11 +595,11 @@ class ApprovalRequest extends Model
                     IFNULL(des_app.name, 'Management Executive') AS approver_designation
                 FROM approval_requests ar
                 LEFT JOIN users u_req ON ar.requested_by = u_req.id
-                LEFT JOIN employees e_req ON u_req.id = e_req.user_id
+                LEFT JOIN employees e_req ON (e_req.user_id = u_req.id OR e_req.id = u_req.employee_id)
                 LEFT JOIN departments d_req ON e_req.department_id = d_req.id
                 LEFT JOIN users u_app ON ar.approved_by = u_app.id
-                LEFT JOIN employees e_app ON u_app.id = e_app.user_id
-                LEFT JOIN designations des_app ON e_app.designation_id = des_app.id
+                LEFT JOIN employees e_app ON (e_app.user_id = u_app.id OR e_app.id = u_app.employee_id)
+                LEFT JOIN designations des_app ON des_app.id = COALESCE(e_app.designation_id, u_app.designation_id)
                 WHERE {$whereClause}
                 ORDER BY ar.id DESC";
 
@@ -625,6 +657,24 @@ class ApprovalRequest extends Model
                         }
                     }
                 }
+            } else if ($sourceTable === 'fund_requisitions') {
+                $frSql = "SELECT status, amount, paid_at, paid_by FROM fund_requisitions WHERE id = ? LIMIT 1";
+                $frStmt = $this->db->prepare($frSql);
+                if ($frStmt) {
+                    $frStmt->bind_param("i", $sourceId);
+                    $frStmt->execute();
+                    $frRow = $frStmt->get_result()->fetch_assoc();
+                    $frStmt->close();
+                    if ($frRow) {
+                        if ($frRow['status'] === 'paid' || !empty($frRow['paid_by'])) {
+                            $payoutStatus = 'Paid & Settled';
+                            $payoutAmount = (float)$frRow['amount'];
+                            $payoutDate = $frRow['paid_at'];
+                        } else if ($frRow['status'] === 'approved' || $row['status'] === 'approved') {
+                            $payoutStatus = 'Pending Accounts Payout';
+                        }
+                    }
+                }
             } else if ($row['status'] === 'approved') {
                 $payoutStatus = 'Approved';
             }
@@ -641,5 +691,60 @@ class ApprovalRequest extends Model
         }
 
         return $list;
+    }
+
+    public function syncMissingFundRequisitions()
+    {
+        // 1. Insert missing requisitions
+        $sql = "
+            SELECT fr.*, d.name AS dept_name
+            FROM fund_requisitions fr
+            LEFT JOIN departments d ON fr.department_id = d.id
+            LEFT JOIN approval_requests ar ON (ar.source_table = 'fund_requisitions' AND ar.source_id = fr.id)
+            WHERE ar.id IS NULL
+        ";
+        $res = $this->db->query($sql);
+        if ($res && $res->num_rows > 0) {
+            while ($row = $res->fetch_assoc()) {
+                $sourceId = (int)$row['id'];
+                $deptName = !empty($row['dept_name']) ? $row['dept_name'] : 'General';
+                $requestType = $row['requisition_type'];
+                $title = "Fund Requisition: " . (mb_strlen($row['purpose']) > 80 ? mb_substr($row['purpose'], 0, 80) . '...' : $row['purpose']);
+                $amount = (float)$row['amount'];
+                $requestedBy = (int)$row['requested_by'];
+                $status = ($row['status'] === 'pending_dept') ? 'pending' : $row['status'];
+                $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
+                $approvedAt = !empty($row['approved_at']) ? $row['approved_at'] : null;
+                $approvalNote = !empty($row['approval_note']) ? $row['approval_note'] : null;
+                $metaData = json_encode(['purpose' => $row['purpose'], 'category' => $row['category']]);
+                $createdAt = $row['created_at'];
+
+                $stmt = $this->db->prepare("
+                    INSERT INTO approval_requests 
+                    (department, request_type, title, source_table, source_id, request_amount, approved_amount, requested_by, approve_role, status, approved_by, approved_at, approval_note, meta_data, created_at)
+                    VALUES (?, ?, ?, 'fund_requisitions', ?, ?, ?, ?, 'management', ?, ?, ?, ?, ?, ?)
+                ");
+                if ($stmt) {
+                    $stmt->bind_param("sssiddisissss", $deptName, $requestType, $title, $sourceId, $amount, $amount, $requestedBy, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+            }
+        }
+
+        // 2. Sync status for existing fund_requisitions
+        $syncSql = "
+            UPDATE approval_requests ar
+            INNER JOIN fund_requisitions fr ON (ar.source_table = 'fund_requisitions' AND ar.source_id = fr.id)
+            SET ar.status = CASE WHEN fr.status = 'pending_dept' THEN 'pending' ELSE fr.status END,
+                ar.approved_by = fr.approved_by,
+                ar.approved_at = fr.approved_at,
+                ar.approval_note = fr.approval_note,
+                ar.request_amount = fr.amount,
+                ar.approved_amount = fr.amount
+            WHERE ar.status != CASE WHEN fr.status = 'pending_dept' THEN 'pending' ELSE fr.status END
+               OR (ar.approved_by IS NULL AND fr.approved_by IS NOT NULL)
+        ";
+        @$this->db->query($syncSql);
     }
 }

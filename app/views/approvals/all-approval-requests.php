@@ -91,19 +91,21 @@
         <div class="card-header bg-white py-3 border-bottom">
             <form method="GET" action="<?= $base_url ?>/all-approval-requests" class="row  align-items-center">
                 <!-- Search / Filter Title -->
-                <div class="col-l col-md-6">
+                <div class="col-lg-3 col-md-6">
                     <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Department Filter</label>
                     <select name="department" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">All Departments</option>
-                        <option value="Sales" <?= ($filters['department'] ?? '') === 'Sales' ? 'selected' : '' ?>>Sales & Incentives</option>
-                        <option value="construction" <?= strtolower($filters['department'] ?? '') === 'construction' ? 'selected' : '' ?>>Construction (`con-dashboard`)</option>
-                        <option value="HR" <?= ($filters['department'] ?? '') === 'HR' ? 'selected' : '' ?>>HR & Payroll</option>
-                        <option value="Accounts" <?= ($filters['department'] ?? '') === 'Accounts' ? 'selected' : '' ?>>Accounts & Finance</option>
+                        <?php if (!empty($departmentsList)): ?>
+                            <?php foreach ($departmentsList as $deptName): ?>
+                                <option value="<?= htmlspecialchars($deptName) ?>" <?= strtolower($filters['department'] ?? '') === strtolower($deptName) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($deptName) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </select>
                 </div>
 
-                <!-- Status Filter -->
-                <div class="col-l col-md-6">
+                <div class="col-lg-3 col-md-6">
                     <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Approval Status</label>
                     <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">All Statuses (Pending, Approved, Rejected)</option>
@@ -118,6 +120,7 @@
                     <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Module / Source Type</label>
                     <select name="source_table" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">All Approval Source Types</option>
+                        <option value="fund_requisitions" <?= ($filters['source_table'] ?? '') === 'fund_requisitions' ? 'selected' : '' ?>>Fund Requisitions / Petty Cash</option>
                         <option value="project_incentive_claims" <?= ($filters['source_table'] ?? '') === 'project_incentive_claims' ? 'selected' : '' ?>>Sales Incentive Claims</option>
                         <option value="vendor_payment_requests" <?= ($filters['source_table'] ?? '') === 'vendor_payment_requests' ? 'selected' : '' ?>>Vendor Payment Requests (Construction)</option>
                         <option value="contractor_bill_requests" <?= ($filters['source_table'] ?? '') === 'contractor_bill_requests' ? 'selected' : '' ?>>Contractor Bills (Construction)</option>

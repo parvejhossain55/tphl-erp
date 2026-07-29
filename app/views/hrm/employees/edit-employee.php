@@ -79,7 +79,7 @@
                          </div>
 
                          <div class="form__input">
-                             <select class="form-control" name="role_id">
+                             <select class="form-control select2" name="role_id">
                                  <option value="">Select Role</option>
                                  <?php foreach ($roles as $role): ?>
                                      <option value="<?= $role['id'] ?>"
@@ -348,76 +348,123 @@
                               <div class="col-lg-6">
                                   <h6 class="mb-3 text-success"><i class="fa-solid fa-circle-plus me-2"></i>Earnings / Allowances</h6>
                                   <div class="row g-3">
-                                      <?php foreach ($payslipItems as $item): ?>
-                                          <?php if ($item['type'] === 'earning'): ?>
-                                              <div class="col-12 mb-2">
-                                                  <label for="allowance_<?= $item['id'] ?>"><?= htmlspecialchars($item['name']) ?></label>
-                                                  <input class="form-control" name="salary_items[<?= $item['id'] ?>]" id="allowance_<?= $item['id'] ?>" type="number" step="0.01" 
-                                                      value="<?= number_format($existingItems[$item['id']] ?? 0, 2, '.', '') ?>">
-                                              </div>
-                                          <?php endif; ?>
-                                      <?php endforeach; ?>
-                                  </div>
-                              </div>
+                                       <?php foreach ($payslipItems as $item): ?>
+                                           <?php if ($item['type'] === 'earning'): ?>
+                                               <div class="col-12 mb-2">
+                                                   <label for="allowance_<?= $item['id'] ?>">
+                                                       <?= htmlspecialchars($item['name']) ?>
+                                                       <?php if (!empty($item['percentage']) && $item['percentage'] > 0): ?>
+                                                           <span class="badge bg-info-transparent text-info ms-1" style="font-size:11px;"><?= number_format($item['percentage'], 2) ?>%</span>
+                                                       <?php endif; ?>
+                                                   </label>
+                                                   <input class="form-control salary-item-input" 
+                                                       name="salary_items[<?= $item['id'] ?>]" 
+                                                       id="allowance_<?= $item['id'] ?>" 
+                                                       type="number" step="0.01" 
+                                                       data-percentage="<?= $item['percentage'] ?? '' ?>" 
+                                                       value="<?= number_format($existingItems[$item['id']] ?? 0, 2, '.', '') ?>">
+                                               </div>
+                                           <?php endif; ?>
+                                       <?php endforeach; ?>
+                                   </div>
+                               </div>
 
-                              <!-- Deductions -->
-                              <div class="col-lg-6">
-                                  <h6 class="mb-3 text-danger"><i class="fa-solid fa-circle-minus me-2"></i>Deductions</h6>
-                                  <div class="row g-3">
-                                      <?php foreach ($payslipItems as $item): ?>
-                                          <?php if ($item['type'] === 'deduction'): ?>
-                                              <div class="col-12 mb-2">
-                                                  <label for="deduction_<?= $item['id'] ?>"><?= htmlspecialchars($item['name']) ?></label>
-                                                  <input class="form-control" name="salary_items[<?= $item['id'] ?>]" id="deduction_<?= $item['id'] ?>" type="number" step="0.01" 
-                                                      value="<?= number_format($existingItems[$item['id']] ?? 0, 2, '.', '') ?>">
-                                              </div>
-                                          <?php endif; ?>
-                                      <?php endforeach; ?>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
+                               <!-- Deductions -->
+                               <div class="col-lg-6">
+                                   <h6 class="mb-3 text-danger"><i class="fa-solid fa-circle-minus me-2"></i>Deductions</h6>
+                                   <div class="row g-3">
+                                       <?php foreach ($payslipItems as $item): ?>
+                                           <?php if ($item['type'] === 'deduction'): ?>
+                                               <div class="col-12 mb-2">
+                                                   <label for="deduction_<?= $item['id'] ?>">
+                                                       <?= htmlspecialchars($item['name']) ?>
+                                                       <?php if (!empty($item['percentage']) && $item['percentage'] > 0): ?>
+                                                           <span class="badge bg-warning-transparent text-warning ms-1" style="font-size:11px;"><?= number_format($item['percentage'], 2) ?>%</span>
+                                                       <?php endif; ?>
+                                                   </label>
+                                                   <input class="form-control salary-item-input" 
+                                                       name="salary_items[<?= $item['id'] ?>]" 
+                                                       id="deduction_<?= $item['id'] ?>" 
+                                                       type="number" step="0.01" 
+                                                       data-percentage="<?= $item['percentage'] ?? '' ?>" 
+                                                       value="<?= number_format($existingItems[$item['id']] ?? 0, 2, '.', '') ?>">
+                                               </div>
+                                           <?php endif; ?>
+                                       <?php endforeach; ?>
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+                   </div>
+
+                  <!-- Submit -->
+                  <div class="col-12 text-center mt-3">
+                      <button class="btn btn-primary">Update Employee</button>
                   </div>
+              </div>
+          </form>
 
-                 <!-- Submit -->
-                 <div class="col-12 text-center mt-3">
-                     <button class="btn btn-primary">Update Employee</button>
-                 </div>
-             </div>
-         </form>
+      </div>
+  </div>
 
-     </div>
- </div>
+  <script>
+      document.getElementById("make_user").addEventListener("change", function() {
+          if (this.checked) {
+              document.getElementById("password_box").style.display = "block";
+          } else {
+              document.getElementById("password_box").style.display = "none";
+          }
+      });
 
- <script>
-     document.getElementById("make_user").addEventListener("change", function() {
-         if (this.checked) {
-             document.getElementById("password_box").style.display = "block";
-         } else {
-             document.getElementById("password_box").style.display = "none";
-         }
-     });
+      const isDeptHeadCheckbox = document.getElementById("is_dept_head");
+      const reportingBossContainer = document.getElementById("reporting_boss_container");
+      const reportingUserSelect = document.getElementById("reporting_user_id");
 
-     const isDeptHeadCheckbox = document.getElementById("is_dept_head");
-     const reportingBossContainer = document.getElementById("reporting_boss_container");
-     const reportingUserSelect = document.getElementById("reporting_user_id");
+      function toggleReportingBoss() {
+          if (isDeptHeadCheckbox.checked) {
+              reportingBossContainer.style.display = "none";
+              if (reportingUserSelect) {
+                  reportingUserSelect.value = "";
+                  if (typeof $ !== 'undefined' && $.fn.select2 && $(reportingUserSelect).hasClass('select2')) {
+                      $(reportingUserSelect).val("").trigger("change");
+                  }
+              }
+          } else {
+              reportingBossContainer.style.display = "block";
+          }
+      }
 
-     function toggleReportingBoss() {
-         if (isDeptHeadCheckbox.checked) {
-             reportingBossContainer.style.display = "none";
-             if (reportingUserSelect) {
-                 reportingUserSelect.value = "";
-                 if (typeof $ !== 'undefined' && $.fn.select2 && $(reportingUserSelect).hasClass('select2')) {
-                     $(reportingUserSelect).val("").trigger("change");
-                 }
-             }
-         } else {
-             reportingBossContainer.style.display = "block";
-         }
-     }
+      if (isDeptHeadCheckbox) {
+          isDeptHeadCheckbox.addEventListener("change", toggleReportingBoss);
+          toggleReportingBoss();
+      }
 
-     if (isDeptHeadCheckbox) {
-         isDeptHeadCheckbox.addEventListener("change", toggleReportingBoss);
-         toggleReportingBoss();
-     }
- </script>
+      // Auto-calculate 50% Basic Salary & Percentage-wise Payslip Items based on Gross Salary
+      function calculateSalaryBreakdown() {
+          const grossEl = document.getElementById("gross_salary");
+          const basicEl = document.getElementById("basic_salary");
+          if (!grossEl || !basicEl) return;
+
+          const gross = parseFloat(grossEl.value) || 0;
+          const basic = gross * 0.50;
+          basicEl.value = gross > 0 ? basic.toFixed(2) : "";
+
+          document.querySelectorAll(".salary-item-input[data-percentage]").forEach(function(input) {
+              const pctStr = input.getAttribute("data-percentage");
+              if (pctStr && pctStr !== "") {
+                  const pct = parseFloat(pctStr);
+                  if (pct > 0) {
+                      const calculatedAmount = (gross * pct) / 100;
+                      // Only auto-fill if current value is 0 or empty, or user modifies gross_salary
+                      input.value = calculatedAmount.toFixed(2);
+                  }
+              }
+          });
+      }
+
+      const grossSalaryInput = document.getElementById("gross_salary");
+      if (grossSalaryInput) {
+          grossSalaryInput.addEventListener("input", calculateSalaryBreakdown);
+          grossSalaryInput.addEventListener("change", calculateSalaryBreakdown);
+      }
+  </script>

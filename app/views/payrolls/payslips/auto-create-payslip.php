@@ -324,8 +324,12 @@ window.addEventListener('load', function () {
             // Append earning inputs
             payslipItems.forEach(item => {
                 if (item.type === 'earning') {
-                    // Pre-fill amount from configured items (defaults to 0.00)
-                    const val = emp.configured_items[item.id] || 0.00;
+                    // Pre-fill amount from configured items, or calculate from percentage of gross salary
+                    let val = emp.configured_items[item.id];
+                    if ((val === undefined || val === null || parseFloat(val) === 0) && item.percentage && parseFloat(item.percentage) > 0) {
+                        val = (parseFloat(emp.gross_salary || 0) * parseFloat(item.percentage)) / 100;
+                    }
+                    val = val || 0.00;
                     html += `
                         <td class="text-end">
                             <input type="number" class="form-control form-control-sm text-end input-earning" 
@@ -340,11 +344,14 @@ window.addEventListener('load', function () {
                 if (item.type === 'deduction') {
                     const itemNameNormalized = String(item.name || '').toLowerCase().trim();
                     const isUnpaidLeave = (item.id == 3 || item.id == 4 || itemNameNormalized.includes('unpaid') || itemNameNormalized.includes('leave') || itemNameNormalized.includes('lwp'));
-                    let val = emp.configured_items[item.id] || 0.00;
+                    let val = emp.configured_items[item.id];
                     
                     if (isUnpaidLeave) {
                         val = emp.absent_deduction; // Pre-fill with the calculated absent deduction
+                    } else if ((val === undefined || val === null || parseFloat(val) === 0) && item.percentage && parseFloat(item.percentage) > 0) {
+                        val = (parseFloat(emp.gross_salary || 0) * parseFloat(item.percentage)) / 100;
                     }
+                    val = val || 0.00;
 
                     html += `
                         <td class="text-end">

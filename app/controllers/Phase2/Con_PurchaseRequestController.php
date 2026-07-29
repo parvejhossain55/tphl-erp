@@ -43,10 +43,10 @@ class Con_PurchaseRequestController extends Controller
         $pmId        = ($userRole === 15) ? $userId : null; // Scope to assigned Project Manager
         $requests    = $this->prModel->getAll($executiveId, $pmId);
 
-        // Fetch Purchase Executives (Role ID 23) for assignment dropdown
+        // Fetch Purchase Executives (Role ID 23) and Senior Purchase Executives (Role ID 31) for assignment dropdown
         $executives = [];
-        if (in_array($userRole, [1, 3, 17, 22])) { // Admin, Management, Purchase Head
-            $stmt = $this->db->prepare("SELECT id, full_name FROM users WHERE role_id = 23 ORDER BY full_name");
+        if (in_array($userRole, [1, 3, 17, 22, 31])) { // Admin, Management, Purchase Head, Senior Purchase Executive
+            $stmt = $this->db->prepare("SELECT id, full_name FROM users WHERE role_id IN (23, 31) ORDER BY full_name");
             $stmt->execute();
             $executives = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         }
@@ -647,8 +647,8 @@ class Con_PurchaseRequestController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Only Admin, Management, or Purchase Head can assign
-        if (!in_array($userRole, [1, 3, 17, 22])) {
+        // Only Admin, Management, Purchase Head, or Senior Purchase Executive can assign
+        if (!in_array($userRole, [1, 3, 17, 22, 31])) {
             setError('You do not have permission to assign an executive.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
             exit;

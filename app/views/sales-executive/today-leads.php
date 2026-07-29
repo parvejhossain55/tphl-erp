@@ -37,16 +37,67 @@
 
        <div class="row">
            <div class="desktop-only">
-               <div class="col-xxl-12">
-                   <div class="card__wrapper">
-                       <div class="table__wrapper table-responsive">
-                           <table id="todayLeadsTable" class="table no-border-table mb-20 multiple_tables">
+                <div class="col-xxl-12">
+                    <div class="card__wrapper">
+                        <!-- Filters -->
+                        <div class="filters mb-3">
+                            <form action="" method="get">
+                                <div class="row g-2 align-items-center flex-wrap">
+                                    <!-- Project Filter -->
+                                    <?php if (!empty($projects)): ?>
+                                    <div class="col-auto col-sm-6 col-md-auto">
+                                        <?php $selectedProject = $_GET['project_id'] ?? ''; ?>
+                                        <select class="form-select form-select-sm filter-select select2" name="project_id" data-placeholder="Project: All">
+                                            <option value=""></option>
+                                            <?php foreach ($projects as $p): ?>
+                                                <option value="<?= $p['id'] ?>" <?= $selectedProject == $p['id'] ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($p['name']) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <?php endif; ?>
+
+                                    <!-- Category Filter -->
+                                    <?php if (!empty($projectCategories)): ?>
+                                    <div class="col-auto col-sm-6 col-md-auto">
+                                        <?php $selectedCategory = $_GET['project_category_id'] ?? ''; ?>
+                                        <select class="form-select form-select-sm filter-select select2" name="project_category_id" data-placeholder="Category: All">
+                                            <option value=""></option>
+                                            <?php foreach ($projectCategories as $cat): ?>
+                                                <option value="<?= $cat['id'] ?>" <?= $selectedCategory == $cat['id'] ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($cat['name']) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <?php endif; ?>
+
+                                    <!-- Submit & Clear buttons -->
+                                    <div class="col-auto">
+                                        <div class="d-flex gap-2">
+                                            <button type="submit" class="btn btn-primary btn-sm px-3 shadow-sm d-flex align-items-center gap-1" style="height: 31px;">
+                                                <i class="bi bi-filter" style="font-size: 14px;"></i> Filter
+                                            </button>
+                                            <?php if (!empty($_GET['project_id']) || !empty($_GET['project_category_id'])): ?>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/today-leads" class="btn btn-outline-danger btn-sm px-2 shadow-sm d-flex align-items-center gap-1" style="height: 31px;" title="Clear Filters">
+                                                <i class="bi bi-x-circle" style="font-size: 14px;"></i> Clear
+                                            </a>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="table__wrapper table-responsive">
+                            <table id="todayLeadsTable" class="table no-border-table mb-20 multiple_tables">
                                <thead>
                                    <tr class="table__title table__sort">
                                        <th style="min-width:60px;">S/L</th>
                                        <th style="min-width: 120px;">Lead Date</th>
                                        <th style="min-width: 130px;">Duplicate</th>
                                        <th style="min-width: 160px;">Lead & Job Title/company</th>
+                                       <th style="min-width: 140px;">Assigned By</th>
                                        <th style="min-width: 150px;">Best Time to Contact</th>
                                        <th style="min-width: 140px;">Address & City</th>
                                        <th style="min-width: 180px;">Project Campaign</th>
@@ -140,6 +191,13 @@
                                                     <?= htmlspecialchars($jt) ?><?= ($jt !== '' && $co !== '') ? ' at ' : '' ?><strong><?= htmlspecialchars($co) ?></strong>
                                                 </div>
                                                 <?php endif; ?>
+                                            </td>
+
+                                            <!-- Assigned By -->
+                                            <td>
+                                                <span class="badge bg-secondary-subtle text-dark border px-2 py-1" style="font-size: 11px;">
+                                                    <i class="bi bi-person-check me-1"></i><?= htmlspecialchars($lead['assigned_by_name'] ?? 'System') ?>
+                                                </span>
                                             </td>
 
                                             <!-- Best Time to Contact -->

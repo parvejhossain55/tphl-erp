@@ -243,7 +243,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Team</label>
                         <select class="form-select form-select-sm filter-select select2" name="team_id" data-placeholder="Team: All">
-                            <option value="">Team: All</option>
+                            <option value=""></option>
                             <?php foreach ($teams as $t): ?>
                                 <option value="<?= $t['id'] ?>" <?= ($selectedTeam ?? '') == $t['id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($t['name']) ?>
@@ -255,10 +255,10 @@ $activeCard = $_GET['filter_card'] ?? '';
 
                     <!-- Project Filter -->
                     <?php if (!empty($projects)): ?>
-                    <div class="col-6 col-md-2 d-none">
+                    <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Project</label>
                         <select class="form-select form-select-sm filter-select select2" name="project_id" data-placeholder="Project: All">
-                            <option value="">Project: All</option>
+                            <option value=""></option>
                             <?php foreach ($projects as $p): ?>
                                 <option value="<?= $p['id'] ?>" <?= ($selectedProject ?? '') == $p['id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($p['name']) ?>
@@ -275,7 +275,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Category</label>
                         <select class="form-select form-select-sm filter-select select2" name="project_category_id" data-placeholder="Category: All">
-                            <option value="">Category: All</option>
+                            <option value=""></option>
                             <?php foreach ($categories as $cat): ?>
                                 <option value="<?= $cat['id'] ?>" <?= ($selectedCategory ?? '') == $cat['id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($cat['name']) ?>
@@ -285,14 +285,18 @@ $activeCard = $_GET['filter_card'] ?? '';
                     </div>
                     <?php endif; ?>
 
-                    <!-- Country Filter -->
+                    <!-- Country Filter (Multi-Select) -->
                     <?php if (!empty($countries)): ?>
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Country</label>
-                        <select class="form-select form-select-sm filter-select select2" name="filter_country" data-placeholder="Country: All">
-                            <option value="">Country: All</option>
+                        <?php 
+                        $selectedCountriesArr = is_array($selectedCountry ?? null) 
+                            ? $selectedCountry 
+                            : (!empty($selectedCountry) ? (array)$selectedCountry : []);
+                        ?>
+                        <select class="form-select form-select-sm filter-select select2" name="filter_country[]" multiple data-placeholder="Country: All">
                             <?php foreach ($countries as $c): ?>
-                                <option value="<?= htmlspecialchars($c) ?>" <?= ($selectedCountry ?? '') == $c ? 'selected' : '' ?>>
+                                <option value="<?= htmlspecialchars($c) ?>" <?= in_array($c, $selectedCountriesArr) ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($c) ?>
                                 </option>
                             <?php endforeach; ?>
@@ -440,6 +444,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                                 <th>Status</th>
                                 <th>Next Follow-Up</th>
                                 <th>Sales Executive & Note</th>
+                                <th>Assigned By</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -712,13 +717,6 @@ $activeCard = $_GET['filter_card'] ?? '';
                                             <i class="bi bi-eye me-2 text-success"></i> View
                                         </a>
                                     </li>
-                                    <li>
-                                        <button class="dropdown__item text-danger removeBtnCust w-100 text-start d-flex align-items-center" data-name="<?= $lead['full_name'] ?>"
-                                            data-action="lead-delete"
-                                            data-id="<?= $lead['id'] ?>">
-                                            <i class="bi bi-trash me-2"></i> Delete
-                                        </button>
-                                    </li>
                                 </ul>
                             </div>
                         </div>
@@ -811,6 +809,15 @@ $activeCard = $_GET['filter_card'] ?? '';
                                     <?= htmlspecialchars($lead['agent_name']) ?>
                                 </span>
                             <?php endif; ?>
+                        </div>
+
+                        <!-- Assigned By Name -->
+                        <div class="d-flex align-items-center gap-2 mt-2">
+                            <div class="info-label flex-shrink-0">Assigned By</div>
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                                <i class="bi bi-person-check me-1"></i>
+                                <?= htmlspecialchars($lead['assigned_by_name'] ?? 'System') ?>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -1022,7 +1029,7 @@ document.addEventListener('DOMContentLoaded', function () {
         addHidden('redirect_page', finalPage);
         addHidden('route_mode',    routeMode);
         // Also preserve all current GET filters
-        const filterParams = ['year','month','assigned_user','last_action','assigned','q','from_date','to_date'];
+        const filterParams = ['year','month','assigned_user','last_action','assigned','q','from_date','to_date','project_id','project_category_id'];
         filterParams.forEach(p => {
             const v = urlParams.get(p);
             if (v) addHidden('redirect_' + p, v);
@@ -1208,7 +1215,8 @@ document.addEventListener('DOMContentLoaded', function () {
             columnDefs   : [
                 { targets: 0, orderable: false },
                 { targets: 10, orderable: false },
-                { targets: 11, orderable: false }
+                { targets: 11, orderable: false },
+                { targets: 12, orderable: false }
             ],
             drawCallback: function () {
                 // After each page draw: re-sync checkbox states

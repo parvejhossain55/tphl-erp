@@ -21,6 +21,7 @@ class DigitalMarketingController extends Controller
         $teams = $this->teamsModel->getAll();
         $teamId = $_GET['team_id'] ?? null;
         $projectCategoryId = !empty($_GET['project_category_id']) ? (int)$_GET['project_category_id'] : null;
+        $projectId = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null;
 
         // Filters (for form state only — leads load via AJAX)
         $dateAge        = $_GET['date_age']      ?? 'all';
@@ -81,7 +82,7 @@ class DigitalMarketingController extends Controller
         $duplicateLeadsCount = $dupStmt ? (int)($dupStmt->fetch_assoc()['total'] ?? 0) : 0;
 
         // Total lead count
-        $totalLeads = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate, false, $projectCategoryId);
+        $totalLeads = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate, false, $projectCategoryId, $projectId);
 
         // Contacted / Not Contacted summary counts (From Campaign only)
         $cSql = "
@@ -121,6 +122,12 @@ class DigitalMarketingController extends Controller
             $cTypes   .= "i";
         }
 
+        if ($projectId) {
+            $cSql .= " AND l.project_id = ?";
+            $cParams[] = $projectId;
+            $cTypes   .= "i";
+        }
+
         if (!empty($fromDate) && !empty($toDate)) {
             $cSql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
             $cParams[] = $fromDate;
@@ -153,6 +160,7 @@ class DigitalMarketingController extends Controller
         $totalContacted    = (int)($cCounts['contacted']    ?? 0);
         $totalNotContacted = (int)($cCounts['not_contacted'] ?? 0);
         $categories        = (new ProjectCategory($this->db))->getAll();
+        $projects          = (new Project($this->db))->getAll();
 
         return $this->view("digital-marketing-team/digital-marketing-head-dashboard", [
             "current_route"       => "digital-marketing-dashboard",
@@ -163,6 +171,8 @@ class DigitalMarketingController extends Controller
             "leads"               => [],   // AJAX loads leads now
             "selected_team_id"    => $teamId,
             "selected_project_category_id" => $projectCategoryId,
+            "selected_project_id" => $projectId,
+            "projects"            => $projects,
             "sources"             => $sources,
             "platformBudgets"     => $platformBudgets,
             "budgetSummary"       => $budgetSummary,
@@ -633,6 +643,7 @@ public function deleteBudget($id)
                 'sales_lead'    => '<div class="fw-bold text-primary">' . htmlspecialchars($lead['sales_team_lead_name'] ?? 'Not Assigned') . '</div>',
                 'assigned_to'   => $assignedToHtml,
                 'upload_date'   => '<div class="fw-semibold">' . date('M d, Y', strtotime($lead['created_at'])) . '</div><small class="text-muted">' . date('h:i A', strtotime($lead['created_at'])) . '</small>',
+                'uploaded_by'   => '<div class="text-muted" style="font-size: .85rem;"><i class="bi bi-person-fill me-1"></i>' . htmlspecialchars($lead['uploaded_by_name'] ?? 'System') . '</div>',
                 'action'        => '<button type="button" class="btn btn-sm btn-outline-danger removeBtnCust cursor" data-name="' . htmlspecialchars($lead['full_name'] ?? 'N/A') . '" data-action="delete-lead-permanent" data-id="' . $lead['id'] . '"><i class="bi bi-trash me-1"></i>Delete</button>',
             ];
         }
@@ -787,63 +798,29 @@ public function deleteBudget($id)
         ]);
     }
 
-    public function freshsalesLeadsPage()
+
+
+    public function uploadReport()
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        $filters = [
+            'created_by' => $_GET['created_by'] ?? null,
+            'project_category_id' => $_GET['project_category_id'] ?? null,
+            'project_id' => $_GET['project_id'] ?? null,
+            'platform' => $_GET['platform'] ?? null,
+            'date_filter' => $_GET['date_filter'] ?? 'today',
+            'from_date' => $_GET['from_date'] ?? date('Y-m-d'),
+            'to_date' => $_GET['to_date'] ?? date('Y-m-d'),
+            'specific_month' => $_GET['specific_month'] ?? date('m'),
+            'specific_month_year' => $_GET['specific_month_year'] ?? date('Y'),
+            'year' => $_GET['year'] ?? date('Y'),
+        ];
 
-        if (empty($_SESSION['user']['id'])) {
-            header("Location: {$GLOBALS['base_url']}/admin-login");
-            exit;
-        }
+        $stats = $this->leadModel->getUploadReportStats($filters);
+        $projects = (new Project($this->db))->getAll();
+        $categories = (new ProjectCategory($this->db))->getAll();
 
-        $platform = $_GET['platform'] ?? '';
-        $campaign = $_GET['campaign'] ?? '';
-        $status = $_GET['status'] ?? '0'; // default Pending (is_exported = 0)
-        $fromDate = $_GET['from_date'] ?? '';
-        $toDate = $_GET['to_date'] ?? '';
-
-        $sql = "SELECT * FROM freshsales_leads_cache WHERE 1=1";
-        $params = [];
-        $types = "";
-
-        if ($platform !== '') {
-            $sql .= " AND platform = ?";
-            $params[] = $platform;
-            $types .= "s";
-        }
-        if ($campaign !== '') {
-            $sql .= " AND campaign_name = ?";
-            $params[] = $campaign;
-            $types .= "s";
-        }
-        if ($status !== 'all') {
-            $sql .= " AND is_exported = ?";
-            $params[] = (int)$status;
-            $types .= "i";
-        }
-        if (!empty($fromDate) && !empty($toDate)) {
-            $sql .= " AND DATE(created_at) BETWEEN ? AND ?";
-            $params[] = $fromDate;
-            $params[] = $toDate;
-            $types .= "ss";
-        }
-
-        $sql .= " ORDER BY created_at DESC";
-        $stmt = $this->db->prepare($sql);
-        
-        $leads = [];
-        if ($stmt) {
-            if (!empty($params)) {
-                $stmt->bind_param($types, ...$params);
-            }
-            $stmt->execute();
-            $leads = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-            $stmt->close();
-        }
-
-        $platformsResult = $this->db->query("SELECT DISTINCT platform FROM freshsales_leads_cache WHERE platform IS NOT NULL AND platform != ''");
+        // Get platforms for filter
+        $platformsResult = $this->db->query("SELECT DISTINCT platform FROM leads WHERE deleted_at IS NULL AND platform IS NOT NULL AND platform != '' AND uploaded_from = 'From Campaign'");
         $platforms = [];
         if ($platformsResult) {
             while ($row = $platformsResult->fetch_assoc()) {
@@ -851,27 +828,41 @@ public function deleteBudget($id)
             }
         }
 
-        $campaignsResult = $this->db->query("SELECT DISTINCT campaign_name FROM freshsales_leads_cache WHERE campaign_name IS NOT NULL AND campaign_name != '' ORDER BY campaign_name ASC");
-        $campaigns = [];
-        if ($campaignsResult) {
-            while ($row = $campaignsResult->fetch_assoc()) {
-                $campaigns[] = $row['campaign_name'];
+        // Get all executives who have uploaded leads from campaign
+        $execsResult = $this->db->query("SELECT DISTINCT u.id, u.full_name, COALESCE(e.employee_id, u.employee_id) AS employee_id, d.name AS designation, dept.name AS department
+                                        FROM users u
+                                        LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                                        LEFT JOIN designations d ON (e.designation_id = d.id OR u.designation_id = d.id)
+                                        LEFT JOIN departments dept ON e.department_id = dept.id
+                                        WHERE u.role_id = 11
+                                        ORDER BY u.full_name ASC");
+        $executives = [];
+        if ($execsResult) {
+            while ($row = $execsResult->fetch_assoc()) {
+                $executives[] = $row;
             }
         }
 
-        return $this->view("digital-marketing-team/freshsales-leads", [
-            "current_route" => "freshsales-leads",
-            "page_title"    => "Freshsales API Leads",
-            "leads"         => $leads,
-            "platforms"     => $platforms,
-            "campaigns"     => $campaigns,
-            "filter"        => [
-                "platform"  => $platform,
-                "campaign"  => $campaign,
-                "status"    => $status,
-                "from_date" => $fromDate,
-                "to_date"   => $toDate
-            ]
+        $selectedExecutive = null;
+        if (!empty($filters['created_by'])) {
+            foreach ($executives as $ex) {
+                if ($ex['id'] == $filters['created_by']) {
+                    $selectedExecutive = $ex;
+                    break;
+                }
+            }
+        }
+
+        return $this->view("digital-marketing-team/upload-report", [
+            "current_route" => "digital-marketing-upload-report",
+            "page_title" => "Lead Upload Report",
+            "filters" => $filters,
+            "stats" => $stats,
+            "projects" => $projects,
+            "categories" => $categories,
+            "platforms" => $platforms,
+            "executives" => $executives,
+            "selectedExecutive" => $selectedExecutive
         ]);
     }
 }

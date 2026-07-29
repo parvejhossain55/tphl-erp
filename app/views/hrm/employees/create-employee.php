@@ -126,7 +126,7 @@
                                  </div>
 
                                  <div class="form__input">
-                                     <select class="form-control" name="role_id">
+                                     <select class="form-control select2" name="role_id">
                                          <option value="">Select Role</option>
                                          <?php foreach ($roles as $role): ?>
                                              <option value="<?= $role['id'] ?>"><?= $role['name'] ?></option>
@@ -469,10 +469,21 @@
                                           <div class="col-12 mb-2">
                                               <div class="from__input-box">
                                                   <div class="form__input-title">
-                                                      <label for="allowance_<?= $item['id'] ?>"><?= htmlspecialchars($item['name']) ?></label>
+                                                      <label for="allowance_<?= $item['id'] ?>">
+                                                          <?= htmlspecialchars($item['name']) ?>
+                                                          <?php if (!empty($item['percentage']) && $item['percentage'] > 0): ?>
+                                                              <span class="badge bg-info-transparent text-info ms-1" style="font-size:11px;"><?= number_format($item['percentage'], 2) ?>%</span>
+                                                          <?php endif; ?>
+                                                      </label>
                                                   </div>
                                                   <div class="form__input">
-                                                      <input class="form-control" name="salary_items[<?= $item['id'] ?>]" id="allowance_<?= $item['id'] ?>" type="number" step="0.01" value="0.00">
+                                                      <input class="form-control salary-item-input" 
+                                                             name="salary_items[<?= $item['id'] ?>]" 
+                                                             id="allowance_<?= $item['id'] ?>" 
+                                                             type="number" 
+                                                             step="0.01" 
+                                                             data-percentage="<?= $item['percentage'] ?? '' ?>" 
+                                                             value="0.00">
                                                   </div>
                                               </div>
                                           </div>
@@ -490,10 +501,21 @@
                                           <div class="col-12 mb-2">
                                               <div class="from__input-box">
                                                   <div class="form__input-title">
-                                                      <label for="deduction_<?= $item['id'] ?>"><?= htmlspecialchars($item['name']) ?></label>
+                                                      <label for="deduction_<?= $item['id'] ?>">
+                                                          <?= htmlspecialchars($item['name']) ?>
+                                                          <?php if (!empty($item['percentage']) && $item['percentage'] > 0): ?>
+                                                              <span class="badge bg-warning-transparent text-warning ms-1" style="font-size:11px;"><?= number_format($item['percentage'], 2) ?>%</span>
+                                                          <?php endif; ?>
+                                                      </label>
                                                   </div>
                                                   <div class="form__input">
-                                                      <input class="form-control" name="salary_items[<?= $item['id'] ?>]" id="deduction_<?= $item['id'] ?>" type="number" step="0.01" value="0.00">
+                                                      <input class="form-control salary-item-input" 
+                                                             name="salary_items[<?= $item['id'] ?>]" 
+                                                             id="deduction_<?= $item['id'] ?>" 
+                                                             type="number" 
+                                                             step="0.01" 
+                                                             data-percentage="<?= $item['percentage'] ?? '' ?>" 
+                                                             value="0.00">
                                                   </div>
                                               </div>
                                           </div>
@@ -543,5 +565,33 @@
      if (isDeptHeadCheckbox) {
          isDeptHeadCheckbox.addEventListener("change", toggleReportingBoss);
          toggleReportingBoss();
+     }
+
+     // Auto-calculate 50% Basic Salary & Percentage-wise Payslip Items based on Gross Salary
+     function calculateSalaryBreakdown() {
+         const grossEl = document.getElementById("gross_salary");
+         const basicEl = document.getElementById("basic_salary");
+         if (!grossEl || !basicEl) return;
+
+         const gross = parseFloat(grossEl.value) || 0;
+         const basic = gross * 0.50;
+         basicEl.value = gross > 0 ? basic.toFixed(2) : "";
+
+         document.querySelectorAll(".salary-item-input[data-percentage]").forEach(function(input) {
+             const pctStr = input.getAttribute("data-percentage");
+             if (pctStr && pctStr !== "") {
+                 const pct = parseFloat(pctStr);
+                 if (pct > 0) {
+                     const calculatedAmount = (gross * pct) / 100;
+                     input.value = calculatedAmount.toFixed(2);
+                 }
+             }
+         });
+     }
+
+     const grossSalaryInput = document.getElementById("gross_salary");
+     if (grossSalaryInput) {
+         grossSalaryInput.addEventListener("input", calculateSalaryBreakdown);
+         grossSalaryInput.addEventListener("change", calculateSalaryBreakdown);
      }
  </script>

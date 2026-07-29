@@ -24,6 +24,7 @@ $pendingBOQsForPR = $pendingBOQsForPR ?? [];
 $pendingPRsForPO  = $pendingPRsForPO  ?? [];
 $allBOQs          = $allBOQs          ?? [];
 $prsForApproval   = $prsForApproval   ?? [];
+$posForApproval   = $posForApproval   ?? [];
 ?>
 <div class="row"><div class="col-12">
 <style>
@@ -128,15 +129,27 @@ $prsForApproval   = $prsForApproval   ?? [];
         <h4 class="ptl-hero-title">Procurement Dashboard</h4>
         <p class="ptl-hero-sub">Real-time procurement overview · <?= date('d M Y, h:i A') ?></p>
       </div>
-      <?php if (!empty($prsForApproval)): ?>
-      <div style="background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.35);border-radius:12px;padding:10px 18px;display:flex;align-items:center;gap:10px">
-        <i class="fal fa-bell" style="color:#fca5a5;font-size:20px"></i>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:#fca5a5;letter-spacing:1px">PENDING APPROVAL</div>
-          <div style="font-size:22px;font-weight:900;color:#fff;line-height:1"><?= count($prsForApproval) ?> PR<?= count($prsForApproval) > 1 ? 's' : '' ?></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <?php if (!empty($prsForApproval)): ?>
+        <div style="background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.35);border-radius:12px;padding:10px 18px;display:flex;align-items:center;gap:10px">
+          <i class="fal fa-bell" style="color:#fca5a5;font-size:20px"></i>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#fca5a5;letter-spacing:1px">PENDING PR APPROVAL</div>
+            <div style="font-size:22px;font-weight:900;color:#fff;line-height:1"><?= count($prsForApproval) ?> PR<?= count($prsForApproval) > 1 ? 's' : '' ?></div>
+          </div>
         </div>
+        <?php endif; ?>
+
+        <?php if (!empty($posForApproval)): ?>
+        <div style="background:rgba(245,158,11,.18);border:1px solid rgba(245,158,11,.35);border-radius:12px;padding:10px 18px;display:flex;align-items:center;gap:10px">
+          <i class="fal fa-bell" style="color:#fcd34d;font-size:20px"></i>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#fcd34d;letter-spacing:1px">PENDING PO APPROVAL</div>
+            <div style="font-size:22px;font-weight:900;color:#fff;line-height:1"><?= count($posForApproval) ?> PO<?= count($posForApproval) > 1 ? 's' : '' ?></div>
+          </div>
+        </div>
+        <?php endif; ?>
       </div>
-      <?php endif; ?>
     </div>
     <div class="ptl-hero-actions">
       <a href="<?= $base ?>/con-purchase-orders" class="ptl-btn-white"><i class="fal fa-cart-shopping"></i> Purchase Orders</a>
@@ -218,6 +231,60 @@ $prsForApproval   = $prsForApproval   ?? [];
             <i class="fal fa-hourglass-half me-1"></i>Awaiting PM
           </span>
           <?php endif; ?>
+        </td>
+      </tr>
+      <?php endforeach; ?>
+    </tbody>
+  </table>
+  </div>
+</div>
+<?php endif; ?>
+
+<?php if (!empty($posForApproval)): ?>
+<!-- ═════════════════ POs AWAITING APPROVAL ═════════════════ -->
+<div class="ptl-panel" style="border:2px solid rgba(245,158,11,.4);background:rgba(245,158,11,.03);margin-bottom:22px">
+  <div class="ptl-panel-title" style="color:#d97706">
+    <div class="ptl-dot" style="background:var(--ptl-amber);animation:pulse 1.5s infinite"></div>
+    <i class="fal fa-file-signature me-2" style="color:var(--ptl-amber)"></i>
+    Purchase Orders — Awaiting Your Approval
+    <span style="margin-left:auto;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(245,158,11,.15);color:#d97706">
+      <?= count($posForApproval) ?> Pending
+    </span>
+  </div>
+  <p style="font-size:11.5px;color:var(--text-muted);margin-bottom:14px">
+    নিচের Purchase Order গুলো আপনার Approval এর অপেক্ষায়। <strong>Pending for Approval</strong> এ ক্লিক করে PO টি ভিউ এবং অ্যাপ্রুভ করুন।
+  </p>
+  <div style="overflow-x:auto">
+  <table class="ptl-table">
+    <thead>
+      <tr>
+        <th>#PO</th>
+        <th>Project</th>
+        <th>Amount</th>
+        <th>Created By</th>
+        <th>Date</th>
+        <th style="text-align:right">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php foreach ($posForApproval as $apo): ?>
+      <tr>
+        <td style="font-weight:700;color:var(--ptl-indigo)">PO-<?= $apo['id'] ?></td>
+        <td><strong><?= htmlspecialchars($apo['project_name'] ?? 'N/A') ?></strong></td>
+        <td><strong style="color:var(--ptl-green)"><?= ptlFmt($apo['total_amount'] ?? 0) ?></strong></td>
+        <td style="font-size:11px;color:var(--text-muted)">
+          <?= htmlspecialchars($apo['created_by_name'] ?? '—') ?>
+          <?php if (!empty($apo['created_by_role'])): ?>
+            <span style="font-size:9px;color:var(--text-muted);display:block"><?= htmlspecialchars($apo['created_by_role']) ?></span>
+          <?php endif; ?>
+        </td>
+        <td style="font-size:11px;color:var(--text-muted)"><?= !empty($apo['order_date']) ? date('d M Y', strtotime($apo['order_date'])) : '—' ?></td>
+        <td style="text-align:right;white-space:nowrap">
+          <a href="<?= $base ?>/con-purchase-order/<?= $apo['id'] ?>"
+             style="display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,var(--clr-theme-primary),var(--clr-theme-primary));color:#fff;
+                    border:none;border-radius:8px;padding:5px 12px;font-size:11.5px;font-weight:700;text-decoration:none">
+            <i class="fal fa-eye"></i> View & Approve
+          </a>
         </td>
       </tr>
       <?php endforeach; ?>
