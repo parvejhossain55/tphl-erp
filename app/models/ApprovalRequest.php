@@ -320,6 +320,30 @@ class ApprovalRequest extends Model
     {
         $approvedBy = $_SESSION['user']['id'] ?? null;
 
+        $request = $this->find($id);
+        if (!$request) {
+            return false;
+        }
+
+        $sourceTable = $request['source_table'];
+        $sourceId    = (int) $request['source_id'];
+
+        if ($sourceTable === 'vendor_payment_requests' && strpos(strtolower($request['approve_role'] ?? ''), 'purchase team leader') !== false && $status === 'approved') {
+            // Forward to management instead of marking as approved
+            $sqlForward = "UPDATE {$this->table}
+                SET 
+                    approve_role = 'management',
+                    status = 'pending',
+                    approved_amount = NULL,
+                    approved_by = NULL,
+                    approval_note = ?,
+                    approved_at = NULL
+                WHERE id = ?";
+            $stmtForward = $this->db->prepare($sqlForward);
+            $phNote = "Approved by Purchase Head. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('si', $phNote, $id);
+            return $stmtForward->execute();
+        }
 
         $sql = "UPDATE {$this->table}
             SET 

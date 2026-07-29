@@ -121,7 +121,7 @@ class Con_VendorPaymentRequestController extends Controller
         // Other roles only see their own requests OR requests for projects they are assigned to
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         $isPrivileged = (
-            in_array($this->userRole, [1, 3, 6, 22, 17])
+            in_array($this->userRole, [1, 3, 6, 22, 17, 31])
             || strpos($roleName, 'admin') !== false
             || strpos($roleName, 'management') !== false
             || strpos($roleName, 'accounts') !== false
@@ -129,6 +129,7 @@ class Con_VendorPaymentRequestController extends Controller
             || strpos($roleName, 'purchase head') !== false
             || strpos($roleName, 'purchase team leader') !== false
             || strpos($roleName, 'operation head') !== false
+            || strpos($roleName, 'senior purchase executive') !== false
         );
 
         $filterUserId = null;
@@ -355,6 +356,9 @@ class Con_VendorPaymentRequestController extends Controller
             $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$data['project_id'])->fetch_assoc();
             $vendor  = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)$vendorId)->fetch_assoc();
 
+            // Set approve_role: management if created by Purchase Head (role 17), else purchase team leader
+            $approveRole = ($this->userRole === 17) ? 'management' : 'purchase team leader';
+
             // Now create the approval_request for management immediately
             $this->approvalModel->create([
                 'department'     => 'construction',
@@ -364,7 +368,7 @@ class Con_VendorPaymentRequestController extends Controller
                 'source_id'      => $id,
                 'requested_days' => 0,
                 'requested_by'   => $userId,
-                'approve_role'   => 'management',
+                'approve_role'   => $approveRole,
                 'meta_data'      => null,
                 'request_amount' => $netPayable,
             ]);

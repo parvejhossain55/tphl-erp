@@ -69,7 +69,7 @@
                                         <span class="badge <?= $badge ?>"><?= $r['status'] ?></span>
                                     </td>
                                     <td>
-                                        <?php if ($r['status'] === 'Approved' && in_array($userRole, [1, 3, 17, 22])): ?>
+                                        <?php if ($r['status'] === 'Approved' && in_array($userRole, [1, 3, 17, 22, 31])): ?>
                                             <form action="<?= $base_url ?>/con-purchase-request-assign/<?= $r['id'] ?>"
                                                 method="POST" class="d-flex align-items-center gap-1">
                                                 <select name="executive_id" class="form-select form-select-sm"
@@ -104,7 +104,7 @@
                                         </a>
 
                                         <?php if ($r['status'] === 'Approved'): ?>
-                                            <?php if ($userRole === 23 || in_array($userRole, [1, 3])): ?>
+                                            <?php if ($userRole === 23 || $userRole === 31 || in_array($userRole, [1, 3])): ?>
                                                 <a href="<?= $base_url ?>/con-quotation-create/<?= $r['id'] ?>"
                                                     class="btn btn-sm btn-outline-success ms-1" title="Add Quotation & CST">
                                                     <i class="bi bi-receipt"></i>

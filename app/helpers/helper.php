@@ -267,6 +267,10 @@ function redirectByRole()
             $url = "{$GLOBALS['base_url']}/accounts-dashboard";
             break;
 
+        case 31: // Senior Purchase executive
+            $url = "{$GLOBALS['base_url']}/sr-executive-dashboard";
+            break;
+
         default:
             $url = "{$GLOBALS['base_url']}/admin-login";
     }

@@ -49,32 +49,38 @@
                                 </td>
                                 <td class="text-end">৳ <?= number_format($po['total_amount'] ?? 0, 2) ?></td>
                                 <td>
-                                    <?php
-                                    $badge = match($po['status']) {
-                                        'Issued'             => 'bg-info',
-                                        'QC Approved'        => 'bg-primary',
-                                        'Approved'           => 'bg-success',
-                                        'Partially Received' => 'bg-warning text-dark',
-                                        'Fully Received'     => 'bg-success',
-                                        'Cancelled'          => 'bg-danger',
-                                        default              => 'bg-secondary',
-                                    };
-                                    ?>
-                                    <span class="badge <?= $badge ?>"><?= $po['status'] ?></span>
+                                     <?php
+                                     $badge = match($po['status']) {
+                                         'Issued'             => 'bg-info',
+                                         'Purchase Head Approved' => 'bg-warning text-dark',
+                                         'QC Approved'        => 'bg-primary',
+                                         'Approved'           => 'bg-success',
+                                         'Partially Received' => 'bg-warning text-dark',
+                                         'Fully Received'     => 'bg-success',
+                                         'Cancelled'          => 'bg-danger',
+                                         default              => 'bg-secondary',
+                                     };
+                                     ?>
+                                     <span class="badge <?= $badge ?>"><?= $po['status'] ?></span>
                                 </td>
                                 <td class="text-center">
-                                    <?php
-                                    $qcOk = !empty($po['qc_approved_by_id']);
-                                    $mgmtOk = !empty($po['mgmt_approved_by_id']);
-                                    $steps = ($qcOk ? 1 : 0) + ($mgmtOk ? 1 : 0);
-                                    $apvColor = ($steps == 2) ? '#059669' : ($steps == 1 ? '#2563eb' : '#6b7280');
-                                    ?>
-                                    <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;
-                                      background:rgba(0,0,0,.05);color:<?= $apvColor ?>">
-                                      <?= $steps ?>/2
-                                      <?= $qcOk?'<span title="QC & Internal Audit">QC✓</span>':'' ?>
-                                      <?= $mgmtOk?'<span title="Management">MGMT✓</span>':'' ?>
-                                    </span>
+                                     <?php
+                                     $phOk = !empty($po['purchase_head_approved_by_id']);
+                                     $qcOk = !empty($po['qc_approved_by_id']);
+                                     $opOk = !empty($po['op_head_approved_by_id']);
+                                     $creatorRole = (int)($po['creator_role_id'] ?? 0);
+                                     $phNeeded = in_array($creatorRole, [23, 31]);
+                                     $totalSteps = $phNeeded ? 3 : 2;
+                                     $doneSteps = ($phNeeded && $phOk ? 1 : 0) + ($qcOk ? 1 : 0) + ($opOk ? 1 : 0);
+                                     $apvColor = ($doneSteps == $totalSteps) ? '#059669' : ($doneSteps > 0 ? '#2563eb' : '#6b7280');
+                                     ?>
+                                     <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;
+                                       background:rgba(0,0,0,.05);color:<?= $apvColor ?>">
+                                       <?= $doneSteps ?>/<?= $totalSteps ?>
+                                       <?= ($phNeeded && $phOk)?'<span title="Purchase Head">PH✓</span>':'' ?>
+                                       <?= $qcOk?'<span title="QC & Internal Audit">QC✓</span>':'' ?>
+                                       <?= $opOk?'<span title="Operation Head">OP✓</span>':'' ?>
+                                     </span>
                                 </td>
                                 <td class="text-muted small"><?= date('d M Y', strtotime($po['order_date'])) ?></td>
                                 <td><?= htmlspecialchars($po['created_by_name'] ?? '—') ?></td>

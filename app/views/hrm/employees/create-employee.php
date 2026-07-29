@@ -126,7 +126,7 @@
                                  </div>
 
                                  <div class="form__input">
-                                     <select class="form-control" name="role_id">
+                                     <select class="form-control select2" name="role_id">
                                          <option value="">Select Role</option>
                                          <?php foreach ($roles as $role): ?>
                                              <option value="<?= $role['id'] ?>"><?= $role['name'] ?></option>

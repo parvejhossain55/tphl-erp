@@ -639,11 +639,12 @@
                             <span class="sidebar__menu-label">Marketing Head Dashboard</span>
                         </a>
                     </li>
+
                     <li class="slide ">
-                        <a href="<?= $base_url ?>/digital-marketing/freshsales-leads"
-                            class="sidebar__menu-item <?= isActive('freshsales-leads', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-cloud-arrow-down"></i></div>
-                            <span class="sidebar__menu-label">Freshsales API Leads</span>
+                        <a href="<?= $base_url ?>/digital-marketing-upload-report"
+                            class="sidebar__menu-item <?= isActive('digital-marketing-upload-report', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-file-contract"></i></div>
+                            <span class="sidebar__menu-label">Lead Upload Report</span>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -661,11 +662,12 @@
                             <span class="sidebar__menu-label">Marketing Executive Dashboard</span>
                         </a>
                     </li>
+
                     <li class="slide ">
-                        <a href="<?= $base_url ?>/digital-marketing/freshsales-leads"
-                            class="sidebar__menu-item <?= isActive('freshsales-leads', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-cloud-arrow-down"></i></div>
-                            <span class="sidebar__menu-label">Freshsales API Leads</span>
+                        <a href="<?= $base_url ?>/digital-marketing-upload-report"
+                            class="sidebar__menu-item <?= isActive('digital-marketing-upload-report', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-file-contract"></i></div>
+                            <span class="sidebar__menu-label">Lead Upload Report</span>
                         </a>
                     </li>
                     <li class="slide">
@@ -1821,10 +1823,20 @@
                      PTL has: Purchase order + Vendor Manage + Material Manage
                      Unique: Material Manage (Site Eng lacks it, QC lacks it)
                      Exclude: Construction Management -->
-                <?php if (hasPermission('Purchase order') && hasPermission('Vendor Manage') && hasPermission('Material Manage') && !hasPermission('Construction Management')): ?>
+                <?php if (hasPermission('Purchase order') && hasPermission('Vendor Manage') && hasPermission('Material Manage') && !hasPermission('Construction Management') && ($_SESSION['user']['role_id'] ?? 0) != 31): ?>
                     <li class="slide <?= isActive('purchase-team-lead-dashboard', $current_route) ?>">
                         <a href="<?= $base_url ?>/purchase-team-lead-dashboard"
                             class="sidebar__menu-item <?= isActive('purchase-team-lead-dashboard', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-users-gear"></i></div>
+                            <span class="sidebar__menu-label">Procurement Dashboard</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
+                <?php if (($_SESSION['user']['role_id'] ?? 0) == 31): ?>
+                    <li class="slide <?= isActive('sr-executive-dashboard', $current_route) ?>">
+                        <a href="<?= $base_url ?>/sr-executive-dashboard"
+                            class="sidebar__menu-item <?= isActive('sr-executive-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-users-gear"></i></div>
                             <span class="sidebar__menu-label">Procurement Dashboard</span>
                         </a>

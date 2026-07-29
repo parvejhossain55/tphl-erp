@@ -16,6 +16,7 @@ class Con_PurchaseOrder extends Model
     {
         $sql = "SELECT po.*, pr.project_id, p.name AS project_name,
                        u.full_name AS created_by_name,
+                       u.role_id AS creator_role_id,
                        v.name AS vendor_name,
                        (SELECT SUM(total_price) FROM {$this->itemTable} WHERE purchase_order_id = po.id) AS total_amount
                 FROM {$this->table} po
@@ -32,12 +33,15 @@ class Con_PurchaseOrder extends Model
     {
         $sql = "SELECT po.*, pr.project_id, pr.notes AS pr_notes, p.name AS project_name,
                     u.full_name AS created_by_name,
+                    u.role_id AS creator_role_id,
                     v.name AS vendor_name,
                     v.company_name AS vendor_company,
                     apv.full_name AS pm_approver_name,
                     apv_r.name    AS pm_approver_role,
                     qc_u.full_name AS qc_approver_name,
-                    mgmt_u.full_name AS mgmt_approver_name
+                    mgmt_u.full_name AS mgmt_approver_name,
+                    ph_u.full_name AS ph_approver_name,
+                    op_u.full_name AS op_approver_name
              FROM {$this->table} po
              JOIN purchase_requests pr ON pr.id = po.request_id
              LEFT JOIN projects p ON p.id = pr.project_id
@@ -47,6 +51,8 @@ class Con_PurchaseOrder extends Model
              LEFT JOIN roles apv_r ON apv_r.id = apv.role_id
              LEFT JOIN users qc_u ON qc_u.id = po.qc_approved_by_id
              LEFT JOIN users mgmt_u ON mgmt_u.id = po.mgmt_approved_by_id
+             LEFT JOIN users ph_u ON ph_u.id = po.purchase_head_approved_by_id
+             LEFT JOIN users op_u ON op_u.id = po.op_head_approved_by_id
              WHERE po.id = ?";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
