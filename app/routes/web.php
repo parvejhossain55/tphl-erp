@@ -87,6 +87,9 @@ return [
     'create-requisition' => ['controller' => 'ManpowerRequisitionController', 'method' => 'create'],
     'store-requisition' => ['controller' => 'ManpowerRequisitionController', 'method' => 'store'],
     'view-requisition/(\d+)' => ['controller' => 'ManpowerRequisitionController', 'method' => 'find'],
+    'approve-requisition/(\d+)' => ['controller' => 'ManpowerRequisitionController', 'method' => 'approve'],
+    'reject-requisition/(\d+)' => ['controller' => 'ManpowerRequisitionController', 'method' => 'reject'],
+    'update-hr-requisition-status/(\d+)' => ['controller' => 'ManpowerRequisitionController', 'method' => 'updateHrStatus'],
 
     // =========================================================================
     // Controller: SiteManage\SiteSettingController

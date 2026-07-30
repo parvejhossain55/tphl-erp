@@ -324,10 +324,11 @@ window.addEventListener('load', function () {
             // Append earning inputs
             payslipItems.forEach(item => {
                 if (item.type === 'earning') {
-                    // Pre-fill amount from configured items, or calculate from percentage of gross salary
+                    // Pre-fill amount from configured items, or calculate from percentage of basic salary
                     let val = emp.configured_items[item.id];
                     if ((val === undefined || val === null || parseFloat(val) === 0) && item.percentage && parseFloat(item.percentage) > 0) {
-                        val = (parseFloat(emp.gross_salary || 0) * parseFloat(item.percentage)) / 100;
+                        const basicSal = parseFloat(emp.basic_salary || (emp.gross_salary * 0.50) || 0);
+                        val = (basicSal * parseFloat(item.percentage)) / 100;
                     }
                     val = val || 0.00;
                     html += `
@@ -349,7 +350,8 @@ window.addEventListener('load', function () {
                     if (isUnpaidLeave) {
                         val = emp.absent_deduction; // Pre-fill with the calculated absent deduction
                     } else if ((val === undefined || val === null || parseFloat(val) === 0) && item.percentage && parseFloat(item.percentage) > 0) {
-                        val = (parseFloat(emp.gross_salary || 0) * parseFloat(item.percentage)) / 100;
+                        const basicSal = parseFloat(emp.basic_salary || (emp.gross_salary * 0.50) || 0);
+                        val = (basicSal * parseFloat(item.percentage)) / 100;
                     }
                     val = val || 0.00;
 

@@ -7,99 +7,118 @@ class PayslipItem extends Model
     public function __construct($db)
     {
         $this->db = $db;
+        $this->ensureColumnsExist();
     }
 
-    // Get all Departments with paginate
+    private function ensureColumnsExist()
+    {
+        if (!isset($this->db)) return;
+        
+        // Check if percentage column exists
+        $checkCol = $this->db->query("SHOW COLUMNS FROM payslip_items LIKE 'percentage'");
+        if ($checkCol && $checkCol->num_rows == 0) {
+            @$this->db->query("ALTER TABLE payslip_items ADD COLUMN percentage DECIMAL(10,2) NULL DEFAULT 0.00 AFTER type");
+        }
 
-public function getAll() {
-    $stmt = $this->db->prepare("SELECT * FROM payslip_items");
-    
-    if (!$stmt) {
-        die("Prepare failed: " . $this->db->error);
+        // Check if description column exists
+        $checkDesc = $this->db->query("SHOW COLUMNS FROM payslip_items LIKE 'description'");
+        if ($checkDesc && $checkDesc->num_rows == 0) {
+            @$this->db->query("ALTER TABLE payslip_items ADD COLUMN description TEXT NULL AFTER percentage");
+        }
     }
 
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $data = $result->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
-
-    return $data;
-}
-
-
-    // Create a new role
-
-public function create($data)
-{
-    $percentage = isset($data['percentage']) && $data['percentage'] !== '' ? (float)$data['percentage'] : null;
-    $stmt = $this->db->prepare(
-        "INSERT INTO payslip_items
-        (name, type, percentage, created_by)
-        VALUES (?, ?, ?, ?)"
-    );
-
-    $stmt->bind_param(
-        "ssdi",
-        $data['name'],
-        $data['type'],
-        $percentage,
-        $data['created_by']
-    );
-
-    if ($stmt->execute()) {
+    public function getAll()
+    {
+        $stmt = $this->db->prepare("SELECT * FROM payslip_items ORDER BY id DESC");
+        if (!$stmt) {
+            $res = $this->db->query("SELECT * FROM payslip_items ORDER BY id DESC");
+            return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
         $stmt->close();
-        return true;
-    } else {
-        echo "ERROR: " . $stmt->error;
-        return false;
-    }
-}
-
-public function update($data)
-{
-    $percentage = isset($data['percentage']) && $data['percentage'] !== '' ? (float)$data['percentage'] : null;
-    $stmt = $this->db->prepare("UPDATE payslip_items SET name = ?, type = ?, percentage = ? WHERE id = ?");
-    if (!$stmt) {
-        echo "Prepare failed: " . $this->db->error;
-        return false;
+        return $data;
     }
 
-    $stmt->bind_param(
-        "ssdi",
-        $data['name'],    
-        $data['type'],  
-        $percentage,
-        $data['id']       
-    );
+    public function create($data)
+    {
+        $name       = trim($data['name'] ?? '');
+        $type       = trim($data['type'] ?? 'earning');
+        $percentage = (isset($data['percentage']) && $data['percentage'] !== '') ? (float)$data['percentage'] : 0.00;
+        $createdBy  = !empty($data['created_by']) ? (int)$data['created_by'] : null;
 
-    if (!$stmt->execute()) {
-        echo "Execute failed: " . $stmt->error;
+        // Try inserting with percentage first
+        $stmt = $this->db->prepare("INSERT INTO payslip_items (name, type, percentage, created_by) VALUES (?, ?, ?, ?)");
+        if ($stmt) {
+            $stmt->bind_param("ssdi", $name, $type, $percentage, $createdBy);
+            $res = $stmt->execute();
+            if (!$res) {
+                error_log("PayslipItem create execute error: " . $stmt->error);
+            }
+            $stmt->close();
+            if ($res) return true;
+        }
+
+        // Fallback insert without percentage if table structure varies
+        $stmt2 = $this->db->prepare("INSERT INTO payslip_items (name, type, created_by) VALUES (?, ?, ?)");
+        if ($stmt2) {
+            $stmt2->bind_param("ssi", $name, $type, $createdBy);
+            $res2 = $stmt2->execute();
+            if (!$res2) {
+                error_log("PayslipItem create fallback error: " . $stmt2->error);
+            }
+            $stmt2->close();
+            return $res2;
+        }
+
         return false;
     }
 
-    $stmt->close();
-    return true;
-}
+    public function update($data)
+    {
+        $id         = (int)($data['id'] ?? 0);
+        $name       = trim($data['name'] ?? '');
+        $type       = trim($data['type'] ?? 'earning');
+        $percentage = (isset($data['percentage']) && $data['percentage'] !== '') ? (float)$data['percentage'] : 0.00;
 
-public function delete($id)
-{
-    // Delete all designations linked to this department
-    // $stmt1 = $this->db->prepare("DELETE FROM payslip_details WHERE payslip_item_id = ?");
-    // $stmt1->bind_param("i", $id);
-    // $stmt1->execute();
-    // $stmt1->close();
+        // Try updating with percentage
+        $stmt = $this->db->prepare("UPDATE payslip_items SET name = ?, type = ?, percentage = ? WHERE id = ?");
+        if ($stmt) {
+            $stmt->bind_param("ssdi", $name, $type, $percentage, $id);
+            $res = $stmt->execute();
+            if (!$res) {
+                error_log("PayslipItem update execute error: " . $stmt->error);
+            }
+            $stmt->close();
+            if ($res) return true;
+        }
 
-    //  Delete the department
-    $stmt2 = $this->db->prepare("DELETE FROM payslip_items WHERE id = ?");
-    $stmt2->bind_param("i", $id);
-    $stmt2->execute();
-    $stmt2->close();
+        // Fallback update without percentage
+        $stmt2 = $this->db->prepare("UPDATE payslip_items SET name = ?, type = ? WHERE id = ?");
+        if ($stmt2) {
+            $stmt2->bind_param("ssi", $name, $type, $id);
+            $res2 = $stmt2->execute();
+            if (!$res2) {
+                error_log("PayslipItem update fallback error: " . $stmt2->error);
+            }
+            $stmt2->close();
+            return $res2;
+        }
 
-    return true;
-}
+        return false;
+    }
 
-
-
-
-
+    public function delete($id)
+    {
+        $id = (int)$id;
+        $stmt = $this->db->prepare("DELETE FROM payslip_items WHERE id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $id);
+            $res = $stmt->execute();
+            $stmt->close();
+            return $res;
+        }
+        return false;
+    }
 }

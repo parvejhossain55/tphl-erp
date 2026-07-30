@@ -439,23 +439,21 @@
           toggleReportingBoss();
       }
 
-      // Auto-calculate 50% Basic Salary & Percentage-wise Payslip Items based on Gross Salary
+      // Auto-calculate 50% Basic Salary & Percentage-wise Payslip Items based on Basic Salary
       function calculateSalaryBreakdown() {
           const grossEl = document.getElementById("gross_salary");
           const basicEl = document.getElementById("basic_salary");
           if (!grossEl || !basicEl) return;
 
           const gross = parseFloat(grossEl.value) || 0;
-          const basic = gross * 0.50;
-          basicEl.value = gross > 0 ? basic.toFixed(2) : "";
+          let basic = parseFloat(basicEl.value) || 0;
 
           document.querySelectorAll(".salary-item-input[data-percentage]").forEach(function(input) {
               const pctStr = input.getAttribute("data-percentage");
               if (pctStr && pctStr !== "") {
                   const pct = parseFloat(pctStr);
                   if (pct > 0) {
-                      const calculatedAmount = (gross * pct) / 100;
-                      // Only auto-fill if current value is 0 or empty, or user modifies gross_salary
+                      const calculatedAmount = (basic * pct) / 100;
                       input.value = calculatedAmount.toFixed(2);
                   }
               }
@@ -463,8 +461,19 @@
       }
 
       const grossSalaryInput = document.getElementById("gross_salary");
+      const basicSalaryInput = document.getElementById("basic_salary");
       if (grossSalaryInput) {
-          grossSalaryInput.addEventListener("input", calculateSalaryBreakdown);
+          grossSalaryInput.addEventListener("input", function() {
+              const gross = parseFloat(grossSalaryInput.value) || 0;
+              if (basicSalaryInput) {
+                  basicSalaryInput.value = gross > 0 ? (gross * 0.50).toFixed(2) : "";
+              }
+              calculateSalaryBreakdown();
+          });
           grossSalaryInput.addEventListener("change", calculateSalaryBreakdown);
+      }
+      if (basicSalaryInput) {
+          basicSalaryInput.addEventListener("input", calculateSalaryBreakdown);
+          basicSalaryInput.addEventListener("change", calculateSalaryBreakdown);
       }
   </script>

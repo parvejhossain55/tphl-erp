@@ -134,6 +134,32 @@ $hasTransactions = !empty($recentTransactions);
         </div>
     </div>
 
+    <!-- Manpower Requisition Pending Card -->
+    <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-6">
+        <a href="<?= $GLOBALS['base_url'] ?>/requisition-lists?status=pending&open_pending=1" class="text-decoration-none">
+            <div class="card__wrapper h-100 d-flex flex-column justify-content-center dashboard-card position-relative" style="border-left: 4px solid #f59e0b !important; background: linear-gradient(135deg, #fffdf5 0%, #ffffff 100%);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="card__icon" style="background: rgba(245, 158, 11, 0.15); color: #d97706;">
+                        <span><i class="fa-solid fa-user-clock fs-4"></i></span>
+                    </div>
+                    <div class="ms-2 card__title-wrap flex-grow-1 overflow-hidden">
+                        <h6 class="card__sub-title mb-1 text-muted">Manpower Requisition Pending</h6>
+                        <div class="d-flex align-items-center gap-2">
+                            <h3 class="card__title mb-0 text-dark fw-bold"><?= $pendingManpowerCount ?? 0 ?></h3>
+                            <?php if (($pendingManpowerCount ?? 0) > 0): ?>
+                                <span class="badge bg-warning text-dark rounded-pill px-2 py-1 small">
+                                    <i class="fa-solid fa-hourglass-half me-1"></i> Action Required
+                                </span>
+                            <?php else: ?>
+                                <span class="badge bg-light text-muted border rounded-pill px-2 py-1 small">Clean</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
     <!-- Example for Revenue Card -->
     <div class="col-xxl-3 col-xl-4 col-lg-4 col-md-6 col-6">
         <div class="card__wrapper h-100 d-flex flex-column justify-content-center dashboard-card">
@@ -547,6 +573,11 @@ $hasTransactions = !empty($recentTransactions);
                                         </form>
 
                                         <!-- View Button -->
+                                        <?php if ($req['request_type'] === 'manpower_requisition' && !empty($req['source_id'])): ?>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/view-requisition/<?= $req['source_id'] ?>" class="btn btn-sm btn-outline-info">
+                                                <i class="fa-light fa-eye me-1"></i> View Requisition
+                                            </a>
+                                        <?php endif; ?>
 
 
                                     </div>

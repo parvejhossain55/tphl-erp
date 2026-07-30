@@ -29,8 +29,6 @@ if ($current_server == 1) {
         "tipsoi_base_url" => "https://app.tipsoi.ai/inovace-client/api/v1/",
         "tipsoi_email" => "info@dpremiumhomes.com",
         "tipsoi_password" => "HRD@tphl@1274",
-
-
     ];
 }
 
@@ -90,8 +88,6 @@ if ($current_server == 3) {
         "tipsoi_base_url" => "https://app.tipsoi.ai/inovace-client/api/v1/",
         "tipsoi_email" => "info@dpremiumhomes.com",
         "tipsoi_password" => "HRD@tphl@1274",
-
-
     ];
 }
 
