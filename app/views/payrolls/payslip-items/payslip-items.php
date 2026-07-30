@@ -117,7 +117,7 @@ $show_breadcrumb = true;
                                     </div>
                                     <div class="col-md-6">
                                         <div class="from__input-box">
-                                            <label>Percentage of Gross Salary (%) <span class="text-muted" style="font-size:11px;">(Optional)</span></label>
+                                            <label>Percentage of Basic Salary (%) <span class="text-muted" style="font-size:11px;">(Optional)</span></label>
                                             <input class="form-control" name="percentage" type="number" step="0.01" min="0" max="100" placeholder="e.g. 50">
                                         </div>
                                     </div>
@@ -187,7 +187,7 @@ $show_breadcrumb = true;
                         <!-- Percentage -->
                         <div class="col-md-6">
                             <div class="from__input-box">
-                                <label>Percentage of Gross Salary (%) <span class="text-muted" style="font-size:11px;">(Optional)</span></label>
+                                <label>Percentage of Basic Salary (%) <span class="text-muted" style="font-size:11px;">(Optional)</span></label>
                                 <input type="number"
                                     step="0.01"
                                     min="0"

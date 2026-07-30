@@ -132,10 +132,10 @@
                             </div>
                             <div class="field-cell">
                                 <label class="field-label">Reports To</label>
-                                <select name="report_to" class="form-control-plain" required>
+                                <select name="report_to" class="form-control-plain select2" data-placeholder="Select Manager" required>
                                     <option value="">Select Manager</option>
                                     <?php foreach ($users as $u): ?>
-                                        <option value="<?= $u['id'] ?>"><?= $u['full_name'] ?> (<?= $u['designation_name'] ?>)</option>
+                                        <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?> (<?= htmlspecialchars($u['designation_name'] ?? 'N/A') ?>)</option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -165,10 +165,10 @@
                         <div class="field-row">
                             <div class="field-cell" style="flex:1">
                                 <label class="field-label">Project Name</label>
-                                <select name="project_id" class="form-control-plain">
+                                <select name="project_id" class="form-control-plain select2" data-placeholder="Select Project (Optional)">
                                     <option value="">Select Project (Optional)</option>
                                     <?php foreach ($projects as $p): ?>
-                                        <option value="<?= $p['id'] ?>"><?= $p['name'] ?></option>
+                                        <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>

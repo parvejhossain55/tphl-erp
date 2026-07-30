@@ -2676,7 +2676,7 @@
                 <?php endif; ?>
 
 
-                <?php if (hasPermission("Manpower Requisition")): ?>
+                <?php if (hasPermission("Manpower Requisition") || hasPermission('Architect Design') || ($_SESSION['user']['role_id'] ?? 0) == 18): ?>
                     <!-- Dashboard -->
                     <li class="slide <?= isActive('requisition-lists', $current_route) ?>">
                         <a href="<?= $base_url ?>/requisition-lists"

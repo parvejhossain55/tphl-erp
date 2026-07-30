@@ -249,10 +249,17 @@ class HomeController extends Controller
             $constructionProjectsCount = (int)$res->fetch_assoc()['c'];
         }
 
+        $pendingManpowerCount = 0;
+        $resManpower = $this->db->query("SELECT COUNT(*) AS total FROM manpower_requisitions WHERE status = 'pending'");
+        if ($resManpower) {
+            $pendingManpowerCount = (int)($resManpower->fetch_assoc()['total'] ?? 0);
+        }
+
         $pendingRequests = $this->approvalModel->getPendingForRole($roles, 10);
 
         $this->view("home", [
             "constructionProjectsCount" => $constructionProjectsCount,
+            "pendingManpowerCount"      => $pendingManpowerCount,
             "current_route" => "home",
             "page_title"   => "Dashboard",
             "show_breadcrumb" => false,
