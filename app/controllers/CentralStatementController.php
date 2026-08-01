@@ -26,7 +26,7 @@ public function index()
 
     $periodType = $_GET['period_type'] ?? 'monthly';
     $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
-    $month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
+    $month = $_GET['month'] ?? date('m');
     $startDate = $_GET['start_date'] ?? null;
     $endDate = $_GET['end_date'] ?? null;
     $projectId = $_GET['project_id'] ?? null;
@@ -39,53 +39,61 @@ public function index()
     $statementStartDate = '';
     $statementEndDate = '';
 
-    switch ($periodType) {
-        case 'monthly':
-            $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
-            $periodText = date('F Y', strtotime("$year-" . sprintf('%02d', $month) . "-01"));
-            $statementStartDate = "$year-" . sprintf('%02d', $month) . "-01";
-            $statementEndDate = date('Y-m-t', strtotime($statementStartDate));
-            break;
+    if ($month === 'all' || $month === '0' || $month === 0) {
+        $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
+        $periodText = "All Months ($year)";
+        $statementStartDate = "$year-01-01";
+        $statementEndDate = "$year-12-31";
+    } else {
+        $mInt = (int)$month;
+        switch ($periodType) {
+            case 'monthly':
+                $statementData = $this->statementModel->getMonthlyStatement($year, $mInt, $projectId, $category);
+                $periodText = date('F Y', strtotime("$year-" . sprintf('%02d', $mInt) . "-01"));
+                $statementStartDate = "$year-" . sprintf('%02d', $mInt) . "-01";
+                $statementEndDate = date('Y-m-t', strtotime($statementStartDate));
+                break;
 
-        case '6months':
-            $statementData = $this->statementModel->getSixMonthStatement($year, $month, $projectId, $category);
-            $periodText = 'Last 6 Months';
-            $statementStartDate = date('Y-m-01', strtotime("-5 months", strtotime("$year-$month-01")));
-            $statementEndDate = date('Y-m-t', strtotime("$year-$month-01"));
-            break;
+            case '6months':
+                $statementData = $this->statementModel->getSixMonthStatement($year, $mInt, $projectId, $category);
+                $periodText = 'Last 6 Months';
+                $statementStartDate = date('Y-m-01', strtotime("-5 months", strtotime("$year-$mInt-01")));
+                $statementEndDate = date('Y-m-t', strtotime("$year-$mInt-01"));
+                break;
 
-        case 'yearly':
-            $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
-            $periodText = "Year $year";
-            $statementStartDate = "$year-01-01";
-            $statementEndDate = "$year-12-31";
-            break;
+            case 'yearly':
+                $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
+                $periodText = "Year $year";
+                $statementStartDate = "$year-01-01";
+                $statementEndDate = "$year-12-31";
+                break;
 
-        case 'custom':
-            if ($startDate && $endDate) {
-                $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
-                $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
-                $statementStartDate = $startDate;
-                $statementEndDate = $endDate;
-            } else {
+            case 'custom':
+                if ($startDate && $endDate) {
+                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
+                    $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
+                    $statementStartDate = $startDate;
+                    $statementEndDate = $endDate;
+                } else {
+                    $year = (int)date('Y');
+                    $mInt = (int)date('m');
+                    $statementData = $this->statementModel->getMonthlyStatement($year, $mInt, $projectId, $category);
+                    $periodText = date('F Y');
+                    $periodType = 'monthly';
+                    $statementStartDate = date('Y-m-01');
+                    $statementEndDate = date('Y-m-t');
+                }
+                break;
+
+            default:
                 $year = (int)date('Y');
-                $month = (int)date('m');
-                $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
+                $mInt = (int)date('m');
+                $statementData = $this->statementModel->getMonthlyStatement($year, $mInt, $projectId, $category);
                 $periodText = date('F Y');
                 $periodType = 'monthly';
                 $statementStartDate = date('Y-m-01');
                 $statementEndDate = date('Y-m-t');
-            }
-            break;
-
-        default:
-            $year = (int)date('Y');
-            $month = (int)date('m');
-            $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
-            $periodText = date('F Y');
-            $periodType = 'monthly';
-            $statementStartDate = date('Y-m-01');
-            $statementEndDate = date('Y-m-t');
+        }
     }
 
     $projects = $this->getProjects();
@@ -106,7 +114,17 @@ public function index()
         $revenueData = $this->statementModel->calculateRevenue($statementStartDate, $statementEndDate, $projectId);
     }
 
-    // Fetch cashout payment details (grouped by date) when cashout category is selected
+    // Fetch client payment details (includes Client Name, Project Name, Flat Name)
+    $clientPaymentDetails = [];
+    if ($statementStartDate && $statementEndDate) {
+        $clientPaymentDetails = $this->statementModel->getClientPaymentDetails(
+            $statementStartDate,
+            $statementEndDate,
+            $projectId
+        );
+    }
+
+    // Fetch cashout payment details
     $cashoutPaymentDetails = [];
     if ($category === 'cashout' && $statementStartDate && $statementEndDate) {
         $cashoutPaymentDetails = $this->statementModel->getCashoutPaymentDetails(
@@ -116,7 +134,7 @@ public function index()
         );
     }
 
-    // Fetch vendor payment details when vendor_payment category is selected
+    // Fetch vendor payment details
     $vendorPaymentDetails = [];
     if ($category === 'vendor_payment' && $statementStartDate && $statementEndDate) {
         $vendorPaymentDetails = $this->statementModel->getVendorPaymentDetails(
@@ -126,7 +144,7 @@ public function index()
         );
     }
 
-    // Fetch contractor bill details when contractor_bill category is selected
+    // Fetch contractor bill details
     $contractorBillDetails = [];
     if ($category === 'contractor_bill' && $statementStartDate && $statementEndDate) {
         $contractorBillDetails = $this->statementModel->getContractorBillDetails(
@@ -136,7 +154,7 @@ public function index()
         );
     }
 
-    // Fetch bank transactions for bank_cashin / bank_cashout categories
+    // Fetch bank transactions
     $bankTransactions = [];
     if (in_array($category, ['bank_cashin', 'bank_cashout']) && $statementStartDate && $statementEndDate) {
         $bankTransactions = $this->getBankTransactions($category, $statementStartDate, $statementEndDate, $projectId);
@@ -148,7 +166,7 @@ public function index()
         'period_type' => $periodType,
         'period_text' => $periodText,
         'year' => $year,
-        'month' => sprintf('%02d', $month),
+        'month' => $month === 'all' ? 'all' : sprintf('%02d', (int)$month),
         'start_date' => $startDate,
         'end_date' => $endDate,
         'project_id' => $projectId,
@@ -157,6 +175,7 @@ public function index()
         'statement_data' => $statementData,
         'overall_stats' => $overallStats,
         'revenue_data' => $revenueData,
+        'client_payment_details' => $clientPaymentDetails,
         'cashout_payment_details' => $cashoutPaymentDetails,
         'vendor_payment_details' => $vendorPaymentDetails,
         'contractor_bill_details' => $contractorBillDetails,

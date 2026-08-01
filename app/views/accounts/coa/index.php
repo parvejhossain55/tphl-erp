@@ -175,6 +175,9 @@
                                 <?php endif; ?>
                             </td>
                             <td class="text-end">
+                                <a href="<?= $base_url ?>/accounts/ledger/<?= $acc['id'] ?>" class="btn btn-sm btn-outline-info me-1" title="View General Ledger Statement">
+                                    <i class="fa-light fa-book-open"></i> Ledger
+                                </a>
                                 <?php if (empty($acc['is_system_account'])): ?>
                                     <button type="button" class="btn btn-sm btn-outline-primary" 
                                         onclick='openEditModal(<?= json_encode($acc) ?>)'>

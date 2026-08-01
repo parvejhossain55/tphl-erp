@@ -746,19 +746,21 @@ ORDER BY lb.booking_date DESC
             }
         }
 
+        $followupCounts = [];
         $followupStmt = $this->db->prepare("
             SELECT emi_no, COUNT(*) as cnt 
             FROM emi_followups 
             WHERE booking_id = ? 
             GROUP BY emi_no
         ");
-        $followupStmt->bind_param("i", $bookingId);
-        $followupStmt->execute();
-        $followupRes = $followupStmt->get_result();
-        $followupCounts = [];
-        if ($followupRes) {
-            while ($f = $followupRes->fetch_assoc()) {
-                $followupCounts[(int)$f['emi_no']] = (int)$f['cnt'];
+        if ($followupStmt) {
+            $followupStmt->bind_param("i", $bookingId);
+            $followupStmt->execute();
+            $followupRes = $followupStmt->get_result();
+            if ($followupRes) {
+                while ($f = $followupRes->fetch_assoc()) {
+                    $followupCounts[(int)$f['emi_no']] = (int)$f['cnt'];
+                }
             }
         }
 
@@ -779,10 +781,13 @@ ORDER BY lb.booking_date DESC
                 AND payment_status IN ('paid','partially_paid') 
                 AND verification_status = 'verified'
             ");
-            $lastPaymentStmt->bind_param("i", $bookingId);
-            $lastPaymentStmt->execute();
-            $lastPaymentResult = $lastPaymentStmt->get_result();
-            $lastPaymentRow = $lastPaymentResult ? $lastPaymentResult->fetch_assoc() : null;
+            $lastPaymentRow = null;
+            if ($lastPaymentStmt) {
+                $lastPaymentStmt->bind_param("i", $bookingId);
+                $lastPaymentStmt->execute();
+                $lastPaymentResult = $lastPaymentStmt->get_result();
+                $lastPaymentRow = $lastPaymentResult ? $lastPaymentResult->fetch_assoc() : null;
+            }
             
             $anchorDateStr = !empty($lastPaymentRow['last_payment_date']) 
                                 ? $lastPaymentRow['last_payment_date'] 

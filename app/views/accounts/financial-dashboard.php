@@ -108,6 +108,9 @@ $show_breadcrumb = true;
             <button class="nav-link" id="v-pills-expense-tab" data-bs-toggle="pill" data-bs-target="#v-pills-expense" type="button" role="tab" onclick="loadExpense('fund')">
                 <i class="fa-light fa-file-invoice-dollar"></i> Expense Vouchers
             </button>
+            <button class="nav-link text-warning fw-bold" id="v-pills-pending-payables-tab" data-bs-toggle="pill" data-bs-target="#v-pills-pending-payables" type="button" role="tab" onclick="initPendingPayablesTable()">
+                <i class="fa-light fa-clock-rotate-left text-warning"></i> Pending Payables (Accrued)
+            </button>
             <button class="nav-link" id="v-pills-journal-tab" data-bs-toggle="pill" data-bs-target="#v-pills-journal" type="button" role="tab" onclick="initJournalTable()">
                 <i class="fa-light fa-sliders"></i> Expense Adjustments
             </button>
@@ -174,6 +177,9 @@ $show_breadcrumb = true;
                             <li class="nav-item">
                                 <button class="nav-link" data-bs-toggle="pill" type="button" onclick="loadExpense('contractor')">Contractor Bill</button>
                             </li>
+                            <li class="nav-item">
+                                <button class="nav-link text-primary fw-bold" data-bs-toggle="pill" type="button" onclick="loadExpense('procurement')"><i class="fa-light fa-cart-shopping me-1"></i> Office Procurement</button>
+                            </li>
                         </ul>
                         <div class="table-responsive">
                             <table class="table table-hover table-striped w-100" id="expenseTable">
@@ -214,6 +220,38 @@ $show_breadcrumb = true;
                                 </thead>
                                 <tbody></tbody>
                             </table>
+                        </div>
+                    </div>
+                    
+                    <!-- ================= PENDING PAYABLES TAB ================= -->
+                    <div class="tab-pane fade" id="v-pills-pending-payables" role="tabpanel">
+                        <div class="card border-0 shadow-sm mb-4" style="border-top: 4px solid #ffc107 !important;">
+                            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="mb-1 fw-bold text-dark"><i class="fa-light fa-clock-rotate-left text-warning me-2"></i> Pending Payables (Management Approved - Unpaid)</h5>
+                                    <p class="text-muted small mb-0">All accruals & approved requisitions awaiting Accounts payment disbursement.</p>
+                                </div>
+                                <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fs-12 fw-semibold">Accrued Liabilities</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle w-100" id="pendingPayablesTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Voucher No</th>
+                                                <th>Category / Module</th>
+                                                <th>Date</th>
+                                                <th>Payee / Requested By</th>
+                                                <th>Narration</th>
+                                                <th class="text-end">Amount (BDT)</th>
+                                                <th>Mgmt Status</th>
+                                                <th class="text-center">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -261,6 +299,7 @@ $show_breadcrumb = true;
                                         <th>Sr</th>
                                         <th>Booking ID</th>
                                         <th>Client Name</th>
+                                        <th>Project & Flat / Unit</th>
                                         <th>Phone</th>
                                         <th>Total Price</th>
                                         <th>Total Received</th>
@@ -301,15 +340,15 @@ $show_breadcrumb = true;
                         <h4 class="mb-4"><i class="fa-light fa-chart-pie me-2"></i>Financial Reports</h4>
                         <p class="text-muted mb-4">View detailed financial statements based on your approved journal entries. Filter by project, office, and date range.</p>
                         
-                        <div class="row">
+                        <div class="row g-4">
                             <!-- Chart of Accounts Card -->
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <div class="card h-100 border-0 shadow-sm" style="border-top: 4px solid #17a2b8 !important;">
                                     <div class="card-body text-center p-4">
                                         <div class="mb-3">
                                             <i class="fa-light fa-sitemap fa-3x text-info"></i>
                                         </div>
-                                        <h5 class="fw-bold">Chart of Accounts</h5>
+                                        <h5 class="fw-bold">Chart of Accounts (COA)</h5>
                                         <p class="text-muted small">Manage 4-Tier Accounts Hierarchy (Assets, Liabilities, Equity, Revenue, Expenses).</p>
                                         <a href="<?= $base_url ?>/accounts/coa" class="btn btn-outline-info mt-2">
                                             <i class="fa-light fa-sitemap me-1"></i> View COA
@@ -318,49 +357,81 @@ $show_breadcrumb = true;
                                 </div>
                             </div>
 
+                            <!-- Trial Balance Card -->
+                            <div class="col-md-4">
+                                <div class="card h-100 border-0 shadow-sm" style="border-top: 4px solid #ffc107 !important;">
+                                    <div class="card-body text-center p-4">
+                                        <div class="mb-3">
+                                            <i class="fa-light fa-scale-balanced fa-3x text-warning"></i>
+                                        </div>
+                                        <h5 class="fw-bold">Trial Balance (রেওয়ামিল)</h5>
+                                        <p class="text-muted small">Double-Entry trial balance statement with Summary and Detailed Sub-Ledger party breakdown.</p>
+                                        <a href="<?= $base_url ?>/reports/trial-balance" class="btn btn-outline-warning text-dark mt-2">
+                                            <i class="fa-light fa-eye me-1"></i> View Trial Balance
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Profit & Loss Card -->
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <div class="card h-100 border-0 shadow-sm" style="border-top: 4px solid #20c997 !important;">
                                     <div class="card-body text-center p-4">
                                         <div class="mb-3">
                                             <i class="fa-light fa-chart-line fa-3x text-success"></i>
                                         </div>
-                                        <h5 class="fw-bold">Profit & Loss</h5>
+                                        <h5 class="fw-bold">Profit & Loss Statement</h5>
                                         <p class="text-muted small">Income Statement showing Revenue vs Expenses and Net Income for a selected period.</p>
                                         <a href="<?= $base_url ?>/reports/profit-loss" class="btn btn-outline-success mt-2">
-                                            <i class="fa-light fa-eye me-1"></i> View Report
+                                            <i class="fa-light fa-eye me-1"></i> View P&L Report
                                         </a>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Balance Sheet Card -->
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <div class="card h-100 border-0 shadow-sm" style="border-top: 4px solid #0d6efd !important;">
                                     <div class="card-body text-center p-4">
                                         <div class="mb-3">
-                                            <i class="fa-light fa-scale-balanced fa-3x text-primary"></i>
+                                            <i class="fa-light fa-building-columns fa-3x text-primary"></i>
                                         </div>
                                         <h5 class="fw-bold">Balance Sheet</h5>
                                         <p class="text-muted small">Statement of Financial Position showing Assets, Liabilities, and Equity as of a specific date.</p>
                                         <a href="<?= $base_url ?>/reports/balance-sheet" class="btn btn-outline-primary mt-2">
-                                            <i class="fa-light fa-eye me-1"></i> View Report
+                                            <i class="fa-light fa-eye me-1"></i> View Balance Sheet
                                         </a>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Cashflow Card -->
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <div class="card h-100 border-0 shadow-sm" style="border-top: 4px solid #6f42c1 !important;">
                                     <div class="card-body text-center p-4">
                                         <div class="mb-3">
-                                            <i class="fa-light fa-money-bill-transfer fa-3x text-purple" style="color: #6f42c1;"></i>
+                                            <i class="fa-light fa-money-bill-transfer fa-3x" style="color: #6f42c1;"></i>
                                         </div>
-                                        <h5 class="fw-bold">Cashflow</h5>
+                                        <h5 class="fw-bold">Cashflow Statement</h5>
                                         <p class="text-muted small">Cashflow Statement showing Cash Inflows and Outflows through Cash and Bank accounts.</p>
                                         <a href="<?= $base_url ?>/reports/cashflow" class="btn btn-outline-secondary mt-2" style="border-color: #6f42c1; color: #6f42c1;">
-                                            <i class="fa-light fa-eye me-1"></i> View Report
+                                            <i class="fa-light fa-eye me-1"></i> View Cashflow
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- General & Sub-Ledger Card -->
+                            <div class="col-md-4">
+                                <div class="card h-100 border-0 shadow-sm" style="border-top: 4px solid #0dcaf0 !important;">
+                                    <div class="card-body text-center p-4">
+                                        <div class="mb-3">
+                                            <i class="fa-light fa-book-open fa-3x text-info"></i>
+                                        </div>
+                                        <h5 class="fw-bold">General & Sub-Ledger</h5>
+                                        <p class="text-muted small">Individual ledger statements for Petty Cash, Banks, Vendors, Contractors, and Employees.</p>
+                                        <a href="<?= $base_url ?>/accounts/ledger/1001" class="btn btn-outline-info mt-2">
+                                            <i class="fa-light fa-eye me-1"></i> View Ledger Statements
                                         </a>
                                     </div>
                                 </div>
@@ -430,10 +501,48 @@ $show_breadcrumb = true;
     function reloadAllTables() {
         if ($.fn.DataTable.isDataTable('#receiptsTable')) receiptsTable.ajax.reload();
         if ($.fn.DataTable.isDataTable('#expenseTable')) expenseTable.ajax.reload();
+        if ($.fn.DataTable.isDataTable('#pendingPayablesTable')) pendingPayablesTable.ajax.reload();
         if ($.fn.DataTable.isDataTable('#journalTable')) journalTable.ajax.reload();
         if ($.fn.DataTable.isDataTable('#clientsTable')) clientsTable.ajax.reload();
         if ($.fn.DataTable.isDataTable('#refundsTable')) refundsTable.ajax.reload();
         if ($.fn.DataTable.isDataTable('#generalJournalTable')) generalJournalTable.ajax.reload();
+    }
+
+    function initPendingPayablesTable() {
+        if ($.fn.DataTable.isDataTable('#pendingPayablesTable')) return;
+        pendingPayablesTable = $('#pendingPayablesTable').DataTable({
+            ajax: {
+                url: window.base_url + '/financial-dashboard/get-pending-payables',
+                data: function(d) {
+                    d.project_id = $('#projectFilter').val();
+                }
+            },
+            columns: [
+                { data: 'voucher_no', render: (data) => `<span class="badge bg-light text-dark border font-mono fw-bold px-2 py-1">${data}</span>` },
+                { data: 'module_type', render: (data) => `<span class="badge bg-info-transparent text-info fw-semibold px-2 py-1"><i class="fa-light fa-tag me-1"></i>${data}</span>` },
+                { data: 'entry_date', render: (data) => formatDate(data) },
+                { data: 'added_by_name', render: (data) => `<strong>${data || '—'}</strong>` },
+                { data: 'narration', render: (data) => data ? `<small class="text-secondary">${data}</small>` : '-' },
+                { data: 'amount', render: (data) => `<span class="text-danger fw-bold fs-14">${formatCurrency(data)}</span>` },
+                { data: 'status', render: (data) => `<span class="badge bg-success-transparent text-success px-2 py-1 rounded-pill"><i class="fa-light fa-circle-check me-1"></i>Approved</span>` },
+                { data: null, render: (data, type, row) => {
+                    let actionBtn = '';
+                    if (row.source_module === 'asset_procurement') {
+                        let payUrl = window.base_url + '/asset-extra-purchases';
+                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-success fw-semibold px-3 py-1"><i class="fa-light fa-credit-card me-1"></i> Pay / Disburse</a>`;
+                    } else if (row.source_module === 'fund_requisition') {
+                        let payUrl = window.base_url + '/fund-requisitions';
+                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-primary fw-semibold px-3 py-1"><i class="fa-light fa-hand-holding-dollar me-1"></i> Pay Requisition</a>`;
+                    } else {
+                        let payUrl = window.base_url + '/accounts-dashboard';
+                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-warning text-dark fw-semibold px-3 py-1"><i class="fa-light fa-money-bill-transfer me-1"></i> Process Payment</a>`;
+                    }
+                    return `<div class="text-center">${actionBtn}</div>`;
+                }}
+            ],
+            order: [[2, 'desc']],
+            pageLength: 20
+        });
     }
 
     function initReceiptsTable() {
@@ -485,15 +594,31 @@ $show_breadcrumb = true;
                     { data: 'entry_date', render: (data) => formatDate(data) },
                     { data: 'voucher_no' },
                     { data: 'amount', render: (data) => formatCurrency(data) },
-                    { data: 'narration', render: (data) => data ? `<span title="${data}">${data.length > 30 ? data.substring(0,30)+'...' : data}</span>` : '-' },
+                    { data: 'narration', render: (data, type, row) => {
+                        let html = data ? `<strong>${data}</strong>` : '-';
+                        if (row.mgmt_approved_by_name && row.mgmt_approved_at) {
+                            html += `<br><small class="text-info fs-11"><i class="fa-light fa-user-check me-1"></i>Mgmt Approved by ${row.mgmt_approved_by_name} (${formatDate(row.mgmt_approved_at)})</small>`;
+                        }
+                        return html;
+                    }},
                     { data: 'added_by_name' },
-                    { data: 'status', render: (data) => getStatusBadge(data) },
+                    { data: 'status', render: (data, type, row) => {
+                        if (currentExpenseType === 'procurement') {
+                            if (row.payment_status === 'paid' || data === 'purchased') {
+                                return `<span class="badge bg-success text-white px-2 py-1 rounded-pill"><i class="fa-light fa-check-double me-1"></i>Paid & Completed</span>`;
+                            } else if (data === 'approved' || row.mgmt_approved_at) {
+                                return `<span class="badge bg-warning text-dark px-2 py-1 rounded-pill"><i class="fa-light fa-clock-rotate-left me-1"></i>Approved (Unpaid)</span>`;
+                            }
+                        }
+                        return getStatusBadge(data);
+                    }},
                     { data: null, render: (data, type, row) => {
                     let url = '#';
                     if (currentExpenseType === 'fund') url = window.base_url + '/fund-requisitions/view/' + row.voucher_id;
                     else if (currentExpenseType === 'cashout') url = window.base_url + '/view-cashout-request?id=' + row.voucher_id;
                     else if (currentExpenseType === 'vendor') url = window.base_url + '/con-vendor-payment-show/' + row.voucher_id;
                     else if (currentExpenseType === 'contractor') url = window.base_url + '/con-contractor-bill/' + row.voucher_id;
+                    else if (currentExpenseType === 'procurement') url = window.base_url + '/asset-extra-purchases';
                     return `
                         <a href="${url}" class="btn btn-sm btn-outline-secondary" title="View"><i class="fa-light fa-eye"></i></a>
                     `;
@@ -546,8 +671,13 @@ $show_breadcrumb = true;
             },
             columns: [
                 { data: null, render: (data, type, row, meta) => meta.row + 1 },
-                { data: 'booking_id', render: (data) => 'BKG-'+data },
+                { data: 'booking_id', render: (data) => '<span class="badge bg-light text-dark border font-mono fw-bold">BKG-'+data+'</span>' },
                 { data: 'full_name', render: (data) => `<strong>${data}</strong>` },
+                { data: null, render: (data, type, row) => {
+                    let proj = row.project_name ? `<span class="badge bg-primary-transparent text-primary fw-semibold me-1 mb-1 d-inline-block"><i class="fa-light fa-building me-1"></i>${row.project_name}</span>` : '—';
+                    let flat = row.flat_name ? `<span class="badge bg-info-transparent text-info fw-semibold d-inline-block"><i class="fa-light fa-door-open me-1"></i>Flat: ${row.flat_name}</span>` : '';
+                    return `<div>${proj} ${flat}</div>`;
+                }},
                 { data: 'phone' },
                 { data: 'total_price', render: (data) => formatCurrency(data) },
                 { data: 'total_received', render: (data) => `<span class="text-success fw-bold">${formatCurrency(data)}</span>` },
@@ -564,7 +694,7 @@ $show_breadcrumb = true;
                     </a>
                 `}
             ],
-            order: [[6, 'desc']], // Sort by pending amounts descending
+            order: [[7, 'desc']], // Sort by pending amounts descending
             pageLength: 25
         });
     }

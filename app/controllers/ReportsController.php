@@ -74,10 +74,11 @@ class ReportsController extends Controller
      */
     public function cashflow()
     {
-        $dateFrom = $_GET['date_from'] ?? date('Y-m-01');
+        $dateFrom = $_GET['date_from'] ?? date('Y-01-01');
         $dateTo = $_GET['date_to'] ?? date('Y-m-d');
         $projectId = $_GET['project_id'] ?? null;
         $office = $_GET['office'] ?? null;
+        $layoutMode = $_GET['layout'] ?? 'vertical';
 
         $projects = $this->reportModel->getActiveProjects();
         $reportData = $this->reportModel->getCashflow($dateFrom, $dateTo, $projectId, $office);
@@ -87,13 +88,48 @@ class ReportsController extends Controller
             'page' => 'Accounts',
             'projects' => $projects,
             'report' => $reportData,
+            'layoutMode' => $layoutMode,
             'filters' => [
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
                 'project_id' => $projectId,
-                'office' => $office
+                'office' => $office,
+                'layout' => $layoutMode
             ]
         ];
         $this->view('accounts/reports/cashflow', $data);
+    }
+
+    /**
+     * Trial Balance Report Page
+     */
+    public function trialBalance()
+    {
+        $asOfDate = $_GET['as_of_date'] ?? date('Y-m-d');
+        $projectId = $_GET['project_id'] ?? null;
+        $office = $_GET['office'] ?? null;
+        $viewType = $_GET['view_type'] ?? 'summary';
+
+        $projects = $this->reportModel->getActiveProjects();
+        if ($viewType === 'detailed') {
+            $reportData = $this->reportModel->getDetailedTrialBalance($asOfDate, $projectId, $office);
+        } else {
+            $reportData = $this->reportModel->getTrialBalance($asOfDate, $projectId, $office);
+        }
+
+        $data = [
+            'page_title' => 'Trial Balance (রেওয়ামিল)',
+            'page' => 'Accounts',
+            'projects' => $projects,
+            'report' => $reportData,
+            'viewType' => $viewType,
+            'filters' => [
+                'as_of_date' => $asOfDate,
+                'project_id' => $projectId,
+                'office' => $office,
+                'view_type' => $viewType
+            ]
+        ];
+        $this->view('accounts/reports/trial-balance', $data);
     }
 }

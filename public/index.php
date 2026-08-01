@@ -97,6 +97,7 @@ if (!in_array($route, $public_routes)) {
     }
 }
 
+$GLOBALS['route'] = $route;
 $matched = false;
 $params = [];
 

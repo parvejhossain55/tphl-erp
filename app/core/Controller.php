@@ -5,6 +5,9 @@ class Controller
     public function view($view, $data = [], $useMaster = true)
     {
         $data['base_url'] = $GLOBALS['base_url'];
+        if (!isset($data['current_route'])) {
+            $data['current_route'] = $GLOBALS['route'] ?? '';
+        }
         extract($data);
 
         $root = dirname(__DIR__, 2);

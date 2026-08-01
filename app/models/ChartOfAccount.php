@@ -58,6 +58,132 @@ class ChartOfAccount
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
+    public function deleteAccount($id)
+    {
+        $stmt = $this->db->prepare("DELETE FROM chart_of_accounts WHERE id = ? AND is_system_account = 0");
+        $stmt->bind_param("i", $id);
+        return $stmt->execute();
+    }
+
+    public function getAccountLedger($accountId, $startDate = null, $endDate = null, $projectId = null, $partyId = null, $searchQuery = null)
+    {
+        $accountId = (int)$accountId;
+        $where = "WHERE jd.account_id = $accountId";
+        if ($startDate) $where .= " AND j.date >= '" . $this->db->real_escape_string($startDate) . "'";
+        if ($endDate) $where .= " AND j.date <= '" . $this->db->real_escape_string($endDate) . "'";
+        if ($projectId) $where .= " AND j.project_id = " . (int)$projectId;
+        if ($partyId) $where .= " AND jd.party_id = " . (int)$partyId;
+        if ($searchQuery) {
+            $sq = $this->db->real_escape_string($searchQuery);
+            $where .= " AND (j.narration LIKE '%$sq%' OR jd.narration LIKE '%$sq%' OR j.journal_number LIKE '%$sq%')";
+        }
+
+        $sql = "SELECT 
+                    j.id as journal_id,
+                    j.date as transaction_date,
+                    j.journal_number as voucher_no,
+                    j.voucher_type,
+                    j.narration as main_narration,
+                    jd.narration as line_narration,
+                    jd.debit,
+                    jd.credit,
+                    jd.party_type,
+                    jd.party_id,
+                    COALESCE(v.name, v.company_name, u.full_name, l.full_name) as party_name,
+                    j.project_id,
+                    p.name as project_name,
+                    u_created.full_name as created_by_name,
+                    (
+                        SELECT GROUP_CONCAT(CONCAT(opp_coa.account_code, ' - ', opp_coa.account_name) SEPARATOR ', ')
+                        FROM journal_details opp_jd
+                        JOIN chart_of_accounts opp_coa ON opp_jd.account_id = opp_coa.id
+                        WHERE opp_jd.journal_id = j.id AND opp_jd.account_id != jd.account_id
+                    ) as opposite_account
+                FROM journal_details jd
+                JOIN journals j ON jd.journal_id = j.id
+                LEFT JOIN vendors v ON (jd.party_type = 'vendor' AND jd.party_id = v.id)
+                LEFT JOIN users u ON (jd.party_id = u.id)
+                LEFT JOIN leads l ON (jd.party_type = 'client' AND jd.party_id = l.id)
+                LEFT JOIN projects p ON j.project_id = p.id
+                LEFT JOIN users u_created ON j.created_by = u_created.id
+                $where
+                ORDER BY j.date ASC, j.id ASC";
+
+        $res = $this->db->query($sql);
+        $transactions = [];
+        $totalDebit = 0;
+        $totalCredit = 0;
+
+        $accInfo = $this->getAccountById($accountId);
+        $rootType = strtolower($accInfo['root_type'] ?? $accInfo['account_type'] ?? 'asset');
+        $isNormalDebit = in_array($rootType, ['asset', 'expense']);
+
+        $runningBalance = 0;
+
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $debit = (float)$row['debit'];
+                $credit = (float)$row['credit'];
+                $totalDebit += $debit;
+                $totalCredit += $credit;
+
+                if ($isNormalDebit) {
+                    $runningBalance += ($debit - $credit);
+                } else {
+                    $runningBalance += ($credit - $debit);
+                }
+
+                $row['running_balance'] = $runningBalance;
+                $transactions[] = $row;
+            }
+        }
+
+        return [
+            'transactions' => $transactions,
+            'total_debit' => $totalDebit,
+            'total_credit' => $totalCredit,
+            'net_balance' => $runningBalance,
+            'is_normal_debit' => $isNormalDebit
+        ];
+    }
+
+    public function getAccountParties($accountId)
+    {
+        $accountId = (int)$accountId;
+        $sql = "
+            SELECT DISTINCT 
+                jd.party_type, 
+                jd.party_id,
+                COALESCE(v.name, v.company_name, u.full_name, l.full_name, CONCAT('Party #', jd.party_id)) as party_name
+            FROM journal_details jd
+            LEFT JOIN vendors v ON (jd.party_type = 'vendor' AND jd.party_id = v.id)
+            LEFT JOIN users u ON (jd.party_id = u.id)
+            LEFT JOIN leads l ON (jd.party_type = 'client' AND jd.party_id = l.id)
+            WHERE jd.account_id = $accountId AND jd.party_id IS NOT NULL AND jd.party_id != 0
+            ORDER BY party_name ASC
+        ";
+        $res = $this->db->query($sql);
+        $parties = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $parties[] = $row;
+            }
+        }
+        return $parties;
+    }
+
+    public function getProjects()
+    {
+        $res = $this->db->query("SELECT id, name FROM projects ORDER BY name ASC");
+        $data = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $data[] = $row;
+            }
+        }
+        return $data;
+    }
+
     public function getAccountById($id)
     {
         $stmt = $this->db->prepare("SELECT * FROM chart_of_accounts WHERE id = ?");

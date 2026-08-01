@@ -1,241 +1,392 @@
 <?php 
 // Layout handled by Controller via master.php
+$assets = $report['assets'] ?? [];
+$liabilities = $report['liabilities'] ?? [];
+$equity = $report['equity'] ?? [];
+$totalAssets = $report['total_assets'] ?? 0;
+$totalLiabilities = $report['total_liabilities'] ?? 0;
+$totalEquityWithIncome = $report['total_equity_with_income'] ?? 0;
+$totalLiabilitiesAndEquity = $report['total_liabilities_and_equity'] ?? 0;
+$netIncome = $report['net_income'] ?? 0;
+$isBalanced = $report['is_balanced'] ?? true;
+$layoutMode = $_GET['layout'] ?? 'vertical';
 ?>
 
 <div class="container-fluid mt-4">
+    <!-- Header & Action Bar -->
     <div class="row mb-4 align-items-center">
         <div class="col-md-6">
-            <h2 class="mb-0">
-                <i class="fa-light fa-scale-balanced"></i> Balance Sheet
+            <h2 class="mb-1 text-dark fw-bold">
+                <i class="fa-light fa-building-columns text-primary me-2"></i> Balance Sheet (উদ্বৃত্তপত্র)
             </h2>
-            <p class="text-muted mb-0">Statement of Financial Position</p>
+            <p class="text-muted mb-0 fs-13">
+                Statement of Financial Position as of <?= date('d M Y', strtotime($filters['as_of_date'])) ?>
+            </p>
         </div>
         <div class="col-md-6 text-end">
-            <button class="btn btn-outline-primary me-2" onclick="window.print()">
-                <i class="fa-light fa-print"></i> Print
+            <button type="button" onclick="window.print()" class="btn btn-outline-secondary me-2">
+                <i class="fa-light fa-print me-1"></i> Print Statement
             </button>
-            <a href="<?= $base_url ?>/financial-dashboard" class="btn btn-outline-secondary">
-                <i class="fa-light fa-arrow-left"></i> Back to Dashboard
+            <a href="<?= $base_url ?>/financial-dashboard" class="btn btn-outline-primary">
+                <i class="fa-light fa-chart-line me-1"></i> Financial Dashboard
             </a>
         </div>
     </div>
 
-    <!-- Filter Bar -->
+    <!-- Filter Bar & Layout Switcher -->
     <div class="card shadow-sm border-0 mb-4 d-print-none">
         <div class="card-body py-3">
-            <form method="GET" action="<?= $base_url ?>/reports/balance-sheet" class="row g-3 align-items-end">
+            <form method="GET" action="<?= $base_url ?>/reports/balance-sheet" class="row  align-items-end">
                 <div class="col-md-3">
-                    <label class="form-label fw-bold small">As of Date</label>
-                    <input type="date" class="form-control" name="as_of_date" value="<?= htmlspecialchars($filters['as_of_date']) ?>">
+                    <label class="form-label fs-11 fw-semibold mb-1">Layout Format</label>
+                    <select name="layout" class="form-select form-select-sm fw-bold text-primary" onchange="this.form.submit()">
+                        <option value="vertical" <?= $layoutMode === 'vertical' ? 'selected' : '' ?>>📊 Vertical Statement Format (Standard)</option>
+                        <option value="horizontal" <?= $layoutMode === 'horizontal' ? 'selected' : '' ?>>⚖️ Horizontal T-Account Format (Two Column)</option>
+                    </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label fw-bold small">Project</label>
-                    <select class="form-select" name="project_id">
+                    <label class="form-label fs-11 fw-semibold mb-1">As of Date</label>
+                    <input type="date" name="as_of_date" class="form-control form-control-sm" value="<?= htmlspecialchars($filters['as_of_date']) ?>">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fs-11 fw-semibold mb-1">Project</label>
+                    <select name="project_id" class="form-select form-select-sm">
                         <option value="">All Projects</option>
                         <?php foreach ($projects as $p): ?>
-                            <option value="<?= $p['id'] ?>" <?= ($filters['project_id'] == $p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
+                            <option value="<?= $p['id'] ?>" <?= ($filters['project_id'] == $p['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($p['name']) ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold small">Office</label>
-                    <select class="form-select" name="office">
-                        <option value="">All Offices</option>
-                        <option value="Corporate Office" <?= ($filters['office'] == 'Corporate Office') ? 'selected' : '' ?>>Corporate Office</option>
-                        <option value="Site Office" <?= ($filters['office'] == 'Site Office') ? 'selected' : '' ?>>Site Office</option>
-                        <option value="Site Office 2" <?= ($filters['office'] == 'Site Office 2') ? 'selected' : '' ?>>Site Office 2</option>
-                        <option value="Zonal Office" <?= ($filters['office'] == 'Zonal Office') ? 'selected' : '' ?>>Zonal Office</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fa-light fa-filter me-1"></i> Apply Filters
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm flex-fill">
+                        <i class="fa-solid fa-filter me-1"></i> Apply
                     </button>
+                    <a href="<?= $base_url ?>/reports/balance-sheet" class="btn btn-light btn-sm flex-fill text-center">
+                        <i class="fa-solid fa-rotate me-1"></i> Reset
+                    </a>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Printable Report -->
-    <div class="printable-area">
-        <div class="report-wrapper" style="max-width: 900px; margin: 0 auto;">
-            <!-- Print Header -->
-            <div class="text-center mb-2 pb-2 border-bottom border-dark">
-                <h3 class="mb-0 fw-bold text-uppercase">THE PREMIUM HOMES LTD</h3>
-                <h5 class="mb-1">Balance Sheet</h5>
-                <p class="text-muted mb-0">As of <?= date('d M Y', strtotime($filters['as_of_date'])) ?></p>
-                <?php if(!empty($filters['project_id']) || !empty($filters['office'])): ?>
-                <p class="small text-muted mb-0">
-                    <?php 
-                        $filterParts = [];
-                        if(!empty($filters['project_id'])) {
-                            foreach($projects as $p) {
-                                if($p['id'] == $filters['project_id']) { $filterParts[] = 'Project: ' . $p['name']; break; }
-                            }
-                        }
-                        if(!empty($filters['office'])) $filterParts[] = 'Office: ' . $filters['office'];
-                        echo htmlspecialchars(implode(' | ', $filterParts));
-                    ?>
-                </p>
-                <?php endif; ?>
+    <!-- Summary KPI Cards -->
+    <div class="row  mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-success-transparent p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted fs-12 fw-semibold">TOTAL ASSETS</span>
+                        <h3 class="mb-0 fw-bold text-success mt-1">৳ <?= number_format($totalAssets, 2) ?></h3>
+                    </div>
+                    <div class="avatar avatar-md bg-success text-white rounded-circle">
+                        <i class="fa-light fa-wallet fs-18"></i>
+                    </div>
+                </div>
             </div>
-
-            <!-- Assets Section -->
-            <table class="table table-bordered border-dark report-table mb-0">
-                <thead>
-                    <tr class="table-dark">
-                        <th colspan="2" class="text-center fs-6">ASSETS</th>
-                    </tr>
-                    <tr>
-                        <th style="width: 70%;">Account</th>
-                        <th class="text-end" style="width: 30%;">Amount (BDT)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if(!empty($report['assets'])): ?>
-                        <?php foreach($report['assets'] as $acc): ?>
-                        <tr>
-                            <td class="ps-4">
-                                <?= htmlspecialchars($acc['account_code']) ?> - 
-                                <?= htmlspecialchars($acc['parent_name'] ? $acc['parent_name'] . ' > ' . $acc['account_name'] : $acc['account_name']) ?>
-                            </td>
-                            <td class="text-end"><?= number_format($acc['balance'], 2) ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr><td colspan="2" class="text-center text-muted fst-italic">No asset transactions found</td></tr>
-                    <?php endif; ?>
-                </tbody>
-                <tfoot>
-                    <tr class="fw-bold table-light">
-                        <td class="text-end">Total Assets</td>
-                        <td class="text-end"><?= number_format($report['total_assets'], 2) ?></td>
-                    </tr>
-                </tfoot>
-            </table>
-
-            <!-- Liabilities Section -->
-            <table class="table table-bordered border-dark report-table mb-0 mt-3">
-                <thead>
-                    <tr class="table-dark">
-                        <th colspan="2" class="text-center fs-6">LIABILITIES</th>
-                    </tr>
-                    <tr>
-                        <th style="width: 70%;">Account</th>
-                        <th class="text-end" style="width: 30%;">Amount (BDT)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if(!empty($report['liabilities'])): ?>
-                        <?php foreach($report['liabilities'] as $acc): ?>
-                        <tr>
-                            <td class="ps-4">
-                                <?= htmlspecialchars($acc['account_code']) ?> - 
-                                <?= htmlspecialchars($acc['parent_name'] ? $acc['parent_name'] . ' > ' . $acc['account_name'] : $acc['account_name']) ?>
-                            </td>
-                            <td class="text-end"><?= number_format($acc['balance'], 2) ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr><td colspan="2" class="text-center text-muted fst-italic">No liability transactions found</td></tr>
-                    <?php endif; ?>
-                </tbody>
-                <tfoot>
-                    <tr class="fw-bold table-light">
-                        <td class="text-end">Total Liabilities</td>
-                        <td class="text-end"><?= number_format($report['total_liabilities'], 2) ?></td>
-                    </tr>
-                </tfoot>
-            </table>
-
-            <!-- Equity Section -->
-            <table class="table table-bordered border-dark report-table mb-0 mt-3">
-                <thead>
-                    <tr class="table-dark">
-                        <th colspan="2" class="text-center fs-6">EQUITY</th>
-                    </tr>
-                    <tr>
-                        <th style="width: 70%;">Account</th>
-                        <th class="text-end" style="width: 30%;">Amount (BDT)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if(!empty($report['equity'])): ?>
-                        <?php foreach($report['equity'] as $acc): ?>
-                        <tr>
-                            <td class="ps-4">
-                                <?= htmlspecialchars($acc['account_code']) ?> - 
-                                <?= htmlspecialchars($acc['parent_name'] ? $acc['parent_name'] . ' > ' . $acc['account_name'] : $acc['account_name']) ?>
-                            </td>
-                            <td class="text-end"><?= number_format($acc['balance'], 2) ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr><td colspan="2" class="text-center text-muted fst-italic">No equity transactions found</td></tr>
-                    <?php endif; ?>
-                    <!-- Current Period Net Income -->
-                    <tr class="fst-italic">
-                        <td class="ps-4">Current Period Net Income</td>
-                        <td class="text-end"><?= number_format($report['net_income'], 2) ?></td>
-                    </tr>
-                </tbody>
-                <tfoot>
-                    <tr class="fw-bold table-light">
-                        <td class="text-end">Total Equity</td>
-                        <td class="text-end"><?= number_format($report['total_equity_with_income'], 2) ?></td>
-                    </tr>
-                </tfoot>
-            </table>
-
-            <!-- Grand Total -->
-            <table class="table table-bordered border-dark report-table mb-4 mt-3">
-                <tfoot>
-                    <tr class="fw-bold table-dark">
-                        <td class="text-end fs-6" style="width: 70%;">Total Liabilities & Equity</td>
-                        <td class="text-end fs-6" style="width: 30%;"><?= number_format($report['total_liabilities_and_equity'], 2) ?></td>
-                    </tr>
-                </tfoot>
-            </table>
-
-            <!-- Balance Check -->
-            <?php if($report['is_balanced']): ?>
-                <div class="alert alert-success text-center d-print-none">
-                    <i class="fa-light fa-check-circle me-1"></i> <strong>Balanced!</strong> Assets = Liabilities + Equity
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm bg-primary-transparent p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted fs-12 fw-semibold">TOTAL LIABILITIES & EQUITY</span>
+                        <h3 class="mb-0 fw-bold text-primary mt-1">৳ <?= number_format($totalLiabilitiesAndEquity, 2) ?></h3>
+                    </div>
+                    <div class="avatar avatar-md bg-primary text-white rounded-circle">
+                        <i class="fa-light fa-building-columns fs-18"></i>
+                    </div>
                 </div>
-            <?php else: ?>
-                <div class="alert alert-danger text-center d-print-none">
-                    <i class="fa-light fa-exclamation-triangle me-1"></i> <strong>Not Balanced!</strong> 
-                    Difference: <?= number_format(abs($report['total_assets'] - $report['total_liabilities_and_equity']), 2) ?> BDT
-                </div>
-            <?php endif; ?>
-
-            <!-- Print Footer -->
-            <div class="row mt-4 pt-3">
-                <div class="col-6">
-                    <p class="text-muted small">Generated on: <?= date('d M Y, h:i A') ?></p>
-                </div>
-                <div class="col-6 text-end d-none d-print-block mt-4">
-                    <div class="d-inline-block text-center pt-2" style="width: 200px; border-top: 1px solid #000;">
-                        Authorized Signature
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm <?= $isBalanced ? 'bg-info-transparent' : 'bg-danger-transparent' ?> p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted fs-12 fw-semibold">EQUATION BALANCE STATE</span>
+                        <h3 class="mb-0 fw-bold <?= $isBalanced ? 'text-info' : 'text-danger' ?> mt-1">
+                            <?= $isBalanced ? '100% Balanced ✓' : 'Unbalanced ✗' ?>
+                        </h3>
+                        <small class="text-muted fs-11">Assets = Liabilities + Equity</small>
+                    </div>
+                    <div class="avatar avatar-md <?= $isBalanced ? 'bg-info' : 'bg-danger' ?> text-white rounded-circle">
+                        <i class="fa-light fa-check-double fs-18"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<style>
-.report-table th, .report-table td {
-    border: 1px solid #000 !important;
-}
-@media print {
-    @page { margin: 10mm; }
-    html, body { background-color: #fff !important; color: #000 !important; }
-    body * { visibility: hidden; }
-    .printable-area, .printable-area * { visibility: visible; color: #000 !important; background-color: transparent !important; }
-    .printable-area { position: absolute; left: 0; top: 0; width: 100%; background-color: #fff !important; }
-    .table-dark th { background-color: #333 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .report-table th, .report-table td { border-color: #000 !important; }
-    .text-muted { color: #6c757d !important; }
-}
-</style>
+    <!-- Report Area -->
+    <div class="printable-area mb-5">
+        <?php if ($layoutMode === 'horizontal'): ?>
+            <!-- HORIZONTAL T-ACCOUNT LAYOUT -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-dark text-white py-3">
+                    <div class="text-center">
+                        <h4 class="mb-1 fw-bold text-uppercase text-white">THE PREMIUM HOMES LTD</h4>
+                        <h5 class="mb-0 text-primary fw-bold">BALANCE SHEET (T-ACCOUNT FORMAT)</h5>
+                        <small class="text-white-50">As of <?= date('d M Y', strtotime($filters['as_of_date'])) ?></small>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="row g-0">
+                        <!-- Left Side: Assets -->
+                        <div class="col-md-6 border-end">
+                            <div class="bg-light p-3 border-bottom text-center">
+                                <h6 class="mb-0 fw-bold text-success"><i class="fa-light fa-wallet me-1"></i> ASSETS (PROPERTIES & CASH)</h6>
+                            </div>
+                            <div class="p-3">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead>
+                                        <tr class="table-light">
+                                            <th>Account Code & Particulars</th>
+                                            <th class="text-end">Amount (BDT)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($assets)): ?>
+                                            <tr><td colspan="2" class="text-center text-muted py-4">No asset items recorded</td></tr>
+                                        <?php else: ?>
+                                            <?php foreach ($assets as $acc): ?>
+                                                <tr>
+                                                    <td>
+                                                        <span class="badge bg-light text-dark font-monospace border me-2"><?= htmlspecialchars($acc['account_code']) ?></span>
+                                                        <span class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></span>
+                                                    </td>
+                                                    <td class="text-end font-monospace text-success fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                    <tfoot class="border-top border-dark">
+                                        <tr class="fw-bold table-light">
+                                            <td>TOTAL ASSETS</td>
+                                            <td class="text-end font-monospace text-success fs-14">৳ <?= number_format($totalAssets, 2) ?></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Right Side: Liabilities & Equity -->
+                        <div class="col-md-6">
+                            <div class="bg-light p-3 border-bottom text-center">
+                                <h6 class="mb-0 fw-bold text-primary"><i class="fa-light fa-building-columns me-1"></i> LIABILITIES & EQUITY</h6>
+                            </div>
+                            <div class="p-3">
+                                <h6 class="fw-bold text-muted fs-11 text-uppercase mb-2">1. Liabilities (Payables & Client Deposits)</h6>
+                                <table class="table table-hover align-middle mb-3">
+                                    <tbody>
+                                        <?php if (empty($liabilities)): ?>
+                                            <tr><td colspan="2" class="text-center text-muted py-2">No liabilities recorded</td></tr>
+                                        <?php else: ?>
+                                            <?php foreach ($liabilities as $acc): ?>
+                                                <tr>
+                                                    <td>
+                                                        <span class="badge bg-light text-dark font-monospace border me-2"><?= htmlspecialchars($acc['account_code']) ?></span>
+                                                        <span class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></span>
+                                                    </td>
+                                                    <td class="text-end font-monospace text-dark fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+
+                                <h6 class="fw-bold text-muted fs-11 text-uppercase mb-2">2. Equity & Retained Earnings</h6>
+                                <table class="table table-hover align-middle mb-0">
+                                    <tbody>
+                                        <?php if (!empty($equity)): ?>
+                                            <?php foreach ($equity as $acc): ?>
+                                                <tr>
+                                                    <td>
+                                                        <span class="badge bg-light text-dark font-monospace border me-2"><?= htmlspecialchars($acc['account_code']) ?></span>
+                                                        <span class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></span>
+                                                    </td>
+                                                    <td class="text-end font-monospace text-primary fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                        <tr>
+                                            <td class="fw-semibold text-dark fs-13">
+                                                <span class="badge bg-light text-dark font-monospace border me-2">P/L</span>
+                                                Current Period Net Income / Retained Earnings
+                                            </td>
+                                            <td class="text-end font-monospace <?= $netIncome >= 0 ? 'text-success' : 'text-danger' ?> fw-bold fs-13">
+                                                ৳ <?= number_format($netIncome, 2) ?>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot class="border-top border-dark">
+                                        <tr class="fw-bold table-light">
+                                            <td>TOTAL LIABILITIES & EQUITY</td>
+                                            <td class="text-end font-monospace text-primary fs-14">৳ <?= number_format($totalLiabilitiesAndEquity, 2) ?></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php else: ?>
+            <!-- VERTICAL STATEMENT LAYOUT (STANDARD DEFAULT) -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <div class="text-center">
+                        <h4 class="mb-1 fw-bold text-uppercase text-dark">THE PREMIUM HOMES LTD</h4>
+                        <h5 class="mb-1 text-primary fw-bold">BALANCE SHEET (FINANCIAL POSITION STATEMENT)</h5>
+                        <p class="text-muted mb-0 fs-13">
+                            As of <strong><?= date('d M Y', strtotime($filters['as_of_date'])) ?></strong>
+                        </p>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Assets Section -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center bg-success-transparent p-3 rounded mb-3">
+                            <h6 class="mb-0 fw-bold text-success"><i class="fa-light fa-wallet me-2"></i> 1. ASSETS (CASH, BANKS & PROPERTIES)</h6>
+                            <span class="badge bg-success text-white px-3 py-2 font-monospace fs-13">৳ <?= number_format($totalAssets, 2) ?></span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="140">Account Code</th>
+                                        <th>Account Description</th>
+                                        <th class="text-end" width="200">Amount (BDT)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($assets)): ?>
+                                        <tr><td colspan="3" class="text-center text-muted py-3">No asset balances found as of this date.</td></tr>
+                                    <?php else: ?>
+                                        <?php foreach ($assets as $acc): ?>
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold">
+                                                        <?= htmlspecialchars($acc['account_code']) ?>
+                                                    </span>
+                                                </td>
+                                                <td class="fw-semibold text-dark fs-13">
+                                                    <?= htmlspecialchars($acc['account_name']) ?>
+                                                </td>
+                                                <td class="text-end font-monospace text-success fw-bold fs-13">
+                                                    ৳ <?= number_format($acc['balance'], 2) ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Liabilities Section -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center bg-warning-transparent p-3 rounded mb-3">
+                            <h6 class="mb-0 fw-bold text-dark"><i class="fa-light fa-building-columns me-2"></i> 2. LIABILITIES (PAYABLES & CLIENT ADVANCES)</h6>
+                            <span class="badge bg-warning text-dark px-3 py-2 font-monospace fs-13">৳ <?= number_format($totalLiabilities, 2) ?></span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="140">Account Code</th>
+                                        <th>Account Description</th>
+                                        <th class="text-end" width="200">Amount (BDT)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($liabilities)): ?>
+                                        <tr><td colspan="3" class="text-center text-muted py-3">No liability balances found as of this date.</td></tr>
+                                    <?php else: ?>
+                                        <?php foreach ($liabilities as $acc): ?>
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold">
+                                                        <?= htmlspecialchars($acc['account_code']) ?>
+                                                    </span>
+                                                </td>
+                                                <td class="fw-semibold text-dark fs-13">
+                                                    <?= htmlspecialchars($acc['account_name']) ?>
+                                                </td>
+                                                <td class="text-end font-monospace text-dark fw-bold fs-13">
+                                                    ৳ <?= number_format($acc['balance'], 2) ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Equity Section -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center bg-primary-transparent p-3 rounded mb-3">
+                            <h6 class="mb-0 fw-bold text-primary"><i class="fa-light fa-chart-pie me-2"></i> 3. CAPITAL & EQUITY</h6>
+                            <span class="badge bg-primary text-white px-3 py-2 font-monospace fs-13">৳ <?= number_format($totalEquityWithIncome, 2) ?></span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="140">Account Code</th>
+                                        <th>Account Description</th>
+                                        <th class="text-end" width="200">Amount (BDT)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (!empty($equity)): ?>
+                                        <?php foreach ($equity as $acc): ?>
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold">
+                                                        <?= htmlspecialchars($acc['account_code']) ?>
+                                                    </span>
+                                                </td>
+                                                <td class="fw-semibold text-dark fs-13">
+                                                    <?= htmlspecialchars($acc['account_name']) ?>
+                                                </td>
+                                                <td class="text-end font-monospace text-primary fw-bold fs-13">
+                                                    ৳ <?= number_format($acc['balance'], 2) ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold">P/L</span>
+                                        </td>
+                                        <td class="fw-semibold text-dark fs-13">Current Period Net Income / Retained Earnings</td>
+                                        <td class="text-end font-monospace <?= $netIncome >= 0 ? 'text-success' : 'text-danger' ?> fw-bold fs-13">
+                                            ৳ <?= number_format($netIncome, 2) ?>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Grand Total Balance Equation Box -->
+                    <div class="p-4 rounded border <?= $isBalanced ? 'bg-primary-transparent border-primary' : 'bg-danger-transparent border-danger' ?>">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-1 fw-bold text-primary">
+                                    <i class="fa-light fa-check-double text-primary me-2"></i>
+                                    TOTAL LIABILITIES & EQUITY
+                                </h5>
+                                <small class="text-muted">Equation Balance Check: Assets (৳ <?= number_format($totalAssets, 2) ?>) = Liabilities & Equity (৳ <?= number_format($totalLiabilitiesAndEquity, 2) ?>)</small>
+                            </div>
+                            <h3 class="mb-0 font-monospace fw-bold text-primary">
+                                ৳ <?= number_format($totalLiabilitiesAndEquity, 2) ?>
+                            </h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>

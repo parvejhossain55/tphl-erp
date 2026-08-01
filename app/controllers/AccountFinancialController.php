@@ -66,4 +66,12 @@ class AccountFinancialController extends Controller
         echo json_encode(['data' => $data]);
         exit;
     }
+
+    public function getPendingPayables()
+    {
+        $projectId = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null;
+        $data = $this->financialModel->getPendingPayables($projectId);
+        echo json_encode(['data' => $data]);
+        exit;
+    }
 }
