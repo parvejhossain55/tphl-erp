@@ -333,11 +333,11 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-md-12">
-                            <label class="form-label">Project</label>
-                            <select name="project_id" class="form-select">
-                                <option value="">-- Select Project --</option>
-                                <?php foreach ($projects ?? [] as $proj): ?>
-                                    <option value="<?= $proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
+                            <label class="form-label">Department</label>
+                            <select name="department_id" class="form-select">
+                                <option value="">-- Select Department --</option>
+                                <?php foreach ($departments ?? [] as $dept): ?>
+                                    <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -345,10 +345,16 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                             <label class="form-label">Location</label>
                             <select name="asset_location" class="form-select">
                                 <option value="">-- Select Location --</option>
-                                <option value="Site Office">Site Office</option>
-                                <option value="Site Office 2">Site Office 2</option>
-                                <option value="Zonal Office">Zonal Office</option>
-                                <option value="Corporate Office">Corporate Office</option>
+                                <?php if (!empty($workplaces)): ?>
+                                    <?php foreach ($workplaces as $wp): ?>
+                                        <option value="<?= htmlspecialchars($wp['workplace']) ?>"><?= htmlspecialchars($wp['workplace']) ?></option>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <option value="Corporate Office">Corporate Office</option>
+                                    <option value="Site Office">Site Office</option>
+                                    <option value="Site Office 2">Site Office 2</option>
+                                    <option value="Zonal Office">Zonal Office</option>
+                                <?php endif; ?>
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -572,6 +578,17 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                     <div class="mb-3">
                         <label class="form-label">Paid Amount (BDT) <span class="text-danger">*</span></label>
                         <input type="number" name="paid_amount" class="form-control" step="0.01" min="0" required placeholder="Enter amount paid">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Payment Account (Chart of Accounts) <span class="text-danger">*</span></label>
+                        <select name="payment_account_id" class="form-select" required>
+                            <option value="">-- Select Cash or Bank Account --</option>
+                            <?php foreach ($bankAccounts ?? [] as $bAcc): ?>
+                                <option value="<?= $bAcc['id'] ?>">
+                                    <?= htmlspecialchars($bAcc['account_code'] . ' - ' . $bAcc['account_name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Payment Method</label>

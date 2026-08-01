@@ -1806,7 +1806,6 @@ public function discountStatement($bookingId = null)
                     // ====== AUTO POSTING JOURNAL VOUCHER (Batch 2/3) ======
                     require_once dirname(__DIR__) . '/services/AutoPostingService.php';
                     $autoService = new AutoPostingService($this->db);
-                    $bankAccId = $autoService->getAccountIdByCode('1110-002'); // Default Dutch Bangla Bank Main Account
 
                     $payInfoStmt = $this->db->prepare("SELECT lp.*, lb.project_id, lb.lead_id FROM lead_payments lp LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id WHERE lp.id = ?");
                     if ($payInfoStmt) {
@@ -1814,6 +1813,15 @@ public function discountStatement($bookingId = null)
                         $payInfoStmt->execute();
                         $pData = $payInfoStmt->get_result()->fetch_assoc();
                         if ($pData && (float)$pData['amount'] > 0) {
+                            $payAccCode = '1110-002';
+                            $methodLower = strtolower($pData['payment_method'] ?? '');
+                            if (strpos($methodLower, 'cash') !== false) {
+                                $payAccCode = '1110-001';
+                            } elseif (strpos($methodLower, 'islami') !== false) {
+                                $payAccCode = '1110-003';
+                            }
+                            $bankAccId = $autoService->getAccountIdByCode($payAccCode);
+
                             $autoService->postSalesPaymentEntry(
                                 $pData['id'],
                                 $bankAccId,

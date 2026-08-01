@@ -309,16 +309,23 @@ class AssetManagementController extends Controller
             $users = $uRes->fetch_all(MYSQLI_ASSOC);
         }
 
+        $bankAccounts = [];
+        $bRes = $this->db->query("SELECT id, account_code, account_name FROM chart_of_accounts WHERE account_code LIKE '1110%' AND account_code != '1110' AND status = 'active' ORDER BY account_code ASC");
+        if ($bRes) {
+            $bankAccounts = $bRes->fetch_all(MYSQLI_ASSOC);
+        }
+
         $data = [
-            'page_title'  => 'Asset Procurement & Extra Purchases',
-            'requests'    => $requests,
-            'categories'  => $categories,
-            'departments' => $departments,
-            'workplaces'  => $workplaces,
-            'projects'    => $projects,
-            'users'       => $users,
-            'isApprover'  => $isApprover,
-            'activeTab'   => $activeTab
+            'page_title'   => 'Asset Procurement & Extra Purchases',
+            'requests'     => $requests,
+            'categories'   => $categories,
+            'departments'  => $departments,
+            'workplaces'   => $workplaces,
+            'projects'     => $projects,
+            'users'        => $users,
+            'bankAccounts' => $bankAccounts,
+            'isApprover'   => $isApprover,
+            'activeTab'    => $activeTab
         ];
         $this->view('phase2/asset-management/extra-purchases', $data);
     }
@@ -380,7 +387,7 @@ class AssetManagementController extends Controller
                                 $req['total_price'],
                                 "Office Asset Procurement (PR-{$id}): " . $req['item_name'] . " (Qty: {$req['quantity']})",
                                 $req['project_id'],
-                                'vendor',
+                                'employee',
                                 $req['assigned_to'] ?? $req['requested_by'],
                                 $userId
                             );
@@ -425,7 +432,21 @@ class AssetManagementController extends Controller
                     require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
                     $autoPosting = new \AutoPostingService($this->db);
                     $vendorPayableAccId = $autoPosting->getAccountIdByCode('2110'); // Accounts Payable - Vendors
-                    $bankAccId = $autoPosting->getAccountIdByCode('1110-002');       // Cash / DBBL Bank
+                    
+                    $paymentAccountId = !empty($_POST['payment_account_id']) ? (int)$_POST['payment_account_id'] : null;
+
+                    if ($paymentAccountId) {
+                        $bankAccId = $paymentAccountId;
+                    } else {
+                        $payAccCode = '1110-002'; // Default DBBL Bank
+                        $methodLower = strtolower($paymentMethod);
+                        if (strpos($methodLower, 'cash') !== false) {
+                            $payAccCode = '1110-001'; // Petty Cash Account
+                        } elseif (strpos($methodLower, 'islami') !== false) {
+                            $payAccCode = '1110-003'; // Islami Bank Main Account
+                        }
+                        $bankAccId = $autoPosting->getAccountIdByCode($payAccCode);
+                    }
 
                     $req = $this->model->findExtraPurchase($id);
                     $amountToPay = $paidAmount > 0 ? $paidAmount : ($req['total_price'] ?? 0);
@@ -439,7 +460,7 @@ class AssetManagementController extends Controller
                             $amountToPay,
                             "Payment Disbursement for Office Asset Procurement (PR-{$id}): " . ($req['item_name'] ?? ''),
                             $req['project_id'] ?? null,
-                            'vendor',
+                            'employee',
                             $req['assigned_to'] ?? $req['requested_by'] ?? 1,
                             $userId
                         );

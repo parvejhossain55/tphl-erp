@@ -7,9 +7,14 @@ $current_route = $data['current_route'] ?? ($current_page ?? '');
 function isActive($pages, $current_route)
 {
     if (is_array($pages)) {
-        return in_array($current_route, $pages, true) ? 'active' : '';
+        foreach ($pages as $page) {
+            if ($current_route === $page || ($page !== '' && strpos($current_route, $page) === 0)) {
+                return 'active';
+            }
+        }
+        return '';
     }
-    return ($current_route === $pages) ? 'active' : '';
+    return ($current_route === $pages || ($pages !== '' && strpos($current_route, $pages) === 0)) ? 'active' : '';
 }
 
 function isMenuOpen($pages, $current_route)

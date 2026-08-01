@@ -1321,9 +1321,22 @@
                             <?php endif; ?>
                         </a>
                     </li>
-                    <li class="slide <?= isActive('financial-dashboard', $current_route) ?>">
+                    <?php 
+                        $financialHubRoutes = [
+                            'financial-dashboard', 
+                            'accounts/coa', 
+                            'general-journal', 
+                            'clients-cash-in-history', 
+                            'expense-adjustments', 
+                            'payment-invoice',
+                            'reports/trial-balance',
+                            'reports/profit-loss',
+                            'reports/balance-sheet'
+                        ];
+                    ?>
+                    <li class="slide <?= isActive($financialHubRoutes, $current_route) ?>">
                         <a href="<?= $base_url ?>/financial-dashboard"
-                            class="sidebar__menu-item <?= isActive('financial-dashboard', $current_route) ?>">
+                            class="sidebar__menu-item <?= isActive($financialHubRoutes, $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-file-invoice-dollar text-success"></i></div>
                             <span class="sidebar__menu-label">Accounts & Financial Hub</span>
                         </a>
@@ -1333,6 +1346,27 @@
                             class="sidebar__menu-item <?= isActive('accounts/coa', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-sitemap text-info"></i></div>
                             <span class="sidebar__menu-label">Chart of Accounts (COA)</span>
+                        </a>
+                    </li>
+                    <li class="slide <?= isActive('reports/trial-balance', $current_route) ?>">
+                        <a href="<?= $base_url ?>/reports/trial-balance"
+                            class="sidebar__menu-item <?= isActive('reports/trial-balance', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-scale-balanced text-warning"></i></div>
+                            <span class="sidebar__menu-label">Trial Balance (রেওয়ামিল)</span>
+                        </a>
+                    </li>
+                    <li class="slide <?= isActive('reports/profit-loss', $current_route) ?>">
+                        <a href="<?= $base_url ?>/reports/profit-loss"
+                            class="sidebar__menu-item <?= isActive('reports/profit-loss', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-pie text-success"></i></div>
+                            <span class="sidebar__menu-label">Profit & Loss Statement</span>
+                        </a>
+                    </li>
+                    <li class="slide <?= isActive('reports/balance-sheet', $current_route) ?>">
+                        <a href="<?= $base_url ?>/reports/balance-sheet"
+                            class="sidebar__menu-item <?= isActive('reports/balance-sheet', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-building-columns text-primary"></i></div>
+                            <span class="sidebar__menu-label">Balance Sheet</span>
                         </a>
                     </li>
                     <?php if (!$isManagement): ?>

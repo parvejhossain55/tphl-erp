@@ -36,7 +36,7 @@ class Report extends Model
      */
     public function getAccountBalances($dateFrom = null, $dateTo = null, $projectId = null, $office = null)
     {
-        $where = "WHERE LOWER(j.status) IN ('approved', 'posted')";
+        $where = "WHERE (LOWER(j.approval_status) IN ('approved', 'posted') OR LOWER(j.status) IN ('approved', 'posted'))";
         $params = [];
         $types = '';
 
@@ -193,7 +193,7 @@ class Report extends Model
      */
     public function getCashflow($dateFrom = null, $dateTo = null, $projectId = null, $office = null)
     {
-        $where = "WHERE LOWER(j.status) IN ('approved', 'posted')";
+        $where = "WHERE (LOWER(j.approval_status) IN ('approved', 'posted') OR LOWER(j.status) IN ('approved', 'posted'))";
         $params = [];
         $types = '';
 
@@ -268,6 +268,108 @@ class Report extends Model
             'total_inflow' => $totalInflow,
             'total_outflow' => $totalOutflow,
             'net_cashflow' => $totalInflow - $totalOutflow
+        ];
+    }
+
+    public function getTrialBalance($asOfDate = null, $projectId = null, $office = null)
+    {
+        $asOfDate = $asOfDate ?? date('Y-m-d');
+        $where = "WHERE (LOWER(j.approval_status) IN ('approved', 'posted') OR LOWER(j.status) IN ('approved', 'posted')) AND j.date <= '" . $this->db->real_escape_string($asOfDate) . "'";
+        if ($projectId) $where .= " AND j.project_id = " . (int)$projectId;
+        if ($office) $where .= " AND j.office = '" . $this->db->real_escape_string($office) . "'";
+
+        $sql = "
+            SELECT 
+                c.id as account_id,
+                c.account_code,
+                c.account_name,
+                c.account_type,
+                c.root_type,
+                COALESCE(SUM(jd.debit), 0) as total_debit,
+                COALESCE(SUM(jd.credit), 0) as total_credit
+            FROM journal_details jd
+            INNER JOIN journals j ON jd.journal_id = j.id
+            INNER JOIN chart_of_accounts c ON jd.account_id = c.id
+            $where
+            GROUP BY c.id, c.account_code, c.account_name, c.account_type, c.root_type
+            HAVING total_debit != 0 OR total_credit != 0
+            ORDER BY c.account_code ASC
+        ";
+
+        $res = $this->db->query($sql);
+        $accounts = [];
+        $grandTotalDebit = 0;
+        $grandTotalCredit = 0;
+
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $debit = (float)$row['total_debit'];
+                $credit = (float)$row['total_credit'];
+                $grandTotalDebit += $debit;
+                $grandTotalCredit += $credit;
+                $accounts[] = $row;
+            }
+        }
+
+        return [
+            'accounts' => $accounts,
+            'total_debit' => $grandTotalDebit,
+            'total_credit' => $grandTotalCredit,
+            'is_balanced' => (abs($grandTotalDebit - $grandTotalCredit) < 0.01)
+        ];
+    }
+
+    public function getDetailedTrialBalance($asOfDate = null, $projectId = null, $office = null)
+    {
+        $asOfDate = $asOfDate ?? date('Y-m-d');
+        $where = "WHERE (LOWER(j.approval_status) IN ('approved', 'posted') OR LOWER(j.status) IN ('approved', 'posted')) AND j.date <= '" . $this->db->real_escape_string($asOfDate) . "'";
+        if ($projectId) $where .= " AND j.project_id = " . (int)$projectId;
+        if ($office) $where .= " AND j.office = '" . $this->db->real_escape_string($office) . "'";
+
+        $sql = "
+            SELECT 
+                c.id as account_id,
+                c.account_code,
+                c.account_name,
+                c.account_type,
+                c.root_type,
+                jd.party_type,
+                jd.party_id,
+                COALESCE(v.name, v.company_name, u.full_name, l.full_name, 'General / Direct Entry') as party_name,
+                COALESCE(SUM(jd.debit), 0) as total_debit,
+                COALESCE(SUM(jd.credit), 0) as total_credit
+            FROM journal_details jd
+            INNER JOIN journals j ON jd.journal_id = j.id
+            INNER JOIN chart_of_accounts c ON jd.account_id = c.id
+            LEFT JOIN vendors v ON (jd.party_type = 'vendor' AND jd.party_id = v.id)
+            LEFT JOIN users u ON (jd.party_id = u.id)
+            LEFT JOIN leads l ON (jd.party_type = 'client' AND jd.party_id = l.id)
+            $where
+            GROUP BY c.id, c.account_code, c.account_name, c.account_type, c.root_type, jd.party_type, jd.party_id, party_name
+            HAVING total_debit != 0 OR total_credit != 0
+            ORDER BY c.account_code ASC, party_name ASC
+        ";
+
+        $res = $this->db->query($sql);
+        $accounts = [];
+        $grandTotalDebit = 0;
+        $grandTotalCredit = 0;
+
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $debit = (float)$row['total_debit'];
+                $credit = (float)$row['total_credit'];
+                $grandTotalDebit += $debit;
+                $grandTotalCredit += $credit;
+                $accounts[] = $row;
+            }
+        }
+
+        return [
+            'accounts' => $accounts,
+            'total_debit' => $grandTotalDebit,
+            'total_credit' => $grandTotalCredit,
+            'is_balanced' => (abs($grandTotalDebit - $grandTotalCredit) < 0.01)
         ];
     }
 }

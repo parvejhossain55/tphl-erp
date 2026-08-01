@@ -222,11 +222,36 @@ $contractor_bill_details = $contractor_bill_details ?? [];
         margin-top: 10px;
         flex-wrap: wrap;
     }
+    .select2-container--default .select2-selection--single {
+        height: 38px !important;
+        border: 1px solid #ced4da !important;
+        border-radius: 4px !important;
+        padding: 4px 8px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 28px !important;
+        color: #495057 !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+    }
 </style>
 
 <script>
+    if (typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
+        $.fn.dataTable.ext.errMode = 'none';
+    }
     document.addEventListener('DOMContentLoaded', () => {
-        console.log(document.getElementById('year').innerHTML);
+        if (typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
+            $.fn.dataTable.ext.errMode = 'none';
+        }
+        if (typeof $ !== 'undefined' && $.fn && $.fn.select2) {
+            $('#projectId').select2({
+                placeholder: "Search Project...",
+                allowClear: true,
+                width: '100%'
+            });
+        }
     });
 </script>
 <div class="row">
@@ -270,6 +295,7 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                         <div class="filter-item" id="monthFilter">
                             <label>Month</label>
                             <select name="month" id="month" class="form-select">
+                                <option value="all" <?= ($month ?? '') === 'all' ? 'selected' : '' ?>>All Months (Whole Year)</option>
                                 <?php
                                 for ($m = 1; $m <= 12; $m++):
                                     $monthName = date('F', mktime(0, 0, 0, $m, 1));
@@ -771,6 +797,7 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                                         <td class="<?= ($row['running_balance'] ?? 0) >= 0 ? 'positive' : 'negative' ?>">
                                             <strong>৳<?= number_format($row['running_balance'] ?? 0, 2) ?></strong>
                                         </td>
+                                        
                                     <?php elseif ($category === 'total_cashin'): ?>
                                         <!-- Show only Total Cash IN data -->
                                         <td class="positive"><strong>৳<?= number_format($row['total_cashin'] ?? 0, 2) ?></strong></td>
@@ -835,7 +862,7 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                                                     </div>
                                                 <?php endforeach; ?>
                                             <?php else: ?>
-                                                <span style="color: #aaa; font-size: 12px;">—</span>
+                                                <span class="text-muted fs-11 fst-italic">No record</span>
                                             <?php endif; ?>
                                         </td>
                                         <?php endif; ?>
@@ -863,8 +890,7 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                                                         <strong class="negative" style="margin-left: 4px;">৳<?= number_format($payment['amount'] ?? 0, 2) ?></strong>
                                                     </div>
                                                 <?php endforeach; ?>
-                                            <?php else: ?>
-                                                <span style="color: #aaa; font-size: 12px;">—</span>
+                                         
                                             <?php endif; ?>
                                         </td>
                                     <?php elseif ($category === 'contractor_bill'): ?>
@@ -891,13 +917,13 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                                                         <strong class="negative" style="margin-left: 4px;">৳<?= number_format($payment['amount'] ?? 0, 2) ?></strong>
                                                     </div>
                                                 <?php endforeach; ?>
-                                            <?php else: ?>
-                                                <span style="color: #aaa; font-size: 12px;">—</span>
+                                          
                                             <?php endif; ?>
                                         </td>
                                     <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
+
                         </tbody>
                     </table>
                 </div>
@@ -1003,6 +1029,7 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                                         <td class="<?= ($row['running_balance'] ?? 0) >= 0 ? 'positive' : 'negative' ?>">
                                             <strong>৳<?= number_format($row['running_balance'] ?? 0, 2) ?></strong>
                                         </td>
+                                        
                                     <?php elseif ($category === 'total_cashin'): ?>
                                         <!-- Show only Total Cash IN data -->
                                         <td class="positive"><strong>৳<?= number_format($row['total_cashin'] ?? 0, 2) ?></strong></td>
@@ -1075,7 +1102,7 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                                                 endforeach;
                                             endforeach;
                                             if (!$hasAny): ?>
-                                                <span style="color: #aaa; font-size: 12px;">—</span>
+                                                <span class="text-muted fs-11 fst-italic">No record</span>
                                             <?php endif; ?>
                                         </td>
                                         <?php endif; ?>
@@ -1289,3 +1316,91 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 </script>
 <?php ?>
+
+
+    <!-- DEDICATED CLIENT RECEIPTS & FLAT BREAKDOWN CARD -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-dark">
+                <i class="fa-light fa-users-rectangle me-2 text-primary"></i> Client Receipts & Flat Breakdown (কাস্টমার জমা ও ফ্ল্যাট ভিত্তিক বিবরণী)
+            </h5>
+            <span class="badge bg-primary-transparent text-primary px-3 py-2 fs-12">
+                Period: <?= htmlspecialchars($period_text ?? "") ?>
+            </span>
+        </div>
+        <div class="card-body p-3">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle multiple_tables mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Client Name</th>
+                            <th>Project</th>
+                            <th>Flat</th>
+                            <th>Payment Category</th>
+                            <th>Method</th>
+                            <th class="text-end">Amount (BDT)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                        $totalClientAmount = 0;
+                        $allDetails = [];
+                        if (!empty($client_payment_details['by_date'])) {
+                            foreach ($client_payment_details['by_date'] as $dateList) {
+                                foreach ($dateList as $item) { $allDetails[] = $item; }
+                            }
+                        } elseif (!empty($client_payment_details)) {
+                            foreach ($client_payment_details as $itemOrList) {
+                                if (is_array($itemOrList)) {
+                                    foreach ($itemOrList as $item) {
+                                        if (is_array($item) && isset($item['amount'])) { $allDetails[] = $item; }
+                                    }
+                                }
+                            }
+                        }
+                        ?>
+                        <?php if (empty($allDetails)): ?>
+          
+                            <?php foreach ($allDetails as $cp): ?>
+                                <?php $totalClientAmount += (float)($cp['amount'] ?? 0); ?>
+                                <tr>
+                                    <td class="font-monospace fs-12"><?= date('d M Y', strtotime($cp['payment_date'])) ?></td>
+                                    <td class="fw-bold text-dark"><?= htmlspecialchars($cp['client_name'] ?? '—') ?></td>
+                                    <td>
+                                        <span class="badge bg-primary-transparent text-primary fs-11">
+                                            <?= htmlspecialchars($cp['project_name'] ?? '—') ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info-transparent text-info fs-11">
+                                            <?= htmlspecialchars($cp['flat_name'] ?? 'N/A') ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border fs-11">
+                                            <?= ucfirst(str_replace('_', ' ', $cp['payment_type'] ?? '')) ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border fs-11 text-uppercase">
+                                            <?= htmlspecialchars($cp['payment_method'] ?? 'cash') ?>
+                                        </span>
+                                    </td>
+                                    <td class="text-end font-monospace fw-bold text-success fs-13">
+                                        ৳ <?= number_format($cp['amount'] ?? 0, 2) ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr class="fw-bold">
+                            <td colspan="6" class="text-end">TOTAL CLIENT RECEIPTS:</td>
+                            <td class="text-end font-monospace text-success fs-14">৳ <?= number_format($totalClientAmount, 2) ?></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>

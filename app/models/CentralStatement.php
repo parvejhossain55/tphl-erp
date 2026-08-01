@@ -54,16 +54,16 @@ class CentralStatement extends Model
      */
     private function getTotalProcurementReturnsCashin($startDate, $endDate)
     {
-        $query = "
-        SELECT COALESCE(SUM(return_amount), 0) as total
-        FROM project_extra_assets
-        WHERE overall_status = 'purchased'
-        AND return_amount > 0
-        AND purchase_confirmed_at BETWEEN ? AND ?
-    ";
+        $stmt = $this->db->prepare("
+            SELECT COALESCE(SUM(paid_amount), 0) as total
+            FROM project_extra_assets
+            WHERE overall_status = 'purchased'
+            AND purchase_confirmed_at BETWEEN ? AND ?
+        ");
+        if (!$stmt) {
+            return 0.00;
+        }
 
-        $stmt = $this->db->prepare($query);
-        // Add 23:59:59 to endDate for full day coverage if it's just a date
         $endDateTime = $endDate . ' 23:59:59';
         $startDateTime = $startDate . ' 00:00:00';
         $stmt->bind_param("ss", $startDateTime, $endDateTime);
@@ -4046,6 +4046,74 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
         }
 
         return $transactions;
+    }
+
+    /**
+     * Get detailed Client Receipts grouped by payment_date (includes client_name, project_name, flat_name)
+     */
+    public function getClientPaymentDetails($startDate, $endDate, $projectId = null)
+    {
+        $query = "
+            SELECT 
+                lp.id as payment_id,
+                lp.payment_date,
+                lp.amount,
+                lp.payment_type,
+                lp.payment_method,
+                lp.transaction_ref,
+                l.full_name as client_name,
+                p.name as project_name,
+                f.flat_name
+            FROM lead_payments lp
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            INNER JOIN leads l ON lb.lead_id = l.id
+            LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN flats f ON lb.flat_id = f.id
+            WHERE lp.payment_date BETWEEN ? AND ?
+            AND lp.payment_status IN ('paid','partially_paid')
+            AND lp.verification_status = 'verified'
+        ";
+
+        if ($projectId) {
+            $query .= " AND lb.project_id = ?";
+        }
+
+        $query .= " ORDER BY lp.payment_date DESC, lp.id DESC";
+
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) return [];
+
+        if ($projectId) {
+            $stmt->bind_param("ssi", $startDate, $endDate, $projectId);
+        } else {
+            $stmt->bind_param("ss", $startDate, $endDate);
+        }
+
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        $grouped = [
+            'by_date' => [],
+            'by_month' => []
+        ];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $date = $row['payment_date'];
+                $month = substr($date, 0, 7);
+
+                if (!isset($grouped['by_date'][$date])) {
+                    $grouped['by_date'][$date] = [];
+                }
+                $grouped['by_date'][$date][] = $row;
+
+                if (!isset($grouped['by_month'][$month])) {
+                    $grouped['by_month'][$month] = [];
+                }
+                $grouped['by_month'][$month][] = $row;
+            }
+        }
+
+        return $grouped;
     }
 }
 

@@ -171,5 +171,42 @@ class ChartOfAccountsController extends Controller
             exit;
         }
     }
+
+    public function ledger($id)
+    {
+        $id = (int)$id;
+        $account = $this->coaModel->getAccountById($id);
+        if (!$account) {
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $_SESSION['error'] = "Account not found.";
+            header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
+            exit;
+        }
+
+        $startDate = $_GET['start_date'] ?? '';
+        $endDate = $_GET['end_date'] ?? '';
+        $projectId = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null;
+        $partyId = !empty($_GET['party_id']) ? (int)$_GET['party_id'] : null;
+        $searchQuery = !empty($_GET['search']) ? trim($_GET['search']) : null;
+
+        $ledgerData = $this->coaModel->getAccountLedger($id, $startDate, $endDate, $projectId, $partyId, $searchQuery);
+        $parties = $this->coaModel->getAccountParties($id);
+        $projects = $this->coaModel->getProjects();
+
+        $data = [
+            'page_title' => "General Ledger: " . $account['account_code'] . " - " . $account['account_name'],
+            'page' => "Accounts",
+            'account' => $account,
+            'ledgerData' => $ledgerData,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'projectId' => $projectId,
+            'partyId' => $partyId,
+            'searchQuery' => $searchQuery,
+            'parties' => $parties,
+            'projects' => $projects
+        ];
+        $this->view('accounts/coa/ledger', $data);
+    }
 }
 

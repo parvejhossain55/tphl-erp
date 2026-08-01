@@ -516,6 +516,7 @@ class AssetManagement
     public function createExtraPurchase($data)
     {
         $projectId = !empty($data['project_id']) ? (int)$data['project_id'] : null;
+        $departmentId = !empty($data['department_id']) ? (int)$data['department_id'] : null;
         $assetLocation = !empty($data['asset_location']) ? $data['asset_location'] : 'Head Office';
         $assignedTo = !empty($data['assigned_to']) ? (int)$data['assigned_to'] : null;
         $itemCategoryId = !empty($data['item_category_id']) ? (int)$data['item_category_id'] : 1;
@@ -529,8 +530,8 @@ class AssetManagement
 
         $stmt = $this->db->prepare(
             "INSERT INTO project_extra_assets 
-            (project_id, asset_location, assigned_to, item_category_id, item_name, quantity, unit_price, total_price, justification, attachment, requested_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            (project_id, department_id, asset_location, assigned_to, item_category_id, item_name, quantity, unit_price, total_price, justification, attachment, requested_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
 
         if (!$stmt) {
@@ -539,8 +540,9 @@ class AssetManagement
         }
 
         $stmt->bind_param(
-            'isiisiddssi',
+            'iisiisiddssi',
             $projectId,
+            $departmentId,
             $assetLocation,
             $assignedTo,
             $itemCategoryId,

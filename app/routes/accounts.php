@@ -84,6 +84,7 @@ return [
     'financial-dashboard/get-receipts' => ['controller' => 'AccountFinancialController', 'method' => 'getReceipts'],
     'financial-dashboard/get-clients' => ['controller' => 'AccountFinancialController', 'method' => 'getClients'],
     'financial-dashboard/get-refunds' => ['controller' => 'AccountFinancialController', 'method' => 'getRefunds'],
+    'financial-dashboard/get-pending-payables' => ['controller' => 'AccountFinancialController', 'method' => 'getPendingPayables'],
 
     // General Journal
     'general-journal/create' => ['controller' => 'GeneralJournalController', 'method' => 'create'],
@@ -98,11 +99,13 @@ return [
     'accounts/coa' => ['controller' => 'ChartOfAccountsController', 'method' => 'index'],
     'accounts/coa/store' => ['controller' => 'ChartOfAccountsController', 'method' => 'store'],
     'accounts/coa/update' => ['controller' => 'ChartOfAccountsController', 'method' => 'update'],
+    'accounts/ledger/(\d+)' => ['controller' => 'ChartOfAccountsController', 'method' => 'ledger'],
 
     // Financial Reports
     'reports/balance-sheet' => ['controller' => 'ReportsController', 'method' => 'balanceSheet'],
     'reports/profit-loss' => ['controller' => 'ReportsController', 'method' => 'profitLoss'],
     'reports/cashflow' => ['controller' => 'ReportsController', 'method' => 'cashflow'],
+    'reports/trial-balance' => ['controller' => 'ReportsController', 'method' => 'trialBalance'],
 
     // =========================================================================
     // Controller: AccountShopClientController
