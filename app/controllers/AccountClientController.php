@@ -1802,6 +1802,30 @@ public function discountStatement($bookingId = null)
                     if ($newBookingStatus === 'paid') {
                         $paymentController->handleFlatBooking($bookingId);
                     }
+
+                    // ====== AUTO POSTING JOURNAL VOUCHER (Batch 2/3) ======
+                    require_once dirname(__DIR__) . '/services/AutoPostingService.php';
+                    $autoService = new AutoPostingService($this->db);
+                    $bankAccId = $autoService->getAccountIdByCode('1110-002'); // Default Dutch Bangla Bank Main Account
+
+                    $payInfoStmt = $this->db->prepare("SELECT lp.*, lb.project_id, lb.lead_id FROM lead_payments lp LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id WHERE lp.id = ?");
+                    if ($payInfoStmt) {
+                        $payInfoStmt->bind_param("i", $paymentId);
+                        $payInfoStmt->execute();
+                        $pData = $payInfoStmt->get_result()->fetch_assoc();
+                        if ($pData && (float)$pData['amount'] > 0) {
+                            $autoService->postSalesPaymentEntry(
+                                $pData['id'],
+                                $bankAccId,
+                                $pData['amount'],
+                                $pData['payment_type'],
+                                "Verified Client Payment - " . ucfirst($pData['payment_type']) . " (Booking #" . $pData['booking_id'] . ")",
+                                $pData['project_id'],
+                                $pData['lead_id'],
+                                $userId
+                            );
+                        }
+                    }
                 }
             }
         }

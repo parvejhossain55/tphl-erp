@@ -9,6 +9,23 @@ mysqli_report(MYSQLI_REPORT_OFF);
 require_once("../app/helpers/helper.php");
 require_once __DIR__ . '/../vendor/autoload.php';
 
+// Custom Autoloader Fallback for Controllers & Models
+spl_autoload_register(function ($class) {
+    $classFile = str_replace('\\', '/', $class);
+    $paths = [
+        __DIR__ . "/../app/core/{$classFile}.php",
+        __DIR__ . "/../app/controllers/{$classFile}.php",
+        __DIR__ . "/../app/models/{$classFile}.php",
+        __DIR__ . "/../app/services/{$classFile}.php",
+    ];
+    foreach ($paths as $file) {
+        if (file_exists($file)) {
+            require_once $file;
+            return;
+        }
+    }
+});
+
 // Enable debug (local dev)
 error_reporting(E_ALL);
 ini_set('display_errors', 1);

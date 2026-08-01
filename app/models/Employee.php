@@ -8,7 +8,7 @@ class Employee extends Model
     {
         return parent::__construct($db);
     }
-    public function getPaginated($limit, $offset, $search = '', $department_id = '', $team_id = '')
+    public function getPaginated($limit, $offset, $search = '', $department_id = '', $team_id = '', $workplace = '')
     {
         $sql = "SELECT e.*, 
                    desg.name AS designation_name, 
@@ -48,6 +48,12 @@ class Employee extends Model
             $sql .= " AND e.team_id = ?";
             $params[] = $team_id;
             $types .= "i";
+        }
+
+        if ($workplace) {
+            $sql .= " AND e.workplace = ?";
+            $params[] = $workplace;
+            $types .= "s";
         }
 
         $sql .= " ORDER BY e.id DESC LIMIT ? OFFSET ?";
@@ -121,7 +127,7 @@ class Employee extends Model
     }
 
 
-    public function countAll($search = '', $department_id = '', $team_id = '')
+    public function countAll($search = '', $department_id = '', $team_id = '', $workplace = '')
     {
         $sql = "SELECT COUNT(*) as total FROM employees WHERE 1";
         $params = [];
@@ -150,6 +156,12 @@ class Employee extends Model
             $types .= "i";
         }
 
+        if ($workplace) {
+            $sql .= " AND workplace = ?";
+            $params[] = $workplace;
+            $types .= "s";
+        }
+
         $stmt = $this->db->prepare($sql);
         if ($params) {
             $stmt->bind_param($types, ...$params);
@@ -157,6 +169,13 @@ class Employee extends Model
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         return $result['total'];
+    }
+
+    public function getUniqueWorkplaces()
+    {
+        $sql = "SELECT DISTINCT workplace FROM employees WHERE workplace IS NOT NULL AND workplace != '' ORDER BY workplace ASC";
+        $res = $this->db->query($sql);
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     }
     public function create($data, $photoInputName = '')
     {

@@ -3,1070 +3,529 @@ namespace Phase2;
 
 use Controller;
 
+require_once __DIR__ . '/../../models/AssetManagement.php';
+
 class AssetManagementController extends Controller
 {
     protected $db;
     protected $model;
-    protected $userId;
-    protected $roleId;
-    protected $roleName;
 
     public function __construct($db)
     {
         $this->db = $db;
-        if (session_status() === PHP_SESSION_NONE) session_start();
-        checkLogin();
+        $this->model = new \AssetManagement($db);
 
-        $this->userId   = (int)($_SESSION['user']['id'] ?? 0);
-        $this->roleId   = (int)($_SESSION['user']['role_id'] ?? 0);
-        $this->roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-
-
-
-        require_once __DIR__ . '/../../models/AssetManagement.php';
-        $this->model = new \AssetManagement($this->db);
-    }
-
-    /**
-     * Helper: Check if current user can edit (Operations, Admin, Director)
-     */
-    private function canEdit()
-    {
-        return hasPermission('Asset Management') && in_array($this->roleId, [1, 3, 20]);
-    }
-
-    /**
-     * Helper: Check if user is QC & Internal Audit (read-only oversight + approval)
-     */
-    private function isQcAudit()
-    {
-        return hasPermission('QC & Internal Audit');
-    }
-
-    /**
-     * Helper: Check if user is Purchase Head
-     */
-    private function isPurchaseHead()
-    {
-        return $this->roleId == 17;
-    }
-
-    /**
-     * Helper: Check if user is Management
-     */
-    private function isManagement()
-    {
-        return in_array($this->roleId, [1, 3]);
-    }
-
-    /**
-     * Helper: Check if user is Accounts
-     */
-    private function isAccounts()
-    {
-        return in_array($this->roleId, [6, 30]);
-    }
-
-    /**
-     * Helper: Upload file
-     */
-    private function uploadFile($fileData, $uploadPath = 'uploads/assets/')
-    {
-        if (empty($fileData['name']) || $fileData['error'] !== 0) return null;
-
-        $baseDir = __DIR__ . '/../../../public/' . $uploadPath;
-        if (!is_dir($baseDir)) mkdir($baseDir, 0777, true);
-
-        $ext = pathinfo($fileData['name'], PATHINFO_EXTENSION);
-        $newName = uniqid('asset_') . '_' . time() . '.' . $ext;
-
-        if (move_uploaded_file($fileData['tmp_name'], $baseDir . $newName)) {
-            return $uploadPath . $newName;
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
         }
-        return null;
-    }
-
-    // =========================================================================
-    // ASSET PRODUCTS — CRUD
-    // =========================================================================
-
-    /**
-     * Product Master List page
-     */
-    public function products()
-    {
-        // Permission check: Asset Management or QC & Internal Audit or Admin/Director
-        if (!hasPermission('Asset Management') && !hasPermission('QC & Internal Audit') && !in_array($this->roleId, [1, 3, 20])) {
-            setError("Unauthorized access.");
-            header("Location: {$GLOBALS['base_url']}/home");
+        $baseUrl = $GLOBALS['base_url'] ?? '/TPHL-ERP';
+        if (!isset($_SESSION['user'])) {
+            header("Location: {$baseUrl}/login");
             exit;
         }
-
-
-        $filters = [
-            'search'   => $_GET['search'] ?? '',
-            'category' => $_GET['category'] ?? '',
-            'status'   => $_GET['status'] ?? '',
-        ];
-
-        $products = $this->model->getAllProducts($filters);
-        $stockCounts = $this->model->getProductStockCounts();
-        $categories = $this->model->getProcurementCategories();
-
-        // Index stock counts by product id for easy lookup
-        $stockMap = [];
-        foreach ($stockCounts as $sc) {
-            $stockMap[$sc['id']] = $sc;
-        }
-
-        $this->view('phase2/asset-management/products', [
-            'current_route' => 'asset-products',
-            'page_title'    => 'Office Asset Products',
-            'products'      => $products,
-            'stockMap'      => $stockMap,
-            'categories'    => $categories,
-            'filters'       => $filters,
-            'canEdit'       => $this->canEdit(),
-            'isQcAudit'     => $this->isQcAudit(),
-        ]);
     }
 
-    /**
-     * Store new product
-     */
-    public function storeProduct()
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/asset-products");
-            exit;
-        }
-
-        $productCode = trim($_POST['product_code'] ?? '');
-        $name = trim($_POST['name'] ?? '');
-
-        if (empty($productCode) || empty($name)) {
-            setError('Product code and name are required.');
-            header("Location: {$GLOBALS['base_url']}/asset-products");
-            exit;
-        }
-
-        // Check duplicate code
-        if ($this->model->productCodeExists($productCode)) {
-            setError("Product code '{$productCode}' already exists.");
-            header("Location: {$GLOBALS['base_url']}/asset-products");
-            exit;
-        }
-
-        $imagePath = null;
-        if (isset($_FILES['image']) && $_FILES['image']['error'] === 0) {
-            $imagePath = $this->uploadFile($_FILES['image'], 'uploads/asset-products/');
-        }
-
-        $data = [
-            'product_code' => $productCode,
-            'name'         => $name,
-            'category_id'  => (int)($_POST['category_id'] ?? 0),
-            'brand'        => $_POST['brand'] ?? null,
-            'model'        => $_POST['model'] ?? null,
-            'unit'         => $_POST['unit'] ?? 'Piece',
-            'unit_price'   => (float)($_POST['unit_price'] ?? 0),
-            'description'  => $_POST['description'] ?? null,
-            'image_path'   => $imagePath,
-            'status'       => $_POST['status'] ?? 'active',
-            'created_by'   => $this->userId,
-        ];
-
-        if ($this->model->createProduct($data)) {
-            setSuccess("Product '{$name}' created successfully.");
-        } else {
-            setError('Failed to create product.');
-        }
-
-        header("Location: {$GLOBALS['base_url']}/asset-products");
-        exit;
-    }
-
-    /**
-     * Update existing product
-     */
-    public function updateProduct()
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/asset-products");
-            exit;
-        }
-
-        $id = (int)($_POST['id'] ?? 0);
-        if (!$id) {
-            setError('Invalid product ID.');
-            header("Location: {$GLOBALS['base_url']}/asset-products");
-            exit;
-        }
-
-        $productCode = trim($_POST['product_code'] ?? '');
-        $name = trim($_POST['name'] ?? '');
-
-        // Check duplicate code (exclude current)
-        if ($this->model->productCodeExists($productCode, $id)) {
-            setError("Product code '{$productCode}' already exists.");
-            header("Location: {$GLOBALS['base_url']}/asset-products");
-            exit;
-        }
-
-        $imagePath = null;
-        if (isset($_FILES['image']) && $_FILES['image']['error'] === 0) {
-            $imagePath = $this->uploadFile($_FILES['image'], 'uploads/asset-products/');
-        }
-
-        $data = [
-            'product_code' => $productCode,
-            'name'         => $name,
-            'category_id'  => (int)($_POST['category_id'] ?? 0),
-            'brand'        => $_POST['brand'] ?? null,
-            'model'        => $_POST['model'] ?? null,
-            'unit'         => $_POST['unit'] ?? 'Piece',
-            'unit_price'   => (float)($_POST['unit_price'] ?? 0),
-            'description'  => $_POST['description'] ?? null,
-            'image_path'   => $imagePath,
-            'status'       => $_POST['status'] ?? 'active',
-        ];
-
-        if ($this->model->updateProduct($id, $data)) {
-            setSuccess("Product updated successfully.");
-        } else {
-            setError('Failed to update product.');
-        }
-
-        header("Location: {$GLOBALS['base_url']}/asset-products");
-        exit;
-    }
-
-    /**
-     * Delete product
-     */
-    public function deleteProduct()
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/asset-products");
-            exit;
-        }
-
-        $id = (int)($_POST['id'] ?? 0);
-        $result = $this->model->deleteProduct($id);
-
-        if ($result['success']) {
-            setSuccess('Product deleted successfully.');
-        } else {
-            setError($result['message']);
-        }
-
-        header("Location: {$GLOBALS['base_url']}/asset-products");
-        exit;
-    }
-
-    // =========================================================================
-    // OFFICE ASSETS — CRUD
-    // =========================================================================
-
-    /**
-     * All Assets list
-     */
     public function index()
     {
-        // Permission check: Asset Management or QC & Internal Audit or Admin/Director
-        if (!hasPermission('Asset Management') && !hasPermission('QC & Internal Audit') && !in_array($this->roleId, [1, 3, 20])) {
-            setError("Unauthorized access.");
-            header("Location: {$GLOBALS['base_url']}/home");
-            exit;
-        }
-
-
         $filters = [
-            'search'           => $_GET['search'] ?? '',
-            'project_id'       => $_GET['project_id'] ?? '',
-            'category'         => $_GET['category'] ?? '',
+            'search' => $_GET['search'] ?? '',
+            'category_id' => $_GET['category_id'] ?? '',
+            'asset_status' => $_GET['asset_status'] ?? '',
             'condition_status' => $_GET['condition_status'] ?? '',
-            'asset_status'     => $_GET['asset_status'] ?? '',
+            'project_id' => $_GET['project_id'] ?? '',
+            'assigned_user_id' => $_GET['assigned_user_id'] ?? '',
         ];
 
         $assets = $this->model->getAllAssets($filters);
-                $stats = $this->model->getDashboardStats();
-
-        // Get projects list
-        $projectsResult = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
-        $projects = $projectsResult ? $projectsResult->fetch_all(MYSQLI_ASSOC) : [];
-
-        // Get locations list
-        $locations = ['Corporate Office', 'Site Office', 'Site Office 2', 'Zonal Office'];
-
-        // Get users list
-        $usersResult = $this->db->query("SELECT id, full_name FROM users ORDER BY full_name");
-        $users = $usersResult ? $usersResult->fetch_all(MYSQLI_ASSOC) : [];
-
         $products = $this->model->getAllProducts(['status' => 'active']);
+        $categories = $this->model->getProcurementCategories();
+        $stats = $this->model->getDashboardStats();
 
-        $this->view('phase2/asset-management/assets', [
-            'current_route' => 'office-assets',
-            'page_title'    => 'Asset Register',
-            'assets'        => $assets,
-            'projects'      => $projects,
-            'locations'     => $locations,
-            'users'         => $users,
-            'products'      => $products,
-            'stats'         => $stats,
-            'filters'       => $filters,
-            'canEdit'       => $this->canEdit(),
-            'isQcAudit'     => $this->isQcAudit(),
-        ]);
-    }
-
-    /**
-     * Store new asset
-     */
-    public function store()
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/office-assets");
-            exit;
+        $projects = [];
+        $pRes = $this->db->query("SELECT id, name FROM projects ORDER BY name ASC");
+        if ($pRes) {
+            $projects = $pRes->fetch_all(MYSQLI_ASSOC);
         }
 
-        $productId = (int)($_POST['product_id'] ?? 0);
-        if (!$productId) {
-            setError('Product is required.');
-            header("Location: {$GLOBALS['base_url']}/office-assets");
-            exit;
+        $users = [];
+        $uRes = $this->db->query("SELECT id, full_name FROM users ORDER BY full_name ASC");
+        if ($uRes) {
+            $users = $uRes->fetch_all(MYSQLI_ASSOC);
         }
-
-        $assetCode = $this->model->generateAssetCode();
 
         $data = [
-            'asset_code'       => $assetCode,
-            'product_id'       => $productId,
-            'item_name'        => trim($_POST['item_name'] ?? ''),
-            'project_id'       => !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null,
-            'department_id'    => !empty($_POST['department_id']) ? (int)$_POST['department_id'] : null,
-            'assigned_to'      => !empty($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null,
-            'location'         => $_POST['location'] ?? 'Head Office',
-            'purchase_date'    => !empty($_POST['purchase_date']) ? $_POST['purchase_date'] : null,
-            'purchase_price'   => (float)($_POST['purchase_price'] ?? 0),
-            'warranty_expiry'  => !empty($_POST['warranty_expiry']) ? $_POST['warranty_expiry'] : null,
-            'serial_no'        => $_POST['serial_no'] ?? null,
-            'condition_status' => $_POST['condition_status'] ?? 'new',
-            'asset_status'     => $_POST['asset_status'] ?? 'in_store',
-            'remarks'          => $_POST['remarks'] ?? null,
-            'created_by'       => $this->userId,
+            'page_title' => 'Office Asset Management',
+            'assets' => $assets,
+            'products' => $products,
+            'categories' => $categories,
+            'projects' => $projects,
+            'users' => $users,
+            'stats' => $stats,
+            'filters' => $filters
         ];
 
-        $assetId = $this->model->createAsset($data);
-        if ($assetId) {
-            // Log the creation
-            $this->model->logMovement([
-                'asset_id'        => $assetId,
-                'action'          => 'purchased',
-                'from_location'   => null,
-                'to_location'     => $data['location'],
-                'from_user_id'    => null,
-                'to_user_id'      => $data['assigned_to'],
-                'from_project_id' => null,
-                'to_project_id'   => $data['project_id'],
-                'old_condition'   => null,
-                'new_condition'   => $data['condition_status'],
-                'notes'           => 'Asset registered: ' . $assetCode,
-                'performed_by'    => $this->userId,
-            ]);
+        $this->view('phase2/asset-management/assets', $data);
+    }
 
-            setSuccess("Asset '{$assetCode}' registered successfully.");
-        } else {
-            setError('Failed to register asset.');
+    public function store()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = $_POST;
+            $data['created_by'] = $_SESSION['user']['id'] ?? 1;
+            if ($this->model->createAsset($data)) {
+                setSuccess("Asset added successfully.");
+            } else {
+                setError("Failed to add asset.");
+            }
         }
-
-        header("Location: {$GLOBALS['base_url']}/office-assets");
+        header("Location: " . $GLOBALS['base_url'] . "/office-assets");
         exit;
     }
 
-    /**
-     * Single asset detail
-     */
     public function show($id)
     {
-        $id = (int)$id;
-        $asset = $this->model->findAsset($id);
-
-        if (!$asset) {
-            setError('Asset not found.');
-            header("Location: {$GLOBALS['base_url']}/office-assets");
-            exit;
-        }
-
-        $movements = $this->model->getMovementLog($id);
-
-        // Get projects and users for transfer form
-        $projectsResult = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
-        $projects = $projectsResult ? $projectsResult->fetch_all(MYSQLI_ASSOC) : [];
-
-        $locations = ['Corporate Office', 'Site Office', 'Site Office 2', 'Zonal Office'];
-
-        $usersResult = $this->db->query("SELECT id, full_name FROM users ORDER BY full_name");
-        $users = $usersResult ? $usersResult->fetch_all(MYSQLI_ASSOC) : [];
-
-        // Fetch related repair requisitions
-        $reqResult = $this->db->query("SELECT fr.*, u.full_name as requested_by_name FROM fund_requisitions fr LEFT JOIN users u ON u.id = fr.requested_by WHERE fr.asset_id = {$id} ORDER BY fr.created_at DESC");
-        $repair_requisitions = $reqResult ? $reqResult->fetch_all(MYSQLI_ASSOC) : [];
-
-        $this->view('phase2/asset-management/asset-detail', [
-            'current_route'       => 'office-assets',
-            'page_title'          => 'Asset: ' . $asset['asset_code'],
-            'asset'               => $asset,
-            'movements'           => $movements,
-            'projects'            => $projects,
-            'locations'           => $locations,
-            'users'               => $users,
-            'repair_requisitions' => $repair_requisitions,
-            'canEdit'             => $this->canEdit(),
-        ]);
-    }
-
-    // =========================================================================
-    // ASSET TRANSFER + CONDITION
-    // =========================================================================
-
-    /**
-     * Transfer asset to another project/user/location
-     */
-    public function transfer($id)
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/office-assets/show/{$id}");
-            exit;
-        }
-
-        $id = (int)$id;
         $asset = $this->model->findAsset($id);
         if (!$asset) {
-            setError('Asset not found.');
-            header("Location: {$GLOBALS['base_url']}/office-assets");
+            setError("Asset not found.");
+            header("Location: " . $GLOBALS['base_url'] . "/office-assets");
             exit;
         }
-
-        $newProjectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
-        $newAssignedTo = !empty($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null;
-        $newLocation = $_POST['location'] ?? $asset['location'];
-        $notes = $_POST['notes'] ?? '';
-
-        // Update asset
-        $this->db->query("UPDATE office_assets SET 
-            project_id = " . ($newProjectId ? $newProjectId : 'NULL') . ",
-            assigned_to = " . ($newAssignedTo ? $newAssignedTo : 'NULL') . ",
-            location = '" . $this->db->real_escape_string($newLocation) . "',
-            asset_status = 'transferred'
-            WHERE id = {$id}");
-
-        // Log movement
-        $this->model->logMovement([
-            'asset_id'        => $id,
-            'action'          => 'transferred',
-            'from_location'   => $asset['location'],
-            'to_location'     => $newLocation,
-            'from_user_id'    => $asset['assigned_to'],
-            'to_user_id'      => $newAssignedTo,
-            'from_project_id' => $asset['project_id'],
-            'to_project_id'   => $newProjectId,
-            'old_condition'   => $asset['condition_status'],
-            'new_condition'   => $asset['condition_status'],
-            'notes'           => $notes,
-            'performed_by'    => $this->userId,
-        ]);
-
-        setSuccess('Asset transferred successfully.');
-        header("Location: {$GLOBALS['base_url']}/office-assets/show/{$id}");
-        exit;
+        $logs = $this->model->getMovementLog($id);
+        $data = [
+            'page_title' => 'Asset Details - ' . ($asset['asset_code'] ?? ''),
+            'asset' => $asset,
+            'logs' => $logs
+        ];
+        $this->view('phase2/asset-management/asset-detail', $data);
     }
 
     public function getLogs($id)
     {
-        $id = (int)$id;
-        $movements = $this->model->getMovementLog($id);
         header('Content-Type: application/json');
-        echo json_encode($movements);
+        $logs = $this->model->getMovementLog($id);
+        echo json_encode(['success' => true, 'logs' => $logs]);
         exit;
     }
 
-    /**
-     * Bulk Transfer multiple assets
-     */
-    public function bulkTransfer()
+    public function updateAssetCode($id)
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/office-assets");
-            exit;
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $code = $_POST['asset_code'] ?? '';
+            if ($this->model->updateAsset($id, ['asset_code' => $code])) {
+                setSuccess("Asset code updated.");
+            } else {
+                setError("Failed to update code.");
+            }
         }
-
-        $assetIdsStr = $_POST['asset_ids'] ?? '';
-        if (empty($assetIdsStr)) {
-            setError('No assets selected.');
-            header("Location: {$GLOBALS['base_url']}/office-assets");
-            exit;
-        }
-
-        $assetIds = array_filter(array_map('intval', explode(',', $assetIdsStr)));
-        if (empty($assetIds)) {
-            setError('Invalid assets selected.');
-            header("Location: {$GLOBALS['base_url']}/office-assets");
-            exit;
-        }
-
-        $newProjectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
-        $newAssignedTo = !empty($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null;
-        $newLocation = $_POST['location'] ?? '';
-        $notes = $_POST['notes'] ?? '';
-
-        $successCount = 0;
-
-        foreach ($assetIds as $id) {
-            $asset = $this->model->findAsset($id);
-            if (!$asset) continue;
-
-            $finalLocation = !empty($newLocation) ? $newLocation : $asset['location'];
-
-            // Update asset
-            $this->db->query("UPDATE office_assets SET 
-                project_id = " . ($newProjectId ? $newProjectId : 'NULL') . ",
-                assigned_to = " . ($newAssignedTo ? $newAssignedTo : 'NULL') . ",
-                location = '" . $this->db->real_escape_string($finalLocation) . "',
-                asset_status = 'transferred'
-                WHERE id = {$id}");
-
-            // Log movement
-            $this->model->logMovement([
-                'asset_id'        => $id,
-                'action'          => 'transferred',
-                'from_location'   => $asset['location'],
-                'to_location'     => $finalLocation,
-                'from_user_id'    => $asset['assigned_to'],
-                'to_user_id'      => $newAssignedTo,
-                'from_project_id' => $asset['project_id'],
-                'to_project_id'   => $newProjectId,
-                'old_condition'   => $asset['condition_status'],
-                'new_condition'   => $asset['condition_status'],
-                'notes'           => $notes,
-                'performed_by'    => $this->userId,
-            ]);
-
-            $successCount++;
-        }
-
-        if ($successCount > 0) {
-            setSuccess("Successfully transferred {$successCount} asset(s).");
-        } else {
-            setError("Failed to transfer assets.");
-        }
-
-        header("Location: {$GLOBALS['base_url']}/office-assets");
+        header("Location: " . $GLOBALS['base_url'] . "/office-assets/show/" . $id);
         exit;
     }
 
-    /**
-     * Update asset details (from edit modal) — Operations (role 20) only
-     */
     public function update($id)
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/office-assets");
-            exit;
-        }
-
-        // Only Operations can edit
-        if ($this->roleId !== 20) {
-            setError('Only Operations can edit asset details.');
-            header("Location: {$GLOBALS['base_url']}/office-assets");
-            exit;
-        }
-
-        $id = (int)$id;
-        $asset = $this->model->findAsset($id);
-        if (!$asset) {
-            setError('Asset not found.');
-            header("Location: {$GLOBALS['base_url']}/office-assets");
-            exit;
-        }
-
-        $itemName = trim($_POST['item_name'] ?? '');
-        $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
-        $location = trim($_POST['location'] ?? '');
-        $serialNo = trim($_POST['serial_no'] ?? '');
-        $assignedTo = !empty($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null;
-        $conditionStatus = $_POST['condition_status'] ?? $asset['condition_status'];
-        $assetStatus = $_POST['asset_status'] ?? $asset['asset_status'];
-
-        if (empty($itemName)) {
-            setError('Item name is required.');
-            header("Location: {$GLOBALS['base_url']}/office-assets");
-            exit;
-        }
-
-        // Check if it's a transfer (project, location, or assigned_to changed)
-        $isTransfer = ($asset['project_id'] != $projectId || $asset['location'] != $location || $asset['assigned_to'] != $assignedTo);
-        if ($isTransfer) {
-            $assetStatus = 'transferred';
-        }
-
-        $sql = "UPDATE office_assets SET 
-                    item_name = ?, project_id = ?, location = ?, serial_no = ?, 
-                    assigned_to = ?, condition_status = ?, asset_status = ?
-                WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('sississi', 
-            $itemName, $projectId, $location, $serialNo, 
-            $assignedTo, $conditionStatus, $assetStatus, $id
-        );
-
-        if ($stmt->execute()) {
-            if ($isTransfer) {
-                $this->model->logMovement([
-                    'asset_id'        => $id,
-                    'action'          => 'transferred',
-                    'from_location'   => $asset['location'],
-                    'to_location'     => $location,
-                    'from_user_id'    => $asset['assigned_to'],
-                    'to_user_id'      => $assignedTo,
-                    'from_project_id' => $asset['project_id'],
-                    'to_project_id'   => $projectId,
-                    'old_condition'   => $asset['condition_status'],
-                    'new_condition'   => $conditionStatus,
-                    'notes'           => 'Updated from Edit Details form',
-                    'performed_by'    => $this->userId,
-                ]);
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if ($this->model->updateAsset($id, $_POST)) {
+                setSuccess("Asset updated successfully.");
+            } else {
+                setError("Failed to update asset.");
             }
-            setSuccess('Asset updated successfully.');
-        } else {
-            setError('Failed to update asset.');
         }
+        header("Location: " . $GLOBALS['base_url'] . "/office-assets/show/" . $id);
+        exit;
+    }
 
-        header("Location: {$GLOBALS['base_url']}/office-assets");
+    public function transfer($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $userId = $_SESSION['user']['id'] ?? 1;
+            if ($this->model->logMovement($id, 'transferred', $_POST['note'] ?? '', $userId)) {
+                setSuccess("Asset transferred successfully.");
+            } else {
+                setError("Failed to transfer asset.");
+            }
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/office-assets/show/" . $id);
+        exit;
+    }
+
+    public function bulkTransfer()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $assetIds = $_POST['asset_ids'] ?? [];
+            $userId = $_SESSION['user']['id'] ?? 1;
+            foreach ($assetIds as $aid) {
+                $this->model->logMovement($aid, 'transferred', $_POST['note'] ?? '', $userId);
+            }
+            setSuccess("Bulk transfer completed.");
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/office-assets");
+        exit;
+    }
+
+    public function updateCondition($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $userId = $_SESSION['user']['id'] ?? 1;
+            if ($this->model->updateAsset($id, ['condition_status' => $_POST['condition_status'] ?? 'ok'])) {
+                $this->model->logMovement($id, 'condition_change', $_POST['note'] ?? '', $userId);
+                setSuccess("Condition updated.");
+            } else {
+                setError("Failed condition update.");
+            }
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/office-assets/show/" . $id);
+        exit;
+    }
+
+    public function dispose($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $userId = $_SESSION['user']['id'] ?? 1;
+            if ($this->model->updateAsset($id, ['asset_status' => 'disposed'])) {
+                $this->model->logMovement($id, 'disposed', $_POST['reason'] ?? '', $userId);
+                setSuccess("Asset disposed.");
+            } else {
+                setError("Failed asset disposal.");
+            }
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/office-assets");
+        exit;
+    }
+
+    public function products()
+    {
+        $products = $this->model->getAllProducts();
+        $categories = $this->model->getProcurementCategories();
+        $stockCounts = $this->model->getProductStockCounts();
+
+        $data = [
+            'page_title' => 'Asset Products Catalog',
+            'products' => $products,
+            'categories' => $categories,
+            'stockCounts' => $stockCounts
+        ];
+        $this->view('phase2/asset-management/products', $data);
+    }
+
+    public function storeProduct()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = $_POST;
+            $data['created_by'] = $_SESSION['user']['id'] ?? 1;
+            if ($this->model->createProduct($data)) {
+                setSuccess("Product added to catalog.");
+            } else {
+                setError("Failed to add product.");
+            }
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/asset-products");
+        exit;
+    }
+
+    public function updateProduct()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = (int)$_POST['id'];
+            if ($this->model->updateProduct($id, $_POST)) {
+                setSuccess("Product updated.");
+            } else {
+                setError("Failed product update.");
+            }
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/asset-products");
+        exit;
+    }
+
+    public function deleteProduct()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = (int)$_POST['id'];
+            if ($this->model->deleteProduct($id)) {
+                setSuccess("Product deleted.");
+            } else {
+                setError("Failed product deletion.");
+            }
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/asset-products");
         exit;
     }
 
     public function storeRepairRequisition($id)
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/office-assets/show/{$id}");
-            exit;
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $userId = $_SESSION['user']['id'] ?? 1;
+            $this->model->logMovement($id, 'repair_requested', $_POST['note'] ?? '', $userId);
+            setSuccess("Repair requisition submitted.");
         }
-
-        $id = (int)$id;
-        $asset = $this->model->findAsset($id);
-        if (!$asset) {
-            setError('Asset not found.');
-            header("Location: {$GLOBALS['base_url']}/office-assets");
-            exit;
-        }
-
-        $amount = !empty($_POST['amount']) ? (float)$_POST['amount'] : 0;
-        $purpose = trim($_POST['purpose'] ?? '');
-
-        if ($amount <= 0 || empty($purpose)) {
-            setError('Amount and purpose are required.');
-            header("Location: {$GLOBALS['base_url']}/office-assets/show/{$id}");
-            exit;
-        }
-
-        $receiptPath = null;
-        if (!empty($_FILES['receipt']['name'])) {
-            $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/requisitions/';
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0777, true);
-            }
-            $fileName = time() . '_' . basename($_FILES['receipt']['name']);
-            $targetFilePath = $uploadDir . $fileName;
-            if (move_uploaded_file($_FILES['receipt']['tmp_name'], $targetFilePath)) {
-                $receiptPath = 'uploads/requisitions/' . $fileName;
-            }
-        }
-
-        $sql = "INSERT INTO fund_requisitions (requested_by, requisition_type, category, amount, purpose, receipt_path, status, asset_id, created_at)
-                VALUES (?, 'general', 'Asset Repair', ?, ?, ?, 'pending', ?, NOW())";
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('idssi', $this->userId, $amount, $purpose, $receiptPath, $id);
-        
-        if ($stmt->execute()) {
-            setSuccess('Repair fund requisition submitted successfully.');
-        } else {
-            setError('Failed to submit requisition.');
-        }
-
-        header("Location: {$GLOBALS['base_url']}/office-assets/show/{$id}");
+        header("Location: " . $GLOBALS['base_url'] . "/office-assets/show/" . $id);
         exit;
     }
 
-    /**
-     * Update asset condition (need_repair, repairing, repaired, ok, damaged, disposed)
-     */
-    public function updateCondition($id)
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/office-assets/show/{$id}");
-            exit;
-        }
-
-        $id = (int)$id;
-        $asset = $this->model->findAsset($id);
-        if (!$asset) {
-            setError('Asset not found.');
-            header("Location: {$GLOBALS['base_url']}/office-assets");
-            exit;
-        }
-
-        $newCondition = $_POST['condition_status'] ?? $asset['condition_status'];
-        $notes = $_POST['notes'] ?? '';
-
-        // Determine asset_status based on condition
-        $assetStatus = $asset['asset_status'];
-        if ($newCondition === 'disposed') {
-            $assetStatus = 'disposed';
-        } elseif (in_array($newCondition, ['need_repair', 'repairing'])) {
-            $assetStatus = 'maintenance';
-        } elseif (in_array($newCondition, ['repaired', 'ok', 'new'])) {
-            $assetStatus = $asset['assigned_to'] ? 'in_use' : 'in_store';
-        }
-
-        $this->db->query("UPDATE office_assets SET 
-            condition_status = '" . $this->db->real_escape_string($newCondition) . "',
-            asset_status = '" . $this->db->real_escape_string($assetStatus) . "'
-            WHERE id = {$id}");
-
-        // Determine action type for log
-        $action = 'status_change';
-        if ($newCondition === 'need_repair') $action = 'repair_requested';
-        if ($newCondition === 'repaired') $action = 'repaired';
-        if ($newCondition === 'disposed') $action = 'disposed';
-        if (in_array($newCondition, ['repairing', 'need_repair'])) $action = 'maintenance';
-
-        $this->model->logMovement([
-            'asset_id'        => $id,
-            'action'          => $action,
-            'from_location'   => $asset['location'],
-            'to_location'     => $asset['location'],
-            'from_user_id'    => null,
-            'to_user_id'      => null,
-            'from_project_id' => null,
-            'to_project_id'   => null,
-            'old_condition'   => $asset['condition_status'],
-            'new_condition'   => $newCondition,
-            'notes'           => $notes,
-            'performed_by'    => $this->userId,
-        ]);
-
-        setSuccess("Asset condition updated to '{$newCondition}'.");
-        header("Location: {$GLOBALS['base_url']}/office-assets/show/{$id}");
-        exit;
-    }
-
-    /**
-     * Dispose asset
-     */
-    public function dispose($id)
-    {
-        $_POST['condition_status'] = 'disposed';
-        $_POST['notes'] = $_POST['notes'] ?? 'Asset disposed';
-        $this->updateCondition($id);
-    }
-
-    // =========================================================================
-    // EXTRA PURCHASE REQUESTS (5-Step Approval)
-    // =========================================================================
-
-    /**
-     * Extra Purchases list
-     */
     public function extraPurchases()
     {
-        $isPurchaseHead = $this->isPurchaseHead();
-        $isQcAudit = $this->isQcAudit();
-        $isManagement = $this->isManagement();
-        $isAccounts = $this->isAccounts();
-        $isOperations = ($this->roleId == 20 || in_array($this->roleId, [1, 3]));
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
 
-        $isApprover = $isPurchaseHead || $isQcAudit || $isManagement || $isAccounts || $isOperations;
-        $activeTab = $_GET['tab'] ?? 'my_requests';
+        // Approver / Admin / Procurement / Management / Accounts roles see all requests by default
+        $isApprover = in_array($roleId, [1, 2, 3, 6, 17, 20, 22, 23, 24, 25, 30, 31]);
+        $activeTab  = $_GET['tab'] ?? ($isApprover ? 'all_requests' : 'my_requests');
 
         $filters = [
+            'department_id'  => $_GET['department_id'] ?? '',
+            'workplace'      => $_GET['workplace'] ?? '',
             'project_id'     => $_GET['project_id'] ?? '',
             'overall_status' => $_GET['status'] ?? '',
         ];
 
-        // Restrict to current user's requests if they are not an approver, or if they selected 'my_requests' tab
         if (!$isApprover || $activeTab === 'my_requests') {
-            $filters['created_by'] = $this->userId;
+            $filters['created_by'] = $userId;
         }
 
         $requests = $this->model->getExtraPurchases($filters);
-        
-        // Get projects
-        $projectsResult = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name");
-        $projects = $projectsResult ? $projectsResult->fetch_all(MYSQLI_ASSOC) : [];
-
-        // Get users
-        $usersResult = $this->db->query("SELECT id, full_name, email FROM users ORDER BY full_name");
-        $users = $usersResult ? $usersResult->fetch_all(MYSQLI_ASSOC) : [];
-
         $categories = $this->model->getProcurementCategories();
 
-        $this->view('phase2/asset-management/extra-purchases', [
-            'current_route'   => 'asset-extra-purchases',
-            'page_title'      => 'Office Procurement Requests',
-            'requests'        => $requests,
-            'projects'        => $projects,
-            'users'           => $users,
-            'categories'      => $categories,
-            'canCreate'       => true,
-            'isApprover'      => $isApprover,
-            'activeTab'       => $activeTab,
-            'isPurchaseHead'  => $isPurchaseHead,
-            'isQcAudit'       => $isQcAudit,
-            'isManagement'    => $isManagement,
-            'isAccounts'      => $isAccounts,
-            'isOperations'    => $isOperations,
-            'currentUserId'   => $this->userId,
-            'currentRoleId'   => $this->roleId,
-        ]);
-    }
-
-    /**
-     * Store new extra purchase request
-     */
-    public function storeExtraPurchase()
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
-            exit;
+        $departments = [];
+        $dRes = $this->db->query("SELECT id, name FROM departments ORDER BY name ASC");
+        if ($dRes) {
+            $departments = $dRes->fetch_all(MYSQLI_ASSOC);
         }
 
-        $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
-        $assetLocation = trim($_POST['asset_location'] ?? '');
-        $itemCategoryId = !empty($_POST['item_category_id']) ? (int)$_POST['item_category_id'] : null;
-        $itemName = trim($_POST['item_name'] ?? '');
-        $justification = trim($_POST['justification'] ?? '');
-
-        if (empty($itemName) || empty($justification) || empty($itemCategoryId)) {
-            setError('Item Category, Item name and justification are required.');
-            header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
-            exit;
+        $workplaces = [];
+        $wRes = $this->db->query("SELECT DISTINCT workplace FROM employees WHERE workplace IS NOT NULL AND workplace != '' ORDER BY workplace ASC");
+        if ($wRes) {
+            $workplaces = $wRes->fetch_all(MYSQLI_ASSOC);
         }
 
-        $attachment = null;
-        if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === 0) {
-            $attachment = $this->uploadFile($_FILES['attachment'], 'uploads/asset-purchases/');
+        $projects = [];
+        $pRes = $this->db->query("SELECT id, name FROM projects ORDER BY name ASC");
+        if ($pRes) {
+            $projects = $pRes->fetch_all(MYSQLI_ASSOC);
+        }
+
+        $users = [];
+        $uRes = $this->db->query("SELECT id, full_name FROM users ORDER BY full_name ASC");
+        if ($uRes) {
+            $users = $uRes->fetch_all(MYSQLI_ASSOC);
         }
 
         $data = [
-            'project_id'       => $projectId,
-            'asset_location'   => $assetLocation,
-            'assigned_to'      => !empty($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null,
-            'item_category_id' => $itemCategoryId,
-            'item_name'        => $itemName,
-            'quantity'         => (int)($_POST['quantity'] ?? 1),
-            'unit_price'       => (float)($_POST['unit_price'] ?? 0),
-            'justification'    => $justification,
-            'attachment'       => $attachment,
-            'requested_by'     => $this->userId,
+            'page_title'  => 'Asset Procurement & Extra Purchases',
+            'requests'    => $requests,
+            'categories'  => $categories,
+            'departments' => $departments,
+            'workplaces'  => $workplaces,
+            'projects'    => $projects,
+            'users'       => $users,
+            'isApprover'  => $isApprover,
+            'activeTab'   => $activeTab
         ];
+        $this->view('phase2/asset-management/extra-purchases', $data);
+    }
 
-        if ($this->model->createExtraPurchase($data)) {
-            setSuccess('Purchase request submitted successfully.');
-        } else {
-            setError('Failed to submit request.');
+    public function storeExtraPurchase()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = $_POST;
+            $data['requested_by'] = $_SESSION['user']['id'] ?? 1;
+            if ($this->model->createExtraPurchase($data)) {
+                setSuccess("Extra purchase request submitted.");
+            } else {
+                setError("Failed extra purchase submission.");
+            }
         }
-
-        header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
+        header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
         exit;
     }
 
-    /**
-     * Approve/reject at specific step
-     */
     public function approveExtraPurchase($id)
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
-            exit;
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $userId = (int)($_SESSION['user']['id'] ?? 1);
+            $step = $_POST['step'] ?? 'operations';
+            if ($step === 'management') {
+                $step = 'mgmt';
+            }
+            $status = $_POST['approval_status'] ?? $_POST['status'] ?? 'approved';
+            $note = $_POST['approval_note'] ?? $_POST['note'] ?? '';
+
+            $document = null;
+            if (isset($_FILES['purchase_head_document']) && $_FILES['purchase_head_document']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/procurement/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $filename = 'doc_' . time() . '_' . rand(1000, 9999) . '.' . pathinfo($_FILES['purchase_head_document']['name'], PATHINFO_EXTENSION);
+                if (move_uploaded_file($_FILES['purchase_head_document']['tmp_name'], $uploadDir . $filename)) {
+                    $document = 'uploads/procurement/' . $filename;
+                }
+            }
+
+            if ($this->model->approveStep($id, $step, $status, $userId, $note, $document)) {
+                // ====== AUTO POSTING GENERAL JOURNAL (Batch 2/3) ======
+                if ($status === 'approved') {
+                    try {
+                        require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
+                        $autoPosting = new \AutoPostingService($this->db);
+                        $assetExpenseAccId = $autoPosting->getAccountIdByCode('5220'); // Office & Asset Expense
+                        $vendorPayableAccId = $autoPosting->getAccountIdByCode('2110'); // Accounts Payable - Vendors
+                        
+                        $req = $this->model->findExtraPurchase($id);
+                        if ($req && (float)$req['total_price'] > 0) {
+                            $autoPosting->postAccrualEntry(
+                                'asset_procurement',
+                                $id,
+                                $assetExpenseAccId,
+                                $vendorPayableAccId,
+                                $req['total_price'],
+                                "Office Asset Procurement (PR-{$id}): " . $req['item_name'] . " (Qty: {$req['quantity']})",
+                                $req['project_id'],
+                                'vendor',
+                                $req['assigned_to'] ?? $req['requested_by'],
+                                $userId
+                            );
+                        }
+                    } catch (\Exception $e) {
+                        error_log("AutoPosting Exception (Procurement Approval): " . $e->getMessage());
+                    }
+                }
+                // ======================================================
+
+                setSuccess("Purchase request status updated successfully to: " . ucfirst($status));
+            } else {
+                setError("Failed request approval.");
+            }
         }
-
-        $id = (int)$id;
-        $request = $this->model->findExtraPurchase($id);
-        if (!$request) {
-            setError('Request not found.');
-            header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
-            exit;
-        }
-
-        $status = $_POST['approval_status'] ?? 'approved'; // 'approved' or 'rejected'
-        $note = $_POST['approval_note'] ?? '';
-
-        $isOperations = ($this->roleId == 20 || in_array($this->roleId, [1, 3]));
-        
-        // Determine which step based on current user role
-        $step = null;
-        if ($isOperations && $request['operations_status'] === 'pending') {
-            $step = 'operations';
-        } elseif ($this->isPurchaseHead() && $request['operations_status'] === 'approved' && $request['purchase_head_status'] === 'pending') {
-            $step = 'purchase_head';
-        } elseif ($this->isQcAudit() && $request['purchase_head_status'] === 'approved' && $request['qc_audit_status'] === 'pending') {
-            $step = 'qc_audit';
-        } elseif ($this->isManagement() && $request['qc_audit_status'] === 'approved' && $request['mgmt_status'] === 'pending') {
-            $step = 'mgmt';
-        }
-
-        if (!$step) {
-            setError('You cannot approve this request at this stage.');
-            header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
-            exit;
-        }
-
-        $document = null;
-        if ($step === 'purchase_head' && isset($_FILES['purchase_head_document']) && $_FILES['purchase_head_document']['error'] === 0) {
-            $document = $this->uploadFile($_FILES['purchase_head_document'], 'uploads/asset-purchases/');
-        }
-
-        if ($this->model->approveStep($id, $step, $status, $this->userId, $note, $document)) {
-            $actionText = $status === 'approved' ? 'approved' : 'rejected';
-            setSuccess("Request #{$id} {$actionText} successfully.");
-        } else {
-            setError('Failed to process approval.');
-        }
-
-        header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
+        header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
         exit;
     }
 
-    /**
-     * Process payment (Accounts)
-     */
     public function markPurchased($id)
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
-            exit;
-        }
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $userId = (int)($_SESSION['user']['id'] ?? 1);
+            $paymentMethod = $_POST['payment_method'] ?? 'Cash';
+            $paidAmount = (float)($_POST['paid_amount'] ?? 0);
 
-        $id = (int)$id;
-        $request = $this->model->findExtraPurchase($id);
-        if (!$request || $request['mgmt_status'] !== 'approved') {
-            setError('Request not approved by management yet.');
-            header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
-            exit;
-        }
+            $attachment = null;
+            if (isset($_FILES['payment_attachment']) && $_FILES['payment_attachment']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/procurement/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $filename = 'pay_' . time() . '_' . rand(1000, 9999) . '.' . pathinfo($_FILES['payment_attachment']['name'], PATHINFO_EXTENSION);
+                if (move_uploaded_file($_FILES['payment_attachment']['tmp_name'], $uploadDir . $filename)) {
+                    $attachment = 'uploads/procurement/' . $filename;
+                }
+            }
 
-        $paymentMethod = $_POST['payment_method'] ?? 'bank';
-        $paidAmount = (float)($_POST['paid_amount'] ?? 0);
-        $attachment = null;
-        if (isset($_FILES['payment_attachment']) && $_FILES['payment_attachment']['error'] === 0) {
-            $attachment = $this->uploadFile($_FILES['payment_attachment'], 'uploads/asset-payments/');
-        }
+            if ($this->model->processPayment($id, $userId, $paymentMethod, $paidAmount, $attachment)) {
+                // ====== AUTO POSTING PAYMENT VOUCHER (Batch 2/3) ======
+                try {
+                    require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
+                    $autoPosting = new \AutoPostingService($this->db);
+                    $vendorPayableAccId = $autoPosting->getAccountIdByCode('2110'); // Accounts Payable - Vendors
+                    $bankAccId = $autoPosting->getAccountIdByCode('1110-002');       // Cash / DBBL Bank
 
-        if ($this->model->processPayment($id, $this->userId, $paymentMethod, $paidAmount, $attachment)) {
-            setSuccess("Payment processed successfully. Waiting for Operations to confirm purchase.");
-        } else {
-            setError('Failed to process payment.');
-        }
+                    $req = $this->model->findExtraPurchase($id);
+                    $amountToPay = $paidAmount > 0 ? $paidAmount : ($req['total_price'] ?? 0);
 
-        header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
+                    if ($req && $amountToPay > 0) {
+                        $autoPosting->postDisbursementEntry(
+                            'asset_procurement',
+                            $id,
+                            $vendorPayableAccId,
+                            $bankAccId,
+                            $amountToPay,
+                            "Payment Disbursement for Office Asset Procurement (PR-{$id}): " . ($req['item_name'] ?? ''),
+                            $req['project_id'] ?? null,
+                            'vendor',
+                            $req['assigned_to'] ?? $req['requested_by'] ?? 1,
+                            $userId
+                        );
+                    }
+                } catch (\Exception $e) {
+                    error_log("AutoPosting Exception (Procurement Payment): " . $e->getMessage());
+                }
+                // =====================================================
+
+                setSuccess("Procurement marked as paid.");
+            } else {
+                setError("Failed procurement payment.");
+            }
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
         exit;
     }
 
-    /**
-     * Operations confirms purchase received → assets registered
-     */
     public function confirmPurchased($id)
     {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
-            exit;
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $userId = (int)($_SESSION['user']['id'] ?? 1);
+            $note = $_POST['purchase_note'] ?? $_POST['note'] ?? '';
+
+            $document = null;
+            if (isset($_FILES['purchase_document']) && $_FILES['purchase_document']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/procurement/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $filename = 'purch_' . time() . '_' . rand(1000, 9999) . '.' . pathinfo($_FILES['purchase_document']['name'], PATHINFO_EXTENSION);
+                if (move_uploaded_file($_FILES['purchase_document']['tmp_name'], $uploadDir . $filename)) {
+                    $document = 'uploads/procurement/' . $filename;
+                }
+            }
+
+            if ($this->model->confirmPurchased($id, $userId, $document, $note)) {
+                setSuccess("Procurement confirmed & added to Asset Inventory.");
+            } else {
+                setError("Failed procurement confirmation.");
+            }
         }
-
-        $id = (int)$id;
-        $request = $this->model->findExtraPurchase($id);
-        if (!$request || $request['payment_status'] !== 'paid' || $request['overall_status'] === 'purchased') {
-            setError('This request cannot be marked as purchased.');
-            header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
-            exit;
-        }
-
-        if (!($this->roleId == 20 || in_array($this->roleId, [1, 3]))) {
-            setError('Only Operations can mark this as purchased.');
-            header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
-            exit;
-        }
-
-        // Handle document upload
-        $document = null;
-        if (isset($_FILES['purchase_document']) && $_FILES['purchase_document']['error'] === 0) {
-            $document = $this->uploadFile($_FILES['purchase_document'], 'uploads/asset-purchases/');
-        }
-
-        $note = trim($_POST['purchase_note'] ?? '');
-        $returnAmount = (float)($_POST['return_amount'] ?? 0);
-        $returnNote = trim($_POST['return_note'] ?? '');
-        
-        $assignedTo = !empty($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null;
-        $location = trim($_POST['asset_location'] ?? '');
-
-        if ($this->model->confirmPurchased($id, $this->userId, $document, $note, $assignedTo, $location, $returnAmount, $returnNote)) {
-            setSuccess("Purchase confirmed! Asset(s) have been registered in All Assets.");
-        } else {
-            setError('Failed to confirm purchase.');
-        }
-
-        header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
+        header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
         exit;
     }
-    // =========================================================================
-    // CATEGORY CRUD
-    // =========================================================================
 
     public function storeProcurementCategory()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = trim($_POST['name'] ?? '');
-            if (!empty($name)) {
-                $this->model->addProcurementCategory($name);
-                setSuccess('Category added successfully.');
+            if ($name && $this->model->addProcurementCategory($name)) {
+                setSuccess("Category added.");
             } else {
-                setError('Category name cannot be empty.');
+                setError("Failed to add category.");
             }
         }
-        header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
+        header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
         exit;
     }
 
     public function updateProcurementCategory()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id = (int)($_POST['id'] ?? 0);
+            $id = (int)$_POST['id'];
             $name = trim($_POST['name'] ?? '');
-            if (!empty($name) && $id > 0) {
-                $this->model->updateProcurementCategory($id, $name);
-                setSuccess('Category updated successfully.');
+            if ($name && $this->model->updateProcurementCategory($id, $name)) {
+                setSuccess("Category updated.");
             } else {
-                setError('Invalid data provided.');
+                setError("Failed category update.");
             }
         }
-        header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
+        header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
         exit;
     }
 
     public function deleteProcurementCategory()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id = (int)($_POST['id'] ?? 0);
-            if ($id > 0) {
-                $this->model->deleteProcurementCategory($id);
-                setSuccess('Category deleted successfully.');
+            $id = (int)$_POST['id'];
+            if ($this->model->deleteProcurementCategory($id)) {
+                setSuccess("Category deleted.");
             } else {
-                setError('Invalid category ID.');
+                setError("Failed category deletion.");
             }
         }
-        header("Location: {$GLOBALS['base_url']}/asset-extra-purchases");
+        header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
         exit;
     }
 }

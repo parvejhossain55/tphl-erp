@@ -186,26 +186,29 @@ class LetterTemplateController extends Controller
             $body = ''; // No free-text body for salary certificate
         }
 
+        $letterDate = !empty($data['letter_date']) ? $data['letter_date'] : (!empty($data['sc_letter_date']) ? $data['sc_letter_date'] : date('Y-m-d'));
+        $refNumber  = !empty($data['ref_number']) ? $data['ref_number'] : (!empty($data['sc_ref_number']) ? $data['sc_ref_number'] : null);
+
         $saveData = [
             "employee_id"      => $data['employee_id'],
             "designation_id"   => $employee['designation_id'] ?? null,
             "department_id"    => $employee['department_id']  ?? null,
             "letter_type"      => $data['letter_type'],
             "template_id"      => (!empty($data['template_id'])) ? $data['template_id'] : null,
-            "subject"          => $data['subject'],
+            "subject"          => !empty($data['subject']) ? $data['subject'] : ($data['sc_subject'] ?? 'Salary Certificate'),
             "body"             => $body,
-            "letter_date"      => $data['letter_date'],
-            "ref_number"       => ($data['ref_number'] !== '')   ? $data['ref_number']   : null,
-            "joining_date"     => ($data['joining_date'] !== '') ? $data['joining_date'] : null,
+            "letter_date"      => $letterDate,
+            "ref_number"       => $refNumber,
+            "joining_date"     => (!empty($data['joining_date']))   ? $data['joining_date']   : null,
             "effective_date"   => (!empty($data['effective_date']))   ? $data['effective_date']   : null,
-            "current_salary"   => ($data['current_salary'] !== '')   ? $data['current_salary']   : null,
-            "revised_salary"   => ($data['revised_salary'] !== '')   ? $data['revised_salary']   : null,
-            "new_designation"  => ($data['new_designation'] !== '')  ? $data['new_designation']  : null,
-            "signatory_name"   => $data['signatory_name'],
-            "signatory_title"  => $data['signatory_title'],
-            "cc_email"         => ($data['cc_email'] !== '') ? $data['cc_email'] : null,
+            "current_salary"   => (!empty($data['current_salary']))   ? $data['current_salary']   : null,
+            "revised_salary"   => (!empty($data['revised_salary']))   ? $data['revised_salary']   : null,
+            "new_designation"  => (!empty($data['new_designation']))  ? $data['new_designation']  : null,
+            "signatory_name"   => $data['signatory_name']  ?? '',
+            "signatory_title"  => $data['signatory_title'] ?? '',
+            "cc_email"         => (!empty($data['cc_email'])) ? $data['cc_email'] : null,
             "send_to_email"    => (!empty($data['send_to_email'])) ? (int)$data['send_to_email'] : 0,
-            "status"           => $data['letter_status'],
+            "status"           => $data['letter_status']     ?? 'draft',
             "purpose"          => $data['purpose']           ?? null,
             "certificate_month"=> $data['certificate_month'] ?? null,
             "gross_salary"     => $data['gross_salary']      ?? null,
@@ -482,26 +485,30 @@ class LetterTemplateController extends Controller
             $body = '';
         }
 
+        $letterDate = !empty($data['letter_date']) ? $data['letter_date'] : (!empty($data['sc_letter_date']) ? $data['sc_letter_date'] : date('Y-m-d'));
+        $refNumber  = !empty($data['ref_number']) ? $data['ref_number'] : (!empty($data['sc_ref_number']) ? $data['sc_ref_number'] : null);
+        $subject    = !empty($data['subject']) ? $data['subject'] : ($data['sc_subject'] ?? 'Salary Certificate');
+
         $updateData = [
             "employee_id"      => $data['employee_id'],
-            "designation_id"   => $data['designation_id'],
-            "department_id"    => $data['department_id'],
+            "designation_id"   => $data['designation_id'] ?? null,
+            "department_id"    => $data['department_id']  ?? null,
             "letter_type"      => $data['letter_type'],
             "template_id"      => (!empty($data['template_id'])) ? $data['template_id'] : null,
-            "subject"          => $data['subject'],
+            "subject"          => $subject,
             "body"             => $body,
-            "letter_date"      => $data['letter_date'],
-            "ref_number"       => ($data['ref_number'] !== '')   ? $data['ref_number']   : null,
-            "joining_date"     => ($data['joining_date'] !== '') ? $data['joining_date'] : null,
+            "letter_date"      => $letterDate,
+            "ref_number"       => $refNumber,
+            "joining_date"     => (!empty($data['joining_date']))   ? $data['joining_date']   : null,
             "effective_date"   => (!empty($data['effective_date']))   ? $data['effective_date']   : null,
-            "current_salary"   => ($data['current_salary'] !== '')   ? $data['current_salary']   : null,
-            "revised_salary"   => ($data['revised_salary'] !== '')   ? $data['revised_salary']   : null,
-            "new_designation"  => ($data['new_designation'] !== '')  ? $data['new_designation']  : null,
-            "signatory_name"   => $data['signatory_name'],
-            "signatory_title"  => $data['signatory_title'],
-            "cc_email"         => ($data['cc_email'] !== '') ? $data['cc_email'] : null,
+            "current_salary"   => (!empty($data['current_salary']))   ? $data['current_salary']   : null,
+            "revised_salary"   => (!empty($data['revised_salary']))   ? $data['revised_salary']   : null,
+            "new_designation"  => (!empty($data['new_designation']))  ? $data['new_designation']  : null,
+            "signatory_name"   => $data['signatory_name']  ?? '',
+            "signatory_title"  => $data['signatory_title'] ?? '',
+            "cc_email"         => (!empty($data['cc_email'])) ? $data['cc_email'] : null,
             "send_to_email"    => (!empty($data['send_to_email'])) ? (int)$data['send_to_email'] : 0,
-            "status"           => $data['letter_status'],
+            "status"           => $data['letter_status']     ?? 'draft',
             "purpose"          => $data['purpose']           ?? null,
             "certificate_month"=> $data['certificate_month'] ?? null,
             "gross_salary"     => $data['gross_salary']      ?? null,

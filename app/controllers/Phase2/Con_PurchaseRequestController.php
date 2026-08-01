@@ -78,8 +78,8 @@ class Con_PurchaseRequestController extends Controller
         }
 
         // ── Project list based on role ────────────────────────────────────────
-        if (in_array($userRole, [1, 3, 17, 22, 23])) {
-            // Admin / Super Admin / Purchase Team Leader / PM Head / Purchase Executive → all projects
+        if (in_array($userRole, [1, 3, 17, 22, 23, 31])) {
+            // Admin / Super Admin / Purchase Team Leader / PM Head / Purchase Executive / Sr Purchase Executive → all projects
             $pResult  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name ASC");
             $projects = $pResult ? $pResult->fetch_all(MYSQLI_ASSOC) : [];
 

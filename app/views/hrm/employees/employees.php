@@ -53,8 +53,25 @@ $show_breadcrumb = true;
             </div>
         </div>
 
+        <!-- Workplace Filter -->
+        <div class="col-xxl-2 col-md-6 col-12">
+            <div class="card__wrapper">
+                <div class="from__input-box">
+                    <select class="form-control" name="workplace">
+                        <option value="">All Workplaces</option>
+                        <?php foreach ($workplaces ?? [] as $wp): ?>
+                            <option value="<?= htmlspecialchars($wp['workplace']) ?>"
+                                <?= ($selectedWorkplace ?? '') === $wp['workplace'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($wp['workplace']) ?>
+                            </option>
+                        <?php endforeach ?>
+                    </select>
+                </div>
+            </div>
+        </div>
+
         <!-- Submit -->
-        <div class="col-xxl-5 col-12">
+        <div class="col-xxl-3 col-12">
             <div class="card__wrapper">
                 <div class="d-flex align-items-stretch gap-15">
 

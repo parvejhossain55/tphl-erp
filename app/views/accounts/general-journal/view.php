@@ -35,9 +35,9 @@
         <div>
             <span class="text-muted fw-bold me-2">Voucher Type:</span> <?= htmlspecialchars($journal['voucher_type']) ?>
             <span class="mx-3 text-muted">|</span>
-            <span class="text-muted fw-bold me-2">Project:</span> <?= htmlspecialchars($journal['project_name'] ?: 'None') ?>
+            <span class="text-muted fw-bold me-2">Project:</span> <span class="badge bg-light text-dark border fw-bold"><?= htmlspecialchars($journal['project_name'] ?: 'Head Office / General') ?></span>
             <span class="mx-3 text-muted">|</span>
-            <span class="text-muted fw-bold me-2">Office:</span> <?= htmlspecialchars($journal['office'] ?: 'None') ?>
+            <span class="text-muted fw-bold me-2">Office:</span> <?= htmlspecialchars($journal['office'] ?: 'Corporate Office') ?>
         </div>
         <div>
             <?php 
@@ -63,9 +63,9 @@
                     <div>
                         <div class="fw-bold fs-5">General Journal</div>
                         <div class="small mt-1">
-                            <strong>Project:</strong> <?= htmlspecialchars($journal['project_name'] ?: 'None') ?>
+                            <strong>Project:</strong> <span class="fw-bold text-primary"><?= htmlspecialchars($journal['project_name'] ?: 'Head Office / General') ?></span>
                             <span class="mx-1">|</span> 
-                            <strong>Office:</strong> <?= htmlspecialchars($journal['office'] ?: 'None') ?>
+                            <strong>Office:</strong> <?= htmlspecialchars($journal['office'] ?: 'Corporate Office') ?>
                         </div>
                     </div>
                     <div class="text-end small">
@@ -113,14 +113,19 @@
                             <td class="text-center fw-bold pt-0 <?= $isFirstRow ? '' : 'border-top-0' ?>">
                                 <?= $isFirstRow ? $dateStr : '' ?>
                             </td>
-                            <td class="fw-bold px-3">
-                                <?= htmlspecialchars($row['parent_name'] ? $row['parent_name'] . ' > ' . $row['account_name'] : $row['account_name']) ?>
+                            <td class="px-3">
+                                <?php if(!empty($row['parent_name'])): ?>
+                                    <span class="text-muted small"><?= htmlspecialchars($row['parent_name']) ?> &gt; </span>
+                                <?php endif; ?>
+                                <strong class="text-dark fw-bolder fs-6 bg-light border px-2 py-1 rounded d-inline-block shadow-sm">
+                                    <i class="fa-solid fa-folder text-primary me-1"></i><?= htmlspecialchars($row['account_name']) ?>
+                                </strong>
                                 <?php if(!empty($row['narration'])): ?>
                                     <br><span class="fw-normal text-muted fst-italic ms-3">- <?= htmlspecialchars($row['narration']) ?></span>
                                 <?php endif; ?>
                             </td>
-                            <td class="text-center"><?= htmlspecialchars($row['account_code']) ?></td>
-                            <td class="text-end fw-bold px-3"><?= number_format($row['debit'], 2) ?></td>
+                            <td class="text-center fw-bold font-monospace text-dark"><?= htmlspecialchars($row['account_code']) ?></td>
+                            <td class="text-end fw-bold px-3 fs-6 text-dark"><?= number_format($row['debit'], 2) ?></td>
                             <td class="text-end"></td>
                         </tr>
                         <?php $isFirstRow = false; endforeach; ?>
@@ -132,14 +137,19 @@
                         <tr>
                             <td class="border-top-0"></td>
                             <td class="px-5">
-                                <?= htmlspecialchars($row['parent_name'] ? $row['parent_name'] . ' > ' . $row['account_name'] : $row['account_name']) ?>
+                                <?php if(!empty($row['parent_name'])): ?>
+                                    <span class="text-muted small"><?= htmlspecialchars($row['parent_name']) ?> &gt; </span>
+                                <?php endif; ?>
+                                <strong class="text-dark fw-bolder fs-6 bg-light border px-2 py-1 rounded d-inline-block shadow-sm">
+                                    <i class="fa-solid fa-folder text-info me-1"></i><?= htmlspecialchars($row['account_name']) ?>
+                                </strong>
                                 <?php if(!empty($row['narration'])): ?>
                                     <br><span class="text-muted fst-italic ms-3">- <?= htmlspecialchars($row['narration']) ?></span>
                                 <?php endif; ?>
                             </td>
-                            <td class="text-center"><?= htmlspecialchars($row['account_code']) ?></td>
+                            <td class="text-center fw-bold font-monospace text-dark"><?= htmlspecialchars($row['account_code']) ?></td>
                             <td class="text-end"></td>
-                            <td class="text-end fw-bold px-3"><?= number_format($row['credit'], 2) ?></td>
+                            <td class="text-end fw-bold px-3 fs-6 text-dark"><?= number_format($row['credit'], 2) ?></td>
                         </tr>
                         <?php endforeach; ?>
                         

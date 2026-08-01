@@ -24,27 +24,30 @@ class EmployeeController extends Controller
     // Employee List Page
     public function index()
     {
-        $searchTerm = $_GET['q'] ?? '';
+        $searchTerm       = $_GET['q'] ?? '';
         $departmentFilter = $_GET['department_id'] ?? '';
-        $teamFilter = $_GET['team_id'] ?? '';
-
+        $teamFilter       = $_GET['team_id'] ?? '';
+        $workplaceFilter  = $_GET['workplace'] ?? '';
 
         $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
-        $perPage = 10;
-        $offset = ($currentPage - 1) * $perPage;
+        $perPage     = 10;
+        $offset      = ($currentPage - 1) * $perPage;
 
         // Total employee count with filters
-        $totalEmployees = $this->employeeModel->countAll($searchTerm, $departmentFilter, $teamFilter);
-        $totalPages = ceil($totalEmployees / $perPage);
+        $totalEmployees = $this->employeeModel->countAll($searchTerm, $departmentFilter, $teamFilter, $workplaceFilter);
+        $totalPages     = ceil($totalEmployees / $perPage);
 
         // Get paginated employees with search & department filter
-        $employees = $this->employeeModel->getPaginated($perPage, $offset, $searchTerm, $departmentFilter, $teamFilter);
+        $employees = $this->employeeModel->getPaginated($perPage, $offset, $searchTerm, $departmentFilter, $teamFilter, $workplaceFilter);
 
         // Departments for filter dropdown
         $departments = $this->departmentModel->getAll();
 
         // Teams for filter dropdown
         $teams = $this->teamsModel->getAll();
+
+        // Workplaces for filter dropdown
+        $workplaces = $this->employeeModel->getUniqueWorkplaces();
 
         $this->view("hrm/employees/employees", [
             "current_route"      => "employee-lists",
@@ -56,9 +59,11 @@ class EmployeeController extends Controller
             "employees"          => $employees,
             "departments"        => $departments,
             "teams"              => $teams,
+            "workplaces"         => $workplaces,
             "searchTerm"         => $searchTerm,
             "selectedDepartment" => $departmentFilter,
-            "selectedTeam"       => $teamFilter
+            "selectedTeam"       => $teamFilter,
+            "selectedWorkplace"  => $workplaceFilter
         ]);
     }
 

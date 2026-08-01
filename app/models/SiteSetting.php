@@ -6,7 +6,8 @@ class SiteSetting extends Model
     {
         $stmt = $this->db->prepare("SELECT * FROM site_settings LIMIT 1");
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_assoc() : null;
     }
 
     public function create($data, $whiteLogoInput = 'white_logo', $darkLogoInput = 'dark_logo')
@@ -45,30 +46,54 @@ class SiteSetting extends Model
             body_code,
             created_by
         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    ");
+        ");
+
+        if (!$stmt) {
+            error_log("SiteSetting create prepare failed: " . $this->db->error);
+            return false;
+        }
+
+        $websiteTitle       = $data['website_title'] ?? '';
+        $phone              = $data['phone'] ?? '';
+        $altPhone           = $data['alt_phone'] ?? '';
+        $email              = $data['email'] ?? '';
+        $altEmail           = $data['alt_email'] ?? '';
+        $address            = $data['address'] ?? '';
+        $footerText         = $data['footer_text'] ?? '';
+        $copyright          = $data['copyright'] ?? '';
+        $facebookLink       = $data['facebook_link'] ?? '';
+        $messengerLink      = $data['messenger_link'] ?? '';
+        $instagramLink      = $data['instagram_link'] ?? '';
+        $tiktokLink         = $data['tiktok_link'] ?? '';
+        $xLink              = $data['x_link'] ?? '';
+        $youtubeLink        = $data['youtube_link'] ?? '';
+        $clientDeclaration  = $data['client_declaration'] ?? '';
+        $headerCode         = $data['header_code'] ?? '';
+        $bodyCode           = $data['body_code'] ?? '';
+        $createdBy          = !empty($data['created_by']) ? (int)$data['created_by'] : null;
 
         $stmt->bind_param(
-            "ssssssssssssssssssss",
-            $data['website_title'] ?? '',
+            "sssssssssssssssssssi",
+            $websiteTitle,
             $white_logo,
             $dark_logo,
-            $data['phone'] ?? '',
-            $data['alt_phone'] ?? '',
-            $data['email'] ?? '',
-            $data['alt_email'] ?? '',
-            $data['address'] ?? '',
-            $data['footer_text'] ?? '',
-            $data['copyright'] ?? '',
-            $data['facebook_link'] ?? '',
-            $data['messenger_link'] ?? '',
-            $data['instagram_link'] ?? '',
-            $data['tiktok_link'] ?? '',
-            $data['x_link'] ?? '',
-            $data['youtube_link'] ?? '',
-            $data['client_declaration'] ?? '',
-            $data['header_code'] ?? '',
-            $data['body_code'] ?? '',
-            $data['created_by'] ?? null
+            $phone,
+            $altPhone,
+            $email,
+            $altEmail,
+            $address,
+            $footerText,
+            $copyright,
+            $facebookLink,
+            $messengerLink,
+            $instagramLink,
+            $tiktokLink,
+            $xLink,
+            $youtubeLink,
+            $clientDeclaration,
+            $headerCode,
+            $bodyCode,
+            $createdBy
         );
 
         return $stmt->execute();
@@ -76,11 +101,12 @@ class SiteSetting extends Model
 
     public function update($id, $data, $whiteLogoInput = 'white_logo', $darkLogoInput = 'dark_logo')
     {
-        $existing = $this->getById($id);
+        $idInt = (int)$id;
+        $existing = $this->getById($idInt);
 
         // Default old logos
-        $white_logo = $existing['white_logo'];
-        $dark_logo  = $existing['dark_logo'];
+        $white_logo = $existing['white_logo'] ?? null;
+        $dark_logo  = $existing['dark_logo'] ?? null;
 
         // New white logo
         if (!empty($_FILES[$whiteLogoInput]['name'])) {
@@ -115,42 +141,67 @@ class SiteSetting extends Model
             body_code=?,
             created_by=?
         WHERE id=?
-    ");
+        ");
+
+        if (!$stmt) {
+            error_log("SiteSetting update prepare failed: " . $this->db->error);
+            return false;
+        }
+
+        $websiteTitle       = $data['website_title'] ?? '';
+        $phone              = $data['phone'] ?? '';
+        $altPhone           = $data['alt_phone'] ?? '';
+        $email              = $data['email'] ?? '';
+        $altEmail           = $data['alt_email'] ?? '';
+        $address            = $data['address'] ?? '';
+        $footerText         = $data['footer_text'] ?? '';
+        $copyright          = $data['copyright'] ?? '';
+        $facebookLink       = $data['facebook_link'] ?? '';
+        $messengerLink      = $data['messenger_link'] ?? '';
+        $instagramLink      = $data['instagram_link'] ?? '';
+        $tiktokLink         = $data['tiktok_link'] ?? '';
+        $xLink              = $data['x_link'] ?? '';
+        $youtubeLink        = $data['youtube_link'] ?? '';
+        $clientDeclaration  = $data['client_declaration'] ?? '';
+        $headerCode         = $data['header_code'] ?? '';
+        $bodyCode           = $data['body_code'] ?? '';
+        $createdBy          = !empty($data['created_by']) ? (int)$data['created_by'] : null;
 
         $stmt->bind_param(
             "sssssssssssssssssssii",
-            $data['website_title'] ?? '',
+            $websiteTitle,
             $white_logo,
             $dark_logo,
-            $data['phone'] ?? '',
-            $data['alt_phone'] ?? '',
-            $data['email'] ?? '',
-            $data['alt_email'] ?? '',
-            $data['address'] ?? '',
-            $data['footer_text'] ?? '',
-            $data['copyright'] ?? '',
-            $data['facebook_link'] ?? '',
-            $data['messenger_link'] ?? '',
-            $data['instagram_link'] ?? '',
-            $data['tiktok_link'] ?? '',
-            $data['x_link'] ?? '',
-            $data['youtube_link'] ?? '',
-            $data['client_declaration'] ?? '',
-            $data['header_code'] ?? '',
-            $data['body_code'] ?? '',
-            $data['created_by'] ?? null,
-            $id
+            $phone,
+            $altPhone,
+            $email,
+            $altEmail,
+            $address,
+            $footerText,
+            $copyright,
+            $facebookLink,
+            $messengerLink,
+            $instagramLink,
+            $tiktokLink,
+            $xLink,
+            $youtubeLink,
+            $clientDeclaration,
+            $headerCode,
+            $bodyCode,
+            $createdBy,
+            $idInt
         );
 
         return $stmt->execute();
     }
 
-
     public function getById($id)
     {
         $stmt = $this->db->prepare("SELECT * FROM site_settings WHERE id=? LIMIT 1");
-        $stmt->bind_param("i", $id);
+        $idInt = (int)$id;
+        $stmt->bind_param("i", $idInt);
         $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_assoc() : null;
     }
 }

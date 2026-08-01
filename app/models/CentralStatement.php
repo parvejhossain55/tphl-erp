@@ -1011,6 +1011,10 @@ private function getDailyBookingMoney($startDate, $endDate, $projectId = null)
         ";
 
         $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            error_log("Prepare failed in getDailyExpenseAdjustmentsCashin: " . $this->db->error);
+            return [];
+        }
         $stmt->bind_param("ss", $startDate, $endDate);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -1035,10 +1039,14 @@ private function getDailyBookingMoney($startDate, $endDate, $projectId = null)
             WHERE overall_status = 'purchased'
             AND return_amount > 0
             AND DATE(purchase_confirmed_at) BETWEEN ? AND ?
-            GROUP BY DATE(paid_at)
+            GROUP BY DATE(purchase_confirmed_at)
         ";
 
         $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            error_log("Prepare failed in getDailyProcurementReturnsCashin: " . $this->db->error);
+            return [];
+        }
         $stmt->bind_param("ss", $startDate, $endDate);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -1068,6 +1076,10 @@ private function getDailyBookingMoney($startDate, $endDate, $projectId = null)
         ";
 
         $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            error_log("Prepare failed in getDailyExpenseAdjustmentsCashout: " . $this->db->error);
+            return [];
+        }
         $stmt->bind_param("ss", $startDate, $endDate);
         $stmt->execute();
         $result = $stmt->get_result();

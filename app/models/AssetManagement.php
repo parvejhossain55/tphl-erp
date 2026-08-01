@@ -409,7 +409,9 @@ class AssetManagement
     {
         $sql = "SELECT pea.*, 
                        p.name AS project_name,
-                                              u_req.full_name AS requested_by_name,
+                       d.name AS department_name,
+                       COALESCE(NULLIF(e_req.workplace, ''), pea.asset_location) AS workplace_name,
+                       COALESCE(NULLIF(u_req.full_name, ''), u_req.email, 'System Admin') AS requested_by_name,
                        u_op.full_name AS operations_by_name,
                        u_ph.full_name AS purchase_head_by_name,
                        u_qc.full_name AS qc_audit_by_name,
@@ -421,7 +423,9 @@ class AssetManagement
                 FROM project_extra_assets pea
                 LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
                 LEFT JOIN projects p ON p.id = pea.project_id
-                                LEFT JOIN users u_req ON u_req.id = pea.requested_by
+                LEFT JOIN users u_req ON u_req.id = pea.requested_by
+                LEFT JOIN employees e_req ON e_req.user_id = u_req.id
+                LEFT JOIN departments d ON d.id = e_req.department_id
                 LEFT JOIN users u_op ON u_op.id = pea.operations_by
                 LEFT JOIN users u_ph ON u_ph.id = pea.purchase_head_by
                 LEFT JOIN users u_qc ON u_qc.id = pea.qc_audit_by
@@ -433,6 +437,19 @@ class AssetManagement
 
         $params = [];
         $types = '';
+
+        if (!empty($filters['department_id'])) {
+            $sql .= " AND e_req.department_id = ?";
+            $params[] = (int)$filters['department_id'];
+            $types .= 'i';
+        }
+
+        if (!empty($filters['workplace'])) {
+            $sql .= " AND (e_req.workplace = ? OR pea.asset_location = ?)";
+            $params[] = $filters['workplace'];
+            $params[] = $filters['workplace'];
+            $types .= 'ss';
+        }
 
         if (!empty($filters['project_id'])) {
             $sql .= " AND pea.project_id = ?";
@@ -456,6 +473,7 @@ class AssetManagement
 
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
+            error_log("Prepare failed in getExtraPurchases: " . $this->db->error);
             return [];
         }
         if ($params) {
@@ -497,27 +515,42 @@ class AssetManagement
      */
     public function createExtraPurchase($data)
     {
+        $projectId = !empty($data['project_id']) ? (int)$data['project_id'] : null;
+        $assetLocation = !empty($data['asset_location']) ? $data['asset_location'] : 'Head Office';
+        $assignedTo = !empty($data['assigned_to']) ? (int)$data['assigned_to'] : null;
+        $itemCategoryId = !empty($data['item_category_id']) ? (int)$data['item_category_id'] : 1;
+        $itemName = $data['item_name'] ?? 'Procurement Item';
+        $quantity = (int)($data['quantity'] ?? 1);
+        $unitPrice = (float)($data['unit_price'] ?? 0);
+        $totalPrice = $quantity * $unitPrice;
+        $justification = $data['justification'] ?? '';
+        $attachment = $data['attachment'] ?? null;
+        $requestedBy = (int)($data['requested_by'] ?? 1);
+
         $stmt = $this->db->prepare(
             "INSERT INTO project_extra_assets 
             (project_id, asset_location, assigned_to, item_category_id, item_name, quantity, unit_price, total_price, justification, attachment, requested_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
 
-        $totalPrice = $data['quantity'] * $data['unit_price'];
+        if (!$stmt) {
+            error_log("Prepare failed in createExtraPurchase: " . $this->db->error);
+            return false;
+        }
 
         $stmt->bind_param(
             'isiisiddssi',
-            $data['project_id'],
-            $data['asset_location'],
-            $data['assigned_to'],
-            $data['item_category_id'],
-            $data['item_name'],
-            $data['quantity'],
-            $data['unit_price'],
+            $projectId,
+            $assetLocation,
+            $assignedTo,
+            $itemCategoryId,
+            $itemName,
+            $quantity,
+            $unitPrice,
             $totalPrice,
-            $data['justification'],
-            $data['attachment'],
-            $data['requested_by']
+            $justification,
+            $attachment,
+            $requestedBy
         );
 
         if ($stmt->execute()) {
@@ -722,7 +755,18 @@ class AssetManagement
 
     public function addProcurementCategory($name)
     {
+        $this->db->query("
+            CREATE TABLE IF NOT EXISTS `office_procurement_categories` (
+              `id` int(11) NOT NULL AUTO_INCREMENT,
+              `name` varchar(255) NOT NULL,
+              `status` enum('active','inactive') DEFAULT 'active',
+              `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
         $stmt = $this->db->prepare("INSERT INTO office_procurement_categories (name) VALUES (?)");
+        if (!$stmt) return false;
         $stmt->bind_param('s', $name);
         return $stmt->execute();
     }
