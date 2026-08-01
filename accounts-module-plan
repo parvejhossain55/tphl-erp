@@ -1,0 +1,178 @@
+লেনদেনের ২-ধাপ লাইফসাইকেল উদাহরণ:
+১. ধাপ-১ (ম্যানেজমেন্ট এপ্রুভাল - Accrual Entry):
+
+সাইট থেকে ৳১,০০,০০ টাকার কনট্রাক্টর বিল বা সাপ্লায়ার মেটেরিয়াল বিল এপ্রুভ হলে:
+Debit: Construction WIP Expense / Material Inventory (খরচ/ইনভেন্টরি বৃদ্ধি)
+Credit: Accounts Payable - Contractor/Vendor (বকেয়া/দায় বৃদ্ধি)
+ফলাফল: অ্যাকাউন্টস টাকা না দেয়া পর্যন্ত এটি ব্যালেন্স শিটে বকেয়া (Liability) হিসেবে জমা থাকবে।
+২. ধাপ-২ (অ্যাকাউন্টস ডিসবার্সমেন্ট/ক্যাশ আউট - Cash Entry):
+
+অ্যাকাউন্টস টিম যখন ক্যাশ বা ব্যাংক চেকের মাধ্যমে বিলটি পরিশোধ করবে:
+Debit: Accounts Payable - Contractor/Vendor (বকেয়া/দায় হ্রাস)
+Credit: Cash / DBBL Bank Account (ক্যাশ/ব্যাংক মূলধন হ্রাস)
+ফলাফল: সিস্টেম স্বয়ংসক্রিয়ভাবে Payment Voucher / Debit Voucher জেনারেট করবে এবং Cash Flow ও Central Statement-এ ক্যাশ আউট রেকর্ড করবে।
+
+. ডাটাবেস মাইগ্রেশন কোড (Required SQL Queries & Table Alters)
+সিস্টেমে এক্রুয়াল ট্র্যাকিং ও স্ট্যান্ডার্ড COA চালুর জন্য নিচের SQL কমান্ডগুলো রান করতে হবে:
+
+sql
+
+-- ১. chart_of_accounts টেবিল আপডেট (৪-লেভেল হাইরার্কি ও রুট টাইপ)
+ALTER TABLE `chart_of_accounts` 
+ADD COLUMN `level` ENUM('main', 'sub', 'parent', 'ledger') NOT NULL DEFAULT 'ledger' AFTER `account_type`,
+ADD COLUMN `root_type` ENUM('asset', 'liability', 'equity', 'income', 'expense') NOT NULL AFTER `level`,
+ADD COLUMN `is_system_account` TINYINT(1) DEFAULT 0 COMMENT '1 for system code like 10% Service Fee',
+ADD COLUMN `project_id` INT NULL AFTER `parent_id`,
+ADD INDEX `idx_root_level` (`root_type`, `level`),
+ADD INDEX `idx_account_code` (`account_code`);
+-- ২. journals হেডারে ডিপার্টমেন্ট ও সোর্স ট্র্যাকিং
+ALTER TABLE `journals` 
+ADD COLUMN `source_module` VARCHAR(50) NULL COMMENT 'sales, payroll, requisition, contractor, vendor',
+ADD COLUMN `source_ref_id` INT NULL COMMENT 'FK to lead_payments, payslips, contractor_bill_requests etc.',
+ADD COLUMN `entry_type` ENUM('accrual', 'disbursement', 'adjustment') DEFAULT 'disbursement',
+ADD COLUMN `approval_status` ENUM('pending', 'approved', 'rejected') DEFAULT 'approved',
+ADD INDEX `idx_source` (`source_module`, `source_ref_id`);
+-- ৩. journal_details এ প্রজেক্ট ও কস্ট সেন্টার ট্র্যাকিং
+ALTER TABLE `journal_details`
+ADD COLUMN `project_id` INT NULL AFTER `account_id`,
+ADD COLUMN `party_type` VARCHAR(50) NULL COMMENT 'client, vendor, contractor, employee',
+ADD COLUMN `party_id` INT NULL COMMENT 'FK to leads, vendors, contractors, employees',
+ADD INDEX `idx_acc_proj` (`account_id`, `project_id`);
+-- ৪. একাউন্টিং ক্যাশ ফ্লো ক্যাটাগরি ম্যাপার টেবিল (নতুন টেবিল)
+CREATE TABLE IF NOT EXISTS `accounting_cash_flow_categories` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `account_id` INT NOT NULL,
+  `cash_flow_type` ENUM('operating', 'investing', 'financing') NOT NULL DEFAULT 'operating',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`account_id`) REFERENCES `chart_of_accounts`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+৩. ব্যাচ ও স্টেপভিত্তিক বাস্তবায়ন পরিকল্পনা (Step-by-Step Batch Plan)
+📦 BATCH 1: Database Migration & 4-Tier COA Engine (ডাটাবেস ও চার্ট অফ অ্যাকাউন্টস)
+Step 1.1: বর্ণিত SQL Alter কমান্ড রান করা।
+Step 1.2: ডিফল্ট Real Estate Chart of Accounts সীড (Seed) করা (Assets, Liabilities, Capital, Service Charge 10% Revenue, WIP Costs)।
+Step 1.3: 
+ChartOfAccount.php
+ মডেল ও 
+ChartOfAccountsController.php
+ ফিল্টার আপডেট করা যাতে নতুন ইউজার লেজার তৈরি করলে অটো-কোড এবং ক্যাটাগরি পপুলেট হয়।
+📦 BATCH 2: Core Auto-Posting Engine & Accrual Engine (অটো পোস্টিং সার্ভিস)
+Step 2.1: 
+AutoPostingService.php
+ নামের নতুন হেলপার লেয়ার তৈরি করা।
+Step 2.2: এক্রুয়াল পোস্টিং ফাংশন তৈরি (postAccrualEntry) - যা ব্যালেন্স শিটে বকেয়া (Payable/Receivable) রেকর্ড করবে।
+Step 2.3: ক্যাশ/ব্যাংক ক্যাশ-আউট পোস্টিং ফাংশন তৈরি (postDisbursementEntry) - যা ক্যাশ আউট করার পর দায় নীল করে ক্যাশ/ব্যাংক ক্রেডিট করবে এবং ভাউচার জেনারেট করবে।
+📦 BATCH 3: Departmental Auto-Triggers Integration (ডিপার্টমেন্টাল ইনটিগ্রেশন)
+Step 3.1: Sales & Collection Engine Integration (
+PaymentBookingController.php
+ / 
+AccountClientController.php
+)
+কাস্টমার বুকিং মানি + রেজিস্ট্রেশন ফি $\rightarrow$ Land Share Value Advance Account.
+কাস্টমার EMI কিস্তি পরিশোধ $\rightarrow$ ১০% কোম্পানি সার্ভিস চার্জ ইনকাম (P/L Revenue) এবং ৯০% ল্যান্ড/ইউনিট ডিপোজিট অটো-স্প্লিট পোস্টিং।
+Step 3.2: Payroll Engine Integration (
+PayrollController.php
+)
+পে-রোল এপ্রুভ $\rightarrow$ Accrual Entry (Salary Expense Dr, Payroll Payable Cr).
+পে-রোল ডিসবার্সমেন্ট $\rightarrow$ Payment Entry (Payroll Payable Dr, Bank Cr).
+Step 3.3: Construction Contractor & Material Purchase Integration (
+Phase2 Controllers
+)
+ইঞ্জিনিয়ার বা ম্যানেজমেন্ট কন্ট্রাক্টর বিল বা পারচেজ এপ্রুভ করলেই Accrual Payable এন্ট্রি।
+অ্যাকাউন্টস ভেন্ডর/কন্ট্রাক্টর পেমেন্ট ক্লিয়ার করলে ক্যাশ আউট ও পেমেন্ট ভাউচার প্রিন্ট।
+Step 3.4: Fund Requisitions Integration (
+FundRequisitionController.php
+)
+পেটিকাশ/অফিস রিকুইজিশন এপ্রুভাল ও পেআউট অটো পোস্টিং।
+📦 BATCH 4: Comprehensive Financial Statements Engine (রিপোর্টস ও আর্থিক বিবরণী)
+নতুন 
+FinancialReportController.php
+ মডিউলে অটোমেটিক রিয়েল-টাইম রিপোর্ট তৈরি:
+
+General Journal (জার্নাল ভাউচার রেজিস্টার): ডাবল এন্ট্রি ভাউচারের বিস্তারিত (JV, PV, RV, DV)।
+General Ledger (সাধারণ খতিয়ান): অ্যাকাউন্ট ও প্রজেক্ট ওয়াইজ রানিং ব্যালেন্স ও স্টেটমেন্ট।
+Trial Balance (রেওয়ামিল): ডেবিট ও ক্রেডিট যোগফলের নিখুঁত মেলবন্ধন।
+Profit & Loss / Income Statement (লাভ-ক্ষতি বিবরণী):
+Operating Revenue (10% Service Fee + Realized Land Sales + Misc Income)
+Direct Construction Expenses & Overhead
+Admin Expenses & Payroll
+Net Profit / Loss Calculation.
+Balance Sheet (উদ্বৃত্তপত্র):
+Current Assets (Cash & Bank) + Non-Current Assets + Construction WIP
+Liabilities (Client Deposits, Vendor & Contractor Payables, Accrued Payroll)
+Equity (Owner's Capital + Retained Earnings from P/L).
+Cash Flow Statement (ক্যাশ ফ্লো স্টেটমেন্ট):
+Operating Cash Flow, Investing Cash Flow, Financing Cash Flow.
+Central Cash & Bank Statement (সেন্ট্রাল ক্যাশ/ব্যাংক স্টেটমেন্ট):
+CentralStatement.php
+ মডেল সমন্বয় করে রিয়েলটাইম ব্যাংক ও ক্যাশ রেজিস্টার ইন্টিগ্রেশন।
+৪. প্রস্তাবিত নতুন ফাইল ও মডিউল
+[NEW] 
+AutoPostingService.php
+ডিপার্টমেন্টাল এপ্রুভাল ইভেন্ট থেকে স্বয়ংক্রিয় এক্রুয়াল ও ক্যাশ পোস্টিং হ্যান্ডলার।
+[NEW] 
+FinancialReportController.php
+P/L, Balance Sheet, Trial Balance, Cash Flow এবং Ledger জেনারেটর।
+[MODIFY] 
+ChartOfAccount.php
+৪-লেভেল ক্যাটাগরি হাইরার্কি ও রুট টাইপ সাপোর্টের জন্য মডেল আপডেট।
+[MODIFY] 
+CentralStatement.php
+সেন্ট্রাল স্টেটমেন্টে অটোমেটেড ডাবল এন্ট্রি জার্নাল ডাটা ইন্টিগ্রেশন।
+
+
+
+
+----------===================--------------===============
+১. মূল হিসাববিজ্ঞান সমীকরণ (Fundamental Accounting Equation)
+আন্তর্জাতিক নিয়ম অনুযায়ী ব্যবসার প্রধান সমীকরণটি হলো:
+
+$$\mathbf{Assets (সম্পদ) = Liabilities (দায়) + Equity (মূলধন)}$$
+
+আর লাভ-ক্ষতি (P/L) আয়-ব্যয় যুক্ত করলে সমীকরণটি দাঁড়ায়:
+
+$$\mathbf{Assets (১০00) + Expenses (৫০০০) = Liabilities (২০০০) + Equity (৩০০০) + Revenue (৪০০০)}$$
+
+২. ৫টি মূল ক্যাটাগরির সহজ ব্যাখ্যা ও রিয়েল এস্টেট উদাহরণ
+🔵 1000 Assets (সম্পদসমূহ) - [Debit Nature]
+সহজ ভাষায়: কোম্পানির নিজস্ব যা কিছু অর্থমূল্য বহন করে।
+রিয়েল এস্টেটে কী কী থাকে:
+ক্যাশ ও ব্যাংক ব্যালেন্স (Petty Cash, DBBL Bank Account)।
+Construction Work-In-Progress (WIP): প্রজেক্টে রড, সিমেন্ট, ইট বা কন্ট্রাক্টরকে যা দিচ্ছেন—প্রজেক্ট শেষ হওয়া পর্যন্ত তা কোম্পানির WIP Asset (নির্মাণাধীন সম্পদ) হিসেবে জমা থাকবে।
+🔴 2000 Liabilities (দায়সমূহ) - [Credit Nature]
+সহজ ভাষায়: কোম্পানি অন্যের কাছে যা ঋণী বা পরিশোধ করতে বাধ্য।
+রিয়েল এস্টেটে কী কী থাকে:
+Contractor/Vendor Payable: সাইটের বিল এপ্রুভ হয়েছে কিন্তু টাকা দেওয়া বাকি (বকেয়া দায়)।
+Client Advances (Land Share & Booking Deposit): কাস্টমারের থেকে ফ্ল্যাট বা ল্যান্ড শেয়ার বাবদ অগ্রিম নেওয়া টাকা (ফ্ল্যাট রেজিস্ট্রি বা হ্যান্ডওভার না হওয়া পর্যন্ত এটি কাস্টমারের কাছে কোম্পানির দায়)।
+🟢 3000 Equity (মালিকানাধীন মূলধন) - [Credit Nature]
+সহজ ভাষায়: কোম্পানির সমস্ত সম্পদ থেকে দায় বাদ দিলে মালিকদের নিজস্ব যা থাকে।
+রিয়েল এস্টেটে কী কী থাকে:
+Paid-up Capital: মালিকদের ব্যবসায় বিনিয়োগ করা নিজস্ব মূলধন।
+Retained Earnings: গত বছরগুলোর জমা হওয়া নিট লাভ।
+🟣 4000 Revenue (রাজস্ব ও অর্জিত আয়) - [Credit Nature]
+সহজ ভাষায়: ব্যবসা পরিচালনা করে কোম্পানির অর্জিত আসল আয়।
+রিয়েল এস্টেটে কী কী থাকে:
+Company 10% Service Fee Income: কাস্টমারের দেওয়া কিস্তি থেকে কোম্পানির অর্জিত ১০% সার্ভিস চার্জ আয় (যা সরাসরি P/L এ যাবে)।
+Recognized Flat Sales Revenue: প্রজেক্ট শেষে ফ্ল্যাট বুঝিয়ে দেওয়ার পর অর্জিত মূল রাজস্ব।
+🟡 5000 Expenses (ব্যয় ও অফিস খরচ) - [Debit Nature]
+সহজ ভাষায়: আয় করার জন্য ও অফিস চালানোর জন্য যে খরচগুলো সরাসরি হারিয়ে যায় (সম্পদে রূপান্তর হয় না)।
+রিয়েল এস্টেটে কী কী থাকে:
+Salaries Expense: অফিস স্টাফ ও হেড অফিসের বেতন।
+Admin Expense: অফিস ভাড়া, কারেন্ট বিল, মেহমানদারি খরচ।
+৩. প্র্যাকটিক্যাল লেনদেনে সমীকরণ কীভাবে সবসময় সমান থাকে?
+📌 উদাহরণ-১: একজন ক্লায়েন্ট কিস্তি বাবদ ৳১,০০,০০০ জমা দিলেন
+১. ক্যাশ/ব্যাংক বাড়ল (1000 Asset) $\rightarrow$ +৳১,০০,০০০ (Debit) ২. কোম্পানির ১০% সার্ভিস ফি আয় (4000 Revenue) $\rightarrow$ +৳১০,০০০ (Credit) ৩. গ্রাহকের ৯০% জমা অ্যাডভান্স (2000 Liability) $\rightarrow$ +৳৯০,০০০ (Credit)
+
+$$\text{সমীকরণ মিলকরণ: } \underbrace{\text{Asset (+1,00,000)}}{\text{বাম পাশ (Debit)}} = \underbrace{\text{Liability (+90,000)} + \text{Revenue (+10,000)}}{\text{ডান পাশ (Credit)}}$$
+
+📌 উদাহরণ-২: সাইট ইঞ্জিনিয়ার ৳৫০,০০০ টাকার কন্ট্রাক্টর বিল এপ্রুভ করলেন (Accrual Entry)
+১. কনস্ট্রাকশন WIP বাড়ল (1000 Asset WIP) $\rightarrow$ +৳৫০,০০০ (Debit) ২. কন্ট্রাক্টরের বকেয়া দায় বাড়ল (2000 Liability) $\rightarrow$ +৳৫০,০০০ (Credit)
+
+$$\text{সমীকরণ মিলকরণ: } \underbrace{\text{Asset WIP (+50,000)}}{\text{বাম পাশ (Debit)}} = \underbrace{\text{Liability Payable (+50,000)}}{\text{ডান পাশ (Credit)}}$$
+
+📌 উদাহরণ-৩: ব্যাংক থেকে উক্ত ৳৫০,০০০ টাকার বিল পরিশোধ করা হলো (Payment Cash Out)
+১. কন্ট্রাক্টরের বকেয়া কমাল (2000 Liability) $\rightarrow$ -৳৫০,০০০ (Debit) ২. ব্যাংক অ্যাকাউন্ট থেকে টাকা কমাল (1000 Asset) $\rightarrow$ -৳৫০,০০০ (Credit)
+
+$$\text{সমীকরণ মিলকরণ: } \underbrace{\text{Asset (-50,000)}}{\text{বাম পাশ (Debit)}} = \underbrace{\text{Liability (-50,000)}}{\text{ডান পাশ (Credit)}}$$
+
+এই বৈজ্ঞানিক নিয়মেই আপনার তৈরি হতে যাওয়া Trial Balance, Profit & Loss এবং Balance Sheet ১০০% নিখুঁত ও অডিটযোগ্য থাকবে!

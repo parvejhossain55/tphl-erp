@@ -40,11 +40,16 @@ class FinancialAccount extends Model
                       FROM cashout_requests $where ORDER BY created_at DESC";
             $res = $this->db->query($query);
             if ($res) while ($row = $res->fetch_assoc()) $data[] = $row;
-        } elseif ($type === 'vendor') {
+        } elseif ($type === 'vendor' || $type === 'procurement') {
             $where = $projectId ? "WHERE project_id = " . (int)$projectId : "";
             $query = "SELECT id as voucher_id, CONCAT('VP-', id) as voucher_no, created_at as entry_date, 
                              created_by as added_by, invoice_amount as amount, payment_type as narration, status 
-                      FROM vendor_payment_requests $where ORDER BY created_at DESC";
+                      FROM vendor_payment_requests $where 
+                      UNION ALL
+                      SELECT id as voucher_id, CONCAT('PR-', id) as voucher_no, created_at as entry_date,
+                             requested_by as added_by, total_price as amount, item_name as narration, overall_status as status
+                      FROM project_extra_assets $where
+                      ORDER BY entry_date DESC";
             $res = $this->db->query($query);
             if ($res) while ($row = $res->fetch_assoc()) $data[] = $row;
         } elseif ($type === 'contractor') {

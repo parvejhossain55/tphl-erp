@@ -142,7 +142,7 @@
                                     <label for="letter_date">Letter Date <span>*</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <input class="form-control" name="letter_date" id="letter_date" type="date" value="<?= htmlspecialchars($letter['letter_date']) ?>" required>
+                                    <input class="form-control" name="letter_date" id="letter_date" type="date" value="<?= htmlspecialchars((string)($letter['letter_date'] ?? '')) ?>" required>
                                 </div>
                             </div>
                         </div>
@@ -153,7 +153,7 @@
                                     <label for="ref_number">Reference Number <span class="text-muted">Optional</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <input class="form-control" name="ref_number" id="ref_number" type="text" placeholder="e.g. HR/2024/001" value="<?= htmlspecialchars($letter['ref_number']) ?>">
+                                    <input class="form-control" name="ref_number" id="ref_number" type="text" placeholder="e.g. HR/2024/001" value="<?= htmlspecialchars((string)($letter['ref_number'] ?? '')) ?>">
                                 </div>
                             </div>
                         </div>
@@ -164,7 +164,7 @@
                                     <label for="joining_date">Joining Date <span>*</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <input class="form-control" name="joining_date" id="joining_date" type="date" value="<?= htmlspecialchars($letter['joining_date']) ?>">
+                                    <input class="form-control" name="joining_date" id="joining_date" type="date" value="<?= htmlspecialchars((string)($letter['joining_date'] ?? '')) ?>">
                                 </div>
                             </div>
                         </div>
@@ -175,7 +175,7 @@
                                     <label for="effective_date">Effective Date <span class="text-muted">Optional</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <input class="form-control" name="effective_date" id="effective_date" type="date" value="<?= htmlspecialchars($letter['effective_date']) ?>">
+                                    <input class="form-control" name="effective_date" id="effective_date" type="date" value="<?= htmlspecialchars((string)($letter['effective_date'] ?? '')) ?>">
                                 </div>
                             </div>
                         </div>
@@ -183,7 +183,7 @@
 
                         <div class="col-lg-6">
                             <label>Subject *</label>
-                            <input type="text" name="subject" id="subject" class="form-control" value="<?= htmlspecialchars($letter['subject']) ?>" required>
+                            <input type="text" name="subject" id="subject" class="form-control" value="<?= htmlspecialchars((string)($letter['subject'] ?? '')) ?>" required>
                         </div>
 
                         <div class="col-lg-6">
@@ -205,7 +205,7 @@
                         <div class="col-md-12">
                             <label>Letter Body *</label>
                             <div class="from__input-box">
-                                <textarea class="form-control" id="tinymce_simple_textarea" name="letter_body" rows="4" placeholder="Enter key responsibilities..."><?= htmlspecialchars($letter['body']) ?></textarea>
+                                <textarea class="form-control" id="tinymce_simple_textarea" name="letter_body" rows="4" placeholder="Enter key responsibilities..."><?= htmlspecialchars((string)($letter['body'] ?? '')) ?></textarea>
                             </div>
                         </div>
 
@@ -226,7 +226,7 @@
                                     <label for="current_salary">Current Salary <span class="text-muted">Optional</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <input class="form-control" name="current_salary" id="current_salary" type="number" placeholder="e.g. 50000" value="<?= htmlspecialchars($letter['current_salary']) ?>">
+                                    <input class="form-control" name="current_salary" id="current_salary" type="number" placeholder="e.g. 50000" value="<?= htmlspecialchars((string)($letter['current_salary'] ?? '')) ?>">
                                 </div>
                             </div>
                         </div>
@@ -237,7 +237,7 @@
                                     <label for="revised_salary">Revised Salary <span class="text-muted">Optional</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <input class="form-control" name="revised_salary" id="revised_salary" type="number" placeholder="e.g. 60000" value="<?= htmlspecialchars($letter['revised_salary']) ?>">
+                                    <input class="form-control" name="revised_salary" id="revised_salary" type="number" placeholder="e.g. 60000" value="<?= htmlspecialchars((string)($letter['revised_salary'] ?? '')) ?>">
                                 </div>
                             </div>
                         </div>
@@ -248,7 +248,7 @@
                                     <label for="new_designation">New Position <span class="text-muted">Optional</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <input class="form-control" name="new_designation" id="new_designation" type="text" placeholder="e.g. Senior Engineer" value="<?= htmlspecialchars($letter['new_designation']) ?>">
+                                    <input class="form-control" name="new_designation" id="new_designation" type="text" placeholder="e.g. Senior Engineer" value="<?= htmlspecialchars((string)($letter['new_designation'] ?? '')) ?>">
                                 </div>
                             </div>
                         </div>
@@ -272,7 +272,7 @@
                                     <label for="signatory_name">Signed By <span>*</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <input class="form-control" name="signatory_name" id="signatory_name" type="text" placeholder="Full Name" value="<?= htmlspecialchars($letter['signatory_name']) ?>" required>
+                                    <input class="form-control" name="signatory_name" id="signatory_name" type="text" placeholder="Full Name" value="<?= htmlspecialchars((string)($letter['signatory_name'] ?? '')) ?>" required>
                                 </div>
                             </div>
                         </div>
@@ -283,7 +283,7 @@
                                     <label for="signatory_title">Designation / Title <span>*</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <input class="form-control" name="signatory_title" id="signatory_title" type="text" placeholder="e.g. Chief Executive Officer" value="<?= htmlspecialchars($letter['signatory_title']) ?>" required>
+                                    <input class="form-control" name="signatory_title" id="signatory_title" type="text" placeholder="e.g. Chief Executive Officer" value="<?= htmlspecialchars((string)($letter['signatory_title'] ?? '')) ?>" required>
                                 </div>
                             </div>
                         </div>
@@ -294,7 +294,7 @@
                                     <label for="cc_email">CC Email <span class="text-muted">Optional</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <input class="form-control" name="cc_email" id="cc_email" type="email" placeholder="e.g. hr@company.com" value="<?= htmlspecialchars($letter['cc_email']) ?>">
+                                    <input class="form-control" name="cc_email" id="cc_email" type="email" placeholder="e.g. hr@company.com" value="<?= htmlspecialchars((string)($letter['cc_email'] ?? '')) ?>">
                                 </div>
                             </div>
                         </div>

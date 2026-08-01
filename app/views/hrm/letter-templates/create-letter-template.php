@@ -258,7 +258,7 @@
                         <div class="col-lg-4">
                             <div class="from__input-box">
                                 <div class="form__input-title"><label>Letter Date <span>*</span></label></div>
-                                <div class="form__input"><input class="form-control" name="letter_date" id="sc_letter_date" type="date"></div>
+                                <div class="form__input"><input class="form-control" name="sc_letter_date" id="sc_letter_date" type="date"></div>
                             </div>
                         </div>
 
@@ -275,7 +275,7 @@
                         <div class="col-lg-4">
                             <div class="from__input-box">
                                 <div class="form__input-title"><label>Reference Number <span class="text-muted">Optional</span></label></div>
-                                <div class="form__input"><input class="form-control" name="ref_number" id="sc_ref_number" type="text" placeholder="TPHL/HR/Salary Certificate/June-2026"></div>
+                                <div class="form__input"><input class="form-control" name="sc_ref_number" id="sc_ref_number" type="text" placeholder="TPHL/HR/Salary Certificate/June-2026"></div>
                             </div>
                         </div>
 

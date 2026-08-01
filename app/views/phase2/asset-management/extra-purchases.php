@@ -2,6 +2,20 @@
 $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 $userId = (int)($_SESSION['user']['id'] ?? 0);
 
+$canCreate = true; // Enable New Request button for all logged in users
+
+// Approval Pipeline Role Permissions
+$isAdminOrMgmt = in_array($roleId, [1, 2, 3]);
+$isOperations = $isAdminOrMgmt || in_array($roleId, [6, 20, 22, 30]); // Operations Step 1
+$isPurchaseHead = $isAdminOrMgmt || in_array($roleId, [17, 23, 31]);  // Purchase Head / Sr Executive Step 2
+$isQcAudit = $isAdminOrMgmt || in_array($roleId, [24, 25]);          // QC & Internal Audit Step 3
+$isManagement = $isAdminOrMgmt;                                      // Management Step 4
+$isAccounts = $isAdminOrMgmt || in_array($roleId, [6, 30]);           // Accounts Payment
+
+// Approvers include Management, Operations, Purchase, QC/Audit, Accounts roles
+$isApprover = in_array($roleId, [1, 2, 3, 6, 17, 20, 22, 23, 24, 25, 30, 31]);
+$activeTab  = $_GET['tab'] ?? ($isApprover ? 'all_requests' : 'my_requests');
+
 $overallBadges = [
     'pending' => 'warning', 'in_review' => 'info', 'approved' => 'success',
     'rejected' => 'danger', 'purchased' => 'primary'
@@ -66,10 +80,10 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
         <div class="card-body border-bottom pb-0 pt-3 px-3">
             <ul class="nav nav-tabs mb-0 border-bottom-0">
                 <li class="nav-item">
-                    <a class="nav-link <?= $activeTab === 'my_requests' ? 'active' : '' ?>" href="?tab=my_requests<?= !empty($_GET['project_id']) ? '&project_id='.$_GET['project_id'] : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>">My Requests</a>
+                    <a class="nav-link <?= $activeTab === 'my_requests' ? 'active' : '' ?>" href="?tab=my_requests<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['workplace']) ? '&workplace='.urlencode($_GET['workplace']) : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>">My Requests</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <?= $activeTab === 'all_requests' ? 'active' : '' ?>" href="?tab=all_requests<?= !empty($_GET['project_id']) ? '&project_id='.$_GET['project_id'] : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>">All Requests</a>
+                    <a class="nav-link <?= $activeTab === 'all_requests' ? 'active' : '' ?>" href="?tab=all_requests<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['workplace']) ? '&workplace='.urlencode($_GET['workplace']) : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>">All Requests</a>
                 </li>
             </ul>
         </div>
@@ -82,12 +96,23 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                     <input type="hidden" name="tab" value="<?= htmlspecialchars($activeTab) ?>">
                 <?php endif; ?>
                 <div class="col-md-3">
-                    <label class="form-label fs-11 fw-semibold mb-1">Project</label>
-                    <select name="project_id" class="form-select form-select-sm">
-                        <option value="">All Projects</option>
-                        <?php foreach ($projects ?? [] as $proj): ?>
-                            <option value="<?= $proj['id'] ?>" <?= ($_GET['project_id'] ?? '') == $proj['id'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($proj['name']) ?>
+                    <label class="form-label fs-11 fw-semibold mb-1">Department</label>
+                    <select name="department_id" class="form-select form-select-sm">
+                        <option value="">All Departments</option>
+                        <?php foreach ($departments ?? [] as $dept): ?>
+                            <option value="<?= $dept['id'] ?>" <?= ($_GET['department_id'] ?? '') == $dept['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($dept['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fs-11 fw-semibold mb-1">Workplace</label>
+                    <select name="workplace" class="form-select form-select-sm">
+                        <option value="">All Workplaces</option>
+                        <?php foreach ($workplaces ?? [] as $wp): ?>
+                            <option value="<?= htmlspecialchars($wp['workplace']) ?>" <?= ($_GET['workplace'] ?? '') === $wp['workplace'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($wp['workplace']) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -103,7 +128,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                         <option value="purchased" <?= ($_GET['status'] ?? '') === 'purchased' ? 'selected' : '' ?>>Purchased</option>
                     </select>
                 </div>
-                <div class="col-md-3 mt-2 d-flex gap-2">
+                <div class="col-md-4 mt-2 d-flex gap-2">
                     <button type="submit" class="btn btn-primary btn-sm flex-fill"><i class="fa-solid fa-filter me-1"></i> Filter</button>
                     <a href="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases" class="btn btn-light btn-sm flex-fill text-center"><i class="fa-solid fa-arrows-rotate"></i> Reset</a>
                 </div>
@@ -142,7 +167,13 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                 <tr>
                                     <td class="fw-semibold">#<?= $r['id'] ?></td>
                                     <td class="fs-12"><?= date('d M Y', strtotime($r['created_at'])) ?></td>
-                                    <td class="fs-12 fw-semibold"><?= htmlspecialchars($r['project_name'] ?? '—') ?></td>
+                                    <td class="fs-12">
+                                        <?php if (!empty($r['project_name'])): ?>
+                                            <span class="fw-semibold"><?= htmlspecialchars($r['project_name']) ?></span>
+                                        <?php else: ?>
+                                            <span class="badge bg-light text-secondary border fs-11"><i class="fa-solid fa-building me-1"></i><?= htmlspecialchars(!empty($r['workplace_name']) ? $r['workplace_name'] : 'Head Office') ?></span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <span class="fs-12 fw-semibold"><?= htmlspecialchars($r['item_name']) ?></span>
                                         <?php if (!empty($r['category_name'])): ?>
@@ -156,7 +187,14 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             <br><small class="text-success fs-10">Paid: <?= number_format($r['paid_amount'], 2) ?></small>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="fs-12"><?= htmlspecialchars($r['requested_by_name'] ?? '—') ?></td>
+                                    <td class="fs-12">
+                                        <div class="fw-semibold text-dark"><?= htmlspecialchars(!empty($r['requested_by_name']) ? $r['requested_by_name'] : 'System Admin') ?></div>
+                                        <?php if (!empty($r['workplace_name'])): ?>
+                                            <small class="text-muted fs-11 d-block"><i class="fa-solid fa-location-dot me-1 text-primary"></i><?= htmlspecialchars($r['workplace_name']) ?></small>
+                                        <?php elseif (!empty($r['department_name'])): ?>
+                                            <small class="text-muted fs-11 d-block"><i class="fa-solid fa-building me-1 text-info"></i><?= htmlspecialchars($r['department_name']) ?></small>
+                                        <?php endif; ?>
+                                    </td>
                                     <!-- Step 0: Operations -->
                                     <td class="text-center">
                                         <?php
@@ -380,7 +418,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0">
-                <div class="p-3 bg-light border-bottom">
+                <div class="p-3  border-bottom">
                     <form action="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/category/store" method="POST" class="row gx-2 align-items-center">
                         <div class="col">
                             <input type="text" name="name" class="form-control form-control-sm" placeholder="New Category Name" required>

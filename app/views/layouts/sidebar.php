@@ -1324,8 +1324,15 @@
                     <li class="slide <?= isActive('financial-dashboard', $current_route) ?>">
                         <a href="<?= $base_url ?>/financial-dashboard"
                             class="sidebar__menu-item <?= isActive('financial-dashboard', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
-                            <span class="sidebar__menu-label">Project Expense</span>
+                            <div class="side-menu__icon"><i class="fa-solid fa-file-invoice-dollar text-success"></i></div>
+                            <span class="sidebar__menu-label">Accounts & Financial Hub</span>
+                        </a>
+                    </li>
+                    <li class="slide <?= isActive('accounts/coa', $current_route) ?>">
+                        <a href="<?= $base_url ?>/accounts/coa"
+                            class="sidebar__menu-item <?= isActive('accounts/coa', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-sitemap text-info"></i></div>
+                            <span class="sidebar__menu-label">Chart of Accounts (COA)</span>
                         </a>
                     </li>
                     <?php if (!$isManagement): ?>

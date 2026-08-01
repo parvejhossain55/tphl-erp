@@ -461,6 +461,35 @@ class FundRequisitionController extends Controller {
 
         if ($stmt->execute()) {
             $this->syncApprovalRequest($id);
+
+            // ====== AUTO POSTING JOURNAL ENTRY (Batch 2/3) ======
+            if ($status === 'approved') {
+                try {
+                    require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
+                    $autoService = new \AutoPostingService($this->db);
+                    $officeExpenseAccId = $autoService->getAccountIdByCode('5220');
+                    $salaryPayableAccId = $autoService->getAccountIdByCode('2130');
+                    $frData = $this->db->query("SELECT * FROM fund_requisitions WHERE id = {$id}")->fetch_assoc();
+                    if ($frData && (float)$frData['amount'] > 0) {
+                        $autoService->postAccrualEntry(
+                            'fund_requisition',
+                            $id,
+                            $officeExpenseAccId,
+                            $salaryPayableAccId,
+                            $frData['amount'],
+                            "Fund Requisition (FR-{$id}): " . ($frData['purpose'] ?: 'Operational Expense'),
+                            $frData['project_id'],
+                            'employee',
+                            $frData['requested_by'],
+                            $approved_by
+                        );
+                    }
+                } catch (\Exception $e) {
+                    error_log("AutoPosting Exception (Fund Requisition Approve): " . $e->getMessage());
+                }
+            }
+            // ====================================================
+
             setSuccess("Requisition status updated to: " . $status);
         } else {
             setError("Failed to update requisition: " . $this->db->error);
@@ -513,6 +542,35 @@ class FundRequisitionController extends Controller {
 
         if ($stmt->execute()) {
             $this->syncApprovalRequest($id);
+
+            // ====== AUTO POSTING DISBURSEMENT VOUCHER (Batch 2/3) ======
+            if ($status === 'paid') {
+                try {
+                    require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
+                    $autoService = new \AutoPostingService($this->db);
+                    $bankAccId = $autoService->getAccountIdByCode('1110-002');
+                    $salaryPayableAccId = $autoService->getAccountIdByCode('2130');
+                    $frData = $this->db->query("SELECT * FROM fund_requisitions WHERE id = {$id}")->fetch_assoc();
+                    if ($frData && (float)$frData['amount'] > 0) {
+                        $autoService->postDisbursementEntry(
+                            'fund_requisition',
+                            $id,
+                            $salaryPayableAccId,
+                            $bankAccId,
+                            $frData['amount'],
+                            "Payment Disbursement for Fund Requisition (FR-{$id})",
+                            $frData['project_id'],
+                            'employee',
+                            $frData['requested_by'],
+                            $paid_by
+                        );
+                    }
+                } catch (\Exception $e) {
+                    error_log("AutoPosting Exception (Fund Requisition Pay): " . $e->getMessage());
+                }
+            }
+            // ==========================================================
+
             setSuccess("Requisition payment status updated to: " . $status);
         } else {
             setError("Failed to update payment status: " . $this->db->error);

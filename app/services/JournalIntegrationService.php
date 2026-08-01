@@ -458,11 +458,18 @@ class JournalIntegrationService
         return $this->journalModel->storeJournal($headerData, $details, $userId);
     }
 
-    // Helper to find COA ID by standard code
+    // Helper to find COA ID by standard code or fallback prefix
     private function getAccountIdByCode($code)
     {
-        $stmt = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE account_code = ?");
+        $stmt = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE account_code = ? LIMIT 1");
         $stmt->bind_param('s', $code);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        if ($res) return (int)$res['id'];
+
+        $like = $code . '%';
+        $stmt = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE account_code LIKE ? ORDER BY account_code ASC LIMIT 1");
+        $stmt->bind_param('s', $like);
         $stmt->execute();
         $res = $stmt->get_result()->fetch_assoc();
         return $res ? (int)$res['id'] : null;

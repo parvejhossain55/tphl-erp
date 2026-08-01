@@ -3,92 +3,186 @@
 ?>
 
 <div class="container-fluid mt-4">
+    <!-- Header Area -->
     <div class="row mb-4 align-items-center">
         <div class="col-md-6">
-            <h2 class="mb-0">
-                <i class="fa-light fa-sitemap"></i> Chart of Accounts
+            <h2 class="mb-1 text-dark fw-bold">
+                <i class="fa-solid fa-sitemap text-primary me-2"></i> Chart of Accounts
             </h2>
-            <p class="text-muted">Manage main categories and sub-accounts dynamically.</p>
+            <p class="text-muted mb-0">Standard 4-Tier Real Estate General Ledger Accounts Hierarchy (Assets, Liabilities, Equity, Revenue, Expenses)</p>
         </div>
         <div class="col-md-6 text-end">
             <a href="<?= $base_url ?>/financial-dashboard" class="btn btn-outline-secondary me-2">
-                <i class="fa-light fa-arrow-left"></i> Back to Dashboard
+                <i class="fa-light fa-arrow-left me-1"></i> Back to Dashboard
             </a>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">
-                <i class="fa-light fa-plus"></i> Add Account
+            <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#addAccountModal">
+                <i class="fa-light fa-plus me-1"></i> Add New Account
             </button>
         </div>
     </div>
 
-    <div class="alert alert-info shadow-sm mb-4">
-        <h5 class="alert-heading"><i class="fa-light fa-book-open"></i> Service Manual: Chart of Accounts (Real Estate Standard)</h5>
-        <p class="mb-1">This page manages the foundational GL (General Ledger) accounts for the entire double-entry accounting system. All operational modules automatically post debits and credits here based on the account structure.</p>
-        <hr>
-        <p class="mb-0"><strong>Standard Hierarchy Guide:</strong></p>
-        <ul class="mb-0">
-            <li><strong>1000 Assets:</strong> Bank/Cash, Receivables, and <strong>Construction Work-in-Progress (WIP)</strong>. All project-tagged expenses are capitalized to WIP.</li>
-            <li><strong>2000 Liabilities:</strong> Accounts Payable (Vendors/Contractors/Employees) and Customer Advances (Unearned Revenue).</li>
-            <li><strong>3000 Equity:</strong> Owner's capital and Retained Earnings.</li>
-            <li><strong>4000 Revenue:</strong> Recognized only when a flat is handed over (transferred from Customer Advances).</li>
-            <li><strong>5000 COGS:</strong> Cost of Goods Sold (transferred from WIP upon project handover).</li>
-            <li><strong>6000 Expenses:</strong> Head Office operations, salaries, and non-project marketing costs.</li>
-        </ul>
+    <!-- Quick Info Cards -->
+    <div class="row mb-4">
+        <div class="col-md-20 col-sm-6" style="width: 20%;">
+            <div class="card border-0 shadow-sm bg-primary text-white p-3 rounded-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-white-50 text-uppercase fw-bold">1000 Assets</small>
+                        <h5 class="mb-0 fw-bold">সম্পদসমূহ</h5>
+                    </div>
+                    <i class="fa-light fa-building-columns fa-2x text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-20 col-sm-6" style="width: 20%;">
+            <div class="card border-0 shadow-sm bg-danger text-white p-3 rounded-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-white-50 text-uppercase fw-bold">2000 Liabilities</small>
+                        <h5 class="mb-0 fw-bold">দায়সমূহ</h5>
+                    </div>
+                    <i class="fa-light fa-scale-unbalanced fa-2x text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-20 col-sm-6" style="width: 20%;">
+            <div class="card border-0 shadow-sm bg-success text-white p-3 rounded-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-white-50 text-uppercase fw-bold">3000 Equity</small>
+                        <h5 class="mb-0 fw-bold">মূলধন</h5>
+                    </div>
+                    <i class="fa-light fa-coins fa-2x text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-20 col-sm-6" style="width: 20%;">
+            <div class="card border-0 shadow-sm bg-info text-white p-3 rounded-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-white-50 text-uppercase fw-bold">4000 Revenue</small>
+                        <h5 class="mb-0 fw-bold">রাজস্ব ও ইনকাম</h5>
+                    </div>
+                    <i class="fa-light fa-chart-line-up fa-2x text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-20 col-sm-6" style="width: 20%;">
+            <div class="card border-0 shadow-sm bg-warning text-dark p-3 rounded-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-dark-50 text-uppercase fw-bold">5000 Expenses</small>
+                        <h5 class="mb-0 fw-bold">ব্যয় ও খরচ</h5>
+                    </div>
+                    <i class="fa-light fa-file-invoice-dollar fa-2x text-dark-50"></i>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- Alert Messages -->
     <?php if (isset($_SESSION['success'])): ?>
-        <div class="alert alert-success alert-dismissible fade show">
-            <?= htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?>
+        <div class="alert alert-success alert-dismissible fade show shadow-sm">
+            <i class="fa-light fa-check-circle me-2"></i> <?= htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <?php endif; ?>
 
     <?php if (isset($_SESSION['error'])): ?>
-        <div class="alert alert-danger alert-dismissible fade show">
-            <?= htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm">
+            <i class="fa-light fa-exclamation-circle me-2"></i> <?= htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <?php endif; ?>
 
-    <div class="card shadow-sm border-0">
+    <!-- Main Table Card -->
+    <div class="card shadow-sm border-0 rounded-3">
         <div class="card-body p-4">
             <div class="table-responsive">
-                <table class="table table-hover table-striped align-middle" id="coaTable">
+                <table class="table table-hover table-bordered align-middle" id="coaTable">
                     <thead class="table-light">
                         <tr>
-                            <th>Account Code</th>
-                            <th>Main Category</th>
-                            <th>Sub Category</th>
-                            <th>Account Type</th>
-                            <th>Status</th>
-                            <th class="text-end">Actions</th>
+                            <th style="width: 120px;">Code</th>
+                            <th>Account Name</th>
+                            <th style="width: 110px;">Level</th>
+                            <th style="width: 110px;">Type</th>
+                            <th>Parent Account</th>
+                            <th style="width: 100px;">Status</th>
+                            <th class="text-end" style="width: 100px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($accounts as $acc): ?>
-                        <tr>
-                            <td><strong><?= htmlspecialchars($acc['account_code']) ?></strong></td>
+                        <?php foreach ($accounts as $acc): 
+                            $level = $acc['level'] ?? 'ledger';
+                            $rootType = strtolower($acc['root_type'] ?? $acc['account_type']);
                             
-                            <?php if (empty($acc['parent_id'])): // It's a Main Category ?>
-                                <td><span class="fw-bold text-primary"><?= htmlspecialchars($acc['account_name']) ?></span></td>
-                                <td><span class="text-muted">-</span></td>
-                            <?php else: // It's a Sub Category ?>
-                                <td><span class="text-muted"><?= htmlspecialchars($acc['parent_name']) ?></span></td>
-                                <td><span class="fw-bold"><?= htmlspecialchars($acc['account_name']) ?></span></td>
-                            <?php endif; ?>
+                            $levelBadge = match($level) {
+                                'main' => '<span class="badge bg-primary px-2 py-1"><i class="fa-solid fa-folder me-1"></i>MAIN</span>',
+                                'sub' => '<span class="badge bg-info text-dark px-2 py-1"><i class="fa-solid fa-folder-open me-1"></i>SUB</span>',
+                                'parent' => '<span class="badge bg-warning text-dark px-2 py-1"><i class="fa-solid fa-sitemap me-1"></i>PARENT</span>',
+                                default => '<span class="badge bg-secondary px-2 py-1"><i class="fa-solid fa-file me-1"></i>LEDGER</span>'
+                            };
 
-                            <td><span class="badge bg-secondary"><?= htmlspecialchars($acc['account_type']) ?></span></td>
+                            $typeBadge = match($rootType) {
+                                'asset' => '<span class="badge bg-primary text-white">Asset</span>',
+                                'liability' => '<span class="badge bg-danger text-white">Liability</span>',
+                                'equity' => '<span class="badge bg-success text-white">Equity</span>',
+                                'income', 'revenue' => '<span class="badge bg-info text-dark">Revenue</span>',
+                                'expense' => '<span class="badge bg-warning text-dark">Expense</span>',
+                                default => '<span class="badge bg-dark">'.ucfirst($rootType).'</span>'
+                            };
+                            
+                            $indent = match($level) {
+                                'main' => 'fw-bold text-primary fs-6',
+                                'sub' => 'ps-3 fw-bold text-dark',
+                                'parent' => 'ps-4 text-dark',
+                                default => 'ps-5 text-secondary'
+                            };
+                        ?>
+                        <tr>
                             <td>
-                                <?php if($acc['status'] == 'active'): ?>
-                                    <span class="badge bg-success">Active</span>
+                                <span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-6">
+                                    <?= htmlspecialchars($acc['account_code']) ?>
+                                </span>
+                            </td>
+                            <td>
+                                <div class="<?= $indent ?>">
+                                    <?= htmlspecialchars($acc['account_name']) ?>
+                                    <?php if (!empty($acc['is_system_account'])): ?>
+                                        <span class="badge bg-light text-primary border ms-2" style="font-size: 10px;" title="System Protected Account">
+                                            <i class="fa-solid fa-shield-halved me-1"></i>System
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                            <td><?= $levelBadge ?></td>
+                            <td><?= $typeBadge ?></td>
+                            <td>
+                                <?php if (!empty($acc['parent_name'])): ?>
+                                    <small class="text-muted">
+                                        <i class="fa-light fa-level-up me-1"></i>
+                                        <strong>[<?= htmlspecialchars($acc['parent_code'] ?? '') ?>]</strong> <?= htmlspecialchars($acc['parent_name']) ?>
+                                    </small>
                                 <?php else: ?>
-                                    <span class="badge bg-danger">Inactive</span>
+                                    <span class="text-muted small">-</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($acc['status'] === 'active'): ?>
+                                    <span class="badge bg-success-subtle text-success border border-success px-2 py-1">Active</span>
+                                <?php else: ?>
+                                    <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1">Inactive</span>
                                 <?php endif; ?>
                             </td>
                             <td class="text-end">
-                                <button type="button" class="btn btn-sm btn-outline-info" 
-                                    onclick='openEditModal(<?= json_encode($acc) ?>)'>
-                                    <i class="fa-light fa-edit"></i> Edit
-                                </button>
+                                <?php if (empty($acc['is_system_account'])): ?>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                        onclick='openEditModal(<?= json_encode($acc) ?>)'>
+                                        <i class="fa-light fa-pen-to-square"></i> Edit
+                                    </button>
+                                <?php else: ?>
+                                    <span class="badge bg-light text-muted border"><i class="fa-solid fa-lock me-1"></i>Locked</span>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -103,64 +197,76 @@
 <div class="modal fade" id="addAccountModal" tabindex="-1">
     <div class="modal-dialog">
         <form action="<?= $base_url ?>/accounts/coa/store" method="POST">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add New Account</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fa-light fa-plus-circle me-1"></i> Add New Chart of Account</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Category Level</label><br>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="level_add" id="levelMainAdd" value="main" checked>
-                            <label class="form-check-label" for="levelMainAdd">Main Category</label>
+                        <label class="form-label fw-bold">1. Account Level</label><br>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="level_add" id="levelMainAdd" value="main">
+                            <label class="btn btn-outline-primary btn-sm" for="levelMainAdd">Main</label>
+
+                            <input type="radio" class="btn-check" name="level_add" id="levelSubAdd" value="sub">
+                            <label class="btn btn-outline-primary btn-sm" for="levelSubAdd">Sub</label>
+
+                            <input type="radio" class="btn-check" name="level_add" id="levelParentAdd" value="parent">
+                            <label class="btn btn-outline-primary btn-sm" for="levelParentAdd">Parent</label>
+
+                            <input type="radio" class="btn-check" name="level_add" id="levelLedgerAdd" value="ledger" checked>
+                            <label class="btn btn-outline-primary btn-sm" for="levelLedgerAdd">Ledger (Child)</label>
                         </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="level_add" id="levelSubAdd" value="sub">
-                            <label class="form-check-label" for="levelSubAdd">Sub Category</label>
-                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Account Code *</label>
-                        <input type="text" class="form-control" name="account_code" required placeholder="e.g. 1020">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Account Name *</label>
-                        <input type="text" class="form-control" name="account_name" required placeholder="e.g. Petty Cash">
-                    </div>
-                    <div class="mb-3" id="typeGroupAdd">
-                        <label class="form-label">Account Type *</label>
-                        <select class="form-select" name="account_type" id="typeSelectAdd" required>
-                            <option value="">-- Select Type --</option>
-                            <option value="Asset">Asset</option>
-                            <option value="Liability">Liability</option>
-                            <option value="Equity">Equity</option>
-                            <option value="Revenue">Revenue</option>
-                            <option value="Expense">Expense</option>
-                        </select>
-                    </div>
-                    <div class="mb-3" id="parentGroupAdd" style="display: none;">
-                        <label class="form-label">Parent (Main Category) *</label>
-                        <select class="form-select" name="parent_id" id="parentSelectAdd">
-                            <option value="">-- Select Main Category --</option>
+
+                    <div class="mb-3" id="parentGroupAdd">
+                        <label class="form-label fw-bold">2. Select Parent Account *</label>
+                        <select class="form-select" name="parent_id" id="parentSelectAdd" onchange="fetchNextCode('add')">
+                            <option value="">-- Select Parent --</option>
                             <?php foreach ($accounts as $a): ?>
-                                <?php if(empty($a['parent_id'])): ?>
-                                    <option value="<?= $a['id'] ?>"><?= htmlspecialchars($a['account_code'] . ' - ' . $a['account_name']) ?> (<?= $a['account_type'] ?>)</option>
-                                <?php endif; ?>
+                                <option value="<?= $a['id'] ?>" data-level="<?= $a['level'] ?>" data-type="<?= $a['account_type'] ?>">
+                                    [<?= $a['account_code'] ?>] <?= htmlspecialchars($a['account_name']) ?> (<?= strtoupper($a['level']) ?>)
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
+
+                    <div class="mb-3" id="typeGroupAdd" style="display:none;">
+                        <label class="form-label fw-bold">Account Root Type *</label>
+                        <select class="form-select" name="account_type" id="typeSelectAdd">
+                            <option value="Asset">Asset (সম্পদ)</option>
+                            <option value="Liability">Liability (দায়)</option>
+                            <option value="Equity">Equity (মূলধন)</option>
+                            <option value="Revenue">Revenue (আয়)</option>
+                            <option value="Expense">Expense (ব্যয়)</option>
+                        </select>
+                    </div>
+
                     <div class="mb-3">
-                        <label class="form-label">Status</label>
+                        <label class="form-label fw-bold">3. Account Code *</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control font-monospace" name="account_code" id="add_account_code" required placeholder="e.g. 1110-004">
+                            <button type="button" class="btn btn-outline-secondary" onclick="fetchNextCode('add')">Auto Code</button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">4. Account Name *</label>
+                        <input type="text" class="form-control" name="account_name" required placeholder="e.g. City Bank Main Account">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Status</label>
                         <select class="form-select" name="status" required>
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Account</button>
+                    <button type="submit" class="btn btn-primary px-4"><i class="fa-light fa-save me-1"></i> Save Account</button>
                 </div>
             </div>
         </form>
@@ -172,63 +278,49 @@
     <div class="modal-dialog">
         <form action="<?= $base_url ?>/accounts/coa/update" method="POST">
             <input type="hidden" name="account_id" id="edit_account_id">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Edit Account</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="fa-light fa-pen-to-square me-1"></i> Edit Account</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Category Level</label><br>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="level_edit" id="levelMainEdit" value="main">
-                            <label class="form-check-label" for="levelMainEdit">Main Category</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="level_edit" id="levelSubEdit" value="sub">
-                            <label class="form-check-label" for="levelSubEdit">Sub Category</label>
-                        </div>
+                        <label class="form-label fw-bold">Account Level</label>
+                        <input type="text" class="form-control bg-light" id="edit_level_display" readonly>
+                        <input type="hidden" name="level_edit" id="edit_level">
                     </div>
+
                     <div class="mb-3">
-                        <label class="form-label">Account Code *</label>
-                        <input type="text" class="form-control" name="account_code" id="edit_account_code" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Account Name *</label>
-                        <input type="text" class="form-control" name="account_name" id="edit_account_name" required>
-                    </div>
-                    <div class="mb-3" id="typeGroupEdit">
-                        <label class="form-label">Account Type *</label>
-                        <select class="form-select" name="account_type" id="edit_account_type" required>
-                            <option value="Asset">Asset</option>
-                            <option value="Liability">Liability</option>
-                            <option value="Equity">Equity</option>
-                            <option value="Revenue">Revenue</option>
-                            <option value="Expense">Expense</option>
-                        </select>
-                    </div>
-                    <div class="mb-3" id="parentGroupEdit" style="display: none;">
-                        <label class="form-label">Parent (Main Category) *</label>
+                        <label class="form-label fw-bold">Parent Account</label>
                         <select class="form-select" name="parent_id" id="edit_parent_id">
-                            <option value="">-- Select Main Category --</option>
+                            <option value="">-- No Parent (Main) --</option>
                             <?php foreach ($accounts as $a): ?>
-                                <?php if(empty($a['parent_id'])): ?>
-                                    <option value="<?= $a['id'] ?>"><?= htmlspecialchars($a['account_code'] . ' - ' . $a['account_name']) ?> (<?= $a['account_type'] ?>)</option>
-                                <?php endif; ?>
+                                <option value="<?= $a['id'] ?>">[<?= $a['account_code'] ?>] <?= htmlspecialchars($a['account_name']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
+
                     <div class="mb-3">
-                        <label class="form-label">Status</label>
+                        <label class="form-label fw-bold">Account Code *</label>
+                        <input type="text" class="form-control font-monospace" name="account_code" id="edit_account_code" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Account Name *</label>
+                        <input type="text" class="form-control" name="account_name" id="edit_account_name" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Status</label>
                         <select class="form-select" name="status" id="edit_status" required>
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Update Account</button>
+                    <button type="submit" class="btn btn-dark px-4"><i class="fa-light fa-save me-1"></i> Update Account</button>
                 </div>
             </div>
         </form>
@@ -237,77 +329,52 @@
 
 <?php ob_start(); ?>
     $(document).ready(function() {
+        // Initialize DataTables with EXACT 20 Rows per page pagination as requested
         $('#coaTable').DataTable({
-            pageLength: 50,
-            order: [[0, 'asc']] // Order by Account Code
+            pageLength: 20,
+            lengthMenu: [[10, 20, 50, 100, -1], [10, 20, 50, 100, "All"]],
+            order: [[0, 'asc']],
+            language: {
+                search: "_INPUT_",
+                searchPlaceholder: "Search accounts by code or name..."
+            }
         });
 
-        // Bind radio change events for category level toggling
-        $('input[name="level_add"]').on('change click', function() {
-            toggleLevel('add', $(this).val());
-        });
-        $('input[name="level_edit"]').on('change click', function() {
-            toggleLevel('edit', $(this).val());
+        // Trigger level toggle on change
+        $('input[name="level_add"]').on('change', function() {
+            let level = $(this).val();
+            if (level === 'main') {
+                $('#parentGroupAdd').hide();
+                $('#typeGroupAdd').show();
+            } else {
+                $('#parentGroupAdd').show();
+                $('#typeGroupAdd').hide();
+            }
+            fetchNextCode('add');
         });
     });
+
+    function fetchNextCode(mode) {
+        let parentId = (mode === 'add') ? $('#parentSelectAdd').val() : $('#edit_parent_id').val();
+        let level = (mode === 'add') ? $('input[name="level_add"]:checked').val() : $('#edit_level').val();
+
+        $.get(window.base_url + '/accounts/coa', { action: 'getNextCode', parent_id: parentId, level: level }, function(res) {
+            if (res && res.code) {
+                if (mode === 'add') $('#add_account_code').val(res.code);
+            }
+        });
+    }
 
     function openEditModal(account) {
         $('#edit_account_id').val(account.id);
         $('#edit_account_code').val(account.account_code);
         $('#edit_account_name').val(account.account_name);
-        $('#edit_account_type').val(account.account_type);
         $('#edit_parent_id').val(account.parent_id);
         $('#edit_status').val(account.status);
-        
-        let levelVal = account.parent_id ? 'sub' : 'main';
-        if (levelVal === 'sub') {
-            $('#levelSubEdit').prop('checked', true);
-        } else {
-            $('#levelMainEdit').prop('checked', true);
-        }
-        toggleLevel('edit', levelVal);
+        $('#edit_level').val(account.level || 'ledger');
+        $('#edit_level_display').val((account.level || 'ledger').toUpperCase());
 
-        // Hide the current account from the parent dropdown to prevent self-parenting
-        $('#edit_parent_id option').show();
-        $('#edit_parent_id option[value="' + account.id + '"]').hide();
-        
         var modal = new bootstrap.Modal(document.getElementById('editAccountModal'));
         modal.show();
-    }
-
-    function toggleLevel(mode, explicitVal = null) {
-        let selectedVal = explicitVal || $('input[name="level_' + mode + '"]:checked').val();
-        let isMain = (selectedVal === 'main');
-        
-        // Target elements relative to the open modal if there are DOM duplicates
-        let modalId = mode === 'add' ? '#addAccountModal' : '#editAccountModal';
-        let typeSelect = mode === 'add' ? $('#typeSelectAdd') : $('#edit_account_type');
-        let typeGroup = mode === 'add' ? $('#typeGroupAdd') : $('#typeGroupEdit');
-        let parentSelect = mode === 'add' ? $('#parentSelectAdd') : $('#edit_parent_id');
-        let parentGroup = mode === 'add' ? $('#parentGroupAdd') : $('#parentGroupEdit');
-
-        // Force targeting within the specific modal contexts in case of clones
-        if ($(modalId).length) {
-            typeGroup = $(modalId).find(mode === 'add' ? '#typeGroupAdd' : '#typeGroupEdit');
-            typeSelect = $(modalId).find(mode === 'add' ? '#typeSelectAdd' : '#edit_account_type');
-            parentGroup = $(modalId).find(mode === 'add' ? '#parentGroupAdd' : '#parentGroupEdit');
-            parentSelect = $(modalId).find(mode === 'add' ? '#parentSelectAdd' : '#edit_parent_id');
-        }
-
-        if (isMain) {
-            typeGroup.show();
-            typeSelect.prop('required', true);
-            
-            parentGroup.hide();
-            parentSelect.prop('required', false);
-            parentSelect.val('');
-        } else {
-            typeGroup.hide();
-            typeSelect.prop('required', false);
-            typeSelect.val('');
-            
-            parentGroup.show();
-            parentSelect.prop('required', true);
-        }
     }
 <?php $page_script = ob_get_clean(); ?>

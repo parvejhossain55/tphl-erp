@@ -99,26 +99,29 @@ $show_breadcrumb = true;
     <!-- Left Navigation Sidebar -->
     <div class="col-md-3 col-xl-2 financial-tabs mb-4">
         <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+            <a href="<?= $base_url ?>/accounts/coa" class="nav-link text-primary fw-bold mb-2 border border-info" style="background: #f0fdfa;">
+                <i class="fa-light fa-sitemap text-info"></i> Chart of Accounts (COA)
+            </a>
             <button class="nav-link active" id="v-pills-receipts-tab" data-bs-toggle="pill" data-bs-target="#v-pills-receipts" type="button" role="tab" onclick="initReceiptsTable()">
-                <i class="fa-light fa-receipt"></i> Receipts
+                <i class="fa-light fa-receipt"></i> Receipts (Cash In)
             </button>
             <button class="nav-link" id="v-pills-expense-tab" data-bs-toggle="pill" data-bs-target="#v-pills-expense" type="button" role="tab" onclick="loadExpense('fund')">
-                <i class="fa-light fa-file-invoice-dollar"></i> Expense Voucher
+                <i class="fa-light fa-file-invoice-dollar"></i> Expense Vouchers
             </button>
             <button class="nav-link" id="v-pills-journal-tab" data-bs-toggle="pill" data-bs-target="#v-pills-journal" type="button" role="tab" onclick="initJournalTable()">
                 <i class="fa-light fa-sliders"></i> Expense Adjustments
             </button>
             <button class="nav-link" id="v-pills-general-journal-tab" data-bs-toggle="pill" data-bs-target="#v-pills-general-journal" type="button" role="tab" onclick="initGeneralJournalTable()">
-                <i class="fa-light fa-book"></i> Journal Entry
+                <i class="fa-light fa-book"></i> Journal Entry (JV)
             </button>
             <button class="nav-link" id="v-pills-clients-tab" data-bs-toggle="pill" data-bs-target="#v-pills-clients" type="button" role="tab" onclick="initClientsTable()">
-                <i class="fa-light fa-users"></i> Clients
+                <i class="fa-light fa-users"></i> Client Receivables
             </button>
             <button class="nav-link" id="v-pills-refunds-tab" data-bs-toggle="pill" data-bs-target="#v-pills-refunds" type="button" role="tab" onclick="initRefundsTable()">
-                <i class="fa-light fa-undo"></i> Refunds
+                <i class="fa-light fa-undo"></i> Client Refunds
             </button>
             <button class="nav-link" id="v-pills-reports-tab" data-bs-toggle="pill" data-bs-target="#v-pills-reports" type="button" role="tab">
-                <i class="fa-light fa-chart-pie"></i> Financial Reports
+                <i class="fa-light fa-chart-pie"></i> Financial Reports (P/L, B/S)
             </button>
         </div>
     </div>
@@ -298,9 +301,25 @@ $show_breadcrumb = true;
                         <h4 class="mb-4"><i class="fa-light fa-chart-pie me-2"></i>Financial Reports</h4>
                         <p class="text-muted mb-4">View detailed financial statements based on your approved journal entries. Filter by project, office, and date range.</p>
                         
-                        <div class="row g-4">
+                        <div class="row">
+                            <!-- Chart of Accounts Card -->
+                            <div class="col-md-3">
+                                <div class="card h-100 border-0 shadow-sm" style="border-top: 4px solid #17a2b8 !important;">
+                                    <div class="card-body text-center p-4">
+                                        <div class="mb-3">
+                                            <i class="fa-light fa-sitemap fa-3x text-info"></i>
+                                        </div>
+                                        <h5 class="fw-bold">Chart of Accounts</h5>
+                                        <p class="text-muted small">Manage 4-Tier Accounts Hierarchy (Assets, Liabilities, Equity, Revenue, Expenses).</p>
+                                        <a href="<?= $base_url ?>/accounts/coa" class="btn btn-outline-info mt-2">
+                                            <i class="fa-light fa-sitemap me-1"></i> View COA
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Profit & Loss Card -->
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="card h-100 border-0 shadow-sm" style="border-top: 4px solid #20c997 !important;">
                                     <div class="card-body text-center p-4">
                                         <div class="mb-3">
@@ -316,7 +335,7 @@ $show_breadcrumb = true;
                             </div>
 
                             <!-- Balance Sheet Card -->
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="card h-100 border-0 shadow-sm" style="border-top: 4px solid #0d6efd !important;">
                                     <div class="card-body text-center p-4">
                                         <div class="mb-3">
@@ -332,7 +351,7 @@ $show_breadcrumb = true;
                             </div>
 
                             <!-- Cashflow Card -->
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="card h-100 border-0 shadow-sm" style="border-top: 4px solid #6f42c1 !important;">
                                     <div class="card-body text-center p-4">
                                         <div class="mb-3">
@@ -386,8 +405,26 @@ $show_breadcrumb = true;
     };
 
     $(document).ready(function() {
-        // Init default tab
-        initReceiptsTable();
+        // Save selected tab in localStorage when user clicks any tab
+        $('#v-pills-tab button[data-bs-toggle="pill"]').on('shown.bs.tab', function (e) {
+            let targetId = $(e.target).attr('data-bs-target');
+            if (targetId) {
+                localStorage.setItem('active_financial_tab', targetId);
+            }
+        });
+
+        // Restore active tab from localStorage or URL hash
+        let savedTab = window.location.hash || localStorage.getItem('active_financial_tab');
+        if (savedTab && $(savedTab + '-tab').length) {
+            let tabBtn = document.querySelector(savedTab + '-tab');
+            if (tabBtn) {
+                let bsTab = new bootstrap.Tab(tabBtn);
+                bsTab.show();
+                $(tabBtn).trigger('click');
+            }
+        } else {
+            initReceiptsTable();
+        }
     });
 
     function reloadAllTables() {

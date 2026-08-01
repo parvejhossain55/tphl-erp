@@ -15,55 +15,61 @@ class ChartOfAccountsController extends Controller
     public function index()
     {
         $accounts = $this->coaModel->getAllAccounts();
+        $treeAccounts = $this->coaModel->getTreeAccounts();
+
         $data = [
-            'page_title' => 'Chart of Accounts Management',
+            'page_title' => 'Chart of Accounts Management (4-Tier Standard)',
             'page' => 'Accounts',
-            'accounts' => $accounts
+            'accounts' => $accounts,
+            'treeAccounts' => $treeAccounts
         ];
         $this->view('accounts/coa/index', $data);
+    }
+
+    public function getNextCode()
+    {
+        $parentId = $_GET['parent_id'] ?? null;
+        $level = $_GET['level'] ?? 'main';
+        $code = $this->coaModel->generateNextCode($parentId, $level);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'code' => $code]);
+        exit;
     }
 
     public function store()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $code = trim($_POST['account_code']);
-            $name = trim($_POST['account_name']);
-            $type = $_POST['account_type'];
-            $level = $_POST['level_add'] ?? 'main';
-            $parent_id = !empty($_POST['parent_id']) ? $_POST['parent_id'] : null;
-            $status = $_POST['status'];
+            $code = trim($_POST['account_code'] ?? '');
+            $name = trim($_POST['account_name'] ?? '');
+            $level = $_POST['level_add'] ?? 'ledger';
+            $parent_id = !empty($_POST['parent_id']) ? (int)$_POST['parent_id'] : null;
+            $status = $_POST['status'] ?? 'active';
+            $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
 
-            if ($level === 'sub') {
-                if (empty($parent_id)) {
-                    $_SESSION['error'] = "Parent Category is required for Sub Categories.";
-                    header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
-                    exit;
-                }
-                $parentAccount = $this->coaModel->getAccountById($parent_id);
-                if ($parentAccount) {
-                    $type = $parentAccount['account_type'];
-                } else {
-                    $_SESSION['error'] = "Invalid Parent Account selected.";
-                    header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
-                    exit;
+            $type = 'Asset';
+            $rootType = 'asset';
+
+            if ($parent_id) {
+                $parent = $this->coaModel->getAccountById($parent_id);
+                if ($parent) {
+                    $type = $parent['account_type'];
+                    $rootType = $parent['root_type'] ?? strtolower($parent['account_type']);
                 }
             } else {
-                // It's a main category, force parent to null
-                $parent_id = null;
-                if (empty($type)) {
-                    $_SESSION['error'] = "Account Type is required for Main Categories.";
-                    header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
-                    exit;
-                }
+                $type = $_POST['account_type'] ?? 'Asset';
+                $rootType = strtolower($type);
+                if ($rootType === 'revenue') $rootType = 'income';
             }
 
-            if (empty($code) || empty($name) || empty($type)) {
-                $_SESSION['error'] = "Account Code, Name, and Type are required.";
+            if (empty($code) || empty($name)) {
+                if (session_status() === PHP_SESSION_NONE) session_start();
+                $_SESSION['error'] = "Account Code and Name are required.";
                 header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
                 exit;
             }
 
             if ($this->coaModel->checkAccountCodeExists($code)) {
+                if (session_status() === PHP_SESSION_NONE) session_start();
                 $_SESSION['error'] = "Account Code '$code' already exists.";
                 header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
                 exit;
@@ -74,9 +80,14 @@ class ChartOfAccountsController extends Controller
                 'account_code' => $code,
                 'account_name' => $name,
                 'account_type' => $type,
+                'level' => $level,
+                'root_type' => $rootType,
+                'is_system_account' => 0,
+                'project_id' => $projectId,
                 'status' => $status
             ];
 
+            if (session_status() === PHP_SESSION_NONE) session_start();
             if ($this->coaModel->createAccount($data)) {
                 $_SESSION['success'] = "Account created successfully.";
             } else {
@@ -90,41 +101,49 @@ class ChartOfAccountsController extends Controller
     public function update()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $id = $_POST['account_id'];
-            $code = trim($_POST['account_code']);
-            $name = trim($_POST['account_name']);
-            $type = $_POST['account_type'];
-            $level = $_POST['level_edit'] ?? 'main';
-            $parent_id = !empty($_POST['parent_id']) ? $_POST['parent_id'] : null;
-            $status = $_POST['status'];
+            $id = (int)$_POST['account_id'];
+            $code = trim($_POST['account_code'] ?? '');
+            $name = trim($_POST['account_name'] ?? '');
+            $level = $_POST['level_edit'] ?? 'ledger';
+            $parent_id = !empty($_POST['parent_id']) ? (int)$_POST['parent_id'] : null;
+            $status = $_POST['status'] ?? 'active';
+            $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
 
-            if ($level === 'sub') {
-                if (empty($parent_id)) {
-                    $_SESSION['error'] = "Parent Category is required for Sub Categories.";
-                    header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
-                    exit;
-                }
-                $parentAccount = $this->coaModel->getAccountById($parent_id);
-                if ($parentAccount) {
-                    $type = $parentAccount['account_type'];
-                }
-            } else {
-                // It's a main category, force parent to null
-                $parent_id = null;
-                if (empty($type)) {
-                    $_SESSION['error'] = "Account Type is required for Main Categories.";
-                    header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
-                    exit;
+            $existing = $this->coaModel->getAccountById($id);
+            if (!$existing) {
+                if (session_status() === PHP_SESSION_NONE) session_start();
+                $_SESSION['error'] = "Account not found.";
+                header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
+                exit;
+            }
+
+            if ($existing['is_system_account'] == 1) {
+                if (session_status() === PHP_SESSION_NONE) session_start();
+                $_SESSION['error'] = "System protected accounts cannot be edited.";
+                header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
+                exit;
+            }
+
+            $type = $existing['account_type'];
+            $rootType = $existing['root_type'];
+
+            if ($parent_id) {
+                $parent = $this->coaModel->getAccountById($parent_id);
+                if ($parent) {
+                    $type = $parent['account_type'];
+                    $rootType = $parent['root_type'] ?? strtolower($parent['account_type']);
                 }
             }
 
             if ($id == $parent_id) {
+                if (session_status() === PHP_SESSION_NONE) session_start();
                 $_SESSION['error'] = "An account cannot be its own parent.";
                 header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
                 exit;
             }
 
             if ($this->coaModel->checkAccountCodeExists($code, $id)) {
+                if (session_status() === PHP_SESSION_NONE) session_start();
                 $_SESSION['error'] = "Account Code '$code' is already in use by another account.";
                 header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
                 exit;
@@ -135,9 +154,14 @@ class ChartOfAccountsController extends Controller
                 'account_code' => $code,
                 'account_name' => $name,
                 'account_type' => $type,
+                'level' => $level,
+                'root_type' => $rootType,
+                'is_system_account' => 0,
+                'project_id' => $projectId,
                 'status' => $status
             ];
 
+            if (session_status() === PHP_SESSION_NONE) session_start();
             if ($this->coaModel->updateAccount($id, $data)) {
                 $_SESSION['success'] = "Account updated successfully.";
             } else {
@@ -148,3 +172,4 @@ class ChartOfAccountsController extends Controller
         }
     }
 }
+
