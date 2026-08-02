@@ -30,6 +30,51 @@ $isNormalDebit = $ledgerData['is_normal_debit'] ?? true;
         </div>
     </div>
 
+    <!-- Account Selector Bar -->
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="card shadow-sm border-0 bg-primary-transparent border-start border-4 border-primary">
+                <div class="card-body py-3">
+                    <div class="row align-items-center g-2">
+                        <div class="col-md-3 col-lg-2">
+                            <label class="form-label fs-13 fw-bold text-primary mb-0">
+                                <i class="fa-light fa-list-tree me-1 align-middle"></i> Select Account / COA:
+                            </label>
+                        </div>
+                        <div class="col-md-9 col-lg-10">
+                            <select id="accountSelect" class="form-select form-select-sm" onchange="switchAccount(this.value)">
+                                <option value="">-- Search & Select Account / COA --</option>
+                                <?php 
+                                $activeWithTxns = array_filter($allAccounts ?? [], function($a) { return ($a['txn_count'] ?? 0) > 0; });
+                                $otherAccounts  = array_filter($allAccounts ?? [], function($a) { return ($a['txn_count'] ?? 0) == 0; });
+                                ?>
+                                <?php if (!empty($activeWithTxns)): ?>
+                                    <optgroup label="✅ Active Ledgers with Journal Entries (সক্রিয় লেনদেনকৃত লেজারসমূহ)">
+                                        <?php foreach ($activeWithTxns as $acc): ?>
+                                            <option value="<?= $acc['id'] ?>" <?= ($account['id'] == $acc['id']) ? 'selected' : '' ?>>
+                                                [<?= htmlspecialchars($acc['account_code']) ?>] <?= htmlspecialchars($acc['account_name']) ?> (<?= htmlspecialchars($acc['account_type']) ?>) — <?= $acc['txn_count'] ?> Entries
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </optgroup>
+                                <?php endif; ?>
+
+                                <?php if (!empty($otherAccounts)): ?>
+                                    <optgroup label="📁 Other Chart of Accounts (অন্যান্য ডাবল এন্ট্রি অ্যাকাউন্টসমূহ)">
+                                        <?php foreach ($otherAccounts as $acc): ?>
+                                            <option value="<?= $acc['id'] ?>" <?= ($account['id'] == $acc['id']) ? 'selected' : '' ?>>
+                                                [<?= htmlspecialchars($acc['account_code']) ?>] <?= htmlspecialchars($acc['account_name']) ?> (<?= htmlspecialchars($acc['account_type']) ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </optgroup>
+                                <?php endif; ?>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Filter Bar with Party / Vendor Dropdown -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body py-3">
@@ -44,13 +89,40 @@ $isNormalDebit = $ledgerData['is_normal_debit'] ?? true;
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fs-11 fw-semibold mb-1">Vendor / Sub-Ledger Party</label>
-                    <select name="party_id" class="form-select form-select-sm">
+                    <select name="party_id" class="form-select form-select-sm select2-party">
                         <option value="">-- All Vendors & Sub-Ledgers --</option>
-                        <?php foreach ($parties as $pty): ?>
-                            <option value="<?= $pty['party_id'] ?>" <?= ($partyId == $pty['party_id']) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($pty['party_name']) ?> (<?= ucfirst($pty['party_type']) ?>)
-                            </option>
-                        <?php endforeach; ?>
+                        <?php 
+                        $vendorParties = array_filter($parties ?? [], function($p) { return ($p['party_type'] ?? '') === 'vendor'; });
+                        $clientParties = array_filter($parties ?? [], function($p) { return ($p['party_type'] ?? '') === 'client'; });
+                        $otherParties  = array_filter($parties ?? [], function($p) { return !in_array(($p['party_type'] ?? ''), ['vendor', 'client']); });
+                        ?>
+                        <?php if (!empty($vendorParties)): ?>
+                            <optgroup label="🏢 Vendors (ভেন্ডরসমূহ)">
+                                <?php foreach ($vendorParties as $pty): ?>
+                                    <option value="<?= $pty['party_id'] ?>" <?= ($partyId == $pty['party_id']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($pty['party_name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </optgroup>
+                        <?php endif; ?>
+                        <?php if (!empty($clientParties)): ?>
+                            <optgroup label="👤 Clients / Customers (গ্রাহকসমূহ)">
+                                <?php foreach ($clientParties as $pty): ?>
+                                    <option value="<?= $pty['party_id'] ?>" <?= ($partyId == $pty['party_id']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($pty['party_name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </optgroup>
+                        <?php endif; ?>
+                        <?php if (!empty($otherParties)): ?>
+                            <optgroup label="👥 Other Parties">
+                                <?php foreach ($otherParties as $pty): ?>
+                                    <option value="<?= $pty['party_id'] ?>" <?= ($partyId == $pty['party_id']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($pty['party_name']) ?> (<?= ucfirst($pty['party_type'] ?? 'Party') ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </optgroup>
+                        <?php endif; ?>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -210,4 +282,26 @@ $isNormalDebit = $ledgerData['is_normal_debit'] ?? true;
     </div>
 </div>
 
+<script>
+function switchAccount(accId) {
+    if (accId) {
+        window.location.href = '<?= $base_url ?>/accounts/ledger/' + accId;
+    }
+}
 
+if (typeof jQuery !== 'undefined') {
+    jQuery(document).ready(function($) {
+        if ($.fn.select2) {
+            $('#accountSelect').select2({
+                placeholder: "-- Search & Select Account / COA --",
+                width: '100%'
+            }).on('change select2:select', function() {
+                var accId = $(this).val();
+                if (accId) {
+                    window.location.href = '<?= $base_url ?>/accounts/ledger/' + accId;
+                }
+            });
+        }
+    });
+}
+</script>

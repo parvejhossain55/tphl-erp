@@ -588,7 +588,7 @@ class ApprovalRequest extends Model
                     ar.approved_at,
                     ar.approval_note,
                     u_req.full_name AS requester_name,
-                    IFNULL(e_req.employee_id, CONCAT('EMP-', u_req.id)) AS requester_code,
+                    e_req.employee_id AS requester_code,
                     d_req.name AS requester_dept,
                     u_app.full_name AS approver_name,
                     u_app.email AS approver_email,
@@ -639,7 +639,7 @@ class ApprovalRequest extends Model
                     }
                 }
             } else if ($sourceTable === 'vendor_payment_requests') {
-                $vSql = "SELECT status, IFNULL(approved_amount, 0.00) AS app_amt, updated_at 
+                $vSql = "SELECT status, IFNULL(approved_amount, 0.00) AS app_amt, updated_at, payment_type 
                          FROM vendor_payment_requests WHERE id = ? LIMIT 1";
                 $vStmt = $this->db->prepare($vSql);
                 if ($vStmt) {
@@ -648,6 +648,7 @@ class ApprovalRequest extends Model
                     $vRow = $vStmt->get_result()->fetch_assoc();
                     $vStmt->close();
                     if ($vRow) {
+                        $row['vpr_payment_type'] = $vRow['payment_type'] ?? null;
                         if (in_array(strtolower($vRow['status']), ['approved', 'paid', 'completed'])) {
                             $payoutStatus = 'Paid & Settled';
                             $payoutAmount = (float)$vRow['app_amt'];

@@ -72,8 +72,8 @@ class QcAuditController extends Controller
         $matPending = $this->db->query("SELECT COUNT(*) as c FROM purchase_requests WHERE status = 'pending'");
         $stats['material_pending'] = $matPending->fetch_assoc()['c'] ?? 0;
 
-        // Purchase Orders to verify
-        $poPending = $this->db->query("SELECT COUNT(*) as c FROM purchase_orders WHERE status = 'Issued'");
+        // Purchase Orders to verify (2nd Approval - QC & Audit)
+        $poPending = $this->db->query("SELECT COUNT(*) as c FROM purchase_orders WHERE qc_approved_by_id IS NULL AND (status != 'Cancelled' OR status IS NULL)");
         $stats['po_pending'] = $poPending ? ($poPending->fetch_assoc()['c'] ?? 0) : 0;
 
         // Monthly Advance Cash (this month)
@@ -139,11 +139,11 @@ class QcAuditController extends Controller
         $purchaseOrders = $this->db->query("
             SELECT po.*, p.name as project_name, v.name as vendor_name 
             FROM purchase_orders po 
-            JOIN purchase_requests pr ON pr.id = po.request_id 
+            LEFT JOIN purchase_requests pr ON pr.id = po.request_id 
             LEFT JOIN projects p ON p.id = pr.project_id 
             LEFT JOIN vendors v ON v.id = po.vendor_id 
-            WHERE po.status = 'Issued' 
-            ORDER BY po.created_at DESC LIMIT 10
+            WHERE po.qc_approved_by_id IS NULL AND (po.status != 'Cancelled' OR po.status IS NULL)
+            ORDER BY po.id DESC LIMIT 10
         ")->fetch_all(MYSQLI_ASSOC);
 
         $this->view('qc-audit/dashboard', [
@@ -359,28 +359,33 @@ class QcAuditController extends Controller
                         $stmt->bind_param('sisi', $qc_status, $qc_id, $note, $id);
                         $stmt->execute();
 
-                        // For Vendor Payments, also need to create approval_request for management
+                        // For Vendor Payments, update existing approval_request or create if missing (avoiding duplicates)
                         if ($type === 'Vendor Payment') {
-                            $reqStmt = $this->db->query("SELECT * FROM vendor_payment_requests WHERE id = " . (int)$id);
-                            $reqData = $reqStmt->fetch_assoc();
-                            if ($reqData) {
-                                require_once __DIR__ . '/../models/ApprovalRequest.php';
-                                $approvalModel = new \ApprovalRequest($this->db);
-                                $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$reqData['project_id'])->fetch_assoc();
-                                $vendor  = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)$reqData['vendor_id'])->fetch_assoc();
+                            $checkApp = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'vendor_payment_requests' AND source_id = " . (int)$id)->fetch_assoc();
+                            if ($checkApp) {
+                                $this->db->query("UPDATE approval_requests SET status = 'pending', approve_role = 'management' WHERE id = " . (int)$checkApp['id']);
+                            } else {
+                                $reqStmt = $this->db->query("SELECT * FROM vendor_payment_requests WHERE id = " . (int)$id);
+                                $reqData = $reqStmt ? $reqStmt->fetch_assoc() : null;
+                                if ($reqData) {
+                                    require_once __DIR__ . '/../models/ApprovalRequest.php';
+                                    $approvalModel = new \ApprovalRequest($this->db);
+                                    $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$reqData['project_id'])->fetch_assoc();
+                                    $vendor  = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)$reqData['vendor_id'])->fetch_assoc();
 
-                                $approvalModel->create([
-                                    'department'     => 'construction',
-                                    'request_type'   => 'vendor_payment',
-                                    'title'          => 'Vendor Payment — ' . ($vendor['name'] ?? '') . ' | ' . ($project['name'] ?? ''),
-                                    'source_table'   => 'vendor_payment_requests',
-                                    'source_id'      => $id,
-                                    'requested_days' => 0,
-                                    'requested_by'   => $reqData['created_by'],
-                                    'approve_role'   => 'management',
-                                    'meta_data'      => null,
-                                    'request_amount' => $reqData['net_payable'],
-                                ]);
+                                    $approvalModel->create([
+                                        'department'     => 'construction',
+                                        'request_type'   => 'vendor_payment',
+                                        'title'          => 'Vendor Payment — ' . ($vendor['name'] ?? '') . ' | ' . ($project['name'] ?? ''),
+                                        'source_table'   => 'vendor_payment_requests',
+                                        'source_id'      => $id,
+                                        'requested_days' => 0,
+                                        'requested_by'   => $reqData['created_by'],
+                                        'approve_role'   => 'management',
+                                        'meta_data'      => null,
+                                        'request_amount' => $reqData['net_payable'],
+                                    ]);
+                                }
                             }
                         }
 

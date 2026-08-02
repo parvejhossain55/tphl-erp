@@ -30,7 +30,14 @@ class Con_Quotation extends Model
         }
         $stmt->bind_param('i', $requestId);
         $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $quotations = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        foreach ($quotations as &$q) {
+            $q['items'] = $this->getItems($q['id']);
+        }
+        unset($q);
+
+        return $quotations;
     }
 
     public function find($id)

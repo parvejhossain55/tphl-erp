@@ -14,7 +14,7 @@ function qcFmt($n) {
 $projects             = $projects             ?? [];
 $pendingTargets       = $pendingTargets       ?? [];
 $assignedProjects     = $assignedProjects     ?? 0;
-$pendingTargetsCount  = $pendingTargetsCount  ?? 0;
+$pendingPOCount       = $pendingPOCount       ?? 0;
 $pendingGRNsCount     = $pendingGRNsCount     ?? 0;
 $totalInspections     = $totalInspections     ?? 0;
 $totalMaterialTests   = $totalMaterialTests   ?? 0;
@@ -157,6 +157,17 @@ $pendingWeeklyCount   = $pendingWeeklyCount   ?? 0;
     <div class="kpi-label" style="color:var(--text-muted)">Assigned Projects</div>
     <div class="kpi-value" style="color:var(--qc-blue)"><?= $assignedProjects ?></div>
     <div class="kpi-sub">Projects under QC review</div>
+  </a>
+
+  <a href="<?= $base ?>/con-purchase-orders" class="kpi-card">
+    <div class="kpi-accent" style="background:var(--qc-amber)"></div>
+    <div class="kpi-icon" style="background:rgba(245,158,11,.12);color:var(--qc-amber)"><i class="fal fa-shopping-cart"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Purchase Order Pending</div>
+    <div class="kpi-value" style="color:var(--qc-amber)"><?= $pendingPOCount ?></div>
+    <div class="kpi-sub">Purchase orders pending receiving</div>
+    <?php if ($pendingPOCount > 0): ?>
+    <span class="kpi-badge" style="background:rgba(245,158,11,.12);color:var(--qc-amber)">PENDING</span>
+    <?php endif; ?>
   </a>
 
 

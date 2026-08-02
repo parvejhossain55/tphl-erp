@@ -1047,15 +1047,15 @@ if (!empty($approvedPOs)):
                 <tbody>
                     <?php foreach ($recentReceives as $mr): ?>
                         <tr>
-                            <td><span class="fw-semibold text-dark"><?= htmlspecialchars($mr['project_name']) ?></span></td>
-                            <td class="text-muted" style="font-size:11.5px"><?= date('d M Y', strtotime($mr['receiving_date'])) ?></td>
+                            <td><span class="fw-semibold text-dark"><?= htmlspecialchars($mr['project_name'] ?? '—') ?></span></td>
+                            <td class="text-muted" style="font-size:11.5px"><?= !empty($mr['receiving_date']) ? date('d M Y', strtotime($mr['receiving_date'])) : '—' ?></td>
                             <td>
                                 <?php 
                                 $badge = 'bg-warning-transparent';
-                                if ($mr['overall_status'] === 'Stock In') $badge = 'bg-success-transparent';
-                                if ($mr['overall_status'] === 'Rejected') $badge = 'bg-danger-transparent';
+                                if (($mr['overall_status'] ?? '') === 'Stock In') $badge = 'bg-success-transparent';
+                                if (($mr['overall_status'] ?? '') === 'Rejected') $badge = 'bg-danger-transparent';
                                 ?>
-                                <span class="badge <?= $badge ?>" style="font-size:9.5px;"><?= htmlspecialchars($mr['overall_status']) ?></span>
+                                <span class="badge <?= $badge ?>" style="font-size:9.5px;"><?= htmlspecialchars($mr['overall_status'] ?? '—') ?></span>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -1089,9 +1089,9 @@ if (!empty($approvedPOs)):
                 <tbody>
                     <?php foreach ($recentIssues as $mi): ?>
                         <tr>
-                            <td><span class="fw-semibold text-dark"><?= htmlspecialchars($mi['project_name']) ?></span></td>
-                            <td style="font-size:12px"><?= htmlspecialchars($mi['material_name']) ?></td>
-                            <td class="text-muted" style="font-size:11.5px"><?= date('d M Y', strtotime($mi['issue_date'])) ?></td>
+                            <td><span class="fw-semibold text-dark"><?= htmlspecialchars($mi['project_name'] ?? '—') ?></span></td>
+                            <td style="font-size:12px"><?= htmlspecialchars($mi['material_name'] ?? '—') ?></td>
+                            <td class="text-muted" style="font-size:11.5px"><?= !empty($mi['issue_date']) ? date('d M Y', strtotime($mi['issue_date'])) : '—' ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>

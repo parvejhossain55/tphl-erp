@@ -47,7 +47,7 @@ class GeneralJournal extends Model
             LEFT JOIN users u ON j.created_by = u.id 
             LEFT JOIN projects p ON j.project_id = p.id
             $where
-            ORDER BY j.date DESC, j.id DESC
+            ORDER BY j.id DESC
         ";
         $result = $this->db->query($query);
         $journals = [];
@@ -92,11 +92,13 @@ class GeneralJournal extends Model
             $journalId = $stmt->insert_id;
             
             // Insert Details
-            $stmtDetails = $this->db->prepare("INSERT INTO journal_details (journal_id, account_id, debit, credit, narration, project_id) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmtDetails = $this->db->prepare("INSERT INTO journal_details (journal_id, account_id, debit, credit, narration, project_id, party_type, party_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             foreach ($details as $row) {
                 if ($row['debit'] == 0 && $row['credit'] == 0) continue; // skip empty rows
                 $projectId = isset($row['project_id']) && $row['project_id'] !== '' ? (int)$row['project_id'] : null;
-                $stmtDetails->bind_param("iiddsi", $journalId, $row['account_id'], $row['debit'], $row['credit'], $row['narration'], $projectId);
+                $partyType = !empty($row['party_type']) ? $row['party_type'] : null;
+                $partyId   = !empty($row['party_id']) ? (int)$row['party_id'] : null;
+                $stmtDetails->bind_param("iiddsisi", $journalId, $row['account_id'], $row['debit'], $row['credit'], $row['narration'], $projectId, $partyType, $partyId);
                 if (!$stmtDetails->execute()) {
                     throw new Exception("Error saving journal detail");
                 }

@@ -42,6 +42,26 @@ class ChartOfAccount
         return $accounts;
     }
 
+    public function getActiveAccountsWithTxnCount()
+    {
+        $query = "SELECT c.*, p.account_name as parent_name, p.account_code as parent_code, 
+                         COUNT(jd.id) as txn_count 
+                  FROM chart_of_accounts c 
+                  LEFT JOIN chart_of_accounts p ON c.parent_id = p.id 
+                  LEFT JOIN journal_details jd ON c.id = jd.account_id
+                  WHERE c.status = 'active'
+                  GROUP BY c.id
+                  ORDER BY c.account_code ASC";
+        $result = $this->db->query($query);
+        $accounts = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $accounts[] = $row;
+            }
+        }
+        return $accounts;
+    }
+
     public function getAccountsByLevel($level)
     {
         $stmt = $this->db->prepare("SELECT * FROM chart_of_accounts WHERE level = ? AND status = 'active' ORDER BY account_code ASC");
@@ -164,11 +184,34 @@ class ChartOfAccount
         ";
         $res = $this->db->query($sql);
         $parties = [];
+        $existingKeys = [];
         if ($res) {
             while ($row = $res->fetch_assoc()) {
                 $parties[] = $row;
+                $existingKeys[$row['party_type'] . '_' . $row['party_id']] = true;
             }
         }
+
+        // Also include active Vendors from vendors table if account is vendor related
+        $acc = $this->getAccountById($accountId);
+        $code = $acc['account_code'] ?? '';
+        $accName = strtolower($acc['account_name'] ?? '');
+        if (strpos($code, '2110') === 0 || strpos($code, '5120') === 0 || strpos($accName, 'vendor') !== false) {
+            $vRes = $this->db->query("SELECT id, COALESCE(NULLIF(name, ''), company_name) as name FROM vendors ORDER BY name ASC");
+            if ($vRes) {
+                while ($v = $vRes->fetch_assoc()) {
+                    $key = 'vendor_' . $v['id'];
+                    if (!isset($existingKeys[$key]) && !empty($v['name'])) {
+                        $parties[] = [
+                            'party_type' => 'vendor',
+                            'party_id'   => $v['id'],
+                            'party_name' => $v['name']
+                        ];
+                    }
+                }
+            }
+        }
+
         return $parties;
     }
 

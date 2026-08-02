@@ -217,7 +217,7 @@
                                     <!-- Requested By -->
                                     <td>
                                         <div class="fw-bold text-dark extra-small"><?= htmlspecialchars($req['requester_name'] ?? 'N/A') ?></div>
-                                        <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars($req['requester_code'] ?? '') ?></span>
+                                        <span class="badge bg-light text-secondary border extra-small"><?= !empty($req['requester_code']) ? htmlspecialchars($req['requester_code']) : 'null' ?></span>
                                     </td>
 
                                     <!-- Requested Amount -->
@@ -226,6 +226,24 @@
                                             <span class="fw-bold text-dark">৳<?= number_format($req['request_amount'], 2) ?></span>
                                         <?php else: ?>
                                             <span class="text-muted extra-small">N/A</span>
+                                        <?php endif; ?>
+                                        <?php if ($sourceTable === 'vendor_payment_requests' && !empty($req['vpr_payment_type'])): ?>
+                                            <?php
+                                                $vprType = strtolower($req['vpr_payment_type']);
+                                                $typeLabel = match($vprType) {
+                                                    'advance' => 'Advance',
+                                                    'partial' => 'Partially',
+                                                    'final', 'full', 'fully' => 'Fully',
+                                                    default => ucfirst($vprType)
+                                                };
+                                                $typeClass = match($vprType) {
+                                                    'advance' => 'bg-primary-subtle text-primary border-primary-subtle',
+                                                    'partial' => 'bg-warning-subtle text-warning border-warning-subtle',
+                                                    'final', 'full', 'fully' => 'bg-success-subtle text-success border-success-subtle',
+                                                    default => 'bg-secondary-subtle text-secondary border-secondary-subtle'
+                                                };
+                                            ?>
+                                            <div class="mt-1"><span class="badge <?= $typeClass ?> border extra-small"><?= $typeLabel ?></span></div>
                                         <?php endif; ?>
                                     </td>
 

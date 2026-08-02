@@ -18,9 +18,16 @@ if (!empty($isEdit) && !empty($quotationItems)) {
             </ol>
         </nav>
     </div>
-    <a href="<?= $base_url ?>/con-purchase-request/<?= $pr['id'] ?>" class="btn btn-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i> Back to PR
-    </a>
+    <div class="d-flex gap-2 align-items-center">
+        <?php if (!empty($existing) && count($existing) >= 2): ?>
+            <a href="<?= $base_url ?>/con-quotation-compare/<?= $pr['id'] ?>" class="btn btn-warning btn-sm fw-bold">
+                <i class="bi bi-layout-three-columns me-1"></i> Compare Now →
+            </a>
+        <?php endif; ?>
+        <a href="<?= $base_url ?>/con-purchase-request/<?= $pr['id'] ?>" class="btn btn-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to PR
+        </a>
+    </div>
 </div>
 
 <section class="section">
@@ -41,6 +48,7 @@ if (!empty($isEdit) && !empty($quotationItems)) {
                             <tr>
                                 <th>#</th>
                                 <th>Vendor</th>
+                                <th class="text-end">Unit Rate</th>
                                 <th class="text-end">Total Amount</th>
                                 <th>Valid Until</th>
                                 <th>Attachment</th>
@@ -55,7 +63,31 @@ if (!empty($isEdit) && !empty($quotationItems)) {
                             <tr>
                                 <td><?= $i + 1 ?></td>
                                 <td class="fw-bold"><?= htmlspecialchars($eq['vendor_name']) ?></td>
-                                <td>৳ <?= number_format($eq['total_amount'] ?? 0, 2) ?></td>
+                                <td class="text-end">
+                                    <?php if (!empty($eq['items'])): ?>
+                                        <?php if (count($eq['items']) === 1): ?>
+                                            <span class="fw-bold text-dark">৳ <?= number_format($eq['items'][0]['unit_price'], 2) ?></span>
+                                            <?php if (!empty($eq['items'][0]['unit'])): ?>
+                                                <small class="text-muted">/ <?= htmlspecialchars($eq['items'][0]['unit']) ?></small>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <div class="small text-end">
+                                                <?php foreach ($eq['items'] as $qItem): ?>
+                                                    <div style="white-space:nowrap;">
+                                                        <span class="text-muted"><?= htmlspecialchars($qItem['material_name']) ?>:</span>
+                                                        <span class="fw-bold">৳ <?= number_format($qItem['unit_price'], 2) ?></span>
+                                                        <?php if (!empty($qItem['unit'])): ?>
+                                                            <small class="text-muted">/ <?= htmlspecialchars($qItem['unit']) ?></small>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-end fw-bold">৳ <?= number_format($eq['total_amount'] ?? 0, 2) ?></td>
                                 <td><?= $eq['validity_date'] ? date('d M Y', strtotime($eq['validity_date'])) : '—' ?></td>
                                 <td>
                                     <?php if (!empty($eq['attachment'])): ?>

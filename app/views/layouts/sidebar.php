@@ -119,6 +119,66 @@
 
         $pendingFundReqTotalCount = $pendingFundReqDeptCount + $pendingFundReqMgmtCount + $pendingFundReqAccountsCount;
     }
+
+    // Calculate pending Purchase Requests & Purchase Orders count for sidebar red badges
+    $sidebarPendingPRCount = 0;
+    $sidebarPendingPOCount = 0;
+    if (isset($db) && isset($_SESSION['user']['id'])) {
+        $sidebarUserId = (int)$_SESSION['user']['id'];
+        $sidebarRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        try {
+            // 1. Pending Purchase Requests awaiting approval
+            if (in_array($sidebarRoleId, [1, 3, 22])) { // Admin, Super Admin, PM Head
+                $prRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM purchase_requests pr 
+                    JOIN projects p ON p.id = pr.project_id 
+                    WHERE pr.status = 'Submitted' AND p.deleted_at IS NULL
+                ");
+                $sidebarPendingPRCount = $prRes ? (int)$prRes->fetch_assoc()['c'] : 0;
+            } elseif ($sidebarRoleId === 15) { // Project Manager (assigned projects)
+                $prRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM purchase_requests pr 
+                    JOIN projects p ON p.id = pr.project_id 
+                    WHERE pr.status = 'Submitted' AND p.pm_id = {$sidebarUserId} AND p.deleted_at IS NULL
+                ");
+                $sidebarPendingPRCount = $prRes ? (int)$prRes->fetch_assoc()['c'] : 0;
+            }
+
+            // 2. Pending Purchase Orders awaiting approval / receiving action
+            if ($sidebarRoleId === 17) { // Purchase Head
+                $poRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM purchase_orders 
+                    WHERE purchase_head_approved_by_id IS NULL AND (status != 'Cancelled' OR status IS NULL)
+                ");
+                $sidebarPendingPOCount = $poRes ? (int)$poRes->fetch_assoc()['c'] : 0;
+            } elseif ($sidebarRoleId === 24) { // QC User
+                $poRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM purchase_orders 
+                    WHERE qc_approved_by_id IS NULL AND (status != 'Cancelled' OR status IS NULL)
+                ");
+                $sidebarPendingPOCount = $poRes ? (int)$poRes->fetch_assoc()['c'] : 0;
+            } elseif ($sidebarRoleId === 20) { // Operation Head
+                $poRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM purchase_orders 
+                    WHERE op_head_approved_by_id IS NULL AND (status != 'Cancelled' OR status IS NULL)
+                ");
+                $sidebarPendingPOCount = $poRes ? (int)$poRes->fetch_assoc()['c'] : 0;
+            } else { // Admin, Super Admin, PMs, Site Engineers, Executives
+                $poRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM purchase_orders 
+                    WHERE status IN ('Issued', 'Partially Received', 'Pending')
+                ");
+                $sidebarPendingPOCount = $poRes ? (int)$poRes->fetch_assoc()['c'] : 0;
+            }
+        } catch (\Throwable $e) {}
+    }
     ?>
 
 
@@ -1903,8 +1963,12 @@
                     </li>
                     <li class="slide">
                         <a href="<?= $base_url ?>/con-purchase-requests"
-                            class="sidebar__menu-item <?= isActive('con-purchase-requests', $current_route) ?>">Purchase
-                            Requests</a>
+                            class="sidebar__menu-item <?= isActive('con-purchase-requests', $current_route) ?> d-flex align-items-center justify-content-between">
+                            <span>Purchase Requests</span>
+                            <?php if (!empty($sidebarPendingPRCount) && $sidebarPendingPRCount > 0): ?>
+                                <span class="badge bg-danger rounded-pill me-1" style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPRCount ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
                 <?php endif; ?>
 
@@ -2027,7 +2091,7 @@
 
 
                 <!-- Pre-Construction — only show if user has at least one permission -->
-                <?php if (hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Project structure design') || hasPermission('Project Draft Design') || hasPermission('Project Drawing') || hasPermission('Soil tests') || hasPermission('Construction Management') || ($_SESSION['user']['role_id'] ?? 0) == 19): ?>
+                <?php if (hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Project structure design') || hasPermission('Project Draft Design') || hasPermission('Project Drawing') || hasPermission('Soil tests') || hasPermission('Construction Management') || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 19, 22])): ?>
                     <li
                         class="slide has-sub <?= isActive(['con-land-visibility-studies', 'con-land-acquisitions', 'con-land-requisitions', 'con-land-ledger', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit', 'legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
@@ -2250,7 +2314,7 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if (hasPermission('Purchase order') || ($_SESSION['user']['role_id'] ?? 0) == 12): ?>
+                <?php if (hasPermission('Purchase order') || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 17, 22, 23, 31])): ?>
                     <!-- Module 5: Procurement -->
                     <li
                         class="slide has-sub <?= isActive(['con-purchase-requests', 'con-purchase-request-create', 'con-purchase-orders', 'con-wastage', 'con-wastage-create'], $current_route) ? 'active' : '' ?>">
@@ -2258,13 +2322,20 @@
                             class="sidebar__menu-item <?= isActive(['con-purchase-requests', 'con-purchase-request-create', 'con-purchase-orders', 'con-wastage', 'con-wastage-create'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-cart-shopping"></i></div>
                             <span class="sidebar__menu-label">Procurement</span>
+                            <?php if (($sidebarPendingPRCount + $sidebarPendingPOCount) > 0): ?>
+                                <span class="badge bg-danger rounded-pill ms-2 me-1" style="font-size:9.5px; padding: 2px 6px;"><?= ($sidebarPendingPRCount + $sidebarPendingPOCount) ?></span>
+                            <?php endif; ?>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
                         <ul class="sidebar-menu child2" style="display:block;">
                             <li class="slide">
                                 <a href="<?= $base_url ?>/con-purchase-requests"
-                                    class="sidebar__menu-item <?= isActive('con-purchase-requests', $current_route) ?>">Purchase
-                                    Requests</a>
+                                    class="sidebar__menu-item <?= isActive('con-purchase-requests', $current_route) ?> d-flex align-items-center justify-content-between">
+                                    <span>Purchase Requests</span>
+                                    <?php if (!empty($sidebarPendingPRCount) && $sidebarPendingPRCount > 0): ?>
+                                        <span class="badge bg-danger rounded-pill me-1" style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPRCount ?></span>
+                                    <?php endif; ?>
+                                </a>
                             </li>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/con-purchase-request-create"
@@ -2273,8 +2344,12 @@
                             </li>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/con-purchase-orders"
-                                    class="sidebar__menu-item <?= isActive('con-purchase-orders', $current_route) ?>">Purchase
-                                    Orders</a>
+                                    class="sidebar__menu-item <?= isActive('con-purchase-orders', $current_route) ?> d-flex align-items-center justify-content-between">
+                                    <span>Purchase Orders</span>
+                                    <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
+                                        <span class="badge bg-danger rounded-pill me-1" style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
+                                    <?php endif; ?>
+                                </a>
                             </li>
                             <li class="slide <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
                                 <a href="<?= $GLOBALS['base_url'] ?>/con-wastage"
@@ -2396,7 +2471,7 @@
                             class="sidebar__menu-item <?= isActive('con-project-plan-targets', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-bullseye-arrow"></i></div>
                             <span class="sidebar__menu-label">Project Plan & BOQ</span>
-                        </a>
+                            </a>
                     </li>
                     <li class="slide <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">
                         <a href="<?= $base_url ?>/con-weekly-reports"
@@ -2444,7 +2519,7 @@
 
 
                 <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
-                <?php if (hasPermission('Contractor Bill')): ?>
+                <?php if (hasPermission('Contractor Bill') || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 22])): ?>
                     <li
                         class="slide has-sub <?= isActive(['con-contractor-bills', 'con-contractor-bill-create', 'con-fund-requests', 'con-fund-request-create'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
@@ -2622,7 +2697,7 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if (hasPermission('QC & Internal Audit') || strtolower($_SESSION['user']['role_name'] ?? '') === 'qc & internal audit' || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
+                <?php if (hasPermission('QC & Internal Audit') || strtolower($_SESSION['user']['role_name'] ?? '') === 'qc & internal audit' || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 24, 25])): ?>
                     <!-- ====== Internal Audit Section ====== -->
                     <li class="sidebar__menu-category">
                         <span class="category-name">Internal Audit</span>
@@ -2633,13 +2708,19 @@
                             class="sidebar__menu-item <?= isActive(['qc-audit-dashboard', 'qc-requests', 'qc-advanced-audit'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="bi bi-shield-check"></i></div>
                             <span class="sidebar__menu-label">Internal Audit</span>
+                            <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
+                                <span class="badge bg-danger rounded-pill ms-2 me-1" style="font-size:9.5px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
+                            <?php endif; ?>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
                         <ul class="sidebar-menu child2" style="display:block;">
                             <li class="slide">
                                 <a href="<?= $base_url ?>/qc-audit-dashboard"
-                                    class="sidebar__menu-item <?= isActive('qc-audit-dashboard', $current_route) ?>">
-                                    <i class="bi bi-speedometer2 me-1"></i> Dashboard
+                                    class="sidebar__menu-item <?= isActive('qc-audit-dashboard', $current_route) ?> d-flex align-items-center justify-content-between">
+                                    <span><i class="bi bi-speedometer2 me-1"></i> Dashboard</span>
+                                    <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
+                                        <span class="badge bg-danger rounded-pill me-1" style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
+                                    <?php endif; ?>
                                 </a>
                             </li>
                             <li class="slide">
@@ -2656,8 +2737,11 @@
                             </li>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/con-purchase-orders"
-                                    class="sidebar__menu-item <?= isActive('con-purchase-orders', $current_route) ?>">
-                                    <i class="bi bi-cart me-1"></i> Purchase Orders
+                                    class="sidebar__menu-item <?= isActive('con-purchase-orders', $current_route) ?> d-flex align-items-center justify-content-between">
+                                    <span><i class="bi bi-cart me-1"></i> Purchase Orders</span>
+                                    <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
+                                        <span class="badge bg-danger rounded-pill me-1" style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
+                                    <?php endif; ?>
                                 </a>
                             </li>
                             <li class="slide">

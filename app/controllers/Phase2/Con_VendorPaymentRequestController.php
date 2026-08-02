@@ -490,6 +490,27 @@ class Con_VendorPaymentRequestController extends Controller
             $adjustments = $stmtAdj->get_result()->fetch_all(MYSQLI_ASSOC);
         }
 
+        // Fetch material receiving logs (GRNs) against PO
+        $materialLogs = [];
+        if (!empty($request['purchase_order_id']) && (int)$request['purchase_order_id'] > 0) {
+            $stmtMat = $this->db->prepare("
+                SELECT mr.*, u.full_name as received_by_name, w.name as warehouse_name
+                FROM material_receiving mr
+                LEFT JOIN users u ON u.id = mr.received_by
+                LEFT JOIN con_warehouses w ON w.id = mr.warehouse_id
+                WHERE mr.purchase_order_id = ?
+                ORDER BY mr.id DESC
+            ");
+            if ($stmtMat) {
+                $stmtMat->bind_param('i', $request['purchase_order_id']);
+                $stmtMat->execute();
+                $resMat = $stmtMat->get_result();
+                if ($resMat) {
+                    $materialLogs = $resMat->fetch_all(MYSQLI_ASSOC);
+                }
+            }
+        }
+
         $this->view('phase2/vendor-payment-requests/show-payment', [
             'current_route'     => 'con-vendor-payment-requests',
             'page_title'        => 'Payment Request Details',
@@ -510,6 +531,7 @@ class Con_VendorPaymentRequestController extends Controller
             'documents'         => $documents,
             'poStocks'          => $poStocks,
             'adjustments'       => $adjustments,
+            'material_logs'     => $materialLogs,
         ]);
     }
 

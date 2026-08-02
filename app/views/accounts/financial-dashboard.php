@@ -430,7 +430,7 @@ $show_breadcrumb = true;
                                         </div>
                                         <h5 class="fw-bold">General & Sub-Ledger</h5>
                                         <p class="text-muted small">Individual ledger statements for Petty Cash, Banks, Vendors, Contractors, and Employees.</p>
-                                        <a href="<?= $base_url ?>/accounts/ledger/1001" class="btn btn-outline-info mt-2">
+                                        <a href="<?= $base_url ?>/accounts/ledger" class="btn btn-outline-info mt-2">
                                             <i class="fa-light fa-eye me-1"></i> View Ledger Statements
                                         </a>
                                     </div>
@@ -527,14 +527,21 @@ $show_breadcrumb = true;
                 { data: 'status', render: (data) => `<span class="badge bg-success-transparent text-success px-2 py-1 rounded-pill"><i class="fa-light fa-circle-check me-1"></i>Approved</span>` },
                 { data: null, render: (data, type, row) => {
                     let actionBtn = '';
-                    if (row.source_module === 'asset_procurement') {
-                        let payUrl = window.base_url + '/asset-extra-purchases';
-                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-success fw-semibold px-3 py-1"><i class="fa-light fa-credit-card me-1"></i> Pay / Disburse</a>`;
+                    let payUrl = '';
+                    if (row.source_module === 'vendor_payment') {
+                        payUrl = window.base_url + '/con-vendor-payment-show/' + row.voucher_id;
+                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-warning text-dark fw-semibold px-3 py-1"><i class="fa-light fa-money-bill-transfer me-1"></i> Process Payment</a>`;
+                    } else if (row.source_module === 'contractor_bill') {
+                        payUrl = window.base_url + '/con-contractor-bill/' + row.voucher_id;
+                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-warning text-dark fw-semibold px-3 py-1"><i class="fa-light fa-money-bill-transfer me-1"></i> Process Payment</a>`;
                     } else if (row.source_module === 'fund_requisition') {
-                        let payUrl = window.base_url + '/fund-requisitions';
+                        payUrl = window.base_url + '/fund-requisitions/view/' + row.voucher_id;
                         actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-primary fw-semibold px-3 py-1"><i class="fa-light fa-hand-holding-dollar me-1"></i> Pay Requisition</a>`;
+                    } else if (row.source_module === 'asset_procurement') {
+                        payUrl = window.base_url + '/asset-extra-purchases';
+                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-success fw-semibold px-3 py-1"><i class="fa-light fa-credit-card me-1"></i> Pay / Disburse</a>`;
                     } else {
-                        let payUrl = window.base_url + '/accounts-dashboard';
+                        payUrl = window.base_url + '/con-vendor-payment-show/' + row.voucher_id;
                         actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-warning text-dark fw-semibold px-3 py-1"><i class="fa-light fa-money-bill-transfer me-1"></i> Process Payment</a>`;
                     }
                     return `<div class="text-center">${actionBtn}</div>`;
@@ -758,7 +765,7 @@ $show_breadcrumb = true;
                     </a>
                 `}
             ],
-            order: [[2, 'desc']],
+            order: [],
             pageLength: 25
         });
     }
