@@ -403,10 +403,57 @@ class AssetManagement
     // =========================================================================
 
     /**
+     * Ensure database table schema has all necessary columns on live/local
+     */
+    public function ensureExtraPurchasesTableSchema()
+    {
+        // 1. Ensure office_procurement_categories table
+        $this->db->query("
+            CREATE TABLE IF NOT EXISTS `office_procurement_categories` (
+              `id` int(11) NOT NULL AUTO_INCREMENT,
+              `name` varchar(255) NOT NULL,
+              `status` enum('active','inactive') DEFAULT 'active',
+              `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        // 2. Ensure project_id allows NULL
+        $res = $this->db->query("SHOW COLUMNS FROM `project_extra_assets` LIKE 'project_id'");
+        if ($res && $col = $res->fetch_assoc()) {
+            if (isset($col['Null']) && strtoupper($col['Null']) === 'NO') {
+                $this->db->query("ALTER TABLE `project_extra_assets` MODIFY COLUMN `project_id` INT NULL DEFAULT NULL");
+            }
+        }
+
+        // 3. Ensure required extra columns exist
+        $colsToAdd = [
+            'department_id'     => "INT NULL DEFAULT NULL AFTER `project_id`",
+            'asset_location'    => "VARCHAR(255) NULL DEFAULT 'Head Office' AFTER `department_id`",
+            'assigned_to'       => "INT NULL DEFAULT NULL AFTER `asset_location`",
+            'item_category_id'  => "INT NULL DEFAULT 1 AFTER `assigned_to`",
+            'operations_status' => "ENUM('pending','approved','rejected') DEFAULT 'approved' AFTER `attachment`",
+            'operations_by'     => "INT DEFAULT NULL AFTER `operations_status`",
+            'operations_at'     => "TIMESTAMP NULL DEFAULT NULL AFTER `operations_by`",
+            'operations_note'   => "TEXT DEFAULT NULL AFTER `operations_at`",
+        ];
+
+        foreach ($colsToAdd as $colName => $colDef) {
+            $check = $this->db->query("SHOW COLUMNS FROM `project_extra_assets` LIKE '{$colName}'");
+            if ($check && $check->num_rows == 0) {
+                $this->db->query("ALTER TABLE `project_extra_assets` ADD COLUMN `{$colName}` {$colDef}");
+            }
+        }
+    }
+
+    /**
      * Get all extra purchase requests with filters
      */
     public function getExtraPurchases($filters = [])
     {
+        $this->ensureExtraPurchasesTableSchema();
+
         $sql = "SELECT pea.*, 
                        p.name AS project_name,
                        d.name AS department_name,
@@ -469,6 +516,60 @@ class AssetManagement
             $types .= 'i';
         }
 
+        if (!empty($filters['tab'])) {
+            $tab = $filters['tab'];
+            $userId = (int)($filters['user_id'] ?? 0);
+            $isAdmin = !empty($filters['is_admin']);
+
+            if ($tab === 'pending_approval') {
+                if ($isAdmin) {
+                    $sql .= " AND (pea.overall_status IN ('pending', 'in_review') OR pea.payment_status = 'unpaid')";
+                } else {
+                    $conds = [];
+                    if (!empty($filters['is_operations'])) {
+                        $conds[] = "pea.operations_status = 'pending'";
+                    }
+                    if (!empty($filters['is_purchase_head'])) {
+                        $conds[] = "(pea.operations_status = 'approved' AND pea.purchase_head_status = 'pending')";
+                    }
+                    if (!empty($filters['is_qc_audit'])) {
+                        $conds[] = "(pea.purchase_head_status = 'approved' AND pea.qc_audit_status = 'pending')";
+                    }
+                    if (!empty($filters['is_management'])) {
+                        $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending')";
+                    }
+                    if (!empty($filters['is_accounts'])) {
+                        $conds[] = "(pea.mgmt_status = 'approved' AND pea.payment_status = 'unpaid')";
+                    }
+
+                    if (!empty($conds)) {
+                        $sql .= " AND (" . implode(" OR ", $conds) . ")";
+                    } else {
+                        $sql .= " AND 1=0";
+                    }
+                }
+            } elseif ($tab === 'all_requests' && !$isAdmin) {
+                $conds = ["pea.requested_by = " . $userId];
+                if (!empty($filters['is_operations'])) {
+                    $conds[] = "pea.operations_by = " . $userId;
+                    $conds[] = "pea.operations_status != 'pending'";
+                }
+                if (!empty($filters['is_purchase_head'])) {
+                    $conds[] = "pea.purchase_head_by = " . $userId;
+                    $conds[] = "pea.purchase_head_status != 'pending'";
+                }
+                if (!empty($filters['is_qc_audit'])) {
+                    $conds[] = "pea.qc_audit_by = " . $userId;
+                    $conds[] = "pea.qc_audit_status != 'pending'";
+                }
+                if (!empty($filters['is_accounts'])) {
+                    $conds[] = "pea.paid_by = " . $userId;
+                    $conds[] = "pea.payment_status = 'paid'";
+                }
+                $sql .= " AND (" . implode(" OR ", $conds) . ")";
+            }
+        }
+
         $sql .= " ORDER BY pea.id DESC";
 
         $stmt = $this->db->prepare($sql);
@@ -488,6 +589,8 @@ class AssetManagement
      */
     public function findExtraPurchase($id)
     {
+        $this->ensureExtraPurchasesTableSchema();
+
         $stmt = $this->db->prepare(
             "SELECT pea.*, 
                     p.name AS project_name,
@@ -515,6 +618,8 @@ class AssetManagement
      */
     public function createExtraPurchase($data)
     {
+        $this->ensureExtraPurchasesTableSchema();
+
         $projectId = !empty($data['project_id']) ? (int)$data['project_id'] : null;
         $departmentId = !empty($data['department_id']) ? (int)$data['department_id'] : null;
         $assetLocation = !empty($data['asset_location']) ? $data['asset_location'] : 'Head Office';
@@ -557,6 +662,8 @@ class AssetManagement
 
         if ($stmt->execute()) {
             return $this->db->insert_id;
+        } else {
+            error_log("Execute failed in createExtraPurchase: " . $stmt->error);
         }
         return false;
     }
@@ -684,6 +791,27 @@ class AssetManagement
             }
         }
         return $res;
+    }
+
+    /**
+     * Delete extra purchase request if allowed (Creator before approval, or Admin)
+     */
+    public function deleteExtraPurchase($id, $userId, $isAdmin = false)
+    {
+        $id = (int)$id;
+        $req = $this->findExtraPurchase($id);
+        if (!$req) return false;
+
+        $isCreator = (int)$req['requested_by'] === (int)$userId;
+        $isPendingInitial = ($req['operations_status'] === 'pending' && $req['purchase_head_status'] === 'pending' && $req['qc_audit_status'] === 'pending' && $req['mgmt_status'] === 'pending');
+
+        if ($isAdmin || ($isCreator && $isPendingInitial)) {
+            $stmt = $this->db->prepare("DELETE FROM project_extra_assets WHERE id = ?");
+            $stmt->bind_param('i', $id);
+            return $stmt->execute();
+        }
+
+        return false;
     }
 
     /**

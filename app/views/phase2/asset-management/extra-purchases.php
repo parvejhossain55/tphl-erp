@@ -80,10 +80,18 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
         <div class="card-body border-bottom pb-0 pt-3 px-3">
             <ul class="nav nav-tabs mb-0 border-bottom-0">
                 <li class="nav-item">
-                    <a class="nav-link <?= $activeTab === 'my_requests' ? 'active' : '' ?>" href="?tab=my_requests<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['workplace']) ? '&workplace='.urlencode($_GET['workplace']) : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>">My Requests</a>
+                    <a class="nav-link <?= $activeTab === 'pending_approval' ? 'active' : '' ?>" href="?tab=pending_approval<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['workplace']) ? '&workplace='.urlencode($_GET['workplace']) : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>">
+                        <i class="fa-solid fa-clock-rotate-left me-1"></i>Pending My Approval
+                        <?php if (!empty($pendingCount) && $pendingCount > 0): ?>
+                            <span class="badge bg-warning text-dark rounded-pill ms-1"><?= $pendingCount ?></span>
+                        <?php endif; ?>
+                    </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <?= $activeTab === 'all_requests' ? 'active' : '' ?>" href="?tab=all_requests<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['workplace']) ? '&workplace='.urlencode($_GET['workplace']) : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>">All Requests</a>
+                    <a class="nav-link <?= $activeTab === 'my_requests' ? 'active' : '' ?>" href="?tab=my_requests<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['workplace']) ? '&workplace='.urlencode($_GET['workplace']) : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>"><i class="fa-solid fa-user me-1"></i>My Requests</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?= $activeTab === 'all_requests' ? 'active' : '' ?>" href="?tab=all_requests<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['workplace']) ? '&workplace='.urlencode($_GET['workplace']) : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>"><i class="fa-solid fa-list-check me-1"></i>All / Processed Requests</a>
                 </li>
             </ul>
         </div>
@@ -160,7 +168,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                     <tbody>
                         <?php if (empty($requests)): ?>
                             <tr>
-                                <td colspan="13" class="text-center py-4 text-muted">No purchase requests found.</td>
+                                <td colspan="14" class="text-center py-4 text-muted">No purchase requests found.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($requests as $r): ?>
@@ -204,6 +212,14 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         <span class="badge fs-10 px-2 py-1" style="background:<?= $opBg ?>;color:<?= $opColor ?>;font-weight:600;">
                                             <?= ucfirst($r['operations_status']) ?>
                                         </span>
+                                        <?php if ($r['operations_status'] !== 'pending' && !empty($r['operations_by_name'])): ?>
+                                            <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['operations_at']) ? date('d M Y, h:i A', strtotime($r['operations_at'])) : '' ?>">
+                                                <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['operations_by_name']) ?>
+                                                <?php if (!empty($r['operations_at'])): ?>
+                                                    <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['operations_at'])) ?></span>
+                                                <?php endif; ?>
+                                            </small>
+                                        <?php endif; ?>
                                     </td>
                                     <!-- Step 1: Purchase Head -->
                                     <td class="text-center">
@@ -214,6 +230,14 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         <span class="badge fs-10 px-2 py-1" style="background:<?= $phBg ?>;color:<?= $phColor ?>;font-weight:600;">
                                             <?= ucfirst($r['purchase_head_status']) ?>
                                         </span>
+                                        <?php if ($r['purchase_head_status'] !== 'pending' && !empty($r['purchase_head_by_name'])): ?>
+                                            <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['purchase_head_at']) ? date('d M Y, h:i A', strtotime($r['purchase_head_at'])) : '' ?>">
+                                                <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['purchase_head_by_name']) ?>
+                                                <?php if (!empty($r['purchase_head_at'])): ?>
+                                                    <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['purchase_head_at'])) ?></span>
+                                                <?php endif; ?>
+                                            </small>
+                                        <?php endif; ?>
                                     </td>
                                     <!-- Step 2: QC & Audit -->
                                     <td class="text-center">
@@ -224,6 +248,14 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         <span class="badge fs-10 px-2 py-1" style="background:<?= $qcBg ?>;color:<?= $qcColor ?>;font-weight:600;">
                                             <?= ucfirst($r['qc_audit_status']) ?>
                                         </span>
+                                        <?php if ($r['qc_audit_status'] !== 'pending' && !empty($r['qc_audit_by_name'])): ?>
+                                            <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['qc_audit_at']) ? date('d M Y, h:i A', strtotime($r['qc_audit_at'])) : '' ?>">
+                                                <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['qc_audit_by_name']) ?>
+                                                <?php if (!empty($r['qc_audit_at'])): ?>
+                                                    <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['qc_audit_at'])) ?></span>
+                                                <?php endif; ?>
+                                            </small>
+                                        <?php endif; ?>
                                     </td>
                                     <!-- Step 3: Management -->
                                     <td class="text-center">
@@ -234,6 +266,14 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         <span class="badge fs-10 px-2 py-1" style="background:<?= $mgBg ?>;color:<?= $mgColor ?>;font-weight:600;">
                                             <?= ucfirst($r['mgmt_status']) ?>
                                         </span>
+                                        <?php if ($r['mgmt_status'] !== 'pending' && !empty($r['mgmt_by_name'])): ?>
+                                            <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['mgmt_at']) ? date('d M Y, h:i A', strtotime($r['mgmt_at'])) : '' ?>">
+                                                <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['mgmt_by_name']) ?>
+                                                <?php if (!empty($r['mgmt_at'])): ?>
+                                                    <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['mgmt_at'])) ?></span>
+                                                <?php endif; ?>
+                                            </small>
+                                        <?php endif; ?>
                                     </td>
                                     <!-- Step 4: Payment -->
                                     <td class="text-center">
@@ -244,6 +284,14 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         <span class="badge fs-10 px-2 py-1" style="background:<?= $pyBg ?>;color:<?= $pyColor ?>;font-weight:600;">
                                             <?= ucfirst($r['payment_status']) ?>
                                         </span>
+                                        <?php if ($r['payment_status'] === 'paid' && !empty($r['paid_by_name'])): ?>
+                                            <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['paid_at']) ? date('d M Y, h:i A', strtotime($r['paid_at'])) : '' ?>">
+                                                <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['paid_by_name']) ?>
+                                                <?php if (!empty($r['paid_at'])): ?>
+                                                    <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['paid_at'])) ?></span>
+                                                <?php endif; ?>
+                                            </small>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <?php
@@ -261,22 +309,30 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                     </td>
                                     <td class="text-center">
                                         <?php
-                                        // Determine available action based on role and status
+                                        $isCreator = (int)$r['requested_by'] === $userId;
+
+                                        // Self-approval prevention: Creator cannot approve/reject their own request unless Admin
                                         $canApprove = false;
                                         $step = '';
                                         
-                                        if (!empty($isOperations) && $r['operations_status'] === 'pending') {
-                                            $canApprove = true; $step = 'operations';
-                                        } elseif (!empty($isPurchaseHead) && $r['operations_status'] === 'approved' && $r['purchase_head_status'] === 'pending') {
-                                            $canApprove = true; $step = 'purchase_head';
-                                        } elseif (!empty($isQcAudit) && $r['purchase_head_status'] === 'approved' && $r['qc_audit_status'] === 'pending') {
-                                            $canApprove = true; $step = 'qc_audit';
-                                        } elseif (!empty($isManagement) && $r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending') {
-                                            $canApprove = true; $step = 'mgmt';
+                                        if (!$isCreator || $isAdminOrMgmt) {
+                                            if (!empty($isOperations) && $r['operations_status'] === 'pending') {
+                                                $canApprove = true; $step = 'operations';
+                                            } elseif (!empty($isPurchaseHead) && $r['operations_status'] === 'approved' && $r['purchase_head_status'] === 'pending') {
+                                                $canApprove = true; $step = 'purchase_head';
+                                            } elseif (!empty($isQcAudit) && $r['purchase_head_status'] === 'approved' && $r['qc_audit_status'] === 'pending') {
+                                                $canApprove = true; $step = 'qc_audit';
+                                            } elseif (!empty($isManagement) && $r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending') {
+                                                $canApprove = true; $step = 'mgmt';
+                                            }
                                         }
                                         
                                         $canPay = !empty($isAccounts) && $r['mgmt_status'] === 'approved' && $r['payment_status'] === 'unpaid';
                                         $canConfirmPurchase = !empty($isOperations) && $r['payment_status'] === 'paid' && $r['overall_status'] === 'paid';
+
+                                        // Creator or Admin can delete BEFORE any approval step has passed
+                                        $isInitialPending = ($r['operations_status'] === 'pending' && $r['purchase_head_status'] === 'pending' && $r['qc_audit_status'] === 'pending' && $r['mgmt_status'] === 'pending');
+                                        $canDelete = ($isCreator || $isAdminOrMgmt) && $isInitialPending;
                                         ?>
 
                                         <!-- Always show View button -->
@@ -305,6 +361,13 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 data-info='<?= htmlspecialchars(json_encode($r), ENT_QUOTES, "UTF-8") ?>'
                                                 onclick="openConfirmPurchaseModal(this)">
                                                 <i class="fa-solid fa-box-check me-1"></i> Mark Purchased
+                                            </button>
+                                        <?php endif; ?>
+
+                                        <?php if ($canDelete): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-icon" title="Delete / Cancel Request"
+                                                onclick="openDeleteRequestModal(<?= $r['id'] ?>)">
+                                                <i class="fa-solid fa-trash"></i>
                                             </button>
                                         <?php endif; ?>
                                     </td>
@@ -531,6 +594,30 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
 <?php endif; ?>
 
 <!-- ========================================================================= -->
+<!-- MODAL: DELETE PURCHASE REQUEST -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="deleteRequestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <form id="deleteRequestForm" action="" method="POST">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">Delete Request</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <i class="fa-solid fa-triangle-exclamation text-danger fs-1 mb-3"></i>
+                    <p class="mb-0 fs-13">Are you sure you want to delete this purchase request? This cannot be undone.</p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-danger">Yes, Delete</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
 <!-- MODAL: APPROVAL ACTION -->
 <!-- ========================================================================= -->
 <div class="modal fade" id="approvalModal" tabindex="-1" aria-hidden="true">
@@ -685,6 +772,11 @@ function openDeleteCategoryModal(id) {
     if(manageModal) manageModal.hide();
     
     new bootstrap.Modal(document.getElementById('deleteCategoryModal')).show();
+}
+
+function openDeleteRequestModal(id) {
+    document.getElementById('deleteRequestForm').action = '<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/delete/' + id;
+    new bootstrap.Modal(document.getElementById('deleteRequestModal')).show();
 }
 
 function openApprovalModal(id, status, step) {

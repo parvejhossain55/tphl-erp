@@ -172,6 +172,42 @@ class ChartOfAccountsController extends Controller
         }
     }
 
+    public function delete($id = null)
+    {
+        $id = $id ? (int)$id : (!empty($_POST['account_id']) ? (int)$_POST['account_id'] : (!empty($_GET['id']) ? (int)$_GET['id'] : null));
+
+        if (!$id) {
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $_SESSION['error'] = "Invalid account ID.";
+            header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
+            exit;
+        }
+
+        $account = $this->coaModel->getAccountById($id);
+        if (!$account) {
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $_SESSION['error'] = "Account not found.";
+            header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
+            exit;
+        }
+
+        if (($account['is_system_account'] ?? 0) == 1) {
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $_SESSION['error'] = "System protected accounts cannot be deleted.";
+            header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
+            exit;
+        }
+
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if ($this->coaModel->deleteAccount($id)) {
+            $_SESSION['success'] = "Account deleted successfully.";
+        } else {
+            $_SESSION['error'] = "Cannot delete account: It has active transaction records or sub-accounts.";
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/accounts/coa");
+        exit;
+    }
+
     public function ledger($id = null)
     {
         $id = (int)$id;

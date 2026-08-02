@@ -281,7 +281,9 @@ class AutoPostingService
                 throw new Exception("Failed to insert cash debit detail: " . $stmtDet->error);
             }
 
-            if (in_array(strtolower($paymentType), ['emi', 'installment'])) {
+            $typeLower = strtolower(trim($paymentType));
+
+            if (in_array($typeLower, ['emi', 'installment'])) {
                 // 10% Service Fee Income (4110-001)
                 $serviceChargeAccId = $this->getAccountIdByCode('4110-001');
                 // 90% Client EMI Fund (2220-001)
@@ -297,6 +299,25 @@ class AutoPostingService
 
                 // Credit 90% EMI Deposit Fund
                 $stmtDet->bind_param("iiddsisi", $journalId, $emiFundAccId, $debitZero, $depositAmount, $narration, $projectId, $partyType, $clientId);
+                $stmtDet->execute();
+
+            } elseif (in_array($typeLower, ['development_charge', 'flat_development_charge', 'dev_charge'])) {
+                // 100% Client Development Charge Deposit Fund (2230-001)
+                $devFundAccId = $this->getAccountIdByCode('2230-001');
+                if (!$devFundAccId) $devFundAccId = $this->getAccountIdByCode('2210-001');
+                $debitZero = 0.00;
+                $creditVal = $amount;
+
+                $stmtDet->bind_param("iiddsisi", $journalId, $devFundAccId, $debitZero, $creditVal, $narration, $projectId, $partyType, $clientId);
+                $stmtDet->execute();
+
+            } elseif (in_array($typeLower, ['service_charge', 'shop_service_charge'])) {
+                // 100% Service Fee Income (4110-001)
+                $serviceChargeAccId = $this->getAccountIdByCode('4110-001');
+                $debitZero = 0.00;
+                $creditVal = $amount;
+
+                $stmtDet->bind_param("iiddsisi", $journalId, $serviceChargeAccId, $debitZero, $creditVal, $narration, $projectId, $partyType, $clientId);
                 $stmtDet->execute();
 
             } else {

@@ -116,11 +116,11 @@
                                         </div>
                                         <div class="col-12">
                                             <select class="form-select sub-category-select" name="account_id[]" required>
-                                                <option value="">-- Sub Category --</option>
+                                                <option value="">-- Select Sub Category / Account --</option>
                                                 <?php foreach ($accounts as $acc): ?>
-                                                    <?php if($acc['parent_id'] == $parentId): ?>
+                                                    <?php if(!empty($acc['parent_id'])): ?>
                                                         <option value="<?= $acc['id'] ?>" <?= ($acc['id'] == $detail['account_id']) ? 'selected' : '' ?>>
-                                                            <?= htmlspecialchars($acc['account_code'] . ' - ' . $acc['account_name']) ?> (<?= $acc['account_type'] ?>)
+                                                            [<?= htmlspecialchars($acc['account_code']) ?>] <?= htmlspecialchars($acc['account_name']) ?> (<?= htmlspecialchars($acc['account_type']) ?>)
                                                         </option>
                                                     <?php endif; ?>
                                                 <?php endforeach; ?>
@@ -174,7 +174,7 @@
     const allAccounts = <?= json_encode($accounts) ?>;
 
     const mainCategoryOptions = `
-        <option value="">-- Main Category --</option>
+        <option value="">-- Main Category Filter --</option>
         <?php foreach ($accounts as $acc): ?>
             <?php if(empty($acc['parent_id'])): ?>
                 <option value="<?= $acc['id'] ?>"><?= htmlspecialchars($acc['account_code'] . ' - ' . $acc['account_name']) ?> (<?= $acc['account_type'] ?>)</option>
@@ -182,16 +182,25 @@
         <?php endforeach; ?>
     `;
 
+    const subCategoryOptionsAll = `
+        <option value="">-- Select Sub Category / Account --</option>
+        <?php foreach ($accounts as $acc): ?>
+            <?php if(!empty($acc['parent_id'])): ?>
+                <option value="<?= $acc['id'] ?>">[<?= htmlspecialchars($acc['account_code']) ?>] <?= htmlspecialchars($acc['account_name']) ?> (<?= htmlspecialchars($acc['account_type']) ?>)</option>
+            <?php endif; ?>
+        <?php endforeach; ?>
+    `;
+
     const accountsHtml = `
         <div class="row gx-2">
             <div class="col-12 mb-2">
-                <select class="form-select main-category-select" required onchange="filterSubCategories(this)">
+                <select class="form-select main-category-select" onchange="filterSubCategories(this)">
                     ${mainCategoryOptions}
                 </select>
             </div>
             <div class="col-12">
                 <select class="form-select sub-category-select" name="account_id[]" required>
-                    <option value="">-- Sub Category --</option>
+                    ${subCategoryOptionsAll}
                 </select>
             </div>
         </div>
@@ -200,14 +209,21 @@
     function filterSubCategories(selectElement) {
         const parentId = $(selectElement).val();
         const subSelect = $(selectElement).closest('td').find('.sub-category-select');
+        const selectedVal = subSelect.val();
         
         subSelect.empty();
-        subSelect.append('<option value="">-- Sub Category --</option>');
+        subSelect.append('<option value="">-- Select Sub Category / Account --</option>');
         
         if (parentId) {
             const children = allAccounts.filter(acc => acc.parent_id == parentId);
             children.forEach(child => {
-                subSelect.append(`<option value="${child.id}">${child.account_code} - ${child.account_name} (${child.account_type})</option>`);
+                subSelect.append(`<option value="${child.id}" ${child.id == selectedVal ? 'selected' : ''}>[${child.account_code}] ${child.account_name} (${child.account_type})</option>`);
+            });
+        } else {
+            allAccounts.forEach(acc => {
+                if (acc.parent_id) {
+                    subSelect.append(`<option value="${acc.id}" ${acc.id == selectedVal ? 'selected' : ''}>[${acc.account_code}] ${acc.account_name} (${acc.account_type})</option>`);
+                }
             });
         }
     }

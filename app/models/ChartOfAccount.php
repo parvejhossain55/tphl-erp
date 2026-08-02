@@ -80,6 +80,21 @@ class ChartOfAccount
 
     public function deleteAccount($id)
     {
+        $id = (int)$id;
+        // Check if account has any journal entries
+        $txnCheck = $this->db->query("SELECT COUNT(*) as cnt FROM journal_details WHERE account_id = $id");
+        $txnRow = $txnCheck ? $txnCheck->fetch_assoc() : null;
+        if (!empty($txnRow['cnt']) && $txnRow['cnt'] > 0) {
+            return false;
+        }
+
+        // Check if account has child accounts
+        $childCheck = $this->db->query("SELECT COUNT(*) as cnt FROM chart_of_accounts WHERE parent_id = $id");
+        $childRow = $childCheck ? $childCheck->fetch_assoc() : null;
+        if (!empty($childRow['cnt']) && $childRow['cnt'] > 0) {
+            return false;
+        }
+
         $stmt = $this->db->prepare("DELETE FROM chart_of_accounts WHERE id = ? AND is_system_account = 0");
         $stmt->bind_param("i", $id);
         return $stmt->execute();
