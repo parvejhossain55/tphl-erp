@@ -593,6 +593,7 @@ return [
     'asset-extra-purchases' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'extraPurchases'],
     'asset-extra-purchases/store' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'storeExtraPurchase'],
     'asset-extra-purchases/approve/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'approveExtraPurchase'],
+    'asset-extra-purchases/delete/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'deleteExtraPurchase'],
     'asset-extra-purchases/purchased/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'markPurchased'],
     'asset-extra-purchases/confirm/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'confirmPurchased'],
     'asset-extra-purchases/category/store' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'storeProcurementCategory'],

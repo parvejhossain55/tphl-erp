@@ -99,6 +99,8 @@ return [
     'accounts/coa' => ['controller' => 'ChartOfAccountsController', 'method' => 'index'],
     'accounts/coa/store' => ['controller' => 'ChartOfAccountsController', 'method' => 'store'],
     'accounts/coa/update' => ['controller' => 'ChartOfAccountsController', 'method' => 'update'],
+    'accounts/coa/delete/(\d+)' => ['controller' => 'ChartOfAccountsController', 'method' => 'delete'],
+    'accounts/coa/delete' => ['controller' => 'ChartOfAccountsController', 'method' => 'delete'],
     'accounts/ledger/(\d+)' => ['controller' => 'ChartOfAccountsController', 'method' => 'ledger'],
     'accounts/ledger' => ['controller' => 'ChartOfAccountsController', 'method' => 'ledger'],
 

@@ -267,15 +267,30 @@ class AssetManagementController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userId = (int)($_SESSION['user']['id'] ?? 0);
 
-        // Approver / Admin / Procurement / Management / Accounts roles see all requests by default
-        $isApprover = in_array($roleId, [1, 2, 3, 6, 17, 20, 22, 23, 24, 25, 30, 31]);
-        $activeTab  = $_GET['tab'] ?? ($isApprover ? 'all_requests' : 'my_requests');
+        $isAdminOrMgmt  = in_array($roleId, [1, 2, 3]);
+        $isOperations   = $isAdminOrMgmt || in_array($roleId, [6, 20, 22, 30]);
+        $isPurchaseHead = $isAdminOrMgmt || in_array($roleId, [17, 23, 31]);
+        $isQcAudit      = $isAdminOrMgmt || in_array($roleId, [24, 25]);
+        $isManagement   = $isAdminOrMgmt;
+        $isAccounts     = $isAdminOrMgmt || in_array($roleId, [6, 30]);
+        $isApprover     = in_array($roleId, [1, 2, 3, 6, 17, 20, 22, 23, 24, 25, 30, 31]);
+
+        $activeTab  = $_GET['tab'] ?? ($isApprover ? 'pending_approval' : 'my_requests');
 
         $filters = [
-            'department_id'  => $_GET['department_id'] ?? '',
-            'workplace'      => $_GET['workplace'] ?? '',
-            'project_id'     => $_GET['project_id'] ?? '',
-            'overall_status' => $_GET['status'] ?? '',
+            'department_id'    => $_GET['department_id'] ?? '',
+            'workplace'        => $_GET['workplace'] ?? '',
+            'project_id'       => $_GET['project_id'] ?? '',
+            'overall_status'   => $_GET['status'] ?? '',
+            'user_id'          => $userId,
+            'role_id'          => $roleId,
+            'tab'              => $activeTab,
+            'is_admin'         => $isAdminOrMgmt,
+            'is_operations'    => $isOperations,
+            'is_purchase_head' => $isPurchaseHead,
+            'is_qc_audit'      => $isQcAudit,
+            'is_management'    => $isManagement,
+            'is_accounts'      => $isAccounts,
         ];
 
         if (!$isApprover || $activeTab === 'my_requests') {
@@ -283,6 +298,16 @@ class AssetManagementController extends Controller
         }
 
         $requests = $this->model->getExtraPurchases($filters);
+
+        $pendingCount = 0;
+        if ($isApprover) {
+            $pendingFilters = $filters;
+            $pendingFilters['tab'] = 'pending_approval';
+            unset($pendingFilters['created_by']);
+            $pendingList = $this->model->getExtraPurchases($pendingFilters);
+            $pendingCount = count($pendingList);
+        }
+
         $categories = $this->model->getProcurementCategories();
 
         $departments = [];
@@ -325,7 +350,8 @@ class AssetManagementController extends Controller
             'users'        => $users,
             'bankAccounts' => $bankAccounts,
             'isApprover'   => $isApprover,
-            'activeTab'    => $activeTab
+            'activeTab'    => $activeTab,
+            'pendingCount' => $pendingCount
         ];
         $this->view('phase2/asset-management/extra-purchases', $data);
     }
@@ -335,6 +361,18 @@ class AssetManagementController extends Controller
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = $_POST;
             $data['requested_by'] = $_SESSION['user']['id'] ?? 1;
+
+            if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/procurement/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $filename = 'req_' . time() . '_' . rand(1000, 9999) . '.' . pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION);
+                if (move_uploaded_file($_FILES['attachment']['tmp_name'], $uploadDir . $filename)) {
+                    $data['attachment'] = 'uploads/procurement/' . $filename;
+                }
+            }
+
             if ($this->model->createExtraPurchase($data)) {
                 setSuccess("Extra purchase request submitted.");
             } else {
@@ -544,6 +582,23 @@ class AssetManagementController extends Controller
                 setSuccess("Category deleted.");
             } else {
                 setError("Failed category deletion.");
+            }
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+        exit;
+    }
+
+    public function deleteExtraPurchase($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $userId = (int)($_SESSION['user']['id'] ?? 0);
+            $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+            $isAdmin = in_array($roleId, [1, 2, 3]);
+
+            if ($this->model->deleteExtraPurchase($id, $userId, $isAdmin)) {
+                setSuccess("Purchase request #{$id} deleted successfully.");
+            } else {
+                setError("Cannot delete purchase request #{$id}. It may have already been approved or you do not have permission.");
             }
         }
         header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");

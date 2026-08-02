@@ -228,10 +228,10 @@ $show_breadcrumb = true;
                         <div class="card border-0 shadow-sm mb-4" style="border-top: 4px solid #ffc107 !important;">
                             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h5 class="mb-1 fw-bold text-dark"><i class="fa-light fa-clock-rotate-left text-warning me-2"></i> Pending Payables (Management Approved - Unpaid)</h5>
+                                    <h5 class="mb-1 fw-bold "><i class="fa-light fa-clock-rotate-left text-warning me-2"></i> Pending Payables (Management Approved - Unpaid)</h5>
                                     <p class="text-muted small mb-0">All accruals & approved requisitions awaiting Accounts payment disbursement.</p>
                                 </div>
-                                <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fs-12 fw-semibold">Accrued Liabilities</span>
+                                <span class="badge bg-warning  px-3 py-2 rounded-pill fs-12 fw-semibold">Accrued Liabilities</span>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
@@ -366,7 +366,7 @@ $show_breadcrumb = true;
                                         </div>
                                         <h5 class="fw-bold">Trial Balance (রেওয়ামিল)</h5>
                                         <p class="text-muted small">Double-Entry trial balance statement with Summary and Detailed Sub-Ledger party breakdown.</p>
-                                        <a href="<?= $base_url ?>/reports/trial-balance" class="btn btn-outline-warning text-dark mt-2">
+                                        <a href="<?= $base_url ?>/reports/trial-balance" class="btn btn-outline-warning  mt-2">
                                             <i class="fa-light fa-eye me-1"></i> View Trial Balance
                                         </a>
                                     </div>
@@ -518,7 +518,7 @@ $show_breadcrumb = true;
                 }
             },
             columns: [
-                { data: 'voucher_no', render: (data) => `<span class="badge bg-light text-dark border font-mono fw-bold px-2 py-1">${data}</span>` },
+                { data: 'voucher_no', render: (data) => `<span class="badge bg-light  border font-mono fw-bold px-2 py-1">${data}</span>` },
                 { data: 'module_type', render: (data) => `<span class="badge bg-info-transparent text-info fw-semibold px-2 py-1"><i class="fa-light fa-tag me-1"></i>${data}</span>` },
                 { data: 'entry_date', render: (data) => formatDate(data) },
                 { data: 'added_by_name', render: (data) => `<strong>${data || '—'}</strong>` },
@@ -530,10 +530,10 @@ $show_breadcrumb = true;
                     let payUrl = '';
                     if (row.source_module === 'vendor_payment') {
                         payUrl = window.base_url + '/con-vendor-payment-show/' + row.voucher_id;
-                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-warning text-dark fw-semibold px-3 py-1"><i class="fa-light fa-money-bill-transfer me-1"></i> Process Payment</a>`;
+                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-warning  fw-semibold px-3 py-1"><i class="fa-light fa-money-bill-transfer me-1"></i> Process Payment</a>`;
                     } else if (row.source_module === 'contractor_bill') {
                         payUrl = window.base_url + '/con-contractor-bill/' + row.voucher_id;
-                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-warning text-dark fw-semibold px-3 py-1"><i class="fa-light fa-money-bill-transfer me-1"></i> Process Payment</a>`;
+                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-warning  fw-semibold px-3 py-1"><i class="fa-light fa-money-bill-transfer me-1"></i> Process Payment</a>`;
                     } else if (row.source_module === 'fund_requisition') {
                         payUrl = window.base_url + '/fund-requisitions/view/' + row.voucher_id;
                         actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-primary fw-semibold px-3 py-1"><i class="fa-light fa-hand-holding-dollar me-1"></i> Pay Requisition</a>`;
@@ -542,7 +542,7 @@ $show_breadcrumb = true;
                         actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-success fw-semibold px-3 py-1"><i class="fa-light fa-credit-card me-1"></i> Pay / Disburse</a>`;
                     } else {
                         payUrl = window.base_url + '/con-vendor-payment-show/' + row.voucher_id;
-                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-warning text-dark fw-semibold px-3 py-1"><i class="fa-light fa-money-bill-transfer me-1"></i> Process Payment</a>`;
+                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-warning  fw-semibold px-3 py-1"><i class="fa-light fa-money-bill-transfer me-1"></i> Process Payment</a>`;
                     }
                     return `<div class="text-center">${actionBtn}</div>`;
                 }}
@@ -614,7 +614,7 @@ $show_breadcrumb = true;
                             if (row.payment_status === 'paid' || data === 'purchased') {
                                 return `<span class="badge bg-success text-white px-2 py-1 rounded-pill"><i class="fa-light fa-check-double me-1"></i>Paid & Completed</span>`;
                             } else if (data === 'approved' || row.mgmt_approved_at) {
-                                return `<span class="badge bg-warning text-dark px-2 py-1 rounded-pill"><i class="fa-light fa-clock-rotate-left me-1"></i>Approved (Unpaid)</span>`;
+                                return `<span class="badge bg-warning  px-2 py-1 rounded-pill"><i class="fa-light fa-clock-rotate-left me-1"></i>Approved (Unpaid)</span>`;
                             }
                         }
                         return getStatusBadge(data);
@@ -678,7 +678,7 @@ $show_breadcrumb = true;
             },
             columns: [
                 { data: null, render: (data, type, row, meta) => meta.row + 1 },
-                { data: 'booking_id', render: (data) => '<span class="badge bg-light text-dark border font-mono fw-bold">BKG-'+data+'</span>' },
+                { data: 'booking_id', render: (data) => '<span class="badge bg-light  border font-mono fw-bold">BKG-'+data+'</span>' },
                 { data: 'full_name', render: (data) => `<strong>${data}</strong>` },
                 { data: null, render: (data, type, row) => {
                     let proj = row.project_name ? `<span class="badge bg-primary-transparent text-primary fw-semibold me-1 mb-1 d-inline-block"><i class="fa-light fa-building me-1"></i>${row.project_name}</span>` : '—';
@@ -753,7 +753,7 @@ $show_breadcrumb = true;
                 { data: null, render: (data, type, row, meta) => meta.row + 1 },
                 { data: 'journal_number', render: (data) => `<strong>${data}</strong>` },
                 { data: 'date', render: (data) => formatDate(data) },
-                { data: 'project_name', render: (data) => data ? `<span class="badge bg-info text-dark">${data}</span>` : '<span class="text-muted">Office</span>' },
+                { data: 'project_name', render: (data) => data ? `<span class="badge bg-info ">${data}</span>` : '<span class="text-muted">Office</span>' },
                 { data: 'office', render: (data) => data ? `<span class="badge bg-secondary">${data}</span>` : '-' },
                 { data: 'voucher_type' },
                 { data: 'total_debit', render: (data) => `<span class="text-success">${formatCurrency(data)}</span>` },
