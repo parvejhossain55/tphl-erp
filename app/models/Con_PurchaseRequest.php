@@ -12,7 +12,7 @@ class Con_PurchaseRequest extends Model
     // READ
     // =========================================================================
 
-    public function getAll($executiveId = null, $pmId = null)
+    public function getAll($createdBy = null, $executiveId = null, $pmId = null)
     {
         $sql = "SELECT pr.*, p.name AS project_name, u.full_name AS created_by_name,
                        exec.full_name AS assigned_executive_name,
@@ -29,11 +29,14 @@ class Con_PurchaseRequest extends Model
                 LEFT JOIN users exec ON exec.id = pr.assigned_executive_id ";
         
         $where = [];
+        if ($createdBy) {
+            $where[] = "pr.created_by = " . (int)$createdBy;
+        }
         if ($executiveId) {
             $where[] = "pr.assigned_executive_id = " . (int)$executiveId;
         }
         if ($pmId) {
-            $where[] = "p.pm_id = " . (int)$pmId;
+            $where[] = "(p.pm_id = " . (int)$pmId . " OR p.pm_id IS NULL)";
         }
 
         if (!empty($where)) {
@@ -151,16 +154,17 @@ class Con_PurchaseRequest extends Model
 
         $this->db->begin_transaction();
         try {
-            $bomId       = ($prType === 'boq_linked' && !empty($data['bom_id'])) ? (int)$data['bom_id'] : null;
+            $bomId        = ($prType === 'boq_linked' && !empty($data['bom_id'])) ? (int)$data['bom_id'] : null;
             $requiredDate = !empty($data['required_date']) ? $data['required_date'] : null;
             $purpose      = !empty($data['purpose'])       ? trim($data['purpose'])  : null;
+            $attachment   = !empty($data['attachment'])    ? trim($data['attachment']) : null;
 
             $stmt = $this->db->prepare(
                 "INSERT INTO {$this->table}
-                    (project_id, bom_id, pr_type, required_date, purpose, created_by, status, notes)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                    (project_id, bom_id, pr_type, required_date, purpose, created_by, status, notes, attachment)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
-            $stmt->bind_param('iissssss',
+            $stmt->bind_param('iisssssss',
                 $data['project_id'],
                 $bomId,
                 $prType,
@@ -168,7 +172,8 @@ class Con_PurchaseRequest extends Model
                 $purpose,
                 $data['created_by'],
                 $data['status'],
-                $data['notes']
+                $data['notes'],
+                $attachment
             );
             $stmt->execute();
             $prId = $this->db->insert_id;

@@ -172,9 +172,25 @@ class ChartOfAccountsController extends Controller
         }
     }
 
-    public function ledger($id)
+    public function ledger($id = null)
     {
         $id = (int)$id;
+        $allAccounts = $this->coaModel->getActiveAccountsWithTxnCount();
+
+        if (!$id && !empty($allAccounts)) {
+            $defaultAcc = null;
+            foreach ($allAccounts as $accItem) {
+                if ($accItem['account_code'] === '1110-001' || $accItem['account_code'] === '1001') {
+                    $defaultAcc = $accItem;
+                    break;
+                }
+            }
+            if (!$defaultAcc) {
+                $defaultAcc = $allAccounts[0];
+            }
+            $id = (int)$defaultAcc['id'];
+        }
+
         $account = $this->coaModel->getAccountById($id);
         if (!$account) {
             if (session_status() === PHP_SESSION_NONE) session_start();
@@ -204,7 +220,8 @@ class ChartOfAccountsController extends Controller
             'partyId' => $partyId,
             'searchQuery' => $searchQuery,
             'parties' => $parties,
-            'projects' => $projects
+            'projects' => $projects,
+            'allAccounts' => $allAccounts
         ];
         $this->view('accounts/coa/ledger', $data);
     }

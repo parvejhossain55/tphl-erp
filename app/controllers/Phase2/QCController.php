@@ -92,8 +92,16 @@ class QCController extends Controller
         }
         $assignedProjects = $rAssigned ? (int)$rAssigned->fetch_assoc()['c'] : 0;
 
-        // ── KPI 2: Pending Targets (Removed - targets no longer require QC approval) ─────────────────
-        $pendingTargetsCount = 0;
+        // ── KPI 2: Purchase Order Pending ─────────────────────────────────
+        $rPOCount = $this->db->query("
+            SELECT COUNT(*) AS c 
+            FROM purchase_orders po
+            LEFT JOIN purchase_requests pr ON pr.id = po.request_id
+            LEFT JOIN projects p ON p.id = pr.project_id
+            WHERE (p.deleted_at IS NULL OR p.id IS NULL) 
+            AND (po.status NOT IN ('Fully Received', 'Cancelled') OR po.status IS NULL)
+        ");
+        $pendingPOCount = $rPOCount ? (int)$rPOCount->fetch_assoc()['c'] : 0;
 
         // ── KPI 3: Pending GRNs awaiting QC ───────────────────────────────
         $rGRNCount = $this->db->query("SELECT COUNT(*) AS c FROM material_receiving WHERE overall_status = 'Pending QC'");
@@ -233,7 +241,7 @@ class QCController extends Controller
             'pendingWeeklyReportsQC' => $pendingWeeklyReportsQC,
             // KPI counts
             'assignedProjects'       => $assignedProjects,
-            'pendingTargetsCount'    => $pendingTargetsCount,
+            'pendingPOCount'         => $pendingPOCount,
             'pendingGRNsCount'       => $pendingGRNsCount,
             'totalInspections'       => $totalInspections,
             'totalMaterialTests'     => $totalMaterialTests,

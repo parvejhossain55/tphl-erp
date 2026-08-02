@@ -132,15 +132,18 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                 <div style="display:flex; flex-direction:column; gap:6px;">
                                     <div style="font-size:12px;font-weight:700">Approval Workflow Status</div>
                                     
-                                    <!-- Stage 1 Status -->
+                                    <!-- PM Approval Status -->
                                     <div style="font-size:11.5px;">
-                                        <strong>Stage 1 (PM Approval):</strong> 
-                                        <?php if ($pmApproved): ?>
-                                            <span style="color:#059669; font-weight:700;">✓ Approved</span> by <?= htmlspecialchars($pr['approved_by_name']) ?>
+                                        <strong>Project Manager Approval:</strong> 
+                                        <?php if ($pmApproved || in_array($pr['status'], ['Approved', 'PO Issued'])): ?>
+                                            <span style="color:#059669; font-weight:700;">✓ Approved</span>
+                                            <?php if (!empty($pr['approved_by_name'])): ?>
+                                                by <?= htmlspecialchars($pr['approved_by_name']) ?>
+                                            <?php endif; ?>
                                             <?php if (!empty($pr['approved_at'])): ?>
                                                 <span class="text-muted small">(<?= date('d M Y, h:i A', strtotime($pr['approved_at'])) ?>)</span>
                                             <?php endif; ?>
-                                            <?php if (!empty($pr['management_note']) && empty($pr['qc_approved_by_id'])): ?>
+                                            <?php if (!empty($pr['management_note'])): ?>
                                                 <br><span class="text-muted small">Note: <?= htmlspecialchars($pr['management_note']) ?></span>
                                             <?php endif; ?>
                                         <?php else: ?>
@@ -152,33 +155,6 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                             <?php endif; ?>
                                         <?php endif; ?>
                                     </div>
-
-                                    <!-- Stage 2 Status -->
-                                    <div style="font-size:11.5px;">
-                                        <strong>Stage 2 (Operation Head Approval):</strong> 
-                                        <?php if ($qcApproved): ?>
-                                            <span style="color:#059669; font-weight:700;">✓ Approved</span> by <?= htmlspecialchars($pr['qc_approved_by_name']) ?>
-                                            <?php if (!empty($pr['qc_approved_at'])): ?>
-                                                <span class="text-muted small">(<?= date('d M Y, h:i A', strtotime($pr['qc_approved_at'])) ?>)</span>
-                                            <?php endif; ?>
-                                            <?php if (!empty($pr['qc_note'])): ?>
-                                                <br><span class="text-muted small">Note: <?= htmlspecialchars($pr['qc_note']) ?></span>
-                                            <?php endif; ?>
-                                        <?php else: ?>
-                                            <span style="color:#d97706; font-weight:700;">Pending</span>
-                                            <?php if (!empty($operationHeads)): ?>
-                                                <span class="text-muted small"> (Required from: 
-                                                <?php 
-                                                $ohList = [];
-                                                foreach ($operationHeads as $oh) {
-                                                    $ohList[] = '<strong>' . htmlspecialchars($oh['full_name']) . '</strong> - <em>' . htmlspecialchars($oh['designation'] ?? 'Operation Head') . '</em>';
-                                                }
-                                                echo implode(', ', $ohList);
-                                                ?>)</span>
-                                            <?php endif; ?>
-                                        <?php endif; ?>
-                                    </div>
-                                    <!-- Stage 2 Status is the final stage -->
                                 </div>
                             </div>
                             <span style="font-size:10px;font-weight:700;padding:4px 12px;border-radius:20px;
@@ -188,6 +164,21 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                             </span>
                         </div>
                     </div>
+
+                    <?php if (!empty($pr['attachment'])): ?>
+                    <div class="alert alert-info border d-flex align-items-center justify-content-between mb-3 p-3" style="background: rgba(13, 202, 240, 0.08); border-color: rgba(13, 202, 240, 0.3) !important; border-radius: 10px;">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-file-earmark-text fs-4 text-info"></i>
+                            <div>
+                                <strong class="d-block text-dark">Attached Document / Requisition File:</strong>
+                                <span class="text-muted small"><?= htmlspecialchars($pr['attachment']) ?></span>
+                            </div>
+                        </div>
+                        <a href="<?= $base_url ?>/public/uploads/pr_attachments/<?= htmlspecialchars($pr['attachment']) ?>" target="_blank" class="btn btn-outline-info btn-sm">
+                            <i class="bi bi-eye me-1"></i> View / Download Document
+                        </a>
+                    </div>
+                    <?php endif; ?>
 
                     <?php if (!empty($pr['notes'])): ?>
                     <div class="alert alert-light border-start border-primary border-3 mb-3">
@@ -258,36 +249,20 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                         <div class="mt-4 p-3 bg-light rounded d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <span class="text-muted small w-100 mb-2">
                                 <i class="bi bi-clock-history me-1"></i>
-                                <?php if (!$pmApproved): ?>
-                                    <strong>Stage 1 Approval:</strong> Awaiting PM Approval.
-                                    <?php 
-                                    $assignedPmId = isset($assignedPm['id']) ? (int)$assignedPm['id'] : 0;
-                                    if ($sessionRole === 22 || ($sessionRole === 15 && $_SESSION['user']['id'] == $assignedPmId)): 
-                                    ?>
-                                        (Action required: Please review and Approve or Reject).
-                                    <?php endif; ?>
-                                <?php elseif (!$qcApproved): ?>
-                                    <strong>Stage 2 Approval:</strong> PM Approved. Awaiting Operation Head Approval.
-                                    <?php if ($sessionRole === 20): ?>
-                                        (Action required: Please review and Approve or Reject).
-                                    <?php endif; ?>
+                                <strong>Project Manager Approval:</strong> Awaiting PM Approval.
+                                <?php 
+                                $assignedPmId = isset($assignedPm['id']) ? (int)$assignedPm['id'] : 0;
+                                if (in_array($sessionRole, [1, 3, 15, 22])): 
+                                ?>
+                                    (Action required: Please review and Approve or Reject).
                                 <?php endif; ?>
                             </span>
 
                             <?php 
                             $showForm = false;
-                            $pendingStage = 0;
-                            if (!$pmApproved) {
-                                $pendingStage = 1;
-                                $assignedPmId = isset($assignedPm['id']) ? (int)$assignedPm['id'] : 0;
-                                if ($sessionRole === 22 || ($sessionRole === 15 && $_SESSION['user']['id'] == $assignedPmId)) {
-                                    $showForm = true;
-                                }
-                            } elseif (!$qcApproved) {
-                                $pendingStage = 2;
-                                if ($sessionRole === 20) {
-                                    $showForm = true;
-                                }
+                            $assignedPmId = isset($assignedPm['id']) ? (int)$assignedPm['id'] : 0;
+                            if (in_array($sessionRole, [1, 3, 22]) || ($sessionRole === 15 && ($assignedPmId === 0 || $_SESSION['user']['id'] == $assignedPmId))) {
+                                $showForm = true;
                             }
                             ?>
 
@@ -298,12 +273,11 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                     <textarea name="approval_note" class="form-control" rows="2" placeholder="Approval / Rejection Note"></textarea>
                                 </div>
                                 <div class="d-flex gap-2">
-                                    <button type="button" onclick="document.getElementById('pr_status_input').value='Approved'; confirmAction(this, '<?= $pendingStage === 2 ? 'Approve Stage 2 (Final)?' : 'Approve Stage 1?' ?>')" class="btn btn-success btn-sm">
-                                        <i class="bi bi-check-circle me-1"></i> 
-                                        <?= $pendingStage === 2 ? 'Approve Stage 2 (Final)' : 'Approve Stage 1' ?>
+                                    <button type="button" onclick="document.getElementById('pr_status_input').value='Approved'; confirmAction(this, 'Approve Purchase Request?')" class="btn btn-success btn-sm">
+                                        <i class="bi bi-check-circle me-1"></i> Approve PR
                                     </button>
                                     <button type="button" onclick="document.getElementById('pr_status_input').value='Rejected'; confirmAction(this, 'Reject this PR?')" class="btn btn-danger btn-sm">
-                                        <i class="bi bi-x-circle me-1"></i> Reject
+                                        <i class="bi bi-x-circle me-1"></i> Reject PR
                                     </button>
                                 </div>
                             </form>

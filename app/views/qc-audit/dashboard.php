@@ -233,13 +233,16 @@ $purchaseOrders = $purchaseOrders ?? [];
                 <div class="kpi-sub" style="color:var(--text-muted)">Purchase requests awaiting verify</div>
             </a>
 
-            <!-- 7. POs to Verify -->
+            <!-- 7. POs Pending Approval (2nd Approval - QC & Audit) -->
             <a href="<?= $base ?>/con-purchase-orders" class="kpi-card card__wrapper">
                 <div class="kpi-accent" style="background:var(--cd-pink)"></div>
                 <div class="kpi-icon" style="background:rgba(236,72,153,.12);color:var(--cd-pink)"><i class="fal fa-shopping-cart"></i></div>
-                <div class="kpi-label" style="color:var(--text-muted)">POs to Verify</div>
+                <div class="kpi-label" style="color:var(--text-muted)">POs Pending Approval</div>
                 <div class="kpi-value" style="color:var(--cd-pink)"><?= number_format($stats['po_pending'] ?? 0) ?></div>
-                <div class="kpi-sub" style="color:var(--text-muted)">Purchase orders (Issued)</div>
+                <div class="kpi-sub" style="color:var(--text-muted)">2nd Approval (QC & Audit)</div>
+                <?php if (($stats['po_pending'] ?? 0) > 0): ?>
+                    <span class="kpi-badge" style="background:rgba(236,72,153,.12);color:var(--cd-pink)">PENDING</span>
+                <?php endif; ?>
             </a>
 
             <!-- 8. Rejected Requests -->

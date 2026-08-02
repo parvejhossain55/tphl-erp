@@ -38,10 +38,12 @@ class Con_PurchaseRequestController extends Controller
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
         $userId   = (int)($_SESSION['user']['id'] ?? 0);
 
-        // Filter for Purchase Executive
-        $executiveId = ($userRole === 23) ? $userId : null;
-        $pmId        = ($userRole === 15) ? $userId : null; // Scope to assigned Project Manager
-        $requests    = $this->prModel->getAll($executiveId, $pmId);
+        // Approver & Procurement roles see ALL PRs; regular creators only see their own PRs
+        $approverRoles = [1, 2, 3, 6, 13, 15, 17, 20, 22, 23, 24, 25, 30, 31];
+        $isApprover    = in_array($userRole, $approverRoles);
+        $createdBy     = !$isApprover ? $userId : null;
+
+        $requests      = $this->prModel->getAll($createdBy);
 
         // Fetch Purchase Executives (Role ID 23) and Senior Purchase Executives (Role ID 31) for assignment dropdown
         $executives = [];
@@ -187,6 +189,22 @@ class Con_PurchaseRequestController extends Controller
 
         $prType = ($_POST['pr_type'] ?? 'boq_linked') === 'independent' ? 'independent' : 'boq_linked';
 
+        $attachment = null;
+        if (!empty($_FILES['attachment']['name'])) {
+            $uploadDir = 'public/uploads/pr_attachments/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+            $ext = strtolower(pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION));
+            $allowed = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'webp', 'xlsx', 'xls'];
+            if (in_array($ext, $allowed)) {
+                $fileName = 'pr_doc_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+                if (move_uploaded_file($_FILES['attachment']['tmp_name'], $uploadDir . $fileName)) {
+                    $attachment = $fileName;
+                }
+            }
+        }
+
         $data = [
             'project_id'   => (int)($_POST['project_id'] ?? 0),
             'bom_id'       => ($prType === 'boq_linked' && !empty($_POST['bom_id'])) ? (int)$_POST['bom_id'] : null,
@@ -196,6 +214,7 @@ class Con_PurchaseRequestController extends Controller
             'created_by'   => (int)($_SESSION['user']['id'] ?? 0),
             'status'       => $_POST['status'] ?? 'Draft',
             'notes'        => trim($_POST['notes'] ?? ''),
+            'attachment'   => $attachment,
         ];
 
         $materialIds   = $_POST['material_id']   ?? [];
@@ -498,121 +517,73 @@ class Con_PurchaseRequestController extends Controller
         $successMsg = '';
 
         if ($status === 'Rejected') {
-            // Either PM/Management or Operation Head can reject
-            if (!in_array($userRole, [3, 15, 20, 22])) {
+            if (!in_array($userRole, [1, 3, 15, 22])) {
                 setError('You do not have permission to reject this request.');
                 header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
                 exit;
             }
-            if (empty($pr['approved_by_id'])) {
-                // Fetch assigned PM for this project
-                $assignedPmId = null;
-                $stmtProject = $this->db->prepare("SELECT pm_id FROM projects WHERE id = ?");
-                if ($stmtProject) {
-                    $stmtProject->bind_param('i', $pr['project_id']);
-                    $stmtProject->execute();
-                    $resProj = $stmtProject->get_result()->fetch_assoc();
-                    if ($resProj) {
-                        $assignedPmId = $resProj['pm_id'] !== null ? (int)$resProj['pm_id'] : null;
-                    }
-                    $stmtProject->close();
-                }
 
-                if (!in_array($userRole, [15, 22]) || ($userRole === 15 && $userId !== $assignedPmId)) {
-                    setError('You do not have permission to reject at Stage 1. Only the assigned Project Manager for this project can reject.');
-                    header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
-                    exit;
+            // Fetch assigned PM for this project
+            $assignedPmId = null;
+            $stmtProject = $this->db->prepare("SELECT pm_id FROM projects WHERE id = ?");
+            if ($stmtProject) {
+                $stmtProject->bind_param('i', $pr['project_id']);
+                $stmtProject->execute();
+                $resProj = $stmtProject->get_result()->fetch_assoc();
+                if ($resProj) {
+                    $assignedPmId = $resProj['pm_id'] !== null ? (int)$resProj['pm_id'] : null;
                 }
-                $stmt = $this->db->prepare(
-                    "UPDATE purchase_requests SET status = 'Rejected', approved_by_id = ?, approved_at = NOW(), management_note = ? WHERE id = ?"
-                );
-                $stmt->bind_param('isi', $userId, $note, $id);
-                $successMsg = "Purchase Request rejected by PM.";
-            } elseif (empty($pr['qc_approved_by_id'])) {
-                if ($userRole != 20) {
-                    setError('You do not have permission to reject at Stage 2.');
-                    header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
-                    exit;
-                }
-                $stmt = $this->db->prepare(
-                    "UPDATE purchase_requests SET status = 'Rejected', qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ? WHERE id = ?"
-                );
-                $stmt->bind_param('isi', $userId, $note, $id);
-                $successMsg = "Purchase Request rejected by Operation Head.";
-            } elseif (empty($pr['mgmt_approved_by_id'])) {
-                if ($userRole != 3) {
-                    setError('You do not have permission to reject at Stage 3.');
-                    header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
-                    exit;
-                }
-                $stmt = $this->db->prepare(
-                    "UPDATE purchase_requests SET status = 'Rejected', mgmt_approved_by_id = ?, mgmt_approved_at = NOW(), management_note = ? WHERE id = ?"
-                );
-                $stmt->bind_param('isi', $userId, $note, $id);
-                $successMsg = "Purchase Request rejected by Management.";
-            } else {
-                setError('This request has already been fully approved.');
+                $stmtProject->close();
+            }
+
+            if (!in_array($userRole, [1, 3, 22]) && ($userRole === 15 && !empty($assignedPmId) && $userId !== $assignedPmId)) {
+                setError('You do not have permission to reject this request. Only the assigned Project Manager for this project can reject.');
                 header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
                 exit;
             }
-        } else { // status === 'Approved' (which means approving current stage)
-            // Stage 1: PM Approval (roles 15, 22)
-            if (empty($pr['approved_by_id'])) {
-                // Fetch assigned PM for this project
-                $assignedPmId = null;
-                $stmtProject = $this->db->prepare("SELECT pm_id FROM projects WHERE id = ?");
-                if ($stmtProject) {
-                    $stmtProject->bind_param('i', $pr['project_id']);
-                    $stmtProject->execute();
-                    $resProj = $stmtProject->get_result()->fetch_assoc();
-                    if ($resProj) {
-                        $assignedPmId = $resProj['pm_id'] !== null ? (int)$resProj['pm_id'] : null;
-                    }
-                    $stmtProject->close();
-                }
 
-                if (!in_array($userRole, [15, 22]) || ($userRole === 15 && $userId !== $assignedPmId)) {
-                    setError('You do not have permission to perform Stage 1 (PM) Approval. Only the assigned Project Manager for this project can approve.');
-                    header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
-                    exit;
-                }
-                $stmt = $this->db->prepare(
-                    "UPDATE purchase_requests SET approved_by_id = ?, approved_at = NOW(), management_note = ? WHERE id = ?"
-                );
-                $stmt->bind_param('isi', $userId, $note, $id);
-                $successMsg = "Purchase Request approved by PM. Awaiting Stage 2 (Operation Head) approval.";
-            }
-            // Stage 2: Operation Approval (role 20) — Final Approval stage
-            elseif (empty($pr['qc_approved_by_id'])) {
-                if ($userRole != 20) {
-                    setError('You do not have permission to perform Stage 2 (Operation) Approval.');
-                    header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
-                    exit;
-                }
-                $stmt = $this->db->prepare(
-                    "UPDATE purchase_requests SET status = 'Approved', qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ? WHERE id = ?"
-                );
-                $stmt->bind_param('isi', $userId, $note, $id);
-                $successMsg = "Purchase Request approved by Operation Head.";
-            }
-            // Stage 3: Management Approval (role 3)
-            elseif (empty($pr['mgmt_approved_by_id'])) {
-                if ($userRole != 3) {
-                    setError('You do not have permission to perform Stage 3 (Management) Approval.');
-                    header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
-                    exit;
-                }
-                // Stage 3 (Final) approval: status becomes Approved
-                $stmt = $this->db->prepare(
-                    "UPDATE purchase_requests SET status = 'Approved', mgmt_approved_by_id = ?, mgmt_approved_at = NOW(), management_note = ? WHERE id = ?"
-                );
-                $stmt->bind_param('isi', $userId, $note, $id);
-                $successMsg = "Purchase Request finally approved by Management.";
-            } else {
-                setError('This request has already been fully approved.');
+            $stmt = $this->db->prepare(
+                "UPDATE purchase_requests SET status = 'Rejected', approved_by_id = ?, approved_at = NOW(), management_note = ? WHERE id = ?"
+            );
+            $stmt->bind_param('isi', $userId, $note, $id);
+            $successMsg = "Purchase Request rejected.";
+        } else { // status === 'Approved'
+            if (!in_array($userRole, [1, 3, 15, 22])) {
+                setError('You do not have permission to approve this request.');
                 header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
                 exit;
             }
+
+            // Fetch assigned PM for this project
+            $assignedPmId = null;
+            $stmtProject = $this->db->prepare("SELECT pm_id FROM projects WHERE id = ?");
+            if ($stmtProject) {
+                $stmtProject->bind_param('i', $pr['project_id']);
+                $stmtProject->execute();
+                $resProj = $stmtProject->get_result()->fetch_assoc();
+                if ($resProj) {
+                    $assignedPmId = $resProj['pm_id'] !== null ? (int)$resProj['pm_id'] : null;
+                }
+                $stmtProject->close();
+            }
+
+            if (!in_array($userRole, [1, 3, 22]) && ($userRole === 15 && !empty($assignedPmId) && $userId !== $assignedPmId)) {
+                setError('You do not have permission to perform PM Approval. Only the assigned Project Manager for this project can approve.');
+                header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+                exit;
+            }
+
+            if (in_array($pr['status'], ['Approved', 'PO Issued'])) {
+                setError('This request has already been approved.');
+                header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+                exit;
+            }
+
+            $stmt = $this->db->prepare(
+                "UPDATE purchase_requests SET status = 'Approved', approved_by_id = ?, approved_at = NOW(), management_note = ? WHERE id = ?"
+            );
+            $stmt->bind_param('isi', $userId, $note, $id);
+            $successMsg = "Purchase Request approved by Project Manager.";
         }
 
         if ($stmt && $stmt->execute()) {

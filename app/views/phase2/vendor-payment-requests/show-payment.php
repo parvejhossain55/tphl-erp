@@ -27,7 +27,25 @@ $isSubmitted = ($status === 'Submitted');
 $isQCApproved = ($status === 'QC Approved');
 $isApproved = in_array($status, ['Approved', 'Partially_Paid']);
 $isRejected = ($status === 'Rejected');
-$isFullyPaid = in_array($status, ['Fully_Paid', 'Paid']);
+$materialLogs = $material_logs ?? [];
+$isFullyPaid = in_array($status, ['Fully_Paid', 'Paid']) || ($totalPaid >= $payableAmount && $payableAmount > 0);
+$isPartiallyPaid = ($status === 'Partially_Paid') || ($totalPaid > 0 && $totalPaid < $payableAmount);
+$isAdvanceType = ($request['payment_type'] ?? '') === 'Advance';
+
+if ($isFullyPaid) {
+    $paidStatusLabel = 'Fully Paid';
+    $paidStatusClass = 'bg-success';
+} elseif ($isPartiallyPaid) {
+    $paidStatusLabel = 'Partially Paid';
+    $paidStatusClass = 'bg-info text-white';
+} elseif ($isAdvanceType) {
+    $paidStatusLabel = 'Advance Request';
+    $paidStatusClass = 'bg-primary';
+} else {
+    $paidStatusLabel = 'Unpaid / Pending';
+    $paidStatusClass = 'bg-secondary';
+}
+
 $canPayReq = $canProcessPayment && $isApproved && $dueAmount > 0;
 $showPaymentForm = $canPayReq;
 
@@ -62,15 +80,25 @@ $advancePaid = (float) ($advance_paid ?? 0);
                 </ol>
             </nav>
     </div>
-    <div class="d-flex gap-2 align-items-center">
+    <div class="d-flex gap-2 align-items-center flex-wrap">
         <?php if (!empty($payments)): ?>
             <a href="<?= $base_url ?>/print-debit-voucher?module=vendor_payment&id=<?= $request['id'] ?>" target="_blank" class="btn btn-primary btn-sm">
                 <i class="bi bi-printer me-1"></i> Debit Voucher
             </a>
         <?php endif; ?>
         <span class="badge bg-<?= $statusInfo['color'] ?> fs-6 px-3 py-2"><?= $statusInfo['label'] ?></span>
-        <span class="badge <?= $typeBadge['class'] ?> fs-6 px-3 py-2"><?= $typeBadge['label'] ?> Payment</span>
-        <a href="<?= $base_url ?>/con-vendor-payment-requests" class="btn btn-outline-secondary btn-sm">
+        <span class="badge <?= $typeBadge['class'] ?> fs-6 px-3 py-2"><?= $typeBadge['label'] ?> Request</span>
+        <span class="badge <?= $paidStatusClass ?> fs-6 px-3 py-2"><?= $paidStatusLabel ?></span>
+        <?php if (!empty($materialLogs)): ?>
+            <span class="badge bg-success-subtle text-success border border-success-subtle fs-6 px-3 py-2">
+                <i class="bi bi-box-seam-fill me-1"></i> Material Log Received (<?= count($materialLogs) ?> Log<?= count($materialLogs) > 1 ? 's' : '' ?>)
+            </span>
+        <?php else: ?>
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle fs-6 px-3 py-2">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> Material Log Not Received
+            </span>
+        <?php endif; ?>
+        <a href="<?= $base_url ?>/con-vendor-payment-requests" class="btn btn-outline-secondary btn-sm ms-2">
             <i class="bi bi-arrow-left me-1"></i> Back
         </a>
     </div>
@@ -383,6 +411,22 @@ if ($status === 'Draft') {
                             <?php endif; ?>
                         </div>
                     </div>
+                    <div class="col-md-6">
+                        <div class="info-label text-uppercase text-muted small fw-bold">Payment Paid Status</div>
+                        <div class="">
+                            <span class="badge <?= $paidStatusClass ?>"><?= $paidStatusLabel ?></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-label text-uppercase text-muted small fw-bold">Material Log Received</div>
+                        <div class="">
+                            <?php if (!empty($materialLogs)): ?>
+                                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> Received (<?= count($materialLogs) ?> Log<?= count($materialLogs) > 1 ? 's' : '' ?>)</span>
+                            <?php else: ?>
+                                <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-circle me-1"></i> Not Received</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
 
                     <!-- Financial Summary Row -->
                     <div class="col-md-12">
@@ -569,6 +613,73 @@ if ($status === 'Draft') {
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Material Receiving Logs (GRN) Section -->
+<div class="card custom-card mb-4 border-0 shadow-sm">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="card-title mb-0 fw-bold text-dark">
+            <i class="bi bi-boxes me-2 text-primary"></i>Material Receiving Logs (GRN)
+        </h6>
+        <?php if (!empty($materialLogs)): ?>
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1">
+                <i class="bi bi-check-circle-fill me-1"></i> <?= count($materialLogs) ?> Log(s) Received
+            </span>
+        <?php else: ?>
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1">
+                <i class="bi bi-exclamation-circle-fill me-1"></i> No Material Logs Received
+            </span>
+        <?php endif; ?>
+    </div>
+    <div class="card-body p-0">
+        <?php if (!empty($materialLogs)): ?>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light text-muted small">
+                        <tr>
+                            <th class="ps-3">GRN #</th>
+                            <th>Receiving Date</th>
+                            <th>Received Status</th>
+                            <th>QC / Overall Status</th>
+                            <th>Received By</th>
+                            <th>Warehouse</th>
+                            <th class="pe-3 text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($materialLogs as $ml): ?>
+                            <tr>
+                                <td class="ps-3 fw-bold text-primary">GRN-<?= $ml['id'] ?></td>
+                                <td><?= date('d M Y', strtotime($ml['receiving_date'])) ?></td>
+                                <td>
+                                    <span class="badge bg-<?= $ml['received_status'] === 'Full' ? 'success' : ($ml['received_status'] === 'Partial' ? 'warning text-dark' : 'danger') ?>">
+                                        <?= htmlspecialchars($ml['received_status']) ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-<?= in_array($ml['overall_status'], ['Accepted', 'QC Approved']) ? 'success' : 'info' ?>">
+                                        <?= htmlspecialchars($ml['overall_status']) ?>
+                                    </span>
+                                </td>
+                                <td><?= htmlspecialchars($ml['received_by_name'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($ml['warehouse_name'] ?? '—') ?></td>
+                                <td class="pe-3 text-end">
+                                    <a href="<?= $base_url ?>/con-material-receiving-show/<?= $ml['id'] ?>" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye me-1"></i> View GRN
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php else: ?>
+            <div class="p-4 text-center text-muted">
+                <i class="bi bi-inbox fs-2 text-warning d-block mb-2"></i>
+                <p class="mb-0 small fw-semibold">No material receiving log (GRN) has been recorded against this Purchase Order yet.</p>
+            </div>
+        <?php endif; ?>
     </div>
 </div>
 

@@ -31,7 +31,7 @@ $categories   = $categories   ?? [];
                     </h6>
                 </div>
                 <div class="card__body p-4">
-                    <form action="<?= $base_url ?>/con-purchase-request-store" method="POST" id="prForm">
+                    <form action="<?= $base_url ?>/con-purchase-request-store" method="POST" id="prForm" enctype="multipart/form-data">
 
                         <!-- Hidden fields -->
                         <input type="hidden" name="bom_id" id="prHiddenBomId" value="<?= $preBoqId ? (int)$preBoqId : '' ?>">
@@ -117,9 +117,9 @@ $categories   = $categories   ?? [];
                         </div>
                         <?php endif; ?>
 
-                        <!-- ── Row 1: Project + Status + Notes ── -->
+                        <!-- ── Row 1: Project + Status + Notes + Attachment ── -->
                         <div class="row mb-3">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label fw-bold">Project <span class="text-danger">*</span></label>
                                 <select name="project_id" id="prProjectSelect" class="form-select select2" required>
                                     <option value="">-- Select Project --</option>
@@ -130,16 +130,20 @@ $categories   = $categories   ?? [];
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label fw-bold">Status</label>
                                 <select name="status" class="form-select">
                                     <option value="Draft">Draft</option>
                                     <option value="Submitted">Submitted</option>
                                 </select>
                             </div>
-                            <div class="col-md-5">
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold">Notes</label>
                                 <input type="text" name="notes" class="form-control" placeholder="Urgency, purpose...">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold"><i class="bi bi-paperclip me-1 text-primary"></i> Attachment / Document</label>
+                                <input type="file" name="attachment" class="form-control" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.xlsx,.xls">
                             </div>
                         </div>
 

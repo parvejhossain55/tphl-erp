@@ -100,6 +100,7 @@ return [
     'accounts/coa/store' => ['controller' => 'ChartOfAccountsController', 'method' => 'store'],
     'accounts/coa/update' => ['controller' => 'ChartOfAccountsController', 'method' => 'update'],
     'accounts/ledger/(\d+)' => ['controller' => 'ChartOfAccountsController', 'method' => 'ledger'],
+    'accounts/ledger' => ['controller' => 'ChartOfAccountsController', 'method' => 'ledger'],
 
     // Financial Reports
     'reports/balance-sheet' => ['controller' => 'ReportsController', 'method' => 'balanceSheet'],

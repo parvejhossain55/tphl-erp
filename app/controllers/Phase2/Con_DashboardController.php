@@ -1628,7 +1628,7 @@ $project = $stmt->get_result()->fetch_assoc();
 
         // Recent Material Issues
         $rMI = $this->db->query("
-            SELECT mi.*, p.name AS project_name, m.name AS material_name
+            SELECT mi.*, p.name AS project_name, COALESCE(m.name, '—') AS material_name
             FROM con_material_issues mi
             LEFT JOIN projects p ON p.id = mi.project_id
             LEFT JOIN con_materials m ON m.id = mi.material_id

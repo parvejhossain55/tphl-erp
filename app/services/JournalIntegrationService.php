@@ -1,6 +1,8 @@
 <?php
 namespace Services;
 
+require_once __DIR__ . '/../models/GeneralJournal.php';
+
 use GeneralJournal;
 
 class JournalIntegrationService
@@ -405,6 +407,53 @@ class JournalIntegrationService
         $projectId = (int)$txn['project_id'];
         $projectName = $txn['project_name'] ?? 'General';
         
+        // Fetch Vendor or Contractor Name if available
+        $payeeName = '';
+        $partyType = null;
+        $partyId   = null;
+
+        if ($txn['ref_type'] === 'vendor_payment') {
+            $vStmt = $this->db->prepare("
+                SELECT vpr.vendor_id, v.name as vendor_name, v.company_name
+                FROM vendor_payment_requests vpr
+                LEFT JOIN vendors v ON vpr.vendor_id = v.id
+                WHERE vpr.id = ?
+            ");
+            if ($vStmt) {
+                $vStmt->bind_param('i', $txn['ref_id']);
+                $vStmt->execute();
+                $vRes = $vStmt->get_result()->fetch_assoc();
+                if ($vRes) {
+                    $partyType = 'vendor';
+                    $partyId   = (int)$vRes['vendor_id'];
+                    if (!empty($vRes['vendor_name'])) {
+                        $payeeName = $vRes['vendor_name'];
+                    } elseif (!empty($vRes['company_name'])) {
+                        $payeeName = $vRes['company_name'];
+                    }
+                }
+            }
+        } elseif ($txn['ref_type'] === 'contractor_bill') {
+            $cStmt = $this->db->prepare("
+                SELECT cbr.contractor_id, c.name as contractor_name
+                FROM contractor_bill_requests cbr
+                LEFT JOIN contractors c ON cbr.contractor_id = c.id
+                WHERE cbr.id = ?
+            ");
+            if ($cStmt) {
+                $cStmt->bind_param('i', $txn['ref_id']);
+                $cStmt->execute();
+                $cRes = $cStmt->get_result()->fetch_assoc();
+                if ($cRes) {
+                    $partyType = 'contractor';
+                    $partyId   = (int)$cRes['contractor_id'];
+                    if (!empty($cRes['contractor_name'])) {
+                        $payeeName = $cRes['contractor_name'];
+                    }
+                }
+            }
+        }
+
         // Cash Account (Credit)
         $cashAccountId = $this->getAccountIdByCode('1110'); // Cash and Bank Equivalents
 
@@ -424,6 +473,9 @@ class JournalIntegrationService
 
         if (!$apAccountId || !$cashAccountId) return false;
 
+        $payeeText = !empty($payeeName) ? "Payee: $payeeName" : ($txn['ref_type'] === 'vendor_payment' ? 'Payee: Vendor' : 'Payee: Contractor');
+        $lineNarration = "$payeeText | Project: $projectName | $narrationPrefix | Ref: " . ($txn['reference_number'] ?: 'N/A');
+
         $details = [];
         
         // Debit AP or Expense
@@ -431,8 +483,10 @@ class JournalIntegrationService
             'account_id' => $apAccountId,
             'debit' => $amount,
             'credit' => 0,
-            'narration' => "Project: $projectName | $narrationPrefix | Ref: " . ($txn['reference_number'] ?: 'N/A'),
-            'project_id' => $projectId
+            'narration' => $lineNarration,
+            'project_id' => $projectId,
+            'party_type' => $partyType,
+            'party_id' => $partyId
         ];
 
         // Credit Cash
@@ -440,15 +494,19 @@ class JournalIntegrationService
             'account_id' => $cashAccountId,
             'debit' => 0,
             'credit' => $amount,
-            'narration' => "Project: $projectName | $narrationPrefix | Ref: " . ($txn['reference_number'] ?: 'N/A'),
-            'project_id' => $projectId
+            'narration' => $lineNarration,
+            'project_id' => $projectId,
+            'party_type' => $partyType,
+            'party_id' => $partyId
         ];
+
+        $headerNarration = !empty($payeeName) ? "$narrationPrefix to $payeeName (Ref: #" . ($txn['reference_number'] ?: $txnId) . ")" : "$narrationPrefix for Transaction #$txnId";
 
         $headerData = [
             'journal_number' => $this->journalModel->generateJournalNumber(),
             'date' => $txn['transaction_date'] ?: date('Y-m-d'),
             'voucher_type' => 'Payment Voucher',
-            'narration' => "$narrationPrefix for Transaction #$txnId",
+            'narration' => $headerNarration,
             'total_debit' => $amount,
             'total_credit' => $amount,
             'project_id' => $projectId,
