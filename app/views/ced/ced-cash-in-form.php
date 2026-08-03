@@ -326,6 +326,30 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                             </div>
                         </div>
 
+                        <!-- Testing Mode Switch & Phone Alert -->
+                        <div class="col-md-12">
+                            <?php 
+                                $clientPhone = trim($clientDetails['phone'] ?? ($clientDetails['phone_number'] ?? ''));
+                                $isPhoneValid = (strlen($clientPhone) === 11 && preg_match('/^01[3-9]\d{8}$/', $clientPhone));
+                            ?>
+                            <?php if (!$isPhoneValid): ?>
+                                <div class="alert alert-warning d-flex align-items-center justify-content-between p-2 mb-2 mt-2">
+                                    <div class="small">
+                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                                        <strong>Invalid Client Phone:</strong> Client phone (<?= htmlspecialchars($clientPhone ?: 'Empty') ?>) is missing or not a valid 11-digit mobile number.
+                                    </div>
+                                    <span class="badge bg-danger">SMS Notification Blocked</span>
+                                </div>
+                            <?php endif; ?>
+
+                            <div class="form-check form-switch p-2 bg-light border rounded mt-2">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" name="is_testing_mode" id="isTestingMode" value="1">
+                                <label class="form-check-label fw-semibold text-warning" for="isTestingMode">
+                                    <i class="fa-solid fa-vial me-1"></i> Testing Mode (Skip SMS & Bypass Phone Validation)
+                                </label>
+                            </div>
+                        </div>
+
                         <!-- Submit Buttons -->
                         <div class="col-md-12">
                             <div class="submit__btn text-center mt-30">

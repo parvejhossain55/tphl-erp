@@ -1,137 +1,72 @@
-shono ami amar lead manage er jonno akta whatsapp api braodcasting campaing korbo karon ami jokhon e amr campaing lead de shathe first contact korchi tokhon meta ban kore dei particular time er jonno akhon jodi jodi whatsapp er api diye amra kache asha leads der whathsapp through akta messag pathai je leads der select kore je api amader shathe contact koreche for tha project amader theke first message onk clients dile whatsapp amader ban kore dei so kindly apni amake ai number e akta knock den then ami bistarito alochona krobo ata ki possible amr erp te php diye
+১. পেমেন্ট ফর্মে টেস্টিং মোড সুইচ (Form Testing Toggle):
 
-হ্যাঁ, এটা PHP ERP-তে করা সম্ভব, তবে যেভাবে করতে চান সেখানে WhatsApp-এর Official API policy খুব গুরুত্বপূর্ণ। যদি সেটা না মানেন, তাহলে API নম্বরও restricted বা quality downgrade হতে পারে।
+প্রতিটি পেমেন্ট ফর্মে (Sales, CED, Accounts) একটি সুইচার/রেডিও বাটন/চেকবক্স থাকবে: Testing Mode (Skip SMS)।
+যদি ডেভেলপমেন্ট বা টেস্ট করার জন্য এই অপশনটি টিক দেওয়া থাকে:
+ভুল বা ডামি ফোন নম্বর থাকলেও সিস্টেম পেমেন্ট সাবমিট করতে দেবে।
+অটোমাস এপিআই-তে আসল এসএমএস পাঠাবে না (যাতে আপনার কেনা SMS লিমিট বা ক্রেডিট শেষ না হয়)।
+ডাটাবেজের sms_logs টেবিলে স্ট্যাটাস থাকবে: skipped_testing।
+২. গ্লোবাল কনফিগারেশন সাপোর্ট (config.php):
 
-আপনার scenario আমি যেভাবে বুঝেছি:
+app/config/config.php ফাইলে sms_testing_mode => true/false ফ্ল্যাগ থাকবে।
+লোকাল ডেভেলপমেন্ট সার্ভারে (Local Server) এটি ডিফল্টভাবে true থাকবে, যাতে ডেভেলপার কাজ করার সময় ভুল করে আসল এসএমএস সেন্ড না হয়ে যায়।
+প্রোডাকশন সার্ভারে (Production Server) এটি false থাকবে এবং ফর্মের টেস্টিং সুইচ অফ থাকবে।
+৩. মূল ফিচার ও ভ্যালিডেশন লজিক (Core Features)
+১. প্রোডাকশন মোডে কাস্টমার ফোন নম্বর ভ্যালিডেশন
+টেস্টিং মোড অফ থাকলে, কাস্টমারের ১১ ডিজিট মোবাইল নম্বর (01[3-9]\d{8}) আবশ্যিক।
+নম্বর না থাকলে বা ভুল থাকলে স্ক্রিনে পপআপ দেখাবে:
+"ক্লায়েন্টের ফোন নম্বরটি ভুল বা অনুপস্থিত। পেমেন্ট সম্পূর্ণ করার পূর্বে সঠিক ১১ ডিজিটের মোবাইল নম্বর আপডেট করুন। (অথবা টেস্টিংয়ের জন্য Testing Mode টিক দিন)"
+২. ট্রিগার ১: টাকা/চেক রিসিভড এসএমএস (Payment Received SMS)
+প্রোডাকশন মোডে সেলস/CED/অ্যাকাউন্টস টাকা বা চেক রিসিভ করে এন্ট্রি দেওয়ার সাথে সাথেই (অ্যাকাউন্টস ভেরিফাই করার আগেই) প্রথম রিসিভড এসএমএস ক্লায়েন্টের মোবাইলে যাবে।
+৩. ট্রিগার ২: অ্যাকাউন্টস ভেরিফাইড এসএমএস (Payment Verified SMS)
+অ্যাকাউন্টস টিম যখন পেমেন্টটি Verify বাটন চেপে অনুমোদন করবে, তখন দ্বিতীয় কনফার্মেশন এসএমএস যাবে।
+৪. ফাইল ও কোড পরিবর্তনের তালিকা (Proposed Code Changes)
+ক. ডাটাবেজ টেবিল
+[NEW] 
+add_sms_logs_table.sql
+এসএমএস রেকর্ড রাখার জন্য sms_logs টেবিল তৈরি করা হবে।
+কলাম: id, client_id, booking_id, payment_id, mobile_no, sms_type, message, is_testing, status (sent, failed, skipped_testing), created_at
+খ. কনফিগারেশন ও সার্ভিস লেয়ার
+[MODIFY] 
+config.php
+অটোমাস এপিআই ড্যাশবোর্ড ক্রেডেনশিয়াল ও টেস্টিং মোড ফ্ল্যাগ যুক্ত করা হবে:
+php
 
-ERP-তে Marketing Team lead select করবে।
-Selected lead-দের WhatsApp-এ একটি first message পাঠানো হবে।
-Message-এর উদ্দেশ্য হবে user-কে আগে আপনাকে message করতে বা reply দিতে বলা, যাতে পরবর্তীতে conversation সহজ হয়।
-সবকিছু ERP থেকেই PHP দিয়ে broadcast হবে।
+"automas_sms_api_url"   => "https://asms.automas.com.bd/api/sendsms",
+"automas_sms_api_key"   => "YOUR_AUTOMAS_API_KEY",
+"automas_sms_sender_id" => "YOUR_SENDER_ID",
+"sms_testing_mode"      => true, // Local/Staging = true, Prod = false
+[NEW] 
+SmsService.php
+isTestingModeEnabled(): ফর্মের ইনপুট অথবা গ্লোবাল কনফিগ থেকে টেস্টিং মোড একটিভ কিনা তা চেক করবে।
+sendSms(...): টেস্টিং মোড অন থাকলে এপিআই কল স্কিপ করে ডাটাবেজে status = 'skipped_testing' সেভ করবে। অন না থাকলে সরাসরি অটোমাস এপিআই কল করে এসএমএস পাঠাবে।
+গ. কন্ট্রোলার ও লজিক পরিবর্তন
+[MODIFY] 
+PaymentBookingController.php
+[MODIFY] 
+AccountClientController.php
+পেমেন্ট রিসিভ ও ভেরিফাইয়ের সময় টেস্টিং ফ্ল্যাগ পাস করবে এবং সেই অনুযায়ী এসএমএস হুক কল করবে।
+ঘ. ইউজার ইন্টারফেস ও টেস্টিং রেডিও/সুইচ
+[MODIFY] 
+payment-bookings.php
+[MODIFY] 
+client-cash-in-form.php
+[MODIFY] 
+ced-cash-in-form.php
+প্রতিটি ফর্মে একটি সুন্দর Testing Mode টগল বা রেডিও বাটন থাকবে:
+html
 
-এটা technically করা যায়।
+<div class="form-check form-switch mt-2">
+    <input class="form-check-input" type="checkbox" name="is_testing_mode" id="testingModeSwitch">
+    <label class="form-check-label text-warning fw-semibold" for="testingModeSwitch">
+        <i class="fa-solid fa-vial me-1"></i> Testing Mode (Skip SMS & Phone Validation)
+    </label>
+</div>
+জাভাস্ক্রিপ্ট বিহেভিয়ার: টেস্টিং মোড অন করা থাকলে জাভাস্ক্রিপ্ট ফোন নম্বর ব্লক করবে না এবং ইউজার যেকোনো নম্বর দিয়েই টেস্ট পেমেন্ট সাবমিট করতে পারবে।
+৫. পরীক্ষা পদ্ধতি (Verification Plan)
+১. টেস্টিং মোড অন টেস্ট (Testing Mode ON Check):
 
-ERP Flow
-Lead List
-     │
-     ▼
-Select Leads
-     │
-     ▼
-Choose WhatsApp Template
-     │
-     ▼
-Send via Meta WhatsApp Cloud API
-     │
-     ▼
-Store Status
-     ├── Sent
-     ├── Delivered
-     ├── Read
-     └── Failed
-Database
-whatsapp_campaigns
+ফর্মে "Testing Mode" টিক দিয়ে ভুল/ডামি ফোন নম্বর দিয়ে পেমেন্ট জমা দেওয়া হবে।
+পেমেন্ট সাবমিট হবে, কিন্তু বাস্তব জীবনের এসএমএস প্যাকেজের ব্যালেন্স খরচ হবে না এবং ডাটাবেজে skipped_testing লগ থাকবে।
+২. প্রোডাকশন মোড টেস্ট (Testing Mode OFF Check):
 
-id
-campaign_name
-template_name
-project_id
-created_by
-created_at
-whatsapp_campaign_details
-
-id
-campaign_id
-lead_id
-phone
-status
-message_id
-sent_at
-Message কেমন হওয়া উচিত?
-
-যদি user আগে website, Facebook Lead Form বা আপনার ERP-এর মাধ্যমে contact দিয়ে থাকে, তাহলে একটি professional template হতে পারে:
-
-Hello {{1}},
-
-Thank you for your interest in our {{2}} project.
-
-We received your inquiry and would be happy to provide complete details.
-
-Kindly reply to this WhatsApp message or call us at 01XXXXXXXXX at your convenience.
-
-Thank you.
-
-অথবা
-
-Hello {{1}},
-
-Thank you for contacting us regarding our project.
-
-To help us assist you better, please reply to this message or send us a quick "Hi".
-
-Our team will get back to you shortly.
-
-তবে গুরুত্বপূর্ণ বিষয়: Official WhatsApp API-তে user-কে শুধু "Hi" পাঠাতে বাধ্য করার উদ্দেশ্যে template approve নাও হতে পারে। Template-টি অবশ্যই বাস্তব customer inquiry-এর follow-up হিসেবে হতে হবে।
-
-PHP থেকে Send
-ERP
-
-↓
-
-Meta Graph API
-
-↓
-
-POST
-/messages
-
-↓
-
-Phone Number
-
-↓
-
-Delivery Status Webhook
-
-↓
-
-ERP Update
-ERP Features
-Campaign Create
-Project Wise Campaign
-Lead Selection
-Duplicate Check
-Send Limit
-Queue System
-Delivery Report
-Read Report
-Failed Report
-Retry Failed
-Campaign History
-সবচেয়ে গুরুত্বপূর্ণ বিষয়
-
-আপনি বলেছেন:
-
-"যখনই first contact করি, Meta কিছু সময়ের জন্য ban করে দেয়।"
-
-এটি সাধারণত হয় যখন:
-
-নতুন নম্বর থেকে একসাথে অনেক recipient-কে message পাঠানো হয়।
-Recipient-রা আপনার নম্বর save করেনি এবং report/block করে।
-Low-quality template ব্যবহার করা হয়।
-WhatsApp Business Messaging Policy অনুযায়ী যথেষ্ট opt-in নেই।
-নম্বরের messaging limit কম (যেমন শুরুতে 250/1000 conversations ইত্যাদি)।
-
-Official API ব্যবহার করলেও policy violation হলে restriction আসতে পারে। API ব্যবহার করলেই ban হবে না—এমন নিশ্চয়তা নেই।
-
-আমি যেটা recommend করব
-
-ERP-তে এমন একটি system বানান যেখানে:
-
-Lead-এর WhatsApp Opt-in সংরক্ষণ হবে।
-শুধুমাত্র opt-in থাকা lead-দের template পাঠানো হবে।
-Queue ব্যবহার করে প্রতি মিনিটে সীমিত সংখ্যক message পাঠানো হবে (একসাথে শত শত নয়)।
-Webhook দিয়ে delivery, read এবং reply track করবেন।
-Reply করলে সেই lead-এর conversation status "Engaged" হয়ে যাবে।
-
-আপনি যেহেতু PHP/MySQL দিয়ে ERP বানাচ্ছেন, এটি সম্পূর্ণভাবে implement করা সম্ভব। এর জন্য Meta Graph API, template management, webhook, campaign queue এবং delivery tracking একসাথে integrate করতে হবে।
+"Testing Mode" অফ রেখে ভুল নম্বরে পেমেন্ট দিলে ফর্ম ব্লক করবে। সঠিক নম্বরে পেমেন্ট দিলে সাথে সাথেই অটোমাস এপিআই-এর মাধ্যমে রিসিভড এসএমএস ক্লায়েন্টের মোবাইলে চলে যাবে।

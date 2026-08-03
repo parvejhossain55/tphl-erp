@@ -98,6 +98,63 @@ class ChartOfAccountsController extends Controller
         }
     }
 
+    public function storeAjax()
+    {
+        header('Content-Type: application/json');
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $code = trim($_POST['account_code'] ?? '');
+            $name = trim($_POST['account_name'] ?? '');
+            $level = $_POST['level_add'] ?? 'ledger';
+            $parent_id = !empty($_POST['parent_id']) ? (int)$_POST['parent_id'] : null;
+            $status = $_POST['status'] ?? 'active';
+
+            $type = 'Asset';
+            $rootType = 'asset';
+
+            if ($parent_id) {
+                $parent = $this->coaModel->getAccountById($parent_id);
+                if ($parent) {
+                    $type = $parent['account_type'];
+                    $rootType = $parent['root_type'] ?? strtolower($parent['account_type']);
+                }
+            } else {
+                $type = $_POST['account_type'] ?? 'Asset';
+                $rootType = strtolower($type);
+                if ($rootType === 'revenue') $rootType = 'income';
+            }
+
+            if (empty($code) || empty($name)) {
+                echo json_encode(['success' => false, 'message' => 'Account Code and Name are required.']);
+                exit;
+            }
+
+            if ($this->coaModel->checkAccountCodeExists($code)) {
+                echo json_encode(['success' => false, 'message' => "Account Code '$code' already exists."]);
+                exit;
+            }
+
+            $data = [
+                'parent_id' => $parent_id,
+                'account_code' => $code,
+                'account_name' => $name,
+                'account_type' => $type,
+                'level' => $level,
+                'root_type' => $rootType,
+                'is_system_account' => 0,
+                'status' => $status
+            ];
+
+            if ($this->coaModel->createAccount($data)) {
+                $newAccId = $this->coaModel->getAccountByCode($code)['id'] ?? null;
+                $newAcc = $newAccId ? $this->coaModel->getAccountById($newAccId) : null;
+                echo json_encode(['success' => true, 'account' => $newAcc, 'message' => 'New Chart of Account created successfully!']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to create account.']);
+            }
+            exit;
+        }
+    }
+
     public function update()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {

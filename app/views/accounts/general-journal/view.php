@@ -12,14 +12,16 @@
         <div class="col-md-6 text-end">
             <?php 
                 $role_id = $_SESSION['user']['role_id'] ?? 0;
-                if (strtolower($journal['status']) === 'pending' && in_array($role_id, [1, 3, 6, 30])): 
+                if (in_array($role_id, [1, 3, 6, 30])): 
             ?>
                 <a href="<?= $base_url ?>/general-journal/edit/<?= $journal['id'] ?>" class="btn btn-primary me-2">
                     <i class="fa-light fa-edit"></i> Edit
                 </a>
-                <a href="<?= $base_url ?>/general-journal/approve/<?= $journal['id'] ?>" class="btn btn-success me-2" onclick="return confirm('Are you sure you want to approve this journal entry?')">
-                    <i class="fa-light fa-check-circle"></i> Approve
-                </a>
+                <?php if (strtolower($journal['status']) === 'pending'): ?>
+                    <a href="<?= $base_url ?>/general-journal/approve/<?= $journal['id'] ?>" class="btn btn-success me-2" onclick="return confirm('Are you sure you want to approve this journal entry?')">
+                        <i class="fa-light fa-check-circle"></i> Approve
+                    </a>
+                <?php endif; ?>
             <?php endif; ?>
             <button class="btn btn-outline-primary me-2" onclick="window.print()">
                 <i class="fa-light fa-print"></i> Print

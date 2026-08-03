@@ -27,22 +27,12 @@
     global $db;
     if (isset($db)) {
         $res = $db->query("
-            SELECT COUNT(*) AS total FROM (
-                SELECT (
-                    SELECT lp.verification_status
-                    FROM lead_payments lp
-                    INNER JOIN lead_bookings lb3 ON lb3.id = lp.booking_id
-                    WHERE lb3.lead_id = l.id
-                    ORDER BY lp.created_at DESC LIMIT 1
-                ) AS latest_verification_status
-                FROM leads l
-                INNER JOIN lead_bookings lb ON lb.lead_id = l.id
-                GROUP BY l.id
-            ) AS t
-            WHERE t.latest_verification_status = 'pending' OR t.latest_verification_status IS NULL
+            SELECT COUNT(DISTINCT lp.booking_id) AS total 
+            FROM lead_payments lp 
+            WHERE lp.verification_status = 'pending'
         ");
-        if ($res) {
-            $pendingVerificationsCount = (int)$res->fetch_assoc()['total'];
+        if ($res && $row = $res->fetch_assoc()) {
+            $pendingVerificationsCount = (int)$row['total'];
         }
     }
 

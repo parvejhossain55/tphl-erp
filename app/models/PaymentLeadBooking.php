@@ -117,8 +117,9 @@ class PaymentLeadBooking extends Model
                 throw new Exception("Payment insert failed: " . $stmt->error);
             }
 
+            $insertId = $stmt->insert_id ?: $this->db->insert_id;
             $this->db->commit();
-            return $this->db->insert_id;
+            return $insertId;
         } catch (Exception $e) {
             $this->db->rollback();
             error_log($e->getMessage());

@@ -518,9 +518,6 @@ class UserDashboardController extends Controller
 
         $userId     = $_SESSION['user']['id']     ?? 0;
         $userTeamId = $_SESSION['user']['team_id'] ?? null;
-        $bookingCount   = $this->bookingModel->getBookingCountByLead();
-        $followUpModel  = new FollowUp($this->db);
-        $followUpCounts = $followUpModel->getFollowUpCountByLead();
         $year                 = $_GET['year']          ?? null;
         $month                = $_GET['month']         ?? null;
         $lastAction           = $_GET['last_action']   ?? null;
@@ -542,8 +539,21 @@ class UserDashboardController extends Controller
             $filterCountry = null;
         }
 
-        // Calculate card statistics from unfiltered assigned leads for the user
-        $unfilteredAssignedLeads = $this->leadModel->getAllMyLeads($userId, $year, $month, null, null, false, '', null, null, $filterProjectId, $filterCategoryId, $filterCountry);
+        // Fetch assigned leads for the user
+        $myAssignedClients = $this->leadModel
+            ->getAllMyLeads($userId, $year, $month, $lastAction, $call_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry);
+
+        // Fetch specific booking & follow-up counts ONLY for the user's leads (FAST!)
+        $leadIds = !empty($myAssignedClients) ? array_column($myAssignedClients, 'id') : [];
+        $bookingCount   = !empty($leadIds) ? $this->bookingModel->getBookingCountByLeadIds($leadIds) : [];
+        $followUpModel  = new FollowUp($this->db);
+        $followUpCounts = !empty($leadIds) ? $followUpModel->getFollowUpCountByLeadIds($leadIds) : [];
+
+        // Calculate card statistics (reuse $myAssignedClients if no filters set)
+        $hasActiveFilters = ($lastAction || $call_status || $onlyMissingFollowup || $search || $followup_date || $filterCard);
+        $unfilteredAssignedLeads = $hasActiveFilters 
+            ? $this->leadModel->getAllMyLeads($userId, $year, $month, null, null, false, '', null, null, $filterProjectId, $filterCategoryId, $filterCountry)
+            : $myAssignedClients;
 
         $totalLeadsCount        = count($unfilteredAssignedLeads);
         $contactedLeadsCount    = 0;
@@ -574,22 +584,16 @@ class UserDashboardController extends Controller
             }
         }
 
-        $myAssignedClients = $this->leadModel
-            ->getAllMyLeads($userId, $year, $month, $lastAction, $call_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry);
-
         $missingFollowUpCount = $followUpModel->getMissingFollowUpCount($userId);
 
-        // ── Duplicate Leads Detection ──────────────────────────────────────────
-        // Pool: ALL leads in my team that are assigned (any member)
-        // Find: same phone/email appearing in OTHER assigned_ids (any team)
-        // Show: all rows with that phone/email so full picture is visible
+        // ── Duplicate Leads Detection (Optimized JOIN Query) ───────────────────
         $duplicateGroups = [];
         $duplicateCount  = 0;
 
         if ($userId) {
             $teamIdForQuery = $userTeamId ?: 0;
             $dupSql = "
-                SELECT
+                SELECT DISTINCT
                     l.id,
                     l.full_name,
                     l.phone_number,
@@ -602,35 +606,26 @@ class UserDashboardController extends Controller
                     u.full_name   AS assigned_to_name,
                     l.updated_at  AS assigned_date,
                     IF(l.team_id = ?, 1, 0) AS is_mine
-                FROM leads l
+                FROM leads my_leads
+                JOIN leads l ON (
+                    (my_leads.phone_number IS NOT NULL AND my_leads.phone_number != '' AND l.phone_number = my_leads.phone_number)
+                    OR (my_leads.email IS NOT NULL AND my_leads.email != '' AND l.email = my_leads.email)
+                )
                 LEFT JOIN users u ON l.assigned_id = u.id
                 LEFT JOIN employees emp ON emp.user_id = u.id
                 LEFT JOIN teams t ON l.team_id = t.id
                 LEFT JOIN projects proj ON l.project_id = proj.id
-                WHERE l.deleted_at IS NULL
+                WHERE my_leads.assigned_id = ?
+                  AND my_leads.deleted_at IS NULL
+                  AND l.deleted_at IS NULL
                   AND l.assigned_id IS NOT NULL
                   AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
-                  AND (
-                      (l.phone_number IS NOT NULL AND l.phone_number != '' AND l.phone_number IN (
-                          SELECT phone_number FROM leads
-                          WHERE deleted_at IS NULL
-                            AND assigned_id = ?
-                            AND phone_number IS NOT NULL AND phone_number != ''
-                      ))
-                      OR
-                      (l.email IS NOT NULL AND l.email != '' AND l.email IN (
-                          SELECT email FROM leads
-                          WHERE deleted_at IS NULL
-                            AND assigned_id = ?
-                            AND email IS NOT NULL AND email != ''
-                      ))
-                  )
                 ORDER BY COALESCE(l.phone_number, l.email), is_mine DESC, l.updated_at DESC
             ";
 
             $dupStmt = $this->db->prepare($dupSql);
             if ($dupStmt) {
-                $dupStmt->bind_param('iii', $teamIdForQuery, $userId, $userId);
+                $dupStmt->bind_param('ii', $teamIdForQuery, $userId);
                 $dupStmt->execute();
                 $dupResult = $dupStmt->get_result();
                 $allDups   = [];

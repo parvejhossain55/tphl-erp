@@ -174,6 +174,13 @@ $roleId = $roleId ?? 0;
     <div class="kpi-value" style="color:var(--op-purple)"><?= $pendingVendorPayments ?></div>
   </a>
 
+  <a href="<?= $base ?>/fund-requisitions" class="kpi-card">
+    <div class="kpi-accent" style="background:var(--op-blue)"></div>
+    <div class="kpi-icon" style="background:rgba(59,130,246,.12);color:var(--op-blue)"><i class="fal fa-hand-holding-usd"></i></div>
+    <div class="kpi-label" style="color:var(--text-muted)">Pending Fund Requisitions</div>
+    <div class="kpi-value" style="color:var(--op-blue)"><?= $pendingFundRequisitions ?? 0 ?></div>
+  </a>
+
   <?php if ($roleId === 20 || $roleId === 3 || $isAdmin): ?>
   <a href="#pending-prs" class="kpi-card">
     <div class="kpi-accent" style="background:var(--op-amber)"></div>

@@ -252,6 +252,13 @@ class LandRequisitionController extends Controller {
         $stmt->bind_param("sissssi", $status, $accounts_by, $note, $payment_method, $transaction_no, $attachment_path, $id);
 
         if ($stmt->execute()) {
+            if ($status === 'Paid') {
+                if (!class_exists('AutoPostingService')) {
+                    require_once __DIR__ . '/../../services/AutoPostingService.php';
+                }
+                $autoPoster = new \AutoPostingService($this->db);
+                $autoPoster->postLandRequisitionJournal($id);
+            }
             setSuccess("Payment recorded successfully.");
         } else {
             setError("Failed to record payment: " . $this->db->error);

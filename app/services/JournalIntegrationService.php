@@ -377,7 +377,7 @@ class JournalIntegrationService
             'total_debit' => $amount,
             'total_credit' => $amount,
             'project_id' => $projectId,
-            'office' => 'Head Office'
+            'office' => $this->getUserWorkplaceOffice($userId)
         ];
 
         return $this->journalModel->storeJournal($headerData, $details, $userId);
@@ -510,7 +510,7 @@ class JournalIntegrationService
             'total_debit' => $amount,
             'total_credit' => $amount,
             'project_id' => $projectId,
-            'office' => 'Corporate Office'
+            'office' => $this->getUserWorkplaceOffice($userId)
         ];
 
         return $this->journalModel->storeJournal($headerData, $details, $userId);
@@ -531,5 +531,38 @@ class JournalIntegrationService
         $stmt->execute();
         $res = $stmt->get_result()->fetch_assoc();
         return $res ? (int)$res['id'] : null;
+    }
+
+    /**
+     * Helper to get employee workplace/office_branch for office field, default to 'Site Office' if not found
+     */
+    public function getUserWorkplaceOffice($userId = null)
+    {
+        if (!$userId) {
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $userId = $_SESSION['user_id'] ?? null;
+        }
+
+        if ($userId) {
+            $stmt = $this->db->prepare("
+                SELECT COALESCE(
+                    NULLIF(TRIM(e.office_branch), ''), 
+                    NULLIF(TRIM(e.workplace), '')
+                ) AS office_branch 
+                FROM users u 
+                LEFT JOIN employees e ON (u.employee_id = e.id OR e.user_id = u.id) 
+                WHERE u.id = ? 
+                LIMIT 1
+            ");
+            if ($stmt) {
+                $stmt->bind_param("i", $userId);
+                $stmt->execute();
+                $res = $stmt->get_result()->fetch_assoc();
+                if (!empty($res['office_branch'])) {
+                    return trim($res['office_branch']);
+                }
+            }
+        }
+        return 'Site Office';
     }
 }

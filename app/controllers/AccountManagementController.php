@@ -112,6 +112,14 @@ class AccountManagementController extends Controller
                 $result = $this->managementModel->addTransaction($data);
 
                 if ($result['success']) {
+                    $txnId = $result['id'] ?? 0;
+                    if ($txnId > 0) {
+                        if (!class_exists('AutoPostingService')) {
+                            require_once __DIR__ . '/../services/AutoPostingService.php';
+                        }
+                        $autoPoster = new AutoPostingService($this->db);
+                        $autoPoster->postManagementCashInJournal($txnId);
+                    }
                     unset($_SESSION['old_form_data']);
                     setSuccess($result['message']);
                     header("Location: {$GLOBALS['base_url']}/management-cash-in");

@@ -19,14 +19,17 @@ class FundRequisitionController extends Controller {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Management (role 3), Admin (role 1), Accounts (role 6), Accounts Head (role 30) see everything
+        // Management (role 3), Admin (role 1), Accounts (role 6, 30), Operations (role 20, 12, 19, 23) see everything
         $where = "1=1";
-        if (!in_array($roleId, [1, 3, 6, 30])) {
+        if (!in_array($roleId, [1, 3, 6, 12, 19, 20, 23, 30])) {
             // Start with: own requisitions
             $conditions = ["fr.requested_by = $userId"];
 
             // Include requisitions where this user is the designated Reporting Boss
             $conditions[] = "e_req.reporting_user_id = $userId";
+
+            // Include General / Office / Non-project requisitions (where project_id is NULL)
+            $conditions[] = "fr.project_id IS NULL";
 
             // Also include requisitions for projects they are assigned to
             $assignedIds = $this->getAssignedProjectIds($userId);

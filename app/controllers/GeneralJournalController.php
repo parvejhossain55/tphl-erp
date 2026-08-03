@@ -140,8 +140,8 @@ class GeneralJournalController extends Controller
         }
 
         $journal = $this->journalModel->getJournalById($id);
-        if (!$journal || strtolower($journal['status']) !== 'pending') {
-            $_SESSION['error'] = "Only pending journal entries can be edited.";
+        if (!$journal) {
+            $_SESSION['error'] = "Journal entry not found.";
             header("Location: " . $GLOBALS['base_url'] . "/financial-dashboard");
             exit;
         }

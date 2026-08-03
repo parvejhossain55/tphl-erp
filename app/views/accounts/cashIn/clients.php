@@ -53,80 +53,89 @@ $show_breadcrumb = true;
         </div>
     </div>
 
-    <!-- Pending Verification Card -->
-    <div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
-        <div class="card__wrapper" style="border-left: 4px solid #f59e0b;">
-            <div class="d-flex align-items-center gap-sm">
-                <div class="card__icon">
-                    <span style="color:#f59e0b; background:rgba(245,158,11,0.1);"><i class="fa-light fa-clock"></i></span>
-                </div>
-                <div class="card__title-wrap">
-                    <h6 class="card__sub-title mb-10">Pending Verification</h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title" id="pendingVerificationCount">–</h4>
-                    </div>
+<style>
+    .table-pending-highlight, .table-pending-highlight > td {
+        background-color: #fff0f0 !important;
+    }
+</style>
+
+<!-- Pending Verification Card -->
+<div class="col-xxl-4 col-xl-6 col-lg-6 col-md-6 col-sm-6">
+    <div class="card__wrapper" style="border-left: 4px solid #f59e0b; cursor: pointer; transition: transform 0.2s;" onclick="filterPendingVerification()" title="Click to filter Pending Verification clients">
+        <div class="d-flex align-items-center gap-sm">
+            <div class="card__icon">
+                <span style="color:#f59e0b; background:rgba(245,158,11,0.1);"><i class="fa-light fa-clock"></i></span>
+            </div>
+            <div class="card__title-wrap">
+                <h6 class="card__sub-title mb-10">Pending Verification <small class="text-muted">(Click to view)</small></h6>
+                <div class="d-flex flex-wrap align-items-end gap-10">
+                    <h4 class="card__title" id="pendingVerificationCount"><?= $paymentStats['pending_verifications'] ?? 0 ?></h4>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="col-xxl-12">
-        <div class="card__wrapper">
-            <div class="d-flex justify-content-between align-items-center mb-20 flex-wrap gap-3">
-                <h4>Clients Information</h4>
-                <div class="d-flex gap-3 align-items-center flex-wrap">
-                    <form method="GET" action="<?= $GLOBALS['base_url'] ?>/clients-cash-in" id="filterForm" class="d-flex gap-2">
-                        <select name="project_id" class="form-select form-select-sm" style="min-width: 150px;" onchange="document.getElementById('filterForm').submit()">
-                            <option value="">All Projects</option>
-                            <?php if(!empty($projects)): foreach($projects as $p): ?>
-                                <option value="<?= $p['id'] ?>" <?= $selectedProjectId == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
-                            <?php endforeach; endif; ?>
-                        </select>
-                        <select name="verification_status" class="form-select form-select-sm" style="min-width: 150px;" onchange="document.getElementById('filterForm').submit()">
-                            <option value="">All Statuses</option>
-                            <option value="pending" <?= $selectedVerificationStatus == 'pending' ? 'selected' : '' ?>>Pending Verification</option>
-                            <option value="verified" <?= $selectedVerificationStatus == 'verified' ? 'selected' : '' ?>>Verified</option>
-                            <option value="rejected" <?= $selectedVerificationStatus == 'rejected' ? 'selected' : '' ?>>Rejected</option>
-                        </select>
-                    </form>
-                    <div>
-                        <span class="badge bg-warning text-dark me-1"><i class="fa-light fa-clock me-1"></i> Pending</span>
-                        <span class="badge bg-success"><i class="fa-light fa-check-circle me-1"></i> Verified</span>
-                    </div>
+<div class="col-xxl-12">
+    <div class="card__wrapper">
+        <div class="d-flex justify-content-between align-items-center mb-20 flex-wrap gap-3">
+            <h4>Clients Information</h4>
+            <div class="d-flex gap-3 align-items-center flex-wrap">
+                <form method="GET" action="<?= $GLOBALS['base_url'] ?>/clients-cash-in" id="filterForm" class="d-flex gap-2">
+                    <select name="project_id" class="form-select form-select-sm" style="min-width: 150px;" onchange="document.getElementById('filterForm').submit()">
+                        <option value="">All Projects</option>
+                        <?php if(!empty($projects)): foreach($projects as $p): ?>
+                            <option value="<?= $p['id'] ?>" <?= $selectedProjectId == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
+                        <?php endforeach; endif; ?>
+                    </select>
+                    <select name="verification_status" class="form-select form-select-sm" style="min-width: 150px;" onchange="document.getElementById('filterForm').submit()">
+                        <option value="">All Statuses</option>
+                        <option value="pending" <?= $selectedVerificationStatus == 'pending' ? 'selected' : '' ?>>Pending Verification</option>
+                        <option value="verified" <?= $selectedVerificationStatus == 'verified' ? 'selected' : '' ?>>Verified</option>
+                        <option value="rejected" <?= $selectedVerificationStatus == 'rejected' ? 'selected' : '' ?>>Rejected</option>
+                    </select>
+                </form>
+                <div>
+                    <span class="badge bg-danger me-1"><i class="fa-light fa-clock me-1"></i> Pending Verification</span>
+                    <span class="badge bg-success"><i class="fa-light fa-check-circle me-1"></i> Verified</span>
                 </div>
             </div>
+        </div>
 
-            <div class="table__wrapper table-responsive">
-                <table class="table mb-20 multiple_tables" id="clientsTable">
-                    <thead>
-                        <tr class="table__title table__sort">
-                            <th>Client Name</th>
-                            <th>Company</th>
-                            <th>Phone</th>
-                            <th>Email</th>
-                            <th>Project</th>
-                            <th>Flat</th>
-                            <th>Booking Agent(s)</th>
-                            <th>Total Paid</th>
-                            <th>Last Payment</th>
-                            <th>Verification</th>
-                            <th>Profile</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody class="table__body">
-                        <?php if (!empty($clients)): ?>
-                            <?php foreach ($clients as $client): ?>
-                                <?php
-                                    // Determine verification status based on latest payment
-                                    $verStatus    = $client['latest_verification_status'] ?? 'pending';
-                                    $rowClass     = ($verStatus === 'pending')  ? 'table-warning'  : '';
-                                    $rowClass     = ($verStatus === 'rejected') ? 'table-danger'   : $rowClass;
-                                    $badgeClass   = ($verStatus === 'verified') ? 'bg-success'     : 'bg-warning text-dark';
-                                    $badgeIcon    = ($verStatus === 'verified') ? 'fa-check-circle' : 'fa-clock';
-                                    if ($verStatus === 'rejected') { $badgeClass = 'bg-danger'; $badgeIcon = 'fa-times-circle'; }
-                                ?>
-                                <tr class="<?= $rowClass ?>">
+        <div class="table__wrapper table-responsive">
+            <table class="table mb-20 multiple_tables" id="clientsTable">
+                <thead>
+                    <tr class="table__title table__sort">
+                        <th>Client Name</th>
+                        <th>Company</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>Project</th>
+                        <th>Flat</th>
+                        <th>Booking Agent(s)</th>
+                        <th>Total Paid</th>
+                        <th>Last Payment</th>
+                        <th>Verification</th>
+                        <th>Profile</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody class="table__body">
+                    <?php if (!empty($clients)): ?>
+                        <?php foreach ($clients as $client): ?>
+                            <?php
+                                // Determine verification status based on latest payment
+                                $verStatus    = $client['latest_verification_status'] ?? '';
+                                $isPending    = ($verStatus === 'pending');
+                                $isRejected   = ($verStatus === 'rejected');
+                                $isVerified   = ($verStatus === 'verified');
+
+                                $rowClass     = $isPending ? 'table-pending-highlight' : ($isRejected ? 'table-danger' : '');
+                                $badgeClass   = $isVerified ? 'bg-success' : ($isRejected ? 'bg-danger' : ($isPending ? 'bg-warning text-dark' : 'bg-secondary'));
+                                $badgeIcon    = $isVerified ? 'fa-check-circle' : ($isRejected ? 'fa-times-circle' : ($isPending ? 'fa-clock' : 'fa-minus'));
+                                $verText      = $isVerified ? 'Verified' : ($isRejected ? 'Rejected' : ($isPending ? 'Pending' : 'No Payment'));
+                            ?>
+                            <tr class="<?= $rowClass ?>">
                                     <td><?= htmlspecialchars($client['client_name']) ?></td>
                                     <td><?= htmlspecialchars($client['company'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['phone'] ?? 'N/A') ?></td>
@@ -263,12 +272,16 @@ $show_breadcrumb = true;
 
     document.addEventListener('DOMContentLoaded', function () {
         projectsModal = new bootstrap.Modal(document.getElementById('projectsModal'));
-
-        // Count pending verification rows
-        const pending = document.querySelectorAll('#clientsTable tbody tr.table-warning').length;
-        const el = document.getElementById('pendingVerificationCount');
-        if (el) el.textContent = pending;
     });
+
+    function filterPendingVerification() {
+        const form = document.getElementById('filterForm');
+        const select = form ? form.querySelector('select[name="verification_status"]') : null;
+        if (select) {
+            select.value = (select.value === 'pending') ? '' : 'pending';
+            form.submit();
+        }
+    }
 
     function openProjectsModal(leadId, clientName) {
         document.getElementById('modal_client_name').textContent = clientName;

@@ -64,6 +64,10 @@ $show_breadcrumb = true;
                                 <div class="text"><?= $employee['workplace'] ?? '' ?></div>
                             </li>
                             <li class="d-flex mb-2">
+                                <div class="fw-bold me-2" style="min-width:130px;">Office Branch:</div>
+                                <div class="text"><?= htmlspecialchars($employee['office_branch'] ?? 'N/A') ?></div>
+                            </li>
+                            <li class="d-flex mb-2">
                                 <div class="fw-bold me-2" style="min-width:130px;">Report To / Boss:</div>
                                 <div class="text">
                                     <?php if (!empty($employee['is_dept_head'])): ?>

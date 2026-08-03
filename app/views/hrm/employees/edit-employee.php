@@ -245,6 +245,42 @@
                      </div>
                  </div>
 
+                 <!-- Workplace -->
+                 <div class="col-lg-6">
+                     <div class="from__input-box">
+                         <div class="form__input-title">
+                             <label for="workplace">Workplace <span class="text-muted">Optional</span></label>
+                         </div>
+                         <div class="form__input">
+                             <select class="form-control" name="workplace" id="workplace">
+                                 <option value="">Select Workplace</option>
+                                 <option value="Corporate Office" <?= (($employee['workplace'] ?? '') === 'Corporate Office') ? 'selected' : '' ?>>Corporate Office</option>
+                                 <option value="Site Office" <?= (($employee['workplace'] ?? '') === 'Site Office') ? 'selected' : '' ?>>Site Office</option>
+                                 <option value="Site Office 2" <?= (($employee['workplace'] ?? '') === 'Site Office 2') ? 'selected' : '' ?>>Ati Society (Site Office 2)</option>
+                                 <option value="Zonal Office" <?= (($employee['workplace'] ?? '') === 'Zonal Office') ? 'selected' : '' ?>>Zonal Office</option>
+                             </select>
+                         </div>
+                     </div>
+                 </div>
+
+                 <!-- Office Branch -->
+                 <div class="col-lg-6">
+                     <div class="from__input-box">
+                         <div class="form__input-title">
+                             <label for="office_branch">Office Branch <span class="text-muted">Optional</span></label>
+                         </div>
+                         <div class="form__input">
+                             <select class="form-control" name="office_branch" id="office_branch">
+                                 <option value="">Select Office Branch</option>
+                                 <option value="Corporate gulshan office" <?= (($employee['office_branch'] ?? '') === 'Corporate gulshan office') ? 'selected' : '' ?>>Corporate gulshan office</option>
+                                 <option value="ashuliya site office" <?= (($employee['office_branch'] ?? '') === 'ashuliya site office') ? 'selected' : '' ?>>ashuliya site office</option>
+                                 <option value="Ati site office 2" <?= (($employee['office_branch'] ?? '') === 'Ati site office 2') ? 'selected' : '' ?>>Ati site office 2</option>
+                                 <option value="shaymoli zonal office" <?= (($employee['office_branch'] ?? '') === 'shaymoli zonal office') ? 'selected' : '' ?>>shaymoli zonal office</option>
+                             </select>
+                         </div>
+                     </div>
+                 </div>
+
                  <!-- Is Sales Co-Leader -->
                  <div class="col-lg-6">
                      <div class="from__input-box">

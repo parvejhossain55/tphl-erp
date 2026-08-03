@@ -36,6 +36,43 @@ class AutoPostingService
     }
 
     /**
+     * Dynamically match or create COA Bank/Cash Account
+     */
+    public function getBankOrCashAccountId($paymentMethod = '', $bankName = '')
+    {
+        $text = strtolower(trim($paymentMethod . ' ' . $bankName));
+
+        if (strpos($text, 'cash') !== false) {
+            return $this->getAccountIdByCode('1110-001'); // Petty Cash Account
+        }
+
+        if (strpos($text, 'city') !== false) {
+            $id = $this->getAccountIdByCode('1110-004'); // City Bank Main Account
+            if ($id) return $id;
+        }
+
+        if (strpos($text, 'islami') !== false) {
+            return $this->getAccountIdByCode('1110-003'); // Islami Bank
+        }
+
+        if (strpos($text, 'dutch') !== false || strpos($text, 'dbbl') !== false) {
+            return $this->getAccountIdByCode('1110-002'); // Dutch Bangla Bank
+        }
+
+        // Search COA for matching bank name
+        if (!empty($bankName)) {
+            $search = '%' . $this->db->real_escape_string($bankName) . '%';
+            $res = $this->db->query("SELECT id FROM chart_of_accounts WHERE account_name LIKE '$search' AND (account_code LIKE '1110%' OR parent_id IN (SELECT id FROM chart_of_accounts WHERE account_code = '1110')) LIMIT 1");
+            if ($res && $res->num_rows > 0) {
+                return (int)$res->fetch_assoc()['id'];
+            }
+        }
+
+        // Default fallback is general Cash and Bank Accounts (1110) instead of forcing Dutch Bangla Bank
+        return $this->getAccountIdByCode('1110');
+    }
+
+    /**
      * Generate unique journal voucher number
      */
     public function generateVoucherNumber($prefix = 'JV')
@@ -63,7 +100,7 @@ class AutoPostingService
         $voucherType = 'Journal Voucher';
         $entryType = 'accrual';
         $status = 'approved';
-        $office = 'Head Office';
+        $office = $this->getUserWorkplaceOffice($createdBy);
 
         $this->db->begin_transaction();
         try {
@@ -145,7 +182,7 @@ class AutoPostingService
         $voucherType = 'Payment Voucher';
         $entryType = 'disbursement';
         $status = 'approved';
-        $office = 'Head Office';
+        $office = $this->getUserWorkplaceOffice($createdBy);
 
         $this->db->begin_transaction();
         try {
@@ -232,7 +269,7 @@ class AutoPostingService
         $voucherType = 'Receipt Voucher';
         $entryType = 'disbursement';
         $status = 'approved';
-        $office = 'Head Office';
+        $office = $this->getUserWorkplaceOffice($createdBy);
         $sourceModule = 'sales';
 
         $this->db->begin_transaction();
@@ -337,5 +374,204 @@ class AutoPostingService
             error_log("AutoPostingService Exception (postSalesPaymentEntry): " . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Helper to get employee workplace for office field, default to 'Site Office' if not found
+     */
+    public function getUserWorkplaceOffice($userId = null)
+    {
+        if (!$userId) {
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $userId = $_SESSION['user_id'] ?? null;
+        }
+
+        if ($userId) {
+            $stmt = $this->db->prepare("
+                SELECT COALESCE(
+                    NULLIF(TRIM(e.office_branch), ''), 
+                    NULLIF(TRIM(e.workplace), '')
+                ) AS office_branch 
+                FROM users u 
+                LEFT JOIN employees e ON (u.employee_id = e.id OR e.user_id = u.id) 
+                WHERE u.id = ? 
+                LIMIT 1
+            ");
+            if ($stmt) {
+                $stmt->bind_param("i", $userId);
+                $stmt->execute();
+                $res = $stmt->get_result()->fetch_assoc();
+                if (!empty($res['office_branch'])) {
+                    return trim($res['office_branch']);
+                }
+            }
+        }
+        return 'Site Office';
+    }
+
+    /**
+     * Auto-post Land Requisition / Bayana Payment Journal Entry
+     */
+    public function postLandRequisitionJournal($requisitionId)
+    {
+        $stmt = $this->db->prepare("
+            SELECT lfr.*, la.land_owner_name, la.project_id 
+            FROM land_fund_requisitions lfr 
+            LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id 
+            WHERE lfr.id = ? AND lfr.accounts_status = 'Paid'
+            LIMIT 1
+        ");
+        $stmt->bind_param("i", $requisitionId);
+        $stmt->execute();
+        $r = $stmt->get_result()->fetch_assoc();
+
+        if (!$r || (float)$r['requested_amount'] <= 0) return false;
+
+        $amount = (float)$r['requested_amount'];
+        $landOwnerName = trim($r['land_owner_name'] ?? 'Land Owner');
+        $type = $r['requisition_type'] ?? 'Bayana';
+        $txnNo = $r['transaction_no'] ?: $r['id'];
+
+        $narration = "Land Acquisition " . $type . " Payment for " . $landOwnerName . " (Ref: " . $txnNo . ")";
+
+        // Check if journal already posted
+        $chk = $this->db->prepare("SELECT id FROM journals WHERE narration LIKE ? LIMIT 1");
+        $likeNarr = "%" . $narration . "%";
+        $chk->bind_param("s", $likeNarr);
+        $chk->execute();
+        if ($chk->get_result()->num_rows > 0) {
+            return true;
+        }
+
+        $bankAccountId = $this->getBankOrCashAccountId($r['payment_method'] ?? 'Bank', '');
+        $landAccountId = $this->getAccountIdByCode('1200-001'); // 1200-001 Land & Land Development
+
+        if (!class_exists('GeneralJournal')) {
+            require_once __DIR__ . '/../models/GeneralJournal.php';
+        }
+
+        $generalJournalModel = new GeneralJournal($this->db);
+        $journalNo = $generalJournalModel->generateJournalNumber();
+
+        $userId = $r['accounts_by'] ?: ($_SESSION['user']['id'] ?? 1);
+
+        $headerData = [
+            'journal_number' => $journalNo,
+            'date' => date('Y-m-d', strtotime($r['accounts_paid_at'] ?: $r['created_at'])),
+            'voucher_type' => 'Payment Voucher',
+            'narration' => $narration,
+            'total_debit' => $amount,
+            'total_credit' => $amount,
+            'project_id' => $r['project_id'],
+            'office' => $this->getUserWorkplaceOffice($userId),
+            'status' => 'approved'
+        ];
+
+        $details = [
+            [
+                'account_id' => $landAccountId,
+                'debit' => $amount,
+                'credit' => 0,
+                'narration' => $narration,
+                'project_id' => $r['project_id']
+            ],
+            [
+                'account_id' => $bankAccountId,
+                'debit' => 0,
+                'credit' => $amount,
+                'narration' => $narration,
+                'project_id' => $r['project_id']
+            ]
+        ];
+
+        return $generalJournalModel->storeJournal($headerData, $details, $userId);
+    }
+
+    /**
+     * Auto-post Management Cash In / Investment Journal Entry (Receipt Voucher)
+     */
+    public function postManagementCashInJournal($transactionId)
+    {
+        $stmt = $this->db->prepare("
+            SELECT mc.* 
+            FROM management_cashin mc 
+            WHERE mc.id = ? AND mc.payment_status = 'paid'
+            LIMIT 1
+        ");
+        $stmt->bind_param("i", $transactionId);
+        $stmt->execute();
+        $r = $stmt->get_result()->fetch_assoc();
+
+        if (!$r || (float)$r['amount'] <= 0) return false;
+
+        $amount = (float)$r['amount'];
+        $roleName = trim($r['role_name'] ?? 'Management');
+        $personName = trim($r['person_name'] ?? '');
+        $source = trim($r['source'] ?? 'Investment');
+        $txnRef = trim($r['transaction_ref'] ?? '') ?: $r['id'];
+
+        $payMethod = ucfirst($r['payment_method'] ?? 'Cash');
+        $bankInfo = trim($r['bank_name'] ?? '');
+        $accNo = trim($r['bank_account_no'] ?? '');
+        $chequeNo = trim($r['cheque_no'] ?? '');
+
+        $payDetails = "Method: " . $payMethod;
+        if (!empty($bankInfo)) $payDetails .= " | Bank: " . $bankInfo;
+        if (!empty($accNo)) $payDetails .= " | Acc: " . $accNo;
+        if (!empty($chequeNo)) $payDetails .= " | Cheque: " . $chequeNo;
+
+        $narration = "Management Cash In / " . $source . " from " . $roleName . ($personName ? " ($personName)" : "") . " [" . $payDetails . "] (Ref: " . $txnRef . ")";
+
+        // Check if journal already posted
+        $chk = $this->db->prepare("SELECT id FROM journals WHERE narration LIKE ? LIMIT 1");
+        $likeNarr = "%" . $narration . "%";
+        $chk->bind_param("s", $likeNarr);
+        $chk->execute();
+        if ($chk->get_result()->num_rows > 0) {
+            return true;
+        }
+
+        $bankAccountId = $this->getBankOrCashAccountId($r['payment_method'] ?? 'cash', $r['bank_name'] ?? '');
+        $equityAccountId = $this->getAccountIdByCode('3100-001'); // 3100-001 Management & Directors Investment
+
+        if (!class_exists('GeneralJournal')) {
+            require_once __DIR__ . '/../models/GeneralJournal.php';
+        }
+
+        $generalJournalModel = new GeneralJournal($this->db);
+        $journalNo = $generalJournalModel->generateJournalNumber();
+
+        $userId = $r['created_by'] ?: ($_SESSION['user']['id'] ?? 1);
+
+        $headerData = [
+            'journal_number' => $journalNo,
+            'date' => date('Y-m-d', strtotime($r['transaction_date'] ?: date('Y-m-d'))),
+            'voucher_type' => 'Receipt Voucher',
+            'narration' => $narration,
+            'total_debit' => $amount,
+            'total_credit' => $amount,
+            'project_id' => null,
+            'office' => $this->getUserWorkplaceOffice($userId),
+            'status' => 'approved'
+        ];
+
+        $details = [
+            [
+                'account_id' => $bankAccountId,
+                'debit' => $amount,
+                'credit' => 0,
+                'narration' => $narration,
+                'project_id' => null
+            ],
+            [
+                'account_id' => $equityAccountId,
+                'debit' => 0,
+                'credit' => $amount,
+                'narration' => $narration,
+                'project_id' => null
+            ]
+        ];
+
+        return $generalJournalModel->storeJournal($headerData, $details, $userId);
     }
 }

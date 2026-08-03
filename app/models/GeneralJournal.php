@@ -69,11 +69,17 @@ class GeneralJournal extends Model
 
     public function storeJournal($headerData, $details, $userId)
     {
+        if (empty($headerData['office'])) {
+            $headerData['office'] = $this->getUserWorkplaceOffice($userId);
+        }
+
+        $status = !empty($headerData['status']) ? $headerData['status'] : 'approved';
+
         $this->db->begin_transaction();
         try {
-            $stmt = $this->db->prepare("INSERT INTO journals (journal_number, date, voucher_type, narration, total_debit, total_credit, created_by, project_id, office) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $this->db->prepare("INSERT INTO journals (journal_number, date, voucher_type, narration, total_debit, total_credit, created_by, project_id, office, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->bind_param(
-                "ssssddiis",
+                "ssssddiiss",
                 $headerData['journal_number'],
                 $headerData['date'],
                 $headerData['voucher_type'],
@@ -82,7 +88,8 @@ class GeneralJournal extends Model
                 $headerData['total_credit'],
                 $userId,
                 $headerData['project_id'],
-                $headerData['office']
+                $headerData['office'],
+                $status
             );
 
             if (!$stmt->execute()) {
@@ -186,5 +193,38 @@ class GeneralJournal extends Model
             $this->db->rollback();
             return false;
         }
+    }
+
+    /**
+     * Helper to get employee workplace for office field, default to 'Site Office' if not found
+     */
+    public function getUserWorkplaceOffice($userId = null)
+    {
+        if (!$userId) {
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $userId = $_SESSION['user_id'] ?? null;
+        }
+
+        if ($userId) {
+            $stmt = $this->db->prepare("
+                SELECT COALESCE(
+                    NULLIF(TRIM(e.office_branch), ''), 
+                    NULLIF(TRIM(e.workplace), '')
+                ) AS office_branch 
+                FROM users u 
+                LEFT JOIN employees e ON (u.employee_id = e.id OR e.user_id = u.id) 
+                WHERE u.id = ? 
+                LIMIT 1
+            ");
+            if ($stmt) {
+                $stmt->bind_param("i", $userId);
+                $stmt->execute();
+                $res = $stmt->get_result()->fetch_assoc();
+                if (!empty($res['office_branch'])) {
+                    return trim($res['office_branch']);
+                }
+            }
+        }
+        return 'Site Office';
     }
 }

@@ -4,102 +4,88 @@ $page = 'Employee Lists';
 $show_breadcrumb = true;
 
 ?>
-<form action="" method="get">
-    <div class="row g-20 mb-20 justify-content-between align-items-end ">
+<form action="" method="get" class="mb-20">
+    <!-- Top Action Bar -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <h5 class="mb-0 fw-bold text-dark"><i class="fa-solid fa-users text-primary me-2"></i>Employee Directory</h5>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a href="<?= $GLOBALS['base_url'] ?>/employees-pdf-download" class="btn btn-sm btn-outline-danger shadow-sm">
+                <i class="fa-solid fa-file-pdf me-1"></i> PDF Download
+            </a>
+            <a href="<?= $GLOBALS['base_url'] ?>/employees-excel-download" class="btn btn-sm btn-outline-success shadow-sm">
+                <i class="fa-solid fa-file-excel me-1"></i> Excel Download
+            </a>
+            <a href="<?= $GLOBALS['base_url'] ?>/create-employee" class="btn btn-sm btn-primary shadow-sm">
+                <i class="fa-solid fa-plus me-1"></i> Add Employee
+            </a>
+        </div>
+    </div>
 
-        <!-- Search -->
-        <div class="col-xxl-3 col-md-6 col-12 ">
-            <div class="card__wrapper">
+    <!-- Filter Bar Card -->
+    <div class="card__wrapper p-3 shadow-sm">
+        <div class="row g-2 align-items-center">
+
+            <!-- Search -->
+            <div class="col-xxl-3 col-lg-3 col-md-6 col-12">
                 <div class="search-box">
                     <input type="text" class="form-control" name="q" id="employeeName"
-                        placeholder="Employee Name / Username /ID"
+                        placeholder="Employee Name / Username / ID"
                         value="<?= htmlspecialchars($searchTerm ?? '') ?>">
                 </div>
             </div>
-        </div>
 
-
-        <!-- Department Filter -->
-        <div class="col-xxl-2 col-md-6 col-12">
-            <div class="card__wrapper">
-                <div class="from__input-box">
-                    <select class="form-control" name="department_id">
-                        <option value="">Employee Department</option>
-                        <?php foreach ($departments as $department): ?>
-                            <option value="<?= $department['id'] ?>"
-                                <?= $selectedDepartment == $department['id'] ? 'selected' : '' ?>>
-                                <?= $department['name'] ?>
-                            </option>
-                        <?php endforeach ?>
-                    </select>
-                </div>
+            <!-- Department Filter -->
+            <div class="col-xxl-3 col-lg-3 col-md-6 col-12">
+                <select class="form-select" name="department_id">
+                    <option value="">Employee Department</option>
+                    <?php foreach ($departments as $department): ?>
+                        <option value="<?= $department['id'] ?>"
+                            <?= $selectedDepartment == $department['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($department['name']) ?>
+                        </option>
+                    <?php endforeach ?>
+                </select>
             </div>
-        </div>
 
-        <!-- Team Filter -->
-        <div class="col-xxl-2 col-md-6 col-12">
-            <div class="card__wrapper">
-                <div class="from__input-box">
-                    <select class="form-control" name="team_id">
-                        <option value="">All Teams</option>
-                        <?php foreach ($teams as $team): ?>
-                            <option value="<?= $team['id'] ?>"
-                                <?= ($selectedTeam ?? '') == $team['id'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($team['name']) ?>
-                            </option>
-                        <?php endforeach ?>
-                    </select>
-                </div>
+            <!-- Team Filter -->
+            <div class="col-xxl-2 col-lg-2 col-md-6 col-12">
+                <select class="form-select" name="team_id">
+                    <option value="">All Teams</option>
+                    <?php foreach ($teams as $team): ?>
+                        <option value="<?= $team['id'] ?>"
+                            <?= ($selectedTeam ?? '') == $team['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($team['name']) ?>
+                        </option>
+                    <?php endforeach ?>
+                </select>
             </div>
-        </div>
 
-        <!-- Workplace Filter -->
-        <div class="col-xxl-2 col-md-6 col-12">
-            <div class="card__wrapper">
-                <div class="from__input-box">
-                    <select class="form-control" name="workplace">
-                        <option value="">All Workplaces</option>
-                        <?php foreach ($workplaces ?? [] as $wp): ?>
-                            <option value="<?= htmlspecialchars($wp['workplace']) ?>"
-                                <?= ($selectedWorkplace ?? '') === $wp['workplace'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($wp['workplace']) ?>
-                            </option>
-                        <?php endforeach ?>
-                    </select>
-                </div>
+            <!-- Workplace Filter -->
+            <div class="col-xxl-2 col-lg-2 col-md-6 col-12">
+                <select class="form-select" name="workplace">
+                    <option value="">All Workplaces</option>
+                    <?php foreach ($workplaces ?? [] as $wp): ?>
+                        <option value="<?= htmlspecialchars($wp['workplace']) ?>"
+                            <?= ($selectedWorkplace ?? '') === $wp['workplace'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($wp['workplace']) ?>
+                        </option>
+                    <?php endforeach ?>
+                </select>
             </div>
-        </div>
 
-        <!-- Submit -->
-        <div class="col-xxl-3 col-12">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-stretch gap-15">
-
-                    <button type="submit" class="btn btn-secondary flex-fill">
-                        Filter
+            <!-- Submit / Reset Buttons -->
+            <div class="col-xxl-2 col-lg-2 col-md-12 col-12">
+                <div class="d-flex align-items-center gap-2">
+                    <button type="submit" class="btn btn-secondary flex-fill text-nowrap">
+                        <i class="fa-solid fa-filter me-1"></i> Filter
                     </button>
-
                     <a href="<?= $GLOBALS['base_url'] ?>/employee-lists"
-                        class="btn btn-success flex-fill">
-                        Reset
+                        class="btn btn-outline-secondary flex-fill text-nowrap">
+                        <i class="fa-solid fa-rotate-left me-1"></i> Reset
                     </a>
-
-                    <a href="<?= $GLOBALS['base_url'] ?>/employees-pdf-download"
-                        class="btn btn-success flex-fill">
-                        PDF Download
-                    </a>
-                    <a href="<?= $GLOBALS['base_url'] ?>/employees-excel-download"
-                        class="btn btn-success flex-fill">
-                        Excel Download
-                    </a>
-
-                    <a href="<?= $GLOBALS['base_url'] ?>/create-employee"
-                        class="btn btn-primary flex-fill">
-                        Add Employee
-                    </a>
-
                 </div>
             </div>
+
         </div>
     </div>
 </form>

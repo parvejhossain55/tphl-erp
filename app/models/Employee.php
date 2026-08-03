@@ -194,9 +194,9 @@ class Employee extends Model
             account_holder_name, account_number, bank_name, branch_name,
             social_media1, social_media2, social_media3,
             photo, make_user, password, created_by,
-            employee_type, employee_status, workplace, responsibilities, team_id, is_sales_co_leader,
+            employee_type, employee_status, workplace, office_branch, responsibilities, team_id, is_sales_co_leader,
             is_dept_head, reporting_user_id
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
         $dob = !empty($data['dob']) ? $data['dob'] : null;
@@ -208,9 +208,11 @@ class Employee extends Model
 
         $is_dept_head = (int)($data['is_dept_head'] ?? 0);
         $reporting_user_id = ($is_dept_head == 1) ? null : (!empty($data['reporting_user_id']) ? (int)$data['reporting_user_id'] : null);
+        $workplace = !empty($data['workplace']) ? $data['workplace'] : null;
+        $office_branch = !empty($data['office_branch']) ? $data['office_branch'] : null;
 
         $stmt->bind_param(
-            "sssdssssssssssiissssssssssisisssiiiii",
+            "sssdssssssssssiissssssssssisissssiiiii",
             $data['employee_id'],
             $data['full_name'],
             $data['gross_salary'],
@@ -242,7 +244,8 @@ class Employee extends Model
             $data['created_by'],
             $data['employee_type'],
             $data['employee_status'],
-            $data['workplace'],
+            $workplace,
+            $office_branch,
             $data['responsibilities'],
             $data['team_id'],
             $data['is_sales_co_leader'],
@@ -375,6 +378,8 @@ WHERE e.id = ?
         created_by = ?,
         employee_type = ?,
         employee_status = ?,
+        workplace = ?,
+        office_branch = ?,
         responsibilities = ?,
         team_id = ?,
         is_sales_co_leader = ?,
@@ -391,9 +396,11 @@ WHERE e.id = ?
 
         $is_dept_head = (int)($data['is_dept_head'] ?? 0);
         $reporting_user_id = ($is_dept_head == 1) ? null : (!empty($data['reporting_user_id']) ? (int)$data['reporting_user_id'] : null);
+        $workplace = !empty($data['workplace']) ? $data['workplace'] : null;
+        $office_branch = !empty($data['office_branch']) ? $data['office_branch'] : null;
 
         $stmt->bind_param(
-            "ssddsssssssssiissssssssssssisssiiiii",
+            "ssddsssssssssiissssssssssssisssssiiiii",
             $data['employee_id'],         // s  1
             $data['full_name'],           // s  2
             $data['gross_salary'],        // d  3
@@ -424,12 +431,14 @@ WHERE e.id = ?
             $data['created_by'],          // i  28
             $data['employee_type'],       // s  29
             $data['employee_status'],     // s  30
-            $data['responsibilities'],    // s  31
-            $data['team_id'],             // i  32
-            $data['is_sales_co_leader'],  // i  33
-            $is_dept_head,                // i  34
-            $reporting_user_id,           // i  35
-            $id                           // i  36
+            $workplace,                   // s  31
+            $office_branch,               // s  32
+            $data['responsibilities'],    // s  33
+            $data['team_id'],             // i  34
+            $data['is_sales_co_leader'],  // i  35
+            $is_dept_head,                // i  36
+            $reporting_user_id,           // i  37
+            $id                           // i  38
         );
 
 

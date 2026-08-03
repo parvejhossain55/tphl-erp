@@ -1045,16 +1045,27 @@ class LeadController extends Controller
     // Edit Employee Page
     public function edit($id)
     {
-        $assignedUsers = $this->userModel->getAll();
-        $leadData = $this->leadModel->find($id);
-        $sources = $this->leadSource->getAll();
+        $assignedUsers = $this->userModel->getAllRoleUser();
+        $leadData      = $this->leadModel->find($id);
+        $sources       = $this->leadSource->getAll();
+        $projects      = $this->projectModel->getAll();
+        $locations     = $this->locationModel->getAll();
+        $teams         = $this->teamsModel->getAll();
+
+        $catRes = $this->db->query("SELECT * FROM project_categories ORDER BY name ASC");
+        $projectCategories = $catRes ? $catRes->fetch_all(MYSQLI_ASSOC) : [];
+
         $this->view("sales-developments/leads/edit-lead", [
-            "current_route"   => "edit-lead",
-            "page_title"      => "Edit Lead",
-            "leadData"        => $leadData,
-            "assignedUsers"        => $assignedUsers,
-            "sources"        => $sources,
-            "show_breadcrumb" => true,
+            "current_route"     => "edit-lead",
+            "page_title"        => "Edit Lead",
+            "leadData"          => $leadData,
+            "assignedUsers"     => $assignedUsers,
+            "sources"           => $sources,
+            "projects"          => $projects,
+            "locations"         => $locations,
+            "teams"             => $teams,
+            "projectCategories" => $projectCategories,
+            "show_breadcrumb"   => true,
         ]);
     }
 
@@ -1062,61 +1073,9 @@ class LeadController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        // Collect form data from update form
-        $leadData = [
-            // Personal Info
-            'full_name' => $_POST['full_name'] ?? null,
-            'lead_name_bn' => $_POST['lead_name_bn'] ?? null,
-            'father_name' => $_POST['father_name'] ?? null,
-            'father_name_bn' => $_POST['father_name_bn'] ?? null,
-            'mother_name' => $_POST['mother_name'] ?? null,
-            'mother_name_bn' => $_POST['mother_name_bn'] ?? null,
-            'dob' => $_POST['dob'] ?? null,
-            'nid_or_passport' => $_POST['nid_or_passport'] ?? null,
-            'identity_type' => $_POST['identity_type'] ?? null,
-            'permanent_address' => $_POST['permanent_address'] ?? null,
-            'permanent_add_bn' => $_POST['permanent_add_bn'] ?? null,
-            'address' => $_POST['address'] ?? null,
-            'present_add_bn' => $_POST['present_add_bn'] ?? null,
-            'designation' => $_POST['designation'] ?? null,
-            'profession_bn' => $_POST['profession'] ?? null,
-            'nationality' => $_POST['nationality'] ?? 'Bangladeshi',
-            'religion' => $_POST['religion'] ?? null,
-            'phone' => $_POST['phone'] ?? null,
-            'email' => $_POST['email'] ?? null,
-            'lead_image' => $_FILES['lead_image']['name'] ?? null, // handle image upload separately
-
-            // Lead Meta
-            // 'lead_type' => $_POST['lead_type'] ?? null,
-            // 'company' => $_POST['company'] ?? null,
-            // 'currency' => $_POST['currency'] ?? 'BDT',
-            // 'source_type_id' => $_POST['source_type_id'] ?? null,
-            // 'assigned_id' => $_POST['assigned_id'] ?? null,
-            // 'pref_location_id' => $_POST['pref_location_id'] ?? null,
-            // 'project_type' => $_POST['project_type'] ?? null,
-            // 'pref_flat_size' => $_POST['pref_flat_size'] ?? null,
-            // 'communication_type' => $_POST['communication_type'] ?? null,
-            // 'tags' => $_POST['tags'] ?? null,
-            'description' => $_POST['description'] ?? null,
-            // 'visibility' => $_POST['visibility'] ?? 'public',
-            // 'status' => $_POST['status'] ?? 'active',
-            // 'lead_quality' => $_POST['lead_quality'] ?? 'Pending',
-
-            // Nominee Info
-            'nominee_name' => $_POST['nominee_name'] ?? null,
-            'relation_with_lead' => $_POST['relation_with_lead'] ?? null,
-            'nomi_father_name' => $_POST['nomi_father_name'] ?? null,
-            'nomi_mother_name' => $_POST['nomi_mother_name'] ?? null,
-            'nomi_profession' => $_POST['nomi_profession'] ?? null,
-            'nomi_dob' => $_POST['nomi_dob'] ?? null,
-            'nomi_phone' => $_POST['nomi_phone'] ?? null,
-            'nomi_email' => $_POST['nomi_email'] ?? null,
-            'nomi_nid_passport' => $_POST['nomi_nid_passport'] ?? null,
-            'nomi_present_add' => $_POST['nomi_present_address'] ?? null,
-            'nomi_permanent_address' => $_POST['nomi_permanent_address'] ?? null,
-            'nomi_image' => $_FILES['nomi_image']['name'] ?? null, // handle upload separately
-            'created_by'      => $_SESSION['user']['id'] ?? null,
-        ];
+        // Collect all form data from update form (pass all $_POST data directly)
+        $leadData = $_POST;
+        $leadData['created_by'] = $_SESSION['user']['id'] ?? null;
 
         // Update lead
         try {

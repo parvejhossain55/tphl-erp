@@ -644,7 +644,7 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
                                         </button>
                                     </div>
                                     <div class="col-12 d-none" id="vExpenseLimitAlert">
-                                        <span class="badge bg-info-transparent text-info fs-10 mt-1">
+                                        <span class="badge bg-info fs-10 mt-1">
                                             <i class="fa-solid fa-circle-info me-1"></i> Showing the latest 10 expenses by default. Use the filters to view older logs.
                                         </span>
                                     </div>
@@ -864,9 +864,9 @@ function openDeptApproveModal(id, requesterName, deptName, type, amount) {
     typeSpan.innerText = typeLabel;
     
     if (type === 'petty_cash') {
-        typeSpan.className = 'badge bg-warning-transparent';
+        typeSpan.className = 'badge bg-warning';
     } else {
-        typeSpan.className = 'badge bg-info-transparent';
+        typeSpan.className = 'badge bg-info';
     }
     
     document.getElementById('deptApproveStatusSelect').value = 'approved';
@@ -886,9 +886,9 @@ function openApproveModal(id, requesterName, deptName, type, amount) {
     typeSpan.innerText = typeLabel;
     
     if (type === 'petty_cash') {
-        typeSpan.className = 'badge bg-warning-transparent';
+        typeSpan.className = 'badge bg-warning';
     } else {
-        typeSpan.className = 'badge bg-info-transparent';
+        typeSpan.className = 'badge bg-info';
     }
     
     document.getElementById('approveStatusSelect').value = 'approved';

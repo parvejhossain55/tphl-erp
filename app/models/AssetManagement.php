@@ -543,29 +543,20 @@ class AssetManagement
                     }
 
                     if (!empty($conds)) {
-                        $sql .= " AND (" . implode(" OR ", $conds) . ")";
+                        $sql .= " AND (" . implode(" OR ", $conds) . ") AND pea.requested_by != " . $userId;
                     } else {
                         $sql .= " AND 1=0";
                     }
                 }
             } elseif ($tab === 'all_requests' && !$isAdmin) {
-                $conds = ["pea.requested_by = " . $userId];
-                if (!empty($filters['is_operations'])) {
-                    $conds[] = "pea.operations_by = " . $userId;
-                    $conds[] = "pea.operations_status != 'pending'";
-                }
-                if (!empty($filters['is_purchase_head'])) {
-                    $conds[] = "pea.purchase_head_by = " . $userId;
-                    $conds[] = "pea.purchase_head_status != 'pending'";
-                }
-                if (!empty($filters['is_qc_audit'])) {
-                    $conds[] = "pea.qc_audit_by = " . $userId;
-                    $conds[] = "pea.qc_audit_status != 'pending'";
-                }
-                if (!empty($filters['is_accounts'])) {
-                    $conds[] = "pea.paid_by = " . $userId;
-                    $conds[] = "pea.payment_status = 'paid'";
-                }
+                $conds = [
+                    "pea.requested_by = " . $userId,
+                    "pea.operations_by = " . $userId,
+                    "pea.purchase_head_by = " . $userId,
+                    "pea.qc_audit_by = " . $userId,
+                    "pea.mgmt_by = " . $userId,
+                    "pea.paid_by = " . $userId
+                ];
                 $sql .= " AND (" . implode(" OR ", $conds) . ")";
             }
         }

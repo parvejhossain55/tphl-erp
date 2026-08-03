@@ -1881,6 +1881,13 @@ $project = $stmt->get_result()->fetch_assoc();
             $wosCount = $rWOCount ? (int)$rWOCount->fetch_assoc()['c'] : 0;
         }
 
+        $rFRCount = $this->db->query("
+            SELECT COUNT(*) AS c 
+            FROM fund_requisitions 
+            WHERE status IN ('pending', 'dept_approved')
+        ");
+        $pendingFundRequisitions = $rFRCount ? (int)$rFRCount->fetch_assoc()['c'] : 0;
+
         return $this->view('phase2/dashboard/operations-dashboard', [
             'current_route'         => 'operations-dashboard',
             'page_title'            => 'Operations Dashboard',
@@ -1889,6 +1896,7 @@ $project = $stmt->get_result()->fetch_assoc();
             'pendingWorkingPlans'   => $pendingWorkingPlans,
             'totalMaterialIssues'   => $totalMaterialIssues,
             'pendingVendorPayments' => $pendingVendorPayments,
+            'pendingFundRequisitions' => $pendingFundRequisitions,
             'myProjects'            => $myProjects,
             'recentWorkingPlans'    => $recentWorkingPlans,
             'recentMaterialIssues'  => $recentMaterialIssues,

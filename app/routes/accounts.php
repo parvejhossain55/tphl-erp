@@ -98,6 +98,7 @@ return [
     // Chart of Accounts Management
     'accounts/coa' => ['controller' => 'ChartOfAccountsController', 'method' => 'index'],
     'accounts/coa/store' => ['controller' => 'ChartOfAccountsController', 'method' => 'store'],
+    'accounts/coa/store-ajax' => ['controller' => 'ChartOfAccountsController', 'method' => 'storeAjax'],
     'accounts/coa/update' => ['controller' => 'ChartOfAccountsController', 'method' => 'update'],
     'accounts/coa/delete/(\d+)' => ['controller' => 'ChartOfAccountsController', 'method' => 'delete'],
     'accounts/coa/delete' => ['controller' => 'ChartOfAccountsController', 'method' => 'delete'],
