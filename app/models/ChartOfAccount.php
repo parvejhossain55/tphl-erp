@@ -118,6 +118,7 @@ class ChartOfAccount
                     j.date as transaction_date,
                     j.journal_number as voucher_no,
                     j.voucher_type,
+                    j.status,
                     j.narration as main_narration,
                     jd.narration as line_narration,
                     jd.debit,

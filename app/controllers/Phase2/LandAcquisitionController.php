@@ -719,6 +719,14 @@ class LandAcquisitionController extends Controller {
                     if (!$stmtReqB->execute()) {
                         throw new Exception("Failed to insert Bayana Requisition: " . $stmtReqB->error);
                     }
+                    $reqBId = $stmtReqB->insert_id;
+
+                    // Auto-post Payment Journal to Accounts General Journal
+                    if (!class_exists('AutoPostingService')) {
+                        require_once __DIR__ . '/../../services/AutoPostingService.php';
+                    }
+                    $autoPoster = new \AutoPostingService($this->db);
+                    $autoPoster->postLandRequisitionJournal($reqBBId ?? $reqBId);
 
                     // Insert into land_bayana_payments
                     $stmtPay = $this->db->prepare("
@@ -750,6 +758,14 @@ class LandAcquisitionController extends Controller {
                     if (!$stmtReqR->execute()) {
                         throw new Exception("Failed to insert Registration Requisition: " . $stmtReqR->error);
                     }
+                    $reqRId = $stmtReqR->insert_id;
+
+                    // Auto-post Registration Payment Journal to Accounts General Journal
+                    if (!class_exists('AutoPostingService')) {
+                        require_once __DIR__ . '/../../services/AutoPostingService.php';
+                    }
+                    $autoPoster = new \AutoPostingService($this->db);
+                    $autoPoster->postLandRequisitionJournal($reqRId);
 
                     // Insert into land_registrations
                     $stmtReg = $this->db->prepare("

@@ -402,9 +402,25 @@
 
                                            <!-- Next Follow-Up -->
                                            <td>
-                                               <div class="next-followup-badge">
-                                                   <i class="bi bi-calendar-check me-1"></i>
-                                                   <?= formatDate($lead['next_follow_up_date'] ?? 'No Schedule') ?>
+                                               <div class="d-flex align-items-center gap-2">
+                                                   <div class="next-followup-badge">
+                                                       <i class="bi bi-calendar-check me-1"></i>
+                                                       <span class="next-date-display"><?= formatDate($lead['next_follow_up_date'] ?? 'No Schedule') ?></span>
+                                                   </div>
+                                                   <div class="position-relative d-inline-block">
+                                                       <button type="button" 
+                                                               class="btn btn-sm rounded-circle d-flex align-items-center justify-content-center border-0 shadow-sm"
+                                                               style="width: 32px; height: 32px; background-color: #e0f2fe; color: #0284c7; cursor: pointer;"
+                                                               onclick="if(this.nextElementSibling.showPicker){this.nextElementSibling.showPicker()}else{this.nextElementSibling.click()}"
+                                                               title="Click to view / pick calendar date">
+                                                           <i class="bi bi-calendar3 fs-6"></i>
+                                                       </button>
+                                                       <input type="date" 
+                                                              class="position-absolute start-0 top-0 opacity-0 pe-none"
+                                                              style="width: 1px; height: 1px;"
+                                                              value="<?= (!empty($lead['next_follow_up_date']) && $lead['next_follow_up_date'] !== '0000-00-00') ? date('Y-m-d', strtotime($lead['next_follow_up_date'])) : '' ?>"
+                                                              onchange="if(this.value){ const dt = new Date(this.value); const formatted = dt.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}); this.closest('.d-flex').querySelector('.next-date-display').textContent = formatted; }">
+                                                   </div>
                                                </div>
                                            </td>
 

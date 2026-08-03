@@ -818,6 +818,23 @@ public function addTransaction()
             ];
         }
 
+        $isTestingMode = !empty($_POST['is_testing_mode']);
+
+        require_once dirname(__DIR__) . '/services/SmsService.php';
+        $smsService = new SmsService($this->db);
+
+        if (!$isTestingMode) {
+            $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+            $clientPhone   = !empty($clientDetails['phone']) ? trim($clientDetails['phone']) : (!empty($clientDetails['phone_number']) ? trim($clientDetails['phone_number']) : '');
+            $phoneCheck    = $smsService->validatePhoneNumber($clientPhone);
+
+            if (!$phoneCheck['valid']) {
+                setError("Cannot process payment: " . $phoneCheck['message'] . ". Please update the client's phone number first or enable Testing Mode.");
+                header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
+                exit;
+            }
+        }
+
         // Route to correct model method
         if ($transactionData['payment_type'] === 'emi_due_settlement') {
             // Use addTransaction (not WithEMI) so settlement_type & parent_payment_id are handled
@@ -827,7 +844,19 @@ public function addTransaction()
         }
 
         if ($result['success']) {
-            setSuccess($result['message']);
+            $smsMsg = "";
+            if (!empty($result['payment_id'])) {
+                $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode);
+                if ($isTestingMode) {
+                    $smsMsg = " (Testing Mode: SMS Skipped)";
+                } elseif (!empty($smsResult['success'])) {
+                    $smsMsg = " & SMS dispatched to client (" . htmlspecialchars($clientPhone ?? '') . ")!";
+                } else {
+                    $errMsg = !empty($smsResult['response']) ? $smsResult['response'] : ($smsResult['message'] ?? 'Gateway Error');
+                    $smsMsg = " (Warning: SMS dispatch failed for " . htmlspecialchars($clientPhone ?? '') . ": " . htmlspecialchars($errMsg) . ")";
+                }
+            }
+            setSuccess($result['message'] . $smsMsg);
             header("Location: {$GLOBALS['base_url']}/clients-cash-in-history?booking_id={$bookingId}");
             exit;
         } else {
@@ -1443,6 +1472,25 @@ public function addPayment()
             }
         }
         
+        $isTestingMode = !empty($data['is_testing_mode']);
+
+        require_once dirname(__DIR__) . '/services/SmsService.php';
+        $smsService = new SmsService($this->db);
+
+        if (!$isTestingMode) {
+            $clientDetails = $accountModel->getClientByBookingId($data['booking_id']);
+            $clientPhone   = !empty($clientDetails['phone']) ? trim($clientDetails['phone']) : (!empty($clientDetails['phone_number']) ? trim($clientDetails['phone_number']) : '');
+            $phoneCheck    = $smsService->validatePhoneNumber($clientPhone);
+
+            if (!$phoneCheck['valid']) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Cannot process payment: ' . $phoneCheck['message'] . '. Please update the client\'s phone number first or enable Testing Mode.'
+                ]);
+                return;
+            }
+        }
+
         // Prepare EMI schedule data if applicable
         $emiScheduleData = null;
         if ($data['payment_type'] === 'emi') {
@@ -1454,6 +1502,10 @@ public function addPayment()
         
         $result = $accountModel->addTransaction($transactionData, $emiScheduleData);
         
+        if (!empty($result['success']) && !empty($result['payment_id'])) {
+            $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode);
+        }
+
         echo json_encode($result);
     }
 }
@@ -1813,14 +1865,9 @@ public function discountStatement($bookingId = null)
                         $payInfoStmt->execute();
                         $pData = $payInfoStmt->get_result()->fetch_assoc();
                         if ($pData && (float)$pData['amount'] > 0) {
-                            $payAccCode = '1110-002';
                             $methodLower = strtolower($pData['payment_method'] ?? '');
-                            if (strpos($methodLower, 'cash') !== false) {
-                                $payAccCode = '1110-001';
-                            } elseif (strpos($methodLower, 'islami') !== false) {
-                                $payAccCode = '1110-003';
-                            }
-                            $bankAccId = $autoService->getAccountIdByCode($payAccCode);
+                            $bankNameStr = $pData['bank_name'] ?? ($pData['bank'] ?? '');
+                            $bankAccId   = $autoService->getBankOrCashAccountId($methodLower, $bankNameStr);
 
                             $autoService->postSalesPaymentEntry(
                                 $pData['id'],
@@ -1834,6 +1881,11 @@ public function discountStatement($bookingId = null)
                             );
                         }
                     }
+
+                    // ====== TRIGGER 2: SMS VERIFIED NOTIFICATION ======
+                    require_once dirname(__DIR__) . '/services/SmsService.php';
+                    $smsService = new SmsService($this->db);
+                    $smsService->sendPaymentVerifiedSms($paymentId);
                 }
             }
         }

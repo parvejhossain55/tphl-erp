@@ -79,19 +79,45 @@ class PaymentBookingController extends Controller
             }
         }
 
-        //  VALIDATION
+        // VALIDATION
         if (!$data['booking_id'] || !$data['amount'] || !$data['payment_type']) {
             setError("Required data missing!");
             header("Location: {$GLOBALS['base_url']}/payments-booking/" . ($data['booking_id'] ?? 0));
             exit;
         }
 
-        //  IMPORTANT: ekhane kono flat booking logic thakbe na
+        $isTestingMode = !empty($_POST['is_testing_mode']);
+
+        // PHONE VALIDATION GATE (unless testing mode is checked)
+        require_once dirname(__DIR__) . '/services/SmsService.php';
+        $smsService = new SmsService($this->db);
+
+        if (!$isTestingMode) {
+            $bookingLead = $this->bookingModel->getById($data['booking_id']);
+            $clientPhone = !empty($bookingLead['phone']) ? trim($bookingLead['phone']) : (!empty($bookingLead['phone_number']) ? trim($bookingLead['phone_number']) : '');
+            $phoneCheck  = $smsService->validatePhoneNumber($clientPhone);
+
+            if (!$phoneCheck['valid']) {
+                setError("Cannot process payment: " . $phoneCheck['message'] . ". Please update the client's phone number first or enable Testing Mode.");
+                header("Location: {$GLOBALS['base_url']}/payments-booking/" . $data['booking_id']);
+                exit;
+            }
+        }
 
         $created = $this->paymentModel->create($data);
 
-        if ($created !== false) {
-            setSuccess("Payment created successfully! Waiting for verification.");
+        if (!empty($created)) {
+            // Trigger 1: Send Payment Received SMS
+            $smsResult = $smsService->sendPaymentReceivedSms($created, $isTestingMode);
+
+            if ($isTestingMode) {
+                setSuccess("Payment created successfully! (Testing Mode: SMS Skipped)");
+            } elseif (!empty($smsResult['success'])) {
+                setSuccess("Payment created successfully & SMS dispatched to client (" . htmlspecialchars($clientPhone ?? '') . ")!");
+            } else {
+                $errMsg = !empty($smsResult['response']) ? $smsResult['response'] : ($smsResult['message'] ?? 'Gateway Connection Error');
+                setError("Payment created, BUT SMS dispatch failed for (" . htmlspecialchars($clientPhone ?? '') . "): " . htmlspecialchars($errMsg));
+            }
         } else {
             setError("Failed to create payment!");
         }
@@ -291,6 +317,11 @@ class PaymentBookingController extends Controller
         if ($newBookingStatus === 'paid') {
             $this->handleFlatBooking($bookingId);
         }
+
+        // Trigger 2: Send Payment Verified SMS
+        require_once dirname(__DIR__) . '/services/SmsService.php';
+        $smsService = new SmsService($this->db);
+        $smsService->sendPaymentVerifiedSms($id);
 
         setSuccess("Payment verified! Booking status: " . ucfirst($newBookingStatus));
         header("Location: " . $_SERVER['HTTP_REFERER']);

@@ -311,11 +311,11 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         <?php
                                         $isCreator = (int)$r['requested_by'] === $userId;
 
-                                        // Self-approval prevention: Creator cannot approve/reject their own request unless Admin
+                                        // Strict self-approval prevention: Creator can NEVER approve/reject their own request
                                         $canApprove = false;
                                         $step = '';
                                         
-                                        if (!$isCreator || $isAdminOrMgmt) {
+                                        if (!$isCreator) {
                                             if (!empty($isOperations) && $r['operations_status'] === 'pending') {
                                                 $canApprove = true; $step = 'operations';
                                             } elseif (!empty($isPurchaseHead) && $r['operations_status'] === 'approved' && $r['purchase_head_status'] === 'pending') {

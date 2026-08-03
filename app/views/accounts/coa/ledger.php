@@ -232,9 +232,23 @@ $isNormalDebit = $ledgerData['is_normal_debit'] ?? true;
                                     <td class="text-center text-muted"><?= $idx + 1 ?></td>
                                     <td class="fs-12 fw-semibold"><?= date('d M Y', strtotime($t['transaction_date'])) ?></td>
                                     <td>
-                                        <span class="badge bg-light text-dark border font-monospace px-2 py-1 fw-bold">
-                                            <?= htmlspecialchars($t['voucher_no']) ?>
-                                        </span>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <span class="badge bg-light text-dark border font-monospace px-2 py-1 fw-bold">
+                                                <?= htmlspecialchars($t['voucher_no']) ?>
+                                            </span>
+                                            <?php 
+                                                $st = strtolower($t['status'] ?? 'approved'); 
+                                                if ($st === 'approved' || $st === 'posted'):
+                                            ?>
+                                                <span class="badge bg-success-subtle text-success border border-success px-1 py-0 fs-10" title="Approved">
+                                                    <i class="fa-solid fa-circle-check me-1"></i>Approved
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge bg-warning-subtle text-warning border border-warning px-1 py-0 fs-10" title="Pending Approval">
+                                                    <i class="fa-solid fa-clock me-1"></i>Pending
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                     <td>
                                         <?php if (!empty($t['party_name'])): ?>

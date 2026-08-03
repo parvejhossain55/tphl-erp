@@ -166,19 +166,29 @@ $show_breadcrumb = true;
                     <div class="tab-pane fade" id="v-pills-expense" role="tabpanel">
                         <ul class="nav nav-pills sub-tabs" id="expense-sub-tabs" role="tablist">
                             <li class="nav-item">
-                                <button class="nav-link active" data-bs-toggle="pill" type="button" onclick="loadExpense('fund')">Fund Requisition</button>
+                                <button class="nav-link active" data-bs-toggle="pill" type="button" onclick="loadExpense('fund')">
+                                    <i class="fa-light fa-user-group me-1 text-primary"></i> Site & Staff Fund Requisitions
+                                </button>
                             </li>
                             <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="pill" type="button" onclick="loadExpense('cashout')">Cashout</button>
+                                <button class="nav-link" data-bs-toggle="pill" type="button" onclick="loadExpense('cashout')">
+                                    <i class="fa-light fa-money-bill-transfer me-1 text-success"></i> Direct Cashout & Office Expense
+                                </button>
                             </li>
                             <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="pill" type="button" onclick="loadExpense('vendor')">Vendor Payment</button>
+                                <button class="nav-link" data-bs-toggle="pill" type="button" onclick="loadExpense('vendor')">
+                                    <i class="fa-light fa-building me-1 text-info"></i> Vendor Bill Payments
+                                </button>
                             </li>
                             <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="pill" type="button" onclick="loadExpense('contractor')">Contractor Bill</button>
+                                <button class="nav-link" data-bs-toggle="pill" type="button" onclick="loadExpense('contractor')">
+                                    <i class="fa-light fa-helmet-safety me-1 text-warning"></i> Contractor Bill Payments
+                                </button>
                             </li>
                             <li class="nav-item">
-                                <button class="nav-link text-primary fw-bold" data-bs-toggle="pill" type="button" onclick="loadExpense('procurement')"><i class="fa-light fa-cart-shopping me-1"></i> Office Procurement</button>
+                                <button class="nav-link text-primary fw-bold" data-bs-toggle="pill" type="button" onclick="loadExpense('procurement')">
+                                    <i class="fa-light fa-cart-shopping me-1"></i> Office Procurement
+                                </button>
                             </li>
                         </ul>
                         <div class="table-responsive">

@@ -28,7 +28,7 @@ class AccountClient extends Model
         if ($verificationStatus === 'verified') {
             $havingClause = "HAVING latest_verification_status = 'verified'";
         } elseif ($verificationStatus === 'pending') {
-            $havingClause = "HAVING (latest_verification_status = 'pending' OR latest_verification_status IS NULL)";
+            $havingClause = "HAVING latest_verification_status = 'pending'";
         } elseif ($verificationStatus === 'rejected') {
             $havingClause = "HAVING latest_verification_status = 'rejected'";
         }
@@ -280,6 +280,13 @@ ORDER BY lb.booking_date DESC
                           AND lp2.payment_status = 'paid') > 0
                     THEN lb.id 
                 END) as approved_bookings,
+                COUNT(DISTINCT CASE 
+                    WHEN (SELECT COUNT(*) 
+                          FROM lead_payments lp3 
+                          WHERE lp3.booking_id = lb.id 
+                          AND lp3.verification_status = 'pending') > 0
+                    THEN lb.id 
+                END) as pending_verifications,
                 COALESCE(SUM(lp.service_fee), 0) as total_service_fee_collected
             FROM leads l
             INNER JOIN lead_bookings lb ON l.id = lb.lead_id
@@ -375,7 +382,8 @@ ORDER BY lb.booking_date DESC
                 lb.service_fee_balance,
                 l.id as lead_id,
                 l.full_name as client_name,
-                l.phone,
+                COALESCE(NULLIF(TRIM(l.phone), ''), TRIM(l.phone_number)) AS phone,
+                l.phone_number,
                 l.email,
                 l.designation,
                 p.id as project_id,

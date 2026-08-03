@@ -664,6 +664,8 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
     {
         $stmt = $this->db->prepare("SELECT lb.*, 
                l.full_name, 
+               COALESCE(NULLIF(TRIM(l.phone), ''), TRIM(l.phone_number)) AS phone,
+               l.phone_number,
                p.name AS project_name,
                p.total_share,
                f.floor_no, 

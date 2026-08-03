@@ -267,13 +267,13 @@ class AssetManagementController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userId = (int)($_SESSION['user']['id'] ?? 0);
 
-        $isAdminOrMgmt  = in_array($roleId, [1, 2, 3]);
-        $isOperations   = $isAdminOrMgmt || in_array($roleId, [6, 20, 22, 30]);
-        $isPurchaseHead = $isAdminOrMgmt || in_array($roleId, [17, 23, 31]);
-        $isQcAudit      = $isAdminOrMgmt || in_array($roleId, [24, 25]);
-        $isManagement   = $isAdminOrMgmt;
-        $isAccounts     = $isAdminOrMgmt || in_array($roleId, [6, 30]);
-        $isApprover     = in_array($roleId, [1, 2, 3, 6, 17, 20, 22, 23, 24, 25, 30, 31]);
+        $isSuperAdmin   = in_array($roleId, [1, 2]); // Super Admin / Directors only
+        $isOperations   = $isSuperAdmin || in_array($roleId, [6, 20, 22, 30]);
+        $isPurchaseHead = $isSuperAdmin || in_array($roleId, [17, 23, 31]);
+        $isQcAudit      = $isSuperAdmin || in_array($roleId, [24, 25]);
+        $isManagement   = $isSuperAdmin || $roleId === 3;
+        $isAccounts     = $isSuperAdmin || in_array($roleId, [6, 30]);
+        $isApprover     = $isSuperAdmin || $isOperations || $isPurchaseHead || $isQcAudit || $isManagement || $isAccounts;
 
         $activeTab  = $_GET['tab'] ?? ($isApprover ? 'pending_approval' : 'my_requests');
 
@@ -285,7 +285,7 @@ class AssetManagementController extends Controller
             'user_id'          => $userId,
             'role_id'          => $roleId,
             'tab'              => $activeTab,
-            'is_admin'         => $isAdminOrMgmt,
+            'is_admin'         => $isSuperAdmin,
             'is_operations'    => $isOperations,
             'is_purchase_head' => $isPurchaseHead,
             'is_qc_audit'      => $isQcAudit,
@@ -387,6 +387,13 @@ class AssetManagementController extends Controller
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = (int)($_SESSION['user']['id'] ?? 1);
+            $req = $this->model->findExtraPurchase($id);
+            if ($req && (int)$req['requested_by'] === $userId) {
+                setError("You cannot approve or reject your own purchase request.");
+                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                exit;
+            }
+
             $step = $_POST['step'] ?? 'operations';
             if ($step === 'management') {
                 $step = 'mgmt';

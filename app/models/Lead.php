@@ -1451,53 +1451,114 @@ class Lead extends Model
             return false;
         }
 
-        // ======================
-        // Nullable field helpers — empty string → null
-        // ======================
-        $nn = function($val) {
-            return (isset($val) && trim((string)$val) !== '') ? $val : null;
+        // Helper for nullable string values (empty string -> null or existing)
+        $nn = function($key) use ($data, $old) {
+            if (array_key_exists($key, $data)) {
+                $val = $data[$key];
+                return (isset($val) && trim((string)$val) !== '') ? trim((string)$val) : null;
+            }
+            return $old[$key] ?? null;
         };
 
-        // Date fields (MySQL DATE cannot accept empty string '')
-        $dob      = $nn($data['dob']);
-        $nomi_dob = $nn($data['nomi_dob']);
+        // Helper for integer IDs (empty string -> null or existing)
+        $ni = function($key) use ($data, $old) {
+            if (array_key_exists($key, $data)) {
+                $val = $data[$key];
+                return (isset($val) && trim((string)$val) !== '' && is_numeric($val)) ? (int)$val : null;
+            }
+            return isset($old[$key]) && is_numeric($old[$key]) ? (int)$old[$key] : null;
+        };
 
-        // Other nullable fields
-        $full_name            = $nn($data['full_name']);
-        $father_name          = $nn($data['father_name']);
-        $mother_name          = $nn($data['mother_name']);
-        $permanent_address    = $nn($data['permanent_address']);
-        $nid_or_passport      = $nn($data['nid_or_passport']);
-        $phone                = $nn($data['phone']);
-        $alt_phone_number     = $nn($data['alt_phone_number']);
-        $email                = $nn($data['email']);
-        $address              = $nn($data['address']);
-        $designation          = $nn($data['designation']);
-        $lead_name_bn         = $nn($data['lead_name_bn']);
-        $father_name_bn       = $nn($data['father_name_bn']);
-        $mother_name_bn       = $nn($data['mother_name_bn']);
-        $identity_type        = $nn($data['identity_type']);
-        $permanent_add_bn     = $nn($data['permanent_add_bn']);
-        $present_add_bn       = $nn($data['present_add_bn']);
-        $profession_bn        = $nn($data['profession_bn']);
-        $nationality          = $nn($data['nationality']) ?? 'Bangladeshi';
-        $religion             = $nn($data['religion']);
-        $nominee_name         = $nn($data['nominee_name']);
-        $relation_with_lead   = $nn($data['relation_with_lead']);
-        $nomi_father_name     = $nn($data['nomi_father_name']);
-        $nomi_mother_name     = $nn($data['nomi_mother_name']);
-        $nomi_profession      = $nn($data['nomi_profession']);
-        $nomi_phone           = $nn($data['nomi_phone']);
-        $nomi_email           = $nn($data['nomi_email']);
-        $nomi_nid_passport    = $nn($data['nomi_nid_passport']);
-        $nomi_present_add     = $nn($data['nomi_present_add']);
-        $nomi_permanent_address = $nn($data['nomi_permanent_address']);
-        $description          = $nn($data['description']);
-        $created_by           = $nn($data['created_by']);
+        // Helper for float/double values
+        $nf = function($key) use ($data, $old) {
+            if (array_key_exists($key, $data)) {
+                $val = $data[$key];
+                return (isset($val) && trim((string)$val) !== '' && is_numeric($val)) ? (float)$val : null;
+            }
+            return isset($old[$key]) && is_numeric($old[$key]) ? (float)$old[$key] : null;
+        };
 
-        // ======================
+        // Date fields
+        $dob      = $nn('dob');
+        $nomi_dob = $nn('nomi_dob');
+
+        // Personal Info
+        $full_name            = $nn('full_name') ?? $nn('lead_name');
+        $lead_name            = $full_name;
+        $lead_name_bn         = $nn('lead_name_bn');
+        $father_name          = $nn('father_name');
+        $father_name_bn       = $nn('father_name_bn');
+        $mother_name          = $nn('mother_name');
+        $mother_name_bn       = $nn('mother_name_bn');
+        $nationality          = $nn('nationality') ?? 'Bangladeshi';
+        $religion             = $nn('religion');
+        $residency_type       = $nn('residency_type');
+        $nid_or_passport      = $nn('nid_or_passport');
+        $identity_type        = $nn('identity_type');
+
+        // Contact & Address
+        $phone                = $nn('phone') ?? $nn('phone_number');
+        $phone_number         = $phone;
+        $alt_phone_number     = $nn('alt_phone_number');
+        $email                = $nn('email');
+        $address              = $nn('address');
+        $present_add_bn       = $nn('present_add_bn');
+        $permanent_address    = $nn('permanent_address');
+        $permanent_add_bn     = $nn('permanent_add_bn');
+        $city                 = $nn('city');
+        $country              = $nn('country');
+
+        // Professional Info
+        $designation          = $nn('designation');
+        $profession_bn        = $nn('profession_bn');
+        $job_title            = $nn('job_title');
+        $company_name         = $nn('company_name') ?? $nn('company');
+        $company              = $company_name;
+
+        // Campaign & Source Meta
+        $campaign_name        = $nn('campaign_name');
+        $platform             = $nn('platform');
+        $uploaded_from        = $nn('uploaded_from');
+        $source_type_id       = $ni('source_type_id');
+        $assigned_id          = $ni('assigned_id');
+        $team_id              = $ni('team_id');
+        $project_id           = $ni('project_id');
+        $project_category_id  = $ni('project_category_id');
+        $pref_location_id     = $ni('pref_location_id');
+        $lead_type            = $nn('lead_type');
+        $lead_quality         = $nn('lead_quality');
+        $visibility           = $nn('visibility') ?? 'public';
+        $status               = $nn('status') ?? 'active';
+        $call_status          = $nn('call_status');
+        $call_note            = $nn('call_note');
+        $value_amount         = $nf('value_amount');
+        $currency             = $nn('currency') ?? 'BDT';
+
+        // Customer Requirements & Preferences
+        $which_apt_size       = $nn('which_apartment_size_are_you_interested_in');
+        $which_floor_shop     = $nn('which_floor_are_you_for_shop');
+        $when_buy             = $nn('when_are_you_planning_to_buy');
+        $schedule_visit       = $nn('would_you_like_to_schedule_a_site_visit');
+        $best_time_contact    = $nn('when_is_the_best_time_to_contact_you') ?? $nn('preferred_contact_time');
+        $preferred_contact    = $best_time_contact;
+        $pref_flat_size       = $nn('pref_flat_size') ?? $which_apt_size;
+        $communication_type   = $nn('communication_type');
+        $tags                 = $nn('tags');
+        $description          = $nn('description');
+
+        // Nominee Info
+        $nominee_name         = $nn('nominee_name');
+        $relation_with_lead   = $nn('relation_with_lead');
+        $nomi_father_name     = $nn('nomi_father_name');
+        $nomi_mother_name     = $nn('nomi_mother_name');
+        $nomi_profession      = $nn('nomi_profession');
+        $nomi_phone           = $nn('nomi_phone');
+        $nomi_email           = $nn('nomi_email');
+        $nomi_nid_passport    = $nn('nomi_nid_passport');
+        $nomi_present_add     = $nn('nomi_present_add');
+        $nomi_permanent_address = $nn('nomi_permanent_address');
+
         // Image Upload (fallback old)
-        // ======================
         $lead_image = !empty($_FILES['lead_image']['name'])
             ? uploadImage('lead_image', 'leads', 'fixed')
             : $old['lead_image'];
@@ -1506,66 +1567,105 @@ class Lead extends Model
             ? uploadImage('nomi_image', 'leads', 'fixed')
             : $old['nomi_image'];
 
-        // ======================
-        // Prepare SQL
-        // ======================
-        $sql = "UPDATE leads SET
-        full_name = ?, father_name = ?, mother_name = ?, dob = ?, permanent_address = ?, nid_or_passport = ?,
-        phone = ?, alt_phone_number = ?, email = ?, address = ?, designation = ?,
-        lead_name_bn = ?, father_name_bn = ?, mother_name_bn = ?, identity_type = ?, permanent_add_bn = ?,
-        present_add_bn = ?, profession_bn = ?, nationality = ?, religion = ?, lead_image = ?,
-        nominee_name = ?, relation_with_lead = ?, nomi_father_name = ?, nomi_mother_name = ?, nomi_profession = ?,
-        nomi_dob = ?, nomi_phone = ?, nomi_email = ?, nomi_nid_passport = ?, nomi_present_add = ?, 
-        nomi_permanent_address = ?, nomi_image = ?, description = ?, created_by = ?
-        WHERE id = ?";
+        // Build dynamic UPDATE query for exact robustness
+        $fields = [
+            'full_name' => $full_name,
+            'lead_name' => $lead_name,
+            'lead_name_bn' => $lead_name_bn,
+            'father_name' => $father_name,
+            'father_name_bn' => $father_name_bn,
+            'mother_name' => $mother_name,
+            'mother_name_bn' => $mother_name_bn,
+            'dob' => $dob,
+            'permanent_address' => $permanent_address,
+            'permanent_add_bn' => $permanent_add_bn,
+            'present_add_bn' => $present_add_bn,
+            'address' => $address,
+            'nid_or_passport' => $nid_or_passport,
+            'identity_type' => $identity_type,
+            'phone' => $phone,
+            'phone_number' => $phone_number,
+            'alt_phone_number' => $alt_phone_number,
+            'email' => $email,
+            'designation' => $designation,
+            'profession_bn' => $profession_bn,
+            'job_title' => $job_title,
+            'company_name' => $company_name,
+            'company' => $company,
+            'nationality' => $nationality,
+            'religion' => $religion,
+            'residency_type' => $residency_type,
+            'city' => $city,
+            'country' => $country,
+            'campaign_name' => $campaign_name,
+            'platform' => $platform,
+            'uploaded_from' => $uploaded_from,
+            'source_type_id' => $source_type_id,
+            'assigned_id' => $assigned_id,
+            'team_id' => $team_id,
+            'project_id' => $project_id,
+            'project_category_id' => $project_category_id,
+            'pref_location_id' => $pref_location_id,
+            'lead_type' => $lead_type,
+            'lead_quality' => $lead_quality,
+            'visibility' => $visibility,
+            'status' => $status,
+            'call_status' => $call_status,
+            'call_note' => $call_note,
+            'value_amount' => $value_amount,
+            'currency' => $currency,
+            'which_apartment_size_are_you_interested_in' => $which_apt_size,
+            'which_floor_are_you_for_shop' => $which_floor_shop,
+            'when_are_you_planning_to_buy' => $when_buy,
+            'would_you_like_to_schedule_a_site_visit' => $schedule_visit,
+            'when_is_the_best_time_to_contact_you' => $best_time_contact,
+            'preferred_contact_time' => $preferred_contact,
+            'pref_flat_size' => $pref_flat_size,
+            'communication_type' => $communication_type,
+            'tags' => $tags,
+            'description' => $description,
+            'lead_image' => $lead_image,
+            'nominee_name' => $nominee_name,
+            'relation_with_lead' => $relation_with_lead,
+            'nomi_father_name' => $nomi_father_name,
+            'nomi_mother_name' => $nomi_mother_name,
+            'nomi_profession' => $nomi_profession,
+            'nomi_dob' => $nomi_dob,
+            'nomi_phone' => $nomi_phone,
+            'nomi_email' => $nomi_email,
+            'nomi_nid_passport' => $nomi_nid_passport,
+            'nomi_present_add' => $nomi_present_add,
+            'nomi_permanent_address' => $nomi_permanent_address,
+            'nomi_image' => $nomi_image,
+            'updated_at' => date('Y-m-d H:i:s')
+        ];
 
+        $setParts = [];
+        $params   = [];
+        $types    = "";
+
+        foreach ($fields as $col => $val) {
+            $setParts[] = "`{$col}` = ?";
+            if (is_int($val)) {
+                $types .= "i";
+            } elseif (is_float($val)) {
+                $types .= "d";
+            } else {
+                $types .= "s";
+            }
+            $params[] = $val;
+        }
+
+        $params[] = (int)$id;
+        $types   .= "i";
+
+        $sql = "UPDATE leads SET " . implode(", ", $setParts) . " WHERE id = ?";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             throw new Exception("Prepare failed: " . $this->db->error);
         }
 
-        // ======================
-        // Bind all strings + id as integer (35 strings + 1 integer)
-        // ======================
-        $stmt->bind_param(
-            str_repeat("s", 35) . "i",
-            $full_name,
-            $father_name,
-            $mother_name,
-            $dob,
-            $permanent_address,
-            $nid_or_passport,
-            $phone,
-            $alt_phone_number,
-            $email,
-            $address,
-            $designation,
-            $lead_name_bn,
-            $father_name_bn,
-            $mother_name_bn,
-            $identity_type,
-            $permanent_add_bn,
-            $present_add_bn,
-            $profession_bn,
-            $nationality,
-            $religion,
-            $lead_image,
-            $nominee_name,
-            $relation_with_lead,
-            $nomi_father_name,
-            $nomi_mother_name,
-            $nomi_profession,
-            $nomi_dob,
-            $nomi_phone,
-            $nomi_email,
-            $nomi_nid_passport,
-            $nomi_present_add,
-            $nomi_permanent_address,
-            $nomi_image,
-            $description,
-            $created_by,
-            $id
-        );
+        $stmt->bind_param($types, ...$params);
 
         if (!$stmt->execute()) {
             throw new Exception("Update failed: " . $stmt->error);

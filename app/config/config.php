@@ -13,7 +13,6 @@ if ($current_server == 1) {
         "db_host" => "127.0.0.1",
         "db_user" => "root",
         "db_pass" => "",
-        
         "db_name" => "tphl_db",
         // AI Assistant Read-Only database connection
         "db_ai_user" => "tphl_read_only",
@@ -29,6 +28,12 @@ if ($current_server == 1) {
         "tipsoi_base_url" => "https://app.tipsoi.ai/inovace-client/api/v1/",
         "tipsoi_email" => "info@dpremiumhomes.com",
         "tipsoi_password" => "HRD@tphl@1274",
+
+        // Automas Bulk SMS API Configuration
+        "automas_sms_api_url" => "https://api.automas.com.bd/smsapiv4",
+        "automas_sms_api_key" => "aa4717fdd571e46b240ce35014a5d144",
+        "automas_sms_sender_id" => "8809617635127",
+        "sms_testing_mode" => false,
     ];
 }
 
@@ -61,6 +66,11 @@ if ($current_server == 2) {
         "tipsoi_email" => "info@dpremiumhomes.com",
         "tipsoi_password" => "HRD@tphl@1274",
 
+        // Automas Bulk SMS API Configuration
+        "automas_sms_api_url" => "https://api.automas.com.bd/smsapiv4",
+        "automas_sms_api_key" => "aa4717fdd571e46b240ce35014a5d144",
+        "automas_sms_sender_id" => "8809617635127",
+        "sms_testing_mode" => false,
     ];
 }
 
@@ -88,6 +98,12 @@ if ($current_server == 3) {
         "tipsoi_base_url" => "https://app.tipsoi.ai/inovace-client/api/v1/",
         "tipsoi_email" => "info@dpremiumhomes.com",
         "tipsoi_password" => "HRD@tphl@1274",
+
+        // Automas Bulk SMS API Configuration
+        "automas_sms_api_url" => "https://api.automas.com.bd/smsapiv4",
+        "automas_sms_api_key" => "aa4717fdd571e46b240ce35014a5d144",
+        "automas_sms_sender_id" => "8809617635127",
+        "sms_testing_mode" => false,
     ];
 }
 

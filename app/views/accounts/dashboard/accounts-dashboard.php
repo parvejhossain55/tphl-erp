@@ -447,7 +447,7 @@ function getStatusBadge($status)
             </span>
         </div>
 
-        <div class="row g-3">
+        <div class="row ">
             <?php foreach (array_slice($accountsNotifications, 0, 8) as $notif): ?>
             <?php
                 $statusColor = match(strtolower($notif['status'])) {
