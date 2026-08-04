@@ -87,4 +87,54 @@ class ApprovalRequestController extends Controller
             "filters"         => $filters
         ]);
     }
+
+    public function batchProcessApprovalRequests()
+    {
+        ob_start();
+        header('Content-Type: application/json');
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $input = file_get_contents('php://input');
+        $payload = json_decode($input, true);
+
+        if (empty($payload) || empty($payload['request_ids']) || !is_array($payload['request_ids'])) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'No approval requests selected.']);
+            exit;
+        }
+
+        $action = strtolower($payload['action'] ?? 'approve');
+        $status = $action === 'reject' ? 'rejected' : 'approved';
+        $note = trim($payload['note'] ?? ('Bulk ' . ucfirst($action) . ' by Management'));
+        $requestIds = array_map('intval', $payload['request_ids']);
+
+        $processedCount = 0;
+        $failedCount = 0;
+
+        foreach ($requestIds as $id) {
+            try {
+                $res = $this->approvalModel->updateStatus($id, $status, null, null, $note);
+                if ($res) {
+                    $processedCount++;
+                } else {
+                    $failedCount++;
+                }
+            } catch (Throwable $e) {
+                $failedCount++;
+            }
+        }
+
+        $actionText = $action === 'reject' ? 'rejected' : 'approved';
+        ob_clean();
+        echo json_encode([
+            'success' => true,
+            'message' => "Successfully $actionText $processedCount request(s). " . ($failedCount > 0 ? "($failedCount failed/skipped)" : ""),
+            'processed_count' => $processedCount,
+            'failed_count' => $failedCount
+        ]);
+        exit;
+    }
 }

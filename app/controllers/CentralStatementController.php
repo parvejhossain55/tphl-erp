@@ -56,6 +56,17 @@ public function index()
             $statementStartDate = date('Y-m-01');
             $statementEndDate = date('Y-m-t');
         }
+    } elseif ($periodType === '6months') {
+        $mInt = ($month === 'all' || empty($month) || (int)$month < 1 || (int)$month > 12) ? (int)date('m') : (int)$month;
+        $statementData = $this->statementModel->getSixMonthStatement($year, $mInt, $projectId, $category);
+        $periodText = 'Last 6 Months';
+        $statementStartDate = date('Y-m-01', strtotime("-5 months", strtotime("$year-" . sprintf('%02d', $mInt) . "-01")));
+        $statementEndDate = date('Y-m-t', strtotime("$year-" . sprintf('%02d', $mInt) . "-01"));
+    } elseif ($periodType === 'yearly') {
+        $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
+        $periodText = "Year $year";
+        $statementStartDate = "$year-01-01";
+        $statementEndDate = "$year-12-31";
     } elseif ($month === 'all' || $month === '0' || $month === 0) {
         $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
         $periodText = "All Months ($year)";
@@ -63,37 +74,10 @@ public function index()
         $statementEndDate = "$year-12-31";
     } else {
         $mInt = (int)$month;
-        switch ($periodType) {
-            case 'monthly':
-                $statementData = $this->statementModel->getMonthlyStatement($year, $mInt, $projectId, $category);
-                $periodText = date('F Y', strtotime("$year-" . sprintf('%02d', $mInt) . "-01"));
-                $statementStartDate = "$year-" . sprintf('%02d', $mInt) . "-01";
-                $statementEndDate = date('Y-m-t', strtotime($statementStartDate));
-                break;
-
-            case '6months':
-                $statementData = $this->statementModel->getSixMonthStatement($year, $mInt, $projectId, $category);
-                $periodText = 'Last 6 Months';
-                $statementStartDate = date('Y-m-01', strtotime("-5 months", strtotime("$year-$mInt-01")));
-                $statementEndDate = date('Y-m-t', strtotime("$year-$mInt-01"));
-                break;
-
-            case 'yearly':
-                $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
-                $periodText = "Year $year";
-                $statementStartDate = "$year-01-01";
-                $statementEndDate = "$year-12-31";
-                break;
-
-            default:
-                $year = (int)date('Y');
-                $mInt = (int)date('m');
-                $statementData = $this->statementModel->getMonthlyStatement($year, $mInt, $projectId, $category);
-                $periodText = date('F Y');
-                $periodType = 'monthly';
-                $statementStartDate = date('Y-m-01');
-                $statementEndDate = date('Y-m-t');
-        }
+        $statementData = $this->statementModel->getMonthlyStatement($year, $mInt, $projectId, $category);
+        $periodText = date('F Y', strtotime("$year-" . sprintf('%02d', $mInt) . "-01"));
+        $statementStartDate = "$year-" . sprintf('%02d', $mInt) . "-01";
+        $statementEndDate = date('Y-m-t', strtotime($statementStartDate));
     }
 
     $projects = $this->getProjects();
@@ -213,50 +197,43 @@ public function printStatement()
     $statementStartDate = '';
     $statementEndDate = '';
 
-    switch ($periodType) {
-        case 'monthly':
-            $statementData = $this->statementModel->getMonthlyStatement($year, $month, $projectId, $category);
-            $periodText = date('F Y', strtotime("$year-$month-01"));
-            $statementStartDate = "$year-$month-01";
-            $statementEndDate = date('Y-m-t', strtotime($statementStartDate));
-            break;
-
-        case '6months':
-            $statementData = $this->statementModel->getSixMonthStatement($year, $month, $projectId, $category);
-            $periodText = 'Last 6 Months';
-            $statementStartDate = date('Y-m-01', strtotime("-5 months", strtotime("$year-$month-01")));
-            $statementEndDate = date('Y-m-t', strtotime("$year-$month-01"));
-            break;
-
-        case 'yearly':
-            $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
-            $periodText = "Year $year";
-            $statementStartDate = "$year-01-01";
-            $statementEndDate = "$year-12-31";
-            break;
-
-        case 'custom':
-            if ($startDate && $endDate) {
-                $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
-                $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
-                $statementStartDate = $startDate;
-                $statementEndDate = $endDate;
-            } else {
-                // Default to current month if dates not provided
-                $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'), $projectId, $category);
-                $periodText = date('F Y');
-                $periodType = 'monthly';
-                $statementStartDate = date('Y-m-01');
-                $statementEndDate = date('Y-m-t');
-            }
-            break;
-
-        default:
-            $statementData = $this->statementModel->getMonthlyStatement(date('Y'), date('m'), $projectId, $category);
+    if ($periodType === 'custom') {
+        if ($startDate && $endDate) {
+            $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
+            $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
+            $statementStartDate = $startDate;
+            $statementEndDate = $endDate;
+        } else {
+            $year = (int)date('Y');
+            $mInt = (int)date('m');
+            $statementData = $this->statementModel->getMonthlyStatement($year, $mInt, $projectId, $category);
             $periodText = date('F Y');
             $periodType = 'monthly';
             $statementStartDate = date('Y-m-01');
             $statementEndDate = date('Y-m-t');
+        }
+    } elseif ($periodType === '6months') {
+        $mInt = ($month === 'all' || empty($month) || (int)$month < 1 || (int)$month > 12) ? (int)date('m') : (int)$month;
+        $statementData = $this->statementModel->getSixMonthStatement($year, $mInt, $projectId, $category);
+        $periodText = 'Last 6 Months';
+        $statementStartDate = date('Y-m-01', strtotime("-5 months", strtotime("$year-" . sprintf('%02d', $mInt) . "-01")));
+        $statementEndDate = date('Y-m-t', strtotime("$year-" . sprintf('%02d', $mInt) . "-01"));
+    } elseif ($periodType === 'yearly') {
+        $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
+        $periodText = "Year $year";
+        $statementStartDate = "$year-01-01";
+        $statementEndDate = "$year-12-31";
+    } elseif ($month === 'all' || $month === '0' || $month === 0) {
+        $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
+        $periodText = "All Months ($year)";
+        $statementStartDate = "$year-01-01";
+        $statementEndDate = "$year-12-31";
+    } else {
+        $mInt = (int)$month;
+        $statementData = $this->statementModel->getMonthlyStatement($year, $mInt, $projectId, $category);
+        $periodText = date('F Y', strtotime("$year-" . sprintf('%02d', $mInt) . "-01"));
+        $statementStartDate = "$year-" . sprintf('%02d', $mInt) . "-01";
+        $statementEndDate = date('Y-m-t', strtotime($statementStartDate));
     }
 
     // FIXED: Use consistent variable naming

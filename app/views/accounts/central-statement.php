@@ -145,9 +145,15 @@ $contractor_bill_details = $contractor_bill_details ?? [];
 
     .filter-item-project select,
     .filter-item-project .select2-container,
+    .filter-item-project .select2-container--default .select2-selection--single,
     .filter-item-project .select2-selection {
         min-width: 320px !important;
         width: 100% !important;
+        height: 42px !important;
+    }
+    .select2-dropdown {
+        min-width: 320px !important;
+        z-index: 999999 !important;
     }
 
     .filter-item select:focus,
@@ -329,14 +335,17 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                         </div>
 
                         <div class="filter-item filter-item-project">
-                            <label>Project</label>
-                            <select name="project_id" id="projectId" class="form-select select2" style="min-width: 320px !important; width: 100% !important;">
+                            <label class="fw-bold">Project</label>
+                            <select name="project_id" id="projectId" class="form-select" style="min-width: 280px !important; width: 100% !important; height: 42px; font-weight: 500; font-size: 14px;">
                                 <option value="">All Projects & Head Office</option>
-                                <?php foreach ($projects ?? [] as $project): ?>
-                                    <option value="<?= $project['id'] ?>" <?= (string)($project_id ?? '') === (string)$project['id'] ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($project['name']) ?>
-                                    </option>
-                                <?php endforeach; ?>
+                                <option value="head_office" <?= (string)($project_id ?? '') === 'head_office' ? 'selected' : '' ?>>Head Office / General</option>
+                                <?php if (!empty($projects)): ?>
+                                    <?php foreach ($projects as $project): ?>
+                                        <option value="<?= $project['id'] ?>" <?= (string)($project_id ?? '') === (string)$project['id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($project['name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </select>
                         </div>
 
@@ -398,250 +407,130 @@ $contractor_bill_details = $contractor_bill_details ?? [];
         </div>
     </div>
 
-<!-- Update the summary cards to show proper labels for each category -->
-<div class="mt-2 col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
-    <div class="card__wrapper stat-card cash-in">
-        <div class="d-flex align-items-center gap-1">
-            <div class="card__icon">
-                <span><i class="fa-light fa-money-bill-trend-up"></i></span>
+<?php
+// Compute summary totals from $statement_data
+$summary_stats = $statement_data['summary'] ?? [];
+
+$calc_booking_money = (float)($summary_stats['total_booking_money'] ?? 0);
+$calc_registration_fee = (float)($summary_stats['total_registration_payments'] ?? $summary_stats['total_registration'] ?? 0);
+$calc_landshare_money = (float)($summary_stats['total_landshare_payments'] ?? $summary_stats['total_landshare'] ?? 0);
+$calc_cashin = (float)($summary_stats['total_cashin'] ?? 0);
+$calc_cashout = (float)($summary_stats['total_cash_out'] ?? 0);
+
+// Fallback: Sum directly from displayed rows if summary totals are 0
+if (isset($statement_data['daily_data']) && is_array($statement_data['daily_data'])) {
+    $r_booking = 0; $r_reg = 0; $r_land = 0; $r_cashin = 0; $r_cashout = 0;
+    foreach ($statement_data['daily_data'] as $r) {
+        $r_booking += (float)($r['booking_money'] ?? 0);
+        $r_reg += (float)($r['registration'] ?? $r['registration_payments'] ?? 0);
+        $r_land += (float)($r['landshare_payments'] ?? 0);
+        $r_cashin += (float)($r['total_cashin'] ?? 0);
+        $r_cashout += (float)($r['cash_out'] ?? 0);
+    }
+    if ($calc_booking_money == 0) $calc_booking_money = $r_booking;
+    if ($calc_registration_fee == 0) $calc_registration_fee = $r_reg;
+    if ($calc_landshare_money == 0) $calc_landshare_money = $r_land;
+    if ($calc_cashin == 0) $calc_cashin = $r_cashin;
+    if ($calc_cashout == 0) $calc_cashout = $r_cashout;
+} elseif (isset($statement_data['monthly_data']) && is_array($statement_data['monthly_data'])) {
+    $r_booking = 0; $r_reg = 0; $r_land = 0; $r_cashin = 0; $r_cashout = 0;
+    foreach ($statement_data['monthly_data'] as $r) {
+        $r_booking += (float)($r['booking_money'] ?? 0);
+        $r_reg += (float)($r['registration_payments'] ?? $r['registration'] ?? 0);
+        $r_land += (float)($r['landshare_payments'] ?? 0);
+        $r_cashin += (float)($r['total_cashin'] ?? 0);
+        $r_cashout += (float)($r['cash_out'] ?? 0);
+    }
+    if ($calc_booking_money == 0) $calc_booking_money = $r_booking;
+    if ($calc_registration_fee == 0) $calc_registration_fee = $r_reg;
+    if ($calc_landshare_money == 0) $calc_landshare_money = $r_land;
+    if ($calc_cashin == 0) $calc_cashin = $r_cashin;
+    if ($calc_cashout == 0) $calc_cashout = $r_cashout;
+}
+
+// User Formula: Land Share Value = Booking Money + Registration Fee
+if ($calc_landshare_money == 0 && ($calc_booking_money > 0 || $calc_registration_fee > 0)) {
+    $calc_landshare_money = $calc_booking_money + $calc_registration_fee;
+}
+?>
+
+<!-- Summary cards section (5 Cards) -->
+<div class="row g-3 mt-1 mb-2">
+    <!-- Card 1: Total Cash IN -->
+    <div class="col-12 col-sm-6 col-md-4 col-xl">
+        <div class="card__wrapper stat-card cash-in h-100 p-3">
+            <div class="d-flex align-items-center gap-2">
+                <div class="card__icon">
+                    <span><i class="fa-light fa-money-bill-trend-up"></i></span>
+                </div>
+                <div class="card__title-wrap">
+                    <h6 class="card__sub-title mb-1 text-muted fs-12">Total Cash IN</h6>
+                    <h4 class="card__title fs-6 mb-0 positive">৳<?= number_format($calc_cashin, 2) ?></h4>
+                </div>
             </div>
-            <div class="card__title-wrap">
-                <?php 
-                // Determine the correct amount based on category
-                $card_amount = 0;
-                $card_label = "Total Cash IN";
-                
-                if ($category === 'all' || $category === 'total_cashin') {
-                    $card_amount = $overall_stats['total_cashin'] ?? 0;
-                    $card_label = $category === 'all' ? 'Total Cash IN' : 'Total Cash IN (Combined)';
-                } elseif ($category === 'emi') {
-                    // Calculate total EMI from the displayed data
-                    if (isset($statement_data['daily_data'])) {
-                        foreach ($statement_data['daily_data'] as $row) {
-                            $card_amount += $row['emi_payments'] ?? 0;
-                        }
-                    } elseif (isset($statement_data['monthly_data'])) {
-                        foreach ($statement_data['monthly_data'] as $row) {
-                            $card_amount += $row['emi_payments'] ?? 0;
-                        }
-                    }
-                    $card_label = 'Total EMI Payments';
-                } elseif ($category === 'landshare') {
-                    if (isset($statement_data['daily_data'])) {
-                        foreach ($statement_data['daily_data'] as $row) {
-                            $card_amount += $row['landshare_payments'] ?? 0;
-                        }
-                    } elseif (isset($statement_data['monthly_data'])) {
-                        foreach ($statement_data['monthly_data'] as $row) {
-                            $card_amount += $row['landshare_payments'] ?? 0;
-                        }
-                    }
-                    $card_label = 'Total Landshare';
-                } elseif ($category === 'service_fee') {
-                    if (isset($statement_data['daily_data'])) {
-                        foreach ($statement_data['daily_data'] as $row) {
-                            $card_amount += $row['service_fee'] ?? 0;
-                        }
-                    } elseif (isset($statement_data['monthly_data'])) {
-                        foreach ($statement_data['monthly_data'] as $row) {
-                            $card_amount += $row['service_fee'] ?? 0;
-                        }
-                    }
-                    $card_label = 'Total Service Fee';
-                } elseif ($category === 'registration') {
-                    if (isset($statement_data['daily_data'])) {
-                        foreach ($statement_data['daily_data'] as $row) {
-                            $card_amount += $row['registration'] ?? 0;
-                        }
-                    } elseif (isset($statement_data['monthly_data'])) {
-                        foreach ($statement_data['monthly_data'] as $row) {
-                            $card_amount += $row['registration_payments'] ?? 0;
-                        }
-                    }
-                    $card_label = 'Total Registration';
-                } elseif ($category === 'booking_money') {
-                    if (isset($statement_data['daily_data'])) {
-                        foreach ($statement_data['daily_data'] as $row) {
-                            $card_amount += $row['booking_money'] ?? 0;
-                        }
-                    } elseif (isset($statement_data['monthly_data'])) {
-                        foreach ($statement_data['monthly_data'] as $row) {
-                            $card_amount += $row['booking_money'] ?? 0;
-                        }
-                    }
-                    $card_label = 'Total Booking Money';
-                } elseif ($category === 'agreement') {
-                    if (isset($statement_data['daily_data'])) {
-                        foreach ($statement_data['daily_data'] as $row) {
-                            $card_amount += $row['agreement_value'] ?? 0;
-                        }
-                    } elseif (isset($statement_data['monthly_data'])) {
-                        foreach ($statement_data['monthly_data'] as $row) {
-                            $card_amount += $row['agreement_value'] ?? 0;
-                        }
-                    }
-                    $card_label = 'Total Agreement Value';
-                } elseif ($category === 'management_cashin') {
-                    if (isset($statement_data['daily_data'])) {
-                        foreach ($statement_data['daily_data'] as $row) {
-                            $card_amount += $row['management_cashin'] ?? 0;
-                        }
-                    } elseif (isset($statement_data['monthly_data'])) {
-                        foreach ($statement_data['monthly_data'] as $row) {
-                            $card_amount += $row['management_cashin'] ?? 0;
-                        }
-                    }
-                    $card_label = 'Total Management Cashin';
-                } elseif ($category === 'bank_cashin') {
-                    $card_amount = 0;
-                    foreach ($bank_transactions ?? [] as $bt) {
-                        $card_amount += (float)($bt['amount'] ?? 0);
-                    }
-                    $card_label = 'Total Bank Cash In';
-                } elseif ($category === 'bank_cashout') {
-                    $card_amount = 0;
-                    foreach ($bank_transactions ?? [] as $bt) {
-                        $card_amount += (float)($bt['amount'] ?? 0);
-                    }
-                    $card_label = 'Total Bank Cash Out';
-                } elseif (in_array($category, ['cashout', 'utilities', 'other', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions', 'land_fund_requisitions'])) {
-                    $card_amount = $overall_stats['total_cash_out'] ?? 0;
-                    $card_label = 'Total ' . ucfirst($category);
-                } elseif ($category === 'vendor_payment') {
-                    $card_amount = $overall_stats['total_cash_out'] ?? 0;
-                    $card_label = 'Total Vendor Payments';
-                } elseif ($category === 'contractor_bill') {
-                    $card_amount = $overall_stats['total_cash_out'] ?? 0;
-                    $card_label = 'Total Contractor Bills';
-                }
-                ?>
-                <h6 class="card__sub-title mb-10"><?= $card_label ?></h6>
-                <div class="d-flex flex-wrap align-items-end gap-10">
-                    <h4 class="card__title fs-6">৳<?= number_format($card_amount, 2) ?></h4>
+        </div>
+    </div>
+
+    <!-- Card 2: Total Land Share Money -->
+    <div class="col-12 col-sm-6 col-md-4 col-xl">
+        <div class="card__wrapper stat-card land-share h-100 p-3">
+            <div class="d-flex align-items-center gap-2">
+                <div class="card__icon">
+                    <span><i class="fa-light fa-layer-group"></i></span>
+                </div>
+                <div class="card__title-wrap">
+                    <h6 class="card__sub-title mb-1 text-muted fs-12">Total Land Share Money</h6>
+                    <h4 class="card__title fs-6 mb-0 positive">৳<?= number_format($calc_landshare_money, 2) ?></h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 3: Total Booking Money -->
+    <div class="col-12 col-sm-6 col-md-4 col-xl">
+        <div class="card__wrapper stat-card booking-money h-100 p-3">
+            <div class="d-flex align-items-center gap-2">
+                <div class="card__icon">
+                    <span><i class="fa-light fa-handshake"></i></span>
+                </div>
+                <div class="card__title-wrap">
+                    <h6 class="card__sub-title mb-1 text-muted fs-12">Total Booking Money</h6>
+                    <h4 class="card__title fs-6 mb-0 positive">৳<?= number_format($calc_booking_money, 2) ?></h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 4: Total Registration Fee -->
+    <div class="col-12 col-sm-6 col-md-4 col-xl">
+        <div class="card__wrapper stat-card reg-fee h-100 p-3">
+            <div class="d-flex align-items-center gap-2">
+                <div class="card__icon">
+                    <span><i class="fa-light fa-file-contract"></i></span>
+                </div>
+                <div class="card__title-wrap">
+                    <h6 class="card__sub-title mb-1 text-muted fs-12">Total Registration Fee</h6>
+                    <h4 class="card__title fs-6 mb-0 positive">৳<?= number_format($calc_registration_fee, 2) ?></h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 5: Total Cash Out -->
+    <div class="col-12 col-sm-6 col-md-4 col-xl">
+        <div class="card__wrapper stat-card cash-out h-100 p-3">
+            <div class="d-flex align-items-center gap-2">
+                <div class="card__icon">
+                    <span><i class="fa-light fa-arrow-up-from-line"></i></span>
+                </div>
+                <div class="card__title-wrap">
+                    <h6 class="card__sub-title mb-1 text-muted fs-12">Total Cash Out</h6>
+                    <h4 class="card__title fs-6 mb-0 negative">৳<?= number_format($calc_cashout, 2) ?></h4>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-
-
-<div class="mt-2 col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
-    <div class="card__wrapper stat-card revenue">
-        <div class="d-flex align-items-center gap-1">
-            <div class="card__icon">
-                <span><i class="fa-light fa-chart-line"></i></span>
-            </div>
-            <div class="card__title-wrap">
-                <?php 
-                // Calculate the actual revenue based on filtered data
-                $revenue_amount = 0;
-                $revenue_label = "Total Revenue";
-                
-                if ($category === 'all') {
-                    // For 'all' category, revenue is total cashin minus cashout
-                    $revenue_amount = ($overall_stats['total_revenue'] ?? 0);
-                    $revenue_label = 'Total Revenue';
-                } elseif (in_array($category, ['bank_cashin', 'bank_cashout'])) {
-                    $revenue_amount = $card_amount;
-                    $revenue_label = $category === 'bank_cashin' ? 'Total Bank Cash In' : 'Total Bank Cash Out';
-                } elseif (in_array($category, ['emi', 'landshare', 'service_fee', 'registration', 'booking_money', 'agreement', 'management_cashin', 'total_cashin'])) {
-                    // For revenue categories, use the calculated card_amount from the first card
-                    $revenue_amount = $card_amount;
-                    $revenue_label = 'Total ' . ucfirst(str_replace('_', ' ', $category));
-                } elseif (in_array($category, ['cashout', 'utilities', 'other', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions', 'land_fund_requisitions'])) {
-                    // For expense categories, revenue should show as 0 (not negative)
-                    $revenue_amount = 0;
-                    $revenue_label = 'Total ' . ucfirst($category) . ' Expense';
-                } elseif ($category === 'vendor_payment') {
-                    $revenue_amount = 0;
-                    $revenue_label = 'Total Vendor Payment Expense';
-                } elseif ($category === 'contractor_bill') {
-                    $revenue_amount = 0;
-                    $revenue_label = 'Total Contractor Bill Expense';
-                }
-                ?>
-                <h6 class="card__sub-title mb-10"><?= $revenue_label ?></h6>
-                <div class="d-flex flex-wrap align-items-end gap-10">
-                    <h4 class="card__title fs-6 positive">৳<?= number_format($revenue_amount, 2) ?></h4>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="mt-2 col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
-    <div class="card__wrapper stat-card cash-out">
-        <div class="d-flex align-items-center gap-1">
-            <div class="card__icon">
-                <span><i class="fa-light fa-arrow-up-from-line"></i></span>
-            </div>
-            <div class="card__title-wrap">
-                <?php 
-                // Calculate cash out based on filtered data
-                $cashout_amount = 0;
-                
-                if ($category === 'all') {
-                    $cashout_amount = $overall_stats['total_cash_out'] ?? 0;
-                } elseif (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions', 'land_fund_requisitions'])) {
-                    // For cashout categories, sum the displayed data
-                    if (isset($statement_data['daily_data'])) {
-                        foreach ($statement_data['daily_data'] as $row) {
-                            $cashout_amount += $row['cash_out'] ?? 0;
-                        }
-                    } elseif (isset($statement_data['monthly_data'])) {
-                        foreach ($statement_data['monthly_data'] as $row) {
-                            $cashout_amount += $row['cash_out'] ?? 0;
-                        }
-                    }
-                } else {
-                    // For revenue categories, cashout is 0
-                    $cashout_amount = 0;
-                }
-                ?>
-                <h6 class="card__sub-title mb-10">Total Cash Out</h6>
-                <div class="d-flex flex-wrap align-items-end gap-10">
-                    <h4 class="card__title fs-6 negative">৳<?= number_format($cashout_amount, 2) ?></h4>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="mt-2 col-xxl-3 col-xl-3 col-lg-6 col-md-6 col-sm-6">
-    <div class="card__wrapper stat-card net-balance">
-        <div class="d-flex align-items-center gap-1">
-            <div class="card__icon">
-                <span><i class="fa-light fa-scale-balanced"></i></span>
-            </div>
-            <div class="card__title-wrap">
-                <?php 
-                // Calculate net balance based on filtered data
-                // Net Balance = (Cash IN or Revenue) - Cash Out
-                $net_balance = 0;
-                
-                if ($category === 'all') {
-                    // For 'all' category: Net Balance = Total Cash IN - Total Cash Out
-                    $net_balance = ($overall_stats['total_cashin'] ?? 0) - ($overall_stats['total_cash_out'] ?? 0);
-                } elseif (in_array($category, ['bank_cashin'])) {
-                    $net_balance = $card_amount;
-                } elseif (in_array($category, ['bank_cashout'])) {
-                    $net_balance = -$card_amount;
-                } elseif (in_array($category, ['emi', 'landshare', 'service_fee', 'registration', 'booking_money', 'agreement', 'management_cashin', 'total_cashin'])) {
-                    // For revenue categories: Net Balance = Category Amount - 0 (since no cashout for revenue categories)
-                    $net_balance = $card_amount;
-                } elseif (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions', 'land_fund_requisitions'])) {
-                    // For expense categories: Net Balance = 0 - Category Amount (negative balance)
-                    $net_balance = -$card_amount;
-                }
-                ?>
-                <h6 class="card__sub-title mb-10">Net Balance</h6>
-                <div class="d-flex flex-wrap align-items-end gap-10">
-                    <h4 class="card__title fs-6 <?= $net_balance >= 0 ? 'positive' : 'negative' ?>">৳<?= number_format($net_balance, 2) ?></h4>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 
@@ -791,7 +680,7 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                                 $rowDate = $row['date'] ?? '';
                             ?>
                                 <tr>
-                                    <td><?= htmlspecialchars($row['formatted_date'] ?? '') ?></td>
+                                    <td data-order="<?= htmlspecialchars($rowDate) ?>"><?= htmlspecialchars($row['formatted_date'] ?? '') ?></td>
                                     <td><?= htmlspecialchars($row['day_name'] ?? '') ?></td>
 
                                     <?php if ($category === 'all'): ?>
@@ -951,7 +840,6 @@ $contractor_bill_details = $contractor_bill_details ?? [];
 
                                 <?php if ($category === 'all'): ?>
                                     <!-- Show all columns only for 'all' category -->
-                                    <th>Agreement Value (TK.)</th>
                                     <th>Booking Money (TK.)</th>
                                     <th>Service Fee (TK.)</th>
                                     <th>EMI Payments (TK.)</th>
@@ -1023,11 +911,10 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                                 $monthPrefix = ($row['year'] ?? '') . '-' . sprintf('%02d', $row['month_num'] ?? 0);
                             ?>
                                 <tr>
-                                    <td><?= htmlspecialchars($row['month']) ?></td>
+                                    <td data-order="<?= htmlspecialchars($monthPrefix) ?>"><?= htmlspecialchars($row['month']) ?></td>
 
                                     <?php if ($category === 'all'): ?>
                                         <!-- Show all data for 'all' category -->
-                                        <td class="positive"><strong>৳<?= number_format($row['agreement_value'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['booking_money'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['service_fee'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['emi_payments'] ?? 0, 2) ?></strong></td>
@@ -1236,8 +1123,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (selectedYear && yearSelect) {
         yearSelect.value = selectedYear;
     }
-    if (selectedMonth && monthSelect) {
-        monthSelect.value = selectedMonth;
+    // Ensure select2 is destroyed on #projectId so native Bootstrap select works perfectly
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        try {
+            if ($('#projectId').hasClass('select2-hidden-accessible') || $('#projectId').data('select2')) {
+                $('#projectId').select2('destroy');
+            }
+        } catch (e) {}
     }
 });
     document.addEventListener('DOMContentLoaded', handlePeriodChange);

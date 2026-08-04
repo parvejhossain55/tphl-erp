@@ -590,6 +590,9 @@ class CentralStatement extends Model
     {
         $year = (int)$year;
         $month = (int)$month;
+        if ($month < 1 || $month > 12) {
+            $month = (int)date('m');
+        }
         $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
         $monthPadded = sprintf("%02d", $month);
         $daysPadded = sprintf("%02d", $daysInMonth);
@@ -1225,12 +1228,12 @@ public function getCashoutPaymentDetails($startDate, $endDate, $projectId = null
         if ($category === 'all' || $category === 'cashout') {
             $payslipsQuery = "
             SELECT 
-                DATE(updated_at) as transaction_date,
+                DATE(COALESCE(disbursed_at, payslip_month, updated_at)) as transaction_date,
                 SUM(net_salary) as total_amount
             FROM payslips
-            WHERE DATE(updated_at) BETWEEN ? AND ?
+            WHERE DATE(COALESCE(disbursed_at, payslip_month, updated_at)) BETWEEN ? AND ?
             AND status = 'paid'
-            GROUP BY DATE(updated_at)
+            GROUP BY DATE(COALESCE(disbursed_at, payslip_month, updated_at))
         ";
 
             $stmt = $this->db->prepare($payslipsQuery);
@@ -1490,10 +1493,15 @@ public function getCashoutPaymentDetails($startDate, $endDate, $projectId = null
      */
     public function getSixMonthStatement($endYear, $endMonth, $projectId = null, $category = 'all')
     {
-        // Convert empty string to null
-        if ($projectId === '') {
-            $projectId = null;
+        $endYear = (int)$endYear;
+        if (empty($endYear)) {
+            $endYear = (int)date('Y');
         }
+        $endMonthInt = (int)$endMonth;
+        if ($endMonthInt < 1 || $endMonthInt > 12) {
+            $endMonthInt = (int)date('m');
+        }
+        $endMonth = sprintf('%02d', $endMonthInt);
 
         $monthlyData = [];
 
@@ -1539,7 +1547,7 @@ public function getCashoutPaymentDetails($startDate, $endDate, $projectId = null
             } elseif ($category === 'contractor_bill') {
                 $cashOut = $this->getMonthlyContractorBills($monthStart, $monthEnd, $projectId);
             } elseif (in_array($category, ['all', 'cashout', 'utilities', 'other'])) {
-                $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd, $category);
+                $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd, $category, $projectId);
             }
 
             // Calculate cashin according to formula
@@ -1591,6 +1599,7 @@ public function getCashoutPaymentDetails($startDate, $endDate, $projectId = null
             'opening_balance' => $this->getOpeningBalance($startDate, $projectId, $category),
             'monthly_data' => $monthlyData,
             'summary' => [
+                'total_landshare_payments' => $totals['landshare_payments'],
                 'total_registration_payments' => $totals['registration_payments'],
                 'total_emi_payments' => $totals['emi_payments'],
                 'total_booking_money' => $totals['booking_money'], // Fixed: Use actual booking money
@@ -1783,7 +1792,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             } elseif ($category === 'contractor_bill') {
                 $cashOut = $this->getMonthlyContractorBills($monthStart, $monthEnd, $projectId);
             } elseif (in_array($category, ['all', 'cashout', 'utilities', 'other'])) {
-                $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd, $category);
+                $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd, $category, $projectId);
             }
 
             // Calculate cashin according to formula
@@ -2215,7 +2224,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             } elseif ($category === 'contractor_bill') {
                 $cashOut = $this->getMonthlyContractorBills($monthStart, $monthEnd, $projectId);
             } elseif (in_array($category, ['all', 'cashout', 'utilities', 'other'])) {
-                $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd, $category);
+                $cashOut = $this->getMonthlyCashOut($monthStart, $monthEnd, $category, $projectId);
             }
 
             // Deduct returns from cashout
@@ -2379,7 +2388,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
         ";
 
         // Get all cash-out before start date
-        $cashOutQuery = $this->getOpeningCashOutQuery($category, $startDate);
+        $totalCashOut = $this->getOpeningCashOutTotal($startDate, $projectId, $category);
 
         // Add project filter if specified
         if ($projectId) {
@@ -2437,20 +2446,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
         }
 
         // Get cash-out
-        $totalCashOut = 0;
-        $stmt = $this->db->prepare($cashOutQuery);
-
-        if ($category === 'utilities') {
-            $stmt->bind_param("s", $startDate);
-        } else {
-            $stmt->bind_param("sssssss", $startDate, $startDate, $startDate, $startDate, $startDate, $startDate, $startDate);
-        }
-
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($row = $result->fetch_assoc()) {
-            $totalCashOut = (float)$row['total'];
-        }
+        $totalCashOut = $this->getOpeningCashOutTotal($startDate, $projectId, $category);
 
         // Calculate opening balance based on the cashin formula
         $landsharePayments = $this->getTotalPaymentByTypeBeforeDate('land_share', $startDate, $projectId);
@@ -2523,50 +2519,18 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
     /**
      * Helper: Get opening cashout query based on category
      */
-    // Update the getOpeningCashOutQuery method:
-    private function getOpeningCashOutQuery($category, $startDate, $projectId = null)
+    private function getOpeningCashOutTotal($startDate, $projectId = null, $category = 'all')
     {
-        if ($category === 'utilities') {
-            $utilityKeywords = ['bill', 'bills', 'electricity', 'wifi', 'internet', 'water', 'gas', 'utility', 'utilities', 'power', 'light', 'electric'];
-
-            $keywordConditions = [];
-            foreach ($utilityKeywords as $keyword) {
-                $keywordConditions[] = "LOWER(cr.purpose_paid_to) LIKE '%" . $this->db->real_escape_string(strtolower($keyword)) . "%'";
-            }
-            $keywordCondition = implode(' OR ', $keywordConditions);
-
-            $projectCondition = "";
-            if ($projectId) {
-                $projectCondition = " AND (cr.project_id = ? OR cp.project_id = ?)";
-            }
-
-            return "
-            SELECT COALESCE(SUM(total_amount), 0) as total
-            FROM (
-                SELECT cp.amount as total_amount
-                FROM cashout_payments cp
-                LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
-                WHERE DATE(cp.payment_date) < ?
-                AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
-                AND ($keywordCondition)
-                $projectCondition
-            ) combined
-        ";
-        }
-
-        $projectCondition = "";
-        if ($projectId) {
-            $projectCondition = " AND (cr.project_id = ? OR cp.project_id = ?)";
-        }
-
-        return "
+        $query = "
         SELECT COALESCE(SUM(total_amount), 0) as total
         FROM (
-            -- Management cashout
+            -- Management cashout (only if no project filter)
+            " . (!$projectId ? "
             SELECT amount as total_amount
             FROM management_cashout
             WHERE DATE(transaction_date) < ? 
             AND payment_status = 'paid'
+            " : "SELECT 0 as total_amount WHERE 1=0") . "
             
             UNION ALL
             
@@ -2576,7 +2540,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id
             WHERE DATE(cp.payment_date) < ?
             AND cr.status IN ('approved', 'partially_paid', 'fully_paid')
-            $projectCondition
+            " . ($projectId ? " AND (cr.project_id = ? OR cp.project_id = ?)" : "") . "
             
             UNION ALL
             
@@ -2585,14 +2549,17 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             FROM con_financial_transactions
             WHERE DATE(transaction_date) < ?
             AND ref_type IN ('vendor_payment', 'contractor_bill')
+            " . ($projectId ? " AND project_id = ?" : "") . "
             
             UNION ALL
             
-            -- Salary payments
+            -- Salary payments (only if no project filter)
+            " . (!$projectId ? "
             SELECT net_salary as total_amount
             FROM payslips
-            WHERE DATE(updated_at) < ?
+            WHERE DATE(COALESCE(disbursed_at, payslip_month, updated_at)) < ?
             AND status = 'paid'
+            " : "SELECT 0 as total_amount WHERE 1=0") . "
             
             UNION ALL
             
@@ -2601,15 +2568,18 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             FROM fund_requisitions
             WHERE status = 'paid'
             AND DATE(paid_at) < ?
+            " . ($projectId ? " AND project_id = ?" : "") . "
             
             UNION ALL
             
             -- Land Fund Requisitions
             SELECT lfr.requested_amount as total_amount
             FROM land_fund_requisitions lfr
+            LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
             WHERE lfr.mgmt_status = 'Approved'
             AND lfr.accounts_status = 'Paid'
             AND DATE(lfr.accounts_paid_at) < ?
+            " . ($projectId ? " AND la.project_id = ?" : "") . "
             
             UNION ALL
             
@@ -2618,8 +2588,68 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             FROM project_extra_assets
             WHERE payment_status = 'paid'
             AND DATE(paid_at) < ?
+            " . ($projectId ? " AND project_id = ?" : "") . "
         ) combined
-    ";
+        ";
+
+        $params = [];
+        $types = "";
+
+        if (!$projectId) {
+            $params[] = $startDate;
+            $types .= "s";
+        }
+
+        $params[] = $startDate;
+        $types .= "s";
+        if ($projectId) {
+            $params[] = $projectId;
+            $params[] = $projectId;
+            $types .= "ii";
+        }
+
+        $params[] = $startDate;
+        $types .= "s";
+        if ($projectId) {
+            $params[] = $projectId;
+            $types .= "i";
+        }
+
+        if (!$projectId) {
+            $params[] = $startDate;
+            $types .= "s";
+        }
+
+        $params[] = $startDate;
+        $types .= "s";
+        if ($projectId) {
+            $params[] = $projectId;
+            $types .= "i";
+        }
+
+        $params[] = $startDate;
+        $types .= "s";
+        if ($projectId) {
+            $params[] = $projectId;
+            $types .= "i";
+        }
+
+        $params[] = $startDate;
+        $types .= "s";
+        if ($projectId) {
+            $params[] = $projectId;
+            $types .= "i";
+        }
+
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) {
+            return 0.00;
+        }
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $row = $res->fetch_assoc();
+        return (float)($row['total'] ?? 0);
     }
 
     /**
@@ -2669,7 +2699,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             " . (($category === 'all' || $category === 'cashout') ? "
             SELECT net_salary as total_amount
             FROM payslips
-            WHERE DATE(updated_at) = ?
+            WHERE DATE(COALESCE(disbursed_at, payslip_month, updated_at)) = ?
             AND status = 'paid'
             " : "SELECT 0 as total_amount") . "
             
@@ -3009,7 +3039,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             " . (($category === 'all' || $category === 'cashout') ? "
             SELECT net_salary as total_amount
             FROM payslips
-            WHERE DATE(updated_at) BETWEEN ? AND ?
+            WHERE DATE(COALESCE(disbursed_at, payslip_month, updated_at)) BETWEEN ? AND ?
             AND status = 'paid'
             " : "SELECT 0 as total_amount") . "
             
@@ -3435,7 +3465,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             SELECT net_salary as total_amount
             FROM payslips
             WHERE status = 'paid'
-            " . ($startDate && $endDate ? " AND DATE(updated_at) BETWEEN ? AND ?" : "") . "
+            " . ($startDate && $endDate ? " AND DATE(COALESCE(disbursed_at, payslip_month, updated_at)) BETWEEN ? AND ?" : "") . "
             " : "SELECT 0 as total_amount") . "
             
             UNION ALL
@@ -3586,6 +3616,7 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
         $query = "
             SELECT DISTINCT p.id, p.name 
             FROM projects p 
+            INNER JOIN journals j ON j.project_id = p.id 
             WHERE p.deleted_at IS NULL 
             ORDER BY p.name ASC
         ";
@@ -3594,6 +3625,14 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
         if ($res) {
             while ($row = $res->fetch_assoc()) {
                 $projects[] = $row;
+            }
+        }
+        if (empty($projects)) {
+            $res2 = $this->db->query("SELECT DISTINCT p.id, p.name FROM projects p WHERE p.deleted_at IS NULL ORDER BY p.name ASC");
+            if ($res2) {
+                while ($row = $res2->fetch_assoc()) {
+                    $projects[] = $row;
+                }
             }
         }
         return $projects;
