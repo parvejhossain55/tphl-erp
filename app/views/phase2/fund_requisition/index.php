@@ -1529,6 +1529,14 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
                     <i class="fa-solid fa-eye"></i>
                 </a>
 
+                <?php if ($req['status'] === 'paid'): ?>
+                    <!-- View Journal Entry Button -->
+                    <a href="<?= $GLOBALS['base_url'] ?>/general-journal"
+                       class="btn btn-icon btn-sm btn-outline-success border no-print" title="View Journal Entry in Accounts">
+                        <i class="fa-solid fa-book text-success"></i>
+                    </a>
+                <?php endif; ?>
+
                 <!-- Dept Head Approval button -->
                 <?php 
                 $canApproveDept = ($userId == ($req['requester_reporting_boss_id'] ?? 0) || in_array($roleId, [1, 3]));

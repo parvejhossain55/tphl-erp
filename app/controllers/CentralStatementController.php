@@ -27,19 +27,36 @@ public function index()
     $periodType = $_GET['period_type'] ?? 'monthly';
     $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
     $month = $_GET['month'] ?? date('m');
-    $startDate = $_GET['start_date'] ?? null;
-    $endDate = $_GET['end_date'] ?? null;
-    $projectId = $_GET['project_id'] ?? null;
+    $startDate = !empty($_GET['start_date']) ? $_GET['start_date'] : null;
+    $endDate = !empty($_GET['end_date']) ? $_GET['end_date'] : null;
+    $projectId = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null;
     $category = $_GET['category'] ?? 'all';
 
-    if ($projectId === '') $projectId = null;
+    if (empty($_GET['period_type']) && $startDate && $endDate) {
+        $periodType = 'custom';
+    }
 
     $statementData = null;
     $periodText = '';
     $statementStartDate = '';
     $statementEndDate = '';
 
-    if ($month === 'all' || $month === '0' || $month === 0) {
+    if ($periodType === 'custom') {
+        if ($startDate && $endDate) {
+            $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
+            $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
+            $statementStartDate = $startDate;
+            $statementEndDate = $endDate;
+        } else {
+            $year = (int)date('Y');
+            $mInt = (int)date('m');
+            $statementData = $this->statementModel->getMonthlyStatement($year, $mInt, $projectId, $category);
+            $periodText = date('F Y');
+            $periodType = 'monthly';
+            $statementStartDate = date('Y-m-01');
+            $statementEndDate = date('Y-m-t');
+        }
+    } elseif ($month === 'all' || $month === '0' || $month === 0) {
         $statementData = $this->statementModel->getYearlyStatement($year, $projectId, $category);
         $periodText = "All Months ($year)";
         $statementStartDate = "$year-01-01";
@@ -66,23 +83,6 @@ public function index()
                 $periodText = "Year $year";
                 $statementStartDate = "$year-01-01";
                 $statementEndDate = "$year-12-31";
-                break;
-
-            case 'custom':
-                if ($startDate && $endDate) {
-                    $statementData = $this->statementModel->getCustomRangeStatement($startDate, $endDate, $projectId, $category);
-                    $periodText = date('d M, Y', strtotime($startDate)) . ' to ' . date('d M, Y', strtotime($endDate));
-                    $statementStartDate = $startDate;
-                    $statementEndDate = $endDate;
-                } else {
-                    $year = (int)date('Y');
-                    $mInt = (int)date('m');
-                    $statementData = $this->statementModel->getMonthlyStatement($year, $mInt, $projectId, $category);
-                    $periodText = date('F Y');
-                    $periodType = 'monthly';
-                    $statementStartDate = date('Y-m-01');
-                    $statementEndDate = date('Y-m-t');
-                }
                 break;
 
             default:
@@ -190,15 +190,7 @@ public function index()
      */
     private function getProjects()
     {
-        $query = "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name";
-        $result = $this->db->query($query);
-        $projects = [];
-        if ($result) {
-            while ($row = $result->fetch_assoc()) {
-                $projects[] = $row;
-            }
-        }
-        return $projects;
+        return $this->statementModel->getProjects();
     }
 
     /**

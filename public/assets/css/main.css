@@ -935,7 +935,7 @@ padding: 5px 10px;
 }
 [bd-theme=bd-theme-dark] .btn-white {
   background-color: var(--clr-common-black);
-  color: var(--clr-common-white);
+  color: #fff;
 }
 .btn-white:hover {
   background-color: rgba(255, 255, 255, 0.95);
@@ -7870,7 +7870,7 @@ font-family: "Font Awesome 6 Pro";
   --clr-common-black: #FFFFFF;
   --clr-common-placeholder: #9CA3AF;
   --clr-heading-primary: #D1D5DB;
-  --clr-text-body: #9CA3AF;
+  --clr-text-body: #d5d6d8;
   --clr-text-label: #C6C8CC;
   --clr-text-muted: #7C838F;
   --clr-text-taxonomy: #9CA3AF;

@@ -820,6 +820,15 @@ class Con_VendorPaymentRequestController extends Controller
         $txnId = $this->txnModel->create($data);
 
         if ($txnId) {
+            // AUTO POSTING VENDOR PAYMENT DISBURSEMENT JOURNAL
+            try {
+                require_once __DIR__ . '/../../services/JournalIntegrationService.php';
+                $journalService = new \Services\JournalIntegrationService($this->db);
+                $journalService->generateDisbursementJournal($txnId, $this->userId);
+            } catch (\Exception $e) {
+                error_log("Failed to generate vendor payment disbursement journal: " . $e->getMessage());
+            }
+
             setSuccess('Payment of ৳' . number_format($amount, 2) . ' recorded successfully! Transaction #' . $txnId);
         } else {
             setError('Failed to process payment.');

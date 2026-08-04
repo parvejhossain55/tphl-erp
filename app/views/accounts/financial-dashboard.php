@@ -267,17 +267,67 @@ $show_breadcrumb = true;
                     
                     <!-- ================= GENERAL JOURNAL TAB ================= -->
                     <div class="tab-pane fade" id="v-pills-general-journal" role="tabpanel">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h4 class="mb-0">General Journal Entries</h4>
+                        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                             <div>
-                                <a href="<?= $base_url ?>/accounts/coa" class="btn btn-outline-secondary me-2">
+                                <h4 class="mb-0 fw-bold"><i class="fa-light fa-book-journal-whills text-primary me-2"></i>General Journal Entries</h4>
+                                <p class="text-muted fs-12 mb-0">Search and filter all journal entries across modules, projects, and expense categories.</p>
+                            </div>
+                            <div>
+                                <a href="<?= $base_url ?>/accounts/coa" class="btn btn-outline-secondary btn-sm me-2">
                                     <i class="fa-light fa-sitemap"></i> Manage Accounts
                                 </a>
-                                <a href="<?= $base_url ?>/general-journal/create" class="btn btn-primary">
+                                <a href="<?= $base_url ?>/general-journal/create" class="btn btn-primary btn-sm">
                                     <i class="fa-light fa-plus"></i> New Journal Entry
                                 </a>
                             </div>
                         </div>
+
+                        <!-- SEARCH & FILTER BAR FOR JOURNAL ENTRIES -->
+                        <div class="card border-0 shadow-sm mb-3 bg-light">
+                            <div class="card-body p-3">
+                                <div class="row g-2 align-items-center">
+                                    <!-- Module Source Filter -->
+                                    <div class="col-md-4">
+                                        <label class="form-label fs-11 text-muted fw-bold mb-1">Module / Source Category</label>
+                                        <select id="gjModuleFilter" class="form-select form-select-sm">
+                                            <option value="">All Source Modules</option>
+                                            <option value="fund_requisition">Fund Requisitions</option>
+                                            <option value="vendor_payment">Project Vendor Payments</option>
+                                            <option value="contractor_bill">Contractor Bills & Payments</option>
+                                            <option value="material_purchase">Material Purchase & Procurement</option>
+                                            <option value="payroll">Payroll & Employee Salaries</option>
+                                            <option value="management_cashin">Management & Directors Investment</option>
+                                            <option value="land_acquisition">Land Acquisition Payments</option>
+                                            <option value="expense_voucher">Accounts Expense Vouchers</option>
+                                            <option value="sales_payment">Client Receipts & Revenue</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Project Filter (Only projects with journals) -->
+                                    <div class="col-md-4">
+                                        <label class="form-label fs-11 text-muted fw-bold mb-1">Project-Wise Search</label>
+                                        <select id="gjProjectFilter" class="form-select form-select-sm">
+                                            <option value="">All Projects & Head Office</option>
+                                            <option value="head_office">Head Office / General</option>
+                                            <?php foreach ($projectsWithJournals as $p): ?>
+                                                <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+
+                                    <!-- Expense Category Filter -->
+                                    <div class="col-md-4">
+                                        <label class="form-label fs-11 text-muted fw-bold mb-1">Project Expense Category</label>
+                                        <select id="gjExpenseTypeFilter" class="form-select form-select-sm">
+                                            <option value="">All Expense & Receipt Types</option>
+                                            <option value="vendor_material">Vendor & Material Payment</option>
+                                            <option value="contractor">Contractor Bill Payment</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover table-striped w-100" id="generalJournalTable">
                                 <thead class="table-light">
@@ -749,14 +799,29 @@ $show_breadcrumb = true;
     }
 
     function initGeneralJournalTable() {
-        if ($.fn.DataTable.isDataTable('#generalJournalTable')) return;
+        if (sessionStorage.getItem('gjModuleFilter')) {
+            $('#gjModuleFilter').val(sessionStorage.getItem('gjModuleFilter'));
+        }
+        if (sessionStorage.getItem('gjProjectFilter')) {
+            $('#gjProjectFilter').val(sessionStorage.getItem('gjProjectFilter'));
+        }
+        if (sessionStorage.getItem('gjExpenseTypeFilter')) {
+            $('#gjExpenseTypeFilter').val(sessionStorage.getItem('gjExpenseTypeFilter'));
+        }
+
+        if ($.fn.DataTable.isDataTable('#generalJournalTable')) {
+            generalJournalTable.ajax.reload();
+            return;
+        }
         
         generalJournalTable = $('#generalJournalTable').DataTable({
             ajax: {
                 url: window.base_url + '/financial-dashboard/get-general-journals',
                 dataSrc: 'data',
                 data: function(d) {
-                    d.project_id = $('#projectFilter').val();
+                    d.project_id = $('#gjProjectFilter').val();
+                    d.module = $('#gjModuleFilter').val();
+                    d.expense_type = $('#gjExpenseTypeFilter').val();
                 }
             },
             columns: [
@@ -778,5 +843,21 @@ $show_breadcrumb = true;
             order: [],
             pageLength: 25
         });
+
+        $('#gjModuleFilter, #gjProjectFilter, #gjExpenseTypeFilter').on('change', function() {
+            sessionStorage.setItem('gjModuleFilter', $('#gjModuleFilter').val());
+            sessionStorage.setItem('gjProjectFilter', $('#gjProjectFilter').val());
+            sessionStorage.setItem('gjExpenseTypeFilter', $('#gjExpenseTypeFilter').val());
+            generalJournalTable.ajax.reload();
+        });
     }
+
+    window.addEventListener('pageshow', function(event) {
+        if (typeof generalJournalTable !== 'undefined' && generalJournalTable) {
+            if (sessionStorage.getItem('gjModuleFilter')) $('#gjModuleFilter').val(sessionStorage.getItem('gjModuleFilter'));
+            if (sessionStorage.getItem('gjProjectFilter')) $('#gjProjectFilter').val(sessionStorage.getItem('gjProjectFilter'));
+            if (sessionStorage.getItem('gjExpenseTypeFilter')) $('#gjExpenseTypeFilter').val(sessionStorage.getItem('gjExpenseTypeFilter'));
+            generalJournalTable.ajax.reload();
+        }
+    });
 <?php $page_script = ob_get_clean(); ?>

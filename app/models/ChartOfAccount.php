@@ -106,7 +106,14 @@ class ChartOfAccount
         $where = "WHERE jd.account_id = $accountId";
         if ($startDate) $where .= " AND j.date >= '" . $this->db->real_escape_string($startDate) . "'";
         if ($endDate) $where .= " AND j.date <= '" . $this->db->real_escape_string($endDate) . "'";
-        if ($projectId) $where .= " AND j.project_id = " . (int)$projectId;
+        if (!empty($projectId)) {
+            if ($projectId === 'head_office' || $projectId === '0' || $projectId === 0) {
+                $where .= " AND (j.project_id IS NULL OR j.project_id = 0) AND (jd.project_id IS NULL OR jd.project_id = 0)";
+            } else {
+                $pId = (int)$projectId;
+                $where .= " AND (j.project_id = $pId OR jd.project_id = $pId)";
+            }
+        }
         if ($partyId) $where .= " AND jd.party_id = " . (int)$partyId;
         if ($searchQuery) {
             $sq = $this->db->real_escape_string($searchQuery);
@@ -239,6 +246,50 @@ class ChartOfAccount
             while ($row = $res->fetch_assoc()) {
                 $data[] = $row;
             }
+        }
+        return $data;
+    }
+
+    public function getProjectsWithJournals()
+    {
+        $query = "
+            SELECT DISTINCT p.id, p.name 
+            FROM projects p 
+            INNER JOIN journals j ON j.project_id = p.id 
+            WHERE p.deleted_at IS NULL 
+            ORDER BY p.name ASC
+        ";
+        $res = $this->db->query($query);
+        $data = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $data[] = $row;
+            }
+        }
+        return $data;
+    }
+
+    public function getProjectsWithJournalsForAccount($accountId)
+    {
+        $accountId = (int)$accountId;
+        $sql = "
+            SELECT p.id, p.name, COUNT(jd.id) as txn_count 
+            FROM journal_details jd 
+            JOIN journals j ON jd.journal_id = j.id 
+            JOIN projects p ON (COALESCE(jd.project_id, j.project_id) = p.id) 
+            WHERE jd.account_id = $accountId AND p.deleted_at IS NULL 
+            GROUP BY p.id, p.name 
+            ORDER BY p.name ASC
+        ";
+        $res = $this->db->query($sql);
+        $data = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $data[] = $row;
+            }
+        }
+        if (empty($data)) {
+            return $this->getProjectsWithJournals();
         }
         return $data;
     }

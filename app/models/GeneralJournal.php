@@ -36,12 +36,19 @@ class GeneralJournal extends Model
 
     public function getJournals($projectId = null)
     {
-        // Auto-sync any verified client payments that do not yet have a journal entry
+        // Auto-sync any verified client payments or vendor payments that do not yet have a journal entry
         $autoFile = __DIR__ . '/../services/AutoPostingService.php';
         if (file_exists($autoFile)) {
             require_once $autoFile;
             $auto = new AutoPostingService($this->db);
             $auto->syncUnpostedSalesPayments(50);
+        }
+
+        $jisFile = __DIR__ . '/../services/JournalIntegrationService.php';
+        if (file_exists($jisFile)) {
+            require_once $jisFile;
+            $jis = new \Services\JournalIntegrationService($this->db);
+            $jis->syncUnpostedVendorPayments(50);
         }
 
         $where = "WHERE 1=1";
@@ -67,12 +74,130 @@ class GeneralJournal extends Model
         return $journals;
     }
 
+    public function getProjectsWithJournals()
+    {
+        $query = "
+            SELECT DISTINCT p.id, p.name 
+            FROM projects p 
+            INNER JOIN journals j ON j.project_id = p.id 
+            WHERE p.deleted_at IS NULL 
+            ORDER BY p.name ASC
+        ";
+        $result = $this->db->query($query);
+        $projects = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $projects[] = $row;
+            }
+        }
+        return $projects;
+    }
+
+    public function getFilteredJournals($filters = [])
+    {
+        // Auto-sync any verified client payments or vendor payments
+        $autoFile = __DIR__ . '/../services/AutoPostingService.php';
+        if (file_exists($autoFile)) {
+            require_once $autoFile;
+            $auto = new AutoPostingService($this->db);
+            $auto->syncUnpostedSalesPayments(50);
+        }
+
+        $jisFile = __DIR__ . '/../services/JournalIntegrationService.php';
+        if (file_exists($jisFile)) {
+            require_once $jisFile;
+            $jis = new \Services\JournalIntegrationService($this->db);
+            $jis->syncUnpostedVendorPayments(50);
+        }
+
+        $where = "WHERE 1=1";
+
+        // Filter 1: Project Filter (Only specific project or 'head_office')
+        if (isset($filters['project_id']) && $filters['project_id'] !== '') {
+            if ($filters['project_id'] === 'head_office' || $filters['project_id'] === '0') {
+                $where .= " AND (j.project_id IS NULL OR j.project_id = 0)";
+            } else {
+                $where .= " AND j.project_id = " . (int)$filters['project_id'];
+            }
+        }
+
+        // Filter 2: Module / Category Filter
+        if (!empty($filters['module'])) {
+            $mod = $filters['module'];
+            if ($mod === 'fund_requisition') {
+                $where .= " AND (j.source_module = 'fund_requisition' OR j.narration LIKE '%Fund Requisition%' OR j.narration LIKE '%REQ-%')";
+            } elseif ($mod === 'vendor_payment') {
+                $where .= " AND (j.source_module IN ('vendor_payment', 'vendor_payment_accrual') OR j.narration LIKE '%Vendor Payment%' OR j.narration LIKE '%VPR-%')";
+            } elseif ($mod === 'contractor_bill') {
+                $where .= " AND (j.source_module IN ('contractor_bill', 'contractor_bill_accrual') OR j.narration LIKE '%Contractor%')";
+            } elseif ($mod === 'material_purchase') {
+                $where .= " AND (j.source_module IN ('material_purchase', 'procurement') OR j.narration LIKE '%Material%' OR j.narration LIKE '%Procurement%')";
+            } elseif ($mod === 'payroll') {
+                $where .= " AND (j.source_module IN ('payroll', 'salary') OR j.narration LIKE '%Salary%' OR j.narration LIKE '%Payroll%')";
+            } elseif ($mod === 'management_cashin') {
+                $where .= " AND (j.source_module IN ('management_cashin', 'investment') OR j.narration LIKE '%Management Cash In%' OR j.narration LIKE '%Investment%')";
+            } elseif ($mod === 'land_acquisition') {
+                $where .= " AND (j.source_module = 'land_requisition' OR j.narration LIKE '%Land Acquisition%' OR j.narration LIKE '%Bayana%' OR j.narration LIKE '%Registration%')";
+            } elseif ($mod === 'sales_payment') {
+                $where .= " AND (j.source_module = 'sales_payment' OR j.narration LIKE '%Client Receipt%' OR j.narration LIKE '%Booking Money%')";
+            } elseif ($mod === 'expense_voucher') {
+                $where .= " AND (j.voucher_type = 'Payment Voucher' OR j.narration LIKE '%Expense%')";
+            }
+        }
+
+        // Filter 3: Expense Sub-Type Filter (Vendor & Material Payment, Contractor Bill Payment)
+        if (!empty($filters['expense_type'])) {
+            $expType = $filters['expense_type'];
+            if ($expType === 'vendor_material' || $expType === 'vendor' || $expType === 'material') {
+                $where .= " AND (j.source_module IN ('vendor_payment', 'vendor_payment_accrual', 'material_purchase', 'procurement') OR j.narration LIKE '%Vendor%' OR j.narration LIKE '%Material%' OR j.narration LIKE '%VPR-%' OR j.id IN (SELECT DISTINCT journal_id FROM journal_details jd INNER JOIN chart_of_accounts coa ON jd.account_id = coa.id WHERE coa.account_code LIKE '5120%' OR coa.account_code LIKE '1320%' OR coa.account_code LIKE '2110%'))";
+            } elseif ($expType === 'contractor') {
+                $where .= " AND (j.source_module IN ('contractor_bill', 'contractor_bill_accrual') OR j.narration LIKE '%Contractor%' OR j.id IN (SELECT DISTINCT journal_id FROM journal_details jd INNER JOIN chart_of_accounts coa ON jd.account_id = coa.id WHERE coa.account_code LIKE '5110%' OR coa.account_code LIKE '2120%'))";
+            }
+        }
+
+        // Filter 4: Keyword Search
+        if (!empty($filters['search'])) {
+            $s = $this->db->real_escape_string(trim($filters['search']));
+            $where .= " AND (j.journal_number LIKE '%$s%' OR j.narration LIKE '%$s%' OR j.voucher_type LIKE '%$s%' OR j.id IN (
+                SELECT DISTINCT jd.journal_id FROM journal_details jd 
+                INNER JOIN chart_of_accounts coa ON jd.account_id = coa.id 
+                WHERE coa.account_name LIKE '%$s%' OR coa.account_code LIKE '%$s%' OR jd.narration LIKE '%$s%'
+            ))";
+        }
+
+        // Filter 5: Date Range
+        if (!empty($filters['date_from'])) {
+            $where .= " AND j.date >= '" . $this->db->real_escape_string($filters['date_from']) . "'";
+        }
+        if (!empty($filters['date_to'])) {
+            $where .= " AND j.date <= '" . $this->db->real_escape_string($filters['date_to']) . "'";
+        }
+
+        $query = "
+            SELECT j.*, u.user_name as created_by_name, p.name as project_name 
+            FROM journals j 
+            LEFT JOIN users u ON j.created_by = u.id 
+            LEFT JOIN projects p ON j.project_id = p.id
+            $where
+            ORDER BY j.id DESC
+        ";
+        
+        $result = $this->db->query($query);
+        $journals = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $journals[] = $row;
+            }
+        }
+        return $journals;
+    }
+
     public function generateJournalNumber()
     {
-        $query = "SELECT COUNT(id) as cnt FROM journals";
+        $query = "SELECT COALESCE(MAX(id), 0) as max_id FROM journals";
         $res = $this->db->query($query);
-        $count = $res->fetch_assoc()['cnt'];
-        return 'JV-' . date('Ym') . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+        $maxId = $res ? (int)$res->fetch_assoc()['max_id'] : 0;
+        return 'JV-' . date('Ym') . '-' . str_pad($maxId + 1, 4, '0', STR_PAD_LEFT);
     }
 
     public function storeJournal($headerData, $details, $userId)
@@ -81,13 +206,16 @@ class GeneralJournal extends Model
             $headerData['office'] = $this->getUserWorkplaceOffice($userId);
         }
 
-        $status = !empty($headerData['status']) ? $headerData['status'] : 'approved';
+        $status       = !empty($headerData['status']) ? $headerData['status'] : 'approved';
+        $sourceModule = !empty($headerData['source_module']) ? $headerData['source_module'] : null;
+        $sourceRefId  = !empty($headerData['source_ref_id']) ? (int)$headerData['source_ref_id'] : null;
+        $entryType    = !empty($headerData['entry_type']) ? $headerData['entry_type'] : null;
 
         $this->db->begin_transaction();
         try {
-            $stmt = $this->db->prepare("INSERT INTO journals (journal_number, date, voucher_type, narration, total_debit, total_credit, created_by, project_id, office, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $this->db->prepare("INSERT INTO journals (journal_number, date, voucher_type, narration, total_debit, total_credit, created_by, project_id, office, status, source_module, source_ref_id, entry_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->bind_param(
-                "ssssddiiss",
+                "ssssddiisssis",
                 $headerData['journal_number'],
                 $headerData['date'],
                 $headerData['voucher_type'],
@@ -97,7 +225,10 @@ class GeneralJournal extends Model
                 $userId,
                 $headerData['project_id'],
                 $headerData['office'],
-                $status
+                $status,
+                $sourceModule,
+                $sourceRefId,
+                $entryType
             );
 
             if (!$stmt->execute()) {

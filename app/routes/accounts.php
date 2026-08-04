@@ -87,6 +87,7 @@ return [
     'financial-dashboard/get-pending-payables' => ['controller' => 'AccountFinancialController', 'method' => 'getPendingPayables'],
 
     // General Journal
+    'general-journal' => ['controller' => 'GeneralJournalController', 'method' => 'index'],
     'general-journal/create' => ['controller' => 'GeneralJournalController', 'method' => 'create'],
     'general-journal/store' => ['controller' => 'GeneralJournalController', 'method' => 'store'],
     'general-journal/view/(\d+)' => ['controller' => 'GeneralJournalController', 'method' => 'show'],

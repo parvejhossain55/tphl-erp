@@ -37,7 +37,7 @@
         <div>
             <span class="text-muted fw-bold me-2">Voucher Type:</span> <?= htmlspecialchars($journal['voucher_type']) ?>
             <span class="mx-3 text-muted">|</span>
-            <span class="text-muted fw-bold me-2">Project:</span> <span class="badge bg-light  border fw-bold"><?= htmlspecialchars($journal['project_name'] ?: 'Head Office / General') ?></span>
+            <span class="text-muted fw-bold me-2">Project:</span> <span class="bd-badge bg-success border fw-bold"><?= htmlspecialchars($journal['project_name'] ?: 'Head Office / General') ?></span>
             <span class="mx-3 text-muted">|</span>
             <span class="text-muted fw-bold me-2">Office:</span> <?= htmlspecialchars($journal['office'] ?: 'Corporate Office') ?>
         </div>
@@ -294,3 +294,4 @@
     }
 }
 </style>
+

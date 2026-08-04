@@ -1034,10 +1034,10 @@ private function getDailyBookingMoney($startDate, $endDate, $projectId = null)
         $query = "
             SELECT 
                 DATE(purchase_confirmed_at) as transaction_date,
-                SUM(return_amount) as total_amount
+                SUM(paid_amount) as total_amount
             FROM project_extra_assets
             WHERE overall_status = 'purchased'
-            AND return_amount > 0
+            AND paid_amount > 0
             AND DATE(purchase_confirmed_at) BETWEEN ? AND ?
             GROUP BY DATE(purchase_confirmed_at)
         ";
@@ -3581,7 +3581,24 @@ private function getMonthlyBookingMoney($startDate, $endDate, $projectId = null)
             'total' => (float)($row['total'] ?? 0)
         ];
     }
-    // Add this method to CentralStatement class:
+    public function getProjects()
+    {
+        $query = "
+            SELECT DISTINCT p.id, p.name 
+            FROM projects p 
+            WHERE p.deleted_at IS NULL 
+            ORDER BY p.name ASC
+        ";
+        $res = $this->db->query($query);
+        $projects = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $projects[] = $row;
+            }
+        }
+        return $projects;
+    }
+
     public function getProjectsWithCashout($category = 'cashout')
     {
         $query = "
