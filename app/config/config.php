@@ -6,8 +6,6 @@
 
 $current_server = 3; 
 // Local Development Server
-/////////////////////////////////
-////////////////////////////////
 if ($current_server == 1) {
     return [
         "db_host" => "127.0.0.1",
