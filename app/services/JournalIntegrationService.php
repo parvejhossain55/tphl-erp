@@ -115,7 +115,10 @@ class JournalIntegrationService
             'total_debit' => $totalDebit,
             'total_credit' => $totalDebit,
             'project_id' => $projectId,
-            'office' => 'Site'
+            'office' => 'Site',
+            'source_module' => 'vendor_payment_accrual',
+            'source_ref_id' => $vprId,
+            'entry_type' => 'accrual'
         ];
 
         return $this->journalModel->storeJournal($headerData, $details, $userId);
@@ -510,7 +513,10 @@ class JournalIntegrationService
             'total_debit' => $amount,
             'total_credit' => $amount,
             'project_id' => $projectId,
-            'office' => $this->getUserWorkplaceOffice($userId)
+            'office' => $this->getUserWorkplaceOffice($userId),
+            'source_module' => 'vendor_payment',
+            'source_ref_id' => $txnId,
+            'entry_type' => 'disbursement'
         ];
 
         return $this->journalModel->storeJournal($headerData, $details, $userId);
@@ -564,5 +570,42 @@ class JournalIntegrationService
             }
         }
         return 'Site Office';
+    }
+
+    /**
+     * Auto-sync any vendor payment accruals or disbursements that do not yet have a journal entry
+     */
+    public function syncUnpostedVendorPayments($limit = 50)
+    {
+        // 1. Sync Vendor Accruals
+        $vprRes = $this->db->query("
+            SELECT vpr.id 
+            FROM vendor_payment_requests vpr
+            LEFT JOIN journals j ON (j.source_module = 'vendor_payment_accrual' AND j.source_ref_id = vpr.id)
+            WHERE vpr.status IN ('Approved', 'Partially_Paid', 'Paid', 'Fully Paid')
+              AND j.id IS NULL
+            LIMIT " . (int)$limit
+        );
+        if ($vprRes) {
+            while ($vpr = $vprRes->fetch_assoc()) {
+                $this->generateVendorAccrual((int)$vpr['id'], 1);
+            }
+        }
+
+        // 2. Sync Vendor Disbursements
+        $txnRes = $this->db->query("
+            SELECT t.id 
+            FROM con_financial_transactions t
+            LEFT JOIN journals j ON (j.source_module IN ('vendor_payment', 'disbursement') AND j.source_ref_id = t.id)
+            WHERE t.ref_type = 'vendor_payment' 
+              AND t.amount_paid > 0
+              AND j.id IS NULL
+            LIMIT " . (int)$limit
+        );
+        if ($txnRes) {
+            while ($txn = $txnRes->fetch_assoc()) {
+                $this->generateDisbursementJournal((int)$txn['id'], 1);
+            }
+        }
     }
 }

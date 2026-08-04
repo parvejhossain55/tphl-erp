@@ -80,6 +80,9 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                 <a href="<?php echo $base; ?>/print-debit-voucher?module=fund_requisition&id=<?php echo $req['id']; ?>" target="_blank" class="btn btn-outline-primary btn-sm px-3 shadow-sm">
                     <i class="fa-solid fa-file-invoice-dollar me-1"></i> Debit Voucher
                 </a>
+                <a href="<?php echo $base; ?>/general-journal" class="btn btn-outline-success btn-sm px-3 shadow-sm">
+                    <i class="fa-solid fa-book-journal-whills me-1"></i> Journal Entry
+                </a>
             <?php endif; ?>
             
             <button type="button" class="btn btn-outline-secondary btn-sm px-3 shadow-sm" onclick="window.print()">

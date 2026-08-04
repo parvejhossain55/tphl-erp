@@ -53,7 +53,7 @@ $page_title = $page_title ?? 'Vendor Payment Requests';
                                 if ($dueAmt <= 0 && $totalPaid > 0) {
                                     $statusBadge = '<span class="badge bg-success">Fully Paid</span>';
                                 } elseif ($totalPaid > 0) {
-                                    $statusBadge = '<span class="badge bg-warning text-dark">Partially Paid</span>';
+                                    $statusBadge = '<span class="badge bg-warning ">Partially Paid</span>';
                                 } else {
                                     $statusBadge = '<span class="badge bg-info text-white">Pending Payment</span>';
                                 }
@@ -124,7 +124,7 @@ $page_title = $page_title ?? 'Vendor Payment Requests';
                             <?php foreach ($requests as $req): ?>
                                 <?php
                                 $pt = $req['payment_type'] ?? 'Final';
-                                $ptClass = $pt === 'Advance' ? 'bg-primary' : ($pt === 'Partial' ? 'bg-warning text-dark' : 'bg-success');
+                                $ptClass = $pt === 'Advance' ? 'bg-primary' : ($pt === 'Partial' ? 'bg-warning ' : 'bg-success');
 
                                 $statusMap = [
                                     'Draft'          => 'warning',

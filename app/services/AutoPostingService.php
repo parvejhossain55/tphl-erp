@@ -77,10 +77,10 @@ class AutoPostingService
      */
     public function generateVoucherNumber($prefix = 'JV')
     {
-        $query = "SELECT COUNT(id) as cnt FROM journals";
+        $query = "SELECT COALESCE(MAX(id), 0) as max_id FROM journals";
         $res = $this->db->query($query);
-        $count = $res ? (int)$res->fetch_assoc()['cnt'] : 0;
-        return $prefix . '-' . date('Ym') . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+        $maxId = $res ? (int)$res->fetch_assoc()['max_id'] : 0;
+        return $prefix . '-' . date('Ym') . '-' . str_pad($maxId + 1, 4, '0', STR_PAD_LEFT);
     }
 
     /**

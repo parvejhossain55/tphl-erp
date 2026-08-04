@@ -131,7 +131,7 @@ $isNormalDebit = $ledgerData['is_normal_debit'] ?? true;
                         <option value="">All Projects</option>
                         <?php foreach ($projects as $proj): ?>
                             <option value="<?= $proj['id'] ?>" <?= ($projectId == $proj['id']) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($proj['name']) ?>
+                                <?= htmlspecialchars($proj['name']) ?><?= isset($proj['txn_count']) ? ' (' . $proj['txn_count'] . ' entries)' : '' ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

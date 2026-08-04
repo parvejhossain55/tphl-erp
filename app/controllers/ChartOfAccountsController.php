@@ -300,7 +300,7 @@ class ChartOfAccountsController extends Controller
 
         $ledgerData = $this->coaModel->getAccountLedger($id, $startDate, $endDate, $projectId, $partyId, $searchQuery);
         $parties = $this->coaModel->getAccountParties($id);
-        $projects = $this->coaModel->getProjects();
+        $projects = $this->coaModel->getProjectsWithJournalsForAccount($id);
 
         $data = [
             'page_title' => "General Ledger: " . $account['account_code'] . " - " . $account['account_name'],

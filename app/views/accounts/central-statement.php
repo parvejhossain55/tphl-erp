@@ -118,6 +118,12 @@ $contractor_bill_details = $contractor_bill_details ?? [];
         display: flex;
         flex-direction: column;
         gap: 8px;
+        min-width: 160px;
+    }
+
+    .filter-item-project {
+        min-width: 320px !important;
+        flex: 1 1 320px !important;
     }
 
     .filter-item label {
@@ -135,6 +141,13 @@ $contractor_bill_details = $contractor_bill_details ?? [];
         background: white;
         transition: all 0.2s;
         min-width: 150px;
+    }
+
+    .filter-item-project select,
+    .filter-item-project .select2-container,
+    .filter-item-project .select2-selection {
+        min-width: 320px !important;
+        width: 100% !important;
     }
 
     .filter-item select:focus,
@@ -315,12 +328,12 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                             <input type="date" name="end_date" id="endDate" class="form-control" value="<?= htmlspecialchars($end_date ?? '') ?>">
                         </div>
 
-                        <div class="filter-item">
+                        <div class="filter-item filter-item-project">
                             <label>Project</label>
-                            <select name="project_id" id="projectId" class="form-select">
-                                <option value="">All Projects</option>
+                            <select name="project_id" id="projectId" class="form-select select2" style="min-width: 320px !important; width: 100% !important;">
+                                <option value="">All Projects & Head Office</option>
                                 <?php foreach ($projects ?? [] as $project): ?>
-                                    <option value="<?= $project['id'] ?>" <?= ($project_id ?? '') == $project['id'] ? 'selected' : '' ?>>
+                                    <option value="<?= $project['id'] ?>" <?= (string)($project_id ?? '') === (string)$project['id'] ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($project['name']) ?>
                                     </option>
                                 <?php endforeach; ?>

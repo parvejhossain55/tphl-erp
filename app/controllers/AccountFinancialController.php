@@ -5,6 +5,7 @@ require_once __DIR__ . '/../models/FinancialAccount.php';
 class AccountFinancialController extends Controller
 {
     private $financialModel;
+    private $db;
 
     public function __construct($db = null)
     {
@@ -12,16 +13,26 @@ class AccountFinancialController extends Controller
             session_start();
         }
 
+        if (!$db) {
+            global $db;
+        }
+        $this->db = $db;
         $this->financialModel = new FinancialAccount($db);
     }
 
     public function index()
     {
         $projects = $this->financialModel->getProjects();
+
+        require_once __DIR__ . '/../models/GeneralJournal.php';
+        $generalJournalModel = new GeneralJournal($this->db);
+        $projectsWithJournals = $generalJournalModel->getProjectsWithJournals();
+
         $data = [
             'page_title' => "Financial Dashboard",
             'page' => "Accounts",
-            'projects' => $projects
+            'projects' => $projects,
+            'projectsWithJournals' => $projectsWithJournals
         ];
         $this->view('accounts/financial-dashboard', $data);
     }

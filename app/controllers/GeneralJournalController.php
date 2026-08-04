@@ -15,6 +15,41 @@ class GeneralJournalController extends Controller
         $this->journalModel = new GeneralJournal($db);
     }
 
+    public function index()
+    {
+        $filters = [
+            'project_id'   => $_GET['project_id'] ?? '',
+            'module'       => $_GET['module'] ?? '',
+            'expense_type' => $_GET['expense_type'] ?? '',
+            'search'       => $_GET['search'] ?? '',
+            'date_from'    => $_GET['date_from'] ?? '',
+            'date_to'      => $_GET['date_to'] ?? ''
+        ];
+
+        $projects = $this->journalModel->getProjectsWithJournals();
+        $journals = $this->journalModel->getFilteredJournals($filters);
+
+        $totalDebit = 0;
+        $totalCredit = 0;
+        foreach ($journals as $j) {
+            $totalDebit += (float)($j['total_debit'] ?? 0);
+            $totalCredit += (float)($j['total_credit'] ?? 0);
+        }
+
+        $data = [
+            'page_title' => "General Journal & Transaction Explorer",
+            'page' => "Accounts",
+            'projects' => $projects,
+            'journals' => $journals,
+            'filters' => $filters,
+            'total_debit' => $totalDebit,
+            'total_credit' => $totalCredit,
+            'journal_count' => count($journals)
+        ];
+
+        $this->view('accounts/general-journal/index', $data);
+    }
+
     public function create()
     {
         $accounts = $this->journalModel->getActiveAccounts();
@@ -85,8 +120,15 @@ class GeneralJournalController extends Controller
     public function getJournals()
     {
         header('Content-Type: application/json');
-        $projectId = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null;
-        $journals = $this->journalModel->getJournals($projectId);
+        $filters = [
+            'project_id'   => $_GET['project_id'] ?? '',
+            'module'       => $_GET['module'] ?? '',
+            'expense_type' => $_GET['expense_type'] ?? '',
+            'search'       => $_GET['search'] ?? '',
+            'date_from'    => $_GET['date_from'] ?? '',
+            'date_to'      => $_GET['date_to'] ?? ''
+        ];
+        $journals = $this->journalModel->getFilteredJournals($filters);
         echo json_encode(["data" => $journals]);
         exit;
     }

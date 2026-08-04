@@ -37,7 +37,7 @@ if ($isFullyPaid) {
     $paidStatusClass = 'bg-success';
 } elseif ($isPartiallyPaid) {
     $paidStatusLabel = 'Partially Paid';
-    $paidStatusClass = 'bg-info text-white';
+    $paidStatusClass = 'bg-info ';
 } elseif ($isAdvanceType) {
     $paidStatusLabel = 'Advance Request';
     $paidStatusClass = 'bg-primary';
@@ -58,7 +58,7 @@ $canReject = ($canApproveReq && $isSubmitted) || ($canApproveReq && $isQCApprove
 // Payment type badge
 $typeBadge = match ($request['payment_type'] ?? 'Final') {
     'Advance' => ['class' => 'bg-primary', 'label' => 'Advance'],
-    'Partial' => ['class' => 'bg-warning text-dark', 'label' => 'Partial'],
+    'Partial' => ['class' => 'bg-warning ', 'label' => 'Partial'],
     default => ['class' => 'bg-success', 'label' => 'Final'],
 };
 
@@ -423,7 +423,7 @@ if ($status === 'Draft') {
                             <?php if (!empty($materialLogs)): ?>
                                 <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> Received (<?= count($materialLogs) ?> Log<?= count($materialLogs) > 1 ? 's' : '' ?>)</span>
                             <?php else: ?>
-                                <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-circle me-1"></i> Not Received</span>
+                                <span class="badge bg-warning "><i class="bi bi-exclamation-circle me-1"></i> Not Received</span>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -565,7 +565,7 @@ if ($status === 'Draft') {
                                                 </div>
                                             </div>
                                             <?php if (!empty($doc['note'])): ?>
-                                                <p class="mb-2 text-dark" style="font-size: 14px;">
+                                                <p class="mb-2 " style="font-size: 14px;">
                                                     <?= nl2br(htmlspecialchars($doc['note'])) ?>
                                                 </p>
                                             <?php endif; ?>
@@ -619,7 +619,7 @@ if ($status === 'Draft') {
 <!-- Material Receiving Logs (GRN) Section -->
 <div class="card custom-card mb-4 border-0 shadow-sm">
     <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-        <h6 class="card-title mb-0 fw-bold text-dark">
+        <h6 class="card-title mb-0 fw-bold ">
             <i class="bi bi-boxes me-2 text-primary"></i>Material Receiving Logs (GRN)
         </h6>
         <?php if (!empty($materialLogs)): ?>
@@ -653,7 +653,7 @@ if ($status === 'Draft') {
                                 <td class="ps-3 fw-bold text-primary">GRN-<?= $ml['id'] ?></td>
                                 <td><?= date('d M Y', strtotime($ml['receiving_date'])) ?></td>
                                 <td>
-                                    <span class="badge bg-<?= $ml['received_status'] === 'Full' ? 'success' : ($ml['received_status'] === 'Partial' ? 'warning text-dark' : 'danger') ?>">
+                                    <span class="badge bg-<?= $ml['received_status'] === 'Full' ? 'success' : ($ml['received_status'] === 'Partial' ? 'warning ' : 'danger') ?>">
                                         <?= htmlspecialchars($ml['received_status']) ?>
                                     </span>
                                 </td>
@@ -924,7 +924,7 @@ if ($status === 'Draft') {
                 <h6 class="card-title mb-0"><i class="bi bi-patch-check me-2"></i>Expense Settlement & Adjustments</h6>
                 <?php if ($totalPaid > 0): ?>
                     <a href="<?= $base_url ?>/expense-adjustments/create?parent_type=vendor&cashout_request_id=<?= $request['id'] ?>&project_id=<?= $request['project_id'] ?>"
-                        class="btn btn-sm btn-primary fw-bold">
+                        class="bd-badge bg-primary fw-bold">
                         <i class="bi bi-file-earmark-plus me-1"></i> Submit Settlement
                     </a>
                 <?php endif; ?>
@@ -950,7 +950,7 @@ if ($status === 'Draft') {
                             </thead>
                             <tbody>
                                 <?php foreach ($adjustments as $adj):
-                                    $typeBadge = ($adj['adjustment_type'] === 'return') ? 'info text-dark' : 'warning text-dark';
+                                    $typeBadge = ($adj['adjustment_type'] === 'return') ? 'info ' : 'warning ';
                                     $typeLabel = ($adj['adjustment_type'] === 'return') ? 'Return' : 'Extra';
 
                                     $statusClass = match ($adj['status']) {
@@ -1145,7 +1145,7 @@ if ($status === 'Draft') {
                                 <td>VPR-<?= $pp['id'] ?></td>
                                 <td>
                                     <span
-                                        class="badge <?= $pp['payment_type'] === 'Advance' ? 'bg-primary' : ($pp['payment_type'] === 'Partial' ? 'bg-warning text-dark' : 'bg-success') ?>">
+                                        class="badge <?= $pp['payment_type'] === 'Advance' ? 'bg-primary' : ($pp['payment_type'] === 'Partial' ? 'bg-warning ' : 'bg-success') ?>">
                                         <?= $pp['payment_type'] ?>
                                     </span>
                                 </td>
