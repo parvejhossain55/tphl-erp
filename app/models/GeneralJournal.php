@@ -36,6 +36,14 @@ class GeneralJournal extends Model
 
     public function getJournals($projectId = null)
     {
+        // Auto-sync any verified client payments that do not yet have a journal entry
+        $autoFile = __DIR__ . '/../services/AutoPostingService.php';
+        if (file_exists($autoFile)) {
+            require_once $autoFile;
+            $auto = new AutoPostingService($this->db);
+            $auto->syncUnpostedSalesPayments(50);
+        }
+
         $where = "WHERE 1=1";
         if ($projectId) {
             $where .= " AND j.project_id = " . (int)$projectId;

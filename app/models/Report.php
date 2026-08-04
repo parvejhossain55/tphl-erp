@@ -193,6 +193,14 @@ class Report extends Model
      */
     public function getCashflow($dateFrom = null, $dateTo = null, $projectId = null, $office = null)
     {
+        // Auto-sync any verified client payments that do not yet have a journal entry
+        $autoFile = __DIR__ . '/../services/AutoPostingService.php';
+        if (file_exists($autoFile)) {
+            require_once $autoFile;
+            $auto = new AutoPostingService($this->db);
+            $auto->syncUnpostedSalesPayments(50);
+        }
+
         $where = "WHERE (LOWER(j.approval_status) IN ('approved', 'posted') OR LOWER(j.status) IN ('approved', 'posted'))";
         $params = [];
         $types = '';
