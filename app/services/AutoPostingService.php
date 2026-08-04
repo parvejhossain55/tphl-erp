@@ -574,4 +574,54 @@ class AutoPostingService
 
         return $generalJournalModel->storeJournal($headerData, $details, $userId);
     }
+
+    /**
+     * Auto-sync any verified sales/client payments that do not yet have a journal entry
+     */
+    public function syncUnpostedSalesPayments($limit = 50)
+    {
+        $res = $this->db->query("
+            SELECT lp.*, lb.project_id, lb.lead_id, l.full_name as client_name
+            FROM lead_payments lp
+            LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id
+            LEFT JOIN leads l ON lb.lead_id = l.id
+            LEFT JOIN journals j ON (j.source_module = 'sales_payment' AND j.source_ref_id = lp.id)
+            WHERE (lp.verification_status = 'verified' OR lp.payment_status = 'verified') 
+              AND lp.amount > 0 
+              AND j.id IS NULL
+            LIMIT " . (int)$limit
+        );
+
+        if (!$res || $res->num_rows === 0) {
+            return 0;
+        }
+
+        $count = 0;
+        while ($p = $res->fetch_assoc()) {
+            $paymentId = (int)$p['id'];
+            $methodLower = strtolower(trim($p['payment_method'] ?? 'cash'));
+            $bankNameStr = $p['bank_name'] ?? ($p['bank'] ?? '');
+            $bankAccId   = $this->getBankOrCashAccountId($methodLower, $bankNameStr);
+            $clientName  = !empty($p['client_name']) ? $p['client_name'] : ("Lead #" . ($p['lead_id'] ?? 'N/A'));
+
+            $narr = "Client Receipt (" . $p['payment_type'] . "): " . strtoupper(str_replace('_', ' ', $p['payment_type'])) . " from " . $clientName;
+            if (!empty($p['transaction_ref'])) {
+                $narr .= " (Ref: " . $p['transaction_ref'] . ")";
+            }
+
+            if ($this->postSalesPaymentEntry(
+                $paymentId,
+                $bankAccId,
+                (float)$p['amount'],
+                $p['payment_type'],
+                $narr,
+                $p['project_id'],
+                $p['lead_id'],
+                $p['created_by'] ?: 1
+            )) {
+                $count++;
+            }
+        }
+        return $count;
+    }
 }

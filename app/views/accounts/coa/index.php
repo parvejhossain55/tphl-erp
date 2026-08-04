@@ -6,7 +6,7 @@
     <!-- Header Area -->
     <div class="row mb-4 align-items-center">
         <div class="col-md-6">
-            <h2 class="mb-1 text-dark fw-bold">
+            <h2 class="mb-1  fw-bold">
                 <i class="fa-solid fa-sitemap text-primary me-2"></i> Chart of Accounts
             </h2>
             <p class="text-muted mb-0">Standard 4-Tier Real Estate General Ledger Accounts Hierarchy (Assets, Liabilities, Equity, Revenue, Expenses)</p>
@@ -24,57 +24,57 @@
     <!-- Quick Info Cards -->
     <div class="row mb-4">
         <div class="col-md-20 col-sm-6" style="width: 20%;">
-            <div class="card border-0 shadow-sm bg-primary text-white p-3 rounded-3">
+            <div class="card border-0 shadow-sm bg-primary  p-3 rounded-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <small class="text-white-50 text-uppercase fw-bold">1000 Assets</small>
+                        <small class=" text-uppercase fw-bold">1000 Assets</small>
                         <h5 class="mb-0 fw-bold">সম্পদসমূহ</h5>
                     </div>
-                    <i class="fa-light fa-building-columns fa-2x text-white-50"></i>
+                    <i class="fa-light fa-building-columns fa-2x "></i>
                 </div>
             </div>
         </div>
         <div class="col-md-20 col-sm-6" style="width: 20%;">
-            <div class="card border-0 shadow-sm bg-danger text-white p-3 rounded-3">
+            <div class="card border-0 shadow-sm bg-danger  p-3 rounded-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <small class="text-white-50 text-uppercase fw-bold">2000 Liabilities</small>
+                        <small class=" text-uppercase fw-bold">2000 Liabilities</small>
                         <h5 class="mb-0 fw-bold">দায়সমূহ</h5>
                     </div>
-                    <i class="fa-light fa-scale-unbalanced fa-2x text-white-50"></i>
+                    <i class="fa-light fa-scale-unbalanced fa-2x "></i>
                 </div>
             </div>
         </div>
         <div class="col-md-20 col-sm-6" style="width: 20%;">
-            <div class="card border-0 shadow-sm bg-success text-white p-3 rounded-3">
+            <div class="card border-0 shadow-sm bg-success  p-3 rounded-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <small class="text-white-50 text-uppercase fw-bold">3000 Equity</small>
+                        <small class=" text-uppercase fw-bold">3000 Equity</small>
                         <h5 class="mb-0 fw-bold">মূলধন</h5>
                     </div>
-                    <i class="fa-light fa-coins fa-2x text-white-50"></i>
+                    <i class="fa-light fa-coins fa-2x "></i>
                 </div>
             </div>
         </div>
         <div class="col-md-20 col-sm-6" style="width: 20%;">
-            <div class="card border-0 shadow-sm bg-info text-white p-3 rounded-3">
+            <div class="card border-0 shadow-sm bg-info  p-3 rounded-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <small class="text-white-50 text-uppercase fw-bold">4000 Revenue</small>
+                        <small class=" text-uppercase fw-bold">4000 Revenue</small>
                         <h5 class="mb-0 fw-bold">রাজস্ব ও ইনকাম</h5>
                     </div>
-                    <i class="fa-light fa-chart-line-up fa-2x text-white-50"></i>
+                    <i class="fa-light fa-chart-line-up fa-2x "></i>
                 </div>
             </div>
         </div>
         <div class="col-md-20 col-sm-6" style="width: 20%;">
-            <div class="card border-0 shadow-sm bg-warning text-dark p-3 rounded-3">
+            <div class="card border-0 shadow-sm bg-warning  p-3 rounded-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <small class="text-dark-50 text-uppercase fw-bold">5000 Expenses</small>
+                        <small class=" text-uppercase fw-bold">5000 Expenses</small>
                         <h5 class="mb-0 fw-bold">ব্যয় ও খরচ</h5>
                     </div>
-                    <i class="fa-light fa-file-invoice-dollar fa-2x text-dark-50"></i>
+                    <i class="fa-light fa-file-invoice-dollar fa-2x "></i>
                 </div>
             </div>
         </div>
@@ -118,30 +118,30 @@
                             
                             $levelBadge = match($level) {
                                 'main' => '<span class="badge bg-primary px-2 py-1"><i class="fa-solid fa-folder me-1"></i>MAIN</span>',
-                                'sub' => '<span class="badge bg-info text-dark px-2 py-1"><i class="fa-solid fa-folder-open me-1"></i>SUB</span>',
-                                'parent' => '<span class="badge bg-warning text-dark px-2 py-1"><i class="fa-solid fa-sitemap me-1"></i>PARENT</span>',
+                                'sub' => '<span class="badge bg-info  px-2 py-1"><i class="fa-solid fa-folder-open me-1"></i>SUB</span>',
+                                'parent' => '<span class="badge bg-warning  px-2 py-1"><i class="fa-solid fa-sitemap me-1"></i>PARENT</span>',
                                 default => '<span class="badge bg-secondary px-2 py-1"><i class="fa-solid fa-file me-1"></i>LEDGER</span>'
                             };
 
                             $typeBadge = match($rootType) {
-                                'asset' => '<span class="badge bg-primary text-white">Asset</span>',
-                                'liability' => '<span class="badge bg-danger text-white">Liability</span>',
-                                'equity' => '<span class="badge bg-success text-white">Equity</span>',
-                                'income', 'revenue' => '<span class="badge bg-info text-dark">Revenue</span>',
-                                'expense' => '<span class="badge bg-warning text-dark">Expense</span>',
+                                'asset' => '<span class="badge bg-primary ">Asset</span>',
+                                'liability' => '<span class="badge bg-danger ">Liability</span>',
+                                'equity' => '<span class="badge bg-success ">Equity</span>',
+                                'income', 'revenue' => '<span class="badge bg-info ">Revenue</span>',
+                                'expense' => '<span class="badge bg-warning ">Expense</span>',
                                 default => '<span class="badge bg-dark">'.ucfirst($rootType).'</span>'
                             };
                             
                             $indent = match($level) {
                                 'main' => 'fw-bold text-primary fs-6',
-                                'sub' => 'ps-3 fw-bold text-dark',
-                                'parent' => 'ps-4 text-dark',
+                                'sub' => 'ps-3 fw-bold ',
+                                'parent' => 'ps-4 ',
                                 default => 'ps-5 text-secondary'
                             };
                         ?>
                         <tr>
                             <td>
-                                <span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-6">
+                                <span class="badge bg-light  font-monospace border px-2 py-1 fs-6">
                                     <?= htmlspecialchars($acc['account_code']) ?>
                                 </span>
                             </td>
