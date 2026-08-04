@@ -4,6 +4,7 @@
 // 2 = Project staging Server
 // 3 = Production Server
 
+
 $current_server = 3; 
 // Local Development Server
 if ($current_server == 1) {
@@ -73,7 +74,6 @@ if ($current_server == 2) {
 }
 
 // Production Serve
-
 if ($current_server == 3) {
     return [
         "db_host" => "127.0.0.1",

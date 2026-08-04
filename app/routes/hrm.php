@@ -250,4 +250,5 @@ return [
     'auto-generate-payslip'              => ['controller' => 'PayrollController', 'method' => 'showAutoGenerateForm'],
     'api/payroll/department-attendance'  => ['controller' => 'PayrollController', 'method' => 'getDepartmentAttendance'],
     'store-bulk-payslips'                => ['controller' => 'PayrollController', 'method' => 'storeBulkPayslips'],
+    'disburse-batch-payslips'            => ['controller' => 'PayrollController', 'method' => 'disburseBatch'],
 ];

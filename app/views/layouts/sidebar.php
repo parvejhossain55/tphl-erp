@@ -1398,13 +1398,6 @@
                             <span class="sidebar__menu-label">Chart of Accounts (COA)</span>
                         </a>
                     </li>
-                    <li class="slide <?= isActive('general-journal', $current_route) ?>">
-                        <a href="<?= $base_url ?>/general-journal"
-                            class="sidebar__menu-item <?= isActive('general-journal', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-book-journal-whills text-primary"></i></div>
-                            <span class="sidebar__menu-label">General Journal Explorer</span>
-                        </a>
-                    </li>
                     <li class="slide <?= isActive('reports/trial-balance', $current_route) ?>">
                         <a href="<?= $base_url ?>/reports/trial-balance"
                             class="sidebar__menu-item <?= isActive('reports/trial-balance', $current_route) ?>">

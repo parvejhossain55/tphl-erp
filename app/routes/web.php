@@ -198,5 +198,6 @@ return [
     // Controller: ApprovalRequestController (All Approval Requests Dashboard)
     // =========================================================================
     'all-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'allApprovalRequests'],
+    'batch-process-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'batchProcessApprovalRequests'],
 ];
 

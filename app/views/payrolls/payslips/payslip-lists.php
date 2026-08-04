@@ -253,10 +253,38 @@ $show_breadcrumb = true;
                 </div>
             </div>
             <div id="lwpDebugBanner" class="alert alert-warning py-2 px-3 mb-3 d-none fs-12 fw-bold" style="font-family: monospace;"></div>
+            <!-- Accounts Payroll Disbursement Action Bar -->
+            <div class="card p-3 mb-3 border-success bg-light animate__animated animate__fadeIn">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fa-light fa-building-columns text-success fs-4"></i>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark">Accounts Payroll Disbursement & Journal Posting</h6>
+                            <small class="text-muted">Select un-disbursed payslips below, choose payment account & disburse in 1 click.</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <label class="form-label mb-0 fw-bold fs-13">Paying Bank/Cash:</label>
+                        <select id="disburse_bank_account_id" class="form-select form-select-sm" style="min-width: 220px;">
+                            <option value="0">Petty Cash / Cash Account</option>
+                            <?php foreach ($companyBanks as $bank): ?>
+                                <option value="<?= $bank['id'] ?>">
+                                    <?= htmlspecialchars($bank['bank_name']) ?> - <?= htmlspecialchars($bank['account_number']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="button" class="btn btn-success btn-sm px-3 fw-bold" onclick="disburseSelectedPayroll()">
+                            <i class="fa-light fa-money-check-dollar me-1"></i> Disburse Selected & Post Journal
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div class="table__wrapper table-responsive">
                 <table class="table hover mb-20" id="payslipListTable">
                     <thead>
                         <tr class="table__title">
+                            <th><input type="checkbox" id="selectAllPayslips" onclick="toggleSelectAllPayslips(this)"></th>
                             <th>SL</th>
                             <th class="th_1">Employee</th>
                             <th>Designation</th>
@@ -275,6 +303,7 @@ $show_breadcrumb = true;
                         <?php foreach ($payslips as $payslip): ?>
                             <?php if ($payslip['status'] == 'draft') continue; ?>
                             <tr>
+                                <td><input type="checkbox" class="payslip-checkbox" value="<?= $payslip['id'] ?>" <?= $payslip['status'] == 'paid' ? 'disabled' : '' ?>></td>
                                 <td><?= $sl++ ?></td>
                                 <td class="td_1">
                                     <span class="table-avatar">
@@ -944,6 +973,53 @@ $show_breadcrumb = true;
         }
 
     });
+
+    function toggleSelectAllPayslips(master) {
+        document.querySelectorAll('.payslip-checkbox:not(:disabled)').forEach(cb => {
+            cb.checked = master.checked;
+        });
+    }
+
+    function disburseSelectedPayroll() {
+        const selectedIds = [];
+        document.querySelectorAll('.payslip-checkbox:checked').forEach(cb => {
+            selectedIds.push(cb.value);
+        });
+
+        if (selectedIds.length === 0) {
+            alert('Please select at least one payslip to disburse.');
+            return;
+        }
+
+        const bankSelect = document.getElementById('disburse_bank_account_id');
+        const bankId = bankSelect.value;
+        const bankText = bankSelect.options[bankSelect.selectedIndex].text;
+
+        if (!confirm(`Are you sure you want to disburse ${selectedIds.length} selected payslips via [${bankText}]?\n\nThis will mark the payslips as PAID and automatically post 1 Batch Accounting Journal Entry in General Journal.`)) {
+            return;
+        }
+
+        fetch('<?= $GLOBALS['base_url'] ?>/disburse-batch-payslips', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                payslip_ids: selectedIds,
+                bank_account_id: bankId
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                window.location.reload();
+            } else {
+                alert(data.message || 'Failed to disburse payroll.');
+            }
+        })
+        .catch(err => {
+            alert('Error disbursing payroll: ' + err);
+        });
+    }
 </script>
 
 <style>

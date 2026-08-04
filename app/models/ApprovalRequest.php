@@ -328,6 +328,26 @@ class ApprovalRequest extends Model
         $sourceTable = $request['source_table'];
         $sourceId    = (int) $request['source_id'];
 
+        if ($sourceTable === 'payslips' && strtolower($request['approve_role'] ?? '') === 'hr' && $status === 'approved') {
+            // Update payslip hr_status
+            $this->db->query("UPDATE payslips SET hr_status = 'approved' WHERE id = {$sourceId}");
+            
+            // Forward to management for final approval
+            $sqlForward = "UPDATE {$this->table}
+                SET 
+                    approve_role = 'management',
+                    status = 'pending',
+                    approved_amount = NULL,
+                    approved_by = NULL,
+                    approval_note = ?,
+                    approved_at = NULL
+                WHERE id = ?";
+            $stmtForward = $this->db->prepare($sqlForward);
+            $hrNote = "Approved by HR. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('si', $hrNote, $id);
+            return $stmtForward->execute();
+        }
+
         if ($sourceTable === 'vendor_payment_requests' && strpos(strtolower($request['approve_role'] ?? ''), 'purchase team leader') !== false && $status === 'approved') {
             // Forward to management instead of marking as approved
             $sqlForward = "UPDATE {$this->table}
@@ -436,6 +456,12 @@ class ApprovalRequest extends Model
             $updateFields[] = "approval_status = ?";
             $types .= 's';
             $params[] = $sourceStatus;
+        } elseif ($sourceTable === 'payslips') {
+            if ($status === 'approved') {
+                $updateFields[] = "mgmt_status = 'approved', hr_status = 'approved'";
+            } else {
+                $updateFields[] = "mgmt_status = 'rejected', hr_status = 'rejected'";
+            }
         } elseif (in_array('status', $columns)) {
             $updateFields[] = "status = ?";
             $types .= 's';

@@ -139,13 +139,40 @@
             </form>
         </div>
 
+        <!-- Bulk Action & Page Length Bar -->
+        <div class="p-3 bg-light border-bottom d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary fs-12 px-3 py-2" id="selectedApprovalCountBadge">0 Selected</span>
+                <button type="button" class="btn btn-sm btn-success fw-bold px-3" onclick="processBulkApprovalAction('approve')">
+                    <i class="fa-solid fa-circle-check me-1"></i> Bulk Approve Selected
+                </button>
+                <button type="button" class="btn btn-sm btn-danger fw-bold px-3" onclick="processBulkApprovalAction('reject')">
+                    <i class="fa-solid fa-circle-xmark me-1"></i> Bulk Reject Selected
+                </button>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <label class="form-label mb-0 fs-13 fw-bold text-muted">Rows per page:</label>
+                <select id="approvalPageLengthSelect" class="form-select form-select-sm" style="width: 110px;" onchange="changeApprovalTablePageLength(this.value)">
+                    <option value="25" selected>25 Rows</option>
+                    <option value="50">50 Rows</option>
+                    <option value="70">70 Rows</option>
+                    <option value="100">100 Rows</option>
+                    <option value="200">200 Rows</option>
+                    <option value="-1">All Rows</option>
+                </select>
+            </div>
+        </div>
+
         <!-- Approval History Table -->
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-hover align-middle mb-0" id="allApprovalRequestsTable">
                     <thead class="bg-light text-muted extra-small text-uppercase">
                         <tr>
-                            <th class="ps-4">Req # & Date</th>
+                            <th class="ps-3" style="width: 40px;">
+                                <input type="checkbox" id="masterApprovalCheckbox" class="form-check-input" onclick="toggleSelectAllApprovalRequests(this)">
+                            </th>
+                            <th>Req # & Date</th>
                             <th>Department & Module</th>
                             <th>Purpose / Title</th>
                             <th>Requested By</th>
@@ -190,8 +217,11 @@
                                     }
                                 ?>
                                 <tr>
+                                    <td class="ps-3">
+                                        <input type="checkbox" class="approval-req-checkbox form-check-input" value="<?= $req['id'] ?>" <?= $req['status'] !== 'pending' ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
+                                    </td>
                                     <!-- Req # & Date -->
-                                    <td class="ps-4">
+                                    <td>
                                         <span class="fw-bold text-dark d-block">#REQ-<?= str_pad($req['id'], 5, '0', STR_PAD_LEFT) ?></span>
                                         <span class="text-muted extra-small"><?= date('d M, Y', strtotime($req['requested_at'])) ?></span>
                                     </td>
@@ -332,3 +362,91 @@
         </div>
     </div>
 </div>
+
+<script>
+let approvalTable;
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof $.fn.DataTable !== 'undefined') {
+        if ($.fn.DataTable.isDataTable('#allApprovalRequestsTable')) {
+            $('#allApprovalRequestsTable').DataTable().destroy();
+        }
+        approvalTable = $('#allApprovalRequestsTable').DataTable({
+            pageLength: 25,
+            lengthMenu: [[25, 50, 70, 100, 200, -1], [25, 50, 70, 100, 200, "All"]],
+            order: [],
+            dom: '<"d-flex justify-content-between align-items-center p-3"f>rt<"d-flex justify-content-between align-items-center p-3"ip>',
+            language: {
+                search: "_INPUT_",
+                searchPlaceholder: "Search approval requests..."
+            }
+        });
+    }
+});
+
+function changeApprovalTablePageLength(val) {
+    if (approvalTable) {
+        approvalTable.page.len(parseInt(val)).draw();
+    }
+}
+
+function toggleSelectAllApprovalRequests(master) {
+    const rows = approvalTable ? approvalTable.rows({ search: 'applied' }).nodes() : document.querySelectorAll('#allApprovalRequestsTable tbody tr');
+    $(rows).find('.approval-req-checkbox:not(:disabled)').prop('checked', master.checked);
+    updateBulkApprovalCount();
+}
+
+function getCheckedApprovalCheckboxes() {
+    if (approvalTable) {
+        return approvalTable.$('.approval-req-checkbox:checked');
+    }
+    return $('.approval-req-checkbox:checked');
+}
+
+function updateBulkApprovalCount() {
+    const checkedCount = getCheckedApprovalCheckboxes().length;
+    const badge = document.getElementById('selectedApprovalCountBadge');
+    if (badge) {
+        badge.innerText = checkedCount + ' Selected';
+    }
+}
+
+function processBulkApprovalAction(action) {
+    const selectedIds = [];
+    getCheckedApprovalCheckboxes().each(function() {
+        selectedIds.push($(this).val());
+    });
+
+    if (selectedIds.length === 0) {
+        alert('Please select at least one pending approval request.');
+        return;
+    }
+
+    const actionTitle = action === 'reject' ? 'REJECT' : 'APPROVE';
+    if (!confirm(`Are you sure you want to BULK ${actionTitle} ${selectedIds.length} selected request(s)?`)) {
+        return;
+    }
+
+    fetch('<?= $base_url ?>/batch-process-approval-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            request_ids: selectedIds,
+            action: action,
+            note: 'Bulk ' + actionTitle + ' from Management All Approval Requests Dashboard'
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert(data.message || 'Failed to process bulk approval.');
+        }
+    })
+    .catch(err => {
+        alert('Error processing bulk approval: ' + err);
+    });
+}
+</script>

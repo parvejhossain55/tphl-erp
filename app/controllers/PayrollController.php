@@ -760,4 +760,146 @@ class PayrollController extends Controller
             exit;
         }
     }
+
+    public function disburseBatch()
+    {
+        header('Content-Type: application/json');
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $input = file_get_contents('php://input');
+        $payload = json_decode($input, true);
+
+        if (empty($payload) || empty($payload['payslip_ids']) || !is_array($payload['payslip_ids'])) {
+            echo json_encode(['success' => false, 'message' => 'No payslips selected for disbursement.']);
+            exit;
+        }
+
+        $bankAccountId = (int)($payload['bank_account_id'] ?? 0);
+        $payslipIds = array_map('intval', $payload['payslip_ids']);
+        $userId = $_SESSION['user']['id'] ?? 1;
+
+        if (empty($payslipIds)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid payslips selected.']);
+            exit;
+        }
+
+        $this->db->begin_transaction();
+
+        try {
+            // Fetch payslips to disburse
+            $placeholders = implode(',', array_fill(0, count($payslipIds), '?'));
+            $stmt = $this->db->prepare("
+                SELECT p.*, e.full_name as employee_name
+                FROM payslips p
+                LEFT JOIN employees e ON p.employee_id = e.id
+                WHERE p.id IN ($placeholders) AND (p.status != 'paid' OR p.payment_status != 'paid')
+            ");
+            $types = str_repeat('i', count($payslipIds));
+            $stmt->bind_param($types, ...$payslipIds);
+            $stmt->execute();
+            $payslipsToPay = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+
+            if (empty($payslipsToPay)) {
+                echo json_encode(['success' => false, 'message' => 'Selected payslips are already paid or invalid.']);
+                exit;
+            }
+
+            // Get bank details or default cash
+            $bankName = 'Cash Account';
+            $bankCoaId = 1001; // Petty Cash Account
+            if ($bankAccountId > 0) {
+                $stmtBank = $this->db->prepare("SELECT bank_name, account_name, account_number FROM company_bank_accounts WHERE id = ?");
+                $stmtBank->bind_param("i", $bankAccountId);
+                $stmtBank->execute();
+                $bankRes = $stmtBank->get_result()->fetch_assoc();
+                $stmtBank->close();
+                if ($bankRes) {
+                    $bankName = $bankRes['bank_name'] . ' (' . $bankRes['account_number'] . ')';
+                    $bankCoaId = 1002; // Dutch Bangla Bank / Bank Account
+                }
+            }
+
+            // Calculate total net salary sum & determine month
+            $totalAmount = 0;
+            $monthText = date('F Y');
+            $sampleDate = date('Y-m-d');
+            foreach ($payslipsToPay as $p) {
+                $totalAmount += (float)$p['net_salary'];
+                if (!empty($p['payslip_month'])) {
+                    $monthText = date('F Y', strtotime($p['payslip_month']));
+                    $sampleDate = date('Y-m-t', strtotime($p['payslip_month']));
+                }
+            }
+
+            // 1. Create 1 Batch Journal Entry in 'journals'
+            $journalNum = 'JRN-PAYROLL-' . date('Ym', strtotime($sampleDate)) . '-' . rand(100, 999);
+            $narration = "Payroll Disbursement for $monthText via $bankName (Count: " . count($payslipsToPay) . " payslips)";
+            
+            $stmtJ = $this->db->prepare("
+                INSERT INTO journals 
+                (journal_number, date, voucher_type, narration, total_debit, total_credit, status, created_by, created_at, source_module, source_ref_id, entry_type, approval_status)
+                VALUES (?, ?, ?, ?, ?, ?, 'posted', ?, NOW(), 'payroll', 0, 'disbursement', 'approved')
+            ");
+            $voucherType = 'Payment';
+            $stmtJ->bind_param("ssssddi", $journalNum, $sampleDate, $voucherType, $narration, $totalAmount, $totalAmount, $userId);
+            $stmtJ->execute();
+            $journalId = $stmtJ->insert_id;
+            $stmtJ->close();
+
+            // 2. Insert Debit & Credit details in 'journal_details'
+            // Debit: Salaries & Payroll Expense (account_id = 503)
+            $salaryCoaId = 503;
+            $stmtD1 = $this->db->prepare("
+                INSERT INTO journal_details (journal_id, account_id, debit, credit, narration)
+                VALUES (?, ?, ?, 0.00, ?)
+            ");
+            $narrDebit = "Salaries & Payroll Expense for $monthText";
+            $stmtD1->bind_param("iids", $journalId, $salaryCoaId, $totalAmount, $narrDebit);
+            $stmtD1->execute();
+            $stmtD1->close();
+
+            // Credit: Bank / Cash Account
+            $stmtD2 = $this->db->prepare("
+                INSERT INTO journal_details (journal_id, account_id, debit, credit, narration)
+                VALUES (?, ?, 0.00, ?, ?)
+            ");
+            $narrCredit = "Disbursed via $bankName for $monthText Payroll";
+            $stmtD2->bind_param("iids", $journalId, $bankCoaId, $totalAmount, $narrCredit);
+            $stmtD2->execute();
+            $stmtD2->close();
+
+            // 3. Update payslips status to PAID & link journal_voucher_id
+            $stmtUpd = $this->db->prepare("
+                UPDATE payslips 
+                SET status = 'paid', payment_status = 'paid', hr_status = 'approved', mgmt_status = 'approved',
+                    bank_account_id = ?, disbursed_by = ?, disbursed_at = NOW(), journal_voucher_id = ?
+                WHERE id = ?
+            ");
+            foreach ($payslipsToPay as $p) {
+                $stmtUpd->bind_param("iiii", $bankAccountId, $userId, $journalId, $p['id']);
+                $stmtUpd->execute();
+            }
+            $stmtUpd->close();
+
+            $this->db->commit();
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Successfully disbursed ' . count($payslipsToPay) . ' payslips (Total: ৳' . number_format($totalAmount, 2) . ') and posted Journal Entry (' . $journalNum . ').',
+                'journal_number' => $journalNum,
+                'disbursed_count' => count($payslipsToPay),
+                'total_amount' => $totalAmount
+            ]);
+            exit;
+
+        } catch (Exception $e) {
+            $this->db->rollback();
+            echo json_encode(['success' => false, 'message' => 'Disbursement failed: ' . $e->getMessage()]);
+            exit;
+        }
+    }
 }
