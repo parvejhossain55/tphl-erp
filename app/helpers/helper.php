@@ -245,6 +245,7 @@ function redirectByRole()
             $url = "{$GLOBALS['base_url']}/estimator-dashboard";
             break;
         case 20: // Operations Manager
+        case 32: // Admin Operation
             $url = "{$GLOBALS['base_url']}/operations-dashboard";
             break;
         case 21: // structural designer
@@ -1126,4 +1127,43 @@ function checkTipsoiEmployeeMatch($db)
 function isAccountsHead(): bool
 {
     return isset($_SESSION['user']['role_id']) && (int)$_SESSION['user']['role_id'] === 30;
+}
+
+/**
+ * Check if the currently logged-in user is Admin Operation (Role ID 32)
+ */
+function isAdminOperation(): bool
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    return isset($_SESSION['user']['role_id']) && (int)$_SESSION['user']['role_id'] === 32;
+}
+
+/**
+ * Check if the currently logged-in user is an Operation role (Role ID 20 or 32)
+ */
+function isOperationRole(): bool
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+    return in_array($roleId, [20, 32], true);
+}
+
+/**
+ * Check if the current user can approve operational processes.
+ * Returns false for Role ID 32 (Admin Operation), true otherwise.
+ */
+function canApproveProcess(): bool
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+    if ($roleId === 32) {
+        return false;
+    }
+    return true;
 }

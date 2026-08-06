@@ -87,7 +87,7 @@ class FinancialAccount extends Model
         $q2 = "SELECT id as voucher_id, CONCAT('FR-', id) as voucher_no, 'Fund Requisition' as module_type, 'fund_requisition' as source_module,
                       created_at as entry_date, requested_by as added_by, amount, purpose as narration, status, project_id
                FROM fund_requisitions 
-               WHERE status = 'approved' $pWhere";
+               WHERE status = 'approved' AND (due_amount IS NULL OR due_amount > 0) $pWhere";
         $r2 = $this->db->query($q2);
         if ($r2) while ($row = $r2->fetch_assoc()) $data[] = $row;
 
@@ -95,7 +95,8 @@ class FinancialAccount extends Model
         $q3 = "SELECT id as voucher_id, CONCAT('CO-', id) as voucher_no, 'Cashout Request' as module_type, 'cashout_request' as source_module,
                       created_at as entry_date, 1 as added_by, amount, 'Cashout Request' as narration, status, project_id
                FROM cashout_requests 
-               WHERE status = 'approved' $pWhere";
+               WHERE status NOT IN ('fully_paid', 'paid', 'rejected', 'pending') 
+                 AND (due_amount IS NULL OR due_amount > 0) $pWhere";
         $r3 = $this->db->query($q3);
         if ($r3) while ($row = $r3->fetch_assoc()) $data[] = $row;
 
@@ -103,7 +104,8 @@ class FinancialAccount extends Model
         $q4 = "SELECT id as voucher_id, CONCAT('VP-', id) as voucher_no, 'Vendor Bill' as module_type, 'vendor_payment' as source_module,
                       created_at as entry_date, created_by as added_by, invoice_amount as amount, payment_type as narration, status, project_id
                FROM vendor_payment_requests 
-               WHERE status = 'approved' $pWhere";
+               WHERE status NOT IN ('fully_paid', 'paid', 'rejected', 'pending')
+                 AND (due_amount IS NULL OR due_amount > 0) $pWhere";
         $r4 = $this->db->query($q4);
         if ($r4) while ($row = $r4->fetch_assoc()) $data[] = $row;
 
@@ -111,7 +113,8 @@ class FinancialAccount extends Model
         $q5 = "SELECT id as voucher_id, CONCAT('CB-', id) as voucher_no, 'Contractor Bill' as module_type, 'contractor_bill' as source_module,
                       created_at as entry_date, created_by as added_by, bill_amount as amount, work_description as narration, status, project_id
                FROM contractor_bill_requests 
-               WHERE status = 'approved' $pWhere";
+               WHERE status NOT IN ('fully_paid', 'paid', 'rejected', 'pending')
+                 AND (due_amount IS NULL OR due_amount > 0) $pWhere";
         $r5 = $this->db->query($q5);
         if ($r5) while ($row = $r5->fetch_assoc()) $data[] = $row;
 

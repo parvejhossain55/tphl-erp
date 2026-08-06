@@ -39,7 +39,7 @@ class Con_PurchaseRequestController extends Controller
         $userId   = (int)($_SESSION['user']['id'] ?? 0);
 
         // Approver & Procurement roles see ALL PRs; regular creators only see their own PRs
-        $approverRoles = [1, 2, 3, 6, 13, 15, 17, 20, 22, 23, 24, 25, 30, 31];
+        $approverRoles = [1, 2, 3, 6, 13, 15, 17, 20, 22, 23, 24, 25, 30, 31, 32];
         $isApprover    = in_array($userRole, $approverRoles);
         $createdBy     = !$isApprover ? $userId : null;
 
@@ -73,7 +73,7 @@ class Con_PurchaseRequestController extends Controller
         $userId   = (int)($_SESSION['user']['id'] ?? 0);
 
         // Block management and approver roles from creating PRs
-        if (in_array($userRole, [1, 3, 15, 20, 22])) {
+        if (in_array($userRole, [1, 3, 15, 20, 22, 32])) {
             setError('You do not have permission to create Purchase Requests. You can only approve them.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -179,7 +179,7 @@ class Con_PurchaseRequestController extends Controller
 
     public function store()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22, 32])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;

@@ -611,7 +611,7 @@ class Con_DashboardController extends Controller
         $userId = $_SESSION['user']['id'] ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
         $baseFilter = "{$alias}.under_construction = 1";
-        if (in_array($roleId, [1, 3, 20, 22])) return $baseFilter;
+        if (in_array($roleId, [1, 3, 20, 22, 32])) return $baseFilter;
         return "{$baseFilter} AND ({$alias}.pm_id = {$userId} OR {$alias}.site_engineer_id = {$userId} OR {$alias}.landman_id = {$userId} OR {$alias}.struct_engineer_id = {$userId} OR {$alias}.operation_head_id = {$userId} OR {$alias}.draftsman_id = {$userId} OR {$alias}.architect_id = {$userId} OR {$alias}.estimator_id = {$userId} OR {$alias}.qc_id = {$userId} OR {$alias}.operator_id = {$userId} OR {$alias}.created_by = {$userId})";
     }
 
@@ -1887,6 +1887,16 @@ $project = $stmt->get_result()->fetch_assoc();
             WHERE status IN ('pending', 'dept_approved')
         ");
         $pendingFundRequisitions = $rFRCount ? (int)$rFRCount->fetch_assoc()['c'] : 0;
+
+        // Role 32 (Admin Operation) cannot approve processes — clear approval counts & lists
+        if ($roleId === 32) {
+            $prsForApproval = [];
+            $posForApproval = [];
+            $pendingWorkOrders = [];
+            $prsCount = 0;
+            $posCount = 0;
+            $wosCount = 0;
+        }
 
         return $this->view('phase2/dashboard/operations-dashboard', [
             'current_route'         => 'operations-dashboard',

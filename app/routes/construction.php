@@ -195,6 +195,7 @@ return [
     'con-monthly-target-delete/(\d+)' => ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'deleteTarget'],
     'con-monthly-worktypes' => ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'ajaxWorkTypes'],
     'con-project-plan-targets' => ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'siteEngineerTargets'],
+    'con-working-plans' => ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'siteEngineerTargets'],
     'con-monthly-item-daily-breakdown' => ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'saveDailyPctBreakdown'],
     'con-ajax-contractor-workorders' => ['controller' => 'Phase2\Con_MonthlyTargetController', 'method' => 'ajaxGetWorkOrders'],
 

@@ -468,8 +468,8 @@ class Con_MonthlyTargetController extends Controller {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // If admin/PM/director → show ALL projects
-        if (in_array($roleId, [1, 3, 22])) {
+        // If admin/PM/director/operations → show ALL projects
+        if (in_array($roleId, [1, 3, 20, 22, 32])) {
             $res = $this->db->query("SELECT id AS project_id, name AS project_name FROM projects ORDER BY name ASC");
             $assignedProjects = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
         } else {

@@ -742,9 +742,9 @@ $(document).on('select2:open', function () {
 
 
 <?php 
-// Role 20 (Site Operator) — view only, hide create/edit/delete UI
+// Role 20 (Site Operator) & Role 32 (Admin Operation) — view only, hide create/edit/delete UI
 // Roles 1, 3 are admins with approval rights — do NOT hide Action columns
-$readOnlyRoles = [20];
+$readOnlyRoles = [20, 32];
 if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], $readOnlyRoles)): 
 ?>
 <script>
