@@ -52,7 +52,7 @@ class Con_WorkOrder extends Model
 
     public function countAllWithRelations($userId = null, $roleId = null)
     {
-        $allowedRoles = [1, 3, 15, 22];
+        $allowedRoles = [1, 3, 15, 20, 22, 32];
         $where = "1=1";
 
         if ($userId && !in_array($roleId, $allowedRoles)) {
@@ -67,7 +67,7 @@ class Con_WorkOrder extends Model
 
     public function getPaginatedWithRelations($limit, $offset, $userId = null, $roleId = null)
     {
-        $allowedRoles = [1, 3, 15, 22];
+        $allowedRoles = [1, 3, 15, 20, 22, 32];
         $where = "1=1";
 
         if ($userId && !in_array($roleId, $allowedRoles)) {
@@ -112,7 +112,7 @@ class Con_WorkOrder extends Model
 
     public function getStatusCounts($userId = null, $roleId = null)
     {
-        $allowedRoles = [1, 3, 15, 22];
+        $allowedRoles = [1, 3, 15, 20, 22, 32];
         $where = "1=1";
 
         if ($userId && !in_array($roleId, $allowedRoles)) {

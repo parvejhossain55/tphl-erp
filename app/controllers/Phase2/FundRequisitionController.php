@@ -19,9 +19,9 @@ class FundRequisitionController extends Controller {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Management (role 3), Admin (role 1), Accounts (role 6, 30), Operations (role 20, 12, 19, 23) see everything
+        // Management (role 3), Admin (role 1), Accounts (role 6, 30), Operations (role 20, 12, 19, 23, 32) see everything
         $where = "1=1";
-        if (!in_array($roleId, [1, 3, 6, 12, 19, 20, 23, 30])) {
+        if (!in_array($roleId, [1, 3, 6, 12, 19, 20, 23, 30, 32])) {
             // Start with: own requisitions
             $conditions = ["fr.requested_by = $userId"];
 

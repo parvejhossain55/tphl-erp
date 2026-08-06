@@ -111,7 +111,7 @@ $roleId = $roleId ?? 0;
     </div>
     
     <div style="display:flex;gap:12px;flex-wrap:wrap">
-      <?php if (!empty($prsForApproval)): ?>
+      <?php if (!empty($prsForApproval) && $roleId !== 32): ?>
       <div style="background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.35);border-radius:12px;padding:10px 18px;display:flex;align-items:center;gap:10px">
         <i class="fal fa-bell" style="color:#fca5a5;font-size:20px"></i>
         <div>
@@ -121,7 +121,7 @@ $roleId = $roleId ?? 0;
       </div>
       <?php endif; ?>
 
-      <?php if (!empty($posForApproval)): ?>
+      <?php if (!empty($posForApproval) && $roleId !== 32): ?>
       <div style="background:rgba(245,158,11,.18);border:1px solid rgba(245,158,11,.35);border-radius:12px;padding:10px 18px;display:flex;align-items:center;gap:10px">
         <i class="fal fa-bell" style="color:#fcd34d;font-size:20px"></i>
         <div>
@@ -131,7 +131,7 @@ $roleId = $roleId ?? 0;
       </div>
       <?php endif; ?>
 
-      <?php if (!empty($pendingWorkOrders)): ?>
+      <?php if (!empty($pendingWorkOrders) && $roleId !== 32): ?>
       <div style="background:rgba(59,130,246,.18);border:1px solid rgba(59,130,246,.35);border-radius:12px;padding:10px 18px;display:flex;align-items:center;gap:10px">
         <i class="fal fa-bell" style="color:#93c5fd;font-size:20px"></i>
         <div>
@@ -153,12 +153,14 @@ $roleId = $roleId ?? 0;
     <div class="kpi-value" style="color:var(--op-blue)"><?= $myProjectsCount ?></div>
   </a>
 
+  <?php if ($roleId !== 32): ?>
   <a href="<?= $base ?>/con-working-plans" class="kpi-card">
     <div class="kpi-accent" style="background:var(--op-amber)"></div>
     <div class="kpi-icon" style="background:rgba(245,158,11,.12);color:var(--op-amber)"><i class="fal fa-calendar-alt"></i></div>
     <div class="kpi-label" style="color:var(--text-muted)">Pending Work Plans</div>
     <div class="kpi-value" style="color:var(--op-amber)"><?= $pendingWorkingPlans ?></div>
   </a>
+  <?php endif; ?>
 
   <a href="<?= $base ?>/con-material-issues" class="kpi-card">
     <div class="kpi-accent" style="background:var(--op-green)"></div>
@@ -181,7 +183,7 @@ $roleId = $roleId ?? 0;
     <div class="kpi-value" style="color:var(--op-blue)"><?= $pendingFundRequisitions ?? 0 ?></div>
   </a>
 
-  <?php if ($roleId === 20 || $roleId === 3 || $isAdmin): ?>
+  <?php if (($roleId === 20 || $roleId === 3 || $isAdmin) && $roleId !== 32): ?>
   <a href="#pending-prs" class="kpi-card">
     <div class="kpi-accent" style="background:var(--op-amber)"></div>
     <div class="kpi-icon" style="background:rgba(245,158,11,.12);color:var(--op-amber)"><i class="fal fa-file-alt"></i></div>
@@ -197,7 +199,7 @@ $roleId = $roleId ?? 0;
   </a>
   <?php endif; ?>
 
-  <?php if ($roleId === 20 || $roleId === 12 || $isAdmin): ?>
+  <?php if (($roleId === 20 || $roleId === 12 || $isAdmin) && $roleId !== 32): ?>
   <a href="#pending-wos" class="kpi-card">
     <div class="kpi-accent" style="background:var(--op-blue)"></div>
     <div class="kpi-icon" style="background:rgba(59,130,246,.12);color:var(--op-blue)"><i class="fal fa-file-contract"></i></div>

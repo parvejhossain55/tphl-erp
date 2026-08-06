@@ -95,6 +95,17 @@ class AutoPostingService
             return false;
         }
 
+        // Prevent duplicate accrual entry for same module and ref ID
+        if ($sourceModule && $sourceRefId) {
+            $chk = $this->db->prepare("SELECT id FROM journals WHERE source_module = ? AND source_ref_id = ? AND entry_type = 'accrual' LIMIT 1");
+            $chk->bind_param("si", $sourceModule, $sourceRefId);
+            $chk->execute();
+            $existing = $chk->get_result()->fetch_assoc();
+            if ($existing) {
+                return (int)$existing['id'];
+            }
+        }
+
         $voucherNo = $this->generateVoucherNumber('JV');
         $date = date('Y-m-d');
         $voucherType = 'Journal Voucher';
@@ -175,6 +186,17 @@ class AutoPostingService
         $amount = (float)$amount;
         if ($amount <= 0 || !$payableAccountId || !$cashBankAccountId) {
             return false;
+        }
+
+        // Prevent duplicate disbursement entry for same module and ref ID
+        if ($sourceModule && $sourceRefId) {
+            $chk = $this->db->prepare("SELECT id FROM journals WHERE source_module = ? AND source_ref_id = ? AND entry_type = 'disbursement' LIMIT 1");
+            $chk->bind_param("si", $sourceModule, $sourceRefId);
+            $chk->execute();
+            $existing = $chk->get_result()->fetch_assoc();
+            if ($existing) {
+                return (int)$existing['id'];
+            }
         }
 
         $voucherNo = $this->generateVoucherNumber('PV');

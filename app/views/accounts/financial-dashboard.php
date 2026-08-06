@@ -594,6 +594,9 @@ $show_breadcrumb = true;
                     } else if (row.source_module === 'contractor_bill') {
                         payUrl = window.base_url + '/con-contractor-bill/' + row.voucher_id;
                         actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-warning  fw-semibold px-3 py-1"><i class="fa-light fa-money-bill-transfer me-1"></i> Process Payment</a>`;
+                    } else if (row.source_module === 'cashout_request') {
+                        payUrl = window.base_url + '/admin-view-cashout-request?id=' + row.voucher_id;
+                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-warning  fw-semibold px-3 py-1"><i class="fa-light fa-money-bill-transfer me-1"></i> Process Payment</a>`;
                     } else if (row.source_module === 'fund_requisition') {
                         payUrl = window.base_url + '/fund-requisitions/view/' + row.voucher_id;
                         actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-primary fw-semibold px-3 py-1"><i class="fa-light fa-hand-holding-dollar me-1"></i> Pay Requisition</a>`;
@@ -601,8 +604,8 @@ $show_breadcrumb = true;
                         payUrl = window.base_url + '/asset-extra-purchases';
                         actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-success fw-semibold px-3 py-1"><i class="fa-light fa-credit-card me-1"></i> Pay / Disburse</a>`;
                     } else {
-                        payUrl = window.base_url + '/con-vendor-payment-show/' + row.voucher_id;
-                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-warning  fw-semibold px-3 py-1"><i class="fa-light fa-money-bill-transfer me-1"></i> Process Payment</a>`;
+                        payUrl = window.base_url + '/cashout-requests';
+                        actionBtn = `<a href="${payUrl}" class="btn btn-sm btn-secondary fw-semibold px-3 py-1"><i class="fa-light fa-eye me-1"></i> View Request</a>`;
                     }
                     return `<div class="text-center">${actionBtn}</div>`;
                 }}

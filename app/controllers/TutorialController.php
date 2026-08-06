@@ -32,7 +32,9 @@ class TutorialController extends Controller
             3  => 'https://drive.google.com/file/d/1eAv78W2wGI0e3WCoKzYMKLxZrctWcYav/view?usp=sharing',                 // super Admin
             4  => 'https://drive.google.com/file/d/11MARWakxK07MS3Yj7Yyv3RD7u17YTNik/view?usp=sharing',      //Done HR
             5  => 'https://drive.google.com/file/d/1_3o5AyBYVJ6EDrVBQDCq7VNlRDRWJ41j/view?usp=sharing',      //Done Sales Manager
-            6  => 'https://drive.google.com/file/d/1Nre2UfwHHH7d2615ebEABTf-splwvMu4/view?usp=sharing',                     // Accounts
+            // 6  => 'https://drive.google.com/file/d/1Nre2UfwHHH7d2615ebEABTf-splwvMu4/view?usp=sharing',                     //Old Accounts
+            6  => 'https://drive.google.com/file/d/1ruFmbEAsbua3P1LA4q4DdqPeCiV4EFcF/view?usp=sharing',                     //New Accounts
+            30  => 'https://drive.google.com/file/d/1ruFmbEAsbua3P1LA4q4DdqPeCiV4EFcF/view?usp=sharing',                     //New Accounts
             7  => 'https://drive.google.com/file/d/1jZuBi9lwPEeGP98luiMg4347hv-hLP_4/view?usp=sharing',           // Clients Experiment
             8  => 'https://drive.google.com/file/d/1N1hnMRkxeqak_Z3h6elD_ijb1F2rc_GT/view?usp=sharing',             //Done Sales Executive
             9  => 'https://drive.google.com/file/d/1_3o5AyBYVJ6EDrVBQDCq7VNlRDRWJ41j/view?usp=sharing',             //Done Sales Team Head
@@ -59,7 +61,17 @@ class TutorialController extends Controller
 
         $redirectUrl = $links[$roleId] ?? $defaultLink;
 
-        header("Location: " . $redirectUrl);
+        // Perform clean client-side redirect stripping HTTP referrers so Google Drive opens smoothly
+        echo '<!DOCTYPE html>';
+        echo '<html><head>';
+        echo '<meta charset="UTF-8">';
+        echo '<meta name="referrer" content="no-referrer">';
+        echo '<meta http-equiv="refresh" content="0;url=' . htmlspecialchars($redirectUrl, ENT_QUOTES, 'UTF-8') . '">';
+        echo '<script>window.location.replace(' . json_encode($redirectUrl) . ');</script>';
+        echo '</head><body>';
+        echo '<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Redirecting to tutorial video... <br><br>';
+        echo '<a href="' . htmlspecialchars($redirectUrl, ENT_QUOTES, 'UTF-8') . '" rel="noreferrer" style="color:#007bff; text-decoration:underline;">Click here if you are not redirected automatically</a>.</p>';
+        echo '</body></html>';
         exit;
     }
 }
