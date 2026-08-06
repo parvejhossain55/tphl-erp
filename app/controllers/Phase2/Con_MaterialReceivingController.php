@@ -46,9 +46,12 @@ class Con_MaterialReceivingController extends Controller
 
     public function create($poId)
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
-            setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
-            header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if (in_array($userRole, [20, 24, 25, 32])) {
+            setError('Operations and QC roles can only view material receiving status. You do not have permission to create GRN entries.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-orders");
             exit;
         }
 

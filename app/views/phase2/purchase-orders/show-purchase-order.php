@@ -287,43 +287,58 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
       </div>
     </div>
 
-    <!-- GRN Button — only if fully approved -->
+    <!-- GRN Button — for Purchase Head, Sr Purchase Exec, PM, Site Eng, Admin -->
     <?php 
       $hasReceiving = $hasReceiving ?? false;
-      // Allow GRN logging for any authenticated user EXCEPT site operator (role 20)
-      // Purchase Head, Admin, PM, Site Eng, etc. all should be able to log receiving
-      $canLogGrn = !in_array($currentRoleId, [20]);
+      $isViewOnlyRole = in_array((int)$currentRoleId, [20, 24, 25, 32], true);
+      $canLogGrn = !$isViewOnlyRole;
       if ($currentRoleId == 12 && $hasReceiving) {
           $canLogGrn = false; // Site Engineer can only create GRN once per PO
       }
     ?>
-    <?php if (in_array($_SESSION['user']['role_id'], [1,3,12,15,22], true)) : ?>
-
-    <?php if ($fullyApproved && $po['status'] !== 'Fully Received' && $po['status'] !== 'Cancelled' && $canLogGrn): ?>
-      <div class="po-panel" style="border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.04)">
+    <?php if (!$isViewOnlyRole) : ?>
+      <?php if ($fullyApproved && $po['status'] !== 'Fully Received' && $po['status'] !== 'Cancelled' && $canLogGrn): ?>
+        <div class="po-panel" style="border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.04)">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#059669"><i class="fal fa-check-circle me-2"></i>PO is Fully Approved</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">All approvals completed. You can now log material receiving.</div>
+            </div>
+            <a href="<?= $base_url ?>/con-material-receiving-create/<?= $po['id'] ?>"
+              style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:10px;padding:9px 22px;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:7px">
+              <i class="fal fa-box-seam"></i> Log Material Receiving (GRN)
+            </a>
+          </div>
+        </div>
+      <?php elseif (!$fullyApproved && $po['status'] !== 'Cancelled'): ?>
+        <div class="po-panel" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <i class="fal fa-lock" style="color:#d97706;font-size:20px"></i>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#d97706">Material Receiving Locked</div>
+              <div style="font-size:11px;color:var(--text-muted)">Waiting for required approvals.</div>
+            </div>
+          </div>
+        </div>
+      <?php endif; ?>
+    <?php else: ?>
+      <!-- Operations, QC & Internal Audit View-Only receiving status panel -->
+      <div class="po-panel" style="border-color:<?= $hasReceiving ? 'rgba(16,185,129,.35)' : 'rgba(245,158,11,.35)' ?>;background:<?= $hasReceiving ? 'rgba(16,185,129,.04)' : 'rgba(245,158,11,.04)' ?>">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
           <div>
-            <div style="font-size:13px;font-weight:700;color:#059669"><i class="fal fa-check-circle me-2"></i>PO is Fully Approved</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Operation Head approved. You can now log material receiving.</div>
+            <div style="font-size:13px;font-weight:700;color:<?= $hasReceiving ? '#059669' : '#b45309' ?>">
+              <i class="fal <?= $hasReceiving ? 'fa-boxes' : 'fa-exclamation-circle' ?> me-2"></i>
+              Material Receiving Status: <?= $hasReceiving ? 'Logged / Received' : 'Not Logged Yet (Pending Delivery)' ?>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+              <?= $hasReceiving ? 'Material receiving entry has been recorded for this Purchase Order.' : 'Awaiting Site Engineer / Purchase team to record material receiving.' ?>
+            </div>
           </div>
-          <a href="<?= $base_url ?>/con-material-receiving-create/<?= $po['id'] ?>"
-            style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:10px;padding:9px 22px;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:7px">
-            <i class="fal fa-box-seam"></i> Log Material Receiving (GRN)
-          </a>
+          <span class="badge <?= $hasReceiving ? 'bg-success' : 'bg-warning text-dark' ?> px-3 py-2" style="font-size:11px;">
+            <?= $hasReceiving ? '✓ Material Logged' : '⌛ No Log Yet' ?>
+          </span>
         </div>
       </div>
-    <?php elseif (!$fullyApproved && $po['status'] !== 'Cancelled'): ?>
-      <div class="po-panel" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03)">
-        <div style="display:flex;align-items:center;gap:10px">
-          <i class="fal fa-lock" style="color:#d97706;font-size:20px"></i>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:#d97706">Material Receiving Locked</div>
-            <div style="font-size:11px;color:var(--text-muted)">Waiting for required approvals.</div>
-          </div>
-        </div>
-      </div>
-    <?php endif; ?>
-
     <?php endif; ?>
   </div>
 

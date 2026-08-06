@@ -21,6 +21,12 @@ class EmployeeController extends Controller
         $this->teamsModel = new Team($this->db);
     }
 
+    private function getOfficeBranches()
+    {
+        $res = $this->db->query("SELECT id, name FROM office_branches WHERE status = 'active' ORDER BY id ASC");
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
     // Employee List Page
     public function index()
     {
@@ -90,7 +96,8 @@ class EmployeeController extends Controller
             "roles"           => $roles,
             "teams"           => $teams,
             "reportingBosses" => $reportingBosses,
-            "payslipItems"    => $payslipItems
+            "payslipItems"    => $payslipItems,
+            "branches"        => $this->getOfficeBranches()
         ]);
     }
 
@@ -133,7 +140,7 @@ class EmployeeController extends Controller
                 'basic_salary'    => $basicSalary,
                 'experience'      => trim($_POST['experience'] ?? ''),
                 'workplace'       => trim($_POST['workplace'] ?? ''),
-                'office_branch'   => !empty($_POST['office_branch']) ? trim($_POST['office_branch']) : null,
+                'office_branch_id' => !empty($_POST['office_branch_id']) ? (int)$_POST['office_branch_id'] : 2,
                 'nid'             => trim($_POST['nid'] ?? ''),
                 'address'         => trim($_POST['address'] ?? ''),
                 'pass_num'        => trim($_POST['pass_num'] ?? ''),
@@ -288,7 +295,8 @@ class EmployeeController extends Controller
             "teams"           => $teams,
             "reportingBosses" => $reportingBosses,
             "payslipItems"    => $payslipItems,
-            "employeeSalaryItems" => $employeeSalaryItems
+            "employeeSalaryItems" => $employeeSalaryItems,
+            "branches"        => $this->getOfficeBranches()
         ]);
     }
 
@@ -393,7 +401,7 @@ class EmployeeController extends Controller
             'responsibilities'     => $_POST['responsibilities'],
             'team_id'              => (int)($_POST['team_id'] ?? 0),
             'workplace'            => trim($_POST['workplace'] ?? ''),
-            'office_branch'        => !empty($_POST['office_branch']) ? trim($_POST['office_branch']) : null,
+            'office_branch_id'     => !empty($_POST['office_branch_id']) ? (int)$_POST['office_branch_id'] : 2,
             'is_sales_co_leader'   => (int)($_POST['is_sales_co_leader'] ?? 0),
             'is_dept_head'         => (int)($_POST['is_dept_head'] ?? 0),
             'reporting_user_id'    => ((int)($_POST['is_dept_head'] ?? 0) == 1) ? null : (!empty($_POST['reporting_user_id']) ? (int)$_POST['reporting_user_id'] : null),

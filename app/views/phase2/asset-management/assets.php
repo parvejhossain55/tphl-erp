@@ -2,7 +2,7 @@
 $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 $conditionStatuses = ['new','ok','need_repair','repairing','repaired','damaged','disposed'];
 $assetStatuses = ['in_use','in_store','transferred','disposed','maintenance'];
-$categories = ['Electronics','Furniture','Vehicle','IT Equipment','Office Supplies','Machinery','Safety Equipment','Other'];
+$staticCategoryNames = ['Electronics','Furniture','Vehicle','IT Equipment','Office Supplies','Machinery','Safety Equipment','Other'];
 
 $conditionBadges = [
     'new' => 'primary', 'ok' => 'success', 'need_repair' => 'warning',
@@ -38,47 +38,63 @@ $statusBadges = [
         </div>
     </div>
 
+    <style>
+        .stat-card-link { text-decoration: none !important; display: block; }
+        .stat-card-link .custom-card { transition: transform 0.2s ease, box-shadow 0.2s ease; cursor: pointer; }
+        .stat-card-link:hover .custom-card { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+        .select2-container--open { z-index: 999999 !important; }
+    </style>
     <!-- Stats Cards -->
     <div class="row mb-4" id="stats-cards">
         <div class="col-md-2 col-sm-4 col-6">
-            <div class="card custom-card">
-                <div class="card-body text-center p-2 p-md-3">
-                    <h3 class="fw-bold text-primary mb-0"><?= $stats['total_assets'] ?? 0 ?></h3>
-                    <p class="text-muted mb-0 fs-11">Total Assets</p>
+            <a href="<?= $GLOBALS['base_url'] ?>/office-assets" class="stat-card-link">
+                <div class="card custom-card">
+                    <div class="card-body text-center p-2 p-md-3">
+                        <h3 class="fw-bold text-primary mb-0"><?= $stats['total_assets'] ?? 0 ?></h3>
+                        <p class="text-muted mb-0 fs-11">Total Assets</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-md-2 col-sm-4 col-6">
-            <div class="card custom-card">
-                <div class="card-body text-center p-2 p-md-3">
-                    <h3 class="fw-bold text-success mb-0"><?= $stats['total_products'] ?? 0 ?></h3>
-                    <p class="text-muted mb-0 fs-11">Products</p>
+            <a href="<?= $GLOBALS['base_url'] ?>/asset-products" class="stat-card-link">
+                <div class="card custom-card">
+                    <div class="card-body text-center p-2 p-md-3">
+                        <h3 class="fw-bold text-success mb-0"><?= $stats['total_products'] ?? 0 ?></h3>
+                        <p class="text-muted mb-0 fs-11">Products</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-md-2 col-sm-4 col-6">
-            <div class="card custom-card">
-                <div class="card-body text-center p-2 p-md-3">
-                    <h3 class="fw-bold text-danger mb-0"><?= $stats['needs_attention'] ?? 0 ?></h3>
-                    <p class="text-muted mb-0 fs-11">Need Attention</p>
+            <a href="<?= $GLOBALS['base_url'] ?>/office-assets?condition_status=need_repair" class="stat-card-link">
+                <div class="card custom-card">
+                    <div class="card-body text-center p-2 p-md-3">
+                        <h3 class="fw-bold text-danger mb-0"><?= $stats['needs_attention'] ?? 0 ?></h3>
+                        <p class="text-muted mb-0 fs-11">Need Attention</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-md-2 col-sm-4 col-6">
-            <div class="card custom-card">
-                <div class="card-body text-center p-2 p-md-3">
-                    <h3 class="fw-bold text-warning mb-0"><?= $stats['pending_purchases'] ?? 0 ?></h3>
-                    <p class="text-muted mb-0 fs-11">Pending Purchases</p>
+            <a href="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases" class="stat-card-link" title="Click to view Office Procurement Requests">
+                <div class="card custom-card">
+                    <div class="card-body text-center p-2 p-md-3">
+                        <h3 class="fw-bold text-warning mb-0"><?= $stats['pending_purchases'] ?? 0 ?></h3>
+                        <p class="text-muted mb-0 fs-11">Pending Purchases <i class="fa-solid fa-arrow-right-long ms-1 fs-10"></i></p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-md-4 col-sm-8 col-12">
-            <div class="card custom-card">
-                <div class="card-body text-center p-2 p-md-3">
-                    <h3 class="fw-bold text-info mb-0">৳ <?= number_format($stats['total_value'] ?? 0, 2) ?></h3>
-                    <p class="text-muted mb-0 fs-11">Total Asset Value</p>
+            <a href="<?= $GLOBALS['base_url'] ?>/office-assets" class="stat-card-link">
+                <div class="card custom-card">
+                    <div class="card-body text-center p-2 p-md-3">
+                        <h3 class="fw-bold text-info mb-0">৳ <?= number_format($stats['total_value'] ?? 0, 2) ?></h3>
+                        <p class="text-muted mb-0 fs-11">Total Asset Value</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
     </div>
 
@@ -91,6 +107,12 @@ $statusBadges = [
                     <button type="button" class="btn btn-warning btn-sm d-none align-items-center gap-1" id="bulkAssignBtn" data-bs-toggle="modal" data-bs-target="#bulkAssignModal">
                         <i class="fa-solid fa-people-arrows"></i> Bulk Assign (<span id="bulkAssignCount">0</span>)
                     </button>
+                    <button type="button" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                        <i class="fa-solid fa-folder-plus"></i> + Add Category
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                        <i class="fa-solid fa-boxes-stacked"></i> + Add Product Catalog
+                    </button>
                     <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addAssetModal">
                         <i class="fa-solid fa-plus"></i> Register Asset
                     </button>
@@ -100,17 +122,26 @@ $statusBadges = [
 
         <!-- Filters -->
         <div class="card-body border-bottom pb-3">
-            <form method="GET" class="row g-2 align-items-end">
+            <form method="GET" class="row  align-items-end">
                 <div class="col-md-2">
                     <label class="form-label fs-11 fw-semibold mb-1">Search</label>
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Asset code, name..." value="<?= htmlspecialchars($filters['search'] ?? '') ?>">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label fs-11 fw-semibold mb-1">Project</label>
-                    <select name="project_id" class="form-select form-select-sm">
+                    <select name="project_id" class="form-select form-select-sm select2">
                         <option value="">All Projects</option>
                         <?php foreach ($projects ?? [] as $proj): ?>
                             <option value="<?= $proj['id'] ?>" <?= ($filters['project_id'] ?? '') == $proj['id'] ? 'selected' : '' ?>><?= htmlspecialchars($proj['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fs-11 fw-semibold mb-1">Office Branch</label>
+                    <select name="office_branch_id" class="form-select form-select-sm select2">
+                        <option value="">All Branches</option>
+                        <?php foreach ($branches ?? [] as $b): ?>
+                            <option value="<?= $b['id'] ?>" <?= ($filters['office_branch_id'] ?? '') == $b['id'] ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -154,7 +185,7 @@ $statusBadges = [
                             <th>Item Name</th>
                             <th class="text-center">Qty</th>
                             <th>Project</th>
-                            <th>Office/Location</th>
+                            <th>Office Branch</th>
                             <th>Assigned To</th>
                             <th class="text-end">Price (BDT)</th>
                             <th>Condition</th>
@@ -190,7 +221,11 @@ $statusBadges = [
                                         <span class="d-block fs-12 fw-semibold text-dark"><?= htmlspecialchars($a['project_name'] ?? 'Head Office') ?></span>
                                     </td>
                                     <td>
-                                        <span class="fs-12 text-muted"><?= htmlspecialchars($a['location'] ?? 'Head Office') ?></span>
+                                        <?php if (!empty($a['branch_name'])): ?>
+                                            <span class="fw-semibold text-primary fs-12"><i class="fa-solid fa-building me-1 fs-11"></i><?= htmlspecialchars($a['branch_name']) ?></span>
+                                        <?php else: ?>
+                                            <span class="fs-12 text-muted">—</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td class="fs-12"><?= htmlspecialchars($a['assigned_to_name'] ?? '—') ?></td>
                                     <td class="text-end fw-semibold"><?= number_format($a['purchase_price'], 2) ?></td>
@@ -248,19 +283,25 @@ $statusBadges = [
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-md-6">
-                            <label class="form-label">Product <span class="text-danger">*</span></label>
-                            <select name="product_id" class="form-select" required>
-                                <option value="">-- Select Product --</option>
+                            <label class="form-label">Item Name / Asset Title <span class="text-danger">*</span></label>
+                            <input type="text" name="item_name" class="form-control" placeholder="e.g. Dell Monitor 24''" required>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label mb-0">Product Catalog (Optional)</label>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-link p-0 fs-11 text-success text-decoration-underline" data-bs-toggle="modal" data-bs-target="#addCategoryModal"><i class="fa-solid fa-folder-plus me-1"></i>+ Category</button>
+                                    <button type="button" class="btn btn-link p-0 fs-11 text-primary text-decoration-underline" data-bs-toggle="modal" data-bs-target="#addProductModal"><i class="fa-solid fa-plus me-1"></i>+ Product</button>
+                                </div>
+                            </div>
+                            <select name="product_id" class="form-select select2">
+                                <option value="">-- Select Existing Product (Or leave empty) --</option>
                                 <?php foreach ($products ?? [] as $prod): ?>
                                     <option value="<?= $prod['id'] ?>"><?= htmlspecialchars($prod['name'] . ' (' . $prod['product_code'] . ')') ?></option>
                                 <?php endforeach; ?>
                             </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Item Name (Optional)</label>
-                            <input type="text" name="item_name" class="form-control" placeholder="e.g. Dell Monitor 24''">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Serial Number</label>
@@ -268,34 +309,25 @@ $statusBadges = [
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Project</label>
-                            <select name="project_id" class="form-select">
+                            <select name="project_id" class="form-select select2">
                                 <option value="">Head Office (No Project)</option>
                                 <?php foreach ($projects ?? [] as $proj): ?>
                                     <option value="<?= $proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                                                <div class="col-md-6">
-                            <label class="form-label">Assigned To</label>
-                            <select name="assigned_to" id="edit_assigned_to" class="form-select">
-                                <option value="">Unassigned</option>
-                                <?php foreach ($users ?? [] as $u): ?>
-                                    <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
                         <div class="col-md-6">
-                            <label class="form-label">Location</label>
-                            <select name="location" class="form-select">
-                                <option value="Head Office">Head Office</option>
-                                <?php foreach ($locations ?? [] as $loc): ?>
-                                    <option value="<?= htmlspecialchars($loc) ?>"><?= htmlspecialchars($loc) ?></option>
+                            <label class="form-label">Office Branch</label>
+                            <select name="office_branch_id" class="form-select select2">
+                                <option value="">Select Office Branch</option>
+                                <?php foreach ($branches ?? [] as $b): ?>
+                                    <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Assigned To</label>
-                            <select name="assigned_to" class="form-select">
+                            <select name="assigned_to" class="form-select select2">
                                 <option value="">-- Unassigned --</option>
                                 <?php foreach ($users ?? [] as $u): ?>
                                     <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
@@ -349,10 +381,10 @@ $statusBadges = [
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-md-6">
                             <label class="form-label">Product</label>
-                            <select name="product_id" id="edit_product_id" class="form-select">
+                            <select name="product_id" id="edit_product_id" class="form-select select2">
                                 <option value="">-- Select Product --</option>
                                 <?php foreach ($products ?? [] as $prod): ?>
                                     <option value="<?= $prod['id'] ?>"><?= htmlspecialchars($prod['name'] . ' (' . $prod['product_code'] . ')') ?></option>
@@ -369,28 +401,28 @@ $statusBadges = [
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Project</label>
-                            <select name="project_id" id="edit_project_id" class="form-select">
+                            <select name="project_id" id="edit_project_id" class="form-select select2">
                                 <option value="">Head Office (No Project)</option>
                                 <?php foreach ($projects ?? [] as $proj): ?>
                                     <option value="<?= $proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                                                <div class="col-md-6">
-                            <label class="form-label">Assigned To</label>
-                            <select name="assigned_to" id="edit_assigned_to" class="form-select">
-                                <option value="">Unassigned</option>
-                                <?php foreach ($users ?? [] as $u): ?>
-                                    <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                        <div class="col-md-6">
+                            <label class="form-label">Office Branch</label>
+                            <select name="office_branch_id" id="edit_office_branch_id" class="form-select select2">
+                                <option value="">Select Office Branch</option>
+                                <?php foreach ($branches ?? [] as $b): ?>
+                                    <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Location</label>
-                            <select name="location" id="edit_location" class="form-select">
-                                <option value="Head Office">Head Office</option>
-                                <?php foreach ($locations ?? [] as $loc): ?>
-                                    <option value="<?= htmlspecialchars($loc) ?>"><?= htmlspecialchars($loc) ?></option>
+                            <label class="form-label">Assigned To</label>
+                            <select name="assigned_to" id="edit_assigned_to" class="form-select select2">
+                                <option value="">Unassigned</option>
+                                <?php foreach ($users ?? [] as $u): ?>
+                                    <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -432,6 +464,110 @@ $statusBadges = [
         </form>
     </div>
 </div>
+
+<?php if (!empty($canEdit)): ?>
+<!-- ========================================================================= -->
+<!-- MODAL: ADD PRODUCT CATALOG ITEM (QUICK) -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="addProductModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form action="<?= $GLOBALS['base_url'] ?>/office-assets/store-product-quick" method="POST" enctype="multipart/form-data">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Asset Product</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Product Code <span class="text-danger">*</span></label>
+                            <input type="text" name="product_code" class="form-control" value="PRD-<?= date('Y') ?>-<?= str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Name <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. Dell Laptop" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Category <span class="text-danger">*</span></label>
+                            <select name="category_id" class="form-select" required>
+                                <option value="">-- Select Category --</option>
+                                <?php foreach ($categories ?? [] as $cat): ?>
+                                    <?php 
+                                        $cId = is_array($cat) ? ($cat['id'] ?? '') : $cat;
+                                        $cName = is_array($cat) ? ($cat['name'] ?? '') : $cat;
+                                    ?>
+                                    <option value="<?= htmlspecialchars($cId) ?>"><?= htmlspecialchars($cName) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Unit</label>
+                            <input type="text" name="unit" class="form-control" value="Piece" placeholder="Piece, Set, Unit...">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Brand</label>
+                            <input type="text" name="brand" class="form-control" placeholder="Brand name">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Model</label>
+                            <input type="text" name="model" class="form-control" placeholder="Model number">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Unit Price (BDT)</label>
+                            <input type="number" name="unit_price" class="form-control" step="0.01" value="0" min="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="active" selected>Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea name="description" class="form-control" rows="2" placeholder="Product description..."></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Product Image (Optional)</label>
+                            <input type="file" name="image" class="form-control" accept="image/*">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-sm">Save Product</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: ADD PRODUCT CATEGORY (QUICK) -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <form action="<?= $GLOBALS['base_url'] ?>/office-assets/store-category-quick" method="POST">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Product Category</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Category Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Computers & Electronics" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-sm">Save Category</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- Bulk Assign Modal -->
 <div class="modal fade" id="bulkAssignModal" tabindex="-1">
@@ -524,7 +660,6 @@ $statusBadges = [
         </div>
     </div>
 </div>
-</div>
 
 <!-- MODAL: REQUEST REPAIR FUND -->
 <div class="modal fade" id="repairFundModal" tabindex="-1" aria-hidden="true">
@@ -590,6 +725,9 @@ function openEditModal(button) {
     document.getElementById('edit_item_name').value = asset.item_name || '';
     document.getElementById('edit_serial_no').value = asset.serial_no || '';
     document.getElementById('edit_project_id').value = asset.project_id || '';
+    if (document.getElementById('edit_office_branch_id')) {
+        document.getElementById('edit_office_branch_id').value = asset.office_branch_id || '';
+    }
     document.getElementById('edit_location').value = asset.location || '';
     document.getElementById('edit_purchase_price_display').value = asset.purchase_price ? parseFloat(asset.purchase_price).toLocaleString('en-BD', {minimumFractionDigits: 2}) : '0.00';
     document.getElementById('edit_condition_status').value = asset.condition_status || 'new';
@@ -598,8 +736,33 @@ function openEditModal(button) {
         document.getElementById('edit_assigned_to').value = asset.assigned_to || '';
     }
     
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('#edit_product_id, #edit_project_id, #edit_office_branch_id, #edit_assigned_to').trigger('change');
+    }
+    
     var modal = new bootstrap.Modal(document.getElementById('editAssetModal'));
     modal.show();
+}
+
+if (typeof $ !== 'undefined') {
+    $(document).ready(function() {
+        function initModalSelect2(modalEl) {
+            if (!$.fn.select2) return;
+            $(modalEl).find('.select2').each(function() {
+                if ($(this).data('select2')) {
+                    $(this).select2('destroy');
+                }
+                $(this).select2({
+                    dropdownParent: $(modalEl),
+                    width: '100%'
+                });
+            });
+        }
+
+        $('#addAssetModal, #editAssetModal').on('shown.bs.modal', function () {
+            initModalSelect2(this);
+        });
+    });
 }
 
 document.addEventListener('DOMContentLoaded', function() {

@@ -118,21 +118,74 @@
         $sidebarRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         try {
-            // 1. Pending Purchase Requests awaiting approval
-            if (in_array($sidebarRoleId, [1, 3, 22])) { // Admin, Super Admin, PM Head
+            // 1. Pending Purchase Requests awaiting role-specific action
+            if (in_array($sidebarRoleId, [1, 3])) { 
+                // Admin / Super Admin: Submitted PRs awaiting approval OR Approved PRs awaiting executive assignment
                 $prRes = $db->query("
                     SELECT COUNT(*) AS c 
                     FROM purchase_requests pr 
                     JOIN projects p ON p.id = pr.project_id 
-                    WHERE pr.status = 'Submitted' AND p.deleted_at IS NULL
+                    WHERE p.deleted_at IS NULL AND (
+                        pr.status = 'Submitted' 
+                        OR (pr.status = 'Approved' AND (pr.assigned_executive_id IS NULL OR pr.assigned_executive_id = 0))
+                    )
                 ");
                 $sidebarPendingPRCount = $prRes ? (int)$prRes->fetch_assoc()['c'] : 0;
-            } elseif ($sidebarRoleId === 15) { // Project Manager (assigned projects)
+            } elseif (in_array($sidebarRoleId, [17, 31])) { 
+                // Purchase Head & Senior Purchase Executive: Approved PRs awaiting executive assignment OR assigned to them
                 $prRes = $db->query("
                     SELECT COUNT(*) AS c 
                     FROM purchase_requests pr 
                     JOIN projects p ON p.id = pr.project_id 
-                    WHERE pr.status = 'Submitted' AND p.pm_id = {$sidebarUserId} AND p.deleted_at IS NULL
+                    WHERE p.deleted_at IS NULL AND (
+                        (pr.status = 'Approved' AND (pr.assigned_executive_id IS NULL OR pr.assigned_executive_id = 0))
+                        OR (pr.status = 'Approved' AND pr.assigned_executive_id = {$sidebarUserId})
+                    )
+                ");
+                $sidebarPendingPRCount = $prRes ? (int)$prRes->fetch_assoc()['c'] : 0;
+            } elseif ($sidebarRoleId === 23) { 
+                // Purchase Executive: Approved PRs assigned to them for quotation / CST
+                $prRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM purchase_requests pr 
+                    JOIN projects p ON p.id = pr.project_id 
+                    WHERE p.deleted_at IS NULL AND pr.status = 'Approved' AND pr.assigned_executive_id = {$sidebarUserId}
+                ");
+                $sidebarPendingPRCount = $prRes ? (int)$prRes->fetch_assoc()['c'] : 0;
+            } elseif (in_array($sidebarRoleId, [20, 32])) { 
+                // Operation Head: Stage 2 approval (Submitted & approved by PM)
+                $prRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM purchase_requests pr 
+                    JOIN projects p ON p.id = pr.project_id 
+                    WHERE p.deleted_at IS NULL AND pr.status = 'Submitted' AND pr.approved_by_id IS NOT NULL AND pr.qc_approved_by_id IS NULL
+                ");
+                $sidebarPendingPRCount = $prRes ? (int)$prRes->fetch_assoc()['c'] : 0;
+            } elseif ($sidebarRoleId === 22) { 
+                // Project Manager Head: Stage 1 approval for all projects
+                $prRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM purchase_requests pr 
+                    JOIN projects p ON p.id = pr.project_id 
+                    WHERE p.deleted_at IS NULL AND pr.status = 'Submitted' AND pr.approved_by_id IS NULL
+                ");
+                $sidebarPendingPRCount = $prRes ? (int)$prRes->fetch_assoc()['c'] : 0;
+            } elseif ($sidebarRoleId === 15) { 
+                // Project Manager (assigned projects): Stage 1 approval
+                $prRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM purchase_requests pr 
+                    JOIN projects p ON p.id = pr.project_id 
+                    WHERE p.deleted_at IS NULL AND pr.status = 'Submitted' AND pr.approved_by_id IS NULL AND p.pm_id = {$sidebarUserId}
+                ");
+                $sidebarPendingPRCount = $prRes ? (int)$prRes->fetch_assoc()['c'] : 0;
+            } else {
+                // Creator / Other roles: PRs created by them in Submitted/Draft status
+                $prRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM purchase_requests pr 
+                    JOIN projects p ON p.id = pr.project_id 
+                    WHERE p.deleted_at IS NULL AND pr.created_by = {$sidebarUserId} AND pr.status IN ('Draft', 'Submitted')
                 ");
                 $sidebarPendingPRCount = $prRes ? (int)$prRes->fetch_assoc()['c'] : 0;
             }
@@ -2865,23 +2918,12 @@
 
                 <!-- ====== ASSET MANAGEMENT ====== -->
                 <?php if (hasPermission('Asset Management') || hasPermission('QC & Internal Audit') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 32])): ?>
-                    <li
-                        class="slide has-sub <?= isActive(['asset-products', 'office-assets'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['asset-products', 'office-assets'], $current_route) ? 'menu-open active' : '' ?>">
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                    <li class="slide <?= isActive(['office-assets', 'asset-products'], $current_route) ?>">
+                        <a href="<?= $base_url ?>/office-assets"
+                            class="sidebar__menu-item <?= isActive(['office-assets', 'asset-products'], $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-boxes-stacked"></i></div>
-                            <span class="sidebar__menu-label">Asset Management</span>
+                            <span class="sidebar__menu-label">Asset Register</span>
                         </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-
-                            <li class="slide <?= isActive('office-assets', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('office-assets', $current_route) ?>"
-                                    href="<?= $base_url ?>/office-assets">All Assets</a>
-                            </li>
-
-
-                        </ul>
                     </li>
                 <?php endif; ?>
                 <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [18, 16, 21])): ?>

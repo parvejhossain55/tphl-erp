@@ -212,7 +212,7 @@ class Con_PurchaseRequestController extends Controller
             'required_date'=> !empty($_POST['required_date']) ? $_POST['required_date'] : null,
             'purpose'      => trim($_POST['purpose'] ?? ''),
             'created_by'   => (int)($_SESSION['user']['id'] ?? 0),
-            'status'       => $_POST['status'] ?? 'Draft',
+            'status'       => $_POST['status'] ?? 'Submitted',
             'notes'        => trim($_POST['notes'] ?? ''),
             'attachment'   => $attachment,
         ];
@@ -876,6 +876,188 @@ class Con_PurchaseRequestController extends Controller
                 'category_name' => $catRow['name'],
             ]
         ]);
+        exit;
+    }
+
+    public function delete($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userId   = (int)($_SESSION['user']['id'] ?? 0);
+        $id       = (int)$id;
+
+        $pr = $this->prModel->find($id);
+        if (!$pr) {
+            setError('Purchase request not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
+
+        if (in_array($pr['status'], ['Approved', 'PO Issued'])) {
+            setError('Approved purchase requests cannot be deleted.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
+
+        $isCreator = (int)($pr['created_by'] ?? 0) === $userId;
+        $isAdmin = in_array($userRole, [1, 3]);
+
+        if (!$isCreator && !$isAdmin) {
+            setError('You do not have permission to delete this purchase request.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
+
+        if ($this->prModel->delete($id)) {
+            setSuccess('Purchase request deleted successfully.');
+        } else {
+            setError('Failed to delete purchase request.');
+        }
+
+        header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+        exit;
+    }
+
+    public function edit($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userId   = (int)($_SESSION['user']['id'] ?? 0);
+        $id       = (int)$id;
+
+        $pr = $this->prModel->find($id);
+        if (!$pr) {
+            setError('Purchase Request not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
+
+        if ($pr['status'] !== 'Draft') {
+            setError('Submitted or approved purchase requests cannot be edited.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+            exit;
+        }
+
+        $isCreator = (int)($pr['created_by'] ?? 0) === $userId;
+        $isAdmin = in_array($userRole, [1, 3]);
+
+        if (!$isCreator && !$isAdmin) {
+            setError('You do not have permission to edit this Purchase Request.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
+
+        $items = $this->prModel->getItems($id);
+
+        $pResult = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name ASC");
+        $projects = $pResult ? $pResult->fetch_all(MYSQLI_ASSOC) : [];
+
+        $mResult = $this->db->query("
+            SELECT m.id, m.name, m.unit, m.category_id, COALESCE(c.name, 'Uncategorized') AS category_name
+            FROM con_materials m
+            LEFT JOIN con_material_categories c ON c.id = m.category_id
+            WHERE m.deleted_at IS NULL
+            ORDER BY c.name ASC, m.name ASC
+        ");
+        $materials = $mResult ? $mResult->fetch_all(MYSQLI_ASSOC) : [];
+
+        $this->view('phase2/purchase-requests/edit-purchase-request', [
+            'current_route' => 'con-purchase-requests',
+            'page_title'    => 'Edit Purchase Request #' . $id,
+            'pr'            => $pr,
+            'items'         => $items,
+            'projects'      => $projects,
+            'materials'     => $materials,
+        ]);
+    }
+
+    public function update($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userId   = (int)($_SESSION['user']['id'] ?? 0);
+        $id       = (int)$id;
+
+        $pr = $this->prModel->find($id);
+        if (!$pr) {
+            setError('Purchase Request not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
+
+        if ($pr['status'] !== 'Draft') {
+            setError('Submitted or approved purchase requests cannot be edited.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+            exit;
+        }
+
+        $isCreator = (int)($pr['created_by'] ?? 0) === $userId;
+        $isAdmin = in_array($userRole, [1, 3]);
+
+        if (!$isCreator && !$isAdmin) {
+            setError('You do not have permission to edit this Purchase Request.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            exit;
+        }
+
+        $attachment = null;
+        if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = __DIR__ . '/../../../public/uploads/purchase_requests/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+
+            $fileName   = time() . '_' . basename($_FILES['attachment']['name']);
+            $targetFile = $uploadDir . $fileName;
+            if (move_uploaded_file($_FILES['attachment']['tmp_name'], $targetFile)) {
+                $attachment = '/public/uploads/purchase_requests/' . $fileName;
+            }
+        }
+
+        $prType = $_POST['pr_type'] ?? 'boq_linked';
+        $status = $_POST['status'] ?? 'Draft';
+
+        $data = [
+            'project_id'   => (int)($_POST['project_id'] ?? 0),
+            'bom_id'       => ($prType === 'boq_linked' && !empty($_POST['bom_id'])) ? (int)$_POST['bom_id'] : null,
+            'pr_type'      => $prType,
+            'required_date'=> !empty($_POST['required_date']) ? $_POST['required_date'] : null,
+            'purpose'      => trim($_POST['purpose'] ?? ''),
+            'created_by'   => $userId,
+            'status'       => $status,
+            'notes'        => trim($_POST['notes'] ?? ''),
+            'attachment'   => $attachment,
+        ];
+
+        $materialIds = $_POST['material_id'] ?? [];
+        $quantities  = $_POST['quantity'] ?? [];
+        $itemDates   = $_POST['item_req_date'] ?? [];
+
+        $items = [];
+        foreach ($materialIds as $i => $mid) {
+            if (!empty($mid) && ($quantities[$i] ?? 0) > 0) {
+                $items[] = [
+                    'material_id'  => (int)$mid,
+                    'quantity'     => (float)$quantities[$i],
+                    'required_date'=> !empty($itemDates[$i]) ? $itemDates[$i] : null,
+                ];
+            }
+        }
+
+        if (empty($items)) {
+            setError('At least one material item is required.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-request-edit/{$id}");
+            exit;
+        }
+
+        $result = $this->prModel->update($id, $data, $items);
+
+        if ($result['success']) {
+            setSuccess($status === 'Submitted' ? 'Purchase Request submitted for PM review.' : 'Purchase Request draft updated successfully.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+        } else {
+            $errMsg = implode(' | ', $result['errors']);
+            setError("PR update failed: {$errMsg}");
+            header("Location: {$GLOBALS['base_url']}/con-purchase-request-edit/{$id}");
+        }
         exit;
     }
 }

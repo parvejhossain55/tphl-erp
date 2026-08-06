@@ -265,8 +265,11 @@ $categories   = $categories   ?? [];
 
                         <div class="mt-4 text-end">
                             <a href="<?= $base_url ?>/con-purchase-requests" class="btn btn-secondary me-2">Cancel</a>
-                            <button type="submit" class="btn btn-primary px-4 fw-bold">
-                                <i class="bi bi-save me-1"></i> Submit Purchase Request
+                            <button type="submit" name="status" value="Draft" class="btn btn-outline-primary me-2">
+                                <i class="bi bi-file-earmark me-1"></i> Save as Draft
+                            </button>
+                            <button type="submit" name="status" value="Submitted" class="btn btn-primary px-4 fw-bold">
+                                <i class="bi bi-send me-1"></i> Submit Purchase Request
                             </button>
                         </div>
                     </form>

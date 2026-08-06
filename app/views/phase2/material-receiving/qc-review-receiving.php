@@ -271,23 +271,39 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                                     <th>#</th>
                                     <th>Material</th>
                                     <th>Vendor</th>
-                                    <th class="text-end">Received Qty</th>
+                                    <th class="text-end">Delivered Qty</th>
+                                    <th class="text-end text-success">QC Accepted</th>
+                                    <th class="text-end text-danger">QC Rejected</th>
                                     <th class="text-center">QC Result</th>
                                     <th>Reason</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($items as $i => $item): ?>
-                                <tr class="<?= ($item['status'] === 'Rejected') ? 'table-danger' : '' ?>">
+                                <?php 
+                                $totalAcceptedSum = 0;
+                                $totalRejectedSum = 0;
+                                foreach ($items as $i => $item): 
+                                    $recvQty = (float)$item['received_quantity'];
+                                    $rejQty  = ($item['status'] === 'Rejected') ? $recvQty : (float)($item['return_quantity'] ?? 0);
+                                    $accQty  = max(0, $recvQty - $rejQty);
+                                    
+                                    $totalAcceptedSum += $accQty;
+                                    $totalRejectedSum += $rejQty;
+                                ?>
+                                <tr class="<?= ($item['status'] === 'Rejected') ? 'table-danger' : (($item['status'] === 'Partially Accepted') ? 'table-warning' : '') ?>">
                                     <td><?= $i + 1 ?></td>
                                     <td class="fw-bold"><?= htmlspecialchars($item['material_name']) ?> (<?= $item['unit'] ?>)</td>
                                     <td class="small"><?= htmlspecialchars($item['vendor_name'] ?? '—') ?></td>
-                                    <td class="text-end fw-bold"><?= number_format($item['received_quantity'], 3) ?></td>
+                                    <td class="text-end fw-bold"><?= number_format($recvQty, 3) ?></td>
+                                    <td class="text-end fw-bold text-success"><?= number_format($accQty, 3) ?></td>
+                                    <td class="text-end fw-bold text-danger"><?= ($rejQty > 0) ? number_format($rejQty, 3) : '0.000' ?></td>
                                     <td class="text-center">
                                         <?php if ($item['status'] === 'Accepted'): ?>
                                             <span class="badge bg-success px-3"><i class="bi bi-check-lg me-1"></i>Accepted</span>
                                         <?php elseif ($item['status'] === 'Rejected'): ?>
                                             <span class="badge bg-danger px-3"><i class="bi bi-x-lg me-1"></i>Rejected</span>
+                                        <?php elseif ($item['status'] === 'Partially Accepted'): ?>
+                                            <span class="badge bg-warning text-dark px-3"><i class="bi bi-pie-chart-half me-1"></i>Partially Accepted</span>
                                         <?php else: ?>
                                             <span class="badge bg-secondary"><?= $item['status'] ?></span>
                                         <?php endif; ?>
@@ -299,25 +315,25 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                         </table>
                     </div>
 
-                    <div class="mt-3 p-3  rounded">
+                    <div class="mt-3 p-3 bg-light rounded border">
                         <div class="row text-center">
                             <div class="col-md-4">
                                 <span class="fw-bold text-success fs-5">
-                                    <?= count(array_filter($items, fn($it) => $it['status'] === 'Accepted')) ?>
+                                    <?= number_format($totalAcceptedSum, 3) ?>
                                 </span>
-                                <div class="small text-muted">QC Accepted</div>
+                                <div class="small text-muted fw-bold">Total QC Accepted Qty</div>
                             </div>
                             <div class="col-md-4">
                                 <span class="fw-bold text-danger fs-5">
-                                    <?= count(array_filter($items, fn($it) => $it['status'] === 'Rejected')) ?>
+                                    <?= number_format($totalRejectedSum, 3) ?>
                                 </span>
-                                <div class="small text-muted">QC Rejected</div>
+                                <div class="small text-muted fw-bold">Total QC Rejected Qty</div>
                             </div>
                             <div class="col-md-4">
-                                <span class="fw-bold fs-5">
+                                <span class="fw-bold fs-5 text-primary">
                                     <?= count($items) ?>
                                 </span>
-                                <div class="small text-muted">Total Items</div>
+                                <div class="small text-muted fw-bold">Total Items</div>
                             </div>
                         </div>
                     </div>

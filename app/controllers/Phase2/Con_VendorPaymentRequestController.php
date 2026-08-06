@@ -895,7 +895,7 @@ class Con_VendorPaymentRequestController extends Controller
         $sql = "
             SELECT
                 COALESCE(SUM(
-                    (mri.received_quantity - COALESCE(ret.return_qty, 0)) * poi.unit_price
+                    (mri.received_quantity - GREATEST(COALESCE(mri.return_quantity, 0), COALESCE(ret.return_qty, 0))) * poi.unit_price
                 ), 0) AS net_receivable
             FROM material_receiving_items mri
             JOIN material_receiving mr    ON mr.id = mri.receiving_id
@@ -1209,7 +1209,7 @@ class Con_VendorPaymentRequestController extends Controller
             $rStmt = $this->db->prepare("
                 SELECT
                     COALESCE(SUM(
-                        (mri.received_quantity - COALESCE(ret.return_qty, 0)) * poi.unit_price
+                        (mri.received_quantity - GREATEST(COALESCE(mri.return_quantity, 0), COALESCE(ret.return_qty, 0))) * poi.unit_price
                     ), 0) AS received_amount
                 FROM material_receiving_items mri
                 JOIN material_receiving mr   ON mr.id = mri.receiving_id

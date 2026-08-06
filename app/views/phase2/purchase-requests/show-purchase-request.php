@@ -19,6 +19,26 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
         <a href="<?= $base_url ?>/con-purchase-requests" class="btn btn-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i> Back
         </a>
+        <?php
+        $reqUserId = (int)($_SESSION['user']['id'] ?? 0);
+        $reqUserRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isPRCreator = (int)($pr['created_by'] ?? 0) === $reqUserId;
+        $isPRAdmin = in_array($reqUserRole, [1, 3]);
+        $isPRDraft = ($pr['status'] ?? '') === 'Draft';
+        $canDeletePR = ($isPRCreator || $isPRAdmin) && !in_array($pr['status'] ?? '', ['Approved', 'PO Issued']);
+        ?>
+        <?php if ($isPRDraft && ($isPRCreator || $isPRAdmin)): ?>
+            <a href="<?= $base_url ?>/con-purchase-request-edit/<?= $pr['id'] ?>" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-pencil me-1"></i> Edit Request
+            </a>
+        <?php endif; ?>
+        <?php if ($canDeletePR): ?>
+            <a href="<?= $base_url ?>/con-purchase-request-delete/<?= $pr['id'] ?>"
+                class="btn btn-outline-danger btn-sm"
+                onclick="return confirm('Are you sure you want to delete this purchase request?')">
+                <i class="bi bi-trash me-1"></i> Delete Request
+            </a>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -230,16 +250,16 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                     $isCreator   = ($pr['created_by'] == $_SESSION['user']['id']);
                     ?>
                     <?php if ($pr['status'] === 'Draft'): ?>
-                        <div class="mt-4 p-3 bg-light rounded d-flex justify-content-between align-items-center">
+                        <div class="mt-4 p-3 bg-light rounded d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <span class="text-muted small">
-                                <i class="bi bi-info-circle me-1"></i> This PR is a Draft.
+                                <i class="bi bi-info-circle me-1"></i> This PR is currently in <strong>Draft</strong>. Click submit to send for PM review.
                             </span>
-                            <?php if ($isCreator): ?>
+                            <?php if ($isCreator || in_array($sessionRole, [1, 3, 15, 22])): ?>
                             <div class="d-flex gap-2">
                                 <form action="<?= $base_url ?>/con-purchase-request-approve/<?= $pr['id'] ?>" method="POST" class="d-inline">
                                     <input type="hidden" name="status" value="Submitted">
-                                    <button type="submit" class="btn btn-info btn-sm">
-                                        <i class="bi bi-send me-1"></i> Submit
+                                    <button type="submit" class="btn btn-primary btn-sm fw-bold">
+                                        <i class="bi bi-send me-1"></i> Submit for PM Review
                                     </button>
                                 </form>
                             </div>

@@ -286,6 +286,17 @@ class AutoPostingService
             return false;
         }
 
+        // Prevent duplicate journal entry for same sales payment ref ID
+        if ($sourceRefId) {
+            $chk = $this->db->prepare("SELECT id FROM journals WHERE source_module = 'sales' AND source_ref_id = ? LIMIT 1");
+            $chk->bind_param("i", $sourceRefId);
+            $chk->execute();
+            $existing = $chk->get_result()->fetch_assoc();
+            if ($existing) {
+                return (int)$existing['id'];
+            }
+        }
+
         $voucherNo = $this->generateVoucherNumber('RV');
         $date = date('Y-m-d');
         $voucherType = 'Receipt Voucher';
@@ -411,11 +422,12 @@ class AutoPostingService
         if ($userId) {
             $stmt = $this->db->prepare("
                 SELECT COALESCE(
-                    NULLIF(TRIM(e.office_branch), ''), 
+                    NULLIF(TRIM(ob.name), ''), 
                     NULLIF(TRIM(e.workplace), '')
                 ) AS office_branch 
                 FROM users u 
                 LEFT JOIN employees e ON (u.employee_id = e.id OR e.user_id = u.id) 
+                LEFT JOIN office_branches ob ON ob.id = e.office_branch_id
                 WHERE u.id = ? 
                 LIMIT 1
             ");
@@ -607,7 +619,7 @@ class AutoPostingService
             FROM lead_payments lp
             LEFT JOIN lead_bookings lb ON lp.booking_id = lb.id
             LEFT JOIN leads l ON lb.lead_id = l.id
-            LEFT JOIN journals j ON (j.source_module = 'sales_payment' AND j.source_ref_id = lp.id)
+            LEFT JOIN journals j ON (j.source_module = 'sales' AND j.source_ref_id = lp.id)
             WHERE (lp.verification_status = 'verified' OR lp.payment_status = 'verified') 
               AND lp.amount > 0 
               AND j.id IS NULL

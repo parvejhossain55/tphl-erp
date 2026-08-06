@@ -4,17 +4,18 @@ $userId = (int)($_SESSION['user']['id'] ?? 0);
 
 $canCreate = true; // Enable New Request button for all logged in users
 
-// Approval Pipeline Role Permissions
-$isAdminOrMgmt = in_array($roleId, [1, 2, 3]);
-$isOperations = $isAdminOrMgmt || in_array($roleId, [6, 20, 22, 30]); // Operations Step 1
-$isPurchaseHead = $isAdminOrMgmt || in_array($roleId, [17, 23, 31]);  // Purchase Head / Sr Executive Step 2
-$isQcAudit = $isAdminOrMgmt || in_array($roleId, [24, 25]);          // QC & Internal Audit Step 3
-$isManagement = $isAdminOrMgmt;                                      // Management Step 4
-$isAccounts = $isAdminOrMgmt || in_array($roleId, [6, 30]);           // Accounts Payment
+// Approval Pipeline Role Permissions (Admin=1, super Admin=3)
+$isAdminOrMgmt = in_array($roleId, [1, 3]); 
+$isOperations   = $isAdminOrMgmt || in_array($roleId, [20, 22, 30, 32]); // Operations Step 1 (includes Role 32)
+$isPurchaseHead = $isAdminOrMgmt || in_array($roleId, [17, 23, 31]);    // Purchase Head / Sr Executive Step 2
+$isQcAudit      = $isAdminOrMgmt || in_array($roleId, [24, 25]);        // QC & Internal Audit Step 3
+$isManagement   = $isAdminOrMgmt;                                      // Management Step 4
+$isAccounts     = $isAdminOrMgmt || in_array($roleId, [6, 30]);         // Accounts Payment
 
-// Approvers include Management, Operations, Purchase, QC/Audit, Accounts roles
-$isApprover = in_array($roleId, [1, 2, 3, 6, 17, 20, 22, 23, 24, 25, 30, 31]);
-$activeTab  = $_GET['tab'] ?? ($isApprover ? 'all_requests' : 'my_requests');
+// Global approvers / viewers include Management, Operations, Purchase, QC/Audit, Accounts roles
+$isGlobalViewer = in_array($roleId, [1, 3, 6, 17, 20, 22, 23, 24, 25, 30, 31, 32]);
+$isApprover     = $isGlobalViewer;
+$activeTab      = $_GET['tab'] ?? ($isApprover ? 'all_requests' : 'my_requests');
 
 $overallBadges = [
     'pending' => 'warning', 'in_review' => 'info', 'approved' => 'success',
@@ -310,19 +311,20 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                     <td class="text-center">
                                         <?php
                                         $isCreator = (int)$r['requested_by'] === $userId;
+                                        $isReporterBoss = !empty($r['requester_reporting_boss_id']) && (int)$r['requester_reporting_boss_id'] === $userId;
 
                                         // Strict self-approval prevention: Creator can NEVER approve/reject their own request
                                         $canApprove = false;
                                         $step = '';
                                         
                                         if (!$isCreator) {
-                                            if (!empty($isOperations) && $r['operations_status'] === 'pending') {
+                                            if (($isOperations || $isReporterBoss) && $r['operations_status'] === 'pending') {
                                                 $canApprove = true; $step = 'operations';
-                                            } elseif (!empty($isPurchaseHead) && $r['operations_status'] === 'approved' && $r['purchase_head_status'] === 'pending') {
+                                            } elseif ($isPurchaseHead && $r['operations_status'] === 'approved' && $r['purchase_head_status'] === 'pending') {
                                                 $canApprove = true; $step = 'purchase_head';
-                                            } elseif (!empty($isQcAudit) && $r['purchase_head_status'] === 'approved' && $r['qc_audit_status'] === 'pending') {
+                                            } elseif ($isQcAudit && $r['purchase_head_status'] === 'approved' && $r['qc_audit_status'] === 'pending') {
                                                 $canApprove = true; $step = 'qc_audit';
-                                            } elseif (!empty($isManagement) && $r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending') {
+                                            } elseif ($isManagement && $r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending') {
                                                 $canApprove = true; $step = 'mgmt';
                                             }
                                         }
@@ -422,8 +424,8 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Assign To (Person)</label>
-                            <select name="assigned_to" class="form-select">
-                                <option value="">-- Optional: Assign to Person --</option>
+                            <select name="assigned_to" id="new_request_assigned_to" class="form-select select2-assign">
+                                <option value=""></option>
                                 <?php foreach ($users ?? [] as $u): ?>
                                     <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
                                 <?php endforeach; ?>
@@ -1049,3 +1051,20 @@ function openConfirmPurchaseModal(btn) {
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof jQuery !== 'undefined') {
+        jQuery(document).on('shown.bs.modal', '#newRequestModal', function () {
+            if (jQuery.fn && jQuery.fn.select2) {
+                jQuery('#new_request_assigned_to').select2({
+                    dropdownParent: jQuery('#newRequestModal'),
+                    placeholder: "-- Optional: Assign to Person --",
+                    allowClear: true,
+                    width: '100%'
+                });
+            }
+        });
+    }
+});
+</script>

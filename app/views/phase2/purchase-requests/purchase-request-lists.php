@@ -103,6 +103,19 @@
                                             <i class="bi bi-eye"></i>
                                         </a>
 
+                                        <?php
+                                        $reqUserId = (int)($_SESSION['user']['id'] ?? 0);
+                                        $isPRCreator = (int)($r['created_by'] ?? 0) === $reqUserId;
+                                        $isPRAdmin = in_array($userRole, [1, 3]);
+                                        ?>
+
+                                        <?php if ($r['status'] === 'Draft' && ($isPRCreator || $isPRAdmin)): ?>
+                                            <a href="<?= $base_url ?>/con-purchase-request-edit/<?= $r['id'] ?>"
+                                                class="btn btn-sm btn-outline-primary ms-1" title="Edit Draft Request">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        <?php endif; ?>
+
                                         <?php if ($r['status'] === 'Approved'): ?>
                                             <?php if ($userRole === 23 || $userRole === 31 || in_array($userRole, [1, 3])): ?>
                                                 <a href="<?= $base_url ?>/con-quotation-create/<?= $r['id'] ?>"
@@ -110,6 +123,20 @@
                                                     <i class="bi bi-receipt"></i>
                                                 </a>
                                             <?php endif; ?>
+                                        <?php endif; ?>
+
+                                        <?php
+                                        $reqUserId = (int)($_SESSION['user']['id'] ?? 0);
+                                        $isPRCreator = (int)($r['created_by'] ?? 0) === $reqUserId;
+                                        $isPRAdmin = in_array($userRole, [1, 3]);
+                                        $canDeletePR = ($isPRCreator || $isPRAdmin) && !in_array($r['status'], ['Approved', 'PO Issued']);
+                                        ?>
+                                        <?php if ($canDeletePR): ?>
+                                            <a href="<?= $base_url ?>/con-purchase-request-delete/<?= $r['id'] ?>"
+                                                class="btn btn-sm btn-outline-danger ms-1" title="Delete Request"
+                                                onclick="return confirm('Are you sure you want to delete this purchase request?')">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
