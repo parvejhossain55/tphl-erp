@@ -105,7 +105,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         <!-- Filters -->
         <div class="card-body border-bottom pb-3">
-            <form method="GET" class="row g-3 align-items-end">
+            <form method="GET" class="row  align-items-end">
                 <div class="col-md-3 col-sm-6">
                     <label class="form-label fs-12 fw-semibold mb-1">Search</label>
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Code, name, brand..." value="<?= htmlspecialchars($filters['search'] ?? '') ?>">
@@ -228,7 +228,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-md-6">
                             <label class="form-label">Product Code <span class="text-danger">*</span></label>
                             <input type="text" name="product_code" class="form-control" placeholder="e.g. ELEC-001" required>
@@ -300,7 +300,7 @@ $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-md-6">
                             <label class="form-label">Product Code <span class="text-danger">*</span></label>
                             <input type="text" name="product_code" id="edit_product_code" class="form-control" required>

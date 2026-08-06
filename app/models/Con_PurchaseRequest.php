@@ -209,4 +209,88 @@ class Con_PurchaseRequest extends Model
         $stmt->bind_param('si', $status, $id);
         return $stmt->execute();
     }
+
+    public function update($id, $data, $items)
+    {
+        $id = (int)$id;
+        $prType = $data['pr_type'] ?? 'boq_linked';
+        $bomId  = ($prType === 'boq_linked' && !empty($data['bom_id'])) ? (int)$data['bom_id'] : null;
+        $requiredDate = !empty($data['required_date']) ? $data['required_date'] : null;
+        $purpose      = !empty($data['purpose'])       ? trim($data['purpose'])  : null;
+        $attachment   = !empty($data['attachment'])    ? trim($data['attachment']) : null;
+        $status       = !empty($data['status'])        ? $data['status']         : 'Draft';
+
+        $this->db->begin_transaction();
+        try {
+            if ($attachment) {
+                $stmt = $this->db->prepare(
+                    "UPDATE {$this->table}
+                     SET project_id = ?, bom_id = ?, pr_type = ?, required_date = ?, purpose = ?, status = ?, notes = ?, attachment = ?
+                     WHERE id = ?"
+                );
+                $stmt->bind_param('iissssssi',
+                    $data['project_id'], $bomId, $prType, $requiredDate, $purpose, $status, $data['notes'], $attachment, $id
+                );
+            } else {
+                $stmt = $this->db->prepare(
+                    "UPDATE {$this->table}
+                     SET project_id = ?, bom_id = ?, pr_type = ?, required_date = ?, purpose = ?, status = ?, notes = ?
+                     WHERE id = ?"
+                );
+                $stmt->bind_param('iisssssi',
+                    $data['project_id'], $bomId, $prType, $requiredDate, $purpose, $status, $data['notes'], $id
+                );
+            }
+            $stmt->execute();
+
+            $delItems = $this->db->prepare("DELETE FROM {$this->itemTable} WHERE request_id = ?");
+            $delItems->bind_param('i', $id);
+            $delItems->execute();
+
+            $itemStmt = $this->db->prepare(
+                "INSERT INTO {$this->itemTable}
+                    (request_id, material_id, quantity, required_date, created_by)
+                 VALUES (?, ?, ?, ?, ?)"
+            );
+            foreach ($items as $item) {
+                $itemReqDate = !empty($item['required_date']) ? $item['required_date'] : null;
+                $itemStmt->bind_param('iidsi',
+                    $id,
+                    $item['material_id'],
+                    $item['quantity'],
+                    $itemReqDate,
+                    $data['created_by']
+                );
+                $itemStmt->execute();
+            }
+
+            $this->db->commit();
+            return ['success' => true, 'id' => $id, 'errors' => []];
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            return ['success' => false, 'id' => 0, 'errors' => [$e->getMessage()]];
+        }
+    }
+
+    public function delete($id)
+    {
+        $id = (int)$id;
+        $this->db->begin_transaction();
+        try {
+            $stmtItems = $this->db->prepare("DELETE FROM {$this->itemTable} WHERE request_id = ?");
+            $stmtItems->bind_param('i', $id);
+            $stmtItems->execute();
+
+            $stmtReq = $this->db->prepare("DELETE FROM {$this->table} WHERE id = ?");
+            $stmtReq->bind_param('i', $id);
+            $stmtReq->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            error_log("Con_PurchaseRequest delete exception: " . $e->getMessage());
+            return false;
+        }
+    }
 }

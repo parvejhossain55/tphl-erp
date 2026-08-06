@@ -25,6 +25,17 @@ class AssetManagementController extends Controller
         }
     }
 
+    private function canUserEdit()
+    {
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        if (function_exists('hasPermission')) {
+            if (hasPermission('Asset Management') || hasPermission('QC & Internal Audit')) {
+                return true;
+            }
+        }
+        return in_array($roleId, [1, 3, 6, 17, 20, 22, 23, 24, 25, 30, 31, 32]);
+    }
+
     public function index()
     {
         $filters = [
@@ -33,12 +44,14 @@ class AssetManagementController extends Controller
             'asset_status' => $_GET['asset_status'] ?? '',
             'condition_status' => $_GET['condition_status'] ?? '',
             'project_id' => $_GET['project_id'] ?? '',
+            'office_branch_id' => $_GET['office_branch_id'] ?? '',
             'assigned_user_id' => $_GET['assigned_user_id'] ?? '',
         ];
 
         $assets = $this->model->getAllAssets($filters);
         $products = $this->model->getAllProducts(['status' => 'active']);
         $categories = $this->model->getProcurementCategories();
+        $branches = $this->model->getAllOfficeBranches();
         $stats = $this->model->getDashboardStats();
 
         $projects = [];
@@ -58,10 +71,12 @@ class AssetManagementController extends Controller
             'assets' => $assets,
             'products' => $products,
             'categories' => $categories,
+            'branches' => $branches,
             'projects' => $projects,
             'users' => $users,
             'stats' => $stats,
-            'filters' => $filters
+            'filters' => $filters,
+            'canEdit' => $this->canUserEdit()
         ];
 
         $this->view('phase2/asset-management/assets', $data);
@@ -72,10 +87,83 @@ class AssetManagementController extends Controller
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = $_POST;
             $data['created_by'] = $_SESSION['user']['id'] ?? 1;
-            if ($this->model->createAsset($data)) {
+            if ($assetId = $this->model->createAsset($data)) {
+                // Auto-post to double-entry accounting ledger so purchase value reflects in Balance Sheet (Total Assets)
+                if (!empty($data['purchase_price']) && (float)$data['purchase_price'] > 0) {
+                    try {
+                        require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
+                        $autoPosting = new \AutoPostingService($this->db);
+                        $assetAccId = $autoPosting->getAccountIdByCode('1610'); // Office Assets / Fixed Assets
+                        $payableCashAccId = $autoPosting->getAccountIdByCode('2110'); // Accounts Payable / Cash Outflow
+
+                        $assetObj = $this->model->findAsset($assetId);
+                        $assetCode = $assetObj['asset_code'] ?? ('AST-' . $assetId);
+                        $itemName = $assetObj['item_name'] ?? 'Office Asset';
+
+                        $autoPosting->postAccrualEntry(
+                            'office_assets',
+                            $assetId,
+                            $assetAccId,
+                            $payableCashAccId,
+                            (float)$data['purchase_price'],
+                            "Office Asset Registered ({$assetCode}): " . $itemName,
+                            !empty($data['project_id']) ? (int)$data['project_id'] : null,
+                            'employee',
+                            !empty($data['assigned_to']) ? (int)$data['assigned_to'] : null,
+                            $_SESSION['user']['id'] ?? 1
+                        );
+                    } catch (\Exception $e) {
+                        error_log("AutoPosting Exception (Asset Direct Store): " . $e->getMessage());
+                    }
+                }
                 setSuccess("Asset added successfully.");
             } else {
                 setError("Failed to add asset.");
+            }
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/office-assets");
+        exit;
+    }
+
+    public function storeProductQuick()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = $_POST;
+            $data['created_by'] = $_SESSION['user']['id'] ?? 1;
+
+            if (empty($data['product_code'])) {
+                $data['product_code'] = 'PRD-' . date('Y') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+            }
+
+            if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/products/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $filename = 'prod_' . time() . '_' . rand(1000, 9999) . '.' . pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+                if (move_uploaded_file($_FILES['image']['tmp_name'], $uploadDir . $filename)) {
+                    $data['image_path'] = 'uploads/products/' . $filename;
+                }
+            }
+
+            if ($this->model->createProduct($data)) {
+                setSuccess("Product catalog item created successfully.");
+            } else {
+                setError("Failed to create product catalog item.");
+            }
+        }
+        header("Location: " . $GLOBALS['base_url'] . "/office-assets");
+        exit;
+    }
+
+    public function storeCategoryQuick()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $name = trim($_POST['name'] ?? '');
+            if ($name && $this->model->addProcurementCategory($name)) {
+                setSuccess("Product category added successfully.");
+            } else {
+                setError("Failed to add product category.");
             }
         }
         header("Location: " . $GLOBALS['base_url'] . "/office-assets");
@@ -94,7 +182,8 @@ class AssetManagementController extends Controller
         $data = [
             'page_title' => 'Asset Details - ' . ($asset['asset_code'] ?? ''),
             'asset' => $asset,
-            'logs' => $logs
+            'logs' => $logs,
+            'canEdit' => $this->canUserEdit()
         ];
         $this->view('phase2/asset-management/asset-detail', $data);
     }
@@ -202,7 +291,8 @@ class AssetManagementController extends Controller
             'page_title' => 'Asset Products Catalog',
             'products' => $products,
             'categories' => $categories,
-            'stockCounts' => $stockCounts
+            'stockCounts' => $stockCounts,
+            'canEdit' => $this->canUserEdit()
         ];
         $this->view('phase2/asset-management/products', $data);
     }
@@ -267,15 +357,16 @@ class AssetManagementController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userId = (int)($_SESSION['user']['id'] ?? 0);
 
-        $isSuperAdmin   = in_array($roleId, [1, 2]); // Super Admin / Directors only
-        $isOperations   = $isSuperAdmin || in_array($roleId, [6, 20, 22, 30]);
+        $isSuperAdmin   = in_array($roleId, [1, 3]); // Admin (1) and super Admin (3) ONLY. Role 2 is Employee!
+        $isOperations   = $isSuperAdmin || in_array($roleId, [20, 22, 30, 32]);
         $isPurchaseHead = $isSuperAdmin || in_array($roleId, [17, 23, 31]);
         $isQcAudit      = $isSuperAdmin || in_array($roleId, [24, 25]);
-        $isManagement   = $isSuperAdmin || $roleId === 3;
+        $isManagement   = $isSuperAdmin;
         $isAccounts     = $isSuperAdmin || in_array($roleId, [6, 30]);
-        $isApprover     = $isSuperAdmin || $isOperations || $isPurchaseHead || $isQcAudit || $isManagement || $isAccounts;
+        $isGlobalViewer = in_array($roleId, [1, 3, 6, 17, 20, 22, 23, 24, 25, 30, 31, 32]);
+        $isApprover     = $isGlobalViewer;
 
-        $activeTab  = $_GET['tab'] ?? ($isApprover ? 'pending_approval' : 'my_requests');
+        $activeTab  = $_GET['tab'] ?? ($isApprover ? 'all_requests' : 'my_requests');
 
         $filters = [
             'department_id'    => $_GET['department_id'] ?? '',
@@ -286,6 +377,7 @@ class AssetManagementController extends Controller
             'role_id'          => $roleId,
             'tab'              => $activeTab,
             'is_admin'         => $isSuperAdmin,
+            'is_global_viewer' => $isGlobalViewer,
             'is_operations'    => $isOperations,
             'is_purchase_head' => $isPurchaseHead,
             'is_qc_audit'      => $isQcAudit,
@@ -293,8 +385,10 @@ class AssetManagementController extends Controller
             'is_accounts'      => $isAccounts,
         ];
 
-        if (!$isApprover || $activeTab === 'my_requests') {
+        if ($activeTab === 'my_requests') {
             $filters['created_by'] = $userId;
+        } elseif (!$isGlobalViewer) {
+            $filters['restrict_user'] = true;
         }
 
         $requests = $this->model->getExtraPurchases($filters);
@@ -386,8 +480,10 @@ class AssetManagementController extends Controller
     public function approveExtraPurchase($id)
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
             $userId = (int)($_SESSION['user']['id'] ?? 1);
             $req = $this->model->findExtraPurchase($id);
+
             if ($req && (int)$req['requested_by'] === $userId) {
                 setError("You cannot approve or reject your own purchase request.");
                 header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
@@ -397,6 +493,38 @@ class AssetManagementController extends Controller
             $step = $_POST['step'] ?? 'operations';
             if ($step === 'management') {
                 $step = 'mgmt';
+            }
+
+            // Role permission validation for step approval
+            $canApproveStep = false;
+            if (in_array($roleId, [1, 3])) {
+                $canApproveStep = true;
+            } else {
+                if ($step === 'operations') {
+                    if (in_array($roleId, [20, 22, 30, 32])) {
+                        $canApproveStep = true;
+                    } elseif (!empty($req['requester_reporting_boss_id']) && (int)$req['requester_reporting_boss_id'] === $userId) {
+                        $canApproveStep = true;
+                    }
+                } elseif ($step === 'purchase_head') {
+                    if (in_array($roleId, [17, 23, 31])) {
+                        $canApproveStep = true;
+                    }
+                } elseif ($step === 'qc_audit') {
+                    if (in_array($roleId, [24, 25])) {
+                        $canApproveStep = true;
+                    }
+                } elseif ($step === 'mgmt') {
+                    if (in_array($roleId, [1, 3])) {
+                        $canApproveStep = true;
+                    }
+                }
+            }
+
+            if (!$canApproveStep) {
+                setError("You do not have permission to approve this step.");
+                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                exit;
             }
             $status = $_POST['approval_status'] ?? $_POST['status'] ?? 'approved';
             $note = $_POST['approval_note'] ?? $_POST['note'] ?? '';

@@ -65,7 +65,7 @@ $show_breadcrumb = true;
                             </li>
                             <li class="d-flex mb-2">
                                 <div class="fw-bold me-2" style="min-width:130px;">Office Branch:</div>
-                                <div class="text"><?= htmlspecialchars($employee['office_branch'] ?? 'N/A') ?></div>
+                                <div class="text"><?= htmlspecialchars($employee['office_branch_name'] ?? $employee['office_branch'] ?? 'Ashulia Site Office') ?></div>
                             </li>
                             <li class="d-flex mb-2">
                                 <div class="fw-bold me-2" style="min-width:130px;">Report To / Boss:</div>

@@ -109,6 +109,7 @@ $show_breadcrumb = true;
                                - <strong><?= $employee['team_name'] ?></strong>
                             <?php endif; ?>
                             </p>
+                            <p class="fs-12 text-primary mb-1"><i class="fa-solid fa-building me-1"></i><?= htmlspecialchars($employee['office_branch_name'] ?? 'Ashulia Site Office') ?></p>
                         </div>
                         <div class="common-social mb-20">
                             <a href="<?= formatUrl($employee['social_media1']) ?>"><i class="fa-brands fa-facebook-f"></i></a>

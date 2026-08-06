@@ -267,15 +267,13 @@
                  <div class="col-lg-6">
                      <div class="from__input-box">
                          <div class="form__input-title">
-                             <label for="office_branch">Office Branch <span class="text-muted">Optional</span></label>
+                             <label for="office_branch_id">Office Branch</label>
                          </div>
                          <div class="form__input">
-                             <select class="form-control" name="office_branch" id="office_branch">
-                                 <option value="">Select Office Branch</option>
-                                 <option value="Corporate gulshan office" <?= (($employee['office_branch'] ?? '') === 'Corporate gulshan office') ? 'selected' : '' ?>>Corporate gulshan office</option>
-                                 <option value="ashuliya site office" <?= (($employee['office_branch'] ?? '') === 'ashuliya site office') ? 'selected' : '' ?>>ashuliya site office</option>
-                                 <option value="Ati site office 2" <?= (($employee['office_branch'] ?? '') === 'Ati site office 2') ? 'selected' : '' ?>>Ati site office 2</option>
-                                 <option value="shaymoli zonal office" <?= (($employee['office_branch'] ?? '') === 'shaymoli zonal office') ? 'selected' : '' ?>>shaymoli zonal office</option>
+                             <select class="form-control" name="office_branch_id" id="office_branch_id">
+                                 <?php foreach ($branches ?? [] as $b): ?>
+                                     <option value="<?= $b['id'] ?>" <?= (($employee['office_branch_id'] ?? 2) == $b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
+                                 <?php endforeach; ?>
                              </select>
                          </div>
                      </div>

@@ -114,8 +114,8 @@ $conditionStatuses = ['new','ok','need_repair','repairing','repaired','damaged',
                             <span class="fw-semibold"><?= htmlspecialchars($asset['project_name'] ?? 'Head Office') ?></span>
                         </div>
                         <div class="col-md-6">
-                            <label class="text-muted fs-11 fw-semibold d-block">Location</label>
-                            <span><?= htmlspecialchars($asset['location'] ?? '—') ?></span>
+                            <label class="text-muted fs-11 fw-semibold d-block">Office Branch</label>
+                            <span class="fw-semibold text-primary"><?= htmlspecialchars($asset['branch_name'] ?? '—') ?></span>
                         </div>
                         <div class="col-md-6">
                             <label class="text-muted fs-11 fw-semibold d-block">Assigned To</label>

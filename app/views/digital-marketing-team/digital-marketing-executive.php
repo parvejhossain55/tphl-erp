@@ -707,6 +707,19 @@
             </select>
           </div>
 
+          <!-- Platform Filter -->
+          <div class="col-md-3 col-6">
+            <label class="form-label small text-muted fw-semibold">Platform</label>
+            <select name="platform" class="form-select form-select-sm select2">
+              <option value="">All Platforms</option>
+              <?php foreach (($uploadedPlatforms ?? []) as $plat): ?>
+                <option value="<?= htmlspecialchars($plat) ?>" <?= ($selected_platform ?? '') === $plat ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($plat) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
           <!-- Lead Age -->
           <div class="col-md-2 col-6">
             <label class="form-label small text-muted fw-semibold">Lead Age</label>
@@ -948,6 +961,7 @@
     to_date        : "<?= htmlspecialchars($_GET['to_date']        ?? '') ?>",
     project_category_id : "<?= htmlspecialchars($_GET['project_category_id'] ?? '') ?>",
     project_id     : "<?= htmlspecialchars($_GET['project_id']          ?? '') ?>",
+    platform       : "<?= htmlspecialchars($_GET['platform']            ?? '') ?>",
   };
 
   let dmCurrentPage = 1;

@@ -162,18 +162,76 @@ class AssetManagement
     // OFFICE ASSETS — CRUD
     // =========================================================================
 
+    // =========================================================================
+    // OFFICE BRANCHES
+    // =========================================================================
+
+    public function ensureOfficeBranchesSchema()
+    {
+        // 1. Create table office_branches if not exists
+        $this->db->query("
+            CREATE TABLE IF NOT EXISTS `office_branches` (
+              `id` int(11) NOT NULL AUTO_INCREMENT,
+              `name` varchar(255) NOT NULL,
+              `status` enum('active','inactive') DEFAULT 'active',
+              `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        // 2. Ensure default branches are seeded if table is empty
+        $check = $this->db->query("SELECT COUNT(*) as c FROM `office_branches`");
+        if ($check && (int)($check->fetch_assoc()['c'] ?? 0) === 0) {
+            $branches = [
+                'Corporate Gulshan Office',
+                'Ashulia Site Office',
+                'Ati Site Office 2',
+                'Shaymoli Zonal Office'
+            ];
+            $stmt = $this->db->prepare("INSERT INTO `office_branches` (`name`, `status`) VALUES (?, 'active')");
+            if ($stmt) {
+                foreach ($branches as $b) {
+                    $stmt->bind_param('s', $b);
+                    $stmt->execute();
+                }
+            }
+        }
+
+        // 3. Ensure office_branch_id column exists in office_assets table
+        $res = $this->db->query("SHOW COLUMNS FROM `office_assets` LIKE 'office_branch_id'");
+        if ($res && $res->num_rows === 0) {
+            $this->db->query("ALTER TABLE `office_assets` ADD COLUMN `office_branch_id` INT NULL DEFAULT NULL AFTER `project_id`");
+        }
+    }
+
+    public function getAllOfficeBranches($status = 'active')
+    {
+        $this->ensureOfficeBranchesSchema();
+        $sql = "SELECT * FROM office_branches WHERE 1=1";
+        if ($status) {
+            $sql .= " AND status = '$status'";
+        }
+        $sql .= " ORDER BY id ASC";
+        $res = $this->db->query($sql);
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
     /**
      * Get all assets with filters
      */
     public function getAllAssets($filters = [])
     {
+        $this->ensureOfficeBranchesSchema();
         $sql = "SELECT oa.*, 
                        p.name AS project_name,
+                       ob.name AS branch_name,
                        u_assigned.full_name AS assigned_to_name,
                        u_created.full_name AS created_by_name,
                        (SELECT COUNT(*) FROM asset_movement_logs WHERE asset_id = oa.id AND action = 'transferred') AS transfer_count
                 FROM office_assets oa
                 LEFT JOIN projects p ON p.id = oa.project_id
+                LEFT JOIN office_branches ob ON ob.id = oa.office_branch_id
                 LEFT JOIN users u_assigned ON u_assigned.id = oa.assigned_to
                 LEFT JOIN users u_created ON u_created.id = oa.created_by
                 WHERE 1=1";
@@ -191,6 +249,12 @@ class AssetManagement
         if (!empty($filters['project_id'])) {
             $sql .= " AND oa.project_id = ?";
             $params[] = (int)$filters['project_id'];
+            $types .= 'i';
+        }
+
+        if (!empty($filters['office_branch_id'])) {
+            $sql .= " AND oa.office_branch_id = ?";
+            $params[] = (int)$filters['office_branch_id'];
             $types .= 'i';
         }
 
@@ -224,13 +288,16 @@ class AssetManagement
      */
     public function findAsset($id)
     {
+        $this->ensureOfficeBranchesSchema();
         $stmt = $this->db->prepare(
             "SELECT oa.*, 
                     p.name AS project_name,
+                    ob.name AS branch_name,
                     u_assigned.full_name AS assigned_to_name,
                     u_created.full_name AS created_by_name
              FROM office_assets oa
              LEFT JOIN projects p ON p.id = oa.project_id
+             LEFT JOIN office_branches ob ON ob.id = oa.office_branch_id
              LEFT JOIN users u_assigned ON u_assigned.id = oa.assigned_to
              LEFT JOIN users u_created ON u_created.id = oa.created_by
              WHERE oa.id = ?"
@@ -245,23 +312,66 @@ class AssetManagement
      */
     public function createAsset($data)
     {
+        $this->ensureOfficeBranchesSchema();
+        $branchId = !empty($data['office_branch_id']) ? (int)$data['office_branch_id'] : null;
+        $projectId = !empty($data['project_id']) ? (int)$data['project_id'] : null;
+        $deptId = !empty($data['department_id']) ? (int)$data['department_id'] : null;
+        $assignedTo = !empty($data['assigned_to']) ? (int)$data['assigned_to'] : null;
+
+        $assetCode = !empty($data['asset_code']) ? $data['asset_code'] : $this->generateAssetCode();
+        $productId = !empty($data['product_id']) ? (int)$data['product_id'] : null;
+        $itemName = trim($data['item_name'] ?? '');
+
+        // If product_id is empty but item_name is provided, find or create product automatically
+        if (!$productId && !empty($itemName)) {
+            $stmtP = $this->db->prepare("SELECT id FROM office_asset_products WHERE LOWER(name) = LOWER(?) LIMIT 1");
+            $stmtP->bind_param('s', $itemName);
+            $stmtP->execute();
+            $pRes = $stmtP->get_result()->fetch_assoc();
+            if ($pRes) {
+                $productId = (int)$pRes['id'];
+            } else {
+                $pCode = 'PRD-' . date('Y') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+                $stmtNewP = $this->db->prepare("INSERT INTO office_asset_products (product_code, name, status, created_by) VALUES (?, ?, 'active', ?)");
+                $stmtNewP->bind_param('ssi', $pCode, $itemName, $data['created_by']);
+                if ($stmtNewP->execute()) {
+                    $productId = $this->db->insert_id;
+                }
+            }
+        } elseif ($productId && empty($itemName)) {
+            $stmtName = $this->db->prepare("SELECT name FROM office_asset_products WHERE id = ?");
+            $stmtName->bind_param('i', $productId);
+            $stmtName->execute();
+            $pRow = $stmtName->get_result()->fetch_assoc();
+            if ($pRow) {
+                $itemName = $pRow['name'];
+            }
+        }
+
+        if (empty($itemName)) {
+            $itemName = 'Office Asset';
+        }
+
+        $location = $data['location'] ?? 'Head Office';
+
         $stmt = $this->db->prepare(
             "INSERT INTO office_assets 
-            (asset_code, product_id, item_name, project_id, department_id, assigned_to, location, 
+            (asset_code, product_id, item_name, project_id, office_branch_id, department_id, assigned_to, location, 
              purchase_date, purchase_price, warranty_expiry, serial_no, 
              condition_status, asset_status, remarks, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
 
         $stmt->bind_param(
             'sisiissdssssssi',
-            $data['asset_code'],
-            $data['product_id'],
-            $data['item_name'],
-            $data['project_id'],
-            $data['department_id'],
-            $data['assigned_to'],
-            $data['location'],
+            $assetCode,
+            $productId,
+            $itemName,
+            $projectId,
+            $branchId,
+            $deptId,
+            $assignedTo,
+            $location,
             $data['purchase_date'],
             $data['purchase_price'],
             $data['warranty_expiry'],
@@ -283,20 +393,27 @@ class AssetManagement
      */
     public function updateAsset($id, $data)
     {
+        $this->ensureOfficeBranchesSchema();
+        $branchId = !empty($data['office_branch_id']) ? (int)$data['office_branch_id'] : null;
+        $projectId = !empty($data['project_id']) ? (int)$data['project_id'] : null;
+        $deptId = !empty($data['department_id']) ? (int)$data['department_id'] : null;
+        $assignedTo = !empty($data['assigned_to']) ? (int)$data['assigned_to'] : null;
+
         $stmt = $this->db->prepare(
             "UPDATE office_assets SET
-                item_name = ?, project_id = ?, department_id = ?, assigned_to = ?,
+                item_name = ?, project_id = ?, office_branch_id = ?, department_id = ?, assigned_to = ?,
                 location = ?, purchase_date = ?, purchase_price = ?, warranty_expiry = ?,
                 serial_no = ?, condition_status = ?, asset_status = ?, remarks = ?
             WHERE id = ?"
         );
 
         $stmt->bind_param(
-            'siiissdsssssi',
+            'siiiissdsssssi',
             $data['item_name'],
-            $data['project_id'],
-            $data['department_id'],
-            $data['assigned_to'],
+            $projectId,
+            $branchId,
+            $deptId,
+            $assignedTo,
             $data['location'],
             $data['purchase_date'],
             $data['purchase_price'],
@@ -516,10 +633,16 @@ class AssetManagement
             $types .= 'i';
         }
 
+        if (!empty($filters['restrict_user'])) {
+            $uId = (int)($filters['user_id'] ?? 0);
+            $sql .= " AND (pea.requested_by = {$uId} OR e_req.reporting_user_id = {$uId})";
+        }
+
         if (!empty($filters['tab'])) {
             $tab = $filters['tab'];
             $userId = (int)($filters['user_id'] ?? 0);
             $isAdmin = !empty($filters['is_admin']);
+            $isGlobal = !empty($filters['is_global_viewer']);
 
             if ($tab === 'pending_approval') {
                 if ($isAdmin) {
@@ -541,21 +664,24 @@ class AssetManagement
                     if (!empty($filters['is_accounts'])) {
                         $conds[] = "(pea.mgmt_status = 'approved' AND pea.payment_status = 'unpaid')";
                     }
+                    // Department Head: pending operations step for reporting subordinates
+                    $conds[] = "(e_req.reporting_user_id = {$userId} AND pea.operations_status = 'pending')";
 
                     if (!empty($conds)) {
-                        $sql .= " AND (" . implode(" OR ", $conds) . ") AND pea.requested_by != " . $userId;
+                        $sql .= " AND (" . implode(" OR ", $conds) . ")";
                     } else {
                         $sql .= " AND 1=0";
                     }
                 }
-            } elseif ($tab === 'all_requests' && !$isAdmin) {
+            } elseif ($tab === 'all_requests' && !$isAdmin && !$isGlobal && empty($filters['restrict_user'])) {
                 $conds = [
                     "pea.requested_by = " . $userId,
                     "pea.operations_by = " . $userId,
                     "pea.purchase_head_by = " . $userId,
                     "pea.qc_audit_by = " . $userId,
                     "pea.mgmt_by = " . $userId,
-                    "pea.paid_by = " . $userId
+                    "pea.paid_by = " . $userId,
+                    "e_req.reporting_user_id = " . $userId
                 ];
                 $sql .= " AND (" . implode(" OR ", $conds) . ")";
             }
@@ -585,7 +711,8 @@ class AssetManagement
         $stmt = $this->db->prepare(
             "SELECT pea.*, 
                     p.name AS project_name,
-                                        u_req.full_name AS requested_by_name,
+                    e_req.reporting_user_id AS requester_reporting_boss_id,
+                    u_req.full_name AS requested_by_name,
                     u_op.full_name AS operations_by_name,
                     u_purchased.full_name AS purchased_by_name,
                     u_assign.full_name AS assigned_to_name,
@@ -593,7 +720,8 @@ class AssetManagement
              FROM project_extra_assets pea
              LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
              LEFT JOIN projects p ON p.id = pea.project_id
-                          LEFT JOIN users u_req ON u_req.id = pea.requested_by
+             LEFT JOIN users u_req ON u_req.id = pea.requested_by
+             LEFT JOIN employees e_req ON e_req.user_id = u_req.id
              LEFT JOIN users u_op ON u_op.id = pea.operations_by
              LEFT JOIN users u_purchased ON u_purchased.id = pea.purchase_confirmed_by
              LEFT JOIN users u_assign ON u_assign.id = pea.assigned_to

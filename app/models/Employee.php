@@ -8,16 +8,28 @@ class Employee extends Model
     {
         return parent::__construct($db);
     }
+    public function ensureOfficeBranchSchema()
+    {
+        $res = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'office_branch_id'");
+        if ($res && $res->num_rows === 0) {
+            $this->db->query("ALTER TABLE `employees` ADD COLUMN `office_branch_id` INT NULL DEFAULT 2 AFTER `workplace`");
+        }
+        $this->db->query("UPDATE `employees` SET `office_branch_id` = 2 WHERE `office_branch_id` IS NULL OR `office_branch_id` = 0");
+    }
+
     public function getPaginated($limit, $offset, $search = '', $department_id = '', $team_id = '', $workplace = '')
     {
+        $this->ensureOfficeBranchSchema();
         $sql = "SELECT e.*, 
                    desg.name AS designation_name, 
                    dept.name AS department_name ,
-                     t.name AS team_name
+                   t.name AS team_name,
+                   ob.name AS office_branch_name
             FROM employees AS e
             LEFT JOIN designations AS desg ON e.designation_id = desg.id
-           LEFT JOIN departments AS dept ON e.department_id = dept.id
-           LEFT JOIN teams AS t ON e.team_id = t.id
+            LEFT JOIN departments AS dept ON e.department_id = dept.id
+            LEFT JOIN teams AS t ON e.team_id = t.id
+            LEFT JOIN office_branches AS ob ON ob.id = e.office_branch_id
             WHERE 1";
 
         $params = [];
@@ -194,7 +206,7 @@ class Employee extends Model
             account_holder_name, account_number, bank_name, branch_name,
             social_media1, social_media2, social_media3,
             photo, make_user, password, created_by,
-            employee_type, employee_status, workplace, office_branch, responsibilities, team_id, is_sales_co_leader,
+            employee_type, employee_status, workplace, office_branch_id, responsibilities, team_id, is_sales_co_leader,
             is_dept_head, reporting_user_id
         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
@@ -209,10 +221,10 @@ class Employee extends Model
         $is_dept_head = (int)($data['is_dept_head'] ?? 0);
         $reporting_user_id = ($is_dept_head == 1) ? null : (!empty($data['reporting_user_id']) ? (int)$data['reporting_user_id'] : null);
         $workplace = !empty($data['workplace']) ? $data['workplace'] : null;
-        $office_branch = !empty($data['office_branch']) ? $data['office_branch'] : null;
+        $office_branch_id = !empty($data['office_branch_id']) ? (int)$data['office_branch_id'] : 2;
 
         $stmt->bind_param(
-            "sssdssssssssssiissssssssssisissssiiiii",
+            "ssddssssssssssiissssssssssssisssisiiii",
             $data['employee_id'],
             $data['full_name'],
             $data['gross_salary'],
@@ -245,7 +257,7 @@ class Employee extends Model
             $data['employee_type'],
             $data['employee_status'],
             $workplace,
-            $office_branch,
+            $office_branch_id,
             $data['responsibilities'],
             $data['team_id'],
             $data['is_sales_co_leader'],
@@ -297,6 +309,7 @@ class Employee extends Model
     //employee id find for edit
     public function find($id)
     {
+        $this->ensureOfficeBranchSchema();
         $stmt = $this->db->prepare("SELECT 
     e.*,
     u.id as user_id,
@@ -304,11 +317,13 @@ class Employee extends Model
     desg.name AS designation_name, 
     dept.name AS department_name,
     t.name AS team_name,
+    ob.name AS office_branch_name,
     rb.full_name AS reporting_boss_name
 FROM employees AS e
 LEFT JOIN designations AS desg ON e.designation_id = desg.id
 LEFT JOIN departments AS dept ON e.department_id = dept.id
 LEFT JOIN teams AS t ON e.team_id = t.id
+LEFT JOIN office_branches AS ob ON ob.id = e.office_branch_id
 LEFT JOIN users AS u ON u.id = e.user_id
 LEFT JOIN users AS rb ON rb.id = e.reporting_user_id
 WHERE e.id = ?
@@ -379,7 +394,7 @@ WHERE e.id = ?
         employee_type = ?,
         employee_status = ?,
         workplace = ?,
-        office_branch = ?,
+        office_branch_id = ?,
         responsibilities = ?,
         team_id = ?,
         is_sales_co_leader = ?,
@@ -397,10 +412,10 @@ WHERE e.id = ?
         $is_dept_head = (int)($data['is_dept_head'] ?? 0);
         $reporting_user_id = ($is_dept_head == 1) ? null : (!empty($data['reporting_user_id']) ? (int)$data['reporting_user_id'] : null);
         $workplace = !empty($data['workplace']) ? $data['workplace'] : null;
-        $office_branch = !empty($data['office_branch']) ? $data['office_branch'] : null;
+        $office_branch_id = !empty($data['office_branch_id']) ? (int)$data['office_branch_id'] : 2;
 
         $stmt->bind_param(
-            "ssddsssssssssiissssssssssssisssssiiiii",
+            "ssddsssssssssiissssssssssssisssisiiiii",
             $data['employee_id'],         // s  1
             $data['full_name'],           // s  2
             $data['gross_salary'],        // d  3
@@ -432,7 +447,7 @@ WHERE e.id = ?
             $data['employee_type'],       // s  29
             $data['employee_status'],     // s  30
             $workplace,                   // s  31
-            $office_branch,               // s  32
+            $office_branch_id,            // i  32
             $data['responsibilities'],    // s  33
             $data['team_id'],             // i  34
             $data['is_sales_co_leader'],  // i  35

@@ -1824,10 +1824,25 @@ class Lead extends Model
         return $this->getMarketingLeadsFlexible($userId, null, '7days', 'DESC');
     }
 
+    public function getDistinctMarketingPlatforms()
+    {
+        $sql = "SELECT DISTINCT TRIM(platform) AS platform FROM leads WHERE deleted_at IS NULL AND uploaded_from = 'From Campaign' AND platform IS NOT NULL AND TRIM(platform) != '' ORDER BY platform ASC";
+        $res = $this->db->query($sql);
+        $list = [];
+        if ($res) {
+            while ($r = $res->fetch_assoc()) {
+                if (!empty($r['platform'])) {
+                    $list[] = $r['platform'];
+                }
+            }
+        }
+        return $list;
+    }
+
     /**
      * Count marketing leads for AJAX pagination (mirrors getMarketingLeadsFlexible filters)
      */
-    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null, $projectId = null)
+    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null, $projectId = null, $platform = null)
     {
         $sql = "SELECT COUNT(*) AS total FROM leads l WHERE l.deleted_at IS NULL AND l.uploaded_from = 'From Campaign'";
 
@@ -1872,6 +1887,12 @@ class Lead extends Model
             $types   .= "i";
         }
 
+        if (!empty($platform)) {
+            $sql .= " AND l.platform = ?";
+            $params[] = $platform;
+            $types   .= "s";
+        }
+
         if (!empty($fromDate) && !empty($toDate)) {
             $sql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
             $params[] = $fromDate;
@@ -1912,7 +1933,7 @@ class Lead extends Model
     /**
      * Paginated marketing leads for AJAX (same contact_status logic, adds LIMIT/OFFSET + search)
      */
-    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null, $projectId = null)
+    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null, $projectId = null, $platform = null)
     {
         $sql = "
         SELECT
@@ -2007,6 +2028,12 @@ class Lead extends Model
             $sql .= " AND l.project_id = ?";
             $params[] = $projectId;
             $types   .= "i";
+        }
+
+        if (!empty($platform)) {
+            $sql .= " AND l.platform = ?";
+            $params[] = $platform;
+            $types   .= "s";
         }
 
         if (!empty($fromDate) && !empty($toDate)) {

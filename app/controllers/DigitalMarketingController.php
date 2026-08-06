@@ -29,6 +29,7 @@ class DigitalMarketingController extends Controller
         $duplicatesOnly = isset($_GET['duplicates_only']) && $_GET['duplicates_only'] == '1';
         $fromDate       = $_GET['from_date']     ?? '';
         $toDate         = $_GET['to_date']       ?? '';
+        $platformFilter = $_GET['platform']      ?? '';
 
         $currentMonthFilter = $_GET['budget_month'] ?? date('Y-m') . '-01';
         if (strlen($currentMonthFilter) === 7) {
@@ -82,7 +83,7 @@ class DigitalMarketingController extends Controller
         $duplicateLeadsCount = $dupStmt ? (int)($dupStmt->fetch_assoc()['total'] ?? 0) : 0;
 
         // Total lead count
-        $totalLeads = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate, false, $projectCategoryId, $projectId);
+        $totalLeads = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate, false, $projectCategoryId, $projectId, $platformFilter);
 
         // Contacted / Not Contacted summary counts (From Campaign only)
         $cSql = "
@@ -128,6 +129,12 @@ class DigitalMarketingController extends Controller
             $cTypes   .= "i";
         }
 
+        if (!empty($platformFilter)) {
+            $cSql .= " AND l.platform = ?";
+            $cParams[] = $platformFilter;
+            $cTypes   .= "s";
+        }
+
         if (!empty($fromDate) && !empty($toDate)) {
             $cSql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
             $cParams[] = $fromDate;
@@ -161,6 +168,7 @@ class DigitalMarketingController extends Controller
         $totalNotContacted = (int)($cCounts['not_contacted'] ?? 0);
         $categories        = (new ProjectCategory($this->db))->getAll();
         $projects          = (new Project($this->db))->getAll();
+        $uploadedPlatforms = $this->leadModel->getDistinctMarketingPlatforms();
 
         return $this->view("digital-marketing-team/digital-marketing-head-dashboard", [
             "current_route"       => "digital-marketing-dashboard",
@@ -188,6 +196,8 @@ class DigitalMarketingController extends Controller
             "duplicates_only"     => $duplicatesOnly,
             "from_date"           => $fromDate,
             "to_date"             => $toDate,
+            "uploadedPlatforms"   => $uploadedPlatforms,
+            "selected_platform"   => $platformFilter,
         ]);
     }
 public function storeBudget()
@@ -285,9 +295,10 @@ public function deleteBudget($id)
         $contactStatusFilter = $_GET['contact_status'] ?? '';
         $fromDate            = $_GET['from_date']     ?? '';
         $toDate              = $_GET['to_date']       ?? '';
+        $platformFilter      = $_GET['platform']      ?? '';
 
         // Only load summary counts (not full lead list) — AJAX will fetch leads per page
-        $totalLeads    = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate, false, $projectCategoryId, $projectId);
+        $totalLeads    = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate, false, $projectCategoryId, $projectId, $platformFilter);
         $contactedCount    = 0;
         $notContactedCount = 0;
 
@@ -333,6 +344,12 @@ public function deleteBudget($id)
             $cSql .= " AND l.project_id = ?";
             $cParams[] = $projectId;
             $cTypes   .= "i";
+        }
+
+        if (!empty($platformFilter)) {
+            $cSql .= " AND l.platform = ?";
+            $cParams[] = $platformFilter;
+            $cTypes   .= "s";
         }
 
         if (!empty($fromDate) && !empty($toDate)) {
@@ -391,6 +408,7 @@ public function deleteBudget($id)
         $duplicateLeadsCount = $dupStmt ? (int)($dupStmt->fetch_assoc()['total'] ?? 0) : 0;
         $categories = (new ProjectCategory($this->db))->getAll();
         $projects   = (new Project($this->db))->getAll();
+        $uploadedPlatforms = $this->leadModel->getDistinctMarketingPlatforms();
 
         return $this->view("digital-marketing-team/digital-marketing-executive", [
             "current_route"        => "digital-marketing-executive-dashboard",
@@ -414,6 +432,8 @@ public function deleteBudget($id)
             "totalContacted"       => $contactedCount,
             "totalNotContacted"    => $notContactedCount,
             "totalLeads"           => $totalLeads,
+            "uploadedPlatforms"   => $uploadedPlatforms,
+            "selected_platform"   => $platformFilter,
         ]);
     }
     // =========================================================================
@@ -448,13 +468,14 @@ public function deleteBudget($id)
         $search         = $search === '' ? null : $search;
         $fromDate       = $_GET['from_date']              ?? '';
         $toDate         = $_GET['to_date']                ?? '';
+        $platformFilter = $_GET['platform']               ?? '';
 
         // Total count — include duplicatesOnly for correct pagination total
-        $total = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, $search, $fromDate, $toDate, $duplicatesOnly, $projectCategoryId, $projectId);
+        $total = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, $search, $fromDate, $toDate, $duplicatesOnly, $projectCategoryId, $projectId, $platformFilter);
 
         // Fetch paginated leads — duplicate filter applied at DB level
         $leads = $this->leadModel->getMarketingLeadsPaginated(
-            $teamId, $dateAge, $sortOrder, $perPage, $offset, $search, $fromDate, $toDate, $duplicatesOnly, $projectCategoryId, $projectId
+            $teamId, $dateAge, $sortOrder, $perPage, $offset, $search, $fromDate, $toDate, $duplicatesOnly, $projectCategoryId, $projectId, $platformFilter
         );
 
         // ── Duplicate detection: phone_number OR email appears > 1 time in leads table ──
