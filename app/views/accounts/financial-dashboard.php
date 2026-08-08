@@ -498,6 +498,38 @@ $show_breadcrumb = true;
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Accounts Payable (AP) Ageing Card -->
+                            <div class="col-md-4">
+                                <div class="card h-100 border-0 shadow-sm" style="border-top: 4px solid #fd7e14 !important;">
+                                    <div class="card-body text-center p-4">
+                                        <div class="mb-3">
+                                            <i class="fa-light fa-hourglass-clock fa-3x" style="color: #fd7e14;"></i>
+                                        </div>
+                                        <h5 class="fw-bold">AP Ageing Analysis (পাওনাদার জ্যেষ্ঠতা)</h5>
+                                        <p class="text-muted small">Vendor & Contractor Accounts Payable Ageing Analysis (0-30, 31-60, 61-90, 90+ Days).</p>
+                                        <a href="<?= $base_url ?>/reports/ap-ageing" class="btn btn-outline-warning mt-2" style="border-color: #fd7e14; color: #fd7e14;">
+                                            <i class="fa-light fa-eye me-1"></i> View AP Ageing
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Cash Commitment Forecast Card -->
+                            <div class="col-md-4">
+                                <div class="card h-100 border-0 shadow-sm" style="border-top: 4px solid #6f42c1 !important;">
+                                    <div class="card-body text-center p-4">
+                                        <div class="mb-3">
+                                            <i class="fa-light fa-chart-line-up fa-3x" style="color: #6f42c1;"></i>
+                                        </div>
+                                        <h5 class="fw-bold">Cash Commitment Forecast (ক্যাশ পূর্বাভাস)</h5>
+                                        <p class="text-muted small">30-Day Cash Flow Outflow Commitment Forecast for all pending & unapproved requisitions.</p>
+                                        <a href="<?= $base_url ?>/reports/cash-commitment-forecast" class="btn btn-outline-secondary mt-2" style="border-color: #6f42c1; color: #6f42c1;">
+                                            <i class="fa-light fa-eye me-1"></i> View Cash Forecast
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     

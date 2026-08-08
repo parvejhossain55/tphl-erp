@@ -253,7 +253,7 @@
                     <table class="table no-border-table mb-20 multiple_tables">
                         <thead>
                             <tr class="table__title table__sort">
-                                <th style="min-width: 120px;">Lead Date</th>
+                                <th style="min-width: 120px;">Assigned Date</th>
                                 <th style="min-width: 160px;">Lead Name</th>
                                 <th style="min-width: 180px;">Project Campaign</th>
 
@@ -269,7 +269,12 @@
                         <tbody>
                             <?php foreach ($myAllleads as $key => $lead): ?>
                                 <tr data-id="<?= $lead['id'] ?>">
-                                    <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
+                                    <?php
+                                    $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
+                                        ? $lead['assigned_at']
+                                        : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
+                                    ?>
+                                    <td><?= $assignedRaw ? date('d F, Y', strtotime($assignedRaw)) : '' ?></td>
                                     <td><strong><?= $lead['full_name'] ?? '' ?></strong>
                                         <p><?= $lead['phone_number'] ?? $lead['phone']  ?></p>
                                     </td>

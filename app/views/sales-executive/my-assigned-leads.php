@@ -568,7 +568,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                     <input type="checkbox" id="selectAllLeads" title="Select All">
                                     S/L
                                 </th>
-                                <th style="min-width: 120px;">Lead Date</th>
+                                <th style="min-width: 120px;">Assigned Date</th>
                                 <th style="min-width: 130px;">Duplicate</th>
                                 <th style="min-width: 160px;">Lead Name $ Job /Company name</th>
                                 <th style="min-width: 140px;">Assigned By</th>
@@ -618,7 +618,12 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                         <input type="checkbox" class="me-2 selectedId" data-id="<?= $lead['id'] ?>">
                                         <?= $key + 1 ?>
                                     </td>
-                                    <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
+                                    <?php
+                                    $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
+                                        ? $lead['assigned_at']
+                                        : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
+                                    ?>
+                                    <td><?= $assignedRaw ? date('d F, Y', strtotime($assignedRaw)) : '' ?></td>
                                     
                                     <!-- Duplicate Status -->
                                     <td>

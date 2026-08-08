@@ -99,6 +99,7 @@ class AssetManagementController extends Controller
                         $assetObj = $this->model->findAsset($assetId);
                         $assetCode = $assetObj['asset_code'] ?? ('AST-' . $assetId);
                         $itemName = $assetObj['item_name'] ?? 'Office Asset';
+                        $branchName = $assetObj['branch_name'] ?? null;
 
                         $autoPosting->postAccrualEntry(
                             'office_assets',
@@ -110,7 +111,8 @@ class AssetManagementController extends Controller
                             !empty($data['project_id']) ? (int)$data['project_id'] : null,
                             'employee',
                             !empty($data['assigned_to']) ? (int)$data['assigned_to'] : null,
-                            $_SESSION['user']['id'] ?? 1
+                            $_SESSION['user']['id'] ?? 1,
+                            $branchName
                         );
                     } catch (\Exception $e) {
                         error_log("AutoPosting Exception (Asset Direct Store): " . $e->getMessage());
@@ -592,6 +594,7 @@ class AssetManagementController extends Controller
                         
                         $req = $this->model->findExtraPurchase($id);
                         if ($req && (float)$req['total_price'] > 0) {
+                            $procurementOffice = !empty($req['asset_location']) ? $req['asset_location'] : null;
                             $autoPosting->postAccrualEntry(
                                 'asset_procurement',
                                 $id,
@@ -602,7 +605,8 @@ class AssetManagementController extends Controller
                                 $req['project_id'],
                                 'employee',
                                 $req['assigned_to'] ?? $req['requested_by'],
-                                $userId
+                                $userId,
+                                $procurementOffice
                             );
                         }
                     } catch (\Exception $e) {
@@ -663,6 +667,7 @@ class AssetManagementController extends Controller
 
                     $req = $this->model->findExtraPurchase($id);
                     $amountToPay = $paidAmount > 0 ? $paidAmount : ($req['total_price'] ?? 0);
+                    $procurementOffice = !empty($req['asset_location']) ? $req['asset_location'] : null;
 
                     if ($req && $amountToPay > 0) {
                         $autoPosting->postDisbursementEntry(
@@ -675,7 +680,8 @@ class AssetManagementController extends Controller
                             $req['project_id'] ?? null,
                             'employee',
                             $req['assigned_to'] ?? $req['requested_by'] ?? 1,
-                            $userId
+                            $userId,
+                            $procurementOffice
                         );
                     }
                 } catch (\Exception $e) {

@@ -588,6 +588,7 @@ class AssetManagement
             }
         }
 
+        
         // 3. Ensure required extra columns exist
         $colsToAdd = [
             'department_id'     => "INT NULL DEFAULT NULL AFTER `project_id`",

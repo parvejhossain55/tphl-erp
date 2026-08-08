@@ -524,6 +524,10 @@ class LeadController extends Controller
                     'next_follow_up'   => $lead['next_follow_up_date'] ?? '',
                     'agent_name'       => $lead['agent_name'] ?? '',
                     'assigned_by_name' => $lead['assigned_by_name'] ?? 'System',
+                    'assigned_at'      => $lead['assigned_at'] ?? '',
+                    'assigned_at_formatted' => (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
+                        ? date('d M, Y', strtotime($lead['assigned_at']))
+                        : ((!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00') ? date('d M, Y', strtotime($lead['updated_at'])) : (!empty($lead['created_at']) ? date('d M, Y', strtotime($lead['created_at'])) : '')),
                     'follow_up_count'  => $followUpCounts[$lead['id']] ?? 0,
                     'booking_count'    => $bookingCounts[$lead['id']] ?? 0,
                     'created_at'       => $lead['created_at'] ?? '',
@@ -631,12 +635,23 @@ class LeadController extends Controller
 
             if (empty($lead['agent_name'])) {
                 $agentBadge = '<span class="bd-badge text-danger text-truncate" style="max-width: 150px; background-color: #fde8e8; border: 1px solid #f8b4b4;">No Agent Assigned</span>';
+                $assignedDateHtml = '';
             } else {
                 $agentBadge = '<span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">' . htmlspecialchars($lead['agent_name']) . '</span>';
+                
+                $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
+                    ? $lead['assigned_at']
+                    : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
+                
+                $assignedDateFormatted = date('d M, Y', strtotime($assignedRaw));
+                $assignedDateHtml = '<div class="text-muted" style="font-size:11px; margin-top:3px;"><i class="bi bi-calendar-event me-1"></i>Assigned Date: ' . $assignedDateFormatted . '</div>';
             }
 
-            $noteHtml = '<div class="d-flex align-items-center gap-2 flex-nowrap">
-                ' . $agentBadge . '
+            $noteHtml = '<div class="d-flex align-items-start gap-2 flex-nowrap">
+                <div>
+                    ' . $agentBadge . '
+                    ' . $assignedDateHtml . '
+                </div>
                 <span class="bd-badge bg-success">';
             if (!empty($lead['call_note'])) {
                 $noteHtml .= '<button type="button" class="btn btn-sm p-0  note-view-btn" style="font-size:11px; vertical-align:baseline; color:#fff;" data-note="' . htmlspecialchars($lead['call_note'], ENT_QUOTES, 'UTF-8') . '" data-bs-toggle="modal" data-bs-target="#viewNoteModal">View Note</button>';

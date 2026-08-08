@@ -368,6 +368,6 @@ class GeneralJournal extends Model
                 }
             }
         }
-        return 'Site Office';
+        return 'Head Office';
     }
 }

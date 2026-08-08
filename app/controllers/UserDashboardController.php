@@ -755,7 +755,7 @@ class UserDashboardController extends Controller
                 $('#assignedLeadsTable').DataTable().destroy();
                 const table = $('#assignedLeadsTable').DataTable({
                     pageLength : pageLength,
-                    lengthMenu : [[25, 50, 100, -1], [25, 50, 100, 'All']],
+                    lengthMenu : [[10, 25, 50, 100, 200, -1], [10, 25, 50, 100, 200, 'All']],
                     order      : [],
                     displayStart : displayStart,
                     drawCallback: function () {
