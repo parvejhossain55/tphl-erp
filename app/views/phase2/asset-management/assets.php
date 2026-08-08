@@ -225,7 +225,7 @@ $statusBadges = [
                                         <?php endif; ?>
                                     </td>
                                     <td class="fs-12"><?= htmlspecialchars($a['assigned_to_name'] ?? '—') ?></td>
-                                    <td class="text-end fw-semibold"><?= number_format($a['purchase_price'], 2) ?></td>
+                                    <td class="text-end fw-semibold"><?= number_format((float)($a['purchase_price'] ?? 0), 2) ?></td>
                                     <td>
                                         <span class="fw-semibold fs-12 text-dark">
                                             <?= ucfirst(str_replace('_', ' ', $a['condition_status'])) ?>

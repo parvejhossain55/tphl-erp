@@ -418,34 +418,48 @@ class AssetManagement
     public function updateAsset($id, $data)
     {
         $this->ensureOfficeBranchesSchema();
-        $branchId = !empty($data['office_branch_id']) ? (int)$data['office_branch_id'] : null;
-        $projectId = !empty($data['project_id']) ? (int)$data['project_id'] : null;
-        $deptId = !empty($data['department_id']) ? (int)$data['department_id'] : null;
-        $assignedTo = !empty($data['assigned_to']) ? (int)$data['assigned_to'] : null;
+        $old = $this->findAsset($id);
+        if (!$old) return false;
+
+        $itemName = array_key_exists('item_name', $data) && trim($data['item_name']) !== '' ? trim($data['item_name']) : $old['item_name'];
+        $productId = array_key_exists('product_id', $data) ? (!empty($data['product_id']) ? (int)$data['product_id'] : null) : $old['product_id'];
+        $projectId = array_key_exists('project_id', $data) ? (!empty($data['project_id']) ? (int)$data['project_id'] : null) : $old['project_id'];
+        $branchId = array_key_exists('office_branch_id', $data) ? (!empty($data['office_branch_id']) ? (int)$data['office_branch_id'] : null) : $old['office_branch_id'];
+        $deptId = array_key_exists('department_id', $data) ? (!empty($data['department_id']) ? (int)$data['department_id'] : null) : $old['department_id'];
+        $assignedTo = array_key_exists('assigned_to', $data) ? (!empty($data['assigned_to']) ? (int)$data['assigned_to'] : null) : $old['assigned_to'];
+        $location = array_key_exists('location', $data) ? $data['location'] : $old['location'];
+        $purchaseDate = array_key_exists('purchase_date', $data) ? $data['purchase_date'] : $old['purchase_date'];
+        $purchasePrice = (array_key_exists('purchase_price', $data) && $data['purchase_price'] !== '' && $data['purchase_price'] !== null) ? (float)$data['purchase_price'] : (float)($old['purchase_price'] ?? 0);
+        $warrantyExpiry = array_key_exists('warranty_expiry', $data) ? $data['warranty_expiry'] : $old['warranty_expiry'];
+        $serialNo = array_key_exists('serial_no', $data) ? $data['serial_no'] : $old['serial_no'];
+        $conditionStatus = array_key_exists('condition_status', $data) ? $data['condition_status'] : $old['condition_status'];
+        $assetStatus = array_key_exists('asset_status', $data) ? $data['asset_status'] : $old['asset_status'];
+        $remarks = array_key_exists('remarks', $data) ? $data['remarks'] : $old['remarks'];
 
         $stmt = $this->db->prepare(
             "UPDATE office_assets SET
-                item_name = ?, project_id = ?, office_branch_id = ?, department_id = ?, assigned_to = ?,
+                item_name = ?, product_id = ?, project_id = ?, office_branch_id = ?, department_id = ?, assigned_to = ?,
                 location = ?, purchase_date = ?, purchase_price = ?, warranty_expiry = ?,
                 serial_no = ?, condition_status = ?, asset_status = ?, remarks = ?
             WHERE id = ?"
         );
 
         $stmt->bind_param(
-            'siiiissdsssssi',
-            $data['item_name'],
+            'siiiiissdsssssi',
+            $itemName,
+            $productId,
             $projectId,
             $branchId,
             $deptId,
             $assignedTo,
-            $data['location'],
-            $data['purchase_date'],
-            $data['purchase_price'],
-            $data['warranty_expiry'],
-            $data['serial_no'],
-            $data['condition_status'],
-            $data['asset_status'],
-            $data['remarks'],
+            $location,
+            $purchaseDate,
+            $purchasePrice,
+            $warrantyExpiry,
+            $serialNo,
+            $conditionStatus,
+            $assetStatus,
+            $remarks,
             $id
         );
 
