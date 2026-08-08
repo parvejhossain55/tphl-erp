@@ -808,9 +808,28 @@ class PayrollController extends Controller
                 exit;
             }
 
+            // Fetch dynamic COA IDs for Salaries & Wages and Bank/Cash
+            $stmtCoa1 = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE account_code = '580003' LIMIT 1");
+            $stmtCoa1->execute();
+            $salaryCoaRow = $stmtCoa1->get_result()->fetch_assoc();
+            $salaryCoaId = $salaryCoaRow ? (int)$salaryCoaRow['id'] : 1;
+            $stmtCoa1->close();
+
+            $stmtCoa2 = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE account_code = '114400' LIMIT 1");
+            $stmtCoa2->execute();
+            $bankCoaRow = $stmtCoa2->get_result()->fetch_assoc();
+            $bankCoaId = $bankCoaRow ? (int)$bankCoaRow['id'] : 1;
+            $stmtCoa2->close();
+
+            $stmtCoa3 = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE account_code = '114100-03' LIMIT 1");
+            $stmtCoa3->execute();
+            $cashCoaRow = $stmtCoa3->get_result()->fetch_assoc();
+            $cashCoaId = $cashCoaRow ? (int)$cashCoaRow['id'] : $bankCoaId;
+            $stmtCoa3->close();
+
             // Get bank details or default cash
-            $bankName = 'Cash Account';
-            $bankCoaId = 1001; // Petty Cash Account
+            $bankName = 'Head Office Cash Account';
+            $payCoaId = $cashCoaId;
             if ($bankAccountId > 0) {
                 $stmtBank = $this->db->prepare("SELECT bank_name, account_name, account_number FROM company_bank_accounts WHERE id = ?");
                 $stmtBank->bind_param("i", $bankAccountId);
@@ -819,7 +838,7 @@ class PayrollController extends Controller
                 $stmtBank->close();
                 if ($bankRes) {
                     $bankName = $bankRes['bank_name'] . ' (' . $bankRes['account_number'] . ')';
-                    $bankCoaId = 1002; // Dutch Bangla Bank / Bank Account
+                    $payCoaId = $bankCoaId;
                 }
             }
 
@@ -851,24 +870,23 @@ class PayrollController extends Controller
             $stmtJ->close();
 
             // 2. Insert Debit & Credit details in 'journal_details'
-            // Debit: Salaries & Payroll Expense (account_id = 503)
-            $salaryCoaId = 503;
+            // Debit: Salaries & Wages (580003)
             $stmtD1 = $this->db->prepare("
                 INSERT INTO journal_details (journal_id, account_id, debit, credit, narration)
                 VALUES (?, ?, ?, 0.00, ?)
             ");
-            $narrDebit = "Salaries & Payroll Expense for $monthText";
+            $narrDebit = "Salaries & Wages Expense for $monthText";
             $stmtD1->bind_param("iids", $journalId, $salaryCoaId, $totalAmount, $narrDebit);
             $stmtD1->execute();
             $stmtD1->close();
 
-            // Credit: Bank / Cash Account
+            // Credit: Cash at Bank (114400) or Head Office Cash (114100-03)
             $stmtD2 = $this->db->prepare("
                 INSERT INTO journal_details (journal_id, account_id, debit, credit, narration)
                 VALUES (?, ?, 0.00, ?, ?)
             ");
             $narrCredit = "Disbursed via $bankName for $monthText Payroll";
-            $stmtD2->bind_param("iids", $journalId, $bankCoaId, $totalAmount, $narrCredit);
+            $stmtD2->bind_param("iids", $journalId, $payCoaId, $totalAmount, $narrCredit);
             $stmtD2->execute();
             $stmtD2->close();
 
