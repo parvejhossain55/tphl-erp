@@ -531,12 +531,19 @@ class JournalIntegrationService
         $res = $stmt->get_result()->fetch_assoc();
         if ($res) return (int)$res['id'];
 
-        $like = $code . '%';
+        $prefix = substr($code, 0, 3) . '%';
         $stmt = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE account_code LIKE ? ORDER BY account_code ASC LIMIT 1");
-        $stmt->bind_param('s', $like);
+        $stmt->bind_param('s', $prefix);
         $stmt->execute();
         $res = $stmt->get_result()->fetch_assoc();
-        return $res ? (int)$res['id'] : null;
+        if ($res) return (int)$res['id'];
+
+        $fallback = (str_starts_with($code, '5') || str_starts_with($code, '6')) ? '5000%' : '1000%';
+        $stmt = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE account_code LIKE ? LIMIT 1");
+        $stmt->bind_param('s', $fallback);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        return $res ? (int)$res['id'] : 1;
     }
 
     /**

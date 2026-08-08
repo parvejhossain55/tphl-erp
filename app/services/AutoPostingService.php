@@ -42,34 +42,17 @@ class AutoPostingService
     {
         $text = strtolower(trim($paymentMethod . ' ' . $bankName));
 
-        if (strpos($text, 'cash') !== false) {
-            return $this->getAccountIdByCode('1110-001'); // Petty Cash Account
-        }
-
-        if (strpos($text, 'city') !== false) {
-            $id = $this->getAccountIdByCode('1110-004'); // City Bank Main Account
-            if ($id) return $id;
-        }
-
-        if (strpos($text, 'islami') !== false) {
-            return $this->getAccountIdByCode('1110-003'); // Islami Bank
-        }
-
-        if (strpos($text, 'dutch') !== false || strpos($text, 'dbbl') !== false) {
-            return $this->getAccountIdByCode('1110-002'); // Dutch Bangla Bank
-        }
-
-        // Search COA for matching bank name
-        if (!empty($bankName)) {
-            $search = '%' . $this->db->real_escape_string($bankName) . '%';
-            $res = $this->db->query("SELECT id FROM chart_of_accounts WHERE account_name LIKE '$search' AND (account_code LIKE '1110%' OR parent_id IN (SELECT id FROM chart_of_accounts WHERE account_code = '1110')) LIMIT 1");
-            if ($res && $res->num_rows > 0) {
-                return (int)$res->fetch_assoc()['id'];
+        if (strpos($text, 'cash') !== false || strpos($text, 'petty') !== false) {
+            if (strpos($text, 'site') !== false) {
+                return $this->getAccountIdByCode('114100-01'); // Site Office Cash in Hand
+            } elseif (strpos($text, 'gulshan') !== false) {
+                return $this->getAccountIdByCode('114100-02'); // Gulshan Office Cash in Hand
             }
+            return $this->getAccountIdByCode('114100-03'); // Head Office Cash in Hand
         }
 
-        // Default fallback is general Cash and Bank Accounts (1110) instead of forcing Dutch Bangla Bank
-        return $this->getAccountIdByCode('1110');
+        // Default to General Cash at Bank (114400)
+        return $this->getAccountIdByCode('114400');
     }
 
     /**
@@ -353,37 +336,9 @@ class AutoPostingService
 
             $typeLower = strtolower(trim($paymentType));
 
-            if (in_array($typeLower, ['emi', 'installment'])) {
-                // 10% Service Fee Income (4110-001)
-                $serviceChargeAccId = $this->getAccountIdByCode('4110-001');
-                // 90% Client EMI Fund (2220-001)
-                $emiFundAccId = $this->getAccountIdByCode('2220-001');
-
-                $serviceFeeAmount = round($amount * 0.10, 2);
-                $depositAmount = round($amount - $serviceFeeAmount, 2);
-                $debitZero = 0.00;
-
-                // Credit 10% Service Fee Income
-                $stmtDet->bind_param("iiddsisi", $journalId, $serviceChargeAccId, $debitZero, $serviceFeeAmount, $narration, $projectId, $partyType, $clientId);
-                $stmtDet->execute();
-
-                // Credit 90% EMI Deposit Fund
-                $stmtDet->bind_param("iiddsisi", $journalId, $emiFundAccId, $debitZero, $depositAmount, $narration, $projectId, $partyType, $clientId);
-                $stmtDet->execute();
-
-            } elseif (in_array($typeLower, ['development_charge', 'flat_development_charge', 'dev_charge'])) {
-                // 100% Client Development Charge Deposit Fund (2230-001)
-                $devFundAccId = $this->getAccountIdByCode('2230-001');
-                if (!$devFundAccId) $devFundAccId = $this->getAccountIdByCode('2210-001');
-                $debitZero = 0.00;
-                $creditVal = $amount;
-
-                $stmtDet->bind_param("iiddsisi", $journalId, $devFundAccId, $debitZero, $creditVal, $narration, $projectId, $partyType, $clientId);
-                $stmtDet->execute();
-
-            } elseif (in_array($typeLower, ['service_charge', 'shop_service_charge'])) {
-                // 100% Service Fee Income (4110-001)
-                $serviceChargeAccId = $this->getAccountIdByCode('4110-001');
+            if (in_array($typeLower, ['service_charge', 'shop_service_charge'])) {
+                // 100% Service Revenue (400002)
+                $serviceChargeAccId = $this->getAccountIdByCode('400002');
                 $debitZero = 0.00;
                 $creditVal = $amount;
 
@@ -391,8 +346,8 @@ class AutoPostingService
                 $stmtDet->execute();
 
             } else {
-                // Booking or Registration Fee -> 100% Client Land Share Booking Fund (2210-001)
-                $bookingFundAccId = $this->getAccountIdByCode('2210-001');
+                // Booking, EMI or Land Share Deposit -> 100% Land Share Revenue (400000)
+                $bookingFundAccId = $this->getAccountIdByCode('400000');
                 $debitZero = 0.00;
                 $creditVal = $amount;
 
