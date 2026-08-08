@@ -199,5 +199,11 @@ return [
     // =========================================================================
     'all-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'allApprovalRequests'],
     'batch-process-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'batchProcessApprovalRequests'],
+
+    // =========================================================================
+    // Live COA & Journal Migration Routes
+    // =========================================================================
+    'run-live-coa-migration' => ['controller' => 'HomeController', 'method' => 'runLiveCoaMigration'],
+    'live_coa_and_journal_migration.php' => ['controller' => 'HomeController', 'method' => 'runLiveCoaMigration'],
 ];
 
