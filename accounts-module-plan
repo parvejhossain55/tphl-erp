@@ -309,3 +309,41 @@ Non-Current Assets, Current Assets, Current Liabilities এবং Retained Earni
 
 বর্তমান অবস্থা: অনুমোদিত ও পরিশোধিত লেনদেনগুলো ট্রায়াল ব্যালেন্সে আসে।
 সুপারিশ: যেসব রিকুইজিশন এখনো অনুমোদন ও পেমেন্টের পেন্ডিং লাইনে আছে, সেগুলোর জন্য একটি Cash Commitment Forecast Tab রাখা যেতে পারে, যাতে আগামী মাসে কত টাকা ক্যাশ প্রয়োজন হবে তা জানা যায়।
+
+
+------- payroll by accounts disburs------------
+. Operational Step-by-Step Architecture
+Step 1: HR Generation & HR Role Approval (stage 1)
+HR / Admin নির্দিষ্ট মাসের জন্য এমপ্লয়িদের স্যালারি পে-স্লিপ জেনারেট বা সাবমিট করবে।
+HR Role পে-স্লিপ ব্যাচ রিভিউ করে "Approve & Forward to Management" বাটনে ক্লিক করবে (hr_status = 'approved').
+Step 2: Management Approval (Stage 2)
+ম্যানেজমেন্টের All Approval Requests বোর্ডে নোটিফিকেশন আসবে।
+ম্যানেজমেন্ট ভেরিফাই করে "Approve Payroll" সম্পন্ন করবে (mgmt_status = 'approved').
+Step 3: Accounts Verification & Bank Selection (No Extra Voucher Entry Needed!)
+একাউন্টসের জন্য Payroll Disbursement Dashboard (/accounts/payroll-disbursement) থাকবে।
+একাউন্টস অফিসার কোনো ম্যানুয়াল পেমেন্ট ফর্ম পূরণ করা ছাড়াই:
+ম্যানেজমেন্ট অনুমোদিত স্যালারি তালিকা দেখতে পাবে।
+মাস বা বিভাগ অনুযায়ী অল বা নির্দিষ্ট এমপ্লয়ি নির্বাচন (Checkbox) করবে।
+"Pay From (Bank Account / Cash)" ড্রপডাউন থেকে ব্যাংক একাউন্ট (e.g. Dutch-Bangla Bank A/C 10293847) নির্বাচন করবে।
+"Disburse Payroll & Post Journal" এ ক্লিক করবে।
+Step 4: Automated System Execution (ক্লিকের সাথে সাথে যা ঘটবে)
+Payslip Status Update: নির্বাচিত পে-স্লিপগুলোর স্ট্যাটাস paid, payment_method, bank_account_id, paid_at দিয়ে আপডেট হবে।
+Bank Balance Deduction: নির্বাচিত ব্যাংক একাউন্ট থেকে মোট স্যালারি এর সমপরিমাণ টাকা অটোমেটিক ডেবিট/ক্রেডিট ব্যালেন্সের সাথে সামঞ্জস্য হবে।
+Automated Journal Voucher Posting:
+Voucher Type: Payment Voucher (PV)
+Debit (P&L Operating Expense): Salaries & Allowances Account (Code: 5010) -> Total Gross/Net Amount
+Credit (Asset / Bank): Selected Bank Account (Code: 1020 - DBBL) -> Total Amount Disbursed
+Narration: "Payroll Disbursement for the Month of August 2026 via DBBL Bank (Ref: PR-202608)"
+5. Proposed Database Schema Adjustments
+payslips Table Adjustments
+hr_status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending'
+mgmt_status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending'
+payment_status ENUM('unpaid', 'paid') DEFAULT 'unpaid'
+bank_account_id INT NULL (FK to bank_accounts.id)
+disbursed_by INT NULL
+disbursed_at DATETIME NULL
+journal_id INT NULL (FK to journal_vouchers.id)
+6. Benefits for TPHL-ERP
+জিরো ডুপ্লিকেট এন্ট্রি: একাউন্টস টিমকে আলাদাভাবে পেমেন্ট এন্ট্রি করতে হবে না; শুধু ব্যাংক সিলেক্ট করে ১ ক্লিকে পেমেন্ট ডিসবার্স করবে।
+১০০% নির্ভুল একাউন্টিং: P&L, Balance Sheet, Ledger এবং Central Statement এ অটোমেটিক স্যালারি খরচ ও ব্যাংক ক্যাশআউট আপডেট হয়ে যাবে।
+সম্পূর্ণ অডিট ট্রেইল: HR এপ্রুভাল, ম্যানেজমেন্ট এপ্রুভাল এবং একাউন্টস পেমেন্টের প্রতিটি টাইমস্ট্যাম্প ও ইউজার আইডি ট্র্যাক করা থাকবে।
