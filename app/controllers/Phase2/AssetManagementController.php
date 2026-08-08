@@ -219,7 +219,8 @@ class AssetManagementController extends Controller
                 setError("Failed to update asset.");
             }
         }
-        header("Location: " . $GLOBALS['base_url'] . "/office-assets/show/" . $id);
+        $redirectUrl = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/office-assets");
+        header("Location: " . $redirectUrl);
         exit;
     }
 
@@ -227,13 +228,27 @@ class AssetManagementController extends Controller
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = $_SESSION['user']['id'] ?? 1;
-            if ($this->model->logMovement($id, 'transferred', $_POST['note'] ?? '', $userId)) {
+            $updateData = [];
+            if (isset($_POST['project_id'])) $updateData['project_id'] = $_POST['project_id'] ?: null;
+            if (isset($_POST['office_branch_id'])) $updateData['office_branch_id'] = $_POST['office_branch_id'] ?: null;
+            if (isset($_POST['assigned_to'])) $updateData['assigned_to'] = $_POST['assigned_to'] ?: null;
+            if (!empty($_POST['new_condition'])) $updateData['condition_status'] = $_POST['new_condition'];
+            if (!empty($_POST['location'])) $updateData['location'] = $_POST['location'];
+            $updateData['asset_status'] = 'transferred';
+
+            if (!empty($updateData)) {
+                $this->model->updateAsset($id, $updateData);
+            }
+
+            $notes = $_POST['notes'] ?? ($_POST['note'] ?? 'Asset Transferred');
+            if ($this->model->logMovement($id, 'transferred', $notes, $userId)) {
                 setSuccess("Asset transferred successfully.");
             } else {
                 setError("Failed to transfer asset.");
             }
         }
-        header("Location: " . $GLOBALS['base_url'] . "/office-assets/show/" . $id);
+        $redirectUrl = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/office-assets");
+        header("Location: " . $redirectUrl);
         exit;
     }
 

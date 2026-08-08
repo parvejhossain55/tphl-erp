@@ -253,8 +253,13 @@ $statusBadges = [
                                                 <i class="fa-solid fa-money-bill-wave"></i>
                                             </button>
                                         <?php endif; ?>
-                                        <?php if ($roleId === 20): ?>
-                                        <button type="button" class="btn btn-sm btn-outline-info btn-icon ms-1" title="Edit Asset" data-asset-b64="<?= base64_encode(json_encode($a)) ?>" onclick="openEditModal(this)"><i class="fa-solid fa-pencil"></i></button>
+                                        <?php if (!empty($canEdit)): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary btn-icon ms-1" title="Transfer Asset" onclick="openSingleTransferModal(<?= $a['id'] ?>, '<?= htmlspecialchars($a['asset_code'], ENT_QUOTES) ?>', '<?= htmlspecialchars($a['item_name'], ENT_QUOTES) ?>')">
+                                                <i class="fa-solid fa-right-left"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-info btn-icon ms-1" title="Edit Asset" data-asset-b64="<?= base64_encode(json_encode($a)) ?>" onclick="openEditModal(this)">
+                                                <i class="fa-solid fa-pencil"></i>
+                                            </button>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
@@ -688,6 +693,70 @@ $statusBadges = [
     </div>
 </div>
 
+<!-- MODAL: SINGLE ASSET TRANSFER -->
+<div class="modal fade" id="singleTransferModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="singleTransferForm" method="POST" action="">
+            <div class="modal-content">
+                <div class="modal-header bg-secondary-transparent">
+                    <h5 class="modal-title text-secondary"><i class="fa-solid fa-right-left me-2"></i>Transfer Asset: <span id="transfer_asset_code_display"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="fs-13 text-muted mb-3">Asset Item: <strong id="transfer_asset_name_display"></strong></p>
+                    <div class="mb-3">
+                        <label class="form-label fs-12">Transfer To Project</label>
+                        <select name="project_id" class="form-select form-select-sm">
+                            <option value="">Head Office (No Project)</option>
+                            <?php foreach ($projects ?? [] as $proj): ?>
+                                <option value="<?= $proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fs-12">Transfer To Office Branch</label>
+                        <select name="office_branch_id" class="form-select form-select-sm">
+                            <option value="">Select Office Branch</option>
+                            <?php foreach ($branches ?? [] as $b): ?>
+                                <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fs-12">Assign To Employee</label>
+                        <select name="assigned_to" class="form-select form-select-sm">
+                            <option value="">-- Unassigned --</option>
+                            <?php foreach ($users ?? [] as $u): ?>
+                                <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fs-12">New Condition Status</label>
+                        <select name="new_condition" class="form-select form-select-sm">
+                            <option value="good">Good / OK</option>
+                            <option value="need_repair">Need Repair</option>
+                            <option value="damaged">Damaged</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fs-12">Location / Room</label>
+                        <input type="text" name="location" class="form-control form-control-sm" placeholder="e.g. 3rd Floor IT Room">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fs-12">Transfer Notes / Reason</label>
+                        <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Reason for transfer..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning btn-sm"><i class="fa-solid fa-check me-1"></i> Confirm Transfer</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <style>
 @media (max-width: 480px) {
     #stats-cards .card.custom-card {
@@ -857,6 +926,15 @@ function openRepairFundModal(assetId, assetCode, assetName) {
     document.getElementById('repairFundForm').action = '<?= $GLOBALS['base_url'] ?>/office-assets/repair-requisition/' + assetId;
     
     var modal = new bootstrap.Modal(document.getElementById('repairFundModal'));
+    modal.show();
+}
+
+function openSingleTransferModal(assetId, assetCode, assetName) {
+    document.getElementById('transfer_asset_code_display').textContent = assetCode;
+    document.getElementById('transfer_asset_name_display').textContent = assetName;
+    document.getElementById('singleTransferForm').action = '<?= $GLOBALS['base_url'] ?>/office-assets/transfer/' + assetId;
+    
+    var modal = new bootstrap.Modal(document.getElementById('singleTransferModal'));
     modal.show();
 }
 </script>
