@@ -140,8 +140,10 @@ class GeneralJournal extends Model
                 $where .= " AND (j.source_module = 'land_requisition' OR j.narration LIKE '%Land Acquisition%' OR j.narration LIKE '%Bayana%' OR j.narration LIKE '%Registration%')";
             } elseif ($mod === 'sales_payment') {
                 $where .= " AND (j.source_module = 'sales_payment' OR j.narration LIKE '%Client Receipt%' OR j.narration LIKE '%Booking Money%')";
-            } elseif ($mod === 'office_assets' || $mod === 'asset_management' || $mod === 'fixed_assets') {
-                $where .= " AND (j.source_module IN ('office_assets', 'asset_procurement', 'fixed_assets') OR j.narration LIKE '%Asset%' OR j.narration LIKE '%AST-%')";
+            } elseif ($mod === 'office_assets') {
+                $where .= " AND (j.source_module = 'office_assets' OR (j.narration LIKE '%Asset Register%' AND j.source_module != 'asset_procurement'))";
+            } elseif ($mod === 'asset_procurement') {
+                $where .= " AND (j.source_module = 'asset_procurement' OR j.narration LIKE '%Asset Procurement%')";
             } elseif ($mod === 'expense_voucher') {
                 $where .= " AND (j.voucher_type = 'Payment Voucher' OR j.narration LIKE '%Expense%')";
             }

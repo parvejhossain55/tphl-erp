@@ -93,8 +93,8 @@ class AssetManagementController extends Controller
                     try {
                         require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
                         $autoPosting = new \AutoPostingService($this->db);
-                        $assetAccId = $autoPosting->getAccountIdByCode('1610'); // Office Assets / Fixed Assets
-                        $payableCashAccId = $autoPosting->getAccountIdByCode('2110'); // Accounts Payable / Cash Outflow
+                        $assetAccId = $autoPosting->getAccountIdByCode('1000') ?: $autoPosting->getAccountIdByCode('1610'); // Office Assets / Fixed Assets
+                        $retainedAccId = $autoPosting->getAccountIdByCode('352000') ?: $autoPosting->getAccountIdByCode('29'); // Retained Earnings / Equity
 
                         $assetObj = $this->model->findAsset($assetId);
                         $assetCode = $assetObj['asset_code'] ?? ('AST-' . $assetId);
@@ -104,9 +104,9 @@ class AssetManagementController extends Controller
                             'office_assets',
                             $assetId,
                             $assetAccId,
-                            $payableCashAccId,
+                            $retainedAccId,
                             (float)$data['purchase_price'],
-                            "Office Asset Registered ({$assetCode}): " . $itemName,
+                            "Existing Company Asset Register (Opening Balance) ({$assetCode}): " . $itemName,
                             !empty($data['project_id']) ? (int)$data['project_id'] : null,
                             'employee',
                             !empty($data['assigned_to']) ? (int)$data['assigned_to'] : null,
