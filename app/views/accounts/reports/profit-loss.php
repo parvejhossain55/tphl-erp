@@ -2,8 +2,18 @@
 // Layout handled by Controller via master.php
 $revenue = $report['revenue'] ?? [];
 $expenses = $report['expenses'] ?? [];
+$directRevenue = $report['direct_revenue'] ?? [];
+$indirectRevenue = $report['indirect_revenue'] ?? [];
+$directExpenses = $report['direct_expenses'] ?? [];
+$operatingExpenses = $report['operating_expenses'] ?? [];
+$totalDirectRevenue = $report['total_direct_revenue'] ?? 0;
+$totalIndirectRevenue = $report['total_indirect_revenue'] ?? 0;
 $totalRevenue = $report['total_revenue'] ?? 0;
+$totalDirectExpenses = $report['total_direct_expenses'] ?? 0;
+$totalOperatingExpenses = $report['total_operating_expenses'] ?? 0;
 $totalExpenses = $report['total_expenses'] ?? 0;
+$grossProfit = $report['gross_profit'] ?? 0;
+$operatingProfit = $report['operating_profit'] ?? 0;
 $netIncome = $report['net_income'] ?? 0;
 $isProfit = $netIncome >= 0;
 $layoutMode = $_GET['layout'] ?? 'vertical';
@@ -225,7 +235,7 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                 <div class="card-header bg-white py-3 border-bottom">
                     <div class="text-center">
                         <h4 class="mb-1 fw-bold text-uppercase text-dark">THE PREMIUM HOMES LTD</h4>
-                        <h5 class="mb-1 text-success fw-bold">PROFIT & LOSS STATEMENT</h5>
+                        <h5 class="mb-1 text-success fw-bold">PROFIT & LOSS STATEMENT (GAAP CLASSIFICATION)</h5>
                         <p class="text-muted mb-0 fs-13">
                             For the period: <strong><?= date('d M Y', strtotime($filters['date_from'])) ?></strong> to <strong><?= date('d M Y', strtotime($filters['date_to'])) ?></strong>
                         </p>
@@ -233,12 +243,88 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                 </div>
                 <div class="card-body p-4">
                     <!-- Operating Revenue Section -->
-                    <div class="mb-4">
+                    <div class="mb-5">
                         <div class="d-flex justify-content-between align-items-center bg-success-transparent p-3 rounded mb-3">
-                            <h6 class="mb-0 fw-bold text-success"><i class="fa-light fa-circle-dollar text-success me-2"></i> 1. OPERATING REVENUES & INCOME</h6>
-                            <span class="badge bg-success text-white px-3 py-2 font-monospace fs-13">৳ <?= number_format($totalRevenue, 2) ?></span>
+                            <h5 class="mb-0 fw-bold text-success"><i class="fa-light fa-circle-dollar text-success me-2"></i> 1. REVENUES & INCOME (রাজস্ব ও আয়)</h5>
+                            <span class="badge bg-success text-white px-3 py-2 font-monospace fs-14">TOTAL REVENUE: ৳ <?= number_format($totalRevenue, 2) ?></span>
                         </div>
-                        <div class="table-responsive">
+
+                        <!-- 1.1 Direct / Operating Income -->
+                        <div class="mb-4 ps-3 border-start border-3 border-success">
+                            <h6 class="fw-bold text-success text-uppercase mb-2"><i class="fa-solid fa-folder me-1"></i> 1.1 Direct / Operating Income (সরাসরি ও পরিচালন আয়)</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="140">Account Code</th>
+                                            <th>Account Description</th>
+                                            <th class="text-end" width="200">Amount (BDT)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($directRevenue)): ?>
+                                            <tr><td colspan="3" class="text-center text-muted py-2">No direct operating revenue recorded.</td></tr>
+                                        <?php else: ?>
+                                            <?php foreach ($directRevenue as $acc): ?>
+                                                <tr>
+                                                    <td><span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold"><?= htmlspecialchars($acc['account_code']) ?></span></td>
+                                                    <td class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></td>
+                                                    <td class="text-end font-monospace text-success fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="fw-bold table-light">
+                                            <td colspan="2" class="text-end">Subtotal Direct Operating Income:</td>
+                                            <td class="text-end font-monospace text-success">৳ <?= number_format($totalDirectRevenue, 2) ?></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 1.2 Non-Operating Income -->
+                        <?php if (!empty($indirectRevenue)): ?>
+                        <div class="mb-4 ps-3 border-start border-3 border-info">
+                            <h6 class="fw-bold text-info text-uppercase mb-2"><i class="fa-solid fa-folder-open me-1"></i> 1.2 Non-Operating & Other Income (পরোক্ষ ও অন্যান্য আয়)</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="140">Account Code</th>
+                                            <th>Account Description</th>
+                                            <th class="text-end" width="200">Amount (BDT)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($indirectRevenue as $acc): ?>
+                                            <tr>
+                                                <td><span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold"><?= htmlspecialchars($acc['account_code']) ?></span></td>
+                                                <td class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></td>
+                                                <td class="text-end font-monospace text-info fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="fw-bold table-light">
+                                            <td colspan="2" class="text-end">Subtotal Non-Operating Income:</td>
+                                            <td class="text-end font-monospace text-info">৳ <?= number_format($totalIndirectRevenue, 2) ?></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Direct Expenses & Cost of Sales Section -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center bg-danger-transparent p-3 rounded mb-3">
+                            <h5 class="mb-0 fw-bold text-danger"><i class="fa-light fa-hammer me-2"></i> 2. DIRECT PROJECT & CONSTRUCTION EXPENSES (COGS / প্রজেক্ট খরচ)</h5>
+                            <span class="badge bg-danger text-white px-3 py-2 font-monospace fs-14">SUBTOTAL DIRECT COSTS: ৳ <?= number_format($totalDirectExpenses, 2) ?></span>
+                        </div>
+                        <div class="table-responsive mb-3">
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
@@ -248,37 +334,40 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php if (empty($revenue)): ?>
-                                        <tr><td colspan="3" class="text-center text-muted py-3">No revenue recorded in this period.</td></tr>
+                                    <?php if (empty($directExpenses)): ?>
+                                        <tr><td colspan="3" class="text-center text-muted py-2">No direct construction expenses recorded.</td></tr>
                                     <?php else: ?>
-                                        <?php foreach ($revenue as $acc): ?>
+                                        <?php foreach ($directExpenses as $acc): ?>
                                             <tr>
-                                                <td>
-                                                    <span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold">
-                                                        <?= htmlspecialchars($acc['account_code']) ?>
-                                                    </span>
-                                                </td>
-                                                <td class="fw-semibold text-dark fs-13">
-                                                    <?= htmlspecialchars($acc['account_name']) ?>
-                                                </td>
-                                                <td class="text-end font-monospace text-success fw-bold fs-13">
-                                                    ৳ <?= number_format($acc['balance'], 2) ?>
-                                                </td>
+                                                <td><span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold"><?= htmlspecialchars($acc['account_code']) ?></span></td>
+                                                <td class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></td>
+                                                <td class="text-end font-monospace text-danger fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Gross Profit KPI Box -->
+                        <div class="p-3 rounded border bg-light d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <h6 class="mb-0 fw-bold text-dark text-uppercase"><i class="fa-solid fa-calculator me-1 text-primary"></i> GROSS PROFIT / (LOSS)</h6>
+                                <small class="text-muted">(Direct Operating Income ৳ <?= number_format($totalDirectRevenue, 2) ?> - Direct Costs ৳ <?= number_format($totalDirectExpenses, 2) ?>)</small>
+                            </div>
+                            <h4 class="mb-0 font-monospace fw-bold <?= $grossProfit >= 0 ? 'text-success' : 'text-danger' ?>">
+                                ৳ <?= number_format($grossProfit, 2) ?>
+                            </h4>
+                        </div>
                     </div>
 
                     <!-- Operating Expenses Section -->
                     <div class="mb-4">
-                        <div class="d-flex justify-content-between align-items-center bg-danger-transparent p-3 rounded mb-3">
-                            <h6 class="mb-0 fw-bold text-danger"><i class="fa-light fa-receipt text-danger me-2"></i> 2. OPERATING & WIP EXPENSES</h6>
-                            <span class="badge bg-danger text-white px-3 py-2 font-monospace fs-13">৳ <?= number_format($totalExpenses, 2) ?></span>
+                        <div class="d-flex justify-content-between align-items-center bg-warning-transparent p-3 rounded mb-3">
+                            <h5 class="mb-0 fw-bold text-dark"><i class="fa-light fa-receipt me-2"></i> 3. ADMINISTRATIVE, SELLING & OPERATING EXPENSES (OPEX / পরিচালন খরচ)</h5>
+                            <span class="badge bg-warning text-dark px-3 py-2 font-monospace fs-14">SUBTOTAL OPEX: ৳ <?= number_format($totalOperatingExpenses, 2) ?></span>
                         </div>
-                        <div class="table-responsive">
+                        <div class="table-responsive mb-3">
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
@@ -288,22 +377,14 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php if (empty($expenses)): ?>
-                                        <tr><td colspan="3" class="text-center text-muted py-3">No expenses recorded in this period.</td></tr>
+                                    <?php if (empty($operatingExpenses)): ?>
+                                        <tr><td colspan="3" class="text-center text-muted py-2">No operating expenses recorded.</td></tr>
                                     <?php else: ?>
-                                        <?php foreach ($expenses as $acc): ?>
+                                        <?php foreach ($operatingExpenses as $acc): ?>
                                             <tr>
-                                                <td>
-                                                    <span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold">
-                                                        <?= htmlspecialchars($acc['account_code']) ?>
-                                                    </span>
-                                                </td>
-                                                <td class="fw-semibold text-dark fs-13">
-                                                    <?= htmlspecialchars($acc['account_name']) ?>
-                                                </td>
-                                                <td class="text-end font-monospace text-danger fw-bold fs-13">
-                                                    ৳ <?= number_format($acc['balance'], 2) ?>
-                                                </td>
+                                                <td><span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold"><?= htmlspecialchars($acc['account_code']) ?></span></td>
+                                                <td class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></td>
+                                                <td class="text-end font-monospace text-dark fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
@@ -313,14 +394,14 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                     </div>
 
                     <!-- Net Income Result Box -->
-                    <div class="p-4 rounded border <?= $isProfit ? 'bg-success-transparent border-success' : 'bg-warning-transparent border-warning' ?>">
+                    <div class="p-4 rounded border <?= $isProfit ? 'bg-success-transparent border-success' : 'bg-danger-transparent border-danger' ?>">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h5 class="mb-1 fw-bold <?= $isProfit ? 'text-success' : 'text-dark' ?>">
-                                    <i class="fa-light <?= $isProfit ? 'fa-chart-line-up text-success' : 'fa-chart-line-down text-warning' ?> me-2"></i>
-                                    <?= $isProfit ? 'NET OPERATING PROFIT' : 'NET OPERATING LOSS' ?>
+                                <h5 class="mb-1 fw-bold <?= $isProfit ? 'text-success' : 'text-danger' ?>">
+                                    <i class="fa-light <?= $isProfit ? 'fa-chart-line-up text-success' : 'fa-chart-line-down text-danger' ?> me-2"></i>
+                                    <?= $isProfit ? 'NET PROFIT (নিট লাভ)' : 'NET LOSS (নিট ক্ষতি)' ?>
                                 </h5>
-                                <small class="text-muted">Calculated as (Total Revenue - Total Expenses)</small>
+                                <small class="text-muted">Calculated as: Gross Profit (৳ <?= number_format($grossProfit, 2) ?>) - OPEX (৳ <?= number_format($totalOperatingExpenses, 2) ?>) + Other Income (৳ <?= number_format($totalIndirectRevenue, 2) ?>)</small>
                             </div>
                             <h3 class="mb-0 font-monospace fw-bold <?= $isProfit ? 'text-success' : 'text-danger' ?>">
                                 ৳ <?= number_format(abs($netIncome), 2) ?>

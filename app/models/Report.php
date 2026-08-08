@@ -69,16 +69,20 @@ class Report extends Model
                 c.account_type,
                 c.parent_id,
                 p.account_name as parent_name,
+                p.account_code as parent_code,
+                gp.account_name as sub_name,
+                gp.account_code as sub_code,
                 COALESCE(SUM(jd.debit), 0) as total_debit,
                 COALESCE(SUM(jd.credit), 0) as total_credit
             FROM journal_details jd
             INNER JOIN journals j ON jd.journal_id = j.id
             INNER JOIN chart_of_accounts c ON jd.account_id = c.id
             LEFT JOIN chart_of_accounts p ON c.parent_id = p.id
+            LEFT JOIN chart_of_accounts gp ON p.parent_id = gp.id
             $where
-            GROUP BY c.id, c.account_code, c.account_name, c.account_type, c.parent_id, p.account_name
+            GROUP BY c.id, c.account_code, c.account_name, c.account_type, c.parent_id, p.account_name, p.account_code, gp.account_name, gp.account_code
             HAVING total_debit != 0 OR total_credit != 0
-            ORDER BY c.account_type, c.account_code
+            ORDER BY c.account_code ASC
         ";
 
         if (!empty($params)) {
@@ -98,7 +102,6 @@ class Report extends Model
                     $accounts[$type] = [];
                 }
                 
-                // Calculate the balance based on account type
                 switch ($type) {
                     case 'Asset':
                     case 'Expense':
@@ -130,55 +133,134 @@ class Report extends Model
     }
 
     /**
-     * Calculate Profit & Loss summary
+     * Calculate Profit & Loss summary with GAAP Category Breakdown
      */
     public function getProfitLoss($dateFrom = null, $dateTo = null, $projectId = null, $office = null)
     {
         $balances = $this->getAccountBalances($dateFrom, $dateTo, $projectId, $office);
         
-        $revenue = $balances['Revenue'] ?? [];
-        $expenses = $balances['Expense'] ?? [];
+        $rawRevenue = $balances['Revenue'] ?? [];
+        $rawExpenses = $balances['Expense'] ?? [];
 
-        $totalRevenue = array_sum(array_column($revenue, 'balance'));
-        $totalExpenses = array_sum(array_column($expenses, 'balance'));
-        $netIncome = $totalRevenue - $totalExpenses;
+        $directRevenue = [];
+        $indirectRevenue = [];
+        foreach ($rawRevenue as $r) {
+            $code = (string)$r['account_code'];
+            $subName = strtolower($r['sub_name'] ?? '');
+            if (str_starts_with($code, '40') || str_contains($subName, 'operating income') || str_contains(strtolower($r['parent_name'] ?? ''), 'sales')) {
+                $directRevenue[] = $r;
+            } else {
+                $indirectRevenue[] = $r;
+            }
+        }
+
+        $directExpenses = [];
+        $operatingExpenses = [];
+        foreach ($rawExpenses as $e) {
+            $code = (string)$e['account_code'];
+            $subName = strtolower($e['sub_name'] ?? '');
+            $parentName = strtolower($e['parent_name'] ?? '');
+            if (str_starts_with($code, '520') || str_starts_with($code, '530') || str_starts_with($code, '540') || str_starts_with($code, '550') || str_starts_with($code, '570')
+                || str_contains($subName, 'contractor') || str_contains($subName, 'construction') || str_contains($subName, 'architectural') || str_contains($subName, 'land') || str_contains($parentName, 'contractor') || str_contains($parentName, 'construction')) {
+                $directExpenses[] = $e;
+            } else {
+                $operatingExpenses[] = $e;
+            }
+        }
+
+        $totalDirectRevenue = array_sum(array_column($directRevenue, 'balance'));
+        $totalIndirectRevenue = array_sum(array_column($indirectRevenue, 'balance'));
+        $totalRevenue = $totalDirectRevenue + $totalIndirectRevenue;
+
+        $totalDirectExpenses = array_sum(array_column($directExpenses, 'balance'));
+        $totalOperatingExpenses = array_sum(array_column($operatingExpenses, 'balance'));
+        $totalExpenses = $totalDirectExpenses + $totalOperatingExpenses;
+
+        $grossProfit = $totalDirectRevenue - $totalDirectExpenses;
+        $operatingProfit = $grossProfit - $totalOperatingExpenses;
+        $netIncome = $operatingProfit + $totalIndirectRevenue;
 
         return [
-            'revenue' => $revenue,
-            'expenses' => $expenses,
+            'revenue' => $rawRevenue,
+            'expenses' => $rawExpenses,
+            'direct_revenue' => $directRevenue,
+            'indirect_revenue' => $indirectRevenue,
+            'direct_expenses' => $directExpenses,
+            'operating_expenses' => $operatingExpenses,
+            'total_direct_revenue' => $totalDirectRevenue,
+            'total_indirect_revenue' => $totalIndirectRevenue,
             'total_revenue' => $totalRevenue,
+            'total_direct_expenses' => $totalDirectExpenses,
+            'total_operating_expenses' => $totalOperatingExpenses,
             'total_expenses' => $totalExpenses,
+            'gross_profit' => $grossProfit,
+            'operating_profit' => $operatingProfit,
             'net_income' => $netIncome
         ];
     }
 
     /**
-     * Calculate Balance Sheet
+     * Calculate Balance Sheet with GAAP Category Breakdown
      */
     public function getBalanceSheet($asOfDate = null, $projectId = null, $office = null)
     {
         $balances = $this->getCumulativeBalances($asOfDate, $projectId, $office);
         
-        // Also get net income to add to equity
         $plData = $this->getProfitLoss(null, $asOfDate, $projectId, $office);
         $netIncome = $plData['net_income'];
 
-        $assets = $balances['Asset'] ?? [];
-        $liabilities = $balances['Liability'] ?? [];
-        $equity = $balances['Equity'] ?? [];
+        $rawAssets = $balances['Asset'] ?? [];
+        $rawLiabilities = $balances['Liability'] ?? [];
+        $rawEquity = $balances['Equity'] ?? [];
 
-        $totalAssets = array_sum(array_column($assets, 'balance'));
-        $totalLiabilities = array_sum(array_column($liabilities, 'balance'));
-        $totalEquity = array_sum(array_column($equity, 'balance'));
+        $nonCurrentAssets = [];
+        $currentAssets = [];
+        foreach ($rawAssets as $a) {
+            $code = (string)$a['account_code'];
+            $subName = strtolower($a['sub_name'] ?? '');
+            if (str_starts_with($code, '10') || str_contains($subName, 'non-current') || str_contains(strtolower($a['parent_name'] ?? ''), 'property') || str_contains(strtolower($a['parent_name'] ?? ''), 'intangible')) {
+                $nonCurrentAssets[] = $a;
+            } else {
+                $currentAssets[] = $a;
+            }
+        }
 
-        // Add net income to equity to balance the sheet
+        $nonCurrentLiabilities = [];
+        $currentLiabilities = [];
+        foreach ($rawLiabilities as $l) {
+            $code = (string)$l['account_code'];
+            $subName = strtolower($l['sub_name'] ?? '');
+            if (str_starts_with($code, '20') || str_contains($subName, 'non current') || str_contains($subName, 'long term') || str_contains(strtolower($l['parent_name'] ?? ''), 'loan')) {
+                $nonCurrentLiabilities[] = $l;
+            } else {
+                $currentLiabilities[] = $l;
+            }
+        }
+
+        $totalNonCurrentAssets = array_sum(array_column($nonCurrentAssets, 'balance'));
+        $totalCurrentAssets = array_sum(array_column($currentAssets, 'balance'));
+        $totalAssets = $totalNonCurrentAssets + $totalCurrentAssets;
+
+        $totalNonCurrentLiabilities = array_sum(array_column($nonCurrentLiabilities, 'balance'));
+        $totalCurrentLiabilities = array_sum(array_column($currentLiabilities, 'balance'));
+        $totalLiabilities = $totalNonCurrentLiabilities + $totalCurrentLiabilities;
+
+        $totalEquity = array_sum(array_column($rawEquity, 'balance'));
         $totalEquityWithIncome = $totalEquity + $netIncome;
 
         return [
-            'assets' => $assets,
-            'liabilities' => $liabilities,
-            'equity' => $equity,
+            'assets' => $rawAssets,
+            'liabilities' => $rawLiabilities,
+            'equity' => $rawEquity,
+            'non_current_assets' => $nonCurrentAssets,
+            'current_assets' => $currentAssets,
+            'non_current_liabilities' => $nonCurrentLiabilities,
+            'current_liabilities' => $currentLiabilities,
+            'total_non_current_assets' => $totalNonCurrentAssets,
+            'total_current_assets' => $totalCurrentAssets,
             'total_assets' => $totalAssets,
+            'total_non_current_liabilities' => $totalNonCurrentLiabilities,
+            'total_current_liabilities' => $totalCurrentLiabilities,
             'total_liabilities' => $totalLiabilities,
             'total_equity' => $totalEquity,
             'net_income' => $netIncome,

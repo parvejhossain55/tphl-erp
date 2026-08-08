@@ -3,6 +3,16 @@
 $assets = $report['assets'] ?? [];
 $liabilities = $report['liabilities'] ?? [];
 $equity = $report['equity'] ?? [];
+$nonCurrentAssets = $report['non_current_assets'] ?? [];
+$currentAssets = $report['current_assets'] ?? [];
+$totalNonCurrentAssets = $report['total_non_current_assets'] ?? 0;
+$totalCurrentAssets = $report['total_current_assets'] ?? 0;
+
+$nonCurrentLiabilities = $report['non_current_liabilities'] ?? [];
+$currentLiabilities = $report['current_liabilities'] ?? [];
+$totalNonCurrentLiabilities = $report['total_non_current_liabilities'] ?? 0;
+$totalCurrentLiabilities = $report['total_current_liabilities'] ?? 0;
+
 $totalAssets = $report['total_assets'] ?? 0;
 $totalLiabilities = $report['total_liabilities'] ?? 0;
 $totalEquityWithIncome = $report['total_equity_with_income'] ?? 0;
@@ -238,96 +248,172 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                         <h4 class="mb-1 fw-bold text-uppercase text-dark">THE PREMIUM HOMES LTD</h4>
                         <h5 class="mb-1 text-primary fw-bold">BALANCE SHEET (FINANCIAL POSITION STATEMENT)</h5>
                         <p class="text-muted mb-0 fs-13">
-                            As of <strong><?= date('d M Y', strtotime($filters['as_of_date'])) ?></strong>
+                            As of <strong><?= date('d M Y', strtotime($filters['as_of_date'])) ?></strong> (GAAP Classification)
                         </p>
                     </div>
                 </div>
                 <div class="card-body p-4">
                     <!-- Assets Section -->
-                    <div class="mb-4">
+                    <div class="mb-5">
                         <div class="d-flex justify-content-between align-items-center bg-success-transparent p-3 rounded mb-3">
-                            <h6 class="mb-0 fw-bold text-success"><i class="fa-light fa-wallet me-2"></i> 1. ASSETS (CASH, BANKS & PROPERTIES)</h6>
-                            <span class="badge bg-success text-white px-3 py-2 font-monospace fs-13">৳ <?= number_format($totalAssets, 2) ?></span>
+                            <h5 class="mb-0 fw-bold text-success"><i class="fa-light fa-wallet me-2"></i> 1. ASSETS (সম্পদসমূহ)</h5>
+                            <span class="badge bg-success text-white px-3 py-2 font-monospace fs-14">TOTAL ASSETS: ৳ <?= number_format($totalAssets, 2) ?></span>
                         </div>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th width="140">Account Code</th>
-                                        <th>Account Description</th>
-                                        <th class="text-end" width="200">Amount (BDT)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if (empty($assets)): ?>
-                                        <tr><td colspan="3" class="text-center text-muted py-3">No asset balances found as of this date.</td></tr>
-                                    <?php else: ?>
-                                        <?php foreach ($assets as $acc): ?>
-                                            <tr>
-                                                <td>
-                                                    <span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold">
-                                                        <?= htmlspecialchars($acc['account_code']) ?>
-                                                    </span>
-                                                </td>
-                                                <td class="fw-semibold text-dark fs-13">
-                                                    <?= htmlspecialchars($acc['account_name']) ?>
-                                                </td>
-                                                <td class="text-end font-monospace text-success fw-bold fs-13">
-                                                    ৳ <?= number_format($acc['balance'], 2) ?>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
+
+                        <!-- 1.1 Non-Current Assets -->
+                        <div class="mb-4 ps-3 border-start border-3 border-success">
+                            <h6 class="fw-bold text-success text-uppercase mb-2"><i class="fa-solid fa-folder me-1"></i> 1.1 Non-Current Assets (স্থায়ী ও দীর্ঘমেয়াদী সম্পদ)</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="140">Account Code</th>
+                                            <th>Account Description</th>
+                                            <th class="text-end" width="200">Amount (BDT)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($nonCurrentAssets)): ?>
+                                            <tr><td colspan="3" class="text-center text-muted py-2">No non-current asset balances.</td></tr>
+                                        <?php else: ?>
+                                            <?php foreach ($nonCurrentAssets as $acc): ?>
+                                                <tr>
+                                                    <td><span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold"><?= htmlspecialchars($acc['account_code']) ?></span></td>
+                                                    <td class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></td>
+                                                    <td class="text-end font-monospace text-success fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="fw-bold table-light">
+                                            <td colspan="2" class="text-end">Subtotal Non-Current Assets:</td>
+                                            <td class="text-end font-monospace text-success">৳ <?= number_format($totalNonCurrentAssets, 2) ?></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 1.2 Current Assets -->
+                        <div class="mb-4 ps-3 border-start border-3 border-success">
+                            <h6 class="fw-bold text-success text-uppercase mb-2"><i class="fa-solid fa-folder-open me-1"></i> 1.2 Current Assets (চলতি সম্পদ)</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="140">Account Code</th>
+                                            <th>Account Description</th>
+                                            <th class="text-end" width="200">Amount (BDT)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($currentAssets)): ?>
+                                            <tr><td colspan="3" class="text-center text-muted py-2">No current asset balances.</td></tr>
+                                        <?php else: ?>
+                                            <?php foreach ($currentAssets as $acc): ?>
+                                                <tr>
+                                                    <td><span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold"><?= htmlspecialchars($acc['account_code']) ?></span></td>
+                                                    <td class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></td>
+                                                    <td class="text-end font-monospace text-success fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="fw-bold table-light">
+                                            <td colspan="2" class="text-end">Subtotal Current Assets:</td>
+                                            <td class="text-end font-monospace text-success">৳ <?= number_format($totalCurrentAssets, 2) ?></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Liabilities Section -->
-                    <div class="mb-4">
+                    <div class="mb-5">
                         <div class="d-flex justify-content-between align-items-center bg-warning-transparent p-3 rounded mb-3">
-                            <h6 class="mb-0 fw-bold text-dark"><i class="fa-light fa-building-columns me-2"></i> 2. LIABILITIES (PAYABLES & CLIENT ADVANCES)</h6>
-                            <span class="badge bg-warning text-dark px-3 py-2 font-monospace fs-13">৳ <?= number_format($totalLiabilities, 2) ?></span>
+                            <h5 class="mb-0 fw-bold text-dark"><i class="fa-light fa-building-columns me-2"></i> 2. LIABILITIES (দায়সমূহ)</h5>
+                            <span class="badge bg-warning text-dark px-3 py-2 font-monospace fs-14">TOTAL LIABILITIES: ৳ <?= number_format($totalLiabilities, 2) ?></span>
                         </div>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th width="140">Account Code</th>
-                                        <th>Account Description</th>
-                                        <th class="text-end" width="200">Amount (BDT)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if (empty($liabilities)): ?>
-                                        <tr><td colspan="3" class="text-center text-muted py-3">No liability balances found as of this date.</td></tr>
-                                    <?php else: ?>
-                                        <?php foreach ($liabilities as $acc): ?>
-                                            <tr>
-                                                <td>
-                                                    <span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold">
-                                                        <?= htmlspecialchars($acc['account_code']) ?>
-                                                    </span>
-                                                </td>
-                                                <td class="fw-semibold text-dark fs-13">
-                                                    <?= htmlspecialchars($acc['account_name']) ?>
-                                                </td>
-                                                <td class="text-end font-monospace text-dark fw-bold fs-13">
-                                                    ৳ <?= number_format($acc['balance'], 2) ?>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
+
+                        <!-- 2.1 Non-Current Liabilities -->
+                        <div class="mb-4 ps-3 border-start border-3 border-warning">
+                            <h6 class="fw-bold text-dark text-uppercase mb-2"><i class="fa-solid fa-folder me-1"></i> 2.1 Non-Current Liabilities (দীর্ঘমেয়াদী দায়)</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="140">Account Code</th>
+                                            <th>Account Description</th>
+                                            <th class="text-end" width="200">Amount (BDT)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($nonCurrentLiabilities)): ?>
+                                            <tr><td colspan="3" class="text-center text-muted py-2">No non-current liability balances.</td></tr>
+                                        <?php else: ?>
+                                            <?php foreach ($nonCurrentLiabilities as $acc): ?>
+                                                <tr>
+                                                    <td><span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold"><?= htmlspecialchars($acc['account_code']) ?></span></td>
+                                                    <td class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></td>
+                                                    <td class="text-end font-monospace text-dark fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="fw-bold table-light">
+                                            <td colspan="2" class="text-end">Subtotal Non-Current Liabilities:</td>
+                                            <td class="text-end font-monospace text-dark">৳ <?= number_format($totalNonCurrentLiabilities, 2) ?></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 2.2 Current Liabilities -->
+                        <div class="mb-4 ps-3 border-start border-3 border-warning">
+                            <h6 class="fw-bold text-dark text-uppercase mb-2"><i class="fa-solid fa-folder-open me-1"></i> 2.2 Current Liabilities (চলতি দায়)</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="140">Account Code</th>
+                                            <th>Account Description</th>
+                                            <th class="text-end" width="200">Amount (BDT)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($currentLiabilities)): ?>
+                                            <tr><td colspan="3" class="text-center text-muted py-2">No current liability balances.</td></tr>
+                                        <?php else: ?>
+                                            <?php foreach ($currentLiabilities as $acc): ?>
+                                                <tr>
+                                                    <td><span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold"><?= htmlspecialchars($acc['account_code']) ?></span></td>
+                                                    <td class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></td>
+                                                    <td class="text-end font-monospace text-dark fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="fw-bold table-light">
+                                            <td colspan="2" class="text-end">Subtotal Current Liabilities:</td>
+                                            <td class="text-end font-monospace text-dark">৳ <?= number_format($totalCurrentLiabilities, 2) ?></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Equity Section -->
                     <div class="mb-4">
                         <div class="d-flex justify-content-between align-items-center bg-primary-transparent p-3 rounded mb-3">
-                            <h6 class="mb-0 fw-bold text-primary"><i class="fa-light fa-chart-pie me-2"></i> 3. CAPITAL & EQUITY</h6>
-                            <span class="badge bg-primary text-white px-3 py-2 font-monospace fs-13">৳ <?= number_format($totalEquityWithIncome, 2) ?></span>
+                            <h5 class="mb-0 fw-bold text-primary"><i class="fa-light fa-chart-pie me-2"></i> 3. CAPITAL & EQUITY (মূলধন ও সংরক্ষিত আয়)</h5>
+                            <span class="badge bg-primary text-white px-3 py-2 font-monospace fs-14">৳ <?= number_format($totalEquityWithIncome, 2) ?></span>
                         </div>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0">
@@ -342,28 +428,16 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                                     <?php if (!empty($equity)): ?>
                                         <?php foreach ($equity as $acc): ?>
                                             <tr>
-                                                <td>
-                                                    <span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold">
-                                                        <?= htmlspecialchars($acc['account_code']) ?>
-                                                    </span>
-                                                </td>
-                                                <td class="fw-semibold text-dark fs-13">
-                                                    <?= htmlspecialchars($acc['account_name']) ?>
-                                                </td>
-                                                <td class="text-end font-monospace text-primary fw-bold fs-13">
-                                                    ৳ <?= number_format($acc['balance'], 2) ?>
-                                                </td>
+                                                <td><span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold"><?= htmlspecialchars($acc['account_code']) ?></span></td>
+                                                <td class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></td>
+                                                <td class="text-end font-monospace text-primary fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
                                     <tr>
-                                        <td>
-                                            <span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold">P/L</span>
-                                        </td>
+                                        <td><span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold">P/L</span></td>
                                         <td class="fw-semibold text-dark fs-13">Current Period Net Income / Retained Earnings</td>
-                                        <td class="text-end font-monospace <?= $netIncome >= 0 ? 'text-success' : 'text-danger' ?> fw-bold fs-13">
-                                            ৳ <?= number_format($netIncome, 2) ?>
-                                        </td>
+                                        <td class="text-end font-monospace <?= $netIncome >= 0 ? 'text-success' : 'text-danger' ?> fw-bold fs-13">৳ <?= number_format($netIncome, 2) ?></td>
                                     </tr>
                                 </tbody>
                             </table>
