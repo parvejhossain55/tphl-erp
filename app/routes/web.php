@@ -205,5 +205,6 @@ return [
     // =========================================================================
     'run-live-coa-migration' => ['controller' => 'LiveCoaMigrationController', 'method' => 'run'],
     'live_coa_and_journal_migration.php' => ['controller' => 'LiveCoaMigrationController', 'method' => 'run'],
+    'update-fr-journals' => ['controller' => 'LiveCoaMigrationController', 'method' => 'updateFrJournals'],
 ];
 

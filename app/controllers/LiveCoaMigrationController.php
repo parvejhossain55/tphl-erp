@@ -312,9 +312,44 @@ class LiveCoaMigrationController extends Controller
 
         $db->query("SET FOREIGN_KEY_CHECKS = 1");
 
+        // Also fix any Fund Requisition entries to 110002
+        $advWorkAccId = $getNewIdByCode('110002');
+        if ($advWorkAccId) {
+            $db->query("
+                UPDATE journal_details 
+                SET account_id = $advWorkAccId 
+                WHERE journal_id IN (
+                    SELECT id FROM journals WHERE narration LIKE '%Fund Requisition%' OR source_module = 'fund_requisition'
+                ) AND debit > 0
+            ");
+        }
+
         echo "<p class='success'>[STEP 4] Converted $convertedCount live journal_details records to new COA account IDs!</p>";
         echo "<h3 class='success'>=== LIVE MIGRATION COMPLETED SUCCESSFULLY 100%! ===</h3>";
         echo "</body></html>";
+        exit;
+    }
+
+    public function updateFrJournals()
+    {
+        header('Content-Type: text/html; charset=utf-8');
+        $db = $this->db;
+        $res = $db->query("SELECT id FROM chart_of_accounts WHERE account_code = '110002' LIMIT 1");
+        $row = $res ? $res->fetch_assoc() : null;
+        $advWorkAccId = $row ? (int)$row['id'] : null;
+
+        if ($advWorkAccId) {
+            $db->query("
+                UPDATE journal_details 
+                SET account_id = $advWorkAccId 
+                WHERE journal_id IN (
+                    SELECT id FROM journals WHERE narration LIKE '%Fund Requisition%' OR source_module = 'fund_requisition'
+                ) AND debit > 0
+            ");
+            echo "<h2 style='color:#00ff66;font-family:sans-serif;'>[SUCCESS] Updated all existing Fund Requisition debit entries on live database to 110002 (Advance to Employees against works/ Others)!</h2>";
+        } else {
+            echo "<h2 style='color:red;font-family:sans-serif;'>Account code 110002 not found in COA.</h2>";
+        }
         exit;
     }
 }
