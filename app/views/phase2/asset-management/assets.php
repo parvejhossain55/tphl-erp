@@ -254,7 +254,7 @@ $statusBadges = [
                                             </button>
                                         <?php endif; ?>
                                         <?php if (!empty($canEdit)): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary btn-icon ms-1" title="Transfer Asset" onclick="openSingleTransferModal(<?= $a['id'] ?>, '<?= htmlspecialchars($a['asset_code'], ENT_QUOTES) ?>', '<?= htmlspecialchars($a['item_name'], ENT_QUOTES) ?>')">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary btn-icon ms-1" title="Transfer Asset" data-asset-b64="<?= base64_encode(json_encode($a)) ?>" onclick="openSingleTransferModal(this)">
                                                 <i class="fa-solid fa-right-left"></i>
                                             </button>
                                             <button type="button" class="btn btn-sm btn-outline-info btn-icon ms-1" title="Edit Asset" data-asset-b64="<?= base64_encode(json_encode($a)) ?>" onclick="openEditModal(this)">
@@ -703,10 +703,14 @@ $statusBadges = [
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="fs-13 text-muted mb-3">Asset Item: <strong id="transfer_asset_name_display"></strong></p>
+                    <p class="fs-13 text-muted mb-2">Asset Item: <strong id="transfer_asset_name_display"></strong></p>
+
+                    <!-- CURRENT LOCATION / PREVIOUS OFFICE INFO BOX -->
+                    <div id="current_location_box"></div>
+
                     <div class="mb-3">
-                        <label class="form-label fs-12">Transfer To Project</label>
-                        <select name="project_id" class="form-select form-select-sm">
+                        <label class="form-label fs-12 fw-semibold text-dark">Transfer To Project</label>
+                        <select name="project_id" id="transfer_project_id" class="form-select form-select-sm">
                             <option value="">Head Office (No Project)</option>
                             <?php foreach ($projects ?? [] as $proj): ?>
                                 <option value="<?= $proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
@@ -714,8 +718,8 @@ $statusBadges = [
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fs-12">Transfer To Office Branch</label>
-                        <select name="office_branch_id" class="form-select form-select-sm">
+                        <label class="form-label fs-12 fw-semibold text-dark">Transfer To Office Branch</label>
+                        <select name="office_branch_id" id="transfer_office_branch_id" class="form-select form-select-sm">
                             <option value="">Select Office Branch</option>
                             <?php foreach ($branches ?? [] as $b): ?>
                                 <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?></option>
@@ -723,8 +727,8 @@ $statusBadges = [
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fs-12">Assign To Employee</label>
-                        <select name="assigned_to" class="form-select form-select-sm">
+                        <label class="form-label fs-12 fw-semibold text-dark">Assign To Employee</label>
+                        <select name="assigned_to" id="transfer_assigned_to" class="form-select form-select-sm">
                             <option value="">-- Unassigned --</option>
                             <?php foreach ($users ?? [] as $u): ?>
                                 <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
@@ -732,19 +736,19 @@ $statusBadges = [
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fs-12">New Condition Status</label>
-                        <select name="new_condition" class="form-select form-select-sm">
+                        <label class="form-label fs-12 fw-semibold text-dark">New Condition Status</label>
+                        <select name="new_condition" id="transfer_new_condition" class="form-select form-select-sm">
                             <option value="good">Good / OK</option>
                             <option value="need_repair">Need Repair</option>
                             <option value="damaged">Damaged</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fs-12">Location / Room</label>
-                        <input type="text" name="location" class="form-control form-control-sm" placeholder="e.g. 3rd Floor IT Room">
+                        <label class="form-label fs-12 fw-semibold text-dark">Transfer Location / Room</label>
+                        <input type="text" name="location" id="transfer_location" class="form-control form-control-sm" placeholder="e.g. 3rd Floor IT Room">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fs-12">Transfer Notes / Reason</label>
+                        <label class="form-label fs-12 fw-semibold text-dark">Transfer Notes / Reason</label>
                         <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Reason for transfer..."></textarea>
                     </div>
                 </div>
@@ -929,11 +933,37 @@ function openRepairFundModal(assetId, assetCode, assetName) {
     modal.show();
 }
 
-function openSingleTransferModal(assetId, assetCode, assetName) {
-    document.getElementById('transfer_asset_code_display').textContent = assetCode;
-    document.getElementById('transfer_asset_name_display').textContent = assetName;
-    document.getElementById('singleTransferForm').action = '<?= $GLOBALS['base_url'] ?>/office-assets/transfer/' + assetId;
-    
+function openSingleTransferModal(button) {
+    var b64 = button.getAttribute('data-asset-b64');
+    var asset = JSON.parse(atob(b64));
+
+    document.getElementById('transfer_asset_code_display').textContent = asset.asset_code || '';
+    document.getElementById('transfer_asset_name_display').textContent = asset.item_name || '';
+    document.getElementById('singleTransferForm').action = '<?= $GLOBALS['base_url'] ?>/office-assets/transfer/' + asset.id;
+
+    var currentProj = asset.project_name || 'Head Office (No Project)';
+    var currentBranch = asset.branch_name || 'N/A';
+    var currentAssigned = asset.assigned_to_name || 'Unassigned';
+    var currentLocation = asset.location || 'Head Office';
+
+    document.getElementById('current_location_box').innerHTML = `
+        <div class="p-2 border border-info rounded mb-3" style="background-color: #f0f8ff;">
+            <div class="fw-bold text-info mb-1 fs-12"><i class="fa-solid fa-location-dot me-1"></i> Current (Previous) Location & Assignee:</div>
+            <div class="row g-1 fs-11 text-dark">
+                <div class="col-6"><strong>Project:</strong> ${currentProj}</div>
+                <div class="col-6"><strong>Branch:</strong> ${currentBranch}</div>
+                <div class="col-6"><strong>Assigned To:</strong> ${currentAssigned}</div>
+                <div class="col-6"><strong>Location/Room:</strong> ${currentLocation}</div>
+            </div>
+        </div>
+    `;
+
+    if (document.getElementById('transfer_project_id')) document.getElementById('transfer_project_id').value = asset.project_id || '';
+    if (document.getElementById('transfer_office_branch_id')) document.getElementById('transfer_office_branch_id').value = asset.office_branch_id || '';
+    if (document.getElementById('transfer_assigned_to')) document.getElementById('transfer_assigned_to').value = asset.assigned_to || '';
+    if (document.getElementById('transfer_new_condition')) document.getElementById('transfer_new_condition').value = asset.condition_status || 'good';
+    if (document.getElementById('transfer_location')) document.getElementById('transfer_location').value = asset.location || '';
+
     var modal = new bootstrap.Modal(document.getElementById('singleTransferModal'));
     modal.show();
 }
