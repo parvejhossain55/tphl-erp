@@ -169,50 +169,37 @@ html[data-bs-theme="dark"] .select2-results__option {
                     <table class="table table-bordered table-hover align-middle" id="detailsTable">
                         <thead class="table-light">
                             <tr>
-                                <th style="width: 35%">Account <span class="text-danger">*</span></th>
-                                <th style="width: 25%">Narration</th>
-                                <th style="width: 15%">Debit (BDT)</th>
-                                <th style="width: 15%">Credit (BDT)</th>
-                                <th style="width: 10%">Action</th>
+                                <th style="width: 42%">Account <span class="text-danger">*</span></th>
+                                <th style="width: 23%">Narration</th>
+                                <th style="width: 12%">Debit (BDT)</th>
+                                <th style="width: 12%">Credit (BDT)</th>
+                                <th style="width: 11%" class="text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody id="detailsTbody">
                             <?php foreach ($details as $index => $detail): ?>
                             <tr>
-                                <td>
-                                    <div class="row gx-2">
-                                        <div class="col-12 mb-2">
-                                            <?php 
-                                            // Find parent ID of the selected account to set main category
-                                            $parentId = '';
-                                            foreach($accounts as $acc) {
-                                                if($acc['id'] == $detail['account_id']) {
-                                                    $parentId = $acc['parent_id'];
-                                                    break;
-                                                }
-                                            }
-                                            ?>
-                                            <select class="form-select main-category-select" onchange="filterSubCategories(this)">
-                                                <option value="">-- Main Category Filter --</option>
-                                                <?php foreach ($accounts as $acc): ?>
-                                                    <?php if(empty($acc['parent_id'])): ?>
-                                                        <option value="<?= $acc['id'] ?>" <?= ($acc['id'] == $parentId) ? 'selected' : '' ?>>
-                                                            <?= htmlspecialchars($acc['account_code'] . ' - ' . $acc['account_name']) ?> (<?= $acc['account_type'] ?>)
-                                                        </option>
-                                                    <?php endif; ?>
-                                                <?php endforeach; ?>
+                                <td style="width: 42%">
+                                    <div class="account-cascade-container" data-account-id="<?= $detail['account_id'] ?>">
+                                        <input type="hidden" class="selected-account-id" name="account_id[]" required value="<?= $detail['account_id'] ?>">
+                                        <div class="mb-1">
+                                            <select class="form-select form-select-sm select2-cascade lvl-main-select">
+                                                <option value="">1. Main Category (e.g. Assets)</option>
                                             </select>
                                         </div>
-                                        <div class="col-12">
-                                            <select class="form-select sub-category-select" name="account_id[]" required>
-                                                <option value="">-- Select Sub Category / Account --</option>
-                                                <?php foreach ($accounts as $acc): ?>
-                                                    <?php if(!empty($acc['parent_id'])): ?>
-                                                        <option value="<?= $acc['id'] ?>" <?= ($acc['id'] == $detail['account_id']) ? 'selected' : '' ?>>
-                                                            [<?= htmlspecialchars($acc['account_code']) ?>] <?= htmlspecialchars($acc['account_name']) ?> (<?= htmlspecialchars($acc['account_type']) ?>)
-                                                        </option>
-                                                    <?php endif; ?>
-                                                <?php endforeach; ?>
+                                        <div class="mb-1">
+                                            <select class="form-select form-select-sm select2-cascade lvl-sub-select">
+                                                <option value="">2. Sub Category (e.g. Non-Current Assets)</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-1">
+                                            <select class="form-select form-select-sm select2-cascade lvl-parent-select">
+                                                <option value="">3. Parent Head (e.g. Property Plant & Eq)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <select class="form-select form-select-sm select2-cascade lvl-ledger-select">
+                                                <option value="">4. Final Account Head (e.g. Furniture & Fixtures) *</option>
                                             </select>
                                         </div>
                                     </div>
@@ -292,8 +279,8 @@ html[data-bs-theme="dark"] .select2-results__option {
 
                         <div class="col-12" id="qParentGroup">
                             <label class="form-label fw-bold">2. Select Parent Account *</label>
-                            <select class="form-select" name="parent_id" id="qParentSelect">
-                                <option value="">-- Select Parent --</option>
+                            <select class="form-select select2-quick-parent" name="parent_id" id="qParentSelect">
+                                <option value="">-- Search & Select Parent Account --</option>
                                 <?php foreach ($accounts as $a): ?>
                                     <option value="<?= $a['id'] ?>">
                                         [<?= $a['account_code'] ?>] <?= htmlspecialchars($a['account_name']) ?> (<?= !empty($a['level']) ? strtoupper($a['level']) : 'ACCOUNT' ?>)
@@ -324,77 +311,238 @@ html[data-bs-theme="dark"] .select2-results__option {
 
 <?php ob_start(); ?>
     const allAccounts = <?= json_encode($accounts) ?>;
+    const accountsMap = {};
+    allAccounts.forEach(acc => {
+        accountsMap[acc.id] = acc;
+    });
 
-    const mainCategoryOptions = `
-        <option value="">-- Main Category Filter --</option>
-        <?php foreach ($accounts as $acc): ?>
-            <?php if(empty($acc['parent_id'])): ?>
-                <option value="<?= $acc['id'] ?>"><?= htmlspecialchars($acc['account_code'] . ' - ' . $acc['account_name']) ?> (<?= $acc['account_type'] ?>)</option>
-            <?php endif; ?>
-        <?php endforeach; ?>
-    `;
+    function getDirectChildren(parentId) {
+        if (!parentId) return [];
+        return allAccounts.filter(acc => acc.parent_id == parentId);
+    }
 
-    const subCategoryOptionsAll = `
-        <option value="">-- Select Sub Category / Account --</option>
-        <?php foreach ($accounts as $acc): ?>
-            <?php if(!empty($acc['parent_id'])): ?>
-                <option value="<?= $acc['id'] ?>">[<?= htmlspecialchars($acc['account_code']) ?>] <?= htmlspecialchars($acc['account_name']) ?> (<?= htmlspecialchars($acc['account_type']) ?>)</option>
-            <?php endif; ?>
-        <?php endforeach; ?>
-    `;
-
-    const accountsHtml = `
-        <div class="row gx-2">
-            <div class="col-12 mb-2">
-                <select class="form-select main-category-select" onchange="filterSubCategories(this)">
-                    ${mainCategoryOptions}
-                </select>
-            </div>
-            <div class="col-12">
-                <select class="form-select sub-category-select" name="account_id[]" required>
-                    ${subCategoryOptionsAll}
-                </select>
-            </div>
-        </div>
-    `;
-
-    function initSelect2(context) {
-        if (typeof $.fn.select2 !== 'undefined') {
-            const scope = context ? $(context) : $(document);
-            scope.find('.sub-category-select').each(function() {
-                if ($(this).data('select2')) {
-                    $(this).select2('destroy');
-                }
-                $(this).select2({
-                    placeholder: "-- Select Sub Category / Account --",
-                    allowClear: true,
-                    width: '100%'
-                });
+    function getDescendantIds(parentId) {
+        if (!parentId) return [];
+        let descendants = [];
+        let queue = [parentId];
+        while (queue.length > 0) {
+            let curr = queue.shift();
+            let children = allAccounts.filter(acc => acc.parent_id == curr);
+            children.forEach(c => {
+                descendants.push(c.id);
+                queue.push(c.id);
             });
-            scope.find('.main-category-select').each(function() {
-                if ($(this).data('select2')) {
-                    $(this).select2('destroy');
-                }
-                $(this).select2({
-                    placeholder: "-- Main Category Filter --",
-                    allowClear: true,
-                    width: '100%'
-                });
-            });
+        }
+        return descendants;
+    }
+
+    function populateSelectOptions($select, options, selectedVal, placeholderText) {
+        let currentVal = selectedVal !== undefined ? selectedVal : ($select.val() || '');
+        $select.empty();
+        $select.append(`<option value="">${placeholderText}</option>`);
+        options.forEach(acc => {
+            let codeStr = acc.account_code ? `[${acc.account_code}] ` : '';
+            let isSel = (acc.id == currentVal) ? 'selected' : '';
+            $select.append(`<option value="${acc.id}" ${isSel}>${codeStr}${acc.account_name}</option>`);
+        });
+        if ($select.hasClass('select2-hidden-accessible')) {
+            $select.trigger('change.select2');
         }
     }
 
-    $(document).ready(function() {
-        initSelect2();
-        if (typeof $.fn.select2 !== 'undefined') {
-            $('#qParentSelect').select2({
-                dropdownParent: $('#quickAddCoaModal'),
-                placeholder: "-- Select Parent Account --",
-                allowClear: true,
-                width: '100%'
-            });
+    let isCascadeSyncing = false;
+
+    function syncRowCascade(container, triggeredLevel) {
+        if (isCascadeSyncing) return;
+        isCascadeSyncing = true;
+
+        const $c = $(container);
+        const $main = $c.find('.lvl-main-select');
+        const $sub = $c.find('.lvl-sub-select');
+        const $parent = $c.find('.lvl-parent-select');
+        const $ledger = $c.find('.lvl-ledger-select');
+        const $hidden = $c.find('.selected-account-id');
+
+        let mainVal = $main.val();
+        let subVal = $sub.val();
+        let parentVal = $parent.val();
+        let ledgerVal = $ledger.val() || $c.attr('data-account-id') || $hidden.val() || '';
+
+        // 1. REVERSE AUTO-FILL & ANCESTOR TRACING (Bottom -> Up)
+        if ((triggeredLevel === 'ledger' || triggeredLevel === 'init') && ledgerVal) {
+            let acc = accountsMap[ledgerVal];
+            if (acc) {
+                if (acc.level === 'parent') {
+                    parentVal = acc.id;
+                    ledgerVal = '';
+                } else if (acc.level === 'sub') {
+                    subVal = acc.id;
+                    parentVal = '';
+                    ledgerVal = '';
+                } else if (acc.level === 'main' || !acc.parent_id) {
+                    mainVal = acc.id;
+                    subVal = '';
+                    parentVal = '';
+                    ledgerVal = '';
+                }
+
+                let curr = acc;
+                while (curr && curr.parent_id) {
+                    let p = accountsMap[curr.parent_id];
+                    if (p) {
+                        if (p.level === 'parent') parentVal = p.id;
+                        else if (p.level === 'sub') subVal = p.id;
+                        else if (p.level === 'main' || !p.parent_id) mainVal = p.id;
+                        curr = p;
+                    } else break;
+                }
+            }
+        } else if (triggeredLevel === 'parent' && parentVal) {
+            let acc = accountsMap[parentVal];
+            if (acc) {
+                let curr = acc;
+                while (curr && curr.parent_id) {
+                    let p = accountsMap[curr.parent_id];
+                    if (p) {
+                        if (p.level === 'sub') subVal = p.id;
+                        else if (p.level === 'main' || !p.parent_id) mainVal = p.id;
+                        curr = p;
+                    } else break;
+                }
+            }
+            ledgerVal = '';
+        } else if (triggeredLevel === 'sub' && subVal) {
+            let acc = accountsMap[subVal];
+            if (acc && acc.parent_id) {
+                mainVal = acc.parent_id;
+            }
+            parentVal = '';
+            ledgerVal = '';
+        } else if (triggeredLevel === 'main') {
+            subVal = '';
+            parentVal = '';
+            ledgerVal = '';
         }
-    });
+
+        // 2. POPULATE FILTERED OPTIONS (Top -> Down)
+        const mainList = allAccounts.filter(a => a.level === 'main' || !a.parent_id);
+        populateSelectOptions($main, mainList, mainVal, '1. Main Category (e.g. Assets)');
+
+        let subList = mainVal ? getDirectChildren(mainVal) : allAccounts.filter(a => a.level === 'sub');
+        populateSelectOptions($sub, subList, subVal, '2. Sub Category (e.g. Non-Current Assets)');
+
+        let parentList = [];
+        if (subVal) {
+            parentList = getDirectChildren(subVal);
+        } else if (mainVal) {
+            let descIds = getDescendantIds(mainVal);
+            parentList = allAccounts.filter(a => a.level === 'parent' && descIds.includes(a.id));
+        } else {
+            parentList = allAccounts.filter(a => a.level === 'parent');
+        }
+        populateSelectOptions($parent, parentList, parentVal, '3. Parent Head (e.g. Property Plant & Eq)');
+
+        let ledgerList = [];
+        if (parentVal) {
+            ledgerList = getDirectChildren(parentVal);
+        } else if (subVal) {
+            let descIds = getDescendantIds(subVal);
+            ledgerList = allAccounts.filter(a => (a.level === 'ledger' || !a.level) && descIds.includes(a.id));
+        } else if (mainVal) {
+            let descIds = getDescendantIds(mainVal);
+            ledgerList = allAccounts.filter(a => (a.level === 'ledger' || !a.level) && descIds.includes(a.id));
+        } else {
+            ledgerList = allAccounts.filter(a => a.level === 'ledger' || !a.level || a.parent_id);
+        }
+        populateSelectOptions($ledger, ledgerList, ledgerVal, '4. Final Account Head (e.g. Furniture & Fixtures) *');
+
+        // Set final account ID for submission
+        let finalChosenId = ledgerVal || parentVal || subVal || mainVal || '';
+        $hidden.val(finalChosenId);
+
+        isCascadeSyncing = false;
+    }
+
+    function createAccountCascadeHtml(preselectedId = '') {
+        return `
+        <div class="account-cascade-container" data-account-id="${preselectedId}">
+            <input type="hidden" class="selected-account-id" name="account_id[]" required value="${preselectedId}">
+            <div class="mb-1">
+                <select class="form-select form-select-sm select2-cascade lvl-main-select">
+                    <option value="">1. Main Category (e.g. Assets)</option>
+                </select>
+            </div>
+            <div class="mb-1">
+                <select class="form-select form-select-sm select2-cascade lvl-sub-select">
+                    <option value="">2. Sub Category (e.g. Non-Current Assets)</option>
+                </select>
+            </div>
+            <div class="mb-1">
+                <select class="form-select form-select-sm select2-cascade lvl-parent-select">
+                    <option value="">3. Parent Head (e.g. Property Plant & Eq)</option>
+                </select>
+            </div>
+            <div>
+                <select class="form-select form-select-sm select2-cascade lvl-ledger-select">
+                    <option value="">4. Final Account Head (e.g. Furniture & Fixtures) *</option>
+                </select>
+            </div>
+        </div>
+        `;
+    }
+
+    function initRowSelect2($row) {
+        $row.find('.select2-cascade').select2({
+            width: '100%'
+        });
+
+        const $c = $row.find('.account-cascade-container');
+
+        $row.find('.lvl-main-select').on('change', function() {
+            syncRowCascade($c, 'main');
+        });
+        $row.find('.lvl-sub-select').on('change', function() {
+            syncRowCascade($c, 'sub');
+        });
+        $row.find('.lvl-parent-select').on('change', function() {
+            syncRowCascade($c, 'parent');
+        });
+        $row.find('.lvl-ledger-select').on('change', function() {
+            syncRowCascade($c, 'ledger');
+        });
+    }
+
+    function addRow(preselectedId = '') {
+        const cascadeHtml = createAccountCascadeHtml(preselectedId);
+        const row = `
+        <tr>
+            <td style="width: 42%">${cascadeHtml}</td>
+            <td><input type="text" class="form-control" name="narration[]" placeholder="Line description"></td>
+            <td><input type="number" step="0.01" min="0" class="form-control debit-input text-end" name="debit[]" placeholder="0.00" onkeyup="calcTotals()"></td>
+            <td><input type="number" step="0.01" min="0" class="form-control credit-input text-end" name="credit[]" placeholder="0.00" onkeyup="calcTotals()"></td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(this)"><i class="fa-light fa-trash"></i></button></td>
+        </tr>
+        `;
+        const $newRow = $(row);
+        $('#detailsTbody').append($newRow);
+        initRowSelect2($newRow);
+
+        const $container = $newRow.find('.account-cascade-container');
+        if (preselectedId) {
+            syncRowCascade($container, 'ledger');
+        } else {
+            syncRowCascade($container, 'init');
+        }
+    }
+
+    function removeRow(btn) {
+        if ($('#detailsTbody tr').length <= 2) {
+            alert("A journal entry requires at least 2 detail rows.");
+            return;
+        }
+        $(btn).closest('tr').remove();
+        calcTotals();
+    }
 
     function saveQuickCoa(e) {
         e.preventDefault();
@@ -411,11 +559,10 @@ html[data-bs-theme="dark"] .select2-results__option {
                 if (res.success && res.account) {
                     const acc = res.account;
                     allAccounts.push(acc);
+                    accountsMap[acc.id] = acc;
 
-                    // Append to all sub-category dropdowns
-                    const newOpt = `<option value="${acc.id}" selected>[${acc.account_code}] ${acc.account_name} (${acc.account_type})</option>`;
-                    $('.sub-category-select').append(newOpt).val(acc.id);
-                    initSelect2();
+                    // Add a new row and select the new account
+                    addRow(acc.id);
 
                     var modalEl = document.getElementById('quickAddCoaModal');
                     var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
@@ -432,60 +579,6 @@ html[data-bs-theme="dark"] .select2-results__option {
                 $('#quickCoaAlert').text('An error occurred while saving the account.').show();
             }
         });
-    }
-
-    function filterSubCategories(selectElement) {
-        const parentId = $(selectElement).val();
-        const subSelect = $(selectElement).closest('td').find('.sub-category-select');
-        const selectedVal = subSelect.val();
-        
-        if (subSelect.data('select2')) {
-            subSelect.select2('destroy');
-        }
-
-        subSelect.empty();
-        subSelect.append('<option value="">-- Select Sub Category / Account --</option>');
-        
-        if (parentId) {
-            const children = allAccounts.filter(acc => acc.parent_id == parentId);
-            children.forEach(child => {
-                subSelect.append(`<option value="${child.id}" ${child.id == selectedVal ? 'selected' : ''}>[${child.account_code}] ${child.account_name} (${child.account_type})</option>`);
-            });
-        } else {
-            allAccounts.forEach(acc => {
-                if (acc.parent_id) {
-                    subSelect.append(`<option value="${acc.id}" ${acc.id == selectedVal ? 'selected' : ''}>[${acc.account_code}] ${acc.account_name} (${acc.account_type})</option>`);
-                }
-            });
-        }
-
-        if (typeof $.fn.select2 !== 'undefined') {
-            subSelect.select2({
-                placeholder: "-- Select Sub Category / Account --",
-                allowClear: true,
-                width: '100%'
-            });
-        }
-    }
-
-    function addRow() {
-        const row = `
-        <tr>
-            <td>${accountsHtml}</td>
-            <td><input type="text" class="form-control" name="narration[]" placeholder="Line description"></td>
-            <td><input type="number" step="0.01" min="0" class="form-control debit-input text-end" name="debit[]" placeholder="0.00" onkeyup="calcTotals()"></td>
-            <td><input type="number" step="0.01" min="0" class="form-control credit-input text-end" name="credit[]" placeholder="0.00" onkeyup="calcTotals()"></td>
-            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(this)"><i class="fa-light fa-trash"></i></button></td>
-        </tr>
-        `;
-        const $newRow = $(row);
-        $('#detailsTbody').append($newRow);
-        initSelect2($newRow);
-    }
-
-    function removeRow(btn) {
-        $(btn).closest('tr').remove();
-        calcTotals();
     }
 
     function calcTotals() {
@@ -519,4 +612,78 @@ html[data-bs-theme="dark"] .select2-results__option {
             $('#validationMsg').show();
         }
     }
+
+    function initQuickParentSelect2() {
+        $('#qParentSelect').select2({
+            dropdownParent: $('#quickAddCoaModal'),
+            width: '100%',
+            placeholder: '-- Search & Select Parent Account --'
+        });
+    }
+
+    function updateQuickParentOptions() {
+        const selectedLevel = $('input[name="level_add"]:checked').val();
+        const $parentSelect = $('#qParentSelect');
+        const currVal = $parentSelect.val();
+        $parentSelect.empty();
+
+        if (selectedLevel === 'main') {
+            $('#qParentGroup').hide();
+            $parentSelect.prop('required', false);
+        } else {
+            $('#qParentGroup').show();
+            $parentSelect.prop('required', true);
+            
+            let eligibleParents = [];
+            if (selectedLevel === 'sub') {
+                eligibleParents = allAccounts.filter(a => a.level === 'main' || !a.parent_id);
+                $parentSelect.append('<option value="">-- Search Main Category Parent --</option>');
+            } else if (selectedLevel === 'parent') {
+                eligibleParents = allAccounts.filter(a => a.level === 'sub');
+                $parentSelect.append('<option value="">-- Search Sub Category Parent --</option>');
+            } else {
+                eligibleParents = allAccounts.filter(a => a.level === 'parent');
+                $parentSelect.append('<option value="">-- Search Parent Head --</option>');
+            }
+
+            if (eligibleParents.length === 0) {
+                eligibleParents = allAccounts.filter(a => a.level !== 'ledger');
+            }
+
+            eligibleParents.forEach(a => {
+                let codeStr = a.account_code ? `[${a.account_code}] ` : '';
+                let lvlStr = a.level ? ` (${a.level.toUpperCase()})` : '';
+                let isSel = (a.id == currVal) ? 'selected' : '';
+                $parentSelect.append(`<option value="${a.id}" ${isSel}>${codeStr}${a.account_name}${lvlStr}</option>`);
+            });
+        }
+
+        if ($parentSelect.hasClass('select2-hidden-accessible')) {
+            $parentSelect.trigger('change.select2');
+        }
+    }
+
+    $(document).ready(function() {
+        $('#detailsTbody tr').each(function() {
+            initRowSelect2($(this));
+            const $container = $(this).find('.account-cascade-container');
+            const accId = $container.attr('data-account-id');
+            if (accId) {
+                syncRowCascade($container, 'ledger');
+            } else {
+                syncRowCascade($container, 'init');
+            }
+        });
+        calcTotals();
+
+        // Select2 for quick add modal parent dropdown
+        $('#quickAddCoaModal').on('shown.bs.modal', function() {
+            initQuickParentSelect2();
+            updateQuickParentOptions();
+        });
+
+        $('input[name="level_add"]').on('change', function() {
+            updateQuickParentOptions();
+        });
+    });
 <?php $page_script = ob_get_clean(); ?>

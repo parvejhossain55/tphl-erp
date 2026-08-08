@@ -1218,7 +1218,7 @@ document.addEventListener('DOMContentLoaded', function () {
             serverSide   : true,
             processing   : true,
             ajax         : { url: ajaxUrl, type: 'POST' },
-            lengthMenu   : [[10, 25, 50, 100, 200, -1], [10, 25, 50, 100, 200, "All"]],
+            lengthMenu   : [[10, 25, 50, 100, 200, 10000], [10, 25, 50, 100, 200, "All"]],
             pageLength   : pageLength,
             displayStart : displayStart,
             order        : [],
