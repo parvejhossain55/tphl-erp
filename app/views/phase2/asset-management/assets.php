@@ -215,7 +215,7 @@ $statusBadges = [
                                         1
                                     </td>
                                     <td>
-                                        <span class="d-block fs-12 fw-semibold text-dark"><?= htmlspecialchars($a['project_name'] ?? 'Head Office') ?></span>
+                                        <span class="d-block fs-12 fw-semibold text-dark"><?= htmlspecialchars(!empty($a['project_name']) ? $a['project_name'] : 'Head Office (No Project)') ?></span>
                                     </td>
                                     <td>
                                         <?php if (!empty($a['branch_name'])): ?>
@@ -832,7 +832,9 @@ function openEditModal(button) {
         setVal('edit_serial_no', asset.serial_no);
         setVal('edit_project_id', asset.project_id);
         setVal('edit_office_branch_id', asset.office_branch_id);
-        setVal('edit_location', asset.location);
+        var locVal = asset.location;
+        if (!locVal || locVal === '0') locVal = 'Head Office';
+        setVal('edit_location', locVal);
         setVal('edit_condition_status', asset.condition_status || 'new');
         setVal('edit_asset_status', asset.asset_status || 'in_store');
         setVal('edit_assigned_to', asset.assigned_to);
@@ -865,9 +867,15 @@ if (typeof $ !== 'undefined') {
                 if ($(this).data('select2')) {
                     $(this).select2('destroy');
                 }
+                var firstOptText = $(this).find('option[value=""]').text() || 'Select option';
                 $(this).select2({
                     dropdownParent: $(modalEl),
-                    width: '100%'
+                    width: '100%',
+                    placeholder: {
+                        id: '',
+                        text: firstOptText
+                    },
+                    allowClear: true
                 });
             });
         }
