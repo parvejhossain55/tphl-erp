@@ -110,9 +110,6 @@ $statusBadges = [
                     <button type="button" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
                         <i class="fa-solid fa-folder-plus"></i> + Add Category
                     </button>
-                    <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addProductModal">
-                        <i class="fa-solid fa-boxes-stacked"></i> + Add Product Catalog
-                    </button>
                     <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addAssetModal">
                         <i class="fa-solid fa-plus"></i> Register Asset
                     </button>
