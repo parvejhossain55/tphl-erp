@@ -430,6 +430,10 @@ $statusBadges = [
                             <input type="text" id="edit_purchase_price_display" class="form-control" disabled>
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label">Location / Room</label>
+                            <input type="text" name="location" id="edit_location" class="form-control" placeholder="e.g. 3rd Floor IT Room">
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">Condition</label>
                             <select name="condition_status" id="edit_condition_status" class="form-select">
                                 <option value="new">New</option>
@@ -452,6 +456,10 @@ $statusBadges = [
                                 <option value="sold">Sold</option>
                                 <option value="disposed">Disposed</option>
                             </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Remarks</label>
+                            <textarea name="remarks" id="edit_remarks" class="form-control" rows="2" placeholder="Any remarks..."></textarea>
                         </div>
                     </div>
                 </div>
@@ -783,32 +791,49 @@ $statusBadges = [
 
 <script>
 function openEditModal(button) {
-    var b64 = button.getAttribute('data-asset-b64');
-    var asset = JSON.parse(atob(b64));
-    document.getElementById('editAssetForm').action = '<?= $GLOBALS['base_url'] ?>/office-assets/update/' + asset.id;
-    if (document.getElementById('edit_product_id')) {
-        document.getElementById('edit_product_id').value = asset.product_id || '';
+    try {
+        var b64 = button.getAttribute('data-asset-b64');
+        if (!b64) return;
+        var asset = JSON.parse(atob(b64));
+        
+        var form = document.getElementById('editAssetForm');
+        if (form) {
+            form.action = '<?= $GLOBALS['base_url'] ?>/office-assets/update/' + asset.id;
+        }
+
+        var setVal = function(id, val) {
+            var el = document.getElementById(id);
+            if (el) el.value = (val !== null && val !== undefined) ? val : '';
+        };
+
+        setVal('edit_product_id', asset.product_id);
+        setVal('edit_item_name', asset.item_name);
+        setVal('edit_serial_no', asset.serial_no);
+        setVal('edit_project_id', asset.project_id);
+        setVal('edit_office_branch_id', asset.office_branch_id);
+        setVal('edit_location', asset.location);
+        setVal('edit_condition_status', asset.condition_status || 'new');
+        setVal('edit_asset_status', asset.asset_status || 'in_store');
+        setVal('edit_assigned_to', asset.assigned_to);
+        setVal('edit_remarks', asset.remarks);
+
+        var priceEl = document.getElementById('edit_purchase_price_display');
+        if (priceEl) {
+            priceEl.value = asset.purchase_price ? parseFloat(asset.purchase_price).toLocaleString('en-BD', {minimumFractionDigits: 2}) : '0.00';
+        }
+        
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $('#edit_product_id, #edit_project_id, #edit_office_branch_id, #edit_assigned_to').trigger('change');
+        }
+        
+        var modalEl = document.getElementById('editAssetModal');
+        if (modalEl) {
+            var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+    } catch (e) {
+        console.error("Error opening edit modal:", e);
     }
-    document.getElementById('edit_item_name').value = asset.item_name || '';
-    document.getElementById('edit_serial_no').value = asset.serial_no || '';
-    document.getElementById('edit_project_id').value = asset.project_id || '';
-    if (document.getElementById('edit_office_branch_id')) {
-        document.getElementById('edit_office_branch_id').value = asset.office_branch_id || '';
-    }
-    document.getElementById('edit_location').value = asset.location || '';
-    document.getElementById('edit_purchase_price_display').value = asset.purchase_price ? parseFloat(asset.purchase_price).toLocaleString('en-BD', {minimumFractionDigits: 2}) : '0.00';
-    document.getElementById('edit_condition_status').value = asset.condition_status || 'new';
-    document.getElementById('edit_asset_status').value = asset.asset_status || 'in_store';
-    if(document.getElementById('edit_assigned_to')) {
-        document.getElementById('edit_assigned_to').value = asset.assigned_to || '';
-    }
-    
-    if (typeof $ !== 'undefined' && $.fn.select2) {
-        $('#edit_product_id, #edit_project_id, #edit_office_branch_id, #edit_assigned_to').trigger('change');
-    }
-    
-    var modal = new bootstrap.Modal(document.getElementById('editAssetModal'));
-    modal.show();
 }
 
 if (typeof $ !== 'undefined') {
