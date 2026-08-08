@@ -203,6 +203,12 @@ class AssetManagement
         if ($res && $res->num_rows === 0) {
             $this->db->query("ALTER TABLE `office_assets` ADD COLUMN `office_branch_id` INT NULL DEFAULT NULL AFTER `project_id`");
         }
+
+        // 4. Ensure category_id column exists in office_asset_products table
+        $resCat = $this->db->query("SHOW COLUMNS FROM `office_asset_products` LIKE 'category_id'");
+        if ($resCat && $resCat->num_rows === 0) {
+            $this->db->query("ALTER TABLE `office_asset_products` ADD COLUMN `category_id` INT NULL DEFAULT NULL AFTER `name`");
+        }
     }
 
     public function getAllOfficeBranches($status = 'active')
@@ -270,6 +276,12 @@ class AssetManagement
             $types .= 's';
         }
 
+        if (!empty($filters['category_id'])) {
+            $sql .= " AND oa.product_id IN (SELECT id FROM office_asset_products WHERE category_id = ?)";
+            $params[] = (int)$filters['category_id'];
+            $types .= 'i';
+        }
+
         $sql .= " ORDER BY oa.id DESC";
 
         $stmt = $this->db->prepare($sql);
@@ -322,21 +334,34 @@ class AssetManagement
         $productId = !empty($data['product_id']) ? (int)$data['product_id'] : null;
         $itemName = trim($data['item_name'] ?? '');
 
+        $categoryId = !empty($data['category_id']) ? (int)$data['category_id'] : null;
+
         // If product_id is empty but item_name is provided, find or create product automatically
         if (!$productId && !empty($itemName)) {
             $stmtP = $this->db->prepare("SELECT id FROM office_asset_products WHERE LOWER(name) = LOWER(?) LIMIT 1");
-            $stmtP->bind_param('s', $itemName);
-            $stmtP->execute();
-            $pRes = $stmtP->get_result()->fetch_assoc();
-            if ($pRes) {
-                $productId = (int)$pRes['id'];
-            } else {
-                $pCode = 'PRD-' . date('Y') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
-                $stmtNewP = $this->db->prepare("INSERT INTO office_asset_products (product_code, name, status, created_by) VALUES (?, ?, 'active', ?)");
-                $stmtNewP->bind_param('ssi', $pCode, $itemName, $data['created_by']);
-                if ($stmtNewP->execute()) {
-                    $productId = $this->db->insert_id;
+            if ($stmtP) {
+                $stmtP->bind_param('s', $itemName);
+                $stmtP->execute();
+                $pRes = $stmtP->get_result()->fetch_assoc();
+                if ($pRes) {
+                    $productId = (int)$pRes['id'];
+                    if ($categoryId) {
+                        $this->db->query("UPDATE office_asset_products SET category_id = $categoryId WHERE id = $productId");
+                    }
                 }
+            }
+
+            if (!$productId) {
+                $pCode = 'PRD-' . date('Y') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+                $cleanName = $this->db->real_escape_string($itemName);
+                $cIdSql = $categoryId ? (int)$categoryId : "NULL";
+                $cBy = (int)($data['created_by'] ?? 1);
+
+                $insRes = $this->db->query("INSERT INTO office_asset_products (product_code, name, category_id, status, created_by) VALUES ('$pCode', '$cleanName', $cIdSql, 'active', $cBy)");
+                if (!$insRes) {
+                    $this->db->query("INSERT INTO office_asset_products (product_code, name, status, created_by) VALUES ('$pCode', '$cleanName', 'active', $cBy)");
+                }
+                $productId = (int)$this->db->insert_id;
             }
         } elseif ($productId && empty($itemName)) {
             $stmtName = $this->db->prepare("SELECT name FROM office_asset_products WHERE id = ?");
@@ -362,8 +387,13 @@ class AssetManagement
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
 
+        $conditionStatus = $data['condition_status'] ?? 'good';
+        $assetStatus = $data['asset_status'] ?? (!empty($assignedTo) ? 'in_use' : 'in_store');
+        $remarks = $data['remarks'] ?? '';
+        $createdBy = (int)($data['created_by'] ?? 1);
+
         $stmt->bind_param(
-            'sisiissdssssssi',
+            'sisiiiisdssssssi',
             $assetCode,
             $productId,
             $itemName,
@@ -376,10 +406,10 @@ class AssetManagement
             $data['purchase_price'],
             $data['warranty_expiry'],
             $data['serial_no'],
-            $data['condition_status'],
-            $data['asset_status'],
-            $data['remarks'],
-            $data['created_by']
+            $conditionStatus,
+            $assetStatus,
+            $remarks,
+            $createdBy
         );
 
         if ($stmt->execute()) {
@@ -394,34 +424,48 @@ class AssetManagement
     public function updateAsset($id, $data)
     {
         $this->ensureOfficeBranchesSchema();
-        $branchId = !empty($data['office_branch_id']) ? (int)$data['office_branch_id'] : null;
-        $projectId = !empty($data['project_id']) ? (int)$data['project_id'] : null;
-        $deptId = !empty($data['department_id']) ? (int)$data['department_id'] : null;
-        $assignedTo = !empty($data['assigned_to']) ? (int)$data['assigned_to'] : null;
+        $old = $this->findAsset($id);
+        if (!$old) return false;
+
+        $itemName = array_key_exists('item_name', $data) && trim($data['item_name']) !== '' ? trim($data['item_name']) : $old['item_name'];
+        $productId = array_key_exists('product_id', $data) ? (!empty($data['product_id']) ? (int)$data['product_id'] : null) : $old['product_id'];
+        $projectId = array_key_exists('project_id', $data) ? (!empty($data['project_id']) ? (int)$data['project_id'] : null) : $old['project_id'];
+        $branchId = array_key_exists('office_branch_id', $data) ? (!empty($data['office_branch_id']) ? (int)$data['office_branch_id'] : null) : $old['office_branch_id'];
+        $deptId = array_key_exists('department_id', $data) ? (!empty($data['department_id']) ? (int)$data['department_id'] : null) : $old['department_id'];
+        $assignedTo = array_key_exists('assigned_to', $data) ? (!empty($data['assigned_to']) ? (int)$data['assigned_to'] : null) : $old['assigned_to'];
+        $location = array_key_exists('location', $data) ? $data['location'] : $old['location'];
+        $purchaseDate = array_key_exists('purchase_date', $data) ? $data['purchase_date'] : $old['purchase_date'];
+        $purchasePrice = (array_key_exists('purchase_price', $data) && $data['purchase_price'] !== '' && $data['purchase_price'] !== null) ? (float)$data['purchase_price'] : (float)($old['purchase_price'] ?? 0);
+        $warrantyExpiry = array_key_exists('warranty_expiry', $data) ? $data['warranty_expiry'] : $old['warranty_expiry'];
+        $serialNo = array_key_exists('serial_no', $data) ? $data['serial_no'] : $old['serial_no'];
+        $conditionStatus = array_key_exists('condition_status', $data) ? $data['condition_status'] : $old['condition_status'];
+        $assetStatus = array_key_exists('asset_status', $data) ? $data['asset_status'] : $old['asset_status'];
+        $remarks = array_key_exists('remarks', $data) ? $data['remarks'] : $old['remarks'];
 
         $stmt = $this->db->prepare(
             "UPDATE office_assets SET
-                item_name = ?, project_id = ?, office_branch_id = ?, department_id = ?, assigned_to = ?,
+                item_name = ?, product_id = ?, project_id = ?, office_branch_id = ?, department_id = ?, assigned_to = ?,
                 location = ?, purchase_date = ?, purchase_price = ?, warranty_expiry = ?,
                 serial_no = ?, condition_status = ?, asset_status = ?, remarks = ?
             WHERE id = ?"
         );
 
         $stmt->bind_param(
-            'siiiissdsssssi',
-            $data['item_name'],
+            'siiiiissdsssssi',
+            $itemName,
+            $productId,
             $projectId,
             $branchId,
             $deptId,
             $assignedTo,
-            $data['location'],
-            $data['purchase_date'],
-            $data['purchase_price'],
-            $data['warranty_expiry'],
-            $data['serial_no'],
-            $data['condition_status'],
-            $data['asset_status'],
-            $data['remarks'],
+            $location,
+            $purchaseDate,
+            $purchasePrice,
+            $warrantyExpiry,
+            $serialNo,
+            $conditionStatus,
+            $assetStatus,
+            $remarks,
             $id
         );
 
@@ -544,6 +588,7 @@ class AssetManagement
             }
         }
 
+        
         // 3. Ensure required extra columns exist
         $colsToAdd = [
             'department_id'     => "INT NULL DEFAULT NULL AFTER `project_id`",

@@ -1472,6 +1472,20 @@
                             <span class="sidebar__menu-label">Balance Sheet</span>
                         </a>
                     </li>
+                    <li class="slide <?= isActive('reports/ap-ageing', $current_route) ?>">
+                        <a href="<?= $base_url ?>/reports/ap-ageing"
+                            class="sidebar__menu-item <?= isActive('reports/ap-ageing', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-hourglass-clock text-warning"></i></div>
+                            <span class="sidebar__menu-label">AP Ageing Analysis</span>
+                        </a>
+                    </li>
+                    <li class="slide <?= isActive('reports/cash-commitment-forecast', $current_route) ?>">
+                        <a href="<?= $base_url ?>/reports/cash-commitment-forecast"
+                            class="sidebar__menu-item <?= isActive('reports/cash-commitment-forecast', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line-up text-purple" style="color: #6f42c1;"></i></div>
+                            <span class="sidebar__menu-label">Cash Flow Forecast</span>
+                        </a>
+                    </li>
                     <?php if (!$isManagement): ?>
                         <li class="slide <?= isActive('all-approval-requests', $current_route) ?>">
                             <a href="<?= $base_url ?>/all-approval-requests"

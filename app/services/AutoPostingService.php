@@ -71,7 +71,7 @@ class AutoPostingService
      * Debit: Expense / WIP Asset Account
      * Credit: Accounts Payable Account (Vendor / Contractor / Payroll Payable)
      */
-    public function postAccrualEntry($sourceModule, $sourceRefId, $expenseAccountId, $payableAccountId, $amount, $narration, $projectId = null, $partyType = null, $partyId = null, $createdBy = 1)
+    public function postAccrualEntry($sourceModule, $sourceRefId, $expenseAccountId, $payableAccountId, $amount, $narration, $projectId = null, $partyType = null, $partyId = null, $createdBy = 1, $overrideOffice = null)
     {
         $amount = (float)$amount;
         if ($amount <= 0 || !$expenseAccountId || !$payableAccountId) {
@@ -94,7 +94,7 @@ class AutoPostingService
         $voucherType = 'Journal Voucher';
         $entryType = 'accrual';
         $status = 'approved';
-        $office = $this->getUserWorkplaceOffice($createdBy);
+        $office = !empty($overrideOffice) ? trim($overrideOffice) : $this->getUserWorkplaceOffice($createdBy);
 
         $this->db->begin_transaction();
         try {
@@ -164,7 +164,7 @@ class AutoPostingService
      * Debit: Accounts Payable (Clears Liability)
      * Credit: Cash / Bank Account (Cash Out)
      */
-    public function postDisbursementEntry($sourceModule, $sourceRefId, $payableAccountId, $cashBankAccountId, $amount, $narration, $projectId = null, $partyType = null, $partyId = null, $createdBy = 1)
+    public function postDisbursementEntry($sourceModule, $sourceRefId, $payableAccountId, $cashBankAccountId, $amount, $narration, $projectId = null, $partyType = null, $partyId = null, $createdBy = 1, $overrideOffice = null)
     {
         $amount = (float)$amount;
         if ($amount <= 0 || !$payableAccountId || !$cashBankAccountId) {
@@ -187,7 +187,7 @@ class AutoPostingService
         $voucherType = 'Payment Voucher';
         $entryType = 'disbursement';
         $status = 'approved';
-        $office = $this->getUserWorkplaceOffice($createdBy);
+        $office = !empty($overrideOffice) ? trim($overrideOffice) : $this->getUserWorkplaceOffice($createdBy);
 
         $this->db->begin_transaction();
         try {
@@ -395,7 +395,7 @@ class AutoPostingService
                 }
             }
         }
-        return 'Site Office';
+        return 'Head Office';
     }
 
     /**

@@ -199,5 +199,13 @@ return [
     // =========================================================================
     'all-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'allApprovalRequests'],
     'batch-process-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'batchProcessApprovalRequests'],
+
+    // =========================================================================
+    // Live COA & Journal Migration Routes
+    // =========================================================================
+    'run-live-coa-migration' => ['controller' => 'LiveCoaMigrationController', 'method' => 'run'],
+    'live_coa_and_journal_migration.php' => ['controller' => 'LiveCoaMigrationController', 'method' => 'run'],
+    'update-fr-journals' => ['controller' => 'LiveCoaMigrationController', 'method' => 'updateFrJournals'],
 ];
+
 

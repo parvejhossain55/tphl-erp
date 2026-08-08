@@ -552,21 +552,14 @@ class FundRequisitionController extends Controller {
                     require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
                     $autoService = new \AutoPostingService($this->db);
                     
-                    $payAccCode = '1110-002';
-                    $methodLower = strtolower($payment_method);
-                    if (strpos($methodLower, 'cash') !== false) {
-                        $payAccCode = '1110-001';
-                    } elseif (strpos($methodLower, 'islami') !== false) {
-                        $payAccCode = '1110-003';
-                    }
-                    $bankAccId = $autoService->getAccountIdByCode($payAccCode);
-                    $salaryPayableAccId = $autoService->getAccountIdByCode('2130');
+                    $bankAccId = $autoService->getBankOrCashAccountId($payment_method);
+                    $advanceAccId = $autoService->getAccountIdByCode('110002'); // Advance to Employees against works/ Others
                     $frData = $this->db->query("SELECT * FROM fund_requisitions WHERE id = {$id}")->fetch_assoc();
                     if ($frData && (float)$frData['amount'] > 0) {
                         $autoService->postDisbursementEntry(
                             'fund_requisition',
                             $id,
-                            $salaryPayableAccId,
+                            $advanceAccId,
                             $bankAccId,
                             $frData['amount'],
                             "Payment Disbursement for Fund Requisition (FR-{$id})",

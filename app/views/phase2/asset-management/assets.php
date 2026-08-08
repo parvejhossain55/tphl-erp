@@ -46,7 +46,7 @@ $statusBadges = [
     </style>
     <!-- Stats Cards -->
     <div class="row mb-4" id="stats-cards">
-        <div class="col-md-2 col-sm-4 col-6">
+        <div class="col-md-3 col-sm-6 col-6">
             <a href="<?= $GLOBALS['base_url'] ?>/office-assets" class="stat-card-link">
                 <div class="card custom-card">
                     <div class="card-body text-center p-2 p-md-3">
@@ -56,17 +56,7 @@ $statusBadges = [
                 </div>
             </a>
         </div>
-        <div class="col-md-2 col-sm-4 col-6">
-            <a href="<?= $GLOBALS['base_url'] ?>/asset-products" class="stat-card-link">
-                <div class="card custom-card">
-                    <div class="card-body text-center p-2 p-md-3">
-                        <h3 class="fw-bold text-success mb-0"><?= $stats['total_products'] ?? 0 ?></h3>
-                        <p class="text-muted mb-0 fs-11">Products</p>
-                    </div>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-2 col-sm-4 col-6">
+        <div class="col-md-3 col-sm-6 col-6">
             <a href="<?= $GLOBALS['base_url'] ?>/office-assets?condition_status=need_repair" class="stat-card-link">
                 <div class="card custom-card">
                     <div class="card-body text-center p-2 p-md-3">
@@ -76,7 +66,7 @@ $statusBadges = [
                 </div>
             </a>
         </div>
-        <div class="col-md-2 col-sm-4 col-6">
+        <div class="col-md-3 col-sm-6 col-6">
             <a href="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases" class="stat-card-link" title="Click to view Office Procurement Requests">
                 <div class="card custom-card">
                     <div class="card-body text-center p-2 p-md-3">
@@ -86,7 +76,7 @@ $statusBadges = [
                 </div>
             </a>
         </div>
-        <div class="col-md-4 col-sm-8 col-12">
+        <div class="col-md-3 col-sm-6 col-6">
             <a href="<?= $GLOBALS['base_url'] ?>/office-assets" class="stat-card-link">
                 <div class="card custom-card">
                     <div class="card-body text-center p-2 p-md-3">
@@ -110,9 +100,6 @@ $statusBadges = [
                     <button type="button" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
                         <i class="fa-solid fa-folder-plus"></i> + Add Category
                     </button>
-                    <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addProductModal">
-                        <i class="fa-solid fa-boxes-stacked"></i> + Add Product Catalog
-                    </button>
                     <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addAssetModal">
                         <i class="fa-solid fa-plus"></i> Register Asset
                     </button>
@@ -122,10 +109,19 @@ $statusBadges = [
 
         <!-- Filters -->
         <div class="card-body border-bottom pb-3">
-            <form method="GET" class="row  align-items-end">
+            <form method="GET" class="row align-items-end g-2">
                 <div class="col-md-2">
                     <label class="form-label fs-11 fw-semibold mb-1">Search</label>
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Asset code, name..." value="<?= htmlspecialchars($filters['search'] ?? '') ?>">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fs-11 fw-semibold mb-1">Category</label>
+                    <select name="category_id" class="form-select form-select-sm select2">
+                        <option value="">All Categories</option>
+                        <?php foreach ($categories ?? [] as $cat): ?>
+                            <option value="<?= $cat['id'] ?>" <?= ($filters['category_id'] ?? '') == $cat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label fs-11 fw-semibold mb-1">Project</label>
@@ -163,9 +159,9 @@ $statusBadges = [
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3 mt-2 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary btn-sm flex-fill"><i class="fa-solid fa-filter me-1"></i> Filter</button>
-                    <a href="<?= $GLOBALS['base_url'] ?>/office-assets" class="btn btn-light btn-sm flex-fill text-center"><i class="fa-solid fa-arrows-rotate"></i> Reset</a>
+                <div class="col-12 mt-2 d-flex justify-content-end gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm px-3"><i class="fa-solid fa-filter me-1"></i> Filter</button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/office-assets" class="btn btn-light btn-sm px-3"><i class="fa-solid fa-arrows-rotate me-1"></i> Reset</a>
                 </div>
             </form>
         </div>
@@ -218,7 +214,7 @@ $statusBadges = [
                                         1
                                     </td>
                                     <td>
-                                        <span class="d-block fs-12 fw-semibold text-dark"><?= htmlspecialchars($a['project_name'] ?? 'Head Office') ?></span>
+                                        <span class="d-block fs-12 fw-semibold text-dark"><?= htmlspecialchars(!empty($a['project_name']) ? $a['project_name'] : 'Head Office (No Project)') ?></span>
                                     </td>
                                     <td>
                                         <?php if (!empty($a['branch_name'])): ?>
@@ -228,7 +224,7 @@ $statusBadges = [
                                         <?php endif; ?>
                                     </td>
                                     <td class="fs-12"><?= htmlspecialchars($a['assigned_to_name'] ?? '—') ?></td>
-                                    <td class="text-end fw-semibold"><?= number_format($a['purchase_price'], 2) ?></td>
+                                    <td class="text-end fw-semibold"><?= number_format((float)($a['purchase_price'] ?? 0), 2) ?></td>
                                     <td>
                                         <span class="fw-semibold fs-12 text-dark">
                                             <?= ucfirst(str_replace('_', ' ', $a['condition_status'])) ?>
@@ -256,8 +252,13 @@ $statusBadges = [
                                                 <i class="fa-solid fa-money-bill-wave"></i>
                                             </button>
                                         <?php endif; ?>
-                                        <?php if ($roleId === 20): ?>
-                                        <button type="button" class="btn btn-sm btn-outline-info btn-icon ms-1" title="Edit Asset" data-asset-b64="<?= base64_encode(json_encode($a)) ?>" onclick="openEditModal(this)"><i class="fa-solid fa-pencil"></i></button>
+                                        <?php if (!empty($canEdit)): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary btn-icon ms-1" title="Transfer Asset" data-asset-b64="<?= base64_encode(json_encode($a)) ?>" onclick="openSingleTransferModal(this)">
+                                                <i class="fa-solid fa-right-left"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-info btn-icon ms-1" title="Edit Asset" data-asset-b64="<?= base64_encode(json_encode($a)) ?>" onclick="openEditModal(this)">
+                                                <i class="fa-solid fa-pencil"></i>
+                                            </button>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
@@ -290,16 +291,13 @@ $statusBadges = [
                         </div>
                         <div class="col-md-6">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label class="form-label mb-0">Product Catalog (Optional)</label>
-                                <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-link p-0 fs-11 text-success text-decoration-underline" data-bs-toggle="modal" data-bs-target="#addCategoryModal"><i class="fa-solid fa-folder-plus me-1"></i>+ Category</button>
-                                    <button type="button" class="btn btn-link p-0 fs-11 text-primary text-decoration-underline" data-bs-toggle="modal" data-bs-target="#addProductModal"><i class="fa-solid fa-plus me-1"></i>+ Product</button>
-                                </div>
+                                <label class="form-label mb-0">Product Category</label>
+                                <button type="button" class="btn btn-link p-0 fs-11 text-success text-decoration-underline" data-bs-toggle="modal" data-bs-target="#addCategoryModal"><i class="fa-solid fa-folder-plus me-1"></i>+ Category</button>
                             </div>
-                            <select name="product_id" class="form-select select2">
-                                <option value="">-- Select Existing Product (Or leave empty) --</option>
-                                <?php foreach ($products ?? [] as $prod): ?>
-                                    <option value="<?= $prod['id'] ?>"><?= htmlspecialchars($prod['name'] . ' (' . $prod['product_code'] . ')') ?></option>
+                            <select name="category_id" class="form-select select2">
+                                <option value="">-- Select Product Category --</option>
+                                <?php foreach ($categories ?? [] as $cat): ?>
+                                    <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -334,7 +332,7 @@ $statusBadges = [
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">Purchase Price (BDT)</label>
                             <input type="number" name="purchase_price" class="form-control" step="0.01" value="0" min="0">
                         </div>
@@ -347,10 +345,31 @@ $statusBadges = [
                             <input type="date" name="warranty_expiry" class="form-control">
                         </div>
                         <div class="col-md-4">
+                            <label class="form-label">Location / Room</label>
+                            <input type="text" name="location" class="form-control" placeholder="e.g. 3rd Floor IT Room" value="Head Office">
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label">Condition</label>
                             <select name="condition_status" class="form-select">
                                 <option value="new" selected>New</option>
                                 <option value="ok">OK</option>
+                                <option value="used">Used</option>
+                                <option value="need_repair">Need Repair</option>
+                                <option value="repairing">Repairing</option>
+                                <option value="repaired">Repaired</option>
+                                <option value="damaged">Damaged</option>
+                                <option value="disposed">Disposed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Status</label>
+                            <select name="asset_status" class="form-select">
+                                <option value="in_store">In Store</option>
+                                <option value="in_use" selected>In Use</option>
+                                <option value="transferred">Transferred</option>
+                                <option value="maintenance">Maintenance</option>
+                                <option value="sold">Sold</option>
+                                <option value="disposed">Disposed</option>
                             </select>
                         </div>
                         <div class="col-12">
@@ -431,6 +450,10 @@ $statusBadges = [
                             <input type="text" id="edit_purchase_price_display" class="form-control" disabled>
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label">Location / Room</label>
+                            <input type="text" name="location" id="edit_location" class="form-control" placeholder="e.g. 3rd Floor IT Room">
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">Condition</label>
                             <select name="condition_status" id="edit_condition_status" class="form-select">
                                 <option value="new">New</option>
@@ -453,6 +476,10 @@ $statusBadges = [
                                 <option value="sold">Sold</option>
                                 <option value="disposed">Disposed</option>
                             </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Remarks</label>
+                            <textarea name="remarks" id="edit_remarks" class="form-control" rows="2" placeholder="Any remarks..."></textarea>
                         </div>
                     </div>
                 </div>
@@ -694,6 +721,74 @@ $statusBadges = [
     </div>
 </div>
 
+<!-- MODAL: SINGLE ASSET TRANSFER -->
+<div class="modal fade" id="singleTransferModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="singleTransferForm" method="POST" action="">
+            <div class="modal-content">
+                <div class="modal-header bg-secondary-transparent">
+                    <h5 class="modal-title text-secondary"><i class="fa-solid fa-right-left me-2"></i>Transfer Asset: <span id="transfer_asset_code_display"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="fs-13 text-muted mb-2">Asset Item: <strong id="transfer_asset_name_display"></strong></p>
+
+                    <!-- CURRENT LOCATION / PREVIOUS OFFICE INFO BOX -->
+                    <div id="current_location_box"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label fs-12 fw-semibold text-dark">Transfer To Project</label>
+                        <select name="project_id" id="transfer_project_id" class="form-select form-select-sm">
+                            <option value="">Head Office (No Project)</option>
+                            <?php foreach ($projects ?? [] as $proj): ?>
+                                <option value="<?= $proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fs-12 fw-semibold text-dark">Transfer To Office Branch</label>
+                        <select name="office_branch_id" id="transfer_office_branch_id" class="form-select form-select-sm">
+                            <option value="">Select Office Branch</option>
+                            <?php foreach ($branches ?? [] as $b): ?>
+                                <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fs-12 fw-semibold text-dark">Assign To Employee</label>
+                        <select name="assigned_to" id="transfer_assigned_to" class="form-select form-select-sm">
+                            <option value="">-- Unassigned --</option>
+                            <?php foreach ($users ?? [] as $u): ?>
+                                <option value="<?= $u['id'] ?>"><?= htmlspecialchars($u['full_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fs-12 fw-semibold text-dark">New Condition Status</label>
+                        <select name="new_condition" id="transfer_new_condition" class="form-select form-select-sm">
+                            <option value="good">Good / OK</option>
+                            <option value="need_repair">Need Repair</option>
+                            <option value="damaged">Damaged</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fs-12 fw-semibold text-dark">Transfer Location / Room</label>
+                        <input type="text" name="location" id="transfer_location" class="form-control form-control-sm" placeholder="e.g. 3rd Floor IT Room">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fs-12 fw-semibold text-dark">Transfer Notes / Reason</label>
+                        <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Reason for transfer..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning btn-sm"><i class="fa-solid fa-check me-1"></i> Confirm Transfer</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <style>
 @media (max-width: 480px) {
     #stats-cards .card.custom-card {
@@ -716,32 +811,51 @@ $statusBadges = [
 
 <script>
 function openEditModal(button) {
-    var b64 = button.getAttribute('data-asset-b64');
-    var asset = JSON.parse(atob(b64));
-    document.getElementById('editAssetForm').action = '<?= $GLOBALS['base_url'] ?>/office-assets/update/' + asset.id;
-    if (document.getElementById('edit_product_id')) {
-        document.getElementById('edit_product_id').value = asset.product_id || '';
+    try {
+        var b64 = button.getAttribute('data-asset-b64');
+        if (!b64) return;
+        var asset = JSON.parse(atob(b64));
+        
+        var form = document.getElementById('editAssetForm');
+        if (form) {
+            form.action = '<?= $GLOBALS['base_url'] ?>/office-assets/update/' + asset.id;
+        }
+
+        var setVal = function(id, val) {
+            var el = document.getElementById(id);
+            if (el) el.value = (val !== null && val !== undefined) ? val : '';
+        };
+
+        setVal('edit_product_id', asset.product_id);
+        setVal('edit_item_name', asset.item_name);
+        setVal('edit_serial_no', asset.serial_no);
+        setVal('edit_project_id', asset.project_id);
+        setVal('edit_office_branch_id', asset.office_branch_id);
+        var locVal = asset.location;
+        if (!locVal || locVal === '0') locVal = 'Head Office';
+        setVal('edit_location', locVal);
+        setVal('edit_condition_status', asset.condition_status || 'new');
+        setVal('edit_asset_status', asset.asset_status || 'in_store');
+        setVal('edit_assigned_to', asset.assigned_to);
+        setVal('edit_remarks', asset.remarks);
+
+        var priceEl = document.getElementById('edit_purchase_price_display');
+        if (priceEl) {
+            priceEl.value = asset.purchase_price ? parseFloat(asset.purchase_price).toLocaleString('en-BD', {minimumFractionDigits: 2}) : '0.00';
+        }
+        
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $('#edit_product_id, #edit_project_id, #edit_office_branch_id, #edit_assigned_to').trigger('change');
+        }
+        
+        var modalEl = document.getElementById('editAssetModal');
+        if (modalEl) {
+            var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+    } catch (e) {
+        console.error("Error opening edit modal:", e);
     }
-    document.getElementById('edit_item_name').value = asset.item_name || '';
-    document.getElementById('edit_serial_no').value = asset.serial_no || '';
-    document.getElementById('edit_project_id').value = asset.project_id || '';
-    if (document.getElementById('edit_office_branch_id')) {
-        document.getElementById('edit_office_branch_id').value = asset.office_branch_id || '';
-    }
-    document.getElementById('edit_location').value = asset.location || '';
-    document.getElementById('edit_purchase_price_display').value = asset.purchase_price ? parseFloat(asset.purchase_price).toLocaleString('en-BD', {minimumFractionDigits: 2}) : '0.00';
-    document.getElementById('edit_condition_status').value = asset.condition_status || 'new';
-    document.getElementById('edit_asset_status').value = asset.asset_status || 'in_store';
-    if(document.getElementById('edit_assigned_to')) {
-        document.getElementById('edit_assigned_to').value = asset.assigned_to || '';
-    }
-    
-    if (typeof $ !== 'undefined' && $.fn.select2) {
-        $('#edit_product_id, #edit_project_id, #edit_office_branch_id, #edit_assigned_to').trigger('change');
-    }
-    
-    var modal = new bootstrap.Modal(document.getElementById('editAssetModal'));
-    modal.show();
 }
 
 if (typeof $ !== 'undefined') {
@@ -752,9 +866,15 @@ if (typeof $ !== 'undefined') {
                 if ($(this).data('select2')) {
                     $(this).select2('destroy');
                 }
+                var firstOptText = $(this).find('option[value=""]').text() || 'Select option';
                 $(this).select2({
                     dropdownParent: $(modalEl),
-                    width: '100%'
+                    width: '100%',
+                    placeholder: {
+                        id: '',
+                        text: firstOptText
+                    },
+                    allowClear: true
                 });
             });
         }
@@ -863,6 +983,41 @@ function openRepairFundModal(assetId, assetCode, assetName) {
     document.getElementById('repairFundForm').action = '<?= $GLOBALS['base_url'] ?>/office-assets/repair-requisition/' + assetId;
     
     var modal = new bootstrap.Modal(document.getElementById('repairFundModal'));
+    modal.show();
+}
+
+function openSingleTransferModal(button) {
+    var b64 = button.getAttribute('data-asset-b64');
+    var asset = JSON.parse(atob(b64));
+
+    document.getElementById('transfer_asset_code_display').textContent = asset.asset_code || '';
+    document.getElementById('transfer_asset_name_display').textContent = asset.item_name || '';
+    document.getElementById('singleTransferForm').action = '<?= $GLOBALS['base_url'] ?>/office-assets/transfer/' + asset.id;
+
+    var currentProj = asset.project_name || 'Head Office (No Project)';
+    var currentBranch = asset.branch_name || 'N/A';
+    var currentAssigned = asset.assigned_to_name || 'Unassigned';
+    var currentLocation = asset.location || 'Head Office';
+
+    document.getElementById('current_location_box').innerHTML = `
+        <div class="p-2 border border-info rounded mb-3" style="background-color: #f0f8ff;">
+            <div class="fw-bold text-info mb-1 fs-12"><i class="fa-solid fa-location-dot me-1"></i> Current (Previous) Location & Assignee:</div>
+            <div class="row g-1 fs-11 text-dark">
+                <div class="col-6"><strong>Project:</strong> ${currentProj}</div>
+                <div class="col-6"><strong>Branch:</strong> ${currentBranch}</div>
+                <div class="col-6"><strong>Assigned To:</strong> ${currentAssigned}</div>
+                <div class="col-6"><strong>Location/Room:</strong> ${currentLocation}</div>
+            </div>
+        </div>
+    `;
+
+    if (document.getElementById('transfer_project_id')) document.getElementById('transfer_project_id').value = asset.project_id || '';
+    if (document.getElementById('transfer_office_branch_id')) document.getElementById('transfer_office_branch_id').value = asset.office_branch_id || '';
+    if (document.getElementById('transfer_assigned_to')) document.getElementById('transfer_assigned_to').value = asset.assigned_to || '';
+    if (document.getElementById('transfer_new_condition')) document.getElementById('transfer_new_condition').value = asset.condition_status || 'good';
+    if (document.getElementById('transfer_location')) document.getElementById('transfer_location').value = asset.location || '';
+
+    var modal = new bootstrap.Modal(document.getElementById('singleTransferModal'));
     modal.show();
 }
 </script>

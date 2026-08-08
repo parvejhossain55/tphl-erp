@@ -111,6 +111,8 @@ return [
     'reports/profit-loss' => ['controller' => 'ReportsController', 'method' => 'profitLoss'],
     'reports/cashflow' => ['controller' => 'ReportsController', 'method' => 'cashflow'],
     'reports/trial-balance' => ['controller' => 'ReportsController', 'method' => 'trialBalance'],
+    'reports/ap-ageing' => ['controller' => 'ReportsController', 'method' => 'apAgeing'],
+    'reports/cash-commitment-forecast' => ['controller' => 'ReportsController', 'method' => 'cashCommitmentForecast'],
 
     // =========================================================================
     // Controller: AccountShopClientController

@@ -132,4 +132,54 @@ class ReportsController extends Controller
         ];
         $this->view('accounts/reports/trial-balance', $data);
     }
+
+    /**
+     * Accounts Payable (AP) Ageing Analysis Report Page
+     */
+    public function apAgeing()
+    {
+        $asOfDate = $_GET['as_of_date'] ?? date('Y-m-d');
+        $projectId = $_GET['project_id'] ?? null;
+        $office = $_GET['office'] ?? null;
+
+        $projects = $this->reportModel->getActiveProjects();
+        $reportData = $this->reportModel->getApAgeingReport($asOfDate, $projectId, $office);
+
+        $data = [
+            'page_title' => 'Accounts Payable (AP) Ageing Analysis (পাওনাদার জ্যেষ্ঠতা বিশ্লেষণ)',
+            'page' => 'Accounts',
+            'projects' => $projects,
+            'report' => $reportData,
+            'filters' => [
+                'as_of_date' => $asOfDate,
+                'project_id' => $projectId,
+                'office' => $office
+            ]
+        ];
+        $this->view('accounts/reports/ap-ageing', $data);
+    }
+
+    /**
+     * Cash Flow Commitment Forecast Report Page
+     */
+    public function cashCommitmentForecast()
+    {
+        $projectId = $_GET['project_id'] ?? null;
+        $office = $_GET['office'] ?? null;
+
+        $projects = $this->reportModel->getActiveProjects();
+        $reportData = $this->reportModel->getCashCommitmentForecast($projectId, $office);
+
+        $data = [
+            'page_title' => 'Cash Flow Commitment Forecast (ক্যাশ ফ্লো পূর্বাভাস)',
+            'page' => 'Accounts',
+            'projects' => $projects,
+            'report' => $reportData,
+            'filters' => [
+                'project_id' => $projectId,
+                'office' => $office
+            ]
+        ];
+        $this->view('accounts/reports/cash-commitment-forecast', $data);
+    }
 }

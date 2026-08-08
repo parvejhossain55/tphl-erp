@@ -796,19 +796,29 @@ $activeCard = $_GET['filter_card'] ?? '';
                         </div>
 
                         <!-- Agent Name -->
-                        <div class="d-flex align-items-center gap-2 mt-2">
-                            <div class="info-label flex-shrink-0">Executive Name</div>
-                            <?php if (empty($lead['agent_name'])): ?>
-                                <span class="badge rounded-pill px-2 py-1 text-danger" style="font-size: 0.75rem; background-color: #fde8e8; border: 1px solid #f8b4b4;">
-                                    <i class="bi bi-person me-1"></i>
-                                    No Agent Assigned
-                                </span>
-                            <?php else: ?>
-                                <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
-                                    <i class="bi bi-person me-1"></i>
-                                    <?= htmlspecialchars($lead['agent_name']) ?>
-                                </span>
-                            <?php endif; ?>
+                        <div class="d-flex align-items-start gap-2 mt-2">
+                            <div class="info-label flex-shrink-0 mt-1">Executive Name</div>
+                            <div>
+                                <?php if (empty($lead['agent_name'])): ?>
+                                    <span class="badge rounded-pill px-2 py-1 text-danger" style="font-size: 0.75rem; background-color: #fde8e8; border: 1px solid #f8b4b4;">
+                                        <i class="bi bi-person me-1"></i>
+                                        No Agent Assigned
+                                    </span>
+                                <?php else: ?>
+                                    <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                                        <i class="bi bi-person me-1"></i>
+                                        <?= htmlspecialchars($lead['agent_name']) ?>
+                                    </span>
+                                    <?php
+                                    $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
+                                        ? $lead['assigned_at']
+                                        : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
+                                    ?>
+                                    <div class="text-muted" style="font-size: 11px; margin-top: 3px;">
+                                        <i class="bi bi-calendar-event me-1"></i>Assigned Date: <?= date('d M, Y', strtotime($assignedRaw)) ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
                         </div>
 
                         <!-- Assigned By Name -->
@@ -1208,7 +1218,7 @@ document.addEventListener('DOMContentLoaded', function () {
             serverSide   : true,
             processing   : true,
             ajax         : { url: ajaxUrl, type: 'POST' },
-            lengthMenu   : [[10, 25, 50, 100, 200], [10, 25, 50, 100, 200]],
+            lengthMenu   : [[10, 25, 50, 100, 200, -1], [10, 25, 50, 100, 200, "All"]],
             pageLength   : pageLength,
             displayStart : displayStart,
             order        : [],
@@ -1351,9 +1361,13 @@ document.addEventListener('DOMContentLoaded', function () {
         let agentBadge = '';
         if (lead.agent_name) {
             const agentNameClean = lead.agent_name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-            agentBadge = `<span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size:.75rem;">
-                <i class="bi bi-person me-1"></i>${agentNameClean}
-            </span>`;
+            const assignedAtStr = lead.assigned_at_formatted || (lead.assigned_at ? new Date(lead.assigned_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '');
+            agentBadge = `<div>
+                <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size:.75rem;">
+                    <i class="bi bi-person me-1"></i>${agentNameClean}
+                </span>
+                ${assignedAtStr ? `<div class="text-muted" style="font-size:11px; margin-top:3px;"><i class="bi bi-calendar-event me-1"></i>Assigned Date: ${assignedAtStr}</div>` : ''}
+            </div>`;
         } else {
             agentBadge = `<span class="badge rounded-pill px-2 py-1 text-danger" style="font-size:.75rem; background-color: #fde8e8; border: 1px solid #f8b4b4;">
                 <i class="bi bi-person me-1"></i>No Agent Assigned

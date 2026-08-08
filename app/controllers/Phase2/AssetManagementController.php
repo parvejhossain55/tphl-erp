@@ -93,24 +93,26 @@ class AssetManagementController extends Controller
                     try {
                         require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
                         $autoPosting = new \AutoPostingService($this->db);
-                        $assetAccId = $autoPosting->getAccountIdByCode('1610'); // Office Assets / Fixed Assets
-                        $payableCashAccId = $autoPosting->getAccountIdByCode('2110'); // Accounts Payable / Cash Outflow
+                        $assetAccId = $autoPosting->getAccountIdByCode('1000') ?: $autoPosting->getAccountIdByCode('1610'); // Office Assets / Fixed Assets
+                        $retainedAccId = $autoPosting->getAccountIdByCode('352000') ?: $autoPosting->getAccountIdByCode('29'); // Retained Earnings / Equity
 
                         $assetObj = $this->model->findAsset($assetId);
                         $assetCode = $assetObj['asset_code'] ?? ('AST-' . $assetId);
                         $itemName = $assetObj['item_name'] ?? 'Office Asset';
+                        $branchName = $assetObj['branch_name'] ?? null;
 
                         $autoPosting->postAccrualEntry(
                             'office_assets',
                             $assetId,
                             $assetAccId,
-                            $payableCashAccId,
+                            $retainedAccId,
                             (float)$data['purchase_price'],
-                            "Office Asset Registered ({$assetCode}): " . $itemName,
+                            "Existing Company Asset Register (Opening Balance) ({$assetCode}): " . $itemName,
                             !empty($data['project_id']) ? (int)$data['project_id'] : null,
                             'employee',
                             !empty($data['assigned_to']) ? (int)$data['assigned_to'] : null,
-                            $_SESSION['user']['id'] ?? 1
+                            $_SESSION['user']['id'] ?? 1,
+                            $branchName
                         );
                     } catch (\Exception $e) {
                         error_log("AutoPosting Exception (Asset Direct Store): " . $e->getMessage());
@@ -219,7 +221,8 @@ class AssetManagementController extends Controller
                 setError("Failed to update asset.");
             }
         }
-        header("Location: " . $GLOBALS['base_url'] . "/office-assets/show/" . $id);
+        $redirectUrl = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/office-assets");
+        header("Location: " . $redirectUrl);
         exit;
     }
 
@@ -227,13 +230,52 @@ class AssetManagementController extends Controller
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = $_SESSION['user']['id'] ?? 1;
-            if ($this->model->logMovement($id, 'transferred', $_POST['note'] ?? '', $userId)) {
+            $oldAsset = $this->model->findAsset($id);
+
+            $toProjectId = isset($_POST['project_id']) && $_POST['project_id'] !== '' ? (int)$_POST['project_id'] : null;
+            $toBranchId = isset($_POST['office_branch_id']) && $_POST['office_branch_id'] !== '' ? (int)$_POST['office_branch_id'] : null;
+            $toAssignedTo = isset($_POST['assigned_to']) && $_POST['assigned_to'] !== '' ? (int)$_POST['assigned_to'] : null;
+            $newCondition = $_POST['new_condition'] ?? ($oldAsset['condition_status'] ?? 'good');
+            $toLocation = $_POST['location'] ?? ($oldAsset['location'] ?? 'Head Office');
+            $notes = $_POST['notes'] ?? ($_POST['note'] ?? 'Asset Transferred');
+
+            $updateData = [
+                'item_name' => $oldAsset['item_name'] ?? 'Office Asset',
+                'project_id' => $toProjectId,
+                'office_branch_id' => $toBranchId,
+                'assigned_to' => $toAssignedTo,
+                'condition_status' => $newCondition,
+                'location' => $toLocation,
+                'asset_status' => 'transferred'
+            ];
+
+            // 1. Update asset current record
+            $this->model->updateAsset($id, $updateData);
+
+            // 2. Log movement (From -> To)
+            $logData = [
+                'asset_id' => $id,
+                'action' => 'transferred',
+                'from_location' => $oldAsset['location'] ?? 'Head Office',
+                'to_location' => $toLocation,
+                'from_user_id' => $oldAsset['assigned_to'] ?? null,
+                'to_user_id' => $toAssignedTo,
+                'from_project_id' => $oldAsset['project_id'] ?? null,
+                'to_project_id' => $toProjectId,
+                'old_condition' => $oldAsset['condition_status'] ?? 'good',
+                'new_condition' => $newCondition,
+                'notes' => $notes,
+                'performed_by' => $userId
+            ];
+
+            if ($this->model->logMovement($logData)) {
                 setSuccess("Asset transferred successfully.");
             } else {
-                setError("Failed to transfer asset.");
+                setError("Failed to log transfer.");
             }
         }
-        header("Location: " . $GLOBALS['base_url'] . "/office-assets/show/" . $id);
+        $redirectUrl = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/office-assets");
+        header("Location: " . $redirectUrl);
         exit;
     }
 
@@ -552,6 +594,7 @@ class AssetManagementController extends Controller
                         
                         $req = $this->model->findExtraPurchase($id);
                         if ($req && (float)$req['total_price'] > 0) {
+                            $procurementOffice = !empty($req['asset_location']) ? $req['asset_location'] : null;
                             $autoPosting->postAccrualEntry(
                                 'asset_procurement',
                                 $id,
@@ -562,7 +605,8 @@ class AssetManagementController extends Controller
                                 $req['project_id'],
                                 'employee',
                                 $req['assigned_to'] ?? $req['requested_by'],
-                                $userId
+                                $userId,
+                                $procurementOffice
                             );
                         }
                     } catch (\Exception $e) {
@@ -623,6 +667,7 @@ class AssetManagementController extends Controller
 
                     $req = $this->model->findExtraPurchase($id);
                     $amountToPay = $paidAmount > 0 ? $paidAmount : ($req['total_price'] ?? 0);
+                    $procurementOffice = !empty($req['asset_location']) ? $req['asset_location'] : null;
 
                     if ($req && $amountToPay > 0) {
                         $autoPosting->postDisbursementEntry(
@@ -635,7 +680,8 @@ class AssetManagementController extends Controller
                             $req['project_id'] ?? null,
                             'employee',
                             $req['assigned_to'] ?? $req['requested_by'] ?? 1,
-                            $userId
+                            $userId,
+                            $procurementOffice
                         );
                     }
                 } catch (\Exception $e) {
