@@ -203,7 +203,7 @@ return [
     // =========================================================================
     // Live COA & Journal Migration Routes
     // =========================================================================
-    'run-live-coa-migration' => ['controller' => 'HomeController', 'method' => 'runLiveCoaMigration'],
-    'live_coa_and_journal_migration.php' => ['controller' => 'HomeController', 'method' => 'runLiveCoaMigration'],
+    'run-live-coa-migration' => ['controller' => 'LiveCoaMigrationController', 'method' => 'run'],
+    'live_coa_and_journal_migration.php' => ['controller' => 'LiveCoaMigrationController', 'method' => 'run'],
 ];
 
