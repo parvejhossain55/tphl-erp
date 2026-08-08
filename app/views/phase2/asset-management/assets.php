@@ -333,7 +333,7 @@ $statusBadges = [
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">Purchase Price (BDT)</label>
                             <input type="number" name="purchase_price" class="form-control" step="0.01" value="0" min="0">
                         </div>
@@ -346,10 +346,31 @@ $statusBadges = [
                             <input type="date" name="warranty_expiry" class="form-control">
                         </div>
                         <div class="col-md-4">
+                            <label class="form-label">Location / Room</label>
+                            <input type="text" name="location" class="form-control" placeholder="e.g. 3rd Floor IT Room" value="Head Office">
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label">Condition</label>
                             <select name="condition_status" class="form-select">
                                 <option value="new" selected>New</option>
                                 <option value="ok">OK</option>
+                                <option value="used">Used</option>
+                                <option value="need_repair">Need Repair</option>
+                                <option value="repairing">Repairing</option>
+                                <option value="repaired">Repaired</option>
+                                <option value="damaged">Damaged</option>
+                                <option value="disposed">Disposed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Status</label>
+                            <select name="asset_status" class="form-select">
+                                <option value="in_store">In Store</option>
+                                <option value="in_use" selected>In Use</option>
+                                <option value="transferred">Transferred</option>
+                                <option value="maintenance">Maintenance</option>
+                                <option value="sold">Sold</option>
+                                <option value="disposed">Disposed</option>
                             </select>
                         </div>
                         <div class="col-12">
