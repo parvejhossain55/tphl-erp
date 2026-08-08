@@ -203,6 +203,12 @@ class AssetManagement
         if ($res && $res->num_rows === 0) {
             $this->db->query("ALTER TABLE `office_assets` ADD COLUMN `office_branch_id` INT NULL DEFAULT NULL AFTER `project_id`");
         }
+
+        // 4. Ensure category_id column exists in office_asset_products table
+        $resCat = $this->db->query("SHOW COLUMNS FROM `office_asset_products` LIKE 'category_id'");
+        if ($resCat && $resCat->num_rows === 0) {
+            $this->db->query("ALTER TABLE `office_asset_products` ADD COLUMN `category_id` INT NULL DEFAULT NULL AFTER `name`");
+        }
     }
 
     public function getAllOfficeBranches($status = 'active')
@@ -338,8 +344,16 @@ class AssetManagement
             } else {
                 $pCode = 'PRD-' . date('Y') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
                 $stmtNewP = $this->db->prepare("INSERT INTO office_asset_products (product_code, name, category_id, status, created_by) VALUES (?, ?, ?, 'active', ?)");
-                $stmtNewP->bind_param('ssii', $pCode, $itemName, $categoryId, $data['created_by']);
-                if ($stmtNewP->execute()) {
+                if ($stmtNewP) {
+                    $stmtNewP->bind_param('ssii', $pCode, $itemName, $categoryId, $data['created_by']);
+                    if ($stmtNewP->execute()) {
+                        $productId = $this->db->insert_id;
+                    }
+                } else {
+                    $cleanName = $this->db->real_escape_string($itemName);
+                    $cIdSql = $categoryId ? $categoryId : "NULL";
+                    $cBy = (int)($data['created_by'] ?? 1);
+                    $this->db->query("INSERT INTO office_asset_products (product_code, name, category_id, status, created_by) VALUES ('$pCode', '$cleanName', $cIdSql, 'active', $cBy)");
                     $productId = $this->db->insert_id;
                 }
             }
@@ -367,8 +381,13 @@ class AssetManagement
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
 
+        $conditionStatus = $data['condition_status'] ?? 'good';
+        $assetStatus = $data['asset_status'] ?? (!empty($assignedTo) ? 'in_use' : 'in_store');
+        $remarks = $data['remarks'] ?? '';
+        $createdBy = (int)($data['created_by'] ?? 1);
+
         $stmt->bind_param(
-            'sisiissdssssssi',
+            'siiiiisdsssssssi',
             $assetCode,
             $productId,
             $itemName,
@@ -381,10 +400,10 @@ class AssetManagement
             $data['purchase_price'],
             $data['warranty_expiry'],
             $data['serial_no'],
-            $data['condition_status'],
-            $data['asset_status'],
-            $data['remarks'],
-            $data['created_by']
+            $conditionStatus,
+            $assetStatus,
+            $remarks,
+            $createdBy
         );
 
         if ($stmt->execute()) {
