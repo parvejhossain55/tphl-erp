@@ -46,7 +46,7 @@ $statusBadges = [
     </style>
     <!-- Stats Cards -->
     <div class="row mb-4" id="stats-cards">
-        <div class="col-md-2 col-sm-4 col-6">
+        <div class="col-md-3 col-sm-6 col-6">
             <a href="<?= $GLOBALS['base_url'] ?>/office-assets" class="stat-card-link">
                 <div class="card custom-card">
                     <div class="card-body text-center p-2 p-md-3">
@@ -56,17 +56,7 @@ $statusBadges = [
                 </div>
             </a>
         </div>
-        <div class="col-md-2 col-sm-4 col-6">
-            <a href="<?= $GLOBALS['base_url'] ?>/asset-products" class="stat-card-link">
-                <div class="card custom-card">
-                    <div class="card-body text-center p-2 p-md-3">
-                        <h3 class="fw-bold text-success mb-0"><?= $stats['total_products'] ?? 0 ?></h3>
-                        <p class="text-muted mb-0 fs-11">Products</p>
-                    </div>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-2 col-sm-4 col-6">
+        <div class="col-md-3 col-sm-6 col-6">
             <a href="<?= $GLOBALS['base_url'] ?>/office-assets?condition_status=need_repair" class="stat-card-link">
                 <div class="card custom-card">
                     <div class="card-body text-center p-2 p-md-3">
@@ -76,7 +66,7 @@ $statusBadges = [
                 </div>
             </a>
         </div>
-        <div class="col-md-2 col-sm-4 col-6">
+        <div class="col-md-3 col-sm-6 col-6">
             <a href="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases" class="stat-card-link" title="Click to view Office Procurement Requests">
                 <div class="card custom-card">
                     <div class="card-body text-center p-2 p-md-3">
@@ -86,7 +76,7 @@ $statusBadges = [
                 </div>
             </a>
         </div>
-        <div class="col-md-4 col-sm-8 col-12">
+        <div class="col-md-3 col-sm-6 col-6">
             <a href="<?= $GLOBALS['base_url'] ?>/office-assets" class="stat-card-link">
                 <div class="card custom-card">
                     <div class="card-body text-center p-2 p-md-3">
@@ -119,10 +109,19 @@ $statusBadges = [
 
         <!-- Filters -->
         <div class="card-body border-bottom pb-3">
-            <form method="GET" class="row  align-items-end">
+            <form method="GET" class="row align-items-end g-2">
                 <div class="col-md-2">
                     <label class="form-label fs-11 fw-semibold mb-1">Search</label>
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Asset code, name..." value="<?= htmlspecialchars($filters['search'] ?? '') ?>">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fs-11 fw-semibold mb-1">Category</label>
+                    <select name="category_id" class="form-select form-select-sm select2">
+                        <option value="">All Categories</option>
+                        <?php foreach ($categories ?? [] as $cat): ?>
+                            <option value="<?= $cat['id'] ?>" <?= ($filters['category_id'] ?? '') == $cat['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label fs-11 fw-semibold mb-1">Project</label>
@@ -160,9 +159,9 @@ $statusBadges = [
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3 mt-2 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary btn-sm flex-fill"><i class="fa-solid fa-filter me-1"></i> Filter</button>
-                    <a href="<?= $GLOBALS['base_url'] ?>/office-assets" class="btn btn-light btn-sm flex-fill text-center"><i class="fa-solid fa-arrows-rotate"></i> Reset</a>
+                <div class="col-12 mt-2 d-flex justify-content-end gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm px-3"><i class="fa-solid fa-filter me-1"></i> Filter</button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/office-assets" class="btn btn-light btn-sm px-3"><i class="fa-solid fa-arrows-rotate me-1"></i> Reset</a>
                 </div>
             </form>
         </div>

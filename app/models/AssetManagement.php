@@ -276,6 +276,12 @@ class AssetManagement
             $types .= 's';
         }
 
+        if (!empty($filters['category_id'])) {
+            $sql .= " AND oa.product_id IN (SELECT id FROM office_asset_products WHERE category_id = ?)";
+            $params[] = (int)$filters['category_id'];
+            $types .= 'i';
+        }
+
         $sql .= " ORDER BY oa.id DESC";
 
         $stmt = $this->db->prepare($sql);
