@@ -333,29 +333,29 @@ class AssetManagement
         // If product_id is empty but item_name is provided, find or create product automatically
         if (!$productId && !empty($itemName)) {
             $stmtP = $this->db->prepare("SELECT id FROM office_asset_products WHERE LOWER(name) = LOWER(?) LIMIT 1");
-            $stmtP->bind_param('s', $itemName);
-            $stmtP->execute();
-            $pRes = $stmtP->get_result()->fetch_assoc();
-            if ($pRes) {
-                $productId = (int)$pRes['id'];
-                if ($categoryId) {
-                    $this->db->query("UPDATE office_asset_products SET category_id = $categoryId WHERE id = $productId");
-                }
-            } else {
-                $pCode = 'PRD-' . date('Y') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
-                $stmtNewP = $this->db->prepare("INSERT INTO office_asset_products (product_code, name, category_id, status, created_by) VALUES (?, ?, ?, 'active', ?)");
-                if ($stmtNewP) {
-                    $stmtNewP->bind_param('ssii', $pCode, $itemName, $categoryId, $data['created_by']);
-                    if ($stmtNewP->execute()) {
-                        $productId = $this->db->insert_id;
+            if ($stmtP) {
+                $stmtP->bind_param('s', $itemName);
+                $stmtP->execute();
+                $pRes = $stmtP->get_result()->fetch_assoc();
+                if ($pRes) {
+                    $productId = (int)$pRes['id'];
+                    if ($categoryId) {
+                        $this->db->query("UPDATE office_asset_products SET category_id = $categoryId WHERE id = $productId");
                     }
-                } else {
-                    $cleanName = $this->db->real_escape_string($itemName);
-                    $cIdSql = $categoryId ? $categoryId : "NULL";
-                    $cBy = (int)($data['created_by'] ?? 1);
-                    $this->db->query("INSERT INTO office_asset_products (product_code, name, category_id, status, created_by) VALUES ('$pCode', '$cleanName', $cIdSql, 'active', $cBy)");
-                    $productId = $this->db->insert_id;
                 }
+            }
+
+            if (!$productId) {
+                $pCode = 'PRD-' . date('Y') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+                $cleanName = $this->db->real_escape_string($itemName);
+                $cIdSql = $categoryId ? (int)$categoryId : "NULL";
+                $cBy = (int)($data['created_by'] ?? 1);
+
+                $insRes = $this->db->query("INSERT INTO office_asset_products (product_code, name, category_id, status, created_by) VALUES ('$pCode', '$cleanName', $cIdSql, 'active', $cBy)");
+                if (!$insRes) {
+                    $this->db->query("INSERT INTO office_asset_products (product_code, name, status, created_by) VALUES ('$pCode', '$cleanName', 'active', $cBy)");
+                }
+                $productId = (int)$this->db->insert_id;
             }
         } elseif ($productId && empty($itemName)) {
             $stmtName = $this->db->prepare("SELECT name FROM office_asset_products WHERE id = ?");
@@ -387,7 +387,7 @@ class AssetManagement
         $createdBy = (int)($data['created_by'] ?? 1);
 
         $stmt->bind_param(
-            'siiiiisdsssssssi',
+            'sisiiiisdssssssi',
             $assetCode,
             $productId,
             $itemName,
