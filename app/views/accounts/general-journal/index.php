@@ -10,6 +10,7 @@ $moduleLabels = [
     'vendor_payment'   => 'Project Vendor Payments',
     'contractor_bill'  => 'Contractor Bills & Payments',
     'material_purchase' => 'Material Purchase & Procurement',
+    'office_assets'    => 'Office & Fixed Asset Management',
     'payroll'          => 'Payroll & Employee Salaries',
     'management_cashin' => 'Management & Directors Investment',
     'land_acquisition' => 'Land Acquisition Payments',

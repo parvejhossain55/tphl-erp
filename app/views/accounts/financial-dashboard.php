@@ -295,6 +295,7 @@ $show_breadcrumb = true;
                                             <option value="vendor_payment">Project Vendor Payments</option>
                                             <option value="contractor_bill">Contractor Bills & Payments</option>
                                             <option value="material_purchase">Material Purchase & Procurement</option>
+                                            <option value="office_assets">Office & Fixed Asset Management</option>
                                             <option value="payroll">Payroll & Employee Salaries</option>
                                             <option value="management_cashin">Management & Directors Investment</option>
                                             <option value="land_acquisition">Land Acquisition Payments</option>
