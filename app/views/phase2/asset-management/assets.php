@@ -290,16 +290,13 @@ $statusBadges = [
                         </div>
                         <div class="col-md-6">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label class="form-label mb-0">Product Catalog (Optional)</label>
-                                <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-link p-0 fs-11 text-success text-decoration-underline" data-bs-toggle="modal" data-bs-target="#addCategoryModal"><i class="fa-solid fa-folder-plus me-1"></i>+ Category</button>
-                                    <button type="button" class="btn btn-link p-0 fs-11 text-primary text-decoration-underline" data-bs-toggle="modal" data-bs-target="#addProductModal"><i class="fa-solid fa-plus me-1"></i>+ Product</button>
-                                </div>
+                                <label class="form-label mb-0">Product Category</label>
+                                <button type="button" class="btn btn-link p-0 fs-11 text-success text-decoration-underline" data-bs-toggle="modal" data-bs-target="#addCategoryModal"><i class="fa-solid fa-folder-plus me-1"></i>+ Category</button>
                             </div>
-                            <select name="product_id" class="form-select select2">
-                                <option value="">-- Select Existing Product (Or leave empty) --</option>
-                                <?php foreach ($products ?? [] as $prod): ?>
-                                    <option value="<?= $prod['id'] ?>"><?= htmlspecialchars($prod['name'] . ' (' . $prod['product_code'] . ')') ?></option>
+                            <select name="category_id" class="form-select select2">
+                                <option value="">-- Select Product Category --</option>
+                                <?php foreach ($categories ?? [] as $cat): ?>
+                                    <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>

@@ -322,6 +322,8 @@ class AssetManagement
         $productId = !empty($data['product_id']) ? (int)$data['product_id'] : null;
         $itemName = trim($data['item_name'] ?? '');
 
+        $categoryId = !empty($data['category_id']) ? (int)$data['category_id'] : null;
+
         // If product_id is empty but item_name is provided, find or create product automatically
         if (!$productId && !empty($itemName)) {
             $stmtP = $this->db->prepare("SELECT id FROM office_asset_products WHERE LOWER(name) = LOWER(?) LIMIT 1");
@@ -330,10 +332,13 @@ class AssetManagement
             $pRes = $stmtP->get_result()->fetch_assoc();
             if ($pRes) {
                 $productId = (int)$pRes['id'];
+                if ($categoryId) {
+                    $this->db->query("UPDATE office_asset_products SET category_id = $categoryId WHERE id = $productId");
+                }
             } else {
                 $pCode = 'PRD-' . date('Y') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
-                $stmtNewP = $this->db->prepare("INSERT INTO office_asset_products (product_code, name, status, created_by) VALUES (?, ?, 'active', ?)");
-                $stmtNewP->bind_param('ssi', $pCode, $itemName, $data['created_by']);
+                $stmtNewP = $this->db->prepare("INSERT INTO office_asset_products (product_code, name, category_id, status, created_by) VALUES (?, ?, ?, 'active', ?)");
+                $stmtNewP->bind_param('ssii', $pCode, $itemName, $categoryId, $data['created_by']);
                 if ($stmtNewP->execute()) {
                     $productId = $this->db->insert_id;
                 }
