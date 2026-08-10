@@ -306,6 +306,13 @@ class HomeController extends Controller
 
         try {
             $request = $this->approvalModel->find($id);
+            $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+            $isManagement = in_array($userRoleId, [1, 3], true);
+
+            if (($request['approve_role'] ?? 'management') === 'management' && !$isManagement) {
+                throw new Exception("Unauthorized action: Only Management users can approve this request.");
+            }
+
             $approved_days = null;
             $approved_amount = $_POST['approved_amount'] ?? null;
 
@@ -327,7 +334,8 @@ class HomeController extends Controller
             $this->approvalModel->updateStatus($id, 'approved', $approved_amount, $approved_days);
 
             $this->db->commit();
-            header("Location: " . $GLOBALS['base_url'] . "/home");
+            $redirectUrl = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/home");
+            header("Location: " . $redirectUrl);
             exit;
         } catch (Exception $e) {
             $this->db->rollback();
@@ -343,6 +351,12 @@ class HomeController extends Controller
 
         try {
             $request = $this->approvalModel->find($id);
+            $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+            $isManagement = in_array($userRoleId, [1, 3], true);
+
+            if (($request['approve_role'] ?? 'management') === 'management' && !$isManagement) {
+                throw new Exception("Unauthorized action: Only Management users can approve this request.");
+            }
 
             $approved_amount = $_POST['approved_amount'] ?? null;
             $approved_days   = $_POST['approved_days'] ?? null;
@@ -388,7 +402,8 @@ class HomeController extends Controller
             );
 
             $this->db->commit();
-            header("Location: " . $GLOBALS['base_url'] . "/home");
+            $redirectUrl = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/home");
+            header("Location: " . $redirectUrl);
             exit;
         } catch (Exception $e) {
             $this->db->rollback();
@@ -456,8 +471,17 @@ class HomeController extends Controller
     // Reject
     public function reject($id)
     {
+        $request = $this->approvalModel->find($id);
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isManagement = in_array($userRoleId, [1, 3], true);
+
+        if ($request && ($request['approve_role'] ?? 'management') === 'management' && !$isManagement) {
+            die("Unauthorized action: Only Management users can reject this request.");
+        }
+
         $this->approvalModel->updateStatus($id, 'rejected');
-        header("Location: " . $GLOBALS['base_url'] . "/home");
+        $redirectUrl = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/home");
+        header("Location: " . $redirectUrl);
         exit;
     }
 

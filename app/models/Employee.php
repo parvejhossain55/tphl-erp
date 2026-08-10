@@ -314,6 +314,7 @@ class Employee extends Model
     e.*,
     u.id as user_id,
     u.role_id as role_id, 
+    u.secondary_role_id as secondary_role_id,
     desg.name AS designation_name, 
     dept.name AS department_name,
     t.name AS team_name,

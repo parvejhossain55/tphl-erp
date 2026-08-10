@@ -718,6 +718,23 @@ ORDER BY lb.booking_date DESC
     }
 
     /**
+     * Get total follow up notes count for a booking (including General, Dev Charge, and EMIs)
+     */
+    public function getTotalFollowupCount($bookingId)
+    {
+        if (!$bookingId) return 0;
+        $stmt = $this->db->prepare("SELECT COUNT(*) as cnt FROM emi_followups WHERE booking_id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $bookingId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $row = $res ? $res->fetch_assoc() : null;
+            return (int)($row['cnt'] ?? 0);
+        }
+        return 0;
+    }
+
+    /**
      * Get Virtual EMI Schedule (Yield to Maturity Logic)
      * Calculates the maturity status of all EMIs based on the current date.
      */
@@ -831,6 +848,7 @@ ORDER BY lb.booking_date DESC
                     }
                 }
                 
+                $penaltyCalc = $this->calculateCompoundedPenalty($clientDetails['per_emi_amount'], $record['due_date']);
                 $schedule[] = [
                     'emi_no' => $i,
                     'due_date' => $record['due_date'],
@@ -840,7 +858,10 @@ ORDER BY lb.booking_date DESC
                     'status' => $record['payment_status'],
                     'maturity_status' => $maturityStatus,
                     'is_virtual' => false,
-                    'followup_count' => $followupCounts[$i] ?? 0
+                    'followup_count' => $followupCounts[$i] ?? 0,
+                    'months_overdue' => ($maturityStatus === 'due') ? $penaltyCalc['months_overdue'] : 0,
+                    'penalty_amount' => ($maturityStatus === 'due') ? $penaltyCalc['penalty_amount'] : 0,
+                    'total_payable'  => ($maturityStatus === 'due') ? $penaltyCalc['total_payable'] : $record['due_emi_amount']
                 ];
                 
                 $runnerDate = clone $dueDateObj;
@@ -860,6 +881,8 @@ ORDER BY lb.booking_date DESC
                     $maturityStatus = 'future';
                 }
                 
+                $penaltyCalc = $this->calculateCompoundedPenalty($clientDetails['per_emi_amount'], $projectedDueDate);
+
                 $schedule[] = [
                     'emi_no' => $i,
                     'due_date' => $projectedDueDate,
@@ -869,12 +892,59 @@ ORDER BY lb.booking_date DESC
                     'status' => 'unpaid',
                     'maturity_status' => $maturityStatus,
                     'is_virtual' => true,
-                    'followup_count' => $followupCounts[$i] ?? 0
+                    'followup_count' => $followupCounts[$i] ?? 0,
+                    'months_overdue' => ($maturityStatus === 'due') ? $penaltyCalc['months_overdue'] : 0,
+                    'penalty_amount' => ($maturityStatus === 'due') ? $penaltyCalc['penalty_amount'] : 0,
+                    'total_payable'  => ($maturityStatus === 'due') ? $penaltyCalc['total_payable'] : $clientDetails['per_emi_amount']
                 ];
             }
         }
         
         return $schedule;
+    }
+
+    /**
+     * Calculate 5% Compounded Monthly Late Penalty
+     * Formula: Payable = Base * (1 + 0.05)^m
+     */
+    public function calculateCompoundedPenalty($baseAmount, $dueDateStr, $rate = 0.05)
+    {
+        $baseAmount = (float)$baseAmount;
+        if (empty($dueDateStr) || $baseAmount <= 0) {
+            return ['months_overdue' => 0, 'penalty_amount' => 0, 'total_payable' => $baseAmount];
+        }
+
+        try {
+            $dueDate = new \DateTime($dueDateStr);
+            $currentDate = new \DateTime();
+
+            if ($currentDate <= $dueDate) {
+                return ['months_overdue' => 0, 'penalty_amount' => 0, 'total_payable' => $baseAmount];
+            }
+
+            // Calculate full or partial overdue months
+            $diff = $dueDate->diff($currentDate);
+            $monthsOverdue = ($diff->y * 12) + $diff->m;
+            if ($diff->d > 0) {
+                $monthsOverdue += 1;
+            }
+
+            if ($monthsOverdue <= 0) {
+                return ['months_overdue' => 0, 'penalty_amount' => 0, 'total_payable' => $baseAmount];
+            }
+
+            $compoundedFactor = pow((1 + $rate), $monthsOverdue);
+            $totalPayable = round($baseAmount * $compoundedFactor, 2);
+            $penaltyAmount = round($totalPayable - $baseAmount, 2);
+
+            return [
+                'months_overdue' => $monthsOverdue,
+                'penalty_amount' => $penaltyAmount,
+                'total_payable'  => $totalPayable
+            ];
+        } catch (\Exception $e) {
+            return ['months_overdue' => 0, 'penalty_amount' => 0, 'total_payable' => $baseAmount];
+        }
     }
 
     /**
@@ -2497,7 +2567,51 @@ ORDER BY lb.booking_date DESC
                         'request_amount' => $totalAmount // Use total bulk amount
                     ]);
                 }
-                if (!$firstPaymentId) $firstPaymentId = $paymentId;
+                if (!$firstPaymentId) {
+                    $firstPaymentId = $paymentId;
+
+                    // Update penalty & waiver details on the primary payment record
+                    $penaltyAmount = (float)($transactionData['penalty_amount'] ?? 0);
+                    $penaltyPaid   = (float)($transactionData['penalty_paid'] ?? 0);
+                    $penaltyWaived = (float)($transactionData['penalty_waived'] ?? 0);
+                    $waiverReason  = $transactionData['waiver_reason'] ?? null;
+                    $waiverAtt     = $transactionData['waiver_attachment'] ?? null;
+                    $waiverStatus  = $transactionData['waiver_status'] ?? 'none';
+
+                    if ($penaltyAmount > 0 || $penaltyWaived > 0) {
+                        $pUpd = $this->db->prepare("UPDATE lead_payments SET penalty_amount = ?, penalty_paid = ?, penalty_waived = ?, waiver_reason = ?, waiver_attachment = ?, waiver_status = ? WHERE id = ?");
+                        $pUpd->bind_param("dddsssi", $penaltyAmount, $penaltyPaid, $penaltyWaived, $waiverReason, $waiverAtt, $waiverStatus, $firstPaymentId);
+                        $pUpd->execute();
+                        $pUpd->close();
+                    }
+
+                    if ($waiverStatus === 'pending' && $penaltyWaived > 0) {
+                        if (!class_exists('ApprovalRequest')) {
+                            require_once __DIR__ . '/ApprovalRequest.php';
+                        }
+                        $approvalModel = new ApprovalRequest($this->db);
+                        $approvalModel->create([
+                            'department'     => 'CED',
+                            'request_type'   => 'Penalty Waiver Request',
+                            'title'          => 'Penalty Waiver Request for Client Payment #' . $firstPaymentId,
+                            'source_table'   => 'lead_payments',
+                            'source_id'      => $firstPaymentId,
+                            'requested_days' => 0,
+                            'requested_by'   => $createdBy,
+                            'approve_role'   => 'management',
+                            'meta_data'      => json_encode([
+                                'Project'          => $clientDetails['project_name'] ?? 'N/A',
+                                'Client Name'      => $clientDetails['client_name'] ?? 'N/A',
+                                'Penalty Amount'   => $penaltyAmount,
+                                'Waived Amount'    => $penaltyWaived,
+                                'Penalty Paid'     => $penaltyPaid,
+                                'Waiver Reason'    => $waiverReason,
+                                'Attachment Path'  => $waiverAtt
+                            ]),
+                            'request_amount' => $penaltyWaived
+                        ]);
+                    }
+                }
 
                 // Insert emi_schedule row
                 $schedStmt = $this->db->prepare("

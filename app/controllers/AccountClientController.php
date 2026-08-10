@@ -167,6 +167,8 @@ public function indexTwo($bookingId = null)
         foreach ($lands as &$land) {
             $schedule = $this->clientModel->getVirtualEmiSchedule($land['booking_id']);
             $land['current_month_status'] = $this->calculateCurrentMonthStatus($schedule, $land['last_payment_date'] ?? null);
+            $land['total_emi_count'] = count($schedule) > 0 ? count($schedule) : 36;
+            $land['total_followup_count'] = $this->clientModel->getTotalFollowupCount($land['booking_id']);
         }
 
         echo json_encode([
@@ -260,6 +262,8 @@ public function indexTwo($bookingId = null)
         foreach ($clients as &$client) {
             $schedule = $this->clientModel->getVirtualEmiSchedule($client['booking_id']);
             $client['current_month_status'] = $this->calculateCurrentMonthStatus($schedule, $client['last_payment_date'] ?? null);
+            $client['total_emi_count'] = count($schedule) > 0 ? count($schedule) : 36;
+            $client['total_followup_count'] = $this->clientModel->getTotalFollowupCount($client['booking_id']);
         }
 
         $this->view("ced/clients-cashin-view", [
@@ -464,15 +468,19 @@ public function showCedTransactionForm($bookingId = null)
 
     $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
     $outstandingDues = $this->clientModel->getOutstandingEmiDues($bookingId);
+    $virtualEmiSchedule = method_exists($this->clientModel, 'getVirtualEmiSchedule') 
+        ? $this->clientModel->getVirtualEmiSchedule($bookingId) 
+        : [];
 
     $this->view("ced/ced-cash-in-form", [
-        "current_route" => "ced-add-transaction-form",
-        "page_title"    => "CED Add Transaction - " . $clientDetails['client_name'],
-        "clientDetails" => $clientDetails,
-        "bookingId"     => $bookingId,
-        "paymentSummary"=> $paymentSummary,
-        "outstandingDues" => $outstandingDues,
-        "isShop"        => (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1)
+        "current_route"      => "ced-add-transaction-form",
+        "page_title"         => "CED Add Transaction - " . $clientDetails['client_name'],
+        "clientDetails"      => $clientDetails,
+        "bookingId"          => $bookingId,
+        "paymentSummary"     => $paymentSummary,
+        "outstandingDues"    => $outstandingDues,
+        "virtualEmiSchedule" => $virtualEmiSchedule,
+        "isShop"             => (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1)
     ]);
 }
 
@@ -546,25 +554,52 @@ public function addCedTransaction()
         }
     }
 
+    // Handle waiver proof upload
+    $waiverAttachmentPath = null;
+    if (!empty($_FILES['waiver_file']['name'])) {
+        $waiverDir = dirname(dirname(__DIR__)) . '/public/uploads/waivers/';
+        if (!is_dir($waiverDir)) mkdir($waiverDir, 0755, true);
+        $tmpName = $_FILES['waiver_file']['tmp_name'];
+        if (is_uploaded_file($tmpName)) {
+            $ext = pathinfo(basename($_FILES['waiver_file']['name']), PATHINFO_EXTENSION);
+            $wName = 'waiver_' . uniqid() . '.' . $ext;
+            if (move_uploaded_file($tmpName, $waiverDir . $wName)) {
+                $waiverAttachmentPath = 'uploads/waivers/' . $wName;
+            }
+        }
+    }
+
+    $penaltyAmount = isset($_POST['penalty_amount']) ? (float)$_POST['penalty_amount'] : 0;
+    $penaltyWaived = isset($_POST['penalty_waived']) ? (float)$_POST['penalty_waived'] : 0;
+    $penaltyPaid   = max(0, $penaltyAmount - $penaltyWaived);
+    $waiverReason  = $_POST['waiver_reason'] ?? null;
+    $waiverStatus  = (!empty($_POST['apply_waiver']) && $penaltyWaived > 0) ? 'pending' : 'none';
+
     // Prepare transaction data
     $transactionData = [
-        'booking_id'      => $bookingId,
-        'payment_type'    => $paymentType,
-        'amount'          => $_POST['amount'] ?? 0,
-        'payment_method'  => $_POST['payment_method'] ?? 'cash',
-        'payment_status'  => 'pending', // Always pending until verified
-        'payment_date'    => $_POST['payment_date'] ?? date('Y-m-d'),
-        'transaction_ref' => $_POST['transaction_ref'] ?? null,
-        'bank_id'         => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
-        'bank_account_no' => $_POST['bank_account_no'] ?? null,
-        'cheque_no'       => $_POST['cheque_no'] ?? null,
-        'online_type'     => $_POST['online_type'] ?? null,
-        'attachment_paths' => $uploadedPaths ?: null,
-        'bulk_emi_discount'=> isset($_POST['bulk_emi_discount']) ? (float)$_POST['bulk_emi_discount'] : 0,
-        'due_emi_amount'   => isset($_POST['due_emi_amount']) ? (float)$_POST['due_emi_amount'] : 0,
-        'parent_payment_id'=> !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : null,
-        'settlement_type'  => !empty($_POST['settlement_type']) ? $_POST['settlement_type'] : null,
-        'created_by'      => $_SESSION['user']['id'] ?? 1
+        'booking_id'        => $bookingId,
+        'payment_type'      => $paymentType,
+        'amount'            => $_POST['amount'] ?? 0,
+        'payment_method'    => $_POST['payment_method'] ?? 'cash',
+        'payment_status'    => 'pending', // Always pending until verified
+        'payment_date'      => $_POST['payment_date'] ?? date('Y-m-d'),
+        'transaction_ref'   => $_POST['transaction_ref'] ?? null,
+        'bank_id'           => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
+        'bank_account_no'   => $_POST['bank_account_no'] ?? null,
+        'cheque_no'         => $_POST['cheque_no'] ?? null,
+        'online_type'       => $_POST['online_type'] ?? null,
+        'attachment_paths'   => $uploadedPaths ?: null,
+        'bulk_emi_discount' => isset($_POST['bulk_emi_discount']) ? (float)$_POST['bulk_emi_discount'] : 0,
+        'due_emi_amount'     => isset($_POST['due_emi_amount']) ? (float)$_POST['due_emi_amount'] : 0,
+        'parent_payment_id'  => !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : null,
+        'settlement_type'    => !empty($_POST['settlement_type']) ? $_POST['settlement_type'] : null,
+        'penalty_amount'    => $penaltyAmount,
+        'penalty_paid'      => $penaltyPaid,
+        'penalty_waived'    => $penaltyWaived,
+        'waiver_reason'     => $waiverReason,
+        'waiver_attachment' => $waiverAttachmentPath,
+        'waiver_status'     => $waiverStatus,
+        'created_by'        => $_SESSION['user']['id'] ?? 1
     ];
 
     // EMI schedule data
@@ -2451,7 +2486,6 @@ public function discountStatement($bookingId = null)
 
     public function saveEmiFollowup()
     {
-        if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json');
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -2460,11 +2494,11 @@ public function discountStatement($bookingId = null)
         }
 
         $bookingId = (int)($_POST['booking_id'] ?? 0);
-        $emiNo = (int)($_POST['emi_no'] ?? 0);
+        $emiNo = isset($_POST['emi_no']) ? (int)$_POST['emi_no'] : 0;
         $note = trim($_POST['note'] ?? '');
         $userId = $_SESSION['user']['id'] ?? 0;
 
-        if (!$bookingId || !$emiNo || empty($note)) {
+        if (!$bookingId || empty($note)) {
             echo json_encode(['success' => false, 'message' => 'Missing required fields']);
             exit;
         }
@@ -2484,21 +2518,29 @@ public function discountStatement($bookingId = null)
     {
         header('Content-Type: application/json');
         $bookingId = (int)($_GET['booking_id'] ?? 0);
-        $emiNo = (int)($_GET['emi_no'] ?? 0);
+        $filterByEmi = isset($_GET['filter_by_emi']) && $_GET['filter_by_emi'] == '1';
+        $emiNo = isset($_GET['emi_no']) ? (int)$_GET['emi_no'] : null;
 
-        if (!$bookingId || !$emiNo) {
+        if (!$bookingId) {
             echo json_encode(['success' => false, 'data' => []]);
             exit;
         }
 
-        $stmt = $this->db->prepare("
+        $sql = "
             SELECT f.*, u.full_name as author_name 
             FROM emi_followups f 
             LEFT JOIN users u ON f.added_by = u.id 
-            WHERE f.booking_id = ? AND f.emi_no = ? 
-            ORDER BY f.created_at DESC
-        ");
-        $stmt->bind_param("ii", $bookingId, $emiNo);
+            WHERE f.booking_id = ?
+        ";
+        
+        if ($filterByEmi && $emiNo !== null) {
+            $sql .= " AND f.emi_no = " . (int)$emiNo;
+        }
+        
+        $sql .= " ORDER BY f.created_at DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("i", $bookingId);
         $stmt->execute();
         $res = $stmt->get_result();
         

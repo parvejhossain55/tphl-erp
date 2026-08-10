@@ -491,9 +491,6 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                             <i class="fa-light fa-lock me-2"></i> Add Transaction (Requires Land Share)
                         </button>
                     <?php endif; ?>
-                    <a href="<?= $GLOBALS['base_url'] ?>/csv-import-form" class="btn btn-info mb-3 text-white">
-                        <i class="fa-light fa-file-csv me-2"></i> CSV Import
-                    </a>
                     <a href="<?= $GLOBALS['base_url'] ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-primary mb-3">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
                     </a>
@@ -670,10 +667,32 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                                         <?php else: ?>
                                             <span class="text-muted">—</span>
                                         <?php endif; ?>
+
+                                        <?php if (!empty($transaction['penalty_paid']) && $transaction['penalty_paid'] > 0): ?>
+                                            <div class="mt-1">
+                                                <span class="badge bg-danger-subtle text-danger border border-danger fs-11" title="Late Penalty Paid">
+                                                    <i class="fa-light fa-clock-rotate-left me-1"></i>Penalty: TK.<?= number_format($transaction['penalty_paid'], 2) ?>
+                                                </span>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <?php if (!empty($transaction['penalty_waived']) && $transaction['penalty_waived'] > 0): ?>
+                                            <div class="mt-1">
+                                                <span class="badge bg-warning-subtle text-dark border border-warning fs-11" title="Reason: <?= htmlspecialchars($transaction['waiver_reason'] ?? 'N/A') ?>">
+                                                    <i class="fa-light fa-file-signature me-1"></i>Waived: TK.<?= number_format($transaction['penalty_waived'], 2) ?> (<?= ucfirst($transaction['waiver_status'] ?? 'pending') ?>)
+                                                </span>
+                                                <?php if (!empty($transaction['waiver_attachment'])): ?>
+                                                    <a href="<?= $GLOBALS['base_url'] . '/' . htmlspecialchars($transaction['waiver_attachment']) ?>" target="_blank" class="btn btn-link btn-sm p-0 fs-11 ms-1 text-primary" title="View Waiver Proof">
+                                                        <i class="fa-light fa-paperclip"></i> Proof
+                                                    </a>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <?php echo !empty($transaction['created_by_name']) ? htmlspecialchars($transaction['created_by_name']) : '<span class="text-muted">System</span>'; ?>
                                     </td>
+                                    
                                     <td>
                                         <?php
                                             $hasId = (!empty($transaction['id']) && strpos($transaction['id'], 'booking-') === false);
@@ -704,7 +723,7 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
 
                 <!-- VIRTUAL EMI SCHEDULE (Yield to Maturity) -->
                 <?php if (!empty($virtualEmiSchedule)): ?>
-                <div class="mt-10">
+                <div class="mt-10" id="emi-schedule-section">
                     <h5 class="mb-3"><i class="fa-light fa-calendar-check me-2"></i>EMI Maturity Schedule</h5>
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped" style="font-size: 14px;">
@@ -717,7 +736,6 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                                     <th>Due Amount</th>
                                     <th>Payment Status</th>
                                     <th>Maturity Status</th>
-                                    <th>Follow Up</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -744,14 +762,6 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                                     <td>TK. <?= number_format($emi['due_amount'], 2) ?></td>
                                     <td><?= $statusBadge ?></td>
                                     <td><?= $maturityBadge ?></td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEmiFollowupModal(<?= $clientDetails['booking_id'] ?? 0 ?>, <?= $emi['emi_no'] ?>)">
-                                            <i class="fa-light fa-comment-dots"></i> Follow Up
-                                            <?php if (($emi['followup_count'] ?? 0) > 0): ?>
-                                                <span class="badge bg-secondary rounded-pill ms-1"><?= $emi['followup_count'] ?></span>
-                                            <?php endif; ?>
-                                        </button>
-                                    </td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>

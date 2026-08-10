@@ -234,6 +234,7 @@ class EmployeeController extends Controller
                 $userData['address']        = $employeeData['address'];
                 $userData['password']       = $hashedPassword;
                 $userData['role_id']        = $_POST['role_id'] ?? null;
+                $userData['secondary_role_id'] = $_POST['secondary_role_id'] ?? null;
                 $userData['employee_id']    = $employee_id;
                 $userData['team_id']        = $employeeData['team_id'];
 
@@ -445,6 +446,7 @@ class EmployeeController extends Controller
                 'address'        => $employeeData['address'],
                 'team_id'        => $employeeData['team_id'],
                 'role_id'        => (int)($_POST['role_id'] ?? 0),
+                'secondary_role_id' => !empty($_POST['secondary_role_id']) ? (int)$_POST['secondary_role_id'] : null,
                 'employee_id'    => $id,
             ];
 
@@ -463,6 +465,7 @@ class EmployeeController extends Controller
                 'designation_id' => $employeeData['designation_id'],
                 'address'        => $employeeData['address'],
                 'role_id'        => (int)($_POST['role_id'] ?? 0),
+                'secondary_role_id' => !empty($_POST['secondary_role_id']) ? (int)$_POST['secondary_role_id'] : null,
                 'employee_id'    => $id,
                 'team_id'        => $employeeData['team_id'],
                 'password'       => $plainPassword,

@@ -157,7 +157,7 @@ $show_breadcrumb = true;
     <!-- ══ CLIENTS TABLE ══ -->
     <div class="col-xxl-12">
         <div class="card__wrapper">
-            <div class="d-flex justify-content-between mb-20">
+            <div class="d-flex justify-content-between align-items-center mb-20">
                 <h4>
                     Clients Information
                     <?php if ($selectedProjectName): ?>
@@ -166,6 +166,9 @@ $show_breadcrumb = true;
                         </small>
                     <?php endif; ?>
                 </h4>
+                <a href="<?= $GLOBALS['base_url'] ?>/csv-import-form" class="btn btn-sm btn-success rounded-2 shadow-sm px-3">
+                    <i class="fa-light fa-file-csv me-1 fs-6"></i>Import CSV (EMI & Dev Charge)
+                </a>
             </div>
 
             <div class="table__wrapper table-responsive">
@@ -221,12 +224,23 @@ $show_breadcrumb = true;
                                         </button>
                                     </td>
                                     <td>
-                                        <div class="d-flex align-items-center justify-content-start gap-10">
+                                        <div class="d-flex align-items-center justify-content-start gap-2">
                                             <button class="table__icon download"
                                                 onclick="openProjectsModal(<?= $client['lead_id'] ?>, '<?= htmlspecialchars($client['client_name'], ENT_QUOTES) ?>')"
                                                 title="View Projects">
                                                 <i class="fa-regular fa-eye"></i>
                                             </button>
+                                            <?php if (!empty($client['booking_id'])): ?>
+                                                <?php $fCount = (int)($client['total_followup_count'] ?? 0); ?>
+                                                <button type="button"
+                                                        onclick="openClientEmiFollowupModal(<?= $client['booking_id'] ?>, '<?= htmlspecialchars($client['client_name'], ENT_QUOTES) ?>', <?= (int)($client['total_emi_count'] ?? 36) ?>)"
+                                                        class="btn btn-sm btn-outline-primary py-1 px-2 text-nowrap"
+                                                        style="font-size:11px;"
+                                                        title="Add / View Follow Up Notes">
+                                                    <i class="fa-light fa-comment-dots me-1"></i>Follow Up
+                                                    <span class="badge <?= $fCount > 0 ? 'bg-primary' : 'bg-secondary' ?> rounded-pill ms-1 followup-count-badge" data-booking-id="<?= $client['booking_id'] ?>" style="font-size:10px;"><?= $fCount ?></span>
+                                                </button>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
@@ -442,8 +456,63 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
-</div>
 <?php endif; ?>
+
+<!-- ===== CLIENT EMI FOLLOW UP MODAL ===== -->
+<div class="modal fade" id="clientEmiFollowupModal" tabindex="-1" aria-labelledby="clientEmiFollowupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border-radius:14px; overflow:hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #1e3a5f, #2563eb); color:#fff; border:0; padding:16px 24px;">
+                <h5 class="modal-title" style="font-weight:600;">
+                    <i class="fa-light fa-comment-dots me-2"></i>EMI Follow Up Notes — <span id="followup_modal_client_name">Client</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row ">
+                    <div class="col-md-5 border-end pe-3">
+                        <h6 class="text-primary mb-3"><i class="fa-light fa-plus-circle me-1"></i>Add New Follow Up Note</h6>
+                        <input type="hidden" id="modalFollowupBookingId">
+                        
+                        <div class="mb-3">
+                            <label class="form-label fs-13 font-semibold text-muted">Installment / EMI</label>
+                            <select id="modalFollowupEmiSelect" class="form-select form-select-sm" onchange="loadClientEmiFollowups($('#modalFollowupBookingId').val())">
+                                <option value="1">General / Overall Follow Up</option>
+                                <option value="1">EMI #1</option>
+                                <option value="2">EMI #2</option>
+                                <option value="3">EMI #3</option>
+                                <option value="4">EMI #4</option>
+                                <option value="5">EMI #5</option>
+                                <option value="6">EMI #6</option>
+                                <option value="7">EMI #7</option>
+                                <option value="8">EMI #8</option>
+                                <option value="9">EMI #9</option>
+                                <option value="10">EMI #10</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fs-13 font-semibold text-muted">Discussion Note / Remarks <span class="text-danger">*</span></label>
+                            <textarea id="modalFollowupNoteInput" class="form-control form-control-sm" rows="4" placeholder="Enter follow up discussion details, commitment date, or notes..."></textarea>
+                        </div>
+                        <button type="button" class="btn btn-primary w-100 shadow-sm" onclick="saveClientEmiFollowup()">
+                            <i class="fa-light fa-paper-plane me-1"></i>Save Follow Up Note
+                        </button>
+                    </div>
+                    
+                    <div class="col-md-7 ps-3">
+                        <h6 class="text-dark mb-3"><i class="fa-light fa-clock-rotate-left me-1"></i>Previous Follow Up History</h6>
+                        <div id="modalFollowupHistoryContainer" style="max-height: 320px; overflow-y: auto;">
+                            <div class="text-center text-muted py-4">
+                                <div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading history...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
     let projectsModal;
@@ -591,11 +660,23 @@ $show_breadcrumb = true;
                 ${getCurrentMonthBadge(land.current_month_status)}
             </td>
             <td>
-                <a class="table__icon download"
-                    href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history-view/${land.booking_id}"
-                    title="View Transaction History">
-                    <i class="fa-regular fa-eye"></i>
-                </a>
+                <div class="d-flex align-items-center gap-2">
+                    <a class="table__icon download"
+                        href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history-view/${land.booking_id}"
+                        title="View Transaction History">
+                        <i class="fa-regular fa-eye"></i>
+                    </a>
+                    <button type="button"
+                        class="btn btn-sm btn-outline-primary py-1 px-2 text-nowrap"
+                        style="font-size:11px;"
+                        onclick="openClientEmiFollowupModal(${land.booking_id}, '${escapeHtml(land.client_name || '')}', ${land.total_emi_count || 36})"
+                        title="Add / View Follow Up Notes">
+                        <i class="fa-light fa-comment-dots me-1"></i>Follow Up
+                        <span class="badge ${(land.total_followup_count || 0) > 0 ? 'bg-primary' : 'bg-secondary'} rounded-pill ms-1 followup-count-badge" data-booking-id="${land.booking_id}" style="font-size:10px;">
+                            ${land.total_followup_count || 0}
+                        </span>
+                    </button>
+                </div>
             </td>
         `;
 
@@ -777,6 +858,138 @@ $show_breadcrumb = true;
                 </div>
             </div>
         </div>`;
+    }
+
+    // ── EMI Follow Up Modal Logic ──────────────────────────────────────────
+    let clientEmiFollowupModalInstance;
+
+    function openClientEmiFollowupModal(bookingId, clientName, totalEmi = 36) {
+        document.getElementById('followup_modal_client_name').textContent = clientName || 'Client';
+        document.getElementById('modalFollowupBookingId').value = bookingId;
+        document.getElementById('modalFollowupNoteInput').value = '';
+        
+        // Dynamically build options with General, Development Charge, and EMI #1..N
+        const emiSelect = document.getElementById('modalFollowupEmiSelect');
+        if (emiSelect) {
+            let optionsHtml = '<option value="0">General / Overall Follow Up</option>';
+            optionsHtml += '<option value="999">Development Charge</option>';
+            const maxEmi = parseInt(totalEmi) || 36;
+            for (let i = 1; i <= maxEmi; i++) {
+                optionsHtml += `<option value="${i}">EMI #${i}</option>`;
+            }
+            emiSelect.innerHTML = optionsHtml;
+        }
+
+        document.getElementById('modalFollowupHistoryContainer').innerHTML = '<div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading history...</div>';
+        
+        const modalEl = document.getElementById('clientEmiFollowupModal');
+        if (modalEl) {
+            clientEmiFollowupModalInstance = new bootstrap.Modal(modalEl);
+            clientEmiFollowupModalInstance.show();
+        }
+        
+        loadClientEmiFollowups(bookingId);
+    }
+
+    function loadClientEmiFollowups(bookingId) {
+        $.ajax({
+            url: '<?= $GLOBALS['base_url'] ?>/account-client/getEmiFollowups',
+            type: 'GET',
+            data: { booking_id: bookingId },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    let html = '';
+                    if (!response.data || response.data.length === 0) {
+                        html = '<div class="text-center text-muted py-4"><i class="fa-light fa-comment-slash d-block fs-3 mb-2"></i>No follow up notes added yet.</div>';
+                    } else {
+                        response.data.forEach(function(note) {
+                            const label = note.purpose_label || (note.emi_no == 999 ? 'Development Charge' : (note.emi_no == 0 ? 'General Follow Up' : 'EMI #' + note.emi_no));
+                            const badgeClass = note.purpose_badge_class || (note.emi_no == 999 ? 'bg-warning text-dark' : (note.emi_no == 0 ? 'bg-secondary text-white' : 'bg-primary text-white'));
+                            const borderClr = note.emi_no == 999 ? '#f59e0b' : (note.emi_no == 0 ? '#64748b' : '#2563eb');
+
+                            html += `
+                            <div class="card mb-2 shadow-sm border-0" style="background:#f8fafc; border-left: 4px solid ${borderClr} !important;">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="badge ${badgeClass} fs-11 px-2 py-1">
+                                            <i class="fa-light fa-tag me-1"></i>Follow Up for: <strong>${escapeHtml(label)}</strong>
+                                        </span>
+                                        <span class="text-muted fs-11"><i class="fa-light fa-clock me-1"></i>${note.created_at_formatted || note.created_at || ''}</span>
+                                    </div>
+                                    <p class="mb-2 text-dark fs-13 fw-medium">${escapeHtml(note.note || '')}</p>
+                                    <div class="text-muted fs-11 text-end">
+                                        <span><i class="fa-light fa-user me-1"></i>By ${escapeHtml(note.author_name || 'System')}</span>
+                                    </div>
+                                </div>
+                            </div>`;
+                        });
+                    }
+                    $('#modalFollowupHistoryContainer').html(html);
+                } else {
+                    $('#modalFollowupHistoryContainer').html('<div class="text-danger p-3">Failed to load history.</div>');
+                }
+            },
+            error: function() {
+                $('#modalFollowupHistoryContainer').html('<div class="text-danger p-3">Error connecting to server.</div>');
+            }
+        });
+    }
+
+    function saveClientEmiFollowup() {
+        const bookingId = $('#modalFollowupBookingId').val();
+        const emiNo = $('#modalFollowupEmiSelect').val() ?? 0;
+        const note = $('#modalFollowupNoteInput').val().trim();
+        
+        if (!note) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Note Required',
+                text: 'Please enter a follow up note before saving.',
+            });
+            return;
+        }
+        
+        $.ajax({
+            url: '<?= $GLOBALS['base_url'] ?>/account-client/saveEmiFollowup',
+            type: 'POST',
+            data: { booking_id: bookingId, emi_no: emiNo, note: note },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Saved!',
+                        text: 'Follow up note saved successfully.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    $('#modalFollowupNoteInput').val('');
+                    loadClientEmiFollowups(bookingId);
+                    
+                    // Update count badge in real-time
+                    const badges = document.querySelectorAll(`.followup-count-badge[data-booking-id="${bookingId}"]`);
+                    badges.forEach(badge => {
+                        let currentCount = parseInt(badge.textContent) || 0;
+                        badge.textContent = currentCount + 1;
+                        badge.className = 'badge bg-primary rounded-pill ms-1 followup-count-badge';
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Failed',
+                        text: response.message || "Failed to save note."
+                    });
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Server Error',
+                    text: 'Please try again later.'
+                });
+            }
+        });
     }
 </script>
 

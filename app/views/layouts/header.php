@@ -719,6 +719,14 @@
                                             add acount
                                         </a>
                                     </li>
+                                    <?php if(isset($_SESSION['user']['secondary_role_id']) && !empty($_SESSION['user']['secondary_role_id'])): ?>
+                                    <li>
+                                        <a href="<?= $GLOBALS['base_url'] ?>/switch-role">
+                                            <i class="fa-regular fa-user" style="font-size: 16px; margin-right: 8px; color: #7A7A7A;"></i>
+                                            Switch Role
+                                        </a>
+                                    </li>
+                                    <?php endif; ?>
                                     <li>
 
                                         <a href="<?= $GLOBALS['base_url']  ?>/logout"><svg width="18" height="18" viewBox="0 0 18 18"

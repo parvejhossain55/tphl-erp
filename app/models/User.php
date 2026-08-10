@@ -255,14 +255,15 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
                 e.photo AS employee_photo,
                 e.make_user,
                 d.name AS designation_name,
-                r.name AS role_name,
+                IF(r.id IN (5,8,9), r.name, sr.name) AS role_name,
                 t.name AS team_name
             FROM users u
             LEFT JOIN employees e ON e.user_id = u.id
             LEFT JOIN designations AS d ON d.id = u.designation_id
             LEFT JOIN teams AS t ON t.id = u.team_id
             LEFT JOIN roles AS r ON r.id = u.role_id
-           WHERE r.id IS NOT NULL AND r.id IN(5,8,9) 
+            LEFT JOIN roles AS sr ON sr.id = u.secondary_role_id
+           WHERE (r.id IN (5,8,9) OR sr.id IN (5,8,9))
         
 
     "); // Sales Manager = 5, Sales Executive = 8,sales Team head = 9
@@ -287,15 +288,20 @@ public function getUsersByTeamAndRole($teamId)
                 e.photo AS employee_photo,
                 e.make_user,
                 d.name AS designation_name,
-                r.name AS role_name,
+                IF(r.id IN (5,8,9), r.name, sr.name) AS role_name,
                 t.name AS team_name
             FROM users u
             LEFT JOIN employees e ON e.user_id = u.id
             LEFT JOIN designations d ON d.id = u.designation_id
             LEFT JOIN teams t ON t.id = u.team_id
             LEFT JOIN roles r ON r.id = u.role_id
+            LEFT JOIN roles sr ON sr.id = u.secondary_role_id
             WHERE u.team_id = ? 
-            AND (u.role_id IN (5, 8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))";
+            AND (
+                (r.id IN (5, 8) OR (r.id = 9 AND u.team_id IS NOT NULL))
+                OR 
+                (sr.id IN (5, 8) OR (sr.id = 9 AND u.team_id IS NOT NULL))
+            )";
 
     $stmt = $this->db->prepare($sql);
     $stmt->bind_param("i", $teamId);
@@ -475,6 +481,7 @@ public function getUsersByTeamAndRole($teamId)
         $address        = $data['address'] ?? '';
         $nid            = $data['nid'] ?? '';
         $role_id        = (int)($data['role_id'] ?? 2);
+        $secondary_role_id = isset($data['secondary_role_id']) && $data['secondary_role_id'] !== '' ? (int)$data['secondary_role_id'] : null;
         $user_name      = $data['user_name'] ?? '';
         $media_link1    = $data['media_link1'] ?? '';
         $media_link2    = $data['media_link2'] ?? '';
@@ -498,15 +505,16 @@ public function getUsersByTeamAndRole($teamId)
             media_link1 = ?,
             media_link2 = ?,
             created_by = ?,
-            team_id = ?
+            team_id = ?,
+            secondary_role_id = ?
         WHERE id = ?"
         );
 
         if (!$stmt) throw new \Exception("User update prepare failed: " . $this->db->error);
 
-        // Bind parameters - "sissississsssiii"
+        // Bind parameters
         if (!$stmt->bind_param(
-            "sissississsssiii",
+            "sisssssisssssiiii",
             $full_name,
             $emp_id,
             $phone,
@@ -522,6 +530,7 @@ public function getUsersByTeamAndRole($teamId)
             $media_link2,
             $created_by,
             $team_id,
+            $secondary_role_id,
             $id
         )) throw new \Exception("User update bind_param failed: " . $stmt->error);
 
@@ -719,14 +728,19 @@ public function getSalesTeams($roleId = null, $teamId = null, $userId = null)
                 e.photo AS employee_photo,
                 e.make_user,
                 d.name AS designation_name,
-                r.name AS role_name,
+                IF(r.id IN (5,8,9), r.name, sr.name) AS role_name,
                 t.name AS team_name
             FROM users u
             LEFT JOIN employees e ON e.user_id = u.id
             LEFT JOIN designations d ON d.id = u.designation_id
             LEFT JOIN teams t ON t.id = u.team_id
             LEFT JOIN roles r ON r.id = u.role_id
-            WHERE (u.role_id IN (5, 8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
+            LEFT JOIN roles sr ON sr.id = u.secondary_role_id
+            WHERE (
+                (u.role_id IN (5, 8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))
+                OR
+                (u.secondary_role_id IN (5, 8) OR (u.secondary_role_id = 9 AND u.team_id IS NOT NULL))
+            )
               AND (e.employee_status IS NULL OR e.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
 
     $params = [];

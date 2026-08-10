@@ -114,8 +114,16 @@ class ApprovalRequestController extends Controller
         $processedCount = 0;
         $failedCount = 0;
 
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isManagement = in_array($userRoleId, [1, 3], true);
+
         foreach ($requestIds as $id) {
             try {
+                $req = $this->approvalModel->find($id);
+                if ($req && ($req['approve_role'] ?? 'management') === 'management' && !$isManagement) {
+                    $failedCount++;
+                    continue; // Accounts/non-management users cannot approve Management requests
+                }
                 $res = $this->approvalModel->updateStatus($id, $status, null, null, $note);
                 if ($res) {
                     $processedCount++;
