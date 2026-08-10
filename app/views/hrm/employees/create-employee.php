@@ -139,6 +139,23 @@
                          <div class="col-lg-6">
                              <div class="from__input-box">
                                  <div class="form__input-title">
+                                     <label>Secondary Role<span>(Optional)</span></label>
+                                 </div>
+
+                                 <div class="form__input">
+                                     <select class="form-control select2" name="secondary_role_id">
+                                         <option value="">None</option>
+                                         <?php foreach ($roles as $role): ?>
+                                             <option value="<?= $role['id'] ?>"><?= $role['name'] ?></option>
+                                         <?php endforeach ?>
+                                     </select>
+
+                                 </div>
+                             </div>
+                         </div>
+                         <div class="col-lg-6">
+                             <div class="from__input-box">
+                                 <div class="form__input-title">
                                      <label>Employee Department <span>*</span></label>
                                  </div>
 

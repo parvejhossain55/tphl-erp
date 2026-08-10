@@ -254,7 +254,8 @@ class HrmDashboardController extends Controller
             $this->approvalModel->updateStatus($id, 'approved', $approved_amount, $approved_days);
 
             $this->db->commit();
-            header("Location: " . $GLOBALS['base_url'] . "/hrm-dashboard");
+            $redirectUrl = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/hrm-dashboard");
+            header("Location: " . $redirectUrl);
             exit;
         } catch (Exception $e) {
             $this->db->rollback();
@@ -314,7 +315,8 @@ class HrmDashboardController extends Controller
             );
 
             $this->db->commit();
-            header("Location: " . $GLOBALS['base_url'] . "/hrm-dashboard");
+            $redirectUrl = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/hrm-dashboard");
+            header("Location: " . $redirectUrl);
             exit;
         } catch (Exception $e) {
             $this->db->rollback();

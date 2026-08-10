@@ -33,6 +33,18 @@ $remainingCF           = (float)($paymentSummary['remaining_construction_fee'] ?
 $totalBulkDiscount     = (float)($paymentSummary['total_bulk_emi_discount'] ?? 0);
 $constructionFee       = (float)($paymentSummary['construction_fee'] ?? 0);
 $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
+
+$virtualEmiSchedule    = $virtualEmiSchedule ?? [];
+$overduePenaltySum     = 0;
+$overdueEmiCount       = 0;
+if (!empty($virtualEmiSchedule)) {
+    foreach ($virtualEmiSchedule as $sch) {
+        if (($sch['maturity_status'] ?? '') === 'due') {
+            $overdueEmiCount++;
+            $overduePenaltySum += (float)($sch['penalty_amount'] ?? 0);
+        }
+    }
+}
 ?>
 
 <div class="row">
@@ -205,6 +217,62 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                         <i class="fa-light fa-info-circle me-1"></i>
                                         This discount reduces the <strong>total construction fee</strong> (separate from booking discount). Applied after verification.
                                     </small>
+                                </div>
+
+                                <!-- Late Payment Penalty & Waiver Section -->
+                                <div id="penaltyWaiverSection" class="mt-3 p-3" style="background:rgba(220,53,69,0.05);border-radius:8px;border:1px solid rgba(220,53,69,0.2);">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <label class="form__input-title mb-0" style="color:#dc3545;">
+                                            <i class="fa-light fa-clock-rotate-left me-1"></i>Late Payment Penalty (5% Compounded Monthly)
+                                        </label>
+                                        <span id="penaltyBadge" class="badge bg-danger" style="display:none;">Overdue</span>
+                                    </div>
+                                    
+                                    <div class="row align-items-center mt-2">
+                                        <div class="col-md-7">
+                                            <div class="d-flex flex-column gap-1">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <small class="text-muted">Calculated Penalty:</small>
+                                                    <strong id="calculatedPenaltyText" class="text-danger fs-15">TK. 0.00</strong>
+                                                </div>
+                                                <div id="penaltyTotalBreakdown" class="fs-13 mt-1" style="display:none;">
+                                                    <span class="text-dark">Suggested Total (1 EMI + Penalty):</span>
+                                                    <strong id="totalPayableWithPenaltyText" class="text-primary fs-15 me-2">TK. 0.00</strong>
+                                                    <button type="button" id="btnFillTotalWithPenalty" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size:11px;">
+                                                        <i class="fa-light fa-plus-circle me-1"></i>Auto Fill Paid Amount
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <input type="hidden" name="penalty_amount" id="penaltyAmount" value="0">
+                                            <input type="hidden" name="penalty_paid" id="penaltyPaid" value="0">
+                                        </div>
+                                        <div class="col-md-5 text-end">
+                                            <div class="form-check form-switch d-inline-block">
+                                                <input class="form-check-input" type="checkbox" id="toggleWaiver" name="apply_waiver" value="1">
+                                                <label class="form-check-label text-dark fw-bold" for="toggleWaiver">Request Penalty Waiver</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Waiver Input Box -->
+                                    <div id="waiverFields" class="mt-3 p-3 bg-white" style="display:none;border-radius:6px;border:1px solid #ced4da;">
+                                        <h6 class="text-primary fs-14 mb-2"><i class="fa-light fa-file-signature me-1"></i>Penalty Waiver Details (Requires Management Approval)</h6>
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fs-13 font-semibold">Waived Penalty Amount (TK.) <span class="text-danger">*</span></label>
+                                                <input type="number" name="penalty_waived" id="penaltyWaived" class="form-control form-control-sm" step="0.01" min="0" value="0">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fs-13 font-semibold">Waiver Reason <span class="text-danger">*</span></label>
+                                                <textarea name="waiver_reason" id="waiverReason" class="form-control form-control-sm" rows="2" placeholder="State valid business/client reason for waiver..."></textarea>
+                                            </div>
+                                            <div class="col-md-12">
+                                                <label class="form-label fs-13 font-semibold">Approval Document / Attachment Reference <span class="text-danger">*</span></label>
+                                                <input type="file" name="waiver_file" id="waiverFile" class="form-control form-control-sm" accept="image/*,application/pdf">
+                                                <small class="text-muted fs-12">Attach approved paper, application letter or reference document (PDF, PNG, JPG)</small>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -582,10 +650,138 @@ $emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
             });
         }
 
+        // Penalty calculation constants from PHP
+        const overduePenaltySum = <?= (float)$overduePenaltySum ?>;
+        const overdueEmiCount   = <?= (int)$overdueEmiCount ?>;
+
+        function updatePenaltyDisplay() {
+            const penaltySection        = document.getElementById('penaltyWaiverSection');
+            const penaltyBadge          = document.getElementById('penaltyBadge');
+            const calculatedPenaltyText = document.getElementById('calculatedPenaltyText');
+            const penaltyAmountInput    = document.getElementById('penaltyAmount');
+            const penaltyPaidInput      = document.getElementById('penaltyPaid');
+            const penaltyWaivedInput    = document.getElementById('penaltyWaived');
+            const toggleWaiver          = document.getElementById('toggleWaiver');
+
+            const pTypeValue = paymentType ? paymentType.value : '';
+
+            if (pTypeValue !== 'emi') {
+                if (penaltySection) penaltySection.style.display = 'none';
+                if (penaltyAmountInput) penaltyAmountInput.value = '0';
+                if (penaltyPaidInput) penaltyPaidInput.value = '0';
+                return;
+            }
+
+            const penaltyTotalBreakdown    = document.getElementById('penaltyTotalBreakdown');
+            const totalPayableText         = document.getElementById('totalPayableWithPenaltyText');
+            const btnFillTotalWithPenalty  = document.getElementById('btnFillTotalWithPenalty');
+
+            if (overdueEmiCount > 0 && overduePenaltySum > 0) {
+                if (penaltySection) penaltySection.style.display = 'block';
+                if (penaltyBadge) {
+                    penaltyBadge.style.display = 'inline-block';
+                    penaltyBadge.textContent = overdueEmiCount + ' Overdue Installment(s)';
+                }
+                if (calculatedPenaltyText) {
+                    calculatedPenaltyText.textContent = 'TK. ' + overduePenaltySum.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                }
+                if (penaltyAmountInput) penaltyAmountInput.value = overduePenaltySum.toFixed(2);
+
+                let effectivePenaltyPaid = overduePenaltySum;
+                if (toggleWaiver && toggleWaiver.checked) {
+                    const waivedVal = parseFloat(penaltyWaivedInput?.value) || overduePenaltySum;
+                    effectivePenaltyPaid = Math.max(0, overduePenaltySum - waivedVal);
+                    if (penaltyPaidInput) penaltyPaidInput.value = effectivePenaltyPaid.toFixed(2);
+                    if (penaltyWaivedInput && (!penaltyWaivedInput.value || parseFloat(penaltyWaivedInput.value) <= 0)) {
+                        penaltyWaivedInput.value = overduePenaltySum.toFixed(2);
+                    }
+                } else {
+                    if (penaltyPaidInput) penaltyPaidInput.value = overduePenaltySum.toFixed(2);
+                    if (penaltyWaivedInput) penaltyWaivedInput.value = '0';
+                }
+
+                // Total Payable = Suggested 1 EMI Base + Effective Penalty Paid
+                const suggestedTotalPayable = (perEmiAmountVal > 0 ? perEmiAmountVal : 0) + effectivePenaltyPaid;
+                if (penaltyTotalBreakdown) penaltyTotalBreakdown.style.display = 'block';
+                if (totalPayableText) {
+                    totalPayableText.textContent = 'TK. ' + suggestedTotalPayable.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                }
+
+                if (btnFillTotalWithPenalty) {
+                    btnFillTotalWithPenalty.onclick = function() {
+                        if (amountField) {
+                            amountField.value = Math.round(suggestedTotalPayable);
+                            amountField.dispatchEvent(new Event('input'));
+                        }
+                    };
+                }
+            } else {
+                if (penaltySection) penaltySection.style.display = 'none';
+                if (penaltyBadge) penaltyBadge.style.display = 'none';
+                if (penaltyTotalBreakdown) penaltyTotalBreakdown.style.display = 'none';
+                if (calculatedPenaltyText) calculatedPenaltyText.textContent = 'TK. 0.00';
+                if (penaltyAmountInput) penaltyAmountInput.value = '0';
+                if (penaltyPaidInput) penaltyPaidInput.value = '0';
+            }
+        }
+
+        // Toggle Penalty Waiver fields
+        const toggleWaiver = document.getElementById('toggleWaiver');
+        const waiverFields = document.getElementById('waiverFields');
+        const waiverReason = document.getElementById('waiverReason');
+        const waiverFile   = document.getElementById('waiverFile');
+
+        if (toggleWaiver && waiverFields) {
+            toggleWaiver.addEventListener('change', function() {
+                if (this.checked) {
+                    waiverFields.style.display = 'block';
+                    if (waiverReason) waiverReason.setAttribute('required', 'required');
+                    if (waiverFile) waiverFile.setAttribute('required', 'required');
+                } else {
+                    waiverFields.style.display = 'none';
+                    if (waiverReason) waiverReason.removeAttribute('required');
+                    if (waiverFile) waiverFile.removeAttribute('required');
+                }
+                updatePenaltyDisplay();
+            });
+        }
+
+        if (paymentType) {
+            paymentType.addEventListener('change', function() {
+                updatePenaltyDisplay();
+            });
+        }
+
+        updatePenaltyDisplay();
+
         // Form validation
         const transactionForm = document.getElementById('transactionForm');
         if (transactionForm) {
             transactionForm.addEventListener('submit', function (e) {
+                if (toggleWaiver && toggleWaiver.checked) {
+                    const waivedAmt = parseFloat(document.getElementById('penaltyWaived')?.value) || 0;
+                    const reasonTxt = waiverReason?.value.trim() || '';
+                    const fileVal   = waiverFile?.value || '';
+
+                    if (waivedAmt <= 0) {
+                        e.preventDefault();
+                        alert('Please specify the waived penalty amount.');
+                        document.getElementById('penaltyWaived')?.focus();
+                        return false;
+                    }
+                    if (!reasonTxt) {
+                        e.preventDefault();
+                        alert('Waiver reason is required.');
+                        waiverReason?.focus();
+                        return false;
+                    }
+                    if (!fileVal) {
+                        e.preventDefault();
+                        alert('Attachment document for penalty waiver approval is required.');
+                        waiverFile?.focus();
+                        return false;
+                    }
+                }
                 const paymentTypeValue = paymentType ? paymentType.value : '';
                 const amount = parseFloat(amountField?.value) || 0;
                 const dueAmount = parseFloat(dueEmiAmountField?.value) || 0;

@@ -8,6 +8,7 @@ return [
     'admin-login' => ['controller' => 'LoginController', 'method' => 'index'],
     'logout' => ['controller' => 'LoginController', 'method' => 'logout'],
     'update-activity' => ['controller' => 'LoginController', 'method' => 'updateActivity'],
+    'switch-role' => ['controller' => 'SwitchRoleController', 'method' => 'switchRole'],
 
     // =========================================================================
     // Controller: HomeController
@@ -167,6 +168,7 @@ return [
     'api/flat-inventory-summary' => ['controller' => 'ApiController', 'method' => 'flatInventorySummary'],
     'api/flat-inventory-summary/(\d+)' => ['controller' => 'ApiController', 'method' => 'flatInventorySummary'],
     'api/financial-summary' => ['controller' => 'ApiController', 'method' => 'financialSummary'],
+    'api/client-payment-info' => ['controller' => 'ApiController', 'method' => 'clientPaymentInfo'],
 
     // =========================================================================
     // Controller: ErpTrackerController

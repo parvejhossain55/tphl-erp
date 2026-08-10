@@ -448,58 +448,77 @@ class ApprovalRequest extends Model
         $params = [];
         $types  = '';
 
-        if (in_array('claim_status', $columns)) {
-            $updateFields[] = "claim_status = ?";
-            $types .= 's';
-            $params[] = $sourceStatus;
-        } elseif (in_array('approval_status', $columns)) {
-            $updateFields[] = "approval_status = ?";
-            $types .= 's';
-            $params[] = $sourceStatus;
-        } elseif ($sourceTable === 'payslips') {
-            if ($status === 'approved') {
-                $updateFields[] = "mgmt_status = 'approved', hr_status = 'approved'";
-            } else {
-                $updateFields[] = "mgmt_status = 'rejected', hr_status = 'rejected'";
+        $requestType = $request['request_type'] ?? '';
+
+        if ($sourceTable === 'lead_payments' && $requestType === 'Penalty Waiver Request') {
+            if (in_array('waiver_status', $columns)) {
+                $updateFields[] = "waiver_status = ?";
+                $types .= 's';
+                $params[] = $sourceStatus;
             }
-        } elseif (in_array('status', $columns)) {
-            $updateFields[] = "status = ?";
-            $types .= 's';
-            $params[] = $sourceStatus;
-        } elseif ($sourceTable === 'lead_payments' && in_array('handover_status', $columns)) {
-            $updateFields[] = "handover_status = ?";
-            $types .= 's';
-            $params[] = $sourceStatus;
-        }
+            if ($approvedAmount !== null && in_array('penalty_waived', $columns)) {
+                $updateFields[] = "penalty_waived = ?";
+                $types .= 'd';
+                $params[] = (float)$approvedAmount;
+            }
+            if ($approvedBy !== null && in_array('waiver_approved_by', $columns)) {
+                $updateFields[] = "waiver_approved_by = ?";
+                $types .= 'i';
+                $params[] = (int)$approvedBy;
+            }
+        } else {
+            if (in_array('claim_status', $columns)) {
+                $updateFields[] = "claim_status = ?";
+                $types .= 's';
+                $params[] = $sourceStatus;
+            } elseif (in_array('approval_status', $columns)) {
+                $updateFields[] = "approval_status = ?";
+                $types .= 's';
+                $params[] = $sourceStatus;
+            } elseif ($sourceTable === 'payslips') {
+                $payStatus = ($status === 'approved') ? 'approved' : 'reject';
+                if (in_array('status', $columns)) {
+                    $updateFields[] = "status = ?";
+                    $types .= 's';
+                    $params[] = $payStatus;
+                }
+            } elseif (in_array('status', $columns)) {
+                $updateFields[] = "status = ?";
+                $types .= 's';
+                $params[] = $sourceStatus;
+            } elseif ($sourceTable === 'lead_payments' && in_array('handover_status', $columns)) {
+                $updateFields[] = "handover_status = ?";
+                $types .= 's';
+                $params[] = $sourceStatus;
+            }
 
-        if (in_array('approved_amount', $columns) && $approvedAmount !== null) {
-            $updateFields[] = "approved_amount = ?";
-            $types .= 'd';
-            $params[] = $approvedAmount;
-        }
+            if (in_array('approved_amount', $columns) && $approvedAmount !== null) {
+                $updateFields[] = "approved_amount = ?";
+                $types .= 'd';
+                $params[] = $approvedAmount;
+            }
 
-        if (in_array('approved_days', $columns) && $approved_days !== null) {
-            $updateFields[] = "approved_days = ?";
-            $types .= 'i';
-            $params[] = $approved_days;
-        }
+            if (in_array('approved_days', $columns) && $approved_days !== null) {
+                $updateFields[] = "approved_days = ?";
+                $types .= 'i';
+                $params[] = $approved_days;
+            }
 
-        if (in_array('approved_by', $columns)) {
-            $updateFields[] = "approved_by = ?";
-            $types .= 'i';
-            $params[] = $approvedBy;
-        } elseif ($sourceTable === 'lead_payments' && in_array('handover_to', $columns)) { // Wait, handover_to is who it was requested to? Actually approved_by goes nowhere if there's no approved_by column. We can add approved_by if needed. Let's just leave handover_to alone here.
-            // Do not override handover_to, it's the requested approver, not the actual one.
-        }
+            if (in_array('approved_by', $columns)) {
+                $updateFields[] = "approved_by = ?";
+                $types .= 'i';
+                $params[] = $approvedBy;
+            }
 
-        if ($sourceTable === 'lead_payments' && $status === 'rejected' && in_array('handover_rejection_reason', $columns)) {
-            $updateFields[] = "handover_rejection_reason = ?";
-            $types .= 's';
-            $params[] = $approvalNote;
-        }
+            if ($sourceTable === 'lead_payments' && $status === 'rejected' && in_array('handover_rejection_reason', $columns)) {
+                $updateFields[] = "handover_rejection_reason = ?";
+                $types .= 's';
+                $params[] = $approvalNote;
+            }
 
-        if (in_array('approved_at', $columns)) {
-            $updateFields[] = "approved_at = NOW()";
+            if (in_array('approved_at', $columns)) {
+                $updateFields[] = "approved_at = NOW()";
+            }
         }
 
         //    7. Execute source update 
@@ -517,8 +536,13 @@ class ApprovalRequest extends Model
             }
             
             $stmt2 = $this->db->prepare($sql2);
-            $stmt2->bind_param($types, ...$params);
-            $stmt2->execute();
+            if ($stmt2) {
+                $stmt2->bind_param($types, ...$params);
+                $stmt2->execute();
+                $stmt2->close();
+            } else {
+                error_log("ApprovalRequest updateStatus prepare failed for table {$sourceTable}: " . $this->db->error . " | SQL: " . $sql2);
+            }
         }
 
         return true;
@@ -701,6 +725,21 @@ class ApprovalRequest extends Model
                             $payoutStatus = 'Pending Accounts Payout';
                         }
                     }
+                }
+            } else if ($sourceTable === 'lead_payments') {
+                $lpSql = "SELECT booking_id FROM lead_payments WHERE id = ? LIMIT 1";
+                $lpStmt = $this->db->prepare($lpSql);
+                if ($lpStmt) {
+                    $lpStmt->bind_param("i", $sourceId);
+                    $lpStmt->execute();
+                    $lpRow = $lpStmt->get_result()->fetch_assoc();
+                    $lpStmt->close();
+                    if ($lpRow && !empty($lpRow['booking_id'])) {
+                        $row['booking_id'] = $lpRow['booking_id'];
+                    }
+                }
+                if ($row['status'] === 'approved') {
+                    $payoutStatus = 'Approved';
                 }
             } else if ($row['status'] === 'approved') {
                 $payoutStatus = 'Approved';

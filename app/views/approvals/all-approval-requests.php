@@ -197,8 +197,15 @@
                                     // Direct module target URL resolution so clicking review/view opens the exact module page!
                                     $targetUrl = $base_url . '/approve-request/' . $req['id'];
                                     $sourceTable = strtolower($req['source_table'] ?? '');
+                                    $requestType = strtolower($req['request_type'] ?? '');
 
-                                    if ($sourceTable === 'project_incentive_claims') {
+                                    if ($sourceTable === 'lead_payments') {
+                                        if (!empty($req['booking_id'])) {
+                                            $targetUrl = $base_url . '/clients-cash-in-history-view/' . $req['booking_id'];
+                                        } else {
+                                            $targetUrl = $base_url . '/ced-dashboard';
+                                        }
+                                    } elseif ($sourceTable === 'project_incentive_claims') {
                                         $targetUrl = $base_url . '/incentive-management';
                                     } elseif ($sourceTable === 'vendor_payment_requests') {
                                         $targetUrl = $base_url . '/con-vendor-payment-requests';
@@ -210,15 +217,23 @@
                                         $targetUrl = $base_url . '/fund-requisitions';
                                     } elseif ($sourceTable === 'cashout_requests') {
                                         $targetUrl = $base_url . '/admin-cashout-requests';
-                                    } elseif ($sourceTable === 'payslips' || $sourceTable === 'salary_requests') {
-                                        $targetUrl = $base_url . '/payslip-lists';
+                                    } elseif ($sourceTable === 'payslips' || $sourceTable === 'salary_requests' || $requestType === 'salary') {
+                                        $targetUrl = $base_url . '/home';
                                     } elseif ($sourceTable === 'client_refund_requests') {
                                         $targetUrl = $base_url . '/client-refunds';
+                                    } elseif ($sourceTable === 'employee_leaves' || $sourceTable === 'leave') {
+                                        $targetUrl = $base_url . '/home';
+                                    } elseif ($sourceTable === 'manpower_requisitions') {
+                                        $targetUrl = $base_url . '/manpower-requisitions';
                                     }
+                                    $reqApproveRole = strtolower($req['approve_role'] ?? 'management');
+                                    $isMgmtRequest = ($reqApproveRole === 'management');
+                                    $isManagementUser = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3], true);
+                                    $canUserApprove = $isManagementUser || !$isMgmtRequest;
                                 ?>
                                 <tr>
                                     <td class="ps-3">
-                                        <input type="checkbox" class="approval-req-checkbox form-check-input" value="<?= $req['id'] ?>" <?= $req['status'] !== 'pending' ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
+                                        <input type="checkbox" class="approval-req-checkbox form-check-input" value="<?= $req['id'] ?>" <?= ($req['status'] !== 'pending' || !$canUserApprove) ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
                                     </td>
                                     <!-- Req # & Date -->
                                     <td>
@@ -344,9 +359,15 @@
                                     <!-- Action Button (Directly routes to specific module page!) -->
                                     <td class="pe-4 text-end">
                                         <?php if ($req['status'] === 'pending'): ?>
-                                            <a href="<?= $targetUrl ?>" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm">
-                                                <i class="fa-solid fa-up-right-from-square me-1"></i>Review / Process
-                                            </a>
+                                            <?php if ($canUserApprove): ?>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm">
+                                                    <i class="fa-solid fa-up-right-from-square me-1"></i>Review / Process
+                                                </a>
+                                            <?php else: ?>
+                                                <a href="javascript:void(0)" class="btn btn-sm btn-light text-muted rounded-2 px-2 border" title="Management Approval Required">
+                                                    <i class="fa-solid fa-lock me-1 text-warning"></i>Management Only
+                                                </a>
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border">
                                                 <i class="fa-solid fa-eye me-1"></i>View Module Page
