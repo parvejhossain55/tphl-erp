@@ -3645,11 +3645,8 @@ ORDER BY lb.booking_date DESC
                 $devTarget = (float) ($summary['flat_development_charges'] ?? 0);
                 $devPaid   = (float) ($summary['development_charge_paid_total'] ?? 0);
                 $devRemaining = max(0, $devTarget - $devPaid);
-                if ($devRemaining <= 0) {
-                    throw new Exception("Development charge is already fully paid! Cannot accept more payments.");
-                }
-                if ($amount > $devRemaining) {
-                    throw new Exception("Amount exceeds remaining development charge: TK." . number_format($devRemaining, 2));
+                if ($devTarget > 0 && $devRemaining <= 0) {
+                    throw new Exception("Development charge is already fully paid for {$rowData['client_name']} (Flat {$rowData['flat_name']})!");
                 }
             } elseif ($paymentType === 'emi') {
                 $summary = $this->getPaymentSummaryByBookingId($bookingId);
@@ -3658,11 +3655,8 @@ ORDER BY lb.booking_date DESC
                 $bulkDisc          = (float) ($summary['total_bulk_emi_discount'] ?? 0);
                 $effectiveCFRemaining = max(0, $cfTotal - $emiPaidSoFar - $bulkDisc);
 
-                if ($effectiveCFRemaining <= 0) {
-                    throw new Exception("Construction fee is already fully paid! No more EMIs required.");
-                }
-                if ($amount > $effectiveCFRemaining) {
-                    throw new Exception("Amount exceeds remaining construction fee: TK." . number_format($effectiveCFRemaining, 2));
+                if ($cfTotal > 0 && $effectiveCFRemaining <= 0) {
+                    throw new Exception("Construction fee is already fully paid for {$rowData['client_name']} (Flat {$rowData['flat_name']})!");
                 }
             }
 
@@ -3710,32 +3704,39 @@ ORDER BY lb.booking_date DESC
                 }
 
                 if (!$parentData) {
-                    throw new Exception("No outstanding EMI due found for this booking to settle.");
-                }
-
-                $parentPaymentId = (int)$parentData['id'];
-                $remainingDue = (float)$parentData['due_emi_amount'];
-
-                if ($amount > $remainingDue) {
-                    throw new Exception("Settlement amount (TK." . number_format($amount, 2) . ") exceeds outstanding due (TK." . number_format($remainingDue, 2) . ") on EMI #{$parentData['emi_no']}");
-                }
-
-                // Service fee for settlement
-                if ($csvServiceFee !== null) {
-                    $serviceFee = (float)$csvServiceFee;
+                    // Fallback for CSV bulk import: If no parent overdue EMI exists in DB to settle,
+                    // safely process this row as an EMI installment payment!
+                    $isSettlement = false;
+                    $paymentType = 'emi';
                 } else {
-                    $summary = $this->getPaymentSummaryByBookingId($bookingId);
-                    $serviceChargeRate = (float)($summary['service_charge_per_emi'] ?? 0);
-                    $serviceFee = ($serviceChargeRate > 0) ? round($amount * ($serviceChargeRate / 100)) : 0;
+                    $parentPaymentId = (int)$parentData['id'];
+                    $remainingDue = (float)$parentData['due_emi_amount'];
+
+                    if ($amount > $remainingDue) {
+                        // Settle the remaining due amount, surplus becomes regular EMI payment
+                        $settleAmount = $remainingDue;
+                    } else {
+                        $settleAmount = $amount;
+                    }
+
+                    // Service fee for settlement
+                    if ($csvServiceFee !== null) {
+                        $serviceFee = (float)$csvServiceFee;
+                    } else {
+                        $summary = $this->getPaymentSummaryByBookingId($bookingId);
+                        $serviceChargeRate = (float)($summary['service_charge_per_emi'] ?? 0);
+                        $serviceFee = ($serviceChargeRate > 0) ? round($settleAmount * ($serviceChargeRate / 100)) : 0;
+                    }
+
+                    // Use 'emi' for payment_type to satisfy DB ENUM constraint,
+                    // track the difference via settlement_type column
+                    $paymentType = 'emi';
+                    $settlementType = 'emi_due_settlement';
+                    $dueEmiAmount = 0; // Settlement itself has no new due
                 }
+            }
 
-                // Use 'emi' for payment_type to satisfy DB ENUM constraint,
-                // track the difference via settlement_type column
-                $paymentType = 'emi';
-                $settlementType = 'emi_due_settlement';
-                $dueEmiAmount = 0; // Settlement itself has no new due
-
-            } elseif ($paymentType === 'emi') {
+            if ($paymentType === 'emi' && !$isSettlement) {
                 $summary = $this->getPaymentSummaryByBookingId($bookingId);
                 $serviceChargeRate = (float)($summary['service_charge_per_emi'] ?? 0);
                 $perEmiSuggested = (float)($summary['per_emi_amount'] ?? 0);

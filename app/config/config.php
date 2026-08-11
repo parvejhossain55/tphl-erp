@@ -39,8 +39,6 @@ if ($current_server == 1) {
 // CREATE USER 'tphl_read_only'@'localhost' IDENT IFIED BY 'ReadOnlyPass123!';
 // GRANT SELECT ON `tphl_db`.* TO 'tphl_read_only'@'localhost';
 // FLUSH PRIVILEGES;
-///////////////////////////
-
 if ($current_server == 2) {
     return [
         "db_host" => "127.0.0.1",
@@ -105,5 +103,12 @@ if ($current_server == 3) {
     ];
 }
 
+
+
+// emi csv delete with project id 
+// SELECT lp.id 
+// FROM lead_payments lp
+// INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+// WHERE lb.project_id = 45 AND DATE(lp.created_at) = '2026-08-10';
 
 
