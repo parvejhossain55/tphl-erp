@@ -18,7 +18,7 @@ class EmployeeTask extends Model
         (employee_id, work_date, task_description, hours_spent, status, remarks) 
         VALUES (?, ?, ?, ?, ?, ?)");
         $stmt->bind_param(
-            "ississ",
+            "issdss",
             $data['employee_id'],
             $data['work_date'],
             $data['task_description'],
@@ -47,7 +47,7 @@ class EmployeeTask extends Model
         employee_id=?, work_date=?, task_description=?, hours_spent=?, status=?, remarks=? 
         WHERE id=?");
         $stmt->bind_param(
-            "ississi",
+            "issdssi",
             $data['employee_id'],
             $data['work_date'],
             $data['task_description'],
