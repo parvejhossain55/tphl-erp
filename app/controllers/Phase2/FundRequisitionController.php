@@ -43,6 +43,8 @@ class FundRequisitionController extends Controller {
 
         $startDate = $_GET['start_date'] ?? '';
         $endDate = $_GET['end_date'] ?? '';
+        $statusFilter = $_GET['status'] ?? '';
+        $searchQuery = trim($_GET['search'] ?? '');
 
         $params = [];
         $types = "";
@@ -57,11 +59,29 @@ class FundRequisitionController extends Controller {
             $params[] = $endDate;
             $types .= "s";
         }
+        if (!empty($statusFilter)) {
+            if ($statusFilter === 'pending') {
+                $where .= " AND fr.status IN ('pending', 'pending_dept', 'dept_approved')";
+            } else {
+                $where .= " AND fr.status = ?";
+                $params[] = $statusFilter;
+                $types .= "s";
+            }
+        }
+        if (!empty($searchQuery)) {
+            $where .= " AND (fr.id LIKE ? OR u_req.full_name LIKE ? OR fr.purpose LIKE ? OR p.name LIKE ?)";
+            $searchParam = '%' . $searchQuery . '%';
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $params[] = $searchParam;
+            $types .= "ssss";
+        }
 
-        // Limit to 10 by default if no date filter is applied
+        // Limit to 10 by default if no filter is applied
         $limitClause = "";
         $isDefaultLimit = false;
-        if (empty($startDate) && empty($endDate)) {
+        if (empty($startDate) && empty($endDate) && empty($statusFilter) && empty($searchQuery)) {
             $limitClause = " LIMIT 10";
             $isDefaultLimit = true;
         }
@@ -159,6 +179,8 @@ class FundRequisitionController extends Controller {
             'roleId' => $roleId,
             'startDate' => $startDate,
             'endDate' => $endDate,
+            'statusFilter' => $statusFilter,
+            'searchQuery' => $searchQuery,
             'isDefaultLimit' => $isDefaultLimit
         ]);
     }

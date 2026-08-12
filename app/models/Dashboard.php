@@ -488,8 +488,8 @@ class Dashboard extends Model
         $stats['total_cashin'] = $stats['total_landshare'] + $stats['total_registration'] +
             $stats['total_booking_money'] + $stats['total_emi_amount'] + $stats['total_development_charge'] + $stats['total_shop_service_charge'] + $stats['management_cashin'];
 
-        // Calculate Total Revenue (includes registration — mirrors Central Statement formula)
-        $stats['total_revenue'] = $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_service_fees'] + $stats['total_development_charge'] + $stats['total_registration'];
+        // Calculate Total Revenue (Verified EMI 10% Service Fee + Land Share/Booking Money + Development Charge)
+        $stats['total_revenue'] = $stats['total_service_fees'] + $stats['total_landshare'] + $stats['total_development_charge'];
 
         $peaUnion = $hasPeaTable ? "UNION ALL SELECT paid_amount as total_amount, paid_at as date, project_id FROM project_extra_assets WHERE payment_status = 'paid'" : "";
 

@@ -257,6 +257,11 @@ class HomeController extends Controller
 
         $pendingRequests = $this->approvalModel->getPendingForRole($roles, 10);
 
+        // Get Collection Summary & Project Breakdown for Home Dashboard
+        $accountClientModel = new AccountClient($this->db);
+        $collectionStats = $accountClientModel->getCollectionStatsSummary($projectId);
+        $projectCollectionBreakdown = $accountClientModel->getProjectCollectionBreakdown();
+
         $this->view("home", [
             "constructionProjectsCount" => $constructionProjectsCount,
             "pendingManpowerCount"      => $pendingManpowerCount,
@@ -270,6 +275,8 @@ class HomeController extends Controller
             "leadsPercentChange" => $leadsPercentChange,
             "viewType" => $viewType,
             "statistics" => $statistics,
+            "collectionStats" => $collectionStats,
+            "projectCollectionBreakdown" => $projectCollectionBreakdown,
             "recentTransactions" => $recentTransactions,
             "monthlyData" => $monthlyData,
             "weeklyData" => $weeklyData,
@@ -291,8 +298,7 @@ class HomeController extends Controller
             "weeklyCashInData" => $weeklyCashInData,
             "weeklyCashOutData" => $weeklyCashOutData,
 
-            'pendingRequests' => $pendingRequests //
-
+            'pendingRequests' => $pendingRequests
         ]);
         //   print_r($pendingRequests);
 

@@ -304,17 +304,33 @@ class BookingController extends Controller
                 }
 
                 // 2. Resolve sales agent
-                $salesAgentEmail = trim($data['sales_agent'] ?? '');
-                if (!empty($salesAgentEmail)) {
-                    if (!isset($usersCache[$salesAgentEmail])) {
-                        $stmt = $this->db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
-                        $stmt->bind_param("s", $salesAgentEmail);
-                        $stmt->execute();
-                        $res = $stmt->get_result()->fetch_assoc();
-                        if ($res) {
-                            $usersCache[$salesAgentEmail] = $res['id'];
+                $salesAgentInput = trim($data['sales_agent'] ?? '');
+                if (!empty($salesAgentInput)) {
+                    if (!isset($usersCache[$salesAgentInput])) {
+                        $cleanInput = strtolower($salesAgentInput);
+                        $likeEmail  = $cleanInput . '%';
+                        $stmt = $this->db->prepare("
+                            SELECT id FROM users 
+                            WHERE LOWER(TRIM(email)) = ? 
+                               OR LOWER(TRIM(email)) LIKE ? 
+                               OR (user_name IS NOT NULL AND LOWER(TRIM(user_name)) = ?)
+                               OR (full_name IS NOT NULL AND LOWER(TRIM(full_name)) = ?)
+                            LIMIT 1
+                        ");
+                        if ($stmt) {
+                            $stmt->bind_param("ssss", $cleanInput, $likeEmail, $cleanInput, $cleanInput);
+                            $stmt->execute();
+                            $res = $stmt->get_result()->fetch_assoc();
+                            $stmt->close();
+
+                            if ($res) {
+                                $usersCache[$salesAgentInput] = $res['id'];
+                            } else {
+                                $rowIssues[] = "Sales agent not found for email '$salesAgentInput'";
+                            }
                         } else {
-                            $rowIssues[] = "Sales agent not found for email '$salesAgentEmail'";
+                            error_log("Failed to prepare sales agent query in BookingController: " . $this->db->error);
+                            $rowIssues[] = "Sales agent lookup error for '$salesAgentInput'";
                         }
                     }
                 }
@@ -555,21 +571,37 @@ class BookingController extends Controller
                 }
 
                 // 2. Resolve sales agent
-                $salesAgentEmail = trim($data['sales_agent'] ?? '');
+                $salesAgentInput = trim($data['sales_agent'] ?? '');
                 $salesById       = null;
-                if (!empty($salesAgentEmail)) {
-                    if (isset($usersCache[$salesAgentEmail])) {
-                        $salesById = $usersCache[$salesAgentEmail];
+                if (!empty($salesAgentInput)) {
+                    if (isset($usersCache[$salesAgentInput])) {
+                        $salesById = $usersCache[$salesAgentInput];
                     } else {
-                        $stmt = $this->db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
-                        $stmt->bind_param("s", $salesAgentEmail);
-                        $stmt->execute();
-                        $res = $stmt->get_result()->fetch_assoc();
-                        if ($res) {
-                            $salesById = $res['id'];
-                            $usersCache[$salesAgentEmail] = $salesById;
+                        $cleanInput = strtolower($salesAgentInput);
+                        $likeEmail  = $cleanInput . '%';
+                        $stmt = $this->db->prepare("
+                            SELECT id FROM users 
+                            WHERE LOWER(TRIM(email)) = ? 
+                               OR LOWER(TRIM(email)) LIKE ? 
+                               OR (user_name IS NOT NULL AND LOWER(TRIM(user_name)) = ?)
+                               OR (full_name IS NOT NULL AND LOWER(TRIM(full_name)) = ?)
+                            LIMIT 1
+                        ");
+                        if ($stmt) {
+                            $stmt->bind_param("ssss", $cleanInput, $likeEmail, $cleanInput, $cleanInput);
+                            $stmt->execute();
+                            $res = $stmt->get_result()->fetch_assoc();
+                            $stmt->close();
+
+                            if ($res) {
+                                $salesById = $res['id'];
+                                $usersCache[$salesAgentInput] = $salesById;
+                            } else {
+                                $rowIssues[] = "Sales agent not found";
+                            }
                         } else {
-                            $rowIssues[] = "Sales agent not found";
+                            error_log("Failed to prepare sales agent query in BookingController: " . $this->db->error);
+                            $rowIssues[] = "Sales agent lookup error";
                         }
                     }
                 } else {
