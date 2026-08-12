@@ -227,7 +227,7 @@ class Lead extends Model
     }
 
 
-    public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null)
+    public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null)
     {
         $sql = "SELECT COUNT(l.id) AS total_count FROM leads AS l 
                 LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
@@ -298,6 +298,19 @@ class Lead extends Model
             $sql .= " AND l.assigned_id = ?";
             $params[] = $assigned_user;
             $types .= "i";
+        }
+
+        // Assigned Hours filter (Last 1, 2, 3, 4, 5, 6, etc. hours)
+        if (!empty($assignedHours)) {
+            $hrs = (int)$assignedHours;
+            $sql .= " AND (
+                (l.assigned_at IS NOT NULL AND l.assigned_at != '0000-00-00 00:00:00' AND l.assigned_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+                OR
+                ((l.assigned_at IS NULL OR l.assigned_at = '0000-00-00 00:00:00') AND l.updated_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+            )";
+            $params[] = $hrs;
+            $params[] = $hrs;
+            $types .= "ii";
         }
 
         // Search Filter
@@ -396,7 +409,7 @@ class Lead extends Model
         return $row ? (int)$row['total_count'] : 0;
     }
 
-    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $limit = null, $offset = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null)
+    public function getAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $limit = null, $offset = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null)
     {
         // Optimized query: server e large dataset (3000+) handle korte
         // Correlated subquery replace kora hoyeche simpler LEFT JOIN diye
@@ -502,6 +515,19 @@ class Lead extends Model
             $sql .= " AND l.assigned_id = ?";
             $params[] = $assigned_user;
             $types .= "i";
+        }
+
+        // Assigned Hours filter (Last 1, 2, 3, 4, 5, 6, etc. hours)
+        if (!empty($assignedHours)) {
+            $hrs = (int)$assignedHours;
+            $sql .= " AND (
+                (l.assigned_at IS NOT NULL AND l.assigned_at != '0000-00-00 00:00:00' AND l.assigned_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+                OR
+                ((l.assigned_at IS NULL OR l.assigned_at = '0000-00-00 00:00:00') AND l.updated_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+            )";
+            $params[] = $hrs;
+            $params[] = $hrs;
+            $types .= "ii";
         }
 
         // Search Filter
@@ -707,7 +733,7 @@ class Lead extends Model
     }
 
 
-    public function getTodayLeadsByUser(int $userId, $projectId = null, $projectCategoryId = null, $country = null)
+    public function getTodayLeadsByUser(int $userId, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null)
     {
         $userId = (int) $userId;
 
@@ -745,6 +771,18 @@ class Lead extends Model
 
         $params = [];
         $types = "";
+
+        if (!empty($assignedHours)) {
+            $hrs = (int)$assignedHours;
+            $sql .= " AND (
+                (l.assigned_at IS NOT NULL AND l.assigned_at != '0000-00-00 00:00:00' AND l.assigned_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+                OR
+                ((l.assigned_at IS NULL OR l.assigned_at = '0000-00-00 00:00:00') AND l.updated_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+            )";
+            $params[] = $hrs;
+            $params[] = $hrs;
+            $types .= "ii";
+        }
 
         if (!empty($projectId)) {
             $sql .= " AND l.project_id = ?";
@@ -815,7 +853,7 @@ class Lead extends Model
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
-    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $call_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null)
+    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $call_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null)
     {
         $sql = "SELECT leads.*, 
         u_by.full_name AS assigned_by_name,
@@ -857,6 +895,18 @@ class Lead extends Model
             $sql .= " AND MONTH(leads.created_at) = ?";
             $params[] = (int)$month;
             $types .= "i";
+        }
+
+        if (!empty($assignedHours)) {
+            $hrs = (int)$assignedHours;
+            $sql .= " AND (
+                (leads.assigned_at IS NOT NULL AND leads.assigned_at != '0000-00-00 00:00:00' AND leads.assigned_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+                OR
+                ((leads.assigned_at IS NULL OR leads.assigned_at = '0000-00-00 00:00:00') AND leads.updated_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+            )";
+            $params[] = $hrs;
+            $params[] = $hrs;
+            $types .= "ii";
         }
 
         $contactedCond = "(LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked') OR leads.call_status IN ('called', 'received') OR (leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select') OR lf.id IS NOT NULL)";
