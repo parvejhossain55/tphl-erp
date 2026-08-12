@@ -53,6 +53,105 @@ $show_breadcrumb = true;
         </div>
     </div>
 
+    <!-- ══ COLLECTION FINANCIAL SUMMARY CARDS ══ -->
+    <div class="col-12 mb-3">
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="fw-bold mb-0 text-dark">
+                        <i class="fa-solid fa-chart-pie text-primary me-2"></i>Collection & EMI Financial Summary
+                    </h6>
+                    <small class="text-muted">Overview of total collections, land shares, and EMI verification status</small>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="openProjectCollectionModal()">
+                    <i class="fa-solid fa-list-check me-1"></i> View Project-Wise Breakdown
+                </button>
+            </div>
+            <div class="card-body p-3">
+                <div cl                    <!-- Total Collected -->
+                    <div class="col-xl col-md-4 col-sm-6">
+                        <div class="card__wrapper border-start border-4 border-primary h-100 p-3" style="cursor: pointer;" onclick="openProjectCollectionModal('total')" title="Click to view project breakdown (Verified + Unverified)">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="card__icon" style="background: rgba(13, 110, 253, 0.1); color: #0d6efd; padding: 10px; border-radius: 8px;">
+                                    <span><i class="fa-solid fa-vault fs-5"></i></span>
+                                </div>
+                                <div class="card__title-wrap">
+                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold">Total Collected</h6>
+                                    <h5 class="fw-bold mb-0 text-primary">৳<?= number_format($collectionStats['total_collected'] ?? 0, 2) ?></h5>
+                                    <small class="text-muted extra-small d-block" style="font-size: 10px;"><i class="fa-solid fa-circle-info me-1 text-primary"></i>Verified + Unverified (View Breakdown)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Land Share Collected -->
+                    <div class="col-xl col-md-4 col-sm-6">
+                        <div class="card__wrapper border-start border-4 border-info h-100 p-3" style="cursor: pointer;" onclick="openProjectCollectionModal('land_share')" title="Click to view land share breakdown (Booking Money + Registration Fee)">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="card__icon" style="background: rgba(13, 202, 240, 0.1); color: #0dcaf0; padding: 10px; border-radius: 8px;">
+                                    <span><i class="fa-solid fa-map-location-dot fs-5"></i></span>
+                                </div>
+                                <div class="card__title-wrap">
+                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold">Land Share Collected</h6>
+                                    <h5 class="fw-bold mb-0 text-info">৳<?= number_format($collectionStats['total_land_share_collected'] ?? 0, 2) ?></h5>
+                                    <small class="text-muted extra-small d-block" style="font-size: 10px;"><i class="fa-solid fa-circle-info me-1 text-info"></i>Booking + Reg Fee (View Breakdown)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total EMI Collected -->
+                    <div class="col-xl col-md-4 col-sm-6">
+                        <div class="card__wrapper border-start border-4 border-secondary h-100 p-3" style="cursor: pointer;" onclick="openProjectCollectionModal('emi')" title="Click to view total EMI breakdown (Verified + Unverified)">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="card__icon" style="background: rgba(108, 117, 125, 0.1); color: #6c757d; padding: 10px; border-radius: 8px;">
+                                    <span><i class="fa-solid fa-receipt fs-5"></i></span>
+                                </div>
+                                <div class="card__title-wrap">
+                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold">Total EMI Collected</h6>
+                                    <h5 class="fw-bold mb-0 text-dark">৳<?= number_format($collectionStats['total_emi_collected'] ?? 0, 2) ?></h5>
+                                    <small class="text-muted extra-small d-block" style="font-size: 10px;"><i class="fa-solid fa-circle-info me-1 text-secondary"></i>Verified + Unverified (View Breakdown)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                </div>
+
+                    <!-- Verified EMI Collected -->
+                    <div class="col-xl col-md-6 col-sm-6">
+                        <div class="card__wrapper border-start border-4 border-success h-100 p-3" style="cursor: pointer;" onclick="openProjectCollectionModal('verified')" title="Click to view verified EMI breakdown">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="card__icon" style="background: rgba(25, 135, 84, 0.1); color: #198754; padding: 10px; border-radius: 8px;">
+                                    <span><i class="fa-solid fa-circle-check fs-5"></i></span>
+                                </div>
+                                <div class="card__title-wrap">
+                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold">Verified EMI</h6>
+                                    <h5 class="fw-bold mb-0 text-success">৳<?= number_format($collectionStats['total_verified_emi_collected'] ?? 0, 2) ?></h5>
+                                    <small class="text-muted extra-small"><i class="fa-solid fa-hand-pointer me-1"></i>View Breakdown</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Unverified EMI Collected -->
+                    <div class="col-xl col-md-6 col-sm-6">
+                        <div class="card__wrapper border-start border-4 border-warning h-100 p-3" style="cursor: pointer;" onclick="openProjectCollectionModal('unverified')" title="Click to view unverified EMI breakdown">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="card__icon" style="background: rgba(255, 193, 7, 0.1); color: #ffc107; padding: 10px; border-radius: 8px;">
+                                    <span><i class="fa-solid fa-clock-rotate-left fs-5"></i></span>
+                                </div>
+                                <div class="card__title-wrap">
+                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold">Unverified EMI</h6>
+                                    <h5 class="fw-bold mb-0 text-warning">৳<?= number_format($collectionStats['total_unverified_emi_collected'] ?? 0, 2) ?></h5>
+                                    <small class="text-muted extra-small"><i class="fa-solid fa-hand-pointer me-1"></i>View Breakdown</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ══ PROJECT & STATUS FILTER DROPDOWN ══ -->
     <div class="col-12">
         <div class="card__wrapper">
@@ -1120,4 +1219,217 @@ $show_breadcrumb = true;
         align-items: center; justify-content: center; color: #9ca3af;
         background: #f9fafb;
     }
+
+    /* ── Column & Footer Dynamic Highlight ── */
+    .active-col-highlight {
+        background-color: rgba(255, 243, 205, 0.6) !important;
+        font-weight: 800 !important;
+    }
+    #projectBreakdownFooterRow .col-target {
+        transition: all 0.3s ease;
+    }
+    #projectBreakdownFooterRow .footer-col-highlight {
+        background-color: #f59e0b !important;
+        color: #ffffff !important;
+        font-size: 1.05rem !important;
+        font-weight: 900 !important;
+        box-shadow: 0 0 10px rgba(245, 158, 11, 0.8);
+        border-radius: 4px;
+        opacity: 1 !important;
+    }
 </style>
+
+<!-- ══ PROJECT-WISE COLLECTION BREAKDOWN MODAL ══ -->
+<div class="modal fade" id="projectCollectionModal" tabindex="-1" aria-labelledby="projectCollectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header bg-dark text-white py-3">
+                <h5 class="modal-title fs-6 fw-bold text-white mb-0" id="projectCollectionModalLabel">
+                    <i class="fa-solid fa-building-user me-2 text-warning"></i>Project-Wise Collection & EMI Breakdown
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <!-- Search & Info Bar -->
+                <div class="row align-items-center mb-3 g-2">
+                    <div class="col-md-6">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                            <input type="text" id="projectBreakdownSearch" class="form-control" placeholder="Search project name..." onkeyup="filterProjectBreakdownTable()">
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fs-12 fw-semibold">
+                            <i class="fa-solid fa-layer-group me-1"></i> Total Projects: <?= count($projectCollectionBreakdown ?? []) ?>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Table Card -->
+                <div class="card border-0 shadow-sm rounded-3">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="projectBreakdownTable">
+                            <thead class="bg-white text-muted extra-small text-uppercase border-bottom">
+                                <tr>
+                                    <th class="ps-3" style="width: 40px;">#</th>
+                                    <th>Project Name</th>
+                                    <th class="text-center">Bookings</th>
+                                    <th class="text-end col-target col-total">Total Collected</th>
+                                    <th class="text-end col-target col-land_share">Land Share</th>
+                                    <th class="text-end col-target col-dev_charge text-purple">Dev Charge</th>
+                                    <th class="text-end col-target col-emi">Total EMI</th>
+                                    <th class="text-end text-success col-target col-verified">Verified EMI</th>
+                                    <th class="text-end text-warning col-target col-unverified">Unverified EMI</th>
+                                    <th class="pe-3 text-center" style="width: 100px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                $sumBookings = 0;
+                                $sumTotal = 0;
+                                $sumLand = 0;
+                                $sumDevCharge = 0;
+                                $sumEmi = 0;
+                                $sumVerified = 0;
+                                $sumUnverified = 0;
+                                ?>
+                                <?php if (empty($projectCollectionBreakdown)): ?>
+                                    <tr>
+                                        <td colspan="10" class="text-center py-4 text-muted">
+                                            <i class="fa-solid fa-building-slash fs-3 d-block mb-2"></i>
+                                            No project collection data found.
+                                        </td>
+                                    </tr>
+                                <?php else: ?>
+                                    <?php foreach ($projectCollectionBreakdown as $idx => $pData): ?>
+                                        <?php 
+                                        $sumBookings += (int)$pData['total_bookings'];
+                                        $sumTotal += (float)$pData['total_collected'];
+                                        $sumLand += (float)$pData['land_share_collected'];
+                                        $sumDevCharge += (float)($pData['dev_charge_collected'] ?? 0);
+                                        $sumEmi += (float)$pData['total_emi_collected'];
+                                        $sumVerified += (float)$pData['verified_emi_collected'];
+                                        $sumUnverified += (float)$pData['unverified_emi_collected'];
+                                        ?>
+                                        <tr class="project-breakdown-row">
+                                            <td class="ps-3 fw-bold text-muted extra-small"><?= $idx + 1 ?></td>
+                                            <td class="fw-bold text-dark project-name-cell">
+                                                <i class="fa-solid fa-building text-primary me-2"></i><?= htmlspecialchars($pData['project_name']) ?>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1"><?= number_format($pData['total_bookings']) ?></span>
+                                            </td>
+                                            <td class="text-end fw-bold text-primary col-target col-total">
+                                                ৳<?= number_format($pData['total_collected'], 2) ?>
+                                            </td>
+                                            <td class="text-end fw-semibold text-info col-target col-land_share">
+                                                ৳<?= number_format($pData['land_share_collected'], 2) ?>
+                                            </td>
+                                            <td class="text-end fw-semibold text-purple col-target col-dev_charge">
+                                                ৳<?= number_format($pData['dev_charge_collected'] ?? 0, 2) ?>
+                                            </td>
+                                            <td class="text-end fw-semibold text-dark col-target col-emi">
+                                                ৳<?= number_format($pData['total_emi_collected'], 2) ?>
+                                            </td>
+                                            <td class="text-end fw-bold text-success col-target col-verified">
+                                                ৳<?= number_format($pData['verified_emi_collected'], 2) ?>
+                                            </td>
+                                            <td class="text-end fw-bold text-warning col-target col-unverified">
+                                                ৳<?= number_format($pData['unverified_emi_collected'], 2) ?>
+                                            </td>
+                                            <td class="pe-3 text-center">
+                                                <a href="<?= $GLOBALS['base_url'] ?>/clients-cashin-view?project_id=<?= $pData['project_id'] ?>" class="btn btn-xs btn-outline-primary rounded-2 px-2" title="Filter page by this project">
+                                                    <i class="fa-solid fa-filter me-1"></i>Filter
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                            <tfoot class="bg-dark text-white fw-bold" id="projectBreakdownFooterRow">
+                                <tr>
+                                    <td colspan="2" class="ps-3 text-uppercase">Total Company Collection Summary</td>
+                                    <td class="text-center"><?= number_format($sumBookings) ?></td>
+                                    <td class="text-end text-primary-light col-target col-total">৳<?= number_format($sumTotal, 2) ?></td>
+                                    <td class="text-end text-info-light col-target col-land_share">৳<?= number_format($sumLand, 2) ?></td>
+                                    <td class="text-end text-purple-light col-target col-dev_charge">৳<?= number_format($sumDevCharge, 2) ?></td>
+                                    <td class="text-end text-white col-target col-emi">৳<?= number_format($sumEmi, 2) ?></td>
+                                    <td class="text-end text-success-light col-target col-verified">৳<?= number_format($sumVerified, 2) ?></td>
+                                    <td class="text-end text-warning-light col-target col-unverified">৳<?= number_format($sumUnverified, 2) ?></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-white py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openProjectCollectionModal(highlightType = 'all') {
+    const modalEl = document.getElementById('projectCollectionModal');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+
+    // Reset highlights and column opacities
+    document.querySelectorAll('#projectBreakdownTable .col-target').forEach(el => {
+        el.classList.remove('active-col-highlight', 'footer-col-highlight');
+    });
+
+    const footerCells = document.querySelectorAll('#projectBreakdownFooterRow .col-target');
+
+    if (highlightType && highlightType !== 'all') {
+        // Dim unselected footer summary cells
+        footerCells.forEach(el => {
+            el.style.opacity = '0.4';
+        });
+
+        // Highlight table body cells of selected column
+        document.querySelectorAll('#projectBreakdownTable tbody .col-' + highlightType).forEach(el => {
+            el.classList.add('active-col-highlight');
+        });
+
+        // Highlight header cell
+        document.querySelectorAll('#projectBreakdownTable thead .col-' + highlightType).forEach(el => {
+            el.classList.add('active-col-highlight');
+        });
+
+        // Highlight selected footer summary cell prominently
+        const footerTarget = document.querySelector('#projectBreakdownFooterRow .col-' + highlightType);
+        if (footerTarget) {
+            footerTarget.classList.add('footer-col-highlight');
+            footerTarget.style.opacity = '1';
+        }
+    } else {
+        // Reset all footer cells to full opacity
+        footerCells.forEach(el => {
+            el.style.opacity = '1';
+        });
+    }
+}
+
+function filterProjectBreakdownTable() {
+    const input = document.getElementById('projectBreakdownSearch');
+    const filter = input ? input.value.toLowerCase() : '';
+    const rows = document.querySelectorAll('.project-breakdown-row');
+
+    rows.forEach(row => {
+        const nameCell = row.querySelector('.project-name-cell');
+        if (nameCell) {
+            const text = nameCell.textContent || nameCell.innerText;
+            if (text.toLowerCase().indexOf(filter) > -1) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    });
+}
+</script>

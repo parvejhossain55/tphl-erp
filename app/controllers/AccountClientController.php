@@ -21,6 +21,10 @@ class AccountClientController extends Controller
         // Get payment statistics
         $paymentStats = $this->clientModel->getPaymentStatistics($selectedProjectId);
 
+        // Get Collection Summary & Project Breakdown
+        $collectionStats = $this->clientModel->getCollectionStatsSummary($selectedProjectId);
+        $projectCollectionBreakdown = $this->clientModel->getProjectCollectionBreakdown();
+
         // Get all projects for dropdown
         $projects = $this->clientModel->getProjectsForCED();
 
@@ -33,6 +37,8 @@ class AccountClientController extends Controller
             "page_title" => "Clients Management - Cash In",
             "clients" => $clients,
             "paymentStats" => $paymentStats,
+            "collectionStats" => $collectionStats,
+            "projectCollectionBreakdown" => $projectCollectionBreakdown,
             "projects" => $projects,
             "selectedProjectId" => $selectedProjectId,
             "selectedVerificationStatus" => $verificationStatus
@@ -237,6 +243,10 @@ public function indexTwo($bookingId = null)
         // Get payment statistics
         $paymentStats = $this->clientModel->getPaymentStatistics($selectedProjectId);
 
+        // Get Collection Summary & Project Breakdown
+        $collectionStats = $this->clientModel->getCollectionStatsSummary($selectedProjectId);
+        $projectCollectionBreakdown = $this->clientModel->getProjectCollectionBreakdown();
+
         // Get all projects for dropdown
         $projects = $this->clientModel->getProjectsForCED();
 
@@ -271,6 +281,8 @@ public function indexTwo($bookingId = null)
             "page_title" => "Clients Cash In" . ($selectedProjectName ? " - " . $selectedProjectName : ""),
             "clients" => $clients,
             "paymentStats" => $paymentStats,
+            "collectionStats" => $collectionStats,
+            "projectCollectionBreakdown" => $projectCollectionBreakdown,
             "projects" => $projects,
             "selectedProjectId" => $selectedProjectId,
             "selectedVerificationStatus" => $verificationStatus,
@@ -2313,13 +2325,20 @@ public function discountStatement($bookingId = null)
         }
 
         $createdBy = $_SESSION['user']['id'] ?? 1;
+        $totalRows = count($validRows) + count($parseErrors);
+
+        // Pre-create import log entry to link payment rows
+        $csvImportLogId = $this->clientModel->logCSVImport(
+            $filename, $totalRows, 0, 0, [], $createdBy
+        );
+
         $successCount = 0;
         $errorCount = 0;
         $importResults = [];
         $importErrors = [];
 
         foreach ($validRows as $row) {
-            $result = $this->clientModel->processCSVImportRow($row, $createdBy);
+            $result = $this->clientModel->processCSVImportRow($row, $createdBy, $csvImportLogId ?: null);
 
             if ($result['success']) {
                 $successCount++;
@@ -2348,7 +2367,7 @@ public function discountStatement($bookingId = null)
             }
         }
 
-        // Merge parse errors with import errors for the log
+        // Merge parse errors with import errors for the final log update
         $allErrors = array_merge(
             array_map(fn($e) => [
                 'row' => $e['row'],
@@ -2362,13 +2381,18 @@ public function discountStatement($bookingId = null)
             ], $importErrors)
         );
 
-        // Log the import
-        $totalRows = count($validRows) + count($parseErrors);
-        $this->clientModel->logCSVImport(
-            $filename, $totalRows, $successCount,
-            $errorCount + count($parseErrors),
-            $allErrors, $createdBy
-        );
+        // Update the import log status and error details
+        if ($csvImportLogId) {
+            $status = ($errorCount + count($parseErrors) === 0) ? 'completed' : (($successCount > 0) ? 'completed' : 'failed');
+            $errJson = json_encode($allErrors);
+            $updLog = $this->db->prepare("UPDATE csv_import_logs SET success_count = ?, error_count = ?, error_details = ?, status = ? WHERE id = ?");
+            if ($updLog) {
+                $totalErrCount = $errorCount + count($parseErrors);
+                $updLog->bind_param('iissi', $successCount, $totalErrCount, $errJson, $status, $csvImportLogId);
+                $updLog->execute();
+                $updLog->close();
+            }
+        }
 
         // Clean up: delete the temp CSV file
         if (file_exists($tempFile)) {

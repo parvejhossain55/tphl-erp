@@ -309,6 +309,91 @@ ORDER BY lb.booking_date DESC
     }
 
     /**
+     * Get collection stats summary (Total, Land Share, Dev Charge, EMI, Verified EMI, Unverified EMI)
+     */
+    public function getCollectionStatsSummary($projectId = null)
+    {
+        $whereClause = "WHERE lp.payment_status IN ('paid', 'partially_paid')";
+        $params = [];
+        $types = "";
+
+        if ($projectId) {
+            $whereClause .= " AND lb.project_id = ?";
+            $params[] = (int) $projectId;
+            $types .= "i";
+        }
+
+        $sql = $this->db->prepare("
+            SELECT
+                COALESCE(SUM(lp.amount), 0) AS total_collected,
+                COALESCE(SUM(CASE WHEN lp.payment_type IN ('land_share', 'booking_money') OR IFNULL(lp.land_share_amount, 0) > 0 THEN lp.amount ELSE 0 END), 0) AS total_land_share_collected,
+                COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' THEN lp.amount ELSE 0 END), 0) AS total_dev_charge_collected,
+                COALESCE(SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') THEN lp.amount ELSE 0 END), 0) AS total_emi_collected,
+                COALESCE(SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) AS total_verified_emi_collected,
+                COALESCE(SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') AND lp.verification_status = 'pending' THEN lp.amount ELSE 0 END), 0) AS total_unverified_emi_collected
+            FROM lead_payments lp
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            $whereClause
+        ");
+
+        if (!$sql) {
+            error_log("getCollectionStatsSummary prepare failed: " . $this->db->error);
+            return [
+                'total_collected' => 0.00,
+                'total_land_share_collected' => 0.00,
+                'total_dev_charge_collected' => 0.00,
+                'total_emi_collected' => 0.00,
+                'total_verified_emi_collected' => 0.00,
+                'total_unverified_emi_collected' => 0.00
+            ];
+        }
+
+        if (!empty($params)) {
+            $sql->bind_param($types, ...$params);
+        }
+
+        $sql->execute();
+        $result = $sql->get_result();
+        return $result ? $result->fetch_assoc() : [
+            'total_collected' => 0.00,
+            'total_land_share_collected' => 0.00,
+            'total_dev_charge_collected' => 0.00,
+            'total_emi_collected' => 0.00,
+            'total_verified_emi_collected' => 0.00,
+            'total_unverified_emi_collected' => 0.00
+        ];
+    }
+
+    /**
+     * Get project-wise collection breakdown (Total, Land Share, Dev Charge, EMI, Verified EMI, Unverified EMI per project)
+     */
+    public function getProjectCollectionBreakdown()
+    {
+        $sql = "
+            SELECT 
+                p.id AS project_id,
+                p.name AS project_name,
+                COUNT(DISTINCT lb.id) AS total_bookings,
+                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') THEN lp.amount ELSE 0 END), 0) AS total_collected,
+                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND (lp.payment_type IN ('land_share', 'booking_money') OR IFNULL(lp.land_share_amount, 0) > 0) THEN lp.amount ELSE 0 END), 0) AS land_share_collected,
+                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.payment_type = 'development_charge' THEN lp.amount ELSE 0 END), 0) AS dev_charge_collected,
+                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.payment_type IN ('emi', 'emi_due_settlement') THEN lp.amount ELSE 0 END), 0) AS total_emi_collected,
+                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.payment_type IN ('emi', 'emi_due_settlement') AND lp.verification_status = 'verified' THEN lp.amount ELSE 0 END), 0) AS verified_emi_collected,
+                COALESCE(SUM(CASE WHEN lp.payment_status IN ('paid', 'partially_paid') AND lp.payment_type IN ('emi', 'emi_due_settlement') AND lp.verification_status = 'pending' THEN lp.amount ELSE 0 END), 0) AS unverified_emi_collected
+            FROM projects p
+            LEFT JOIN lead_bookings lb ON lb.project_id = p.id AND lb.deleted_at IS NULL
+            LEFT JOIN lead_payments lp ON lp.booking_id = lb.id
+            WHERE p.deleted_at IS NULL
+            GROUP BY p.id, p.name
+            HAVING total_collected > 0
+            ORDER BY total_collected DESC, p.name ASC
+        ";
+
+        $result = $this->db->query($sql);
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /**
      * Get booking money transaction from database
      */
     public function getBookingMoneyTransaction($bookingId)
@@ -642,11 +727,14 @@ ORDER BY lb.booking_date DESC
             $clientDetails['total_bulk_emi_discount']               = $totalBulkEmiDiscount;
 
             // Add EMI statistics
-            $clientDetails['total_emi']           = $emiStats['total_emi'];
-            $clientDetails['completed_emi']        = $emiStats['completed_emi'];
-            $clientDetails['pending_emi']          = $emiStats['pending_emi'];
-            $clientDetails['paid_emi_numbers']     = $emiStats['paid_emi_numbers'];
-            $clientDetails['pending_emi_numbers']  = $emiStats['pending_emi_numbers'];
+            $clientDetails['total_emi']              = $emiStats['total_emi'];
+            $clientDetails['completed_emi']          = $emiStats['completed_emi'];
+            $clientDetails['unverified_emi_count']   = $emiStats['unverified_emi_count'];
+            $clientDetails['unverified_emi_amount']  = $emiStats['unverified_emi_amount'];
+            $clientDetails['pending_emi']            = $emiStats['pending_emi'];
+            $clientDetails['paid_emi_numbers']       = $emiStats['paid_emi_numbers'];
+            $clientDetails['unverified_emi_numbers']  = $emiStats['unverified_emi_numbers'];
+            $clientDetails['pending_emi_numbers']    = $emiStats['pending_emi_numbers'];
         }
 
         return $clientDetails;
@@ -673,8 +761,11 @@ ORDER BY lb.booking_date DESC
         $stats = [
             'total_emi' => $totalEmi,
             'completed_emi' => 0,
+            'unverified_emi_count' => 0,
+            'unverified_emi_amount' => 0.0,
             'pending_emi' => 0,
             'paid_emi_numbers' => [],
+            'unverified_emi_numbers' => [],
             'pending_emi_numbers' => []
         ];
 
@@ -701,6 +792,34 @@ ORDER BY lb.booking_date DESC
 
         $stats['completed_emi'] = count($paidEmiNumbers);
         $stats['paid_emi_numbers'] = $paidEmiNumbers;
+
+        // Get unverified EMI numbers & total amount
+        $unverifiedEmiStmt = $this->db->prepare("
+            SELECT DISTINCT es.emi_no, lp.amount
+            FROM emi_schedules es
+            INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
+            WHERE lp.booking_id = ? 
+            AND lp.payment_status IN ('paid','partially_paid')
+            AND lp.verification_status IN ('pending', 'unverified')
+            ORDER BY es.emi_no
+        ");
+        if ($unverifiedEmiStmt) {
+            $unverifiedEmiStmt->bind_param("i", $bookingId);
+            $unverifiedEmiStmt->execute();
+            $unverifiedEmiResult = $unverifiedEmiStmt->get_result();
+
+            $unverifiedEmiNumbers = [];
+            $unverifiedEmiAmount = 0.0;
+            if ($unverifiedEmiResult) {
+                while ($row = $unverifiedEmiResult->fetch_assoc()) {
+                    $unverifiedEmiNumbers[] = (int) $row['emi_no'];
+                    $unverifiedEmiAmount += (float) $row['amount'];
+                }
+            }
+            $stats['unverified_emi_count'] = count($unverifiedEmiNumbers);
+            $stats['unverified_emi_amount'] = $unverifiedEmiAmount;
+            $stats['unverified_emi_numbers'] = $unverifiedEmiNumbers;
+        }
 
         // Pending = total plan - completed (simple subtraction, not sequence gap check)
         $stats['pending_emi'] = max(0, $totalEmi - $stats['completed_emi']);
@@ -1019,6 +1138,8 @@ ORDER BY lb.booking_date DESC
                 'total_emi_due'                        => 0,
                 'total_emi'                            => 0,
                 'completed_emi'                        => 0,
+                'unverified_emi_count'                 => 0,
+                'unverified_emi_amount'                => 0,
                 'pending_emi'                          => 0,
                 'last_payment_date'                    => null,
                 'total_service_fee'                    => 0,
@@ -1081,6 +1202,8 @@ ORDER BY lb.booking_date DESC
             'total_bulk_emi_discount'              => $clientDetails['total_bulk_emi_discount'] ?? 0,
             'total_emi'                            => $clientDetails['total_emi'],
             'completed_emi'                        => $clientDetails['completed_emi'],
+            'unverified_emi_count'                 => $clientDetails['unverified_emi_count'] ?? 0,
+            'unverified_emi_amount'                => $clientDetails['unverified_emi_amount'] ?? 0,
             'pending_emi'                          => $clientDetails['pending_emi'],
             'last_payment_date'                    => $clientDetails['last_payment_date'],
             'total_service_fee'                    => $clientDetails['total_service_fee'],
@@ -3145,11 +3268,13 @@ ORDER BY lb.booking_date DESC
      */
     public function resolveBookingByProjectAndFlat($clientPhone, $projectName, $flatName)
     {
-        // Normalize phone: strip all non-digits
-        $phone = preg_replace('/[^0-9]/', '', $clientPhone);
+        // Normalize phone: handle scientific notation e.g. "6.143E+10"
+        if (is_string($clientPhone) && preg_match('/E\+/i', $clientPhone)) {
+            $clientPhone = sprintf('%.0f', (float)$clientPhone);
+        }
+        $phone = preg_replace('/[^0-9]/', '', (string)$clientPhone);
         
         // Build multiple phone variants for flexible matching
-        // Raw: 8801875293008, without 880: 1875293008, with leading 0: 01875293008
         $phoneVariants = [$phone];
         $shortPhone = $phone;
         if (str_starts_with($shortPhone, '880')) {
@@ -3161,7 +3286,10 @@ ORDER BY lb.booking_date DESC
             $shortPhone = substr($shortPhone, 1);
             $phoneVariants[] = $shortPhone;
         }
-        // Use the shortest meaningful digits for LIKE
+        // Use the last 10 digits for robust matching
+        if (strlen($shortPhone) > 10) {
+            $shortPhone = substr($shortPhone, -10);
+        }
         $phoneLike = '%' . $shortPhone;
 
         // Normalize flat name: strip floor suffix like " - FLOOR 6", " - Floor 6"
@@ -3178,6 +3306,9 @@ ORDER BY lb.booking_date DESC
         }
 
         foreach ($flatNamesToTry as $tryFlatName) {
+            // Flexible flat match (ignoring spaces and hyphens e.g. "7 A" vs "7-A")
+            $compactTryFlat = str_replace([' ', '-'], '', strtolower($tryFlatName));
+
             $stmt = $this->db->prepare("
                 SELECT 
                     lb.id AS booking_id,
@@ -3197,7 +3328,10 @@ ORDER BY lb.booking_date DESC
                 WHERE lb.deleted_at IS NULL
                   AND l.deleted_at IS NULL
                   AND LOWER(TRIM(p.name)) = LOWER(TRIM(?))
-                  AND LOWER(TRIM(f.flat_name)) = LOWER(TRIM(?))
+                  AND (
+                      LOWER(TRIM(f.flat_name)) = LOWER(TRIM(?))
+                      OR REPLACE(REPLACE(LOWER(TRIM(f.flat_name)), ' ', ''), '-', '') = ?
+                  )
                   AND (
                       REPLACE(REPLACE(REPLACE(COALESCE(l.phone,''), ' ', ''), '-', ''), '+', '') LIKE ?
                       OR REPLACE(REPLACE(REPLACE(COALESCE(l.phone_number,''), ' ', ''), '-', ''), '+', '') LIKE ?
@@ -3211,7 +3345,7 @@ ORDER BY lb.booking_date DESC
                 return null;
             }
 
-            $stmt->bind_param("ssss", $projectName, $tryFlatName, $phoneLike, $phoneLike);
+            $stmt->bind_param("sssss", $projectName, $tryFlatName, $compactTryFlat, $phoneLike, $phoneLike);
             $stmt->execute();
             $result = $stmt->get_result();
             $row = $result ? $result->fetch_assoc() : null;
@@ -3234,10 +3368,14 @@ ORDER BY lb.booking_date DESC
         $errors = [];
         
         // Normalize phone
-        $phone = preg_replace('/[^0-9]/', '', $clientPhone);
+        if (is_string($clientPhone) && preg_match('/E\+/i', $clientPhone)) {
+            $clientPhone = sprintf('%.0f', (float)$clientPhone);
+        }
+        $phone = preg_replace('/[^0-9]/', '', (string)$clientPhone);
         $shortPhone = $phone;
         if (str_starts_with($shortPhone, '880')) $shortPhone = substr($shortPhone, 3);
         if (str_starts_with($shortPhone, '0')) $shortPhone = substr($shortPhone, 1);
+        if (strlen($shortPhone) > 10) $shortPhone = substr($shortPhone, -10);
         $phoneLike = '%' . $shortPhone;
         
         // Normalize flat name
@@ -3268,12 +3406,22 @@ ORDER BY lb.booking_date DESC
                 $errors[] = "Client not found for phone '{$clientPhone}'";
             } else {
                 // Client found by phone, check if name matches roughly
-                $dbName = strtolower(trim($leadResult['full_name']));
-                $csvName = strtolower(trim($clientName));
-                
-                // Allow partial match
-                if (!empty($csvName) && !empty($dbName) && strpos($dbName, $csvName) === false && strpos($csvName, $dbName) === false) {
-                    $errors[] = "Client name '{$clientName}' doesn't match with DB name '{$leadResult['full_name']}' for phone '{$clientPhone}'";
+                $dbNameClean = preg_replace('/[^a-z0-9]/', '', strtolower($leadResult['full_name']));
+                $csvNameClean = preg_replace('/[^a-z0-9]/', '', strtolower($clientName));
+
+                if (!empty($csvNameClean) && !empty($dbNameClean)) {
+                    $isMatch = ($dbNameClean === $csvNameClean) ||
+                               (strlen($csvNameClean) >= 3 && strpos($dbNameClean, $csvNameClean) !== false) ||
+                               (strlen($dbNameClean) >= 3 && strpos($csvNameClean, $dbNameClean) !== false);
+
+                    if (!$isMatch) {
+                        $dbTokens = array_filter(explode(' ', preg_replace('/[^a-z0-9]/', ' ', strtolower($leadResult['full_name']))));
+                        $csvTokens = array_filter(explode(' ', preg_replace('/[^a-z0-9]/', ' ', strtolower($clientName))));
+                        $commonTokens = array_intersect($dbTokens, $csvTokens);
+                        if (count($commonTokens) == 0) {
+                            $errors[] = "Client name '{$clientName}' doesn't match with DB name '{$leadResult['full_name']}' for phone '{$clientPhone}'";
+                        }
+                    }
                 }
             }
         }
@@ -3470,11 +3618,24 @@ ORDER BY lb.booking_date DESC
                         $rowErrors[] = $diagError;
                     }
                 } else {
-                    // Booking found, but still verify if the name roughly matches to catch typos
-                    $dbName = strtolower(trim($bookingData['client_name']));
-                    $csvName = strtolower(trim($row['client_name']));
-                    if (!empty($csvName) && !empty($dbName) && strpos($dbName, $csvName) === false && strpos($csvName, $dbName) === false) {
-                        $rowErrors[] = "Warning/Error: Client name '{$row['client_name']}' in CSV doesn't match booked client name '{$bookingData['client_name']}'";
+                    // Booking found, verify if the name roughly matches to catch major typos
+                    $dbNameClean = preg_replace('/[^a-z0-9]/', '', strtolower($bookingData['client_name']));
+                    $csvNameClean = preg_replace('/[^a-z0-9]/', '', strtolower($row['client_name']));
+
+                    if (!empty($csvNameClean) && !empty($dbNameClean)) {
+                        $isMatch = ($dbNameClean === $csvNameClean) ||
+                                   (strlen($csvNameClean) >= 3 && strpos($dbNameClean, $csvNameClean) !== false) ||
+                                   (strlen($dbNameClean) >= 3 && strpos($csvNameClean, $dbNameClean) !== false);
+
+                        if (!$isMatch) {
+                            // Check token word overlap (ignoring dots, &, etc.)
+                            $dbTokens = array_filter(explode(' ', preg_replace('/[^a-z0-9]/', ' ', strtolower($bookingData['client_name']))));
+                            $csvTokens = array_filter(explode(' ', preg_replace('/[^a-z0-9]/', ' ', strtolower($row['client_name']))));
+                            $commonTokens = array_intersect($dbTokens, $csvTokens);
+                            if (count($commonTokens) == 0) {
+                                $rowErrors[] = "Warning/Error: Client name '{$row['client_name']}' in CSV doesn't match booked client name '{$bookingData['client_name']}'";
+                            }
+                        }
                     }
                 }
             }
@@ -3581,18 +3742,43 @@ ORDER BY lb.booking_date DESC
     private function parseCSVDate($dateStr)
     {
         $dateStr = trim($dateStr);
-        $formats = ['Y-m-d', 'd/m/Y', 'd-m-Y', 'm/d/Y', 'Y/m/d'];
+        if (empty($dateStr)) return null;
+
+        $formats = [
+            'Y-m-d', 'Y/m/d',
+            'd/m/Y', 'd-m-Y', 'm/d/Y', 'm-d-Y',
+            'd/m/y', 'd-m-y', 'm/d/y', 'm-d-y',
+            'j/n/Y', 'j/n/y', 'j-n-Y', 'j-n-y',
+            'd-M-Y', 'd-M-y', 'j-M-Y', 'j-M-y',
+            'd M Y', 'd M y', 'j M Y', 'j M y'
+        ];
+
         foreach ($formats as $fmt) {
             $dt = DateTime::createFromFormat($fmt, $dateStr);
-            if ($dt && $dt->format($fmt) === $dateStr) {
+            if ($dt && strtolower($dt->format($fmt)) === strtolower($dateStr)) {
                 return $dt->format('Y-m-d');
             }
         }
-        // Try strtotime as fallback
-        $ts = strtotime($dateStr);
+
+        // Handle DD/MM/YY or DD-MM-YY explicitly (e.g. 23/07/25 -> 2025-07-23)
+        if (preg_match('/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/', $dateStr, $matches)) {
+            $day = str_pad($matches[1], 2, '0', STR_PAD_LEFT);
+            $month = str_pad($matches[2], 2, '0', STR_PAD_LEFT);
+            $year = $matches[3];
+            if (strlen($year) === 2) {
+                $year = '20' . $year;
+            }
+            if (checkdate((int)$month, (int)$day, (int)$year)) {
+                return "{$year}-{$month}-{$day}";
+            }
+        }
+
+        // Try strtotime with slash replacement as fallback
+        $ts = strtotime(str_replace('/', '-', $dateStr));
         if ($ts !== false) {
             return date('Y-m-d', $ts);
         }
+
         return null;
     }
 
@@ -3602,8 +3788,16 @@ ORDER BY lb.booking_date DESC
      * Supports custom verification_status, emi_no, and bypasses sequential validation
      * since this is for historical data import.
      */
-    public function processCSVImportRow($rowData, $createdBy)
+    public function processCSVImportRow($rowData, $createdBy = 1, $csvImportLogId = null)
     {
+        // Auto-ensure csv_import_log_id column exists in lead_payments table
+        try {
+            $colCheck = $this->db->query("SHOW COLUMNS FROM lead_payments LIKE 'csv_import_log_id'");
+            if ($colCheck && $colCheck->num_rows === 0) {
+                $this->db->query("ALTER TABLE lead_payments ADD COLUMN csv_import_log_id INT(11) NULL DEFAULT NULL");
+            }
+        } catch (Throwable $t) {}
+
         $this->db->begin_transaction();
 
         try {
@@ -3798,24 +3992,25 @@ ORDER BY lb.booking_date DESC
 
                     $csBulkPay = (!$firstPaymentId) ? $amount : null;
 
+                    $csAttach = null;
                     $csStmt = $this->db->prepare("
                         INSERT INTO lead_payments (
                             booking_id, payment_type, amount, land_share_amount, service_fee,
                             payment_method, payment_status, payment_date, transaction_ref,
                             bank_id, bank_name, bank_account_no, cheque_no, online_type,
                             due_emi_amount, bulk_emi_discount, bulk_pay_amount, verification_status,
-                            verified_by, verified_at, parent_payment_id, settlement_type, created_by
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            verified_by, verified_at, parent_payment_id, settlement_type, attachment_paths, csv_import_log_id, created_by
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ");
                     if (!$csStmt) throw new Exception("Settlement prepare failed: " . $this->db->error);
 
                     $csStmt->bind_param(
-                        "isdddssssissssdddssissi",
+                        "isdddssssissssdddsisissii",
                         $bookingId, $csPayType, $csAmount, $csLandShare, $csSvcFee,
                         $paymentMethod, $paymentStatus, $paymentDate, $transactionRef,
                         $bankId, $bankNameLookup, $bankAccountNo, $chequeNo, $onlineType,
                         $csDue, $csBulkDisc, $csBulkPay, $verificationStatus,
-                        $verifiedBy, $verifiedAt, $csParentId, $csStType, $createdBy
+                        $verifiedBy, $verifiedAt, $csParentId, $csStType, $csAttach, $csvImportLogId, $createdBy
                     );
 
                     if (!$csStmt->execute()) throw new Exception("Settlement insert failed: " . $csStmt->error);
@@ -3873,8 +4068,8 @@ ORDER BY lb.booking_date DESC
                             payment_method, payment_status, payment_date, transaction_ref,
                             bank_id, bank_name, bank_account_no, cheque_no, online_type,
                             due_emi_amount, bulk_emi_discount, bulk_pay_amount, verification_status,
-                            verified_by, verified_at, parent_payment_id, settlement_type, attachment_paths, created_by
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            verified_by, verified_at, parent_payment_id, settlement_type, attachment_paths, csv_import_log_id, created_by
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ");
                     if (!$emiStmt) throw new Exception("EMI prepare failed: " . $this->db->error);
 
@@ -3886,12 +4081,12 @@ ORDER BY lb.booking_date DESC
                     $emiBulkPay = ($isFirstInstallment && !$firstPaymentId) ? $amount : null;
 
                     $emiStmt->bind_param(
-                        "isdddssssissssdddssisssi",
+                        "isdddssssissssdddsisissii",
                         $bookingId, $emiPayType, $thisEmi, $emiLandShare, $thisSvcFee,
                         $paymentMethod, $thisStatus, $paymentDate, $transactionRef,
                         $bankId, $bankNameLookup, $bankAccountNo, $chequeNo, $onlineType,
                         $thisDue, $thisDiscount, $emiBulkPay, $verificationStatus,
-                        $verifiedBy, $verifiedAt, $parentPaymentId, $settlementType, $emiAttach, $createdBy
+                        $verifiedBy, $verifiedAt, $parentPaymentId, $settlementType, $emiAttach, $csvImportLogId, $createdBy
                     );
 
                     if (!$emiStmt->execute()) throw new Exception("EMI insert failed: " . $emiStmt->error);
@@ -3902,6 +4097,7 @@ ORDER BY lb.booking_date DESC
                     // Create emi_schedule for this installment
                     $nextEmiNo = $this->getNextAvailableEmiNo($bookingId);
                     $emiDueDate = $rowData['emi_due_date'] ?? $paymentDate;
+                    $schedStatus = ($thisDue > 0) ? 'pending' : 'paid';
 
                     $schedStmt = $this->db->prepare("
                         INSERT INTO emi_schedules (
@@ -3914,7 +4110,7 @@ ORDER BY lb.booking_date DESC
                     $schedStmt->bind_param(
                         "iidddssi",
                         $bookingId, $nextEmiNo, $thisEmi, $thisSvcFee,
-                        $thisDue, $emiDueDate, $thisStatus, $thisPaymentId
+                        $thisDue, $emiDueDate, $schedStatus, $thisPaymentId
                     );
                     if (!$schedStmt->execute()) throw new Exception("EMI schedule insert failed: " . $schedStmt->error);
                     $schedStmt->close();
@@ -3930,20 +4126,20 @@ ORDER BY lb.booking_date DESC
                         payment_method, payment_status, payment_date, transaction_ref,
                         bank_id, bank_name, bank_account_no, cheque_no, online_type,
                         due_emi_amount, bulk_emi_discount, bulk_pay_amount, verification_status,
-                        verified_by, verified_at, parent_payment_id, settlement_type, attachment_paths, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        verified_by, verified_at, parent_payment_id, settlement_type, attachment_paths, csv_import_log_id, created_by
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if (!$stmt) throw new Exception("Prepare failed: " . $this->db->error);
 
                 $stmtBulkPay = (!$firstPaymentId && $amount > 0) ? $amount : null;
 
                 $stmt->bind_param(
-                    "isdddssssissssdddssisssi",
+                    "isdddssssissssdddsisissii",
                     $bookingId, $paymentType, $amount, $landShareAmount, $serviceFee,
                     $paymentMethod, $paymentStatus, $paymentDate, $transactionRef,
                     $bankId, $bankNameLookup, $bankAccountNo, $chequeNo, $onlineType,
                     $dueEmiAmount, $bulkDiscount, $stmtBulkPay, $verificationStatus,
-                    $verifiedBy, $verifiedAt, $parentPaymentId, $settlementType, $attachmentPaths, $createdBy
+                    $verifiedBy, $verifiedAt, $parentPaymentId, $settlementType, $attachmentPaths, $csvImportLogId, $createdBy
                 );
                 if (!$stmt->execute()) throw new Exception("Payment insert failed: " . $stmt->error);
                 $paymentId = $this->db->insert_id;

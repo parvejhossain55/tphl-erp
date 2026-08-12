@@ -65,27 +65,46 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
                 </div>
             </div>
 
-            <!-- Date Filter (No print) -->
+            <!-- Search & Filter Bar (No print) -->
             <div class="card-body no-print border-bottom pb-3">
-                <form method="GET" action="" class="row g-3 align-items-end">
+                <form method="GET" action="<?= $GLOBALS['base_url'] ?>/fund-requisitions" class="row g-3 align-items-end">
+                    <!-- Search Keyword -->
                     <div class="col-md-3 col-sm-6">
+                        <label for="search" class="form-label fs-12 fw-semibold mb-1">Search Requisitions</label>
+                        <input type="text" name="search" id="search" class="form-control form-control-sm" placeholder="Search ID, Name, Purpose..." value="<?= htmlspecialchars($searchQuery ?? '') ?>">
+                    </div>
+                    <!-- Status Filter -->
+                    <div class="col-md-3 col-sm-6">
+                        <label for="status" class="form-label fs-12 fw-semibold mb-1">Approval / Payout Status</label>
+                        <select name="status" id="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">All Statuses (Pending, Approved, Paid)</option>
+                            <option value="pending" <?= ($statusFilter ?? '') === 'pending' ? 'selected' : '' ?>>Pending Review / Dept Approval</option>
+                            <option value="approved" <?= ($statusFilter ?? '') === 'approved' ? 'selected' : '' ?>> Management Approved (Pending Payout)</option>
+                            <option value="paid" <?= ($statusFilter ?? '') === 'paid' ? 'selected' : '' ?>> Paid & Settled</option>
+                            <option value="rejected" <?= ($statusFilter ?? '') === 'rejected' ? 'selected' : '' ?>>❌ Rejected</option>
+                        </select>
+                    </div>
+                    <!-- Start Date -->
+                    <div class="col-md-2 col-sm-6">
                         <label for="start_date" class="form-label fs-12 fw-semibold mb-1">Start Date</label>
                         <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="<?= htmlspecialchars($startDate ?? '') ?>">
                     </div>
-                    <div class="col-md-3 col-sm-6">
+                    <!-- End Date -->
+                    <div class="col-md-2 col-sm-6">
                         <label for="end_date" class="form-label fs-12 fw-semibold mb-1">End Date</label>
                         <input type="date" name="end_date" id="end_date" class="form-control form-control-sm" value="<?= htmlspecialchars($endDate ?? '') ?>">
                     </div>
-                    <div class="col-md-4 col-sm-12">
+                    <!-- Buttons -->
+                    <div class="col-md-2 col-sm-12 text-end">
                         <button type="submit" class="btn btn-primary btn-sm px-3"><i class="fa-solid fa-filter me-1"></i> Filter</button>
-                        <?php if (!empty($startDate) || !empty($endDate)): ?>
-                            <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions" class="btn btn-light btn-sm ms-2"><i class="fa-solid fa-arrows-rotate me-1"></i> Reset</a>
+                        <?php if (!empty($startDate) || !empty($endDate) || !empty($statusFilter) || !empty($searchQuery)): ?>
+                            <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions" class="btn btn-light btn-sm border ms-1"><i class="fa-solid fa-arrows-rotate me-1"></i> Reset</a>
                         <?php endif; ?>
                     </div>
                     <?php if ($isDefaultLimit): ?>
                         <div class="col-12 mt-2">
                             <span class="badge bg-info-transparent text-info fs-11">
-                               
+                                <i class="fa-solid fa-info-circle me-1"></i> Showing latest 10 requisitions. Use the Status or Date filters above to search all requisitions.
                             </span>
                         </div>
                     <?php endif; ?>

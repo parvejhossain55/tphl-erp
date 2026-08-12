@@ -256,8 +256,15 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                     <div class="card__icon"><span><i class="fa-light fa-money-check-dollar"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Construction Fee Paid</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
+                        <div class="d-flex flex-column align-items-start">
                             <h4 class="card__title">TK.<?= number_format($paymentSummary['construction_fee_paid_after_service'] ?? 0, 2) ?></h4>
+                            <?php if (!empty($paymentSummary['unverified_emi_amount']) && $paymentSummary['unverified_emi_amount'] > 0): ?>
+                                <div style="margin-top: 4px;">
+                                    <span class="badge bg-warning text-dark" style="font-size:11px; font-weight:600; padding:4px 8px;" title="Uploaded EMI payments awaiting verification">
+                                        <i class="fa-light fa-clock"></i> +TK.<?= number_format($paymentSummary['unverified_emi_amount'], 2) ?> Pending Verification
+                                    </span>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -308,8 +315,15 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                     <div class="card__icon"><span><i class="fa-light fa-check-circle"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Completed EMI</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
+                        <div class="d-flex flex-column align-items-start">
                             <h4 class="card__title"><?= $paymentSummary['completed_emi'] ?? 0 ?> / <?= $paymentSummary['total_emi'] ?? 0 ?></h4>
+                            <?php if (!empty($paymentSummary['unverified_emi_count']) && $paymentSummary['unverified_emi_count'] > 0): ?>
+                                <div style="margin-top: 4px;">
+                                    <span class="badge bg-warning text-dark" style="font-size:11px; font-weight:600; padding:4px 8px;" title="EMI payments awaiting verification">
+                                        <i class="fa-light fa-clock"></i> +<?= $paymentSummary['unverified_emi_count'] ?> EMI Pending Verification
+                                    </span>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -689,9 +703,17 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                                             </div>
                                         <?php endif; ?>
                                     </td>
-                                    <td>
-                                        <?php echo !empty($transaction['created_by_name']) ? htmlspecialchars($transaction['created_by_name']) : '<span class="text-muted">System</span>'; ?>
-                                    </td>
+                                     <td>
+                                         <?php echo !empty($transaction['created_by_name']) ? htmlspecialchars($transaction['created_by_name']) : '<span class="text-muted">System</span>'; ?>
+                                         <?php 
+                                             $isCsv = !empty($transaction['csv_import_log_id']) || in_array($transaction['payment_type'] ?? '', ['emi', 'emi_due_settlement', 'development_charge']);
+                                         ?>
+                                         <?php if ($isCsv): ?>
+                                             <br><span class="badge bg-info-subtle text-info border border-info" style="font-size:10px; font-weight:600; margin-top:3px;" title="Uploaded via CSV Bulk Import">
+                                                 <i class="fa-light fa-file-csv me-1"></i>CSV Import
+                                             </span>
+                                         <?php endif; ?>
+                                     </td>
                                     
                                     <td>
                                         <?php

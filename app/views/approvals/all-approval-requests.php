@@ -195,13 +195,20 @@
                             <?php foreach ($approvalHistory as $req): ?>
                                 <?php
                                     // Direct module target URL resolution so clicking review/view opens the exact module page!
-                                    $targetUrl = $base_url . '/approve-request/' . $req['id'];
+                                    $targetUrl = 'javascript:void(0)';
                                     $sourceTable = strtolower($req['source_table'] ?? '');
                                     $requestType = strtolower($req['request_type'] ?? '');
 
                                     if ($sourceTable === 'lead_payments') {
                                         if (!empty($req['booking_id'])) {
                                             $targetUrl = $base_url . '/clients-cash-in-history-view/' . $req['booking_id'];
+                                        } else {
+                                            $targetUrl = $base_url . '/ced-dashboard';
+                                        }
+                                    } elseif ($sourceTable === 'lead_bookings') {
+                                        $bookingId = $req['source_id'] ?? $req['booking_id'] ?? null;
+                                        if (!empty($bookingId)) {
+                                            $targetUrl = $base_url . '/clients-cash-in-history-view/' . $bookingId;
                                         } else {
                                             $targetUrl = $base_url . '/ced-dashboard';
                                         }
@@ -213,16 +220,18 @@
                                         $targetUrl = $base_url . '/con-contractor-bills';
                                     } elseif ($sourceTable === 'con_land_requisitions') {
                                         $targetUrl = $base_url . '/con-land-requisitions';
+                                    } elseif ($sourceTable === 'con_work_orders') {
+                                        $targetUrl = $base_url . '/con-work-orders';
                                     } elseif ($sourceTable === 'fund_requisitions' || $sourceTable === 'operational_fund_requests') {
                                         $targetUrl = $base_url . '/fund-requisitions';
                                     } elseif ($sourceTable === 'cashout_requests') {
                                         $targetUrl = $base_url . '/admin-cashout-requests';
                                     } elseif ($sourceTable === 'payslips' || $sourceTable === 'salary_requests' || $requestType === 'salary') {
-                                        $targetUrl = $base_url . '/home';
+                                        $targetUrl = $base_url . '/payslip-lists';
                                     } elseif ($sourceTable === 'client_refund_requests') {
                                         $targetUrl = $base_url . '/client-refunds';
                                     } elseif ($sourceTable === 'employee_leaves' || $sourceTable === 'leave') {
-                                        $targetUrl = $base_url . '/home';
+                                        $targetUrl = $base_url . '/hrm-leave-history';
                                     } elseif ($sourceTable === 'manpower_requisitions') {
                                         $targetUrl = $base_url . '/manpower-requisitions';
                                     }
@@ -243,7 +252,7 @@
 
                                     <!-- Department & Module -->
                                     <td>
-                                        <span class="badge bg-secondary-subtle text-secondary fw-semibold d-block mb-1 text-capitalize">
+                                        <span class="badge bg-success text-white rounded-pill px-3 py-1 extra-small d-block mb-1">
                                             <?= htmlspecialchars($req['department'] ?? 'General') ?>
                                         </span>
                                         <span class="badge bg-light text-muted border extra-small">
