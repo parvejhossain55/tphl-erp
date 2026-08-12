@@ -539,6 +539,21 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                     </select>
                 </div>
 
+                <!-- Latest Assigned Hours Filter -->
+                <div class="col-auto col-sm-6 col-md-auto">
+                    <select class="form-select form-select-sm" name="assigned_hours" title="Latest Assigned Leads within Hours">
+                        <option value="">Assigned Within: All</option>
+                        <option value="1" <?= ($_GET['assigned_hours'] ?? '') == '1' ? 'selected' : '' ?>>Last 1 Hour</option>
+                        <option value="2" <?= ($_GET['assigned_hours'] ?? '') == '2' ? 'selected' : '' ?>>Last 2 Hours</option>
+                        <option value="3" <?= ($_GET['assigned_hours'] ?? '') == '3' ? 'selected' : '' ?>>Last 3 Hours</option>
+                        <option value="4" <?= ($_GET['assigned_hours'] ?? '') == '4' ? 'selected' : '' ?>>Last 4 Hours</option>
+                        <option value="5" <?= ($_GET['assigned_hours'] ?? '') == '5' ? 'selected' : '' ?>>Last 5 Hours</option>
+                        <option value="6" <?= ($_GET['assigned_hours'] ?? '') == '6' ? 'selected' : '' ?>>Last 6 Hours</option>
+                        <option value="12" <?= ($_GET['assigned_hours'] ?? '') == '12' ? 'selected' : '' ?>>Last 12 Hours</option>
+                        <option value="24" <?= ($_GET['assigned_hours'] ?? '') == '24' ? 'selected' : '' ?>>Last 24 Hours</option>
+                    </select>
+                </div>
+
                 <?php if (!empty($filterCard)): ?>
                     <input type="hidden" name="filter_card" value="<?= htmlspecialchars($filterCard) ?>">
                 <?php endif; ?>
@@ -623,7 +638,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                         ? $lead['assigned_at']
                                         : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
                                     ?>
-                                    <td><?= $assignedRaw ? date('d F, Y', strtotime($assignedRaw)) : '' ?></td>
+                                    <td><?= $assignedRaw ? date('d F, Y, h:i A', strtotime($assignedRaw)) : '' ?></td>
                                     
                                     <!-- Duplicate Status -->
                                     <td>
@@ -1043,6 +1058,19 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                         <option value="cancel" <?= ($selectedAction ?? '') == 'cancel' ? 'selected' : '' ?>>Cancel</option>
                     </select>
 
+                    <!-- Latest Assigned Hours Filter -->
+                    <select class="form-select form-select-sm" name="assigned_hours" title="Latest Assigned Leads within Hours">
+                        <option value="">Assigned Within: All</option>
+                        <option value="1" <?= ($_GET['assigned_hours'] ?? '') == '1' ? 'selected' : '' ?>>Last 1 Hour</option>
+                        <option value="2" <?= ($_GET['assigned_hours'] ?? '') == '2' ? 'selected' : '' ?>>Last 2 Hours</option>
+                        <option value="3" <?= ($_GET['assigned_hours'] ?? '') == '3' ? 'selected' : '' ?>>Last 3 Hours</option>
+                        <option value="4" <?= ($_GET['assigned_hours'] ?? '') == '4' ? 'selected' : '' ?>>Last 4 Hours</option>
+                        <option value="5" <?= ($_GET['assigned_hours'] ?? '') == '5' ? 'selected' : '' ?>>Last 5 Hours</option>
+                        <option value="6" <?= ($_GET['assigned_hours'] ?? '') == '6' ? 'selected' : '' ?>>Last 6 Hours</option>
+                        <option value="12" <?= ($_GET['assigned_hours'] ?? '') == '12' ? 'selected' : '' ?>>Last 12 Hours</option>
+                        <option value="24" <?= ($_GET['assigned_hours'] ?? '') == '24' ? 'selected' : '' ?>>Last 24 Hours</option>
+                    </select>
+
                     <!-- Action Buttons -->
                     <div class="d-flex flex-wrap gap-2 mt-2">
                         <button type="submit" class="btn btn-outline-secondary btn-sm flex-grow-1">Search</button>
@@ -1126,6 +1154,16 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                         <div class="mt-1">
                             <i class="bi bi-geo-alt-fill text-muted me-1" style="font-size:11px"></i>
                             <span class="fs-11 text-muted"><?= htmlspecialchars($mAddr) ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <?php
+                        $mAssignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
+                            ? $lead['assigned_at']
+                            : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
+                        ?>
+                        <?php if ($mAssignedRaw): ?>
+                        <div class="text-muted small mt-1">
+                            <i class="bi bi-calendar-event me-1"></i>Assigned: <?= date('d M, Y, h:i A', strtotime($mAssignedRaw)) ?>
                         </div>
                         <?php endif; ?>
                     </div>

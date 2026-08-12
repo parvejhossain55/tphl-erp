@@ -91,6 +91,21 @@
                                     </div>
                                     <?php endif; ?>
 
+                                    <!-- Latest Assigned Hours Filter -->
+                                    <div class="col-auto col-sm-6 col-md-auto">
+                                        <select class="form-select form-select-sm filter-select" name="assigned_hours" title="Latest Assigned Leads within Hours">
+                                            <option value="">Assigned Within: All</option>
+                                            <option value="1" <?= ($_GET['assigned_hours'] ?? '') == '1' ? 'selected' : '' ?>>Last 1 Hour</option>
+                                            <option value="2" <?= ($_GET['assigned_hours'] ?? '') == '2' ? 'selected' : '' ?>>Last 2 Hours</option>
+                                            <option value="3" <?= ($_GET['assigned_hours'] ?? '') == '3' ? 'selected' : '' ?>>Last 3 Hours</option>
+                                            <option value="4" <?= ($_GET['assigned_hours'] ?? '') == '4' ? 'selected' : '' ?>>Last 4 Hours</option>
+                                            <option value="5" <?= ($_GET['assigned_hours'] ?? '') == '5' ? 'selected' : '' ?>>Last 5 Hours</option>
+                                            <option value="6" <?= ($_GET['assigned_hours'] ?? '') == '6' ? 'selected' : '' ?>>Last 6 Hours</option>
+                                            <option value="12" <?= ($_GET['assigned_hours'] ?? '') == '12' ? 'selected' : '' ?>>Last 12 Hours</option>
+                                            <option value="24" <?= ($_GET['assigned_hours'] ?? '') == '24' ? 'selected' : '' ?>>Last 24 Hours</option>
+                                        </select>
+                                    </div>
+
                                     <!-- Submit & Clear buttons -->
                                     <div class="col-auto">
                                         <div class="d-flex gap-2">
@@ -168,8 +183,13 @@
                                            <!-- S/L -->
                                            <td><?= $key + 1 ?></td>
 
-                                           <!-- Lead Date -->
-                                           <td><?= $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '' ?></td>
+                                            <!-- Lead Date -->
+                                            <?php
+                                            $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
+                                                ? $lead['assigned_at']
+                                                : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
+                                            ?>
+                                            <td><?= $assignedRaw ? date('d F, Y, h:i A', strtotime($assignedRaw)) : '' ?></td>
 
                                             <!-- Duplicate Status -->
                                             <td>
@@ -530,6 +550,16 @@
                         <?php if (!empty($lead['when_is_the_best_time_to_contact_you'])): ?>
                         <div class="text-info small mt-1">
                             <i class="bi bi-clock me-1"></i>Best Contact Time: <?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you']) ?>
+                        </div>
+                        <?php endif; ?>
+                        <?php
+                        $mAssignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
+                            ? $lead['assigned_at']
+                            : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
+                        ?>
+                        <?php if ($mAssignedRaw): ?>
+                        <div class="text-muted small mt-1">
+                            <i class="bi bi-calendar-event me-1"></i>Assigned: <?= date('d F, Y, h:i A', strtotime($mAssignedRaw)) ?>
                         </div>
                         <?php endif; ?>
 

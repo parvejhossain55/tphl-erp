@@ -345,35 +345,86 @@ $activeCard = $_GET['filter_card'] ?? '';
                         </select>
                     </div>
 
+                    <!-- Latest Assigned (Hours) Filter -->
+                    <div class="col-6 col-md-2">
+                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Latest Assigned (Hours)</label>
+                        <select class="form-select form-select-sm filter-select" name="assigned_hours" title="Latest Assigned Leads within Hours">
+                            <option value="">Assigned Within: All</option>
+                            <option value="1" <?= ($_GET['assigned_hours'] ?? '') == '1' ? 'selected' : '' ?>>Last 1 Hour</option>
+                            <option value="2" <?= ($_GET['assigned_hours'] ?? '') == '2' ? 'selected' : '' ?>>Last 2 Hours</option>
+                            <option value="3" <?= ($_GET['assigned_hours'] ?? '') == '3' ? 'selected' : '' ?>>Last 3 Hours</option>
+                            <option value="4" <?= ($_GET['assigned_hours'] ?? '') == '4' ? 'selected' : '' ?>>Last 4 Hours</option>
+                            <option value="5" <?= ($_GET['assigned_hours'] ?? '') == '5' ? 'selected' : '' ?>>Last 5 Hours</option>
+                            <option value="6" <?= ($_GET['assigned_hours'] ?? '') == '6' ? 'selected' : '' ?>>Last 6 Hours</option>
+                            <option value="12" <?= ($_GET['assigned_hours'] ?? '') == '12' ? 'selected' : '' ?>>Last 12 Hours</option>
+                            <option value="24" <?= ($_GET['assigned_hours'] ?? '') == '24' ? 'selected' : '' ?>>Last 24 Hours</option>
+                        </select>
+                    </div>
+
                 </div>
 
-                <!-- Action Buttons Row -->
+                <!-- Action Buttons & Quick Hourly Filters Row -->
                 <div class="row mt-3">
-                    <div class="col-12 d-flex justify-content-end gap-2 flex-wrap">
-                        <button type="submit" class="btn btn-outline-secondary btn-sm px-3 py-1.5">
-                            <i class="bi bi-search me-1"></i> Search
-                        </button>
-                        <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-primary btn-sm px-3 py-1.5">
-                            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
-                        </a>
+                    <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <!-- Quick Hourly Filter Pills -->
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                            <span class="fw-bold text-dark small me-1"><i class="bi bi-clock-history me-1 text-primary"></i>Latest Assigned:</span>
+                            <?php
+                            $hoursList = [1 => '1h', 2 => '2h', 3 => '3h', 4 => '4h', 5 => '5h', 6 => '6h', 12 => '12h', 24 => '24h'];
+                            $currentHr = $_GET['assigned_hours'] ?? '';
+                            foreach ($hoursList as $hrVal => $hrLabel):
+                                $queryParams = $_GET;
+                                if ($currentHr == $hrVal) {
+                                    unset($queryParams['assigned_hours']);
+                                } else {
+                                    $queryParams['assigned_hours'] = $hrVal;
+                                }
+                                unset($queryParams['page'], $queryParams['url']);
+                                $hrUrl = $GLOBALS['base_url'] . '/lead-lists' . ($queryParams ? '?' . http_build_query($queryParams) : '');
+                                $isActive = ($currentHr == $hrVal);
+                            ?>
+                                <a href="<?= $hrUrl ?>" class="btn btn-xs rounded-pill <?= $isActive ? 'btn-primary active fw-bold' : 'btn-outline-secondary' ?>" style="font-size: 11px; padding: 3px 10px;">
+                                    Last <?= $hrLabel ?>
+                                </a>
+                            <?php endforeach; ?>
+                            <?php if ($currentHr): ?>
+                                <?php
+                                $clearParams = $_GET;
+                                unset($clearParams['assigned_hours'], $clearParams['page'], $clearParams['url']);
+                                $clearUrl = $GLOBALS['base_url'] . '/lead-lists' . ($clearParams ? '?' . http_build_query($clearParams) : '');
+                                ?>
+                                <a href="<?= $clearUrl ?>" class="btn btn-xs btn-link text-danger p-0 ms-1" style="font-size: 11px; text-decoration: underline;">Clear Hour Filter</a>
+                            <?php endif; ?>
+                        </div>
 
-                        <!-- Import CSV button outside form submit -->
-                        <button type="button" class="btn btn-outline-secondary btn-sm px-3" id="importCsvBtn" data-bs-toggle="modal" data-bs-target="#importCsvModal">
-                            Import Leads CSV
-                        </button>
-                        
-                        <button type="button" class="btn btn-outline-info btn-sm px-3" id="importBookingsCsvBtn" data-bs-toggle="modal" data-bs-target="#importBookingsCsvModal">
-                            Import Bookings CSV
-                        </button>
+                        <!-- Submit Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-outline-secondary btn-sm px-3 py-1.5">
+                                <i class="bi bi-search me-1"></i> Search
+                            </button>
+                            <a href="<?= $GLOBALS['base_url'] ?>/lead-lists" class="btn btn-primary btn-sm px-3 py-1.5">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                            </a>
 
-                        <button type="button" class="btn btn-outline-success btn-sm px-3" id="importPaymentsCsvBtn" data-bs-toggle="modal" data-bs-target="#importPaymentsCsvModal">
-                            Import Payments CSV
-                        </button>
+                            <!-- Import CSV button outside form submit -->
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-3" id="importCsvBtn" data-bs-toggle="modal" data-bs-target="#importCsvModal">
+                                Import Leads CSV
+                            </button>
+                            
+                            <button type="button" class="btn btn-outline-info btn-sm px-3" id="importBookingsCsvBtn" data-bs-toggle="modal" data-bs-target="#importBookingsCsvModal">
+                                Import Bookings CSV
+                            </button>
 
-                        <a href="<?= $GLOBALS['base_url'] ?>/create-lead" class="btn btn-primary btn-sm px-3">
-                            <i class="bi bi-plus-lg"></i> Add Lead
-                        </a>
+                            <button type="button" class="btn btn-outline-success btn-sm px-3" id="importPaymentsCsvBtn" data-bs-toggle="modal" data-bs-target="#importPaymentsCsvModal">
+                                Import Payments CSV
+                            </button>
+
+                            <a href="<?= $GLOBALS['base_url'] ?>/create-lead" class="btn btn-primary btn-sm px-3">
+                                <i class="bi bi-plus-lg"></i> Add Lead
+                            </a>
+                        </div>
                     </div>
+                </div>
                 </div>
             </form>
         </div>
@@ -587,6 +638,19 @@ $activeCard = $_GET['filter_card'] ?? '';
                         <option value="unassigned" <?= ($_GET['assigned'] ?? '') == 'unassigned' ? 'selected' : '' ?>>
                             Not Assigned
                         </option>
+                    </select>
+
+                    <!-- Latest Assigned Hours Filter -->
+                    <select class="form-select form-select-sm" name="assigned_hours" title="Latest Assigned Leads within Hours">
+                        <option value="">Assigned Within: All</option>
+                        <option value="1" <?= ($_GET['assigned_hours'] ?? '') == '1' ? 'selected' : '' ?>>Last 1 Hour</option>
+                        <option value="2" <?= ($_GET['assigned_hours'] ?? '') == '2' ? 'selected' : '' ?>>Last 2 Hours</option>
+                        <option value="3" <?= ($_GET['assigned_hours'] ?? '') == '3' ? 'selected' : '' ?>>Last 3 Hours</option>
+                        <option value="4" <?= ($_GET['assigned_hours'] ?? '') == '4' ? 'selected' : '' ?>>Last 4 Hours</option>
+                        <option value="5" <?= ($_GET['assigned_hours'] ?? '') == '5' ? 'selected' : '' ?>>Last 5 Hours</option>
+                        <option value="6" <?= ($_GET['assigned_hours'] ?? '') == '6' ? 'selected' : '' ?>>Last 6 Hours</option>
+                        <option value="12" <?= ($_GET['assigned_hours'] ?? '') == '12' ? 'selected' : '' ?>>Last 12 Hours</option>
+                        <option value="24" <?= ($_GET['assigned_hours'] ?? '') == '24' ? 'selected' : '' ?>>Last 24 Hours</option>
                     </select>
 
                     <!-- Buttons -->
@@ -815,7 +879,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                                         : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
                                     ?>
                                     <div class="text-muted" style="font-size: 11px; margin-top: 3px;">
-                                        <i class="bi bi-calendar-event me-1"></i>Assigned Date: <?= date('d M, Y', strtotime($assignedRaw)) ?>
+                                        <i class="bi bi-calendar-event me-1"></i>Assigned Date: <?= date('d M, Y, h:i A', strtotime($assignedRaw)) ?>
                                     </div>
                                 <?php endif; ?>
                             </div>
@@ -1039,7 +1103,7 @@ document.addEventListener('DOMContentLoaded', function () {
         addHidden('redirect_page', finalPage);
         addHidden('route_mode',    routeMode);
         // Also preserve all current GET filters
-        const filterParams = ['year','month','assigned_user','last_action','assigned','q','from_date','to_date','project_id','project_category_id'];
+        const filterParams = ['year','month','assigned_user','last_action','assigned','assigned_hours','q','from_date','to_date','project_id','project_category_id'];
         filterParams.forEach(p => {
             const v = urlParams.get(p);
             if (v) addHidden('redirect_' + p, v);

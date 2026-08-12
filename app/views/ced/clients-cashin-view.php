@@ -68,7 +68,8 @@ $show_breadcrumb = true;
                 </button>
             </div>
             <div class="card-body p-3">
-                <div cl                    <!-- Total Collected -->
+                <div class="row g-3">
+                    <!-- Total Collected -->
                     <div class="col-xl col-md-4 col-sm-6">
                         <div class="card__wrapper border-start border-4 border-primary h-100 p-3" style="cursor: pointer;" onclick="openProjectCollectionModal('total')" title="Click to view project breakdown (Verified + Unverified)">
                             <div class="d-flex align-items-center gap-2">
@@ -114,7 +115,7 @@ $show_breadcrumb = true;
                                 </div>
                             </div>
                         </div>
-                    </div>                </div>
+                    </div>
 
                     <!-- Verified EMI Collected -->
                     <div class="col-xl col-md-6 col-sm-6">

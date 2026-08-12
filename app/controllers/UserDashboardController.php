@@ -49,8 +49,10 @@ class UserDashboardController extends Controller
             $filterCountry = null;
         }
 
+        $assignedHours = $_GET['assigned_hours'] ?? null;
+
         // only assigned today leads for logged user
-        $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId, $filterProjectId, $filterCategoryId, $filterCountry);
+        $todayLeads = $this->leadModel->getTodayLeadsByUser($loggedUserId, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours);
 
         // Fetch duplicate leads for the logged in user
         $userDuplicates = $this->leadModel->getDuplicateLeadsForUser($loggedUserId);
@@ -525,6 +527,7 @@ class UserDashboardController extends Controller
         $search               = trim($_GET['search'] ?? '');
         $followup_date        = $_GET['followup_date'] ?? null;
         $filterCard           = $_GET['filter_card']   ?? null;
+        $assignedHours        = $_GET['assigned_hours'] ?? null;
 
         $onlyMissingFollowup = isset($_GET['filter']) && $_GET['filter'] === 'missing_followup';
 
@@ -541,7 +544,7 @@ class UserDashboardController extends Controller
 
         // Fetch assigned leads for the user
         $myAssignedClients = $this->leadModel
-            ->getAllMyLeads($userId, $year, $month, $lastAction, $call_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry);
+            ->getAllMyLeads($userId, $year, $month, $lastAction, $call_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours);
 
         // Fetch specific booking & follow-up counts ONLY for the user's leads (FAST!)
         $leadIds = !empty($myAssignedClients) ? array_column($myAssignedClients, 'id') : [];
@@ -550,9 +553,9 @@ class UserDashboardController extends Controller
         $followUpCounts = !empty($leadIds) ? $followUpModel->getFollowUpCountByLeadIds($leadIds) : [];
 
         // Calculate card statistics (reuse $myAssignedClients if no filters set)
-        $hasActiveFilters = ($lastAction || $call_status || $onlyMissingFollowup || $search || $followup_date || $filterCard);
+        $hasActiveFilters = ($lastAction || $call_status || $onlyMissingFollowup || $search || $followup_date || $filterCard || $assignedHours);
         $unfilteredAssignedLeads = $hasActiveFilters 
-            ? $this->leadModel->getAllMyLeads($userId, $year, $month, null, null, false, '', null, null, $filterProjectId, $filterCategoryId, $filterCountry)
+            ? $this->leadModel->getAllMyLeads($userId, $year, $month, null, null, false, '', null, null, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours)
             : $myAssignedClients;
 
         $totalLeadsCount        = count($unfilteredAssignedLeads);

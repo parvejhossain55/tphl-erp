@@ -59,6 +59,7 @@ class LeadController extends Controller
         $lastAction = $_GET['last_action'] ?? null;
         $assigned   = $_GET['assigned']    ?? null; // new filter for assigned leads
         $assigned_user = $_GET['assigned_user'] ?? null; // new filter for assigned user
+        $assigned_hours = $_GET['assigned_hours'] ?? null; // filter for assigned within last N hours
         $from_date = $_GET['from_date'] ?? null;
         $to_date   = $_GET['to_date']   ?? null;
         $filter_card = $_GET['filter_card'] ?? null;
@@ -97,10 +98,10 @@ class LeadController extends Controller
         // Get total count for pagination
         // Co-leader gets team-scoped data same as role_id=5 (Sales Manager)
         $effectiveRoleId = ($isCoLeader && !in_array($userRoleId, [1, 3, 5, 9])) ? 5 : $userRoleId;
-        $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry);
+        $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
 
         // Fetch paginated records
-        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $limit, $offset, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry);
+        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $limit, $offset, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
 
         $totalPages = ceil($leadCounts / $limit);
 
@@ -448,6 +449,7 @@ class LeadController extends Controller
         $lastAction = $_GET['last_action'] ?? null;
         $assigned   = $_GET['assigned']    ?? null;
         $assigned_user = $_GET['assigned_user'] ?? null;
+        $assigned_hours = $_GET['assigned_hours'] ?? null;
         $date = $_GET['date'] ?? null;
         $from_date = $_GET['from_date'] ?? null;
         $to_date   = $_GET['to_date']   ?? null;
@@ -493,15 +495,15 @@ class LeadController extends Controller
         // Co-leader gets same team-scoped access as Sales Manager (role_id=5)
         $effectiveRoleId = (isSalesCoLeader() && !in_array($userRoleId, [1, 3, 5, 9])) ? 5 : $userRoleId;
 
-        $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry);
+        $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
 
         if (!empty($search)) {
-            $filteredRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $search, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry);
+            $filteredRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $search, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
         } else {
             $filteredRecords = $totalRecords;
         }
 
-        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $length, $start, $search, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry);
+        $leads = $this->leadModel->getAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, $length, $start, $search, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
 
         // FIXED: শুধু current page এর lead IDs দিয়ে count করা হচ্ছে
         $leadIds = array_column($leads, 'id');
@@ -529,8 +531,8 @@ class LeadController extends Controller
                     'assigned_by_name' => $lead['assigned_by_name'] ?? 'System',
                     'assigned_at'      => $lead['assigned_at'] ?? '',
                     'assigned_at_formatted' => (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
-                        ? date('d M, Y', strtotime($lead['assigned_at']))
-                        : ((!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00') ? date('d M, Y', strtotime($lead['updated_at'])) : (!empty($lead['created_at']) ? date('d M, Y', strtotime($lead['created_at'])) : '')),
+                        ? date('d M, Y, h:i A', strtotime($lead['assigned_at']))
+                        : ((!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00') ? date('d M, Y, h:i A', strtotime($lead['updated_at'])) : (!empty($lead['created_at']) ? date('d M, Y, h:i A', strtotime($lead['created_at'])) : '')),
                     'follow_up_count'  => $followUpCounts[$lead['id']] ?? 0,
                     'booking_count'    => $bookingCounts[$lead['id']] ?? 0,
                     'created_at'       => $lead['created_at'] ?? '',
@@ -646,7 +648,7 @@ class LeadController extends Controller
                     ? $lead['assigned_at']
                     : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
                 
-                $assignedDateFormatted = date('d M, Y', strtotime($assignedRaw));
+                $assignedDateFormatted = date('d M, Y, h:i A', strtotime($assignedRaw));
                 $assignedDateHtml = '<div class="text-muted" style="font-size:11px; margin-top:3px;"><i class="bi bi-calendar-event me-1"></i>Assigned Date: ' . $assignedDateFormatted . '</div>';
             }
 

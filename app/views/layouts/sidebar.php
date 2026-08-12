@@ -925,16 +925,7 @@
                             <?php endif; ?>
                         </a>
                     </li>
-                    <?php if (!$isManagement): ?>
-                        <!-- Teams Manage -->
-                        <li class="slide ">
-                            <a href="<?= $base_url ?>/teams"
-                                class="sidebar__menu-item <?= isActive('teams', $current_route) ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-users-gear"></i></div>
-                                <span class="sidebar__menu-label">Sales Teams Add</span>
-                            </a>
-                        </li>
-                    <?php endif; ?>
+
                     <!-- Location -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/employee-lists"
@@ -1078,6 +1069,14 @@
                                 class="d-none sidebar__menu-item <?= isActive('letter-templates', $current_route) ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
                                 <span class="sidebar__menu-label">Generate Template</span>
+                            </a>
+                        </li>
+                        <!-- Teams Manage -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/teams"
+                                class="sidebar__menu-item <?= isActive('teams', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-users-gear"></i></div>
+                                <span class="sidebar__menu-label">Sales Teams Add</span>
                             </a>
                         </li>
                         <li class="slide has-sub d-none <?= isActive(['create-attendance', 'attendance-list'], $current_route) ?>">
