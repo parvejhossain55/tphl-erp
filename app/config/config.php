@@ -5,7 +5,7 @@
 // 3 = Production Server
 
 
-$current_server = 3; 
+$current_server = 1; 
 // Local Development Server
 if ($current_server == 1) {
     return [
@@ -101,6 +101,7 @@ if ($current_server == 3) {
         "automas_sms_sender_id" => "8809617635127",
         "sms_testing_mode" => false,
     ];
+
 }
 
 
@@ -120,8 +121,3 @@ if ($current_server == 3) {
 // DELETE lp FROM lead_payments lp
 // INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
 // WHERE lb.project_id = 45 AND lp.payment_type IN ('emi', 'emi_due_settlement', 'development_charge');
-
-
-
-
-
