@@ -61,8 +61,11 @@ $show_breadcrumb = true;
                 </div>
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Pending Verification <small class="text-muted">(Click to view)</small></h6>
-                    <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title" id="pendingVerificationCount"><?= $paymentStats['pending_verifications'] ?? 0 ?></h4>
+                    <h3 class="card__title mb-0" style="font-size: 1.5rem; margin-bottom: 0.25rem !important;">
+                        <?= $paymentStats['pending_verifications'] ?? 0 ?> <span style="font-size: 1rem; font-weight: normal;">Clients</span>
+                    </h3>
+                    <div style="font-size: 0.8rem; color: #6c757d; font-weight: 500;">
+                        Total Transactions Pending: <?= $paymentStats['total_pending_transactions'] ?? 0 ?>
                     </div>
                 </div>
             </div>
@@ -223,11 +226,12 @@ $show_breadcrumb = true;
                     <?php if (!empty($clients)): ?>
                         <?php foreach ($clients as $client): ?>
                             <?php
-                                // Determine verification status based on latest payment
+                                // Determine verification status based on latest payment and total pending
                                 $verStatus    = $client['latest_verification_status'] ?? '';
-                                $isPending    = ($verStatus === 'pending');
-                                $isRejected   = ($verStatus === 'rejected');
-                                $isVerified   = ($verStatus === 'verified');
+                                $totalPending = (int)($client['total_pending_payments'] ?? 0);
+                                $isPending    = ($totalPending > 0);
+                                $isRejected   = !$isPending && ($verStatus === 'rejected');
+                                $isVerified   = !$isPending && ($verStatus === 'verified');
 
                                 $rowClass     = $isPending ? 'table-pending-highlight' : ($isRejected ? 'table-danger' : '');
                                 $badgeClass   = $isVerified ? 'bg-success' : ($isRejected ? 'bg-danger' : ($isPending ? 'bg-warning text-dark' : 'bg-secondary'));

@@ -27,8 +27,10 @@
     global $db;
     if (isset($db)) {
         $res = $db->query("
-            SELECT COUNT(DISTINCT lp.booking_id) AS total 
+            SELECT COUNT(DISTINCT l.id) AS total 
             FROM lead_payments lp 
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            INNER JOIN leads l ON lb.lead_id = l.id
             WHERE lp.verification_status = 'pending'
         ");
         if ($res && $row = $res->fetch_assoc()) {
