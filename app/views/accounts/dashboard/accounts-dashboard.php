@@ -322,7 +322,7 @@ function getStatusBadge($status)
                         <span><i class="fa-light fa-shield-check"></i></span>
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
-                        <h6 class="card__sub-title mb-1 text-muted" style="font-size:0.75rem;">Pending Verifications</h6>
+                        <h6 class="card__sub-title mb-1 text-muted" style="font-size:0.75rem;">Total Pending Transactions</h6>
                         <h4 class="card__title mb-0"><?= $ops['pending_verifications'] ?? 0 ?></h4>
                         <small class="text-warning" style="font-size:0.68rem;">TK.<?= number_format($ops['pending_verification_amt'] ?? 0, 0) ?></small>
                     </div>

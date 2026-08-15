@@ -28,7 +28,7 @@ class AccountClient extends Model
         if ($verificationStatus === 'verified') {
             $havingClause = "HAVING latest_verification_status = 'verified'";
         } elseif ($verificationStatus === 'pending') {
-            $havingClause = "HAVING latest_verification_status = 'pending'";
+            $havingClause = "HAVING total_pending_payments > 0";
         } elseif ($verificationStatus === 'rejected') {
             $havingClause = "HAVING latest_verification_status = 'rejected'";
         }
@@ -65,6 +65,11 @@ class AccountClient extends Model
              INNER JOIN lead_bookings lb3 ON lb3.id = lp.booking_id
              WHERE lb3.lead_id = l.id
              ORDER BY lp.created_at DESC LIMIT 1) AS latest_verification_status,
+            (SELECT COUNT(lp.id)
+             FROM lead_payments lp
+             INNER JOIN lead_bookings lb_p ON lb_p.id = lp.booking_id
+             WHERE lb_p.lead_id = l.id
+             AND lp.verification_status = 'pending') AS total_pending_payments,
             COALESCE(
                 (SELECT SUM(lp.amount)
                  FROM lead_payments lp
@@ -285,7 +290,7 @@ ORDER BY lb.booking_date DESC
                           FROM lead_payments lp3 
                           WHERE lp3.booking_id = lb.id 
                           AND lp3.verification_status = 'pending') > 0
-                    THEN lb.id 
+                    THEN l.id 
                 END) as pending_verifications,
                 COALESCE(SUM(lp.service_fee), 0) as total_service_fee_collected
             FROM leads l
@@ -305,7 +310,31 @@ ORDER BY lb.booking_date DESC
 
         $sql->execute();
         $result = $sql->get_result();
-        return $result ? $result->fetch_assoc() : [];
+        $stats = $result ? $result->fetch_assoc() : [];
+
+        // Get total pending transactions count
+        $pendingSql = $this->db->prepare("
+            SELECT COUNT(lp.id) as total_pending_transactions
+            FROM lead_payments lp
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            $whereClause AND lp.verification_status = 'pending'
+        ");
+        if ($pendingSql) {
+            if (!empty($params)) {
+                $pendingSql->bind_param($types, ...$params);
+            }
+            $pendingSql->execute();
+            $pendingResult = $pendingSql->get_result();
+            if ($pendingResult && $row = $pendingResult->fetch_assoc()) {
+                $stats['total_pending_transactions'] = $row['total_pending_transactions'];
+            } else {
+                $stats['total_pending_transactions'] = 0;
+            }
+        } else {
+            $stats['total_pending_transactions'] = 0;
+        }
+
+        return $stats;
     }
 
     /**
@@ -3840,7 +3869,8 @@ ORDER BY lb.booking_date DESC
                 $devPaid   = (float) ($summary['development_charge_paid_total'] ?? 0);
                 $devRemaining = max(0, $devTarget - $devPaid);
                 if ($devTarget > 0 && $devRemaining <= 0) {
-                    throw new Exception("Development charge is already fully paid for {$rowData['client_name']} (Flat {$rowData['flat_name']})!");
+                    // Allow overpayment for CSV imports and general cases (will be recorded as extra)
+                    // throw new Exception("Development charge is already fully paid for {$rowData['client_name']} (Flat {$rowData['flat_name']})!");
                 }
             } elseif ($paymentType === 'emi') {
                 $summary = $this->getPaymentSummaryByBookingId($bookingId);
@@ -3850,7 +3880,8 @@ ORDER BY lb.booking_date DESC
                 $effectiveCFRemaining = max(0, $cfTotal - $emiPaidSoFar - $bulkDisc);
 
                 if ($cfTotal > 0 && $effectiveCFRemaining <= 0) {
-                    throw new Exception("Construction fee is already fully paid for {$rowData['client_name']} (Flat {$rowData['flat_name']})!");
+                    // Allow overpayment for CSV imports and general cases (will be recorded as extra)
+                    // throw new Exception("Construction fee is already fully paid for {$rowData['client_name']} (Flat {$rowData['flat_name']})!");
                 }
             }
 
