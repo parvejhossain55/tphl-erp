@@ -145,6 +145,7 @@ return [
     // Controller: TutorialController
     // =========================================================================
     'tutorial-video' => ['controller' => 'TutorialController', 'method' => 'redirect'],
+    'tutorial-video-sales' => ['controller' => 'TutorialController', 'method' => 'redirectSales'],
 
     // =========================================================================
     // Controller: ExpenseAdjustmentController

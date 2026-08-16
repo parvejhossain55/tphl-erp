@@ -670,7 +670,7 @@ class LeadController extends Controller
             $row[] = '<span class="bd-badge bg-secondary text-truncate" style="max-width: 150px;"><i class="bi bi-person-check me-1"></i>' . $assignedByStr . '</span>';
 
             $actionHtml = '';
-            if ((isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9])) || isSalesCoLeader()) {
+            if ((isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 33])) || isSalesCoLeader()) {
                 $fu_count = !empty($followUpCounts[$lead['id']]) ? '<span class="action-badge">' . $followUpCounts[$lead['id']] . '</span>' : '';
                 $bk_count = !empty($bookingCount[$lead['id']]) ? '<span class="action-badge">' . $bookingCount[$lead['id']] . '</span>' : '';
                 $bk_text = !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking';

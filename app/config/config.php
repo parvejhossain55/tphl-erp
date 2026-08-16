@@ -114,6 +114,7 @@ if ($current_server == 3) {
 //     SELECT lp.id 
 //     FROM lead_payments lp
 //     INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+
 //     WHERE lb.project_id = 45 AND lp.payment_type IN ('emi', 'emi_due_settlement', 'development_charge')
 // );
 
