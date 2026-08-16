@@ -3321,8 +3321,11 @@ ORDER BY lb.booking_date DESC
         }
         $phoneLike = '%' . $shortPhone;
 
+        // Sanitize project name to remove NBSP, tabs, and carriage returns
+        $projectName = trim(str_replace(["\xC2\xA0", "\xA0", "\r", "\n", "\t"], ' ', $projectName));
+
         // Normalize flat name: strip floor suffix like " - FLOOR 6", " - Floor 6"
-        $cleanFlatName = trim($flatName);
+        $cleanFlatName = trim(str_replace(["\xC2\xA0", "\xA0", "\r", "\n", "\t"], ' ', $flatName));
         $flatNameBase = $cleanFlatName;
         if (preg_match('/^(.+?)\s*[-–]\s*(FLOOR|Floor|floor)\s*\d+/i', $cleanFlatName, $fMatch)) {
             $flatNameBase = trim($fMatch[1]);
@@ -3356,14 +3359,14 @@ ORDER BY lb.booking_date DESC
                 INNER JOIN flats f ON f.id = lb.flat_id
                 WHERE lb.deleted_at IS NULL
                   AND l.deleted_at IS NULL
-                  AND LOWER(TRIM(p.name)) = LOWER(TRIM(?))
+                  AND LOWER(REPLACE(p.name, ' ', '')) = LOWER(REPLACE(?, ' ', ''))
                   AND (
-                      LOWER(TRIM(f.flat_name)) = LOWER(TRIM(?))
-                      OR REPLACE(REPLACE(LOWER(TRIM(f.flat_name)), ' ', ''), '-', '') = ?
+                      LOWER(REPLACE(f.flat_name, ' ', '')) = LOWER(REPLACE(?, ' ', ''))
+                      OR REPLACE(REPLACE(LOWER(REPLACE(f.flat_name, ' ', '')), ' ', ''), '-', '') = ?
                   )
                   AND (
-                      REPLACE(REPLACE(REPLACE(COALESCE(l.phone,''), ' ', ''), '-', ''), '+', '') LIKE ?
-                      OR REPLACE(REPLACE(REPLACE(COALESCE(l.phone_number,''), ' ', ''), '-', ''), '+', '') LIKE ?
+                      REGEXP_REPLACE(COALESCE(l.phone,''), '[^0-9]', '') LIKE ?
+                      OR REGEXP_REPLACE(COALESCE(l.phone_number,''), '[^0-9]', '') LIKE ?
                   )
                 ORDER BY lb.created_at DESC
                 LIMIT 1
@@ -3406,22 +3409,23 @@ ORDER BY lb.booking_date DESC
         if (str_starts_with($shortPhone, '0')) $shortPhone = substr($shortPhone, 1);
         if (strlen($shortPhone) > 10) $shortPhone = substr($shortPhone, -10);
         $phoneLike = '%' . $shortPhone;
-        
+        // Sanitize project name to remove NBSP, tabs, and carriage returns
+        $projectName = trim(str_replace(["\xC2\xA0", "\xA0", "\r", "\n", "\t"], ' ', $projectName));
+
         // Normalize flat name
-        $cleanFlatName = trim($flatName);
+        $cleanFlatName = trim(str_replace(["\xC2\xA0", "\xA0", "\r", "\n", "\t"], ' ', $flatName));
         $flatNameBase = $cleanFlatName;
         if (preg_match('/^(.+?)\s*[-–]\s*(FLOOR|Floor|floor)\s*\d+/i', $cleanFlatName, $fMatch)) {
             $flatNameBase = trim($fMatch[1]);
         }
-        
         // 1. Check if client exists by phone
         $stmt = $this->db->prepare("
             SELECT id, full_name, phone, phone_number 
             FROM leads 
             WHERE deleted_at IS NULL 
               AND (
-                  REPLACE(REPLACE(REPLACE(COALESCE(phone,''), ' ', ''), '-', ''), '+', '') LIKE ?
-                  OR REPLACE(REPLACE(REPLACE(COALESCE(phone_number,''), ' ', ''), '-', ''), '+', '') LIKE ?
+                  REGEXP_REPLACE(COALESCE(phone,''), '[^0-9]', '') LIKE ?
+                  OR REGEXP_REPLACE(COALESCE(phone_number,''), '[^0-9]', '') LIKE ?
               )
             LIMIT 1
         ");
@@ -3460,8 +3464,8 @@ ORDER BY lb.booking_date DESC
             SELECT f.id, p.id as project_id
             FROM flats f
             INNER JOIN projects p ON p.id = f.project_id
-            WHERE LOWER(TRIM(p.name)) = LOWER(TRIM(?))
-              AND (LOWER(TRIM(f.flat_name)) = LOWER(TRIM(?)) OR LOWER(TRIM(f.flat_name)) = LOWER(TRIM(?)))
+            WHERE LOWER(REPLACE(p.name, ' ', '')) = LOWER(REPLACE(?, ' ', ''))
+              AND (LOWER(REPLACE(f.flat_name, ' ', '')) = LOWER(REPLACE(?, ' ', '')) OR LOWER(REPLACE(f.flat_name, ' ', '')) = LOWER(REPLACE(?, ' ', '')))
             LIMIT 1
         ");
         if ($stmt) {
@@ -3475,7 +3479,7 @@ ORDER BY lb.booking_date DESC
             } else {
                 // Flat exists. Check if it's booked
                 $stmt = $this->db->prepare("
-                    SELECT l.full_name, COALESCE(l.phone, l.phone_number) AS phone
+                    SELECT l.id AS lead_id, l.full_name, COALESCE(l.phone, l.phone_number) AS phone
                     FROM lead_bookings lb
                     INNER JOIN leads l ON l.id = lb.lead_id
                     WHERE lb.flat_id = ? AND lb.deleted_at IS NULL AND l.deleted_at IS NULL
@@ -3488,7 +3492,11 @@ ORDER BY lb.booking_date DESC
                     $stmt->close();
                     
                     if ($bookingResult) {
-                        $errors[] = "Associated flat '{$flatName}' in project '{$projectName}' is booked by another client ('{$bookingResult['full_name']}', phone: '{$bookingResult['phone']}')";
+                        if (isset($leadResult['id']) && $bookingResult['lead_id'] == $leadResult['id']) {
+                            // Valid booking for this client, no error.
+                        } else {
+                            $errors[] = "Associated flat '{$flatName}' in project '{$projectName}' is booked by another client ('{$bookingResult['full_name']}', phone: '{$bookingResult['phone']}')";
+                        }
                     } else {
                         $errors[] = "Associated flat '{$flatName}' in project '{$projectName}' is not currently booked by any client";
                     }

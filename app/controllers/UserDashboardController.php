@@ -596,39 +596,65 @@ class UserDashboardController extends Controller
         if ($userId) {
             $teamIdForQuery = $userTeamId ?: 0;
             $dupSql = "
-                SELECT DISTINCT
-                    l.id,
-                    l.full_name,
-                    l.phone_number,
-                    l.email,
-                    l.team_id,
-                    t.name        AS team_name,
-                    proj.name     AS project_name,
-                    l.campaign_name,
-                    l.assigned_id,
-                    u.full_name   AS assigned_to_name,
-                    l.updated_at  AS assigned_date,
-                    IF(l.team_id = ?, 1, 0) AS is_mine
-                FROM leads my_leads
-                JOIN leads l ON (
-                    (my_leads.phone_number IS NOT NULL AND my_leads.phone_number != '' AND l.phone_number = my_leads.phone_number)
-                    OR (my_leads.email IS NOT NULL AND my_leads.email != '' AND l.email = my_leads.email)
-                )
-                LEFT JOIN users u ON l.assigned_id = u.id
-                LEFT JOIN employees emp ON emp.user_id = u.id
-                LEFT JOIN teams t ON l.team_id = t.id
-                LEFT JOIN projects proj ON l.project_id = proj.id
-                WHERE my_leads.assigned_id = ?
-                  AND my_leads.deleted_at IS NULL
-                  AND l.deleted_at IS NULL
-                  AND l.assigned_id IS NOT NULL
-                  AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
-                ORDER BY COALESCE(l.phone_number, l.email), is_mine DESC, l.updated_at DESC
+                SELECT * FROM (
+                    SELECT DISTINCT
+                        l.id,
+                        l.full_name,
+                        l.phone_number,
+                        l.email,
+                        l.team_id,
+                        t.name        AS team_name,
+                        proj.name     AS project_name,
+                        l.campaign_name,
+                        l.assigned_id,
+                        u.full_name   AS assigned_to_name,
+                        l.updated_at  AS assigned_date,
+                        IF(l.team_id = ?, 1, 0) AS is_mine
+                    FROM leads my_leads
+                    INNER JOIN leads l ON my_leads.phone_number != '' AND l.phone_number = my_leads.phone_number
+                    LEFT JOIN users u ON l.assigned_id = u.id
+                    LEFT JOIN employees emp ON emp.user_id = u.id
+                    LEFT JOIN teams t ON l.team_id = t.id
+                    LEFT JOIN projects proj ON l.project_id = proj.id
+                    WHERE my_leads.assigned_id = ?
+                      AND my_leads.deleted_at IS NULL
+                      AND l.deleted_at IS NULL
+                      AND l.assigned_id IS NOT NULL
+                      AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+                    
+                    UNION
+                    
+                    SELECT DISTINCT
+                        l.id,
+                        l.full_name,
+                        l.phone_number,
+                        l.email,
+                        l.team_id,
+                        t.name        AS team_name,
+                        proj.name     AS project_name,
+                        l.campaign_name,
+                        l.assigned_id,
+                        u.full_name   AS assigned_to_name,
+                        l.updated_at  AS assigned_date,
+                        IF(l.team_id = ?, 1, 0) AS is_mine
+                    FROM leads my_leads
+                    INNER JOIN leads l ON my_leads.email != '' AND l.email = my_leads.email
+                    LEFT JOIN users u ON l.assigned_id = u.id
+                    LEFT JOIN employees emp ON emp.user_id = u.id
+                    LEFT JOIN teams t ON l.team_id = t.id
+                    LEFT JOIN projects proj ON l.project_id = proj.id
+                    WHERE my_leads.assigned_id = ?
+                      AND my_leads.deleted_at IS NULL
+                      AND l.deleted_at IS NULL
+                      AND l.assigned_id IS NOT NULL
+                      AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+                ) AS combined_results
+                ORDER BY COALESCE(phone_number, email), is_mine DESC, assigned_date DESC
             ";
 
             $dupStmt = $this->db->prepare($dupSql);
             if ($dupStmt) {
-                $dupStmt->bind_param('ii', $teamIdForQuery, $userId);
+                $dupStmt->bind_param('iiii', $teamIdForQuery, $userId, $teamIdForQuery, $userId);
                 $dupStmt->execute();
                 $dupResult = $dupStmt->get_result();
                 $allDups   = [];

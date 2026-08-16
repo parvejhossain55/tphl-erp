@@ -219,9 +219,17 @@ class ApiController extends Controller
                 }
             }
 
-            $agreementValue = (float)$booking['agreement_value'];
+            // ==========================================
+            // Updated Price Logic: Use Flats table price
+            // ==========================================
+            $flatPrice = $flat ? (float)$flat['price_value'] : 0;
+            // Fallback to agreement value if flat price is zero/empty
+            if ($flatPrice <= 0) {
+                $flatPrice = (float)$booking['agreement_value'];
+            }
+            
             $discountAmount = (float)$booking['discount_amount'];
-            $totalPayable = $agreementValue - $discountAmount;
+            $totalPayable = $flatPrice - $discountAmount;
 
             $totalPaid = 0;
             $bookingMoneyPaid = 0;
@@ -229,6 +237,7 @@ class ApiController extends Controller
             $mutationCostPaid = 0;
             $devChargePaid = 0;
             $emiPaid = 0;
+            $unverifiedEmiPaid = 0; 
             $totalDueEmi = 0;
             $totalServiceFee = 0;
             $additionalLandSharePaid = 0;
@@ -258,6 +267,12 @@ class ApiController extends Controller
                         $totalDueEmi += (float)$p['due_emi_amount'];
                         $bulkEmiDiscount += (float)$p['bulk_emi_discount'];
                         $penaltyCharged += (float)$p['penalty_amount'];
+                    } else {
+                        $amt = (float)$p['amount'];
+                        $ptype = $p['payment_type'];
+                        if (in_array($ptype, ['emi', 'emi_due_settlement'])) {
+                            $unverifiedEmiPaid += $amt;
+                        }
                     }
                     $penaltyPaid += (float)$p['penalty_paid'];
                     $penaltyWaived += (float)$p['penalty_waived'];
@@ -270,8 +285,7 @@ class ApiController extends Controller
             $devChargeTarget = $flat ? (float)$flat['development_charges'] : 0;
             $totalLandSharePaid = $bookingMoneyPaid + $registrationPaid + $mutationCostPaid + $additionalLandSharePaid;
 
-            $totalPrice = $flat ? (float)$flat['price_value'] : 0;
-            $constructionFee = max(0, $totalPrice - ($landShareTarget + $devChargeTarget));
+            $constructionFee = max(0, $flatPrice - ($landShareTarget + $devChargeTarget));
 
             $emiStatsRes = $this->db->query("SELECT total_emi_no FROM lead_payments WHERE booking_id = $bookingId AND total_emi_no IS NOT NULL LIMIT 1");
             $totalEmiCount = 0;
@@ -287,6 +301,12 @@ class ApiController extends Controller
                 $completedEmiCount = (int)$completedEmiRes->fetch_assoc()['cnt'];
             }
 
+            $unverifiedEmiRes = $this->db->query("SELECT COUNT(*) as cnt FROM emi_schedules es JOIN lead_payments lp ON es.lead_payment_id = lp.id WHERE lp.booking_id = $bookingId AND lp.verification_status != 'verified'");
+            $unverifiedEmiCount = 0;
+            if ($unverifiedEmiRes && $unverifiedEmiRes->num_rows > 0) {
+                $unverifiedEmiCount = (int)$unverifiedEmiRes->fetch_assoc()['cnt'];
+            }
+
             $responseData['bookings'][] = [
                 "booking_id" => $bookingId,
                 "agent_info" => ["agent_name" => $agentName],
@@ -299,34 +319,31 @@ class ApiController extends Controller
                     "sqft" => $flat ? $flat['sqft'] : 0
                 ],
                 "payment_info" => [
-                    "total_agreement_value" => $agreementValue,
-                    "approved_discount_amount" => $discountAmount,
-                    "total_payable" => $totalPayable,
+                    "total_price" => $totalPayable,
                     "total_paid" => $totalPaid,
                     "total_due" => $totalDue,
-                    "booking_and_registration" => [
+                    "land_share_info" => [
+                        "total_land_share_amount" => $landShareTarget,
                         "booking_money_paid" => $bookingMoneyPaid,
-                        "registration_paid" => $registrationPaid,
-                        "mutation_cost_paid" => $mutationCostPaid
+                        "registration_money_paid" => $registrationPaid,
+                        "total_land_share_paid" => ($bookingMoneyPaid + $registrationPaid),
+                        "land_share_due" => max(0, $landShareTarget - ($bookingMoneyPaid + $registrationPaid))
                     ],
-                    "land_share" => [
-                        "total_land_share_target" => $landShareTarget,
-                        "total_land_share_paid" => $totalLandSharePaid,
-                        "is_land_share_completed" => ($landShareTarget > 0) ? ($totalLandSharePaid >= $landShareTarget) : false
-                    ],
-                    "development_charge" => [
+                    "development_charge_info" => [
                         "total_development_charge_target" => $devChargeTarget,
                         "development_charge_paid" => $devChargePaid,
-                        "is_dev_charge_completed" => ($devChargeTarget > 0) ? ($devChargePaid >= $devChargeTarget) : false
+                        "development_charge_due" => max(0, $devChargeTarget - $devChargePaid)
                     ],
-                    "emi_data" => [
+                    "emi_info" => [
+                        "total_verified_emi" => $completedEmiCount,
+                        "total_unverified_emi" => $unverifiedEmiCount,
+                        "total_emi_paid" => ($emiPaid + $unverifiedEmiPaid),
+                        
+                        "verified_emi_amount_paid" => $emiPaid,
+                        "unverified_emi_amount_paid" => $unverifiedEmiPaid,
                         "per_emi_amount" => $perEmiAmount,
-                        "total_emi_paid" => $emiPaid,
-                        "total_service_fee_paid" => $totalServiceFee,
-                        "completed_emi_count" => $completedEmiCount,
                         "due_emi_amount" => $totalDueEmi,
-                        "has_due_emi" => ($totalDueEmi > 0),
-                        "bulk_emi_discount_received" => $bulkEmiDiscount,
+                        "total_service_fee_paid" => $totalServiceFee,
                         "penalty_info" => [
                             "total_penalty_charged" => $penaltyCharged,
                             "total_penalty_paid" => $penaltyPaid,
@@ -345,4 +362,5 @@ class ApiController extends Controller
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         exit;
     }
+
 }

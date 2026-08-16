@@ -3242,3 +3242,456 @@
 [2026-08-13 18:16:18] VALIDATE - Row: 80 | LeadPhone: 447304049879 | CleanPhone: 447304049879 | Candidates: [26996] | ProjectID: 17 | FlatID: 3634 | LeadID: 26996 | BookingID: 380 | Issues: 
 [2026-08-13 18:16:18] VALIDATE - Row: 81 | LeadPhone: 447304049879 | CleanPhone: 447304049879 | Candidates: [26996] | ProjectID: 17 | FlatID: 3634 | LeadID: 26996 | BookingID: 380 | Issues: 
 [2026-08-13 18:16:18] VALIDATE - Row: 82 | LeadPhone: 447304049879 | CleanPhone: 447304049879 | Candidates: [26996] | ProjectID: 17 | FlatID: 3634 | LeadID: 26996 | BookingID: 380 | Issues: 
+[2026-08-15 14:00:04] VALIDATE - Row: 2 | LeadPhone: +353894471244 | CleanPhone: 353894471244 | Candidates: [6043,22513] | ProjectID: 34 | FlatID: 3635 | LeadID: 6043 | BookingID: 382 | Issues: 
+[2026-08-15 14:00:04] VALIDATE - Row: 3 | LeadPhone: +353894471244 | CleanPhone: 353894471244 | Candidates: [6043,22513] | ProjectID: 34 | FlatID: 3635 | LeadID: 6043 | BookingID: 382 | Issues: 
+[2026-08-15 14:00:04] VALIDATE - Row: 4 | LeadPhone: +353894471244 | CleanPhone: 353894471244 | Candidates: [6043,22513] | ProjectID: 34 | FlatID: 3635 | LeadID: 6043 | BookingID: 382 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 5 | LeadPhone: 60169106916 | CleanPhone: 60169106916 | Candidates: [5565,5636] | ProjectID: 34 | FlatID: 3636 | LeadID: 5565 | BookingID: 383 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 6 | LeadPhone: 60169106916 | CleanPhone: 60169106916 | Candidates: [5565,5636] | ProjectID: 34 | FlatID: 3636 | LeadID: 5565 | BookingID: 383 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 7 | LeadPhone: 1749825875 | CleanPhone: 1749825875 | Candidates: [5562] | ProjectID: 34 | FlatID: 3637 | LeadID: 5562 | BookingID: 384 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 8 | LeadPhone: 1749825875 | CleanPhone: 1749825875 | Candidates: [5562] | ProjectID: 34 | FlatID: 3637 | LeadID: 5562 | BookingID: 384 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 9 | LeadPhone: 1749825875 | CleanPhone: 1749825875 | Candidates: [5562] | ProjectID: 34 | FlatID: 3637 | LeadID: 5562 | BookingID: 384 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 10 | LeadPhone: 1749825875 | CleanPhone: 1749825875 | Candidates: [5562] | ProjectID: 34 | FlatID: 3637 | LeadID: 5562 | BookingID: 384 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 11 | LeadPhone: 96566024520 | CleanPhone: 96566024520 | Candidates: [5563] | ProjectID: 34 | FlatID: 3638 | LeadID: 5563 | BookingID: 385 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 12 | LeadPhone: 96566024520 | CleanPhone: 96566024520 | Candidates: [5563] | ProjectID: 34 | FlatID: 3638 | LeadID: 5563 | BookingID: 385 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 13 | LeadPhone: 96566024520 | CleanPhone: 96566024520 | Candidates: [5563] | ProjectID: 34 | FlatID: 3638 | LeadID: 5563 | BookingID: 385 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 14 | LeadPhone: 96566024520 | CleanPhone: 96566024520 | Candidates: [5563] | ProjectID: 34 | FlatID: 3638 | LeadID: 5563 | BookingID: 385 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 15 | LeadPhone: 96566024520 | CleanPhone: 96566024520 | Candidates: [5563] | ProjectID: 34 | FlatID: 3638 | LeadID: 5563 | BookingID: 385 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 16 | LeadPhone: 1922494640 | CleanPhone: 1922494640 | Candidates: [5560] | ProjectID: 34 | FlatID: 3639 | LeadID: 5560 | BookingID: 386 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 17 | LeadPhone: 1922494640 | CleanPhone: 1922494640 | Candidates: [5560] | ProjectID: 34 | FlatID: 3639 | LeadID: 5560 | BookingID: 386 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 18 | LeadPhone: 1922494640 | CleanPhone: 1922494640 | Candidates: [5560] | ProjectID: 34 | FlatID: 3639 | LeadID: 5560 | BookingID: 386 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 19 | LeadPhone: 1922494640 | CleanPhone: 1922494640 | Candidates: [5560] | ProjectID: 34 | FlatID: 3639 | LeadID: 5560 | BookingID: 386 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 20 | LeadPhone: 1922494640 | CleanPhone: 1922494640 | Candidates: [5560] | ProjectID: 34 | FlatID: 3639 | LeadID: 5560 | BookingID: 386 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 21 | LeadPhone: 8801625171810 | CleanPhone: 8801625171810 | Candidates: [5390,5561,6178] | ProjectID: 34 | FlatID: 3640 | LeadID: 5561 | BookingID: 387 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 22 | LeadPhone: 8801625171810 | CleanPhone: 8801625171810 | Candidates: [5390,5561,6178] | ProjectID: 34 | FlatID: 3640 | LeadID: 5561 | BookingID: 387 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 23 | LeadPhone: 8801625171810 | CleanPhone: 8801625171810 | Candidates: [5390,5561,6178] | ProjectID: 34 | FlatID: 3640 | LeadID: 5561 | BookingID: 387 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 24 | LeadPhone: 8801625171810 | CleanPhone: 8801625171810 | Candidates: [5390,5561,6178] | ProjectID: 34 | FlatID: 3640 | LeadID: 5561 | BookingID: 387 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 25 | LeadPhone: 8801625171810 | CleanPhone: 8801625171810 | Candidates: [5390,5561,6178] | ProjectID: 34 | FlatID: 3640 | LeadID: 5561 | BookingID: 387 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 26 | LeadPhone: 19294622000 | CleanPhone: 19294622000 | Candidates: [5558] | ProjectID: 34 | FlatID: 3641 | LeadID: 5558 | BookingID: 388 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 27 | LeadPhone: 19294622000 | CleanPhone: 19294622000 | Candidates: [5558] | ProjectID: 34 | FlatID: 3641 | LeadID: 5558 | BookingID: 388 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 28 | LeadPhone: 19294622000 | CleanPhone: 19294622000 | Candidates: [5558] | ProjectID: 34 | FlatID: 3641 | LeadID: 5558 | BookingID: 388 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 29 | LeadPhone: 19294622000 | CleanPhone: 19294622000 | Candidates: [5558] | ProjectID: 34 | FlatID: 3641 | LeadID: 5558 | BookingID: 388 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 30 | LeadPhone: 01853105827 | CleanPhone: 01853105827 | Candidates: [5559,6286] | ProjectID: 34 | FlatID: 3642 | LeadID: 6286 | BookingID: 389 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 31 | LeadPhone: 01853105827 | CleanPhone: 01853105827 | Candidates: [5559,6286] | ProjectID: 34 | FlatID: 3642 | LeadID: 6286 | BookingID: 389 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 32 | LeadPhone: 01853105827 | CleanPhone: 01853105827 | Candidates: [5559,6286] | ProjectID: 34 | FlatID: 3642 | LeadID: 6286 | BookingID: 389 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 33 | LeadPhone: 601133645677 | CleanPhone: 601133645677 | Candidates: [6285] | ProjectID: 34 | FlatID: 3643 | LeadID: 6285 | BookingID: 390 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 34 | LeadPhone: 601133645677 | CleanPhone: 601133645677 | Candidates: [6285] | ProjectID: 34 | FlatID: 3643 | LeadID: 6285 | BookingID: 390 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 35 | LeadPhone: 1719939942 | CleanPhone: 1719939942 | Candidates: [5557,6288] | ProjectID: 34 | FlatID: 3644 | LeadID: 5557 | BookingID: 391 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 36 | LeadPhone: 1719939942 | CleanPhone: 1719939942 | Candidates: [5557,6288] | ProjectID: 34 | FlatID: 3644 | LeadID: 5557 | BookingID: 391 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 37 | LeadPhone: 1719939942 | CleanPhone: 1719939942 | Candidates: [5557,6288] | ProjectID: 34 | FlatID: 3644 | LeadID: 5557 | BookingID: 391 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 38 | LeadPhone: 1966606028 | CleanPhone: 1966606028 | Candidates: [5554] | ProjectID: 34 | FlatID: 3645 | LeadID: 5554 | BookingID: 392 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 39 | LeadPhone: 1966606028 | CleanPhone: 1966606028 | Candidates: [5554] | ProjectID: 34 | FlatID: 3645 | LeadID: 5554 | BookingID: 392 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 40 | LeadPhone: 1966606028 | CleanPhone: 1966606028 | Candidates: [5554] | ProjectID: 34 | FlatID: 3645 | LeadID: 5554 | BookingID: 392 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 41 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 42 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 43 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 44 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 45 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 46 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 47 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 48 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 49 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 50 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 51 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 52 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 53 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 54 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 55 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 56 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 57 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 58 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 59 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 60 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 61 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 62 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 63 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:05] VALIDATE - Row: 64 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:08] IMPORT - Row: 2 | LeadPhone: +353894471244 | CleanPhone: 353894471244 | Candidates: [6043,22513] | ProjectID: 34 | FlatID: 3635 | LeadID: 6043 | BookingID: 382 | Issues: 
+[2026-08-15 14:00:08] IMPORT - Row: 3 | LeadPhone: +353894471244 | CleanPhone: 353894471244 | Candidates: [6043,22513] | ProjectID: 34 | FlatID: 3635 | LeadID: 6043 | BookingID: 382 | Issues: 
+[2026-08-15 14:00:08] IMPORT - Row: 4 | LeadPhone: +353894471244 | CleanPhone: 353894471244 | Candidates: [6043,22513] | ProjectID: 34 | FlatID: 3635 | LeadID: 6043 | BookingID: 382 | Issues: 
+[2026-08-15 14:00:08] IMPORT - Row: 5 | LeadPhone: 60169106916 | CleanPhone: 60169106916 | Candidates: [5565,5636] | ProjectID: 34 | FlatID: 3636 | LeadID: 5565 | BookingID: 383 | Issues: 
+[2026-08-15 14:00:08] IMPORT - Row: 6 | LeadPhone: 60169106916 | CleanPhone: 60169106916 | Candidates: [5565,5636] | ProjectID: 34 | FlatID: 3636 | LeadID: 5565 | BookingID: 383 | Issues: 
+[2026-08-15 14:00:08] IMPORT - Row: 7 | LeadPhone: 1749825875 | CleanPhone: 1749825875 | Candidates: [5562] | ProjectID: 34 | FlatID: 3637 | LeadID: 5562 | BookingID: 384 | Issues: 
+[2026-08-15 14:00:08] IMPORT - Row: 8 | LeadPhone: 1749825875 | CleanPhone: 1749825875 | Candidates: [5562] | ProjectID: 34 | FlatID: 3637 | LeadID: 5562 | BookingID: 384 | Issues: 
+[2026-08-15 14:00:08] IMPORT - Row: 9 | LeadPhone: 1749825875 | CleanPhone: 1749825875 | Candidates: [5562] | ProjectID: 34 | FlatID: 3637 | LeadID: 5562 | BookingID: 384 | Issues: 
+[2026-08-15 14:00:08] IMPORT - Row: 10 | LeadPhone: 1749825875 | CleanPhone: 1749825875 | Candidates: [5562] | ProjectID: 34 | FlatID: 3637 | LeadID: 5562 | BookingID: 384 | Issues: 
+[2026-08-15 14:00:09] IMPORT - Row: 11 | LeadPhone: 96566024520 | CleanPhone: 96566024520 | Candidates: [5563] | ProjectID: 34 | FlatID: 3638 | LeadID: 5563 | BookingID: 385 | Issues: 
+[2026-08-15 14:00:09] IMPORT - Row: 12 | LeadPhone: 96566024520 | CleanPhone: 96566024520 | Candidates: [5563] | ProjectID: 34 | FlatID: 3638 | LeadID: 5563 | BookingID: 385 | Issues: 
+[2026-08-15 14:00:09] IMPORT - Row: 13 | LeadPhone: 96566024520 | CleanPhone: 96566024520 | Candidates: [5563] | ProjectID: 34 | FlatID: 3638 | LeadID: 5563 | BookingID: 385 | Issues: 
+[2026-08-15 14:00:09] IMPORT - Row: 14 | LeadPhone: 96566024520 | CleanPhone: 96566024520 | Candidates: [5563] | ProjectID: 34 | FlatID: 3638 | LeadID: 5563 | BookingID: 385 | Issues: 
+[2026-08-15 14:00:09] IMPORT - Row: 15 | LeadPhone: 96566024520 | CleanPhone: 96566024520 | Candidates: [5563] | ProjectID: 34 | FlatID: 3638 | LeadID: 5563 | BookingID: 385 | Issues: 
+[2026-08-15 14:00:09] IMPORT - Row: 16 | LeadPhone: 1922494640 | CleanPhone: 1922494640 | Candidates: [5560] | ProjectID: 34 | FlatID: 3639 | LeadID: 5560 | BookingID: 386 | Issues: 
+[2026-08-15 14:00:09] IMPORT - Row: 17 | LeadPhone: 1922494640 | CleanPhone: 1922494640 | Candidates: [5560] | ProjectID: 34 | FlatID: 3639 | LeadID: 5560 | BookingID: 386 | Issues: 
+[2026-08-15 14:00:09] IMPORT - Row: 18 | LeadPhone: 1922494640 | CleanPhone: 1922494640 | Candidates: [5560] | ProjectID: 34 | FlatID: 3639 | LeadID: 5560 | BookingID: 386 | Issues: 
+[2026-08-15 14:00:09] IMPORT - Row: 19 | LeadPhone: 1922494640 | CleanPhone: 1922494640 | Candidates: [5560] | ProjectID: 34 | FlatID: 3639 | LeadID: 5560 | BookingID: 386 | Issues: 
+[2026-08-15 14:00:09] IMPORT - Row: 20 | LeadPhone: 1922494640 | CleanPhone: 1922494640 | Candidates: [5560] | ProjectID: 34 | FlatID: 3639 | LeadID: 5560 | BookingID: 386 | Issues: 
+[2026-08-15 14:00:09] IMPORT - Row: 21 | LeadPhone: 8801625171810 | CleanPhone: 8801625171810 | Candidates: [5390,5561,6178] | ProjectID: 34 | FlatID: 3640 | LeadID: 5561 | BookingID: 387 | Issues: 
+[2026-08-15 14:00:09] IMPORT - Row: 22 | LeadPhone: 8801625171810 | CleanPhone: 8801625171810 | Candidates: [5390,5561,6178] | ProjectID: 34 | FlatID: 3640 | LeadID: 5561 | BookingID: 387 | Issues: 
+[2026-08-15 14:00:09] IMPORT - Row: 23 | LeadPhone: 8801625171810 | CleanPhone: 8801625171810 | Candidates: [5390,5561,6178] | ProjectID: 34 | FlatID: 3640 | LeadID: 5561 | BookingID: 387 | Issues: 
+[2026-08-15 14:00:09] IMPORT - Row: 24 | LeadPhone: 8801625171810 | CleanPhone: 8801625171810 | Candidates: [5390,5561,6178] | ProjectID: 34 | FlatID: 3640 | LeadID: 5561 | BookingID: 387 | Issues: 
+[2026-08-15 14:00:09] IMPORT - Row: 25 | LeadPhone: 8801625171810 | CleanPhone: 8801625171810 | Candidates: [5390,5561,6178] | ProjectID: 34 | FlatID: 3640 | LeadID: 5561 | BookingID: 387 | Issues: 
+[2026-08-15 14:00:10] IMPORT - Row: 26 | LeadPhone: 19294622000 | CleanPhone: 19294622000 | Candidates: [5558] | ProjectID: 34 | FlatID: 3641 | LeadID: 5558 | BookingID: 388 | Issues: 
+[2026-08-15 14:00:10] IMPORT - Row: 27 | LeadPhone: 19294622000 | CleanPhone: 19294622000 | Candidates: [5558] | ProjectID: 34 | FlatID: 3641 | LeadID: 5558 | BookingID: 388 | Issues: 
+[2026-08-15 14:00:10] IMPORT - Row: 28 | LeadPhone: 19294622000 | CleanPhone: 19294622000 | Candidates: [5558] | ProjectID: 34 | FlatID: 3641 | LeadID: 5558 | BookingID: 388 | Issues: 
+[2026-08-15 14:00:10] IMPORT - Row: 29 | LeadPhone: 19294622000 | CleanPhone: 19294622000 | Candidates: [5558] | ProjectID: 34 | FlatID: 3641 | LeadID: 5558 | BookingID: 388 | Issues: 
+[2026-08-15 14:00:10] IMPORT - Row: 30 | LeadPhone: 01853105827 | CleanPhone: 01853105827 | Candidates: [5559,6286] | ProjectID: 34 | FlatID: 3642 | LeadID: 6286 | BookingID: 389 | Issues: 
+[2026-08-15 14:00:10] IMPORT - Row: 31 | LeadPhone: 01853105827 | CleanPhone: 01853105827 | Candidates: [5559,6286] | ProjectID: 34 | FlatID: 3642 | LeadID: 6286 | BookingID: 389 | Issues: 
+[2026-08-15 14:00:10] IMPORT - Row: 32 | LeadPhone: 01853105827 | CleanPhone: 01853105827 | Candidates: [5559,6286] | ProjectID: 34 | FlatID: 3642 | LeadID: 6286 | BookingID: 389 | Issues: 
+[2026-08-15 14:00:10] IMPORT - Row: 33 | LeadPhone: 601133645677 | CleanPhone: 601133645677 | Candidates: [6285] | ProjectID: 34 | FlatID: 3643 | LeadID: 6285 | BookingID: 390 | Issues: 
+[2026-08-15 14:00:10] IMPORT - Row: 34 | LeadPhone: 601133645677 | CleanPhone: 601133645677 | Candidates: [6285] | ProjectID: 34 | FlatID: 3643 | LeadID: 6285 | BookingID: 390 | Issues: 
+[2026-08-15 14:00:10] IMPORT - Row: 35 | LeadPhone: 1719939942 | CleanPhone: 1719939942 | Candidates: [5557,6288] | ProjectID: 34 | FlatID: 3644 | LeadID: 5557 | BookingID: 391 | Issues: 
+[2026-08-15 14:00:10] IMPORT - Row: 36 | LeadPhone: 1719939942 | CleanPhone: 1719939942 | Candidates: [5557,6288] | ProjectID: 34 | FlatID: 3644 | LeadID: 5557 | BookingID: 391 | Issues: 
+[2026-08-15 14:00:10] IMPORT - Row: 37 | LeadPhone: 1719939942 | CleanPhone: 1719939942 | Candidates: [5557,6288] | ProjectID: 34 | FlatID: 3644 | LeadID: 5557 | BookingID: 391 | Issues: 
+[2026-08-15 14:00:10] IMPORT - Row: 38 | LeadPhone: 1966606028 | CleanPhone: 1966606028 | Candidates: [5554] | ProjectID: 34 | FlatID: 3645 | LeadID: 5554 | BookingID: 392 | Issues: 
+[2026-08-15 14:00:10] IMPORT - Row: 39 | LeadPhone: 1966606028 | CleanPhone: 1966606028 | Candidates: [5554] | ProjectID: 34 | FlatID: 3645 | LeadID: 5554 | BookingID: 392 | Issues: 
+[2026-08-15 14:00:10] IMPORT - Row: 40 | LeadPhone: 1966606028 | CleanPhone: 1966606028 | Candidates: [5554] | ProjectID: 34 | FlatID: 3645 | LeadID: 5554 | BookingID: 392 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 41 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 42 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 43 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 44 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 45 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 46 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 47 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 48 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 49 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 50 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 51 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 52 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 53 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 54 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 55 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 56 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 57 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:11] IMPORT - Row: 58 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:12] IMPORT - Row: 59 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:12] IMPORT - Row: 60 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:12] IMPORT - Row: 61 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:12] IMPORT - Row: 62 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:12] IMPORT - Row: 63 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:12] IMPORT - Row: 64 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:12] IMPORT - Row: 2 | LeadPhone: +353894471244 | CleanPhone: 353894471244 | Candidates: [6043,22513] | ProjectID: 34 | FlatID: 3635 | LeadID: 6043 | BookingID: 382 | Issues: 
+[2026-08-15 14:00:12] IMPORT - Row: 3 | LeadPhone: +353894471244 | CleanPhone: 353894471244 | Candidates: [6043,22513] | ProjectID: 34 | FlatID: 3635 | LeadID: 6043 | BookingID: 382 | Issues: 
+[2026-08-15 14:00:12] IMPORT - Row: 4 | LeadPhone: +353894471244 | CleanPhone: 353894471244 | Candidates: [6043,22513] | ProjectID: 34 | FlatID: 3635 | LeadID: 6043 | BookingID: 382 | Issues: 
+[2026-08-15 14:00:12] IMPORT - Row: 5 | LeadPhone: 60169106916 | CleanPhone: 60169106916 | Candidates: [5565,5636] | ProjectID: 34 | FlatID: 3636 | LeadID: 5565 | BookingID: 383 | Issues: 
+[2026-08-15 14:00:12] IMPORT - Row: 6 | LeadPhone: 60169106916 | CleanPhone: 60169106916 | Candidates: [5565,5636] | ProjectID: 34 | FlatID: 3636 | LeadID: 5565 | BookingID: 383 | Issues: 
+[2026-08-15 14:00:13] IMPORT - Row: 7 | LeadPhone: 1749825875 | CleanPhone: 1749825875 | Candidates: [5562] | ProjectID: 34 | FlatID: 3637 | LeadID: 5562 | BookingID: 384 | Issues: 
+[2026-08-15 14:00:13] IMPORT - Row: 8 | LeadPhone: 1749825875 | CleanPhone: 1749825875 | Candidates: [5562] | ProjectID: 34 | FlatID: 3637 | LeadID: 5562 | BookingID: 384 | Issues: 
+[2026-08-15 14:00:13] IMPORT - Row: 9 | LeadPhone: 1749825875 | CleanPhone: 1749825875 | Candidates: [5562] | ProjectID: 34 | FlatID: 3637 | LeadID: 5562 | BookingID: 384 | Issues: 
+[2026-08-15 14:00:13] IMPORT - Row: 10 | LeadPhone: 1749825875 | CleanPhone: 1749825875 | Candidates: [5562] | ProjectID: 34 | FlatID: 3637 | LeadID: 5562 | BookingID: 384 | Issues: 
+[2026-08-15 14:00:13] IMPORT - Row: 11 | LeadPhone: 96566024520 | CleanPhone: 96566024520 | Candidates: [5563] | ProjectID: 34 | FlatID: 3638 | LeadID: 5563 | BookingID: 385 | Issues: 
+[2026-08-15 14:00:13] IMPORT - Row: 12 | LeadPhone: 96566024520 | CleanPhone: 96566024520 | Candidates: [5563] | ProjectID: 34 | FlatID: 3638 | LeadID: 5563 | BookingID: 385 | Issues: 
+[2026-08-15 14:00:13] IMPORT - Row: 13 | LeadPhone: 96566024520 | CleanPhone: 96566024520 | Candidates: [5563] | ProjectID: 34 | FlatID: 3638 | LeadID: 5563 | BookingID: 385 | Issues: 
+[2026-08-15 14:00:13] IMPORT - Row: 14 | LeadPhone: 96566024520 | CleanPhone: 96566024520 | Candidates: [5563] | ProjectID: 34 | FlatID: 3638 | LeadID: 5563 | BookingID: 385 | Issues: 
+[2026-08-15 14:00:13] IMPORT - Row: 15 | LeadPhone: 96566024520 | CleanPhone: 96566024520 | Candidates: [5563] | ProjectID: 34 | FlatID: 3638 | LeadID: 5563 | BookingID: 385 | Issues: 
+[2026-08-15 14:00:13] IMPORT - Row: 16 | LeadPhone: 1922494640 | CleanPhone: 1922494640 | Candidates: [5560] | ProjectID: 34 | FlatID: 3639 | LeadID: 5560 | BookingID: 386 | Issues: 
+[2026-08-15 14:00:13] IMPORT - Row: 17 | LeadPhone: 1922494640 | CleanPhone: 1922494640 | Candidates: [5560] | ProjectID: 34 | FlatID: 3639 | LeadID: 5560 | BookingID: 386 | Issues: 
+[2026-08-15 14:00:14] IMPORT - Row: 18 | LeadPhone: 1922494640 | CleanPhone: 1922494640 | Candidates: [5560] | ProjectID: 34 | FlatID: 3639 | LeadID: 5560 | BookingID: 386 | Issues: 
+[2026-08-15 14:00:14] IMPORT - Row: 19 | LeadPhone: 1922494640 | CleanPhone: 1922494640 | Candidates: [5560] | ProjectID: 34 | FlatID: 3639 | LeadID: 5560 | BookingID: 386 | Issues: 
+[2026-08-15 14:00:14] IMPORT - Row: 20 | LeadPhone: 1922494640 | CleanPhone: 1922494640 | Candidates: [5560] | ProjectID: 34 | FlatID: 3639 | LeadID: 5560 | BookingID: 386 | Issues: 
+[2026-08-15 14:00:14] IMPORT - Row: 21 | LeadPhone: 8801625171810 | CleanPhone: 8801625171810 | Candidates: [5390,5561,6178] | ProjectID: 34 | FlatID: 3640 | LeadID: 5561 | BookingID: 387 | Issues: 
+[2026-08-15 14:00:14] IMPORT - Row: 22 | LeadPhone: 8801625171810 | CleanPhone: 8801625171810 | Candidates: [5390,5561,6178] | ProjectID: 34 | FlatID: 3640 | LeadID: 5561 | BookingID: 387 | Issues: 
+[2026-08-15 14:00:14] IMPORT - Row: 23 | LeadPhone: 8801625171810 | CleanPhone: 8801625171810 | Candidates: [5390,5561,6178] | ProjectID: 34 | FlatID: 3640 | LeadID: 5561 | BookingID: 387 | Issues: 
+[2026-08-15 14:00:14] IMPORT - Row: 24 | LeadPhone: 8801625171810 | CleanPhone: 8801625171810 | Candidates: [5390,5561,6178] | ProjectID: 34 | FlatID: 3640 | LeadID: 5561 | BookingID: 387 | Issues: 
+[2026-08-15 14:00:14] IMPORT - Row: 25 | LeadPhone: 8801625171810 | CleanPhone: 8801625171810 | Candidates: [5390,5561,6178] | ProjectID: 34 | FlatID: 3640 | LeadID: 5561 | BookingID: 387 | Issues: 
+[2026-08-15 14:00:14] IMPORT - Row: 26 | LeadPhone: 19294622000 | CleanPhone: 19294622000 | Candidates: [5558] | ProjectID: 34 | FlatID: 3641 | LeadID: 5558 | BookingID: 388 | Issues: 
+[2026-08-15 14:00:15] IMPORT - Row: 27 | LeadPhone: 19294622000 | CleanPhone: 19294622000 | Candidates: [5558] | ProjectID: 34 | FlatID: 3641 | LeadID: 5558 | BookingID: 388 | Issues: 
+[2026-08-15 14:00:15] IMPORT - Row: 28 | LeadPhone: 19294622000 | CleanPhone: 19294622000 | Candidates: [5558] | ProjectID: 34 | FlatID: 3641 | LeadID: 5558 | BookingID: 388 | Issues: 
+[2026-08-15 14:00:15] IMPORT - Row: 29 | LeadPhone: 19294622000 | CleanPhone: 19294622000 | Candidates: [5558] | ProjectID: 34 | FlatID: 3641 | LeadID: 5558 | BookingID: 388 | Issues: 
+[2026-08-15 14:00:15] IMPORT - Row: 30 | LeadPhone: 01853105827 | CleanPhone: 01853105827 | Candidates: [5559,6286] | ProjectID: 34 | FlatID: 3642 | LeadID: 6286 | BookingID: 389 | Issues: 
+[2026-08-15 14:00:15] IMPORT - Row: 31 | LeadPhone: 01853105827 | CleanPhone: 01853105827 | Candidates: [5559,6286] | ProjectID: 34 | FlatID: 3642 | LeadID: 6286 | BookingID: 389 | Issues: 
+[2026-08-15 14:00:15] IMPORT - Row: 32 | LeadPhone: 01853105827 | CleanPhone: 01853105827 | Candidates: [5559,6286] | ProjectID: 34 | FlatID: 3642 | LeadID: 6286 | BookingID: 389 | Issues: 
+[2026-08-15 14:00:16] IMPORT - Row: 33 | LeadPhone: 601133645677 | CleanPhone: 601133645677 | Candidates: [6285] | ProjectID: 34 | FlatID: 3643 | LeadID: 6285 | BookingID: 390 | Issues: 
+[2026-08-15 14:00:16] IMPORT - Row: 34 | LeadPhone: 601133645677 | CleanPhone: 601133645677 | Candidates: [6285] | ProjectID: 34 | FlatID: 3643 | LeadID: 6285 | BookingID: 390 | Issues: 
+[2026-08-15 14:00:16] IMPORT - Row: 35 | LeadPhone: 1719939942 | CleanPhone: 1719939942 | Candidates: [5557,6288] | ProjectID: 34 | FlatID: 3644 | LeadID: 5557 | BookingID: 391 | Issues: 
+[2026-08-15 14:00:16] IMPORT - Row: 36 | LeadPhone: 1719939942 | CleanPhone: 1719939942 | Candidates: [5557,6288] | ProjectID: 34 | FlatID: 3644 | LeadID: 5557 | BookingID: 391 | Issues: 
+[2026-08-15 14:00:16] IMPORT - Row: 37 | LeadPhone: 1719939942 | CleanPhone: 1719939942 | Candidates: [5557,6288] | ProjectID: 34 | FlatID: 3644 | LeadID: 5557 | BookingID: 391 | Issues: 
+[2026-08-15 14:00:16] IMPORT - Row: 38 | LeadPhone: 1966606028 | CleanPhone: 1966606028 | Candidates: [5554] | ProjectID: 34 | FlatID: 3645 | LeadID: 5554 | BookingID: 392 | Issues: 
+[2026-08-15 14:00:16] IMPORT - Row: 39 | LeadPhone: 1966606028 | CleanPhone: 1966606028 | Candidates: [5554] | ProjectID: 34 | FlatID: 3645 | LeadID: 5554 | BookingID: 392 | Issues: 
+[2026-08-15 14:00:17] IMPORT - Row: 40 | LeadPhone: 1966606028 | CleanPhone: 1966606028 | Candidates: [5554] | ProjectID: 34 | FlatID: 3645 | LeadID: 5554 | BookingID: 392 | Issues: 
+[2026-08-15 14:00:17] IMPORT - Row: 41 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:17] IMPORT - Row: 42 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:17] IMPORT - Row: 43 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:17] IMPORT - Row: 44 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:17] IMPORT - Row: 45 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:17] IMPORT - Row: 46 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:18] IMPORT - Row: 47 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:18] IMPORT - Row: 48 | LeadPhone: 1773516284 | CleanPhone: 1773516284 | Candidates: [5938,6284] | ProjectID: 34 | FlatID: 3646 | LeadID: 5938 | BookingID: 393 | Issues: 
+[2026-08-15 14:00:18] IMPORT - Row: 49 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:18] IMPORT - Row: 50 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:18] IMPORT - Row: 51 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:18] IMPORT - Row: 52 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:18] IMPORT - Row: 53 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:18] IMPORT - Row: 54 | LeadPhone: 256702988770 | CleanPhone: 256702988770 | Candidates: [6027,6282] | ProjectID: 34 | FlatID: 3647 | LeadID: 6027 | BookingID: 394 | Issues: 
+[2026-08-15 14:00:18] IMPORT - Row: 55 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:18] IMPORT - Row: 56 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:18] IMPORT - Row: 57 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:18] IMPORT - Row: 58 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:19] IMPORT - Row: 59 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:19] IMPORT - Row: 60 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:19] IMPORT - Row: 61 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:19] IMPORT - Row: 62 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:19] IMPORT - Row: 63 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:00:19] IMPORT - Row: 64 | LeadPhone: 01717289661 | CleanPhone: 01717289661 | Candidates: [6283] | ProjectID: 34 | FlatID: 3648 | LeadID: 6283 | BookingID: 395 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 2 | LeadPhone: 19293938421 | CleanPhone: 19293938421 | Candidates: [5303,5519,5913,5914] | ProjectID: 35 | FlatID: 4102 | LeadID: 5303 | BookingID: 396 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 3 | LeadPhone: 19293938421 | CleanPhone: 19293938421 | Candidates: [5303,5519,5913,5914] | ProjectID: 35 | FlatID: 4102 | LeadID: 5303 | BookingID: 396 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 4 | LeadPhone: 393895249729 | CleanPhone: 393895249729 | Candidates: [24442] | ProjectID: 35 | FlatID: 4103 | LeadID: 24442 | BookingID: 397 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 5 | LeadPhone: 393895249729 | CleanPhone: 393895249729 | Candidates: [24442] | ProjectID: 35 | FlatID: 4103 | LeadID: 24442 | BookingID: 397 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 6 | LeadPhone: 393895249729 | CleanPhone: 393895249729 | Candidates: [24442] | ProjectID: 35 | FlatID: 4103 | LeadID: 24442 | BookingID: 397 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 7 | LeadPhone: 966545192887 | CleanPhone: 966545192887 | Candidates: [27596] | ProjectID: 35 | FlatID: 4104 | LeadID: 27596 | BookingID: 398 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 8 | LeadPhone: 966545192887 | CleanPhone: 966545192887 | Candidates: [27596] | ProjectID: 35 | FlatID: 4104 | LeadID: 27596 | BookingID: 398 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 9 | LeadPhone: 966545192887 | CleanPhone: 966545192887 | Candidates: [27596] | ProjectID: 35 | FlatID: 4104 | LeadID: 27596 | BookingID: 398 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 10 | LeadPhone: 1784557265 | CleanPhone: 1784557265 | Candidates: [5518] | ProjectID: 35 | FlatID: 4105 | LeadID: 5518 | BookingID: 399 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 11 | LeadPhone: 1784557265 | CleanPhone: 1784557265 | Candidates: [5518] | ProjectID: 35 | FlatID: 4105 | LeadID: 5518 | BookingID: 399 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 12 | LeadPhone: 44 7500 874100 | CleanPhone: 447500874100 | Candidates: [5515] | ProjectID: 35 | FlatID: 4106 | LeadID: 5515 | BookingID: 400 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 13 | LeadPhone: 44 7500 874100 | CleanPhone: 447500874100 | Candidates: [5515] | ProjectID: 35 | FlatID: 4106 | LeadID: 5515 | BookingID: 400 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 14 | LeadPhone: 44 7500 874100 | CleanPhone: 447500874100 | Candidates: [5515] | ProjectID: 35 | FlatID: 4106 | LeadID: 5515 | BookingID: 400 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 15 | LeadPhone: 44 7500 874100 | CleanPhone: 447500874100 | Candidates: [5515] | ProjectID: 35 | FlatID: 4106 | LeadID: 5515 | BookingID: 400 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 16 | LeadPhone: 102453365 | CleanPhone: 102453365 | Candidates: [5516] | ProjectID: 35 | FlatID: 4107 | LeadID: 5516 | BookingID: 401 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 17 | LeadPhone: 102453365 | CleanPhone: 102453365 | Candidates: [5516] | ProjectID: 35 | FlatID: 4107 | LeadID: 5516 | BookingID: 401 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 18 | LeadPhone: 102453365 | CleanPhone: 102453365 | Candidates: [5516] | ProjectID: 35 | FlatID: 4107 | LeadID: 5516 | BookingID: 401 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 19 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 20 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 21 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 22 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 23 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 24 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 25 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4109 | LeadID: 5513 | BookingID: 403 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 26 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4109 | LeadID: 5513 | BookingID: 403 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 27 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4109 | LeadID: 5513 | BookingID: 403 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 28 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4109 | LeadID: 5513 | BookingID: 403 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 29 | LeadPhone: 966572691379 | CleanPhone: 966572691379 | Candidates: [24732] | ProjectID: 35 | FlatID: 4110 | LeadID: 24732 | BookingID: 404 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 30 | LeadPhone: 966572691379 | CleanPhone: 966572691379 | Candidates: [24732] | ProjectID: 35 | FlatID: 4110 | LeadID: 24732 | BookingID: 404 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 31 | LeadPhone: 966572691379 | CleanPhone: 966572691379 | Candidates: [24732] | ProjectID: 35 | FlatID: 4110 | LeadID: 24732 | BookingID: 404 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 32 | LeadPhone: 8801718816171 | CleanPhone: 8801718816171 | Candidates: [2458,5512,5639,5640] | ProjectID: 35 | FlatID: 4111 | LeadID: 2458 | BookingID: 405 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 33 | LeadPhone: 8801718816171 | CleanPhone: 8801718816171 | Candidates: [2458,5512,5639,5640] | ProjectID: 35 | FlatID: 4111 | LeadID: 2458 | BookingID: 405 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 34 | LeadPhone: 8801718816171 | CleanPhone: 8801718816171 | Candidates: [2458,5512,5639,5640] | ProjectID: 35 | FlatID: 4111 | LeadID: 2458 | BookingID: 405 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 35 | LeadPhone: 8801718816171 | CleanPhone: 8801718816171 | Candidates: [2458,5512,5639,5640] | ProjectID: 35 | FlatID: 4111 | LeadID: 2458 | BookingID: 405 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 36 | LeadPhone: 1712197500 | CleanPhone: 1712197500 | Candidates: [5509] | ProjectID: 35 | FlatID: 4112 | LeadID: 5509 | BookingID: 406 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 37 | LeadPhone: 1712197500 | CleanPhone: 1712197500 | Candidates: [5509] | ProjectID: 35 | FlatID: 4112 | LeadID: 5509 | BookingID: 406 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 38 | LeadPhone: 1712197500 | CleanPhone: 1712197500 | Candidates: [5509] | ProjectID: 35 | FlatID: 4112 | LeadID: 5509 | BookingID: 406 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 39 | LeadPhone: 1712197500 | CleanPhone: 1712197500 | Candidates: [5509] | ProjectID: 35 | FlatID: 4112 | LeadID: 5509 | BookingID: 406 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 40 | LeadPhone: 1878804000 | CleanPhone: 1878804000 | Candidates: [5510] | ProjectID: 35 | FlatID: 4113 | LeadID: 5510 | BookingID: 407 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 41 | LeadPhone: 8801912705633 | CleanPhone: 8801912705633 | Candidates: [5507,5508] | ProjectID: 35 | FlatID: 4114 | LeadID: 5507 | BookingID: 408 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 42 | LeadPhone: 8801912705633 | CleanPhone: 8801912705633 | Candidates: [5507,5508] | ProjectID: 35 | FlatID: 4114 | LeadID: 5507 | BookingID: 408 | Issues: 
+[2026-08-15 14:08:22] VALIDATE - Row: 43 | LeadPhone: 8801912705633 | CleanPhone: 8801912705633 | Candidates: [5507,5508] | ProjectID: 35 | FlatID: 4114 | LeadID: 5507 | BookingID: 408 | Issues: 
+[2026-08-15 14:08:23] VALIDATE - Row: 44 | LeadPhone: 447977729647 | CleanPhone: 447977729647 | Candidates: [27597] | ProjectID: 35 | FlatID: 4115 | LeadID: 27597 | BookingID: 409 | Issues: 
+[2026-08-15 14:08:23] VALIDATE - Row: 45 | LeadPhone: 447977729647 | CleanPhone: 447977729647 | Candidates: [27597] | ProjectID: 35 | FlatID: 4115 | LeadID: 27597 | BookingID: 409 | Issues: 
+[2026-08-15 14:08:23] VALIDATE - Row: 46 | LeadPhone: 447977729647 | CleanPhone: 447977729647 | Candidates: [27597] | ProjectID: 35 | FlatID: 4115 | LeadID: 27597 | BookingID: 409 | Issues: 
+[2026-08-15 14:08:26] IMPORT - Row: 2 | LeadPhone: 19293938421 | CleanPhone: 19293938421 | Candidates: [5303,5519,5913,5914] | ProjectID: 35 | FlatID: 4102 | LeadID: 5303 | BookingID: 396 | Issues: 
+[2026-08-15 14:08:26] IMPORT - Row: 3 | LeadPhone: 19293938421 | CleanPhone: 19293938421 | Candidates: [5303,5519,5913,5914] | ProjectID: 35 | FlatID: 4102 | LeadID: 5303 | BookingID: 396 | Issues: 
+[2026-08-15 14:08:27] IMPORT - Row: 4 | LeadPhone: 393895249729 | CleanPhone: 393895249729 | Candidates: [24442] | ProjectID: 35 | FlatID: 4103 | LeadID: 24442 | BookingID: 397 | Issues: 
+[2026-08-15 14:08:27] IMPORT - Row: 5 | LeadPhone: 393895249729 | CleanPhone: 393895249729 | Candidates: [24442] | ProjectID: 35 | FlatID: 4103 | LeadID: 24442 | BookingID: 397 | Issues: 
+[2026-08-15 14:08:27] IMPORT - Row: 6 | LeadPhone: 393895249729 | CleanPhone: 393895249729 | Candidates: [24442] | ProjectID: 35 | FlatID: 4103 | LeadID: 24442 | BookingID: 397 | Issues: 
+[2026-08-15 14:08:27] IMPORT - Row: 7 | LeadPhone: 966545192887 | CleanPhone: 966545192887 | Candidates: [27596] | ProjectID: 35 | FlatID: 4104 | LeadID: 27596 | BookingID: 398 | Issues: 
+[2026-08-15 14:08:27] IMPORT - Row: 8 | LeadPhone: 966545192887 | CleanPhone: 966545192887 | Candidates: [27596] | ProjectID: 35 | FlatID: 4104 | LeadID: 27596 | BookingID: 398 | Issues: 
+[2026-08-15 14:08:27] IMPORT - Row: 9 | LeadPhone: 966545192887 | CleanPhone: 966545192887 | Candidates: [27596] | ProjectID: 35 | FlatID: 4104 | LeadID: 27596 | BookingID: 398 | Issues: 
+[2026-08-15 14:08:27] IMPORT - Row: 10 | LeadPhone: 1784557265 | CleanPhone: 1784557265 | Candidates: [5518] | ProjectID: 35 | FlatID: 4105 | LeadID: 5518 | BookingID: 399 | Issues: 
+[2026-08-15 14:08:27] IMPORT - Row: 11 | LeadPhone: 1784557265 | CleanPhone: 1784557265 | Candidates: [5518] | ProjectID: 35 | FlatID: 4105 | LeadID: 5518 | BookingID: 399 | Issues: 
+[2026-08-15 14:08:27] IMPORT - Row: 12 | LeadPhone: 44 7500 874100 | CleanPhone: 447500874100 | Candidates: [5515] | ProjectID: 35 | FlatID: 4106 | LeadID: 5515 | BookingID: 400 | Issues: 
+[2026-08-15 14:08:27] IMPORT - Row: 13 | LeadPhone: 44 7500 874100 | CleanPhone: 447500874100 | Candidates: [5515] | ProjectID: 35 | FlatID: 4106 | LeadID: 5515 | BookingID: 400 | Issues: 
+[2026-08-15 14:08:27] IMPORT - Row: 14 | LeadPhone: 44 7500 874100 | CleanPhone: 447500874100 | Candidates: [5515] | ProjectID: 35 | FlatID: 4106 | LeadID: 5515 | BookingID: 400 | Issues: 
+[2026-08-15 14:08:27] IMPORT - Row: 15 | LeadPhone: 44 7500 874100 | CleanPhone: 447500874100 | Candidates: [5515] | ProjectID: 35 | FlatID: 4106 | LeadID: 5515 | BookingID: 400 | Issues: 
+[2026-08-15 14:08:27] IMPORT - Row: 16 | LeadPhone: 102453365 | CleanPhone: 102453365 | Candidates: [5516] | ProjectID: 35 | FlatID: 4107 | LeadID: 5516 | BookingID: 401 | Issues: 
+[2026-08-15 14:08:27] IMPORT - Row: 17 | LeadPhone: 102453365 | CleanPhone: 102453365 | Candidates: [5516] | ProjectID: 35 | FlatID: 4107 | LeadID: 5516 | BookingID: 401 | Issues: 
+[2026-08-15 14:08:27] IMPORT - Row: 18 | LeadPhone: 102453365 | CleanPhone: 102453365 | Candidates: [5516] | ProjectID: 35 | FlatID: 4107 | LeadID: 5516 | BookingID: 401 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 19 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 20 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 21 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 22 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 23 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 24 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 25 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4109 | LeadID: 5513 | BookingID: 403 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 26 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4109 | LeadID: 5513 | BookingID: 403 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 27 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4109 | LeadID: 5513 | BookingID: 403 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 28 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4109 | LeadID: 5513 | BookingID: 403 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 29 | LeadPhone: 966572691379 | CleanPhone: 966572691379 | Candidates: [24732] | ProjectID: 35 | FlatID: 4110 | LeadID: 24732 | BookingID: 404 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 30 | LeadPhone: 966572691379 | CleanPhone: 966572691379 | Candidates: [24732] | ProjectID: 35 | FlatID: 4110 | LeadID: 24732 | BookingID: 404 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 31 | LeadPhone: 966572691379 | CleanPhone: 966572691379 | Candidates: [24732] | ProjectID: 35 | FlatID: 4110 | LeadID: 24732 | BookingID: 404 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 32 | LeadPhone: 8801718816171 | CleanPhone: 8801718816171 | Candidates: [2458,5512,5639,5640] | ProjectID: 35 | FlatID: 4111 | LeadID: 2458 | BookingID: 405 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 33 | LeadPhone: 8801718816171 | CleanPhone: 8801718816171 | Candidates: [2458,5512,5639,5640] | ProjectID: 35 | FlatID: 4111 | LeadID: 2458 | BookingID: 405 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 34 | LeadPhone: 8801718816171 | CleanPhone: 8801718816171 | Candidates: [2458,5512,5639,5640] | ProjectID: 35 | FlatID: 4111 | LeadID: 2458 | BookingID: 405 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 35 | LeadPhone: 8801718816171 | CleanPhone: 8801718816171 | Candidates: [2458,5512,5639,5640] | ProjectID: 35 | FlatID: 4111 | LeadID: 2458 | BookingID: 405 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 36 | LeadPhone: 1712197500 | CleanPhone: 1712197500 | Candidates: [5509] | ProjectID: 35 | FlatID: 4112 | LeadID: 5509 | BookingID: 406 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 37 | LeadPhone: 1712197500 | CleanPhone: 1712197500 | Candidates: [5509] | ProjectID: 35 | FlatID: 4112 | LeadID: 5509 | BookingID: 406 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 38 | LeadPhone: 1712197500 | CleanPhone: 1712197500 | Candidates: [5509] | ProjectID: 35 | FlatID: 4112 | LeadID: 5509 | BookingID: 406 | Issues: 
+[2026-08-15 14:08:28] IMPORT - Row: 39 | LeadPhone: 1712197500 | CleanPhone: 1712197500 | Candidates: [5509] | ProjectID: 35 | FlatID: 4112 | LeadID: 5509 | BookingID: 406 | Issues: 
+[2026-08-15 14:08:29] IMPORT - Row: 40 | LeadPhone: 1878804000 | CleanPhone: 1878804000 | Candidates: [5510] | ProjectID: 35 | FlatID: 4113 | LeadID: 5510 | BookingID: 407 | Issues: 
+[2026-08-15 14:08:29] IMPORT - Row: 41 | LeadPhone: 8801912705633 | CleanPhone: 8801912705633 | Candidates: [5507,5508] | ProjectID: 35 | FlatID: 4114 | LeadID: 5507 | BookingID: 408 | Issues: 
+[2026-08-15 14:08:29] IMPORT - Row: 42 | LeadPhone: 8801912705633 | CleanPhone: 8801912705633 | Candidates: [5507,5508] | ProjectID: 35 | FlatID: 4114 | LeadID: 5507 | BookingID: 408 | Issues: 
+[2026-08-15 14:08:29] IMPORT - Row: 43 | LeadPhone: 8801912705633 | CleanPhone: 8801912705633 | Candidates: [5507,5508] | ProjectID: 35 | FlatID: 4114 | LeadID: 5507 | BookingID: 408 | Issues: 
+[2026-08-15 14:08:29] IMPORT - Row: 44 | LeadPhone: 447977729647 | CleanPhone: 447977729647 | Candidates: [27597] | ProjectID: 35 | FlatID: 4115 | LeadID: 27597 | BookingID: 409 | Issues: 
+[2026-08-15 14:08:29] IMPORT - Row: 45 | LeadPhone: 447977729647 | CleanPhone: 447977729647 | Candidates: [27597] | ProjectID: 35 | FlatID: 4115 | LeadID: 27597 | BookingID: 409 | Issues: 
+[2026-08-15 14:08:29] IMPORT - Row: 46 | LeadPhone: 447977729647 | CleanPhone: 447977729647 | Candidates: [27597] | ProjectID: 35 | FlatID: 4115 | LeadID: 27597 | BookingID: 409 | Issues: 
+[2026-08-15 14:08:29] IMPORT - Row: 2 | LeadPhone: 19293938421 | CleanPhone: 19293938421 | Candidates: [5303,5519,5913,5914] | ProjectID: 35 | FlatID: 4102 | LeadID: 5303 | BookingID: 396 | Issues: 
+[2026-08-15 14:08:29] IMPORT - Row: 3 | LeadPhone: 19293938421 | CleanPhone: 19293938421 | Candidates: [5303,5519,5913,5914] | ProjectID: 35 | FlatID: 4102 | LeadID: 5303 | BookingID: 396 | Issues: 
+[2026-08-15 14:08:29] IMPORT - Row: 4 | LeadPhone: 393895249729 | CleanPhone: 393895249729 | Candidates: [24442] | ProjectID: 35 | FlatID: 4103 | LeadID: 24442 | BookingID: 397 | Issues: 
+[2026-08-15 14:08:29] IMPORT - Row: 5 | LeadPhone: 393895249729 | CleanPhone: 393895249729 | Candidates: [24442] | ProjectID: 35 | FlatID: 4103 | LeadID: 24442 | BookingID: 397 | Issues: 
+[2026-08-15 14:08:29] IMPORT - Row: 6 | LeadPhone: 393895249729 | CleanPhone: 393895249729 | Candidates: [24442] | ProjectID: 35 | FlatID: 4103 | LeadID: 24442 | BookingID: 397 | Issues: 
+[2026-08-15 14:08:30] IMPORT - Row: 7 | LeadPhone: 966545192887 | CleanPhone: 966545192887 | Candidates: [27596] | ProjectID: 35 | FlatID: 4104 | LeadID: 27596 | BookingID: 398 | Issues: 
+[2026-08-15 14:08:30] IMPORT - Row: 8 | LeadPhone: 966545192887 | CleanPhone: 966545192887 | Candidates: [27596] | ProjectID: 35 | FlatID: 4104 | LeadID: 27596 | BookingID: 398 | Issues: 
+[2026-08-15 14:08:30] IMPORT - Row: 9 | LeadPhone: 966545192887 | CleanPhone: 966545192887 | Candidates: [27596] | ProjectID: 35 | FlatID: 4104 | LeadID: 27596 | BookingID: 398 | Issues: 
+[2026-08-15 14:08:30] IMPORT - Row: 10 | LeadPhone: 1784557265 | CleanPhone: 1784557265 | Candidates: [5518] | ProjectID: 35 | FlatID: 4105 | LeadID: 5518 | BookingID: 399 | Issues: 
+[2026-08-15 14:08:30] IMPORT - Row: 11 | LeadPhone: 1784557265 | CleanPhone: 1784557265 | Candidates: [5518] | ProjectID: 35 | FlatID: 4105 | LeadID: 5518 | BookingID: 399 | Issues: 
+[2026-08-15 14:08:30] IMPORT - Row: 12 | LeadPhone: 44 7500 874100 | CleanPhone: 447500874100 | Candidates: [5515] | ProjectID: 35 | FlatID: 4106 | LeadID: 5515 | BookingID: 400 | Issues: 
+[2026-08-15 14:08:30] IMPORT - Row: 13 | LeadPhone: 44 7500 874100 | CleanPhone: 447500874100 | Candidates: [5515] | ProjectID: 35 | FlatID: 4106 | LeadID: 5515 | BookingID: 400 | Issues: 
+[2026-08-15 14:08:30] IMPORT - Row: 14 | LeadPhone: 44 7500 874100 | CleanPhone: 447500874100 | Candidates: [5515] | ProjectID: 35 | FlatID: 4106 | LeadID: 5515 | BookingID: 400 | Issues: 
+[2026-08-15 14:08:30] IMPORT - Row: 15 | LeadPhone: 44 7500 874100 | CleanPhone: 447500874100 | Candidates: [5515] | ProjectID: 35 | FlatID: 4106 | LeadID: 5515 | BookingID: 400 | Issues: 
+[2026-08-15 14:08:30] IMPORT - Row: 16 | LeadPhone: 102453365 | CleanPhone: 102453365 | Candidates: [5516] | ProjectID: 35 | FlatID: 4107 | LeadID: 5516 | BookingID: 401 | Issues: 
+[2026-08-15 14:08:30] IMPORT - Row: 17 | LeadPhone: 102453365 | CleanPhone: 102453365 | Candidates: [5516] | ProjectID: 35 | FlatID: 4107 | LeadID: 5516 | BookingID: 401 | Issues: 
+[2026-08-15 14:08:30] IMPORT - Row: 18 | LeadPhone: 102453365 | CleanPhone: 102453365 | Candidates: [5516] | ProjectID: 35 | FlatID: 4107 | LeadID: 5516 | BookingID: 401 | Issues: 
+[2026-08-15 14:08:31] IMPORT - Row: 19 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:31] IMPORT - Row: 20 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:31] IMPORT - Row: 21 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:31] IMPORT - Row: 22 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:31] IMPORT - Row: 23 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:31] IMPORT - Row: 24 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4108 | LeadID: 5513 | BookingID: 402 | Issues: 
+[2026-08-15 14:08:31] IMPORT - Row: 25 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4109 | LeadID: 5513 | BookingID: 403 | Issues: 
+[2026-08-15 14:08:31] IMPORT - Row: 26 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4109 | LeadID: 5513 | BookingID: 403 | Issues: 
+[2026-08-15 14:08:31] IMPORT - Row: 27 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4109 | LeadID: 5513 | BookingID: 403 | Issues: 
+[2026-08-15 14:08:31] IMPORT - Row: 28 | LeadPhone: 1686801704 | CleanPhone: 1686801704 | Candidates: [5513,5514] | ProjectID: 35 | FlatID: 4109 | LeadID: 5513 | BookingID: 403 | Issues: 
+[2026-08-15 14:08:31] IMPORT - Row: 29 | LeadPhone: 966572691379 | CleanPhone: 966572691379 | Candidates: [24732] | ProjectID: 35 | FlatID: 4110 | LeadID: 24732 | BookingID: 404 | Issues: 
+[2026-08-15 14:08:31] IMPORT - Row: 30 | LeadPhone: 966572691379 | CleanPhone: 966572691379 | Candidates: [24732] | ProjectID: 35 | FlatID: 4110 | LeadID: 24732 | BookingID: 404 | Issues: 
+[2026-08-15 14:08:32] IMPORT - Row: 31 | LeadPhone: 966572691379 | CleanPhone: 966572691379 | Candidates: [24732] | ProjectID: 35 | FlatID: 4110 | LeadID: 24732 | BookingID: 404 | Issues: 
+[2026-08-15 14:08:32] IMPORT - Row: 32 | LeadPhone: 8801718816171 | CleanPhone: 8801718816171 | Candidates: [2458,5512,5639,5640] | ProjectID: 35 | FlatID: 4111 | LeadID: 2458 | BookingID: 405 | Issues: 
+[2026-08-15 14:08:32] IMPORT - Row: 33 | LeadPhone: 8801718816171 | CleanPhone: 8801718816171 | Candidates: [2458,5512,5639,5640] | ProjectID: 35 | FlatID: 4111 | LeadID: 2458 | BookingID: 405 | Issues: 
+[2026-08-15 14:08:32] IMPORT - Row: 34 | LeadPhone: 8801718816171 | CleanPhone: 8801718816171 | Candidates: [2458,5512,5639,5640] | ProjectID: 35 | FlatID: 4111 | LeadID: 2458 | BookingID: 405 | Issues: 
+[2026-08-15 14:08:32] IMPORT - Row: 35 | LeadPhone: 8801718816171 | CleanPhone: 8801718816171 | Candidates: [2458,5512,5639,5640] | ProjectID: 35 | FlatID: 4111 | LeadID: 2458 | BookingID: 405 | Issues: 
+[2026-08-15 14:08:32] IMPORT - Row: 36 | LeadPhone: 1712197500 | CleanPhone: 1712197500 | Candidates: [5509] | ProjectID: 35 | FlatID: 4112 | LeadID: 5509 | BookingID: 406 | Issues: 
+[2026-08-15 14:08:32] IMPORT - Row: 37 | LeadPhone: 1712197500 | CleanPhone: 1712197500 | Candidates: [5509] | ProjectID: 35 | FlatID: 4112 | LeadID: 5509 | BookingID: 406 | Issues: 
+[2026-08-15 14:08:32] IMPORT - Row: 38 | LeadPhone: 1712197500 | CleanPhone: 1712197500 | Candidates: [5509] | ProjectID: 35 | FlatID: 4112 | LeadID: 5509 | BookingID: 406 | Issues: 
+[2026-08-15 14:08:32] IMPORT - Row: 39 | LeadPhone: 1712197500 | CleanPhone: 1712197500 | Candidates: [5509] | ProjectID: 35 | FlatID: 4112 | LeadID: 5509 | BookingID: 406 | Issues: 
+[2026-08-15 14:08:32] IMPORT - Row: 40 | LeadPhone: 1878804000 | CleanPhone: 1878804000 | Candidates: [5510] | ProjectID: 35 | FlatID: 4113 | LeadID: 5510 | BookingID: 407 | Issues: 
+[2026-08-15 14:08:32] IMPORT - Row: 41 | LeadPhone: 8801912705633 | CleanPhone: 8801912705633 | Candidates: [5507,5508] | ProjectID: 35 | FlatID: 4114 | LeadID: 5507 | BookingID: 408 | Issues: 
+[2026-08-15 14:08:33] IMPORT - Row: 42 | LeadPhone: 8801912705633 | CleanPhone: 8801912705633 | Candidates: [5507,5508] | ProjectID: 35 | FlatID: 4114 | LeadID: 5507 | BookingID: 408 | Issues: 
+[2026-08-15 14:08:33] IMPORT - Row: 43 | LeadPhone: 8801912705633 | CleanPhone: 8801912705633 | Candidates: [5507,5508] | ProjectID: 35 | FlatID: 4114 | LeadID: 5507 | BookingID: 408 | Issues: 
+[2026-08-15 14:08:33] IMPORT - Row: 44 | LeadPhone: 447977729647 | CleanPhone: 447977729647 | Candidates: [27597] | ProjectID: 35 | FlatID: 4115 | LeadID: 27597 | BookingID: 409 | Issues: 
+[2026-08-15 14:08:33] IMPORT - Row: 45 | LeadPhone: 447977729647 | CleanPhone: 447977729647 | Candidates: [27597] | ProjectID: 35 | FlatID: 4115 | LeadID: 27597 | BookingID: 409 | Issues: 
+[2026-08-15 14:08:33] IMPORT - Row: 46 | LeadPhone: 447977729647 | CleanPhone: 447977729647 | Candidates: [27597] | ProjectID: 35 | FlatID: 4115 | LeadID: 27597 | BookingID: 409 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 2 | LeadPhone: 01731407904 | CleanPhone: 01731407904 | Candidates: [5523,5953,6464] | ProjectID: 22 | FlatID: 4086 | LeadID: 6464 | BookingID: 410 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 3 | LeadPhone: 01731407904 | CleanPhone: 01731407904 | Candidates: [5523,5953,6464] | ProjectID: 22 | FlatID: 4086 | LeadID: 6464 | BookingID: 410 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 4 | LeadPhone: 01731407904 | CleanPhone: 01731407904 | Candidates: [5523,5953,6464] | ProjectID: 22 | FlatID: 4086 | LeadID: 6464 | BookingID: 410 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 5 | LeadPhone: +966560975095 | CleanPhone: 966560975095 | Candidates: [6465] | ProjectID: 22 | FlatID: 4087 | LeadID: 6465 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 6 | LeadPhone: +966560975095 | CleanPhone: 966560975095 | Candidates: [6465] | ProjectID: 22 | FlatID: 4087 | LeadID: 6465 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 7 | LeadPhone: +966560975095 | CleanPhone: 966560975095 | Candidates: [6465] | ProjectID: 22 | FlatID: 4087 | LeadID: 6465 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 8 | LeadPhone: +447858554918 | CleanPhone: 447858554918 | Candidates: [6462] | ProjectID: 22 | FlatID: 4088 | LeadID: 6462 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 9 | LeadPhone: +447858554918 | CleanPhone: 447858554918 | Candidates: [6462] | ProjectID: 22 | FlatID: 4088 | LeadID: 6462 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 10 | LeadPhone: +447858554918 | CleanPhone: 447858554918 | Candidates: [6462] | ProjectID: 22 | FlatID: 4088 | LeadID: 6462 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 11 | LeadPhone: +8801711958691 | CleanPhone: 8801711958691 | Candidates: [5952,6463,26876] | ProjectID: 22 | FlatID: 4089 | LeadID: 5952 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 12 | LeadPhone: +8801711958691 | CleanPhone: 8801711958691 | Candidates: [5952,6463,26876] | ProjectID: 22 | FlatID: 4089 | LeadID: 5952 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 13 | LeadPhone: +33699615218 | CleanPhone: 33699615218 | Candidates: [5949,6460] | ProjectID: 22 | FlatID: 4090 | LeadID: 5949 | BookingID: 414 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 14 | LeadPhone: +33699615218 | CleanPhone: 33699615218 | Candidates: [5949,6460] | ProjectID: 22 | FlatID: 4090 | LeadID: 5949 | BookingID: 414 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 15 | LeadPhone: +8801300992864 | CleanPhone: 8801300992864 | Candidates: [5950,6461] | ProjectID: 22 | FlatID: 4091 | LeadID: 5950 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 16 | LeadPhone: +8801300992864 | CleanPhone: 8801300992864 | Candidates: [5950,6461] | ProjectID: 22 | FlatID: 4091 | LeadID: 5950 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 17 | LeadPhone: +8801300992864 | CleanPhone: 8801300992864 | Candidates: [5950,6461] | ProjectID: 22 | FlatID: 4091 | LeadID: 5950 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 18 | LeadPhone: 8801322071260 | CleanPhone: 8801322071260 | Candidates: [5947,6458,6466] | ProjectID: 22 | FlatID: 4092 | LeadID: 6458 | BookingID: 416 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 19 | LeadPhone: +6586241224 | CleanPhone: 6586241224 | Candidates: [5948,6459] | ProjectID: 22 | FlatID: 4093 | LeadID: 5948 | BookingID: 417 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 20 | LeadPhone: +6586241224 | CleanPhone: 6586241224 | Candidates: [5948,6459] | ProjectID: 22 | FlatID: 4093 | LeadID: 5948 | BookingID: 417 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 21 | LeadPhone: +6586241224 | CleanPhone: 6586241224 | Candidates: [5948,6459] | ProjectID: 22 | FlatID: 4093 | LeadID: 5948 | BookingID: 417 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 22 | LeadPhone: 1962013399 | CleanPhone: 1962013399 | Candidates: [5945] | ProjectID: 22 | FlatID: 4094 | LeadID: 5945 | BookingID: 418 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 23 | LeadPhone: 1962013399 | CleanPhone: 1962013399 | Candidates: [5945] | ProjectID: 22 | FlatID: 4094 | LeadID: 5945 | BookingID: 418 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 24 | LeadPhone: 1962013399 | CleanPhone: 1962013399 | Candidates: [5945] | ProjectID: 22 | FlatID: 4094 | LeadID: 5945 | BookingID: 418 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 25 | LeadPhone: 1939132607 | CleanPhone: 1939132607 | Candidates: [5946] | ProjectID: 22 | FlatID: 4095 | LeadID: 5946 | BookingID: 419 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 26 | LeadPhone: 1939132607 | CleanPhone: 1939132607 | Candidates: [5946] | ProjectID: 22 | FlatID: 4095 | LeadID: 5946 | BookingID: 419 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 27 | LeadPhone: 1939132607 | CleanPhone: 1939132607 | Candidates: [5946] | ProjectID: 22 | FlatID: 4095 | LeadID: 5946 | BookingID: 419 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 28 | LeadPhone: +817013955656 | CleanPhone: 817013955656 | Candidates: [5942,6456] | ProjectID: 22 | FlatID: 4096 | LeadID: 5942 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 29 | LeadPhone: 1717671934 | CleanPhone: 1717671934 | Candidates: [5943] | ProjectID: 22 | FlatID: 4097 | LeadID: 5943 | BookingID: 421 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 30 | LeadPhone: 1717671934 | CleanPhone: 1717671934 | Candidates: [5943] | ProjectID: 22 | FlatID: 4097 | LeadID: 5943 | BookingID: 421 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 31 | LeadPhone: 1717671934 | CleanPhone: 1717671934 | Candidates: [5943] | ProjectID: 22 | FlatID: 4097 | LeadID: 5943 | BookingID: 421 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 32 | LeadPhone: 1717671934 | CleanPhone: 1717671934 | Candidates: [5943] | ProjectID: 22 | FlatID: 4097 | LeadID: 5943 | BookingID: 421 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 33 | LeadPhone: 1717671934 | CleanPhone: 1717671934 | Candidates: [5943] | ProjectID: 22 | FlatID: 4097 | LeadID: 5943 | BookingID: 421 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 34 | LeadPhone: 01624000090 | CleanPhone: 01624000090 | Candidates: [5940,6455] | ProjectID: 22 | FlatID: 4098 | LeadID: 6455 | BookingID: 422 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 35 | LeadPhone: 01624000090 | CleanPhone: 01624000090 | Candidates: [5940,6455] | ProjectID: 22 | FlatID: 4098 | LeadID: 6455 | BookingID: 422 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 36 | LeadPhone: 01624000090 | CleanPhone: 01624000090 | Candidates: [5940,6455] | ProjectID: 22 | FlatID: 4098 | LeadID: 6455 | BookingID: 422 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 37 | LeadPhone: 1755534278 | CleanPhone: 1755534278 | Candidates: [5941] | ProjectID: 22 | FlatID: 4099 | LeadID: 5941 | BookingID: 423 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 38 | LeadPhone: 1755534278 | CleanPhone: 1755534278 | Candidates: [5941] | ProjectID: 22 | FlatID: 4099 | LeadID: 5941 | BookingID: 423 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 39 | LeadPhone: 1755534278 | CleanPhone: 1755534278 | Candidates: [5941] | ProjectID: 22 | FlatID: 4099 | LeadID: 5941 | BookingID: 423 | Issues: 
+[2026-08-15 14:21:49] VALIDATE - Row: 40 | LeadPhone: +601121476241 | CleanPhone: 601121476241 | Candidates: [5939,6454] | ProjectID: 22 | FlatID: 4101 | LeadID: 5939 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 41 | LeadPhone: +601121476241 | CleanPhone: 601121476241 | Candidates: [5939,6454] | ProjectID: 22 | FlatID: 4101 | LeadID: 5939 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 42 | LeadPhone: +601121476241 | CleanPhone: 601121476241 | Candidates: [5939,6454] | ProjectID: 22 | FlatID: 4101 | LeadID: 5939 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 43 | LeadPhone: +601121476241 | CleanPhone: 601121476241 | Candidates: [5939,6454] | ProjectID: 22 | FlatID: 4101 | LeadID: 5939 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 14:21:49] VALIDATE - Row: 44 | LeadPhone: +601121476241 | CleanPhone: 601121476241 | Candidates: [5939,6454] | ProjectID: 22 | FlatID: 4101 | LeadID: 5939 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:41] VALIDATE - Row: 2 | LeadPhone: 01731407904 | CleanPhone: 01731407904 | Candidates: [5523,5953,6464] | ProjectID: 22 | FlatID: 4086 | LeadID: 6464 | BookingID: 410 | Issues: 
+[2026-08-15 15:16:41] VALIDATE - Row: 3 | LeadPhone: 01731407904 | CleanPhone: 01731407904 | Candidates: [5523,5953,6464] | ProjectID: 22 | FlatID: 4086 | LeadID: 6464 | BookingID: 410 | Issues: 
+[2026-08-15 15:16:41] VALIDATE - Row: 4 | LeadPhone: 01731407904 | CleanPhone: 01731407904 | Candidates: [5523,5953,6464] | ProjectID: 22 | FlatID: 4086 | LeadID: 6464 | BookingID: 410 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 5 | LeadPhone: +966560975095 | CleanPhone: 966560975095 | Candidates: [6465] | ProjectID: 22 | FlatID: 4087 | LeadID: 6465 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 6 | LeadPhone: +966560975095 | CleanPhone: 966560975095 | Candidates: [6465] | ProjectID: 22 | FlatID: 4087 | LeadID: 6465 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 7 | LeadPhone: +966560975095 | CleanPhone: 966560975095 | Candidates: [6465] | ProjectID: 22 | FlatID: 4087 | LeadID: 6465 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 8 | LeadPhone: +447858554918 | CleanPhone: 447858554918 | Candidates: [6462] | ProjectID: 22 | FlatID: 4088 | LeadID: 6462 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 9 | LeadPhone: +447858554918 | CleanPhone: 447858554918 | Candidates: [6462] | ProjectID: 22 | FlatID: 4088 | LeadID: 6462 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 10 | LeadPhone: +447858554918 | CleanPhone: 447858554918 | Candidates: [6462] | ProjectID: 22 | FlatID: 4088 | LeadID: 6462 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 11 | LeadPhone: +8801711958691 | CleanPhone: 8801711958691 | Candidates: [5952,6463,26876] | ProjectID: 22 | FlatID: 4089 | LeadID: 5952 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 12 | LeadPhone: +8801711958691 | CleanPhone: 8801711958691 | Candidates: [5952,6463,26876] | ProjectID: 22 | FlatID: 4089 | LeadID: 5952 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 13 | LeadPhone: +33699615218 | CleanPhone: 33699615218 | Candidates: [5949,6460] | ProjectID: 22 | FlatID: 4090 | LeadID: 5949 | BookingID: 414 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 14 | LeadPhone: +33699615218 | CleanPhone: 33699615218 | Candidates: [5949,6460] | ProjectID: 22 | FlatID: 4090 | LeadID: 5949 | BookingID: 414 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 15 | LeadPhone: +8801300992864 | CleanPhone: 8801300992864 | Candidates: [5950,6461] | ProjectID: 22 | FlatID: 4091 | LeadID: 5950 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 16 | LeadPhone: +8801300992864 | CleanPhone: 8801300992864 | Candidates: [5950,6461] | ProjectID: 22 | FlatID: 4091 | LeadID: 5950 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 17 | LeadPhone: +8801300992864 | CleanPhone: 8801300992864 | Candidates: [5950,6461] | ProjectID: 22 | FlatID: 4091 | LeadID: 5950 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 18 | LeadPhone: 8801322071260 | CleanPhone: 8801322071260 | Candidates: [5947,6458,6466] | ProjectID: 22 | FlatID: 4092 | LeadID: 6458 | BookingID: 416 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 19 | LeadPhone: +6586241224 | CleanPhone: 6586241224 | Candidates: [5948,6459] | ProjectID: 22 | FlatID: 4093 | LeadID: 5948 | BookingID: 417 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 20 | LeadPhone: +6586241224 | CleanPhone: 6586241224 | Candidates: [5948,6459] | ProjectID: 22 | FlatID: 4093 | LeadID: 5948 | BookingID: 417 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 21 | LeadPhone: +6586241224 | CleanPhone: 6586241224 | Candidates: [5948,6459] | ProjectID: 22 | FlatID: 4093 | LeadID: 5948 | BookingID: 417 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 22 | LeadPhone: 1962013399 | CleanPhone: 1962013399 | Candidates: [5945] | ProjectID: 22 | FlatID: 4094 | LeadID: 5945 | BookingID: 418 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 23 | LeadPhone: 1962013399 | CleanPhone: 1962013399 | Candidates: [5945] | ProjectID: 22 | FlatID: 4094 | LeadID: 5945 | BookingID: 418 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 24 | LeadPhone: 1962013399 | CleanPhone: 1962013399 | Candidates: [5945] | ProjectID: 22 | FlatID: 4094 | LeadID: 5945 | BookingID: 418 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 25 | LeadPhone: 1939132607 | CleanPhone: 1939132607 | Candidates: [5946] | ProjectID: 22 | FlatID: 4095 | LeadID: 5946 | BookingID: 419 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 26 | LeadPhone: 1939132607 | CleanPhone: 1939132607 | Candidates: [5946] | ProjectID: 22 | FlatID: 4095 | LeadID: 5946 | BookingID: 419 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 27 | LeadPhone: 1939132607 | CleanPhone: 1939132607 | Candidates: [5946] | ProjectID: 22 | FlatID: 4095 | LeadID: 5946 | BookingID: 419 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 28 | LeadPhone: +817013955656 | CleanPhone: 817013955656 | Candidates: [5942,6456] | ProjectID: 22 | FlatID: 4096 | LeadID: 5942 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 29 | LeadPhone: 1717671934 | CleanPhone: 1717671934 | Candidates: [5943] | ProjectID: 22 | FlatID: 4097 | LeadID: 5943 | BookingID: 421 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 30 | LeadPhone: 1717671934 | CleanPhone: 1717671934 | Candidates: [5943] | ProjectID: 22 | FlatID: 4097 | LeadID: 5943 | BookingID: 421 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 31 | LeadPhone: 1717671934 | CleanPhone: 1717671934 | Candidates: [5943] | ProjectID: 22 | FlatID: 4097 | LeadID: 5943 | BookingID: 421 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 32 | LeadPhone: 1717671934 | CleanPhone: 1717671934 | Candidates: [5943] | ProjectID: 22 | FlatID: 4097 | LeadID: 5943 | BookingID: 421 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 33 | LeadPhone: 1717671934 | CleanPhone: 1717671934 | Candidates: [5943] | ProjectID: 22 | FlatID: 4097 | LeadID: 5943 | BookingID: 421 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 34 | LeadPhone: 01624000090 | CleanPhone: 01624000090 | Candidates: [5940,6455] | ProjectID: 22 | FlatID: 4098 | LeadID: 6455 | BookingID: 422 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 35 | LeadPhone: 01624000090 | CleanPhone: 01624000090 | Candidates: [5940,6455] | ProjectID: 22 | FlatID: 4098 | LeadID: 6455 | BookingID: 422 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 36 | LeadPhone: 01624000090 | CleanPhone: 01624000090 | Candidates: [5940,6455] | ProjectID: 22 | FlatID: 4098 | LeadID: 6455 | BookingID: 422 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 37 | LeadPhone: 1755534278 | CleanPhone: 1755534278 | Candidates: [5941] | ProjectID: 22 | FlatID: 4099 | LeadID: 5941 | BookingID: 423 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 38 | LeadPhone: 1755534278 | CleanPhone: 1755534278 | Candidates: [5941] | ProjectID: 22 | FlatID: 4099 | LeadID: 5941 | BookingID: 423 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 39 | LeadPhone: 1755534278 | CleanPhone: 1755534278 | Candidates: [5941] | ProjectID: 22 | FlatID: 4099 | LeadID: 5941 | BookingID: 423 | Issues: 
+[2026-08-15 15:16:42] VALIDATE - Row: 40 | LeadPhone: +601121476241 | CleanPhone: 601121476241 | Candidates: [5939,6454] | ProjectID: 22 | FlatID: 4101 | LeadID: 5939 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 41 | LeadPhone: +601121476241 | CleanPhone: 601121476241 | Candidates: [5939,6454] | ProjectID: 22 | FlatID: 4101 | LeadID: 5939 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 42 | LeadPhone: +601121476241 | CleanPhone: 601121476241 | Candidates: [5939,6454] | ProjectID: 22 | FlatID: 4101 | LeadID: 5939 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 43 | LeadPhone: +601121476241 | CleanPhone: 601121476241 | Candidates: [5939,6454] | ProjectID: 22 | FlatID: 4101 | LeadID: 5939 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:16:42] VALIDATE - Row: 44 | LeadPhone: +601121476241 | CleanPhone: 601121476241 | Candidates: [5939,6454] | ProjectID: 22 | FlatID: 4101 | LeadID: 5939 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:03] VALIDATE - Row: 2 | LeadPhone: 01731407904 | CleanPhone: 01731407904 | Candidates: [5523,5953,6464] | ProjectID: 22 | FlatID: 4086 | LeadID: 6464 | BookingID: 410 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 3 | LeadPhone: 01731407904 | CleanPhone: 01731407904 | Candidates: [5523,5953,6464] | ProjectID: 22 | FlatID: 4086 | LeadID: 6464 | BookingID: 410 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 4 | LeadPhone: 01731407904 | CleanPhone: 01731407904 | Candidates: [5523,5953,6464] | ProjectID: 22 | FlatID: 4086 | LeadID: 6464 | BookingID: 410 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 5 | LeadPhone: +966560975095 | CleanPhone: 966560975095 | Candidates: [6465] | ProjectID: 22 | FlatID: 4087 | LeadID: 6465 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:03] VALIDATE - Row: 6 | LeadPhone: +966560975095 | CleanPhone: 966560975095 | Candidates: [6465] | ProjectID: 22 | FlatID: 4087 | LeadID: 6465 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:03] VALIDATE - Row: 7 | LeadPhone: +966560975095 | CleanPhone: 966560975095 | Candidates: [6465] | ProjectID: 22 | FlatID: 4087 | LeadID: 6465 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:03] VALIDATE - Row: 8 | LeadPhone: +447858554918 | CleanPhone: 447858554918 | Candidates: [6462] | ProjectID: 22 | FlatID: 4088 | LeadID: 6462 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:03] VALIDATE - Row: 9 | LeadPhone: +447858554918 | CleanPhone: 447858554918 | Candidates: [6462] | ProjectID: 22 | FlatID: 4088 | LeadID: 6462 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:03] VALIDATE - Row: 10 | LeadPhone: +447858554918 | CleanPhone: 447858554918 | Candidates: [6462] | ProjectID: 22 | FlatID: 4088 | LeadID: 6462 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:03] VALIDATE - Row: 11 | LeadPhone: +8801711958691 | CleanPhone: 8801711958691 | Candidates: [5952,6463,26876] | ProjectID: 22 | FlatID: 4089 | LeadID: 5952 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:03] VALIDATE - Row: 12 | LeadPhone: +8801711958691 | CleanPhone: 8801711958691 | Candidates: [5952,6463,26876] | ProjectID: 22 | FlatID: 4089 | LeadID: 5952 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:03] VALIDATE - Row: 13 | LeadPhone: +33699615218 | CleanPhone: 33699615218 | Candidates: [5949,6460] | ProjectID: 22 | FlatID: 4090 | LeadID: 5949 | BookingID: 414 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 14 | LeadPhone: +33699615218 | CleanPhone: 33699615218 | Candidates: [5949,6460] | ProjectID: 22 | FlatID: 4090 | LeadID: 5949 | BookingID: 414 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 15 | LeadPhone: +8801300992864 | CleanPhone: 8801300992864 | Candidates: [5950,6461] | ProjectID: 22 | FlatID: 4091 | LeadID: 5950 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:03] VALIDATE - Row: 16 | LeadPhone: +8801300992864 | CleanPhone: 8801300992864 | Candidates: [5950,6461] | ProjectID: 22 | FlatID: 4091 | LeadID: 5950 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:03] VALIDATE - Row: 17 | LeadPhone: +8801300992864 | CleanPhone: 8801300992864 | Candidates: [5950,6461] | ProjectID: 22 | FlatID: 4091 | LeadID: 5950 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:03] VALIDATE - Row: 18 | LeadPhone: 8801322071260 | CleanPhone: 8801322071260 | Candidates: [5947,6458,6466] | ProjectID: 22 | FlatID: 4092 | LeadID: 6458 | BookingID: 416 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 19 | LeadPhone: +6586241224 | CleanPhone: 6586241224 | Candidates: [5948,6459] | ProjectID: 22 | FlatID: 4093 | LeadID: 5948 | BookingID: 417 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 20 | LeadPhone: +6586241224 | CleanPhone: 6586241224 | Candidates: [5948,6459] | ProjectID: 22 | FlatID: 4093 | LeadID: 5948 | BookingID: 417 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 21 | LeadPhone: +6586241224 | CleanPhone: 6586241224 | Candidates: [5948,6459] | ProjectID: 22 | FlatID: 4093 | LeadID: 5948 | BookingID: 417 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 22 | LeadPhone: 1962013399 | CleanPhone: 1962013399 | Candidates: [5945] | ProjectID: 22 | FlatID: 4094 | LeadID: 5945 | BookingID: 418 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 23 | LeadPhone: 1962013399 | CleanPhone: 1962013399 | Candidates: [5945] | ProjectID: 22 | FlatID: 4094 | LeadID: 5945 | BookingID: 418 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 24 | LeadPhone: 1962013399 | CleanPhone: 1962013399 | Candidates: [5945] | ProjectID: 22 | FlatID: 4094 | LeadID: 5945 | BookingID: 418 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 25 | LeadPhone: 1939132607 | CleanPhone: 1939132607 | Candidates: [5946] | ProjectID: 22 | FlatID: 4095 | LeadID: 5946 | BookingID: 419 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 26 | LeadPhone: 1939132607 | CleanPhone: 1939132607 | Candidates: [5946] | ProjectID: 22 | FlatID: 4095 | LeadID: 5946 | BookingID: 419 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 27 | LeadPhone: 1939132607 | CleanPhone: 1939132607 | Candidates: [5946] | ProjectID: 22 | FlatID: 4095 | LeadID: 5946 | BookingID: 419 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 28 | LeadPhone: +817013955656 | CleanPhone: 817013955656 | Candidates: [5942,6456] | ProjectID: 22 | FlatID: 4096 | LeadID: 5942 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:03] VALIDATE - Row: 29 | LeadPhone: 1717671934 | CleanPhone: 1717671934 | Candidates: [5943] | ProjectID: 22 | FlatID: 4097 | LeadID: 5943 | BookingID: 421 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 30 | LeadPhone: 1717671934 | CleanPhone: 1717671934 | Candidates: [5943] | ProjectID: 22 | FlatID: 4097 | LeadID: 5943 | BookingID: 421 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 31 | LeadPhone: 1717671934 | CleanPhone: 1717671934 | Candidates: [5943] | ProjectID: 22 | FlatID: 4097 | LeadID: 5943 | BookingID: 421 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 32 | LeadPhone: 1717671934 | CleanPhone: 1717671934 | Candidates: [5943] | ProjectID: 22 | FlatID: 4097 | LeadID: 5943 | BookingID: 421 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 33 | LeadPhone: 1717671934 | CleanPhone: 1717671934 | Candidates: [5943] | ProjectID: 22 | FlatID: 4097 | LeadID: 5943 | BookingID: 421 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 34 | LeadPhone: 01624000090 | CleanPhone: 01624000090 | Candidates: [5940,6455] | ProjectID: 22 | FlatID: 4098 | LeadID: 6455 | BookingID: 422 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 35 | LeadPhone: 01624000090 | CleanPhone: 01624000090 | Candidates: [5940,6455] | ProjectID: 22 | FlatID: 4098 | LeadID: 6455 | BookingID: 422 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 36 | LeadPhone: 01624000090 | CleanPhone: 01624000090 | Candidates: [5940,6455] | ProjectID: 22 | FlatID: 4098 | LeadID: 6455 | BookingID: 422 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 37 | LeadPhone: 1755534278 | CleanPhone: 1755534278 | Candidates: [5941] | ProjectID: 22 | FlatID: 4099 | LeadID: 5941 | BookingID: 423 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 38 | LeadPhone: 1755534278 | CleanPhone: 1755534278 | Candidates: [5941] | ProjectID: 22 | FlatID: 4099 | LeadID: 5941 | BookingID: 423 | Issues: 
+[2026-08-15 15:19:03] VALIDATE - Row: 39 | LeadPhone: 1755534278 | CleanPhone: 1755534278 | Candidates: [5941] | ProjectID: 22 | FlatID: 4099 | LeadID: 5941 | BookingID: 423 | Issues: 
+[2026-08-15 15:19:04] VALIDATE - Row: 40 | LeadPhone: +601121476241 | CleanPhone: 601121476241 | Candidates: [5939,6454] | ProjectID: 22 | FlatID: 4101 | LeadID: 5939 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:04] VALIDATE - Row: 41 | LeadPhone: +601121476241 | CleanPhone: 601121476241 | Candidates: [5939,6454] | ProjectID: 22 | FlatID: 4101 | LeadID: 5939 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:04] VALIDATE - Row: 42 | LeadPhone: +601121476241 | CleanPhone: 601121476241 | Candidates: [5939,6454] | ProjectID: 22 | FlatID: 4101 | LeadID: 5939 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:04] VALIDATE - Row: 43 | LeadPhone: +601121476241 | CleanPhone: 601121476241 | Candidates: [5939,6454] | ProjectID: 22 | FlatID: 4101 | LeadID: 5939 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
+[2026-08-15 15:19:04] VALIDATE - Row: 44 | LeadPhone: +601121476241 | CleanPhone: 601121476241 | Candidates: [5939,6454] | ProjectID: 22 | FlatID: 4101 | LeadID: 5939 | BookingID: NULL | Issues: Booking not found for this Lead, Project, and Flat
