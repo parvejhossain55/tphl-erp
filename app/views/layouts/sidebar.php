@@ -1225,6 +1225,15 @@
                         </a>
                     </li>
 
+                    <!-- Advance Salary -->
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/advance-salary"
+                            class="sidebar__menu-item <?= isActive('advance-salary', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-money-bill"></i></div>
+                            <span class="sidebar__menu-label">Advance Salary</span>
+                        </a>
+                    </li>
+
                     <!-- Auto Generate Payslip -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/auto-generate-payslip"

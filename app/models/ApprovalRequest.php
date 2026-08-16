@@ -12,7 +12,8 @@ class ApprovalRequest extends Model
         'salary_requests',
         'cashout_requests',
         'manpower_requisitions',
-        
+        'advance_salaries',
+
         // Phase 2 / Construction & Client refund tables
         'client_refund_requests',
         'operational_fund_requests',
@@ -176,11 +177,11 @@ class ApprovalRequest extends Model
         if ($approval['request_type'] === 'discount') {
 
             if (!empty($meta['lead_id'])) {
-                $details['lead'] = $this->getLeadById((int)$meta['lead_id']);
+                $details['lead'] = $this->getLeadById((int) $meta['lead_id']);
             }
 
             if (!empty($meta['flat_id'])) {
-                $details['flat'] = $this->getFlatById((int)$meta['flat_id']);
+                $details['flat'] = $this->getFlatById((int) $meta['flat_id']);
             }
 
             // Universal requested date fallback
@@ -194,9 +195,9 @@ class ApprovalRequest extends Model
         if ($approval['request_type'] === 'salary') {
 
             if (!empty($meta['employee_id'])) {
-                $details['employee'] = $this->getEmployeeById((int)$meta['employee_id']);
+                $details['employee'] = $this->getEmployeeById((int) $meta['employee_id']);
                 $details['salary'] = $this->getSalaryDetails(
-                    (int)$meta['employee_id'],
+                    (int) $meta['employee_id'],
                     $meta['month'] ?? null
                 );
             }
@@ -208,11 +209,11 @@ class ApprovalRequest extends Model
         if ($approval['request_type'] === 'leave') {
 
             if (!empty($meta['user_id'])) {
-                $details['employee'] = $this->getUserById((int)$meta['user_id']);
+                $details['employee'] = $this->getUserById((int) $meta['user_id']);
             }
 
             if (!empty($approval['source_id'])) {
-                $leave = $this->getLeaveDetails((int)$approval['source_id']);
+                $leave = $this->getLeaveDetails((int) $approval['source_id']);
 
                 if ($leave) {
                     $details['leave'] = $leave;
@@ -236,13 +237,13 @@ class ApprovalRequest extends Model
 
             $details['account'] = $this->getAccountDetails(
                 $approval['source_table'],
-                (int)$approval['source_id']
+                (int) $approval['source_id']
             );
 
             if ($approval['request_type'] === 'Cash In Handover' && $approval['source_table'] === 'lead_payments') {
                 $handoverToId = $details['account']['handover_to'] ?? null;
                 if ($handoverToId) {
-                    $employee = $this->getUserById((int)$handoverToId);
+                    $employee = $this->getUserById((int) $handoverToId);
                     if ($employee) {
                         $meta['handover_to'] = $employee['user_name'];
                     }
@@ -262,13 +263,13 @@ class ApprovalRequest extends Model
                         LEFT JOIN departments d ON mr.department_id = d.id
                         LEFT JOIN designations des ON mr.designation_id = des.id
                         LEFT JOIN projects p ON mr.project_id = p.id
-                        WHERE mr.id = " . (int)$approval['source_id'])
+                        WHERE mr.id = " . (int) $approval['source_id'])
                 ->fetch_assoc();
         }
 
         // Fetch requester info
         if (!empty($approval['requested_by'])) {
-            $details['requester'] = $this->getUserById((int)$approval['requested_by']);
+            $details['requester'] = $this->getUserById((int) $approval['requested_by']);
         }
 
 
@@ -293,7 +294,7 @@ class ApprovalRequest extends Model
             $types .= 's';
         }
 
-        $limit = (int)$limit;
+        $limit = (int) $limit;
 
         $sql = "SELECT *
             FROM {$this->table}
@@ -326,12 +327,34 @@ class ApprovalRequest extends Model
         }
 
         $sourceTable = $request['source_table'];
-        $sourceId    = (int) $request['source_id'];
+        $sourceId = (int) $request['source_id'];
+
+        if ($sourceTable === 'advance_salaries' && strtolower($request['approve_role'] ?? '') === 'hr_head' && $status === 'approved') {
+            // Update source table
+            $this->db->query("UPDATE advance_salaries SET status = 'pending_accounts', approved_date = NOW() WHERE id = {$sourceId}");
+
+            // Forward to Accounts!
+            $sqlForward = "UPDATE {$this->table}
+                SET 
+                    department = 'Accounts',
+                    request_type = 'advance_salary_payment',
+                    approve_role = 'management',
+                    status = 'pending',
+                    approved_amount = NULL,
+                    approved_by = NULL,
+                    approval_note = ?,
+                    approved_at = NULL
+                WHERE id = ?";
+            $stmtForward = $this->db->prepare($sqlForward);
+            $hrNote = "Approved by HR Head. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('si', $hrNote, $id);
+            return $stmtForward->execute();
+        }
 
         if ($sourceTable === 'payslips' && strtolower($request['approve_role'] ?? '') === 'hr' && $status === 'approved') {
             // Update payslip hr_status
             $this->db->query("UPDATE payslips SET hr_status = 'approved' WHERE id = {$sourceId}");
-            
+
             // Forward to management for final approval
             $sqlForward = "UPDATE {$this->table}
                 SET 
@@ -394,7 +417,7 @@ class ApprovalRequest extends Model
         }
 
         $sourceTable = $request['source_table'];
-        $sourceId    = (int) $request['source_id'];
+        $sourceId = (int) $request['source_id'];
 
         if (!in_array($sourceTable, $this->allowedTables, true)) {
             throw new Exception("Invalid source table: {$sourceTable}");
@@ -442,11 +465,17 @@ class ApprovalRequest extends Model
                 'rejected' => 'rejected',
                 default => 'pending',
             };
+        } elseif ($sourceTable === 'advance_salaries') {
+            $sourceStatus = match ($status) {
+                'approved' => 'approved',
+                'rejected' => 'rejected',
+                default => 'pending_hr',
+            };
         }
 
         $updateFields = [];
         $params = [];
-        $types  = '';
+        $types = '';
 
         $requestType = $request['request_type'] ?? '';
 
@@ -459,12 +488,12 @@ class ApprovalRequest extends Model
             if ($approvedAmount !== null && in_array('penalty_waived', $columns)) {
                 $updateFields[] = "penalty_waived = ?";
                 $types .= 'd';
-                $params[] = (float)$approvedAmount;
+                $params[] = (float) $approvedAmount;
             }
             if ($approvedBy !== null && in_array('waiver_approved_by', $columns)) {
                 $updateFields[] = "waiver_approved_by = ?";
                 $types .= 'i';
-                $params[] = (int)$approvedBy;
+                $params[] = (int) $approvedBy;
             }
         } else {
             if (in_array('claim_status', $columns)) {
@@ -524,7 +553,7 @@ class ApprovalRequest extends Model
         //    7. Execute source update 
         if (!empty($updateFields)) {
             $sql2 = "UPDATE {$sourceTable} SET " . implode(', ', $updateFields) . " WHERE id = ?";
-            
+
             if ($sourceTable === 'lead_payments') {
                 $sql2 = "UPDATE {$sourceTable} SET " . implode(', ', $updateFields) . " WHERE id = ? OR bulk_parent_id = ?";
                 $types .= 'ii';
@@ -534,7 +563,7 @@ class ApprovalRequest extends Model
                 $types .= 'i';
                 $params[] = $sourceId;
             }
-            
+
             $stmt2 = $this->db->prepare($sql2);
             if ($stmt2) {
                 $stmt2->bind_param($types, ...$params);
@@ -581,15 +610,15 @@ class ApprovalRequest extends Model
                             (SELECT IFNULL(SUM(approved_amount), 0) FROM vendor_payment_requests WHERE status = 'Approved') +
                             (SELECT IFNULL(SUM(amount), 0) FROM fund_requisitions WHERE status = 'paid') AS total_disbursed";
         $resD = $this->db->query($sqlDisbursed);
-        $totalDisbursed = $resD ? (float)($resD->fetch_assoc()['total_disbursed'] ?? 0) : 0.00;
+        $totalDisbursed = $resD ? (float) ($resD->fetch_assoc()['total_disbursed'] ?? 0) : 0.00;
 
         return [
-            'total_requests'  => (int)($row['total_requests'] ?? 0),
-            'pending_count'   => (int)($row['pending_count'] ?? 0),
-            'pending_amount'  => (float)($row['pending_amount'] ?? 0.00),
-            'approved_count'  => (int)($row['approved_count'] ?? 0),
-            'approved_amount' => (float)($row['approved_amount'] ?? 0.00),
-            'rejected_count'  => (int)($row['rejected_count'] ?? 0),
+            'total_requests' => (int) ($row['total_requests'] ?? 0),
+            'pending_count' => (int) ($row['pending_count'] ?? 0),
+            'pending_amount' => (float) ($row['pending_amount'] ?? 0.00),
+            'approved_count' => (int) ($row['approved_count'] ?? 0),
+            'approved_amount' => (float) ($row['approved_amount'] ?? 0.00),
+            'rejected_count' => (int) ($row['rejected_count'] ?? 0),
             'total_disbursed' => $totalDisbursed
         ];
     }
@@ -663,7 +692,7 @@ class ApprovalRequest extends Model
         $list = [];
         while ($row = $result->fetch_assoc()) {
             $sourceTable = $row['source_table'];
-            $sourceId = (int)$row['source_id'];
+            $sourceId = (int) $row['source_id'];
 
             // Payout status resolution
             $payoutStatus = 'N/A';
@@ -679,7 +708,7 @@ class ApprovalRequest extends Model
                     $pStmt->execute();
                     $pRow = $pStmt->get_result()->fetch_assoc();
                     $pStmt->close();
-                    $totalPaid = (float)($pRow['total_paid'] ?? 0.00);
+                    $totalPaid = (float) ($pRow['total_paid'] ?? 0.00);
                     if ($totalPaid > 0) {
                         $payoutStatus = 'Paid & Settled';
                         $payoutAmount = $totalPaid;
@@ -701,7 +730,7 @@ class ApprovalRequest extends Model
                         $row['vpr_payment_type'] = $vRow['payment_type'] ?? null;
                         if (in_array(strtolower($vRow['status']), ['approved', 'paid', 'completed'])) {
                             $payoutStatus = 'Paid & Settled';
-                            $payoutAmount = (float)$vRow['app_amt'];
+                            $payoutAmount = (float) $vRow['app_amt'];
                             $payoutDate = $vRow['updated_at'];
                         } else if ($row['status'] === 'approved') {
                             $payoutStatus = 'Pending Accounts Payout';
@@ -719,7 +748,7 @@ class ApprovalRequest extends Model
                     if ($frRow) {
                         if ($frRow['status'] === 'paid' || !empty($frRow['paid_by'])) {
                             $payoutStatus = 'Paid & Settled';
-                            $payoutAmount = (float)$frRow['amount'];
+                            $payoutAmount = (float) $frRow['amount'];
                             $payoutDate = $frRow['paid_at'];
                         } else if ($frRow['status'] === 'approved' || $row['status'] === 'approved') {
                             $payoutStatus = 'Pending Accounts Payout';
@@ -772,14 +801,14 @@ class ApprovalRequest extends Model
         $res = $this->db->query($sql);
         if ($res && $res->num_rows > 0) {
             while ($row = $res->fetch_assoc()) {
-                $sourceId = (int)$row['id'];
+                $sourceId = (int) $row['id'];
                 $deptName = !empty($row['dept_name']) ? $row['dept_name'] : 'General';
                 $requestType = $row['requisition_type'];
                 $title = "Fund Requisition: " . (mb_strlen($row['purpose']) > 80 ? mb_substr($row['purpose'], 0, 80) . '...' : $row['purpose']);
-                $amount = (float)$row['amount'];
-                $requestedBy = (int)$row['requested_by'];
+                $amount = (float) $row['amount'];
+                $requestedBy = (int) $row['requested_by'];
                 $status = ($row['status'] === 'pending_dept') ? 'pending' : $row['status'];
-                $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
+                $approvedBy = !empty($row['approved_by']) ? (int) $row['approved_by'] : null;
                 $approvedAt = !empty($row['approved_at']) ? $row['approved_at'] : null;
                 $approvalNote = !empty($row['approval_note']) ? $row['approval_note'] : null;
                 $metaData = json_encode(['purpose' => $row['purpose'], 'category' => $row['category']]);

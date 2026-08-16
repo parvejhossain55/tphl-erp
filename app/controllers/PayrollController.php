@@ -19,23 +19,23 @@ class PayrollController extends Controller
     public function index()
     {
         // Current month/year
-        $currentYear  = date('Y');
+        $currentYear = date('Y');
         $currentMonth = date('m');
 
         // GET param use, fallback to current month/year
-        $selectedYear   = isset($_GET['year']) ? $_GET['year'] : $currentYear;
-        $selectedMonth  = isset($_GET['month']) ? $_GET['month'] : $currentMonth;
+        $selectedYear = isset($_GET['year']) ? $_GET['year'] : $currentYear;
+        $selectedMonth = isset($_GET['month']) ? $_GET['month'] : $currentMonth;
         $selectedStatus = isset($_GET['status']) ? $_GET['status'] : '';
 
         // Fetch payslips with status filter
         $payslips = $this->paymentModel->getAllWithEmployeeFiltered($selectedYear, $selectedMonth, $selectedStatus);
 
         $totalEmployees = $this->employeeModel->getTotalCount();
-        $paidCount      = $this->paymentModel->getPaidCount($selectedYear, $selectedMonth);
-        $pendingCount   = $totalEmployees - $paidCount;
-        $paidSalarySum  = $this->paymentModel->getPaidSalarySum($selectedYear, $selectedMonth);
+        $paidCount = $this->paymentModel->getPaidCount($selectedYear, $selectedMonth);
+        $pendingCount = $totalEmployees - $paidCount;
+        $paidSalarySum = $this->paymentModel->getPaidSalarySum($selectedYear, $selectedMonth);
         $unpaidSalarySum = $this->paymentModel->getUnpaidSalarySum($selectedYear, $selectedMonth);
-        $companyBanks   = $this->bankModel->getAll();
+        $companyBanks = $this->bankModel->getAll();
 
         // Fetch all local employee IDs, names, departments, and designations for Tipsoi matching
         $localQuery = $this->db->query("
@@ -57,17 +57,17 @@ class PayrollController extends Controller
         }
 
         $this->view("payrolls/payslips/payslip-lists", [
-            "current_route"  => "payslip-lists",
-            "page_title"     => "Payroll Lists",
-            "payslips"       => $payslips,
+            "current_route" => "payslip-lists",
+            "page_title" => "Payroll Lists",
+            "payslips" => $payslips,
             "totalEmployees" => $totalEmployees,
-            "paidCount"      => $paidCount,
-            "pendingCount"   => $pendingCount,
-            "paidSalarySum"  => $paidSalarySum,
+            "paidCount" => $paidCount,
+            "pendingCount" => $pendingCount,
+            "paidSalarySum" => $paidSalarySum,
             "unpaidSalarySum" => $unpaidSalarySum,
-            "companyBanks"   => $companyBanks,
-            "selectedYear"   => $selectedYear,
-            "selectedMonth"  => $selectedMonth,
+            "companyBanks" => $companyBanks,
+            "selectedYear" => $selectedYear,
+            "selectedMonth" => $selectedMonth,
             "selectedStatus" => $selectedStatus,
             "allLocalEmployees" => $allLocalEmployees,
         ]);
@@ -79,13 +79,13 @@ class PayrollController extends Controller
         $items = $this->payslipItemModel->getAll();
         $this->view("payrolls/payslips/create-payslip", [
             "current_route" => "create-payslip",
-            "page_title"    => "Create Payslip",
-            "employees"     => $employees,
-            "items"         => $items,
+            "page_title" => "Create Payslip",
+            "employees" => $employees,
+            "items" => $items,
 
         ]);
     }
-   
+
 
 
     public function store()
@@ -103,18 +103,18 @@ class PayrollController extends Controller
         $isDraft = (!empty($payload['is_draft']) && $payload['is_draft'] == 1)
             || (!empty($_POST['is_draft']) && $_POST['is_draft'] == 1)
             || (!empty($_POST['submit_action']) && $_POST['submit_action'] === 'draft');
-        $status  = $isDraft ? 'draft' : 'pending';
+        $status = $isDraft ? 'draft' : 'pending';
 
         $payslipId = $payslipModel->create([
-            'employee_id'     => $payload['employee_id'],
-            'designation_id'  => $payload['designation_id'],
-            'payslip_month'   => date('Y-m-01'),
-            'total_earning'   => $payload['total_earning'],
+            'employee_id' => $payload['employee_id'],
+            'designation_id' => $payload['designation_id'],
+            'payslip_month' => date('Y-m-01'),
+            'total_earning' => $payload['total_earning'],
             'total_deduction' => $payload['total_deduction'],
-            'net_salary'      => $payload['net_salary'],
-            'status'          => $status,
-            'upload_by'       => 'manual',
-            'created_by'      => $_SESSION['user']['id'],
+            'net_salary' => $payload['net_salary'],
+            'status' => $status,
+            'upload_by' => 'manual',
+            'created_by' => $_SESSION['user']['id'],
         ]);
 
         foreach ($payload['earnings'] as $itemId => $amount) {
@@ -132,15 +132,15 @@ class PayrollController extends Controller
         // CREATE APPROVAL REQUEST ONLY IF NOT DRAFT
         if (!$isDraft) {
             $approvalModel->create([
-                'department'      => 'HR',
-                'request_type'    => 'salary',
-                'title'           => 'Salary Approval',
-                'source_table'    => 'payslips',
-                'source_id'       => $payslipId,
-                'request_amount'  => $payload['net_salary'],
-                'requested_by'    => $_SESSION['user']['id'],
-                'approve_role'    => 'management',
-                'meta_data'       => json_encode([
+                'department' => 'HR',
+                'request_type' => 'salary',
+                'title' => 'Salary Approval',
+                'source_table' => 'payslips',
+                'source_id' => $payslipId,
+                'request_amount' => $payload['net_salary'],
+                'requested_by' => $_SESSION['user']['id'],
+                'approve_role' => 'management',
+                'meta_data' => json_encode([
                     'employee_id' => $payload['employee_id'],
                     'month' => date('d F Y')
                 ])
@@ -160,7 +160,7 @@ class PayrollController extends Controller
             session_start();
         }
 
-        $payslipId = (int)$id;
+        $payslipId = (int) $id;
         if ($payslipId) {
             $this->paymentModel->delete($payslipId);
             $_SESSION['success'] = "Payslip deleted successfully.";
@@ -210,8 +210,8 @@ class PayrollController extends Controller
         $this->view("payrolls/payslips/show-payslip", [
 
             "current_route" => "show-payslip",
-            "page_title"    => "Payslip Details",
-            "payslip"       => $payslip
+            "page_title" => "Payslip Details",
+            "payslip" => $payslip
         ], false);
     }
 
@@ -234,7 +234,7 @@ class PayrollController extends Controller
     {
         $this->view("payrolls/payslips/import-payslips", [
             "current_route" => "payslip-lists",
-            "page_title"    => "Import Payslips"
+            "page_title" => "Import Payslips"
         ]);
     }
 
@@ -260,13 +260,13 @@ class PayrollController extends Controller
             }
 
             // Clean header column names (trim and remove BOM)
-            $header = array_map(function($col) {
+            $header = array_map(function ($col) {
                 return trim(preg_replace('/[\x00-\x1F\x7F\xA0]/u', '', $col));
             }, $header);
 
             // Required standard columns
             $required = ['employee_email', 'payslip_month', 'payment_method', 'company_bank_name', 'total_earning', 'total_deduction', 'net_salary'];
-            
+
             // Validate headers
             foreach ($required as $req) {
                 if (!in_array($req, $header)) {
@@ -346,9 +346,9 @@ class PayrollController extends Controller
                 $month = $data['payslip_month'];
                 $paymentMethod = strtolower($data['payment_method']);
                 $companyBankName = $data['company_bank_name'];
-                $totalEarning = (float)$data['total_earning'];
-                $totalDeduction = (float)$data['total_deduction'];
-                $netSalary = (float)$data['net_salary'];
+                $totalEarning = (float) $data['total_earning'];
+                $totalDeduction = (float) $data['total_deduction'];
+                $netSalary = (float) $data['net_salary'];
 
                 // Parse and format payslip_month to YYYY-MM-01
                 $monthCleaned = trim($month);
@@ -375,7 +375,7 @@ class PayrollController extends Controller
 
                 if (!$emp) {
                     $errors[] = "Row {$rowNum}: Employee not found with email '{$email}'.";
-                    continue; 
+                    continue;
                 }
 
                 // 2. Match Bank if payment method is bank
@@ -406,25 +406,25 @@ class PayrollController extends Controller
 
                 // 3. Create Payslip (status 'paid')
                 $payslipData = [
-                    'employee_id'     => $emp['id'],
-                    'designation_id'  => $emp['designation_id'],
-                    'payslip_month'   => $formattedMonth,
-                    'total_earning'   => $totalEarning,
+                    'employee_id' => $emp['id'],
+                    'designation_id' => $emp['designation_id'],
+                    'payslip_month' => $formattedMonth,
+                    'total_earning' => $totalEarning,
                     'total_deduction' => $totalDeduction,
-                    'net_salary'      => $netSalary,
-                    'status'          => 'paid',
-                    'payment_method'  => $paymentMethod,
+                    'net_salary' => $netSalary,
+                    'status' => 'paid',
+                    'payment_method' => $paymentMethod,
                     'company_bank_id' => $companyBankId,
-                    'upload_by'       => 'csv',
-                    'created_by'      => $_SESSION['user']['id'] ?? 1,
+                    'upload_by' => 'csv',
+                    'created_by' => $_SESSION['user']['id'] ?? 1,
                 ];
 
                 try {
                     $payslipId = $payslipModel->create($payslipData);
-                    
+
                     // 4. Save payslip details
                     foreach ($dynamicCols as $idx => $info) {
-                        $amount = isset($row[$idx]) ? (float)$row[$idx] : 0.0;
+                        $amount = isset($row[$idx]) ? (float) $row[$idx] : 0.0;
                         if ($amount > 0) {
                             $itemId = $itemIds[$idx];
                             $detailsModel->create($payslipId, $itemId, $amount);
@@ -463,12 +463,12 @@ class PayrollController extends Controller
 
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename=sample_payslips.csv');
-        
+
         $output = fopen('php://output', 'w');
 
         // Load active payslip items to include them as headers
         $items = $this->payslipItemModel->getAll();
-        
+
         $headers = [
             'employee_email',
             'payslip_month',
@@ -516,8 +516,8 @@ class PayrollController extends Controller
         $departments = $departmentModel->getAll();
         $this->view("payrolls/payslips/auto-create-payslip", [
             "current_route" => "auto-generate-payslip",
-            "page_title"    => "Auto Generate Payslips",
-            "departments"   => $departments
+            "page_title" => "Auto Generate Payslips",
+            "departments" => $departments
         ]);
     }
 
@@ -525,8 +525,8 @@ class PayrollController extends Controller
     {
         header('Content-Type: application/json');
 
-        $departmentId = isset($_GET['department_id']) ? (int)$_GET['department_id'] : 0;
-        $monthStr     = isset($_GET['month']) ? trim($_GET['month']) : ''; // e.g. "2026-07"
+        $departmentId = isset($_GET['department_id']) ? (int) $_GET['department_id'] : 0;
+        $monthStr = isset($_GET['month']) ? trim($_GET['month']) : ''; // e.g. "2026-07"
 
         if (!$departmentId || !$monthStr) {
             echo json_encode(['success' => false, 'message' => 'Invalid parameters.']);
@@ -569,10 +569,10 @@ class PayrollController extends Controller
         date_default_timezone_set('Asia/Dhaka');
 
         $fromDateStr = $monthStr . '-01';
-        $toDateStr   = date('Y-m-t', strtotime($fromDateStr));
+        $toDateStr = date('Y-m-t', strtotime($fromDateStr));
 
         $fromTime = strtotime($fromDateStr . ' 00:00:00') * 1000;
-        $toTime   = strtotime($toDateStr . ' 23:59:59') * 1000;
+        $toTime = strtotime($toDateStr . ' 23:59:59') * 1000;
 
         date_default_timezone_set($oldTimezone);
 
@@ -599,8 +599,8 @@ class PayrollController extends Controller
                 $attMap = $tipsoiMap[$empIdLower];
                 foreach ($attMap as $timestampMs => $dayAtt) {
                     $isPresent = $dayAtt['isPresent'] ?? false;
-                    $isLeave   = $dayAtt['isLeave'] ?? false;
-                    $isOffday  = $dayAtt['isOffday'] ?? false;
+                    $isLeave = $dayAtt['isLeave'] ?? false;
+                    $isOffday = $dayAtt['isOffday'] ?? false;
                     $isHoliday = $dayAtt['isHoliday'] ?? false;
 
                     if (!$isPresent && !$isLeave && !$isOffday && !$isHoliday) {
@@ -610,21 +610,54 @@ class PayrollController extends Controller
             }
 
             $emp['matched_in_tipsoi'] = $matchedInTipsoi;
-            $emp['absent_days']       = $absentCount;
+            $emp['absent_days'] = $absentCount;
             // Per day deduction = gross_salary / 30
             $perDaySal = $emp['gross_salary'] / 30;
-            $emp['absent_deduction']  = round($absentCount * $perDaySal, 2);
+            $emp['absent_deduction'] = round($absentCount * $perDaySal, 2);
 
             // Pre-fill configured allowances/deductions
-            $emp['configured_items']  = $configuredSalaryItems[$emp['id']] ?? [];
+            $emp['configured_items'] = $configuredSalaryItems[$emp['id']] ?? [];
+        }
+
+        // Advance Salary Integration
+        if (!class_exists('AdvanceSalary')) {
+            require_once __DIR__ . '/../models/AdvanceSalary.php';
+        }
+        $advanceSalaryModel = new AdvanceSalary($this->db);
+        $allPayslipItems = $this->payslipItemModel->getAll();
+
+        $advanceSalaryItemId = null;
+        foreach ($allPayslipItems as $item) {
+            if (strtolower(trim($item['name'])) === 'advance salary' && strtolower($item['type']) === 'deduction') {
+                $advanceSalaryItemId = $item['id'];
+                break;
+            }
+        }
+
+        if (!$advanceSalaryItemId) {
+            $this->payslipItemModel->create(['name' => 'Advance Salary', 'type' => 'deduction']);
+            $allPayslipItems = $this->payslipItemModel->getAll();
+            foreach ($allPayslipItems as $item) {
+                if (strtolower(trim($item['name'])) === 'advance salary' && strtolower($item['type']) === 'deduction') {
+                    $advanceSalaryItemId = $item['id'];
+                    break;
+                }
+            }
+        }
+
+        foreach ($employees as &$emp) {
+            $unadjustedAdvance = $advanceSalaryModel->getUnadjustedPaidAdvance($emp['id']);
+            if ($unadjustedAdvance > 0 && $advanceSalaryItemId) {
+                $emp['configured_items'][$advanceSalaryItemId] = $unadjustedAdvance;
+            }
         }
 
         // 5. Load active payslip items to display as table headers
-        $payslipItems = $this->payslipItemModel->getAll();
+        $payslipItems = $allPayslipItems;
 
         echo json_encode([
-            'success'      => true,
-            'employees'    => $employees,
+            'success' => true,
+            'employees' => $employees,
             'payslip_items' => $payslipItems
         ]);
         exit;
@@ -646,12 +679,12 @@ class PayrollController extends Controller
             exit;
         }
 
-        $payslipMonth  = $payload['payslip_month'] . '-01'; // Format as YYYY-MM-01
-        $payslipDate   = !empty($payload['payslip_date']) ? $payload['payslip_date'] : date('Y-m-d');
-        $generatedBy   = $_SESSION['user']['id'] ?? 1;
+        $payslipMonth = $payload['payslip_month'] . '-01'; // Format as YYYY-MM-01
+        $payslipDate = !empty($payload['payslip_date']) ? $payload['payslip_date'] : date('Y-m-d');
+        $generatedBy = $_SESSION['user']['id'] ?? 1;
 
-        $payslipModel  = new Payslip($this->db);
-        $detailsModel  = new PayslipDetail($this->db);
+        $payslipModel = new Payslip($this->db);
+        $detailsModel = new PayslipDetail($this->db);
         $approvalModel = new ApprovalRequest($this->db);
 
         // Begin Transaction
@@ -681,15 +714,15 @@ class PayrollController extends Controller
 
                 // 1. Create Payslip
                 $payslipId = $payslipModel->create([
-                    'employee_id'     => $empData['employee_id'],
-                    'designation_id'  => $empData['designation_id'],
-                    'payslip_month'   => $payslipMonth,
-                    'total_earning'   => $empData['total_earning'],
+                    'employee_id' => $empData['employee_id'],
+                    'designation_id' => $empData['designation_id'],
+                    'payslip_month' => $payslipMonth,
+                    'total_earning' => $empData['total_earning'],
                     'total_deduction' => $empData['total_deduction'],
-                    'net_salary'      => $empData['net_salary'],
-                    'status'          => 'pending',
-                    'upload_by'       => 'manual',
-                    'created_by'      => $generatedBy,
+                    'net_salary' => $empData['net_salary'],
+                    'status' => 'pending',
+                    'upload_by' => 'manual',
+                    'created_by' => $generatedBy,
                 ]);
 
                 if (!$payslipId) {
@@ -699,7 +732,7 @@ class PayrollController extends Controller
                 // 2. Insert Earning Details
                 if (!empty($empData['earnings'])) {
                     foreach ($empData['earnings'] as $itemId => $amount) {
-                        $amt = (float)$amount;
+                        $amt = (float) $amount;
                         if ($amt > 0) {
                             $detailsModel->create($payslipId, $itemId, $amt);
                         }
@@ -709,29 +742,54 @@ class PayrollController extends Controller
                 // 3. Insert Deduction Details
                 if (!empty($empData['deductions'])) {
                     foreach ($empData['deductions'] as $itemId => $amount) {
-                        $amt = (float)$amount;
+                        $amt = (float) $amount;
                         if ($amt > 0) {
                             $detailsModel->create($payslipId, $itemId, $amt);
+
+                            // Mark Advance Salary as deducted
+                            $stmtItem = $this->db->prepare("SELECT name FROM payslip_items WHERE id = ?");
+                            $stmtItem->bind_param("i", $itemId);
+                            $stmtItem->execute();
+                            $itemRow = $stmtItem->get_result()->fetch_assoc();
+                            $stmtItem->close();
+
+                            if ($itemRow && strtolower(trim($itemRow['name'])) === 'advance salary') {
+                                if (!class_exists('AdvanceSalary')) {
+                                    require_once __DIR__ . '/../models/AdvanceSalary.php';
+                                }
+                                $advanceSalaryModel = new AdvanceSalary($this->db);
+                                $advanceRequests = $advanceSalaryModel->getPaidAdvancesByEmployee($empData['employee_id']);
+                                $remainingDeduction = $amt;
+                                foreach ($advanceRequests as $advReq) {
+                                    if ($remainingDeduction >= $advReq['amount']) {
+                                        $advanceSalaryModel->markAsDeducted($advReq['id'], $payslipId);
+                                        $remainingDeduction -= $advReq['amount'];
+                                    } elseif ($remainingDeduction > 0) {
+                                        $advanceSalaryModel->markAsDeducted($advReq['id'], $payslipId);
+                                        $remainingDeduction = 0;
+                                    }
+                                }
+                            }
                         }
                     }
                 }
 
                 // 4. Create Approval Request
                 $approvalModel->create([
-                    'department'      => 'HR',
-                    'request_type'    => 'salary',
-                    'title'           => 'Salary Approval',
-                    'source_table'    => 'payslips',
-                    'source_id'       => $payslipId,
-                    'requested_days'  => 0,
-                    'requested_by'    => $generatedBy,
-                    'approve_role'    => 'management',
-                    'meta_data'       => json_encode([
+                    'department' => 'HR',
+                    'request_type' => 'salary',
+                    'title' => 'Salary Approval',
+                    'source_table' => 'payslips',
+                    'source_id' => $payslipId,
+                    'requested_days' => 0,
+                    'requested_by' => $generatedBy,
+                    'approve_role' => 'management',
+                    'meta_data' => json_encode([
                         'employee_name' => $empData['employee_name'],
-                        'net_salary'    => $empData['net_salary'],
-                        'month'         => $payslipMonth
+                        'net_salary' => $empData['net_salary'],
+                        'month' => $payslipMonth
                     ]),
-                    'request_amount'  => $empData['net_salary']
+                    'request_amount' => $empData['net_salary']
                 ]);
 
                 $generatedCount++;
@@ -777,7 +835,7 @@ class PayrollController extends Controller
             exit;
         }
 
-        $bankAccountId = (int)($payload['bank_account_id'] ?? 0);
+        $bankAccountId = (int) ($payload['bank_account_id'] ?? 0);
         $payslipIds = array_map('intval', $payload['payslip_ids']);
         $userId = $_SESSION['user']['id'] ?? 1;
 
@@ -812,19 +870,19 @@ class PayrollController extends Controller
             $stmtCoa1 = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE account_code = '580003' LIMIT 1");
             $stmtCoa1->execute();
             $salaryCoaRow = $stmtCoa1->get_result()->fetch_assoc();
-            $salaryCoaId = $salaryCoaRow ? (int)$salaryCoaRow['id'] : 1;
+            $salaryCoaId = $salaryCoaRow ? (int) $salaryCoaRow['id'] : 1;
             $stmtCoa1->close();
 
             $stmtCoa2 = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE account_code = '114400' LIMIT 1");
             $stmtCoa2->execute();
             $bankCoaRow = $stmtCoa2->get_result()->fetch_assoc();
-            $bankCoaId = $bankCoaRow ? (int)$bankCoaRow['id'] : 1;
+            $bankCoaId = $bankCoaRow ? (int) $bankCoaRow['id'] : 1;
             $stmtCoa2->close();
 
             $stmtCoa3 = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE account_code = '114100-03' LIMIT 1");
             $stmtCoa3->execute();
             $cashCoaRow = $stmtCoa3->get_result()->fetch_assoc();
-            $cashCoaId = $cashCoaRow ? (int)$cashCoaRow['id'] : $bankCoaId;
+            $cashCoaId = $cashCoaRow ? (int) $cashCoaRow['id'] : $bankCoaId;
             $stmtCoa3->close();
 
             // Get bank details or default cash
@@ -847,7 +905,7 @@ class PayrollController extends Controller
             $monthText = date('F Y');
             $sampleDate = date('Y-m-d');
             foreach ($payslipsToPay as $p) {
-                $totalAmount += (float)$p['net_salary'];
+                $totalAmount += (float) $p['net_salary'];
                 if (!empty($p['payslip_month'])) {
                     $monthText = date('F Y', strtotime($p['payslip_month']));
                     $sampleDate = date('Y-m-t', strtotime($p['payslip_month']));
@@ -857,7 +915,7 @@ class PayrollController extends Controller
             // 1. Create 1 Batch Journal Entry in 'journals'
             $journalNum = 'JRN-PAYROLL-' . date('Ym', strtotime($sampleDate)) . '-' . rand(100, 999);
             $narration = "Payroll Disbursement for $monthText via $bankName (Count: " . count($payslipsToPay) . " payslips)";
-            
+
             $stmtJ = $this->db->prepare("
                 INSERT INTO journals 
                 (journal_number, date, voucher_type, narration, total_debit, total_credit, status, created_by, created_at, source_module, source_ref_id, entry_type, approval_status)
