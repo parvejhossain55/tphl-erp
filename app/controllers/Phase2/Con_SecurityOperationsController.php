@@ -26,7 +26,7 @@ class Con_SecurityOperationsController extends Controller
 
         $filter = "1=1";
         // If not Admin (1) or Management/Approvers (3, 15, 22), filter by assigned roles
-        if (!in_array($roleId, [1, 3, 15, 22])) {
+        if (!in_array($roleId, [1, 3, 33, 15, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -50,7 +50,7 @@ class Con_SecurityOperationsController extends Controller
 
     public function systemCreate()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22]) && $_SESSION['user']['role_id'] != 20) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 15, 20, 22]) && $_SESSION['user']['role_id'] != 20) {
             // Approvers cannot create, only role 20 (Site Operator) and admins can
             if($_SESSION['user']['role_id'] != 1) {
                 $_SESSION['error'] = 'You do not have permission to create security systems.';
@@ -274,7 +274,7 @@ class Con_SecurityOperationsController extends Controller
 
     public function logApprove()
     {
-        if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
+        if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 15, 22])) {
             $_SESSION['error'] = 'You do not have permission to resolve logs.';
             header('Location: ' . $GLOBALS['base_url'] . '/con-security-logs');
             exit;
@@ -344,7 +344,7 @@ class Con_SecurityOperationsController extends Controller
 
     public function incidentApprove()
     {
-        if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
+        if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 15, 22])) {
             $_SESSION['error'] = 'You do not have permission to resolve incidents.';
             header('Location: ' . $GLOBALS['base_url'] . '/con-security-incidents');
             exit;

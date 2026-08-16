@@ -31,27 +31,27 @@ class Con_WorkOrderController extends Controller
 
     private function canCreate()
     {
-        return in_array($this->userRole, [1, 3, 15, 22]);
+        return in_array($this->userRole, [1, 3, 33, 15, 22]);
     }
 
     private function canApprove()
     {
-        return in_array($this->userRole, [1, 3, 12, 15, 20, 22]);
+        return in_array($this->userRole, [1, 3, 33, 12, 15, 20, 22]);
     }
 
     private function canMarkComplete()
     {
-        return in_array($this->userRole, [1, 3, 12, 15, 20, 22]);
+        return in_array($this->userRole, [1, 3, 33, 12, 15, 20, 22]);
     }
 
     private function canQcApprove()
     {
-        return in_array($this->userRole, [1, 3, 13]);
+        return in_array($this->userRole, [1, 3, 33, 13]);
     }
 
     private function canDelete()
     {
-        return in_array($this->userRole, [1, 3]);
+        return in_array($this->userRole, [1, 3, 33]);
     }
 
     // =========================================================================
@@ -390,7 +390,7 @@ class Con_WorkOrderController extends Controller
             $actingRole = ($this->userRole === 20) ? 20 : 12;
         } elseif ($this->userRole === 15 || $this->userRole === 22) {
             $actingRole = ($this->userRole === 22) ? 22 : 15;
-        } elseif (in_array($this->userRole, [1, 3])) {
+        } elseif (in_array($this->userRole, [1, 3, 33])) {
             $actingRole = 3;
         }
 
@@ -423,7 +423,7 @@ class Con_WorkOrderController extends Controller
             $actingRole = ($this->userRole === 20) ? 20 : 12;
         } elseif ($this->userRole === 15 || $this->userRole === 22) {
             $actingRole = ($this->userRole === 22) ? 22 : 15;
-        } elseif (in_array($this->userRole, [1, 3])) {
+        } elseif (in_array($this->userRole, [1, 3, 33])) {
             $actingRole = 3;
         }
 
@@ -734,7 +734,7 @@ class Con_WorkOrderController extends Controller
         $rid = $this->userRole;
 
         // Admin, Director, PM Head → see ALL projects
-        if (in_array($rid, [1, 3, 22])) {
+        if (in_array($rid, [1, 3, 33, 22])) {
             $filter = "1=1";
         } else {
             // All other roles → only their assigned projects
@@ -767,7 +767,7 @@ class Con_WorkOrderController extends Controller
     {
         $uid = $this->userId;
         $rid = $this->userRole;
-        if (in_array($rid, [1, 3, 22])) return '1=1';
+        if (in_array($rid, [1, 3, 33, 22])) return '1=1';
         return "({$alias}.pm_id = $uid
               OR {$alias}.site_engineer_id   = $uid
               OR {$alias}.landman_id         = $uid

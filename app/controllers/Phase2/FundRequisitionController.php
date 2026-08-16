@@ -21,7 +21,7 @@ class FundRequisitionController extends Controller {
 
         // Management (role 3), Admin (role 1), Accounts (role 6, 30), Operations (role 20, 12, 19, 23, 32) see everything
         $where = "1=1";
-        if (!in_array($roleId, [1, 3, 6, 12, 19, 20, 23, 30, 32])) {
+        if (!in_array($roleId, [1, 3, 33, 6, 12, 19, 20, 23, 30, 32])) {
             // Start with: own requisitions
             $conditions = ["fr.requested_by = $userId"];
 
@@ -158,7 +158,7 @@ class FundRequisitionController extends Controller {
 
         // Projects for create form — restrict to assigned projects for site engineers
         $assignedIds = isset($assignedIds) ? $assignedIds : $this->getAssignedProjectIds($userId);
-        if (!in_array($roleId, [1, 3, 6, 30]) && !empty($assignedIds)) {
+        if (!in_array($roleId, [1, 3, 33, 6, 30]) && !empty($assignedIds)) {
             $idList = implode(',', $assignedIds);
             $pRes = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND id IN ($idList) ORDER BY name ASC");
             $projects = $pRes ? $pRes->fetch_all(MYSQLI_ASSOC) : [];
@@ -280,7 +280,7 @@ class FundRequisitionController extends Controller {
         $balance    = max(0, (float)$req['amount'] - $totalSpent);
 
         // Projects dropdown — restrict for restricted roles
-        if (!in_array($sessionRoleId, [1, 3, 6, 30])) {
+        if (!in_array($sessionRoleId, [1, 3, 33, 6, 30])) {
             $assignedIds = $this->getAssignedProjectIds($sessionUserId);
             if (!empty($assignedIds)) {
                 $idList   = implode(',', $assignedIds);
@@ -424,7 +424,7 @@ class FundRequisitionController extends Controller {
         }
 
         $reportingBossId = (int)($req['reporting_user_id'] ?? 0);
-        $isAllowed = ($sessionUserId === $reportingBossId || in_array($roleId, [1, 3]));
+        $isAllowed = ($sessionUserId === $reportingBossId || in_array($roleId, [1, 3, 33]));
 
         if (!$isAllowed) {
             setError('Only the designated Reporting Boss or Admin can approve this stage.');
@@ -460,7 +460,7 @@ class FundRequisitionController extends Controller {
 
     public function approve() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 3, 20])) {
+        if (!in_array($roleId, [1, 3, 33, 20])) {
             setError('Only Management, Admins, or Operation can approve requisitions.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
@@ -641,7 +641,7 @@ class FundRequisitionController extends Controller {
         }
 
         // Only creator or Admin/Super Admin can delete before approval
-        $allow = ($req['requested_by'] == $userId || in_array($roleId, [1, 3]));
+        $allow = ($req['requested_by'] == $userId || in_array($roleId, [1, 3, 33]));
 
         if ($allow) {
             $this->db->query("DELETE FROM fund_requisitions WHERE id = $id");
@@ -737,7 +737,7 @@ class FundRequisitionController extends Controller {
         // For restricted roles, only show their assigned projects in the dropdown
         $sessionUserId  = (int)$_SESSION['user']['id'];
         $sessionRoleId  = (int)$_SESSION['user']['role_id'];
-        if (!in_array($sessionRoleId, [1, 3, 6, 30])) {
+        if (!in_array($sessionRoleId, [1, 3, 33, 6, 30])) {
             $assignedIds = $this->getAssignedProjectIds($sessionUserId);
             if (!empty($assignedIds)) {
                 $idList   = implode(',', $assignedIds);
@@ -878,7 +878,7 @@ class FundRequisitionController extends Controller {
         $isReqOwner = $req && $req['requested_by'] == $userId;
 
         // Only owner of expense, owner of requisition, or Admin/Management can delete
-        if ($expense['created_by'] === $userId || $isReqOwner || in_array($roleId, [1, 3])) {
+        if ($expense['created_by'] === $userId || $isReqOwner || in_array($roleId, [1, 3, 33])) {
             // Delete file if exists
             if (!empty($expense['attachment_path'])) {
                 $file = dirname(dirname(dirname(__DIR__))) . '/public/' . $expense['attachment_path'];
@@ -914,7 +914,7 @@ class FundRequisitionController extends Controller {
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
         }
-        if ($req['requested_by'] != $userId && !in_array($roleId, [1, 3])) {
+        if ($req['requested_by'] != $userId && !in_array($roleId, [1, 3, 33])) {
             setError('Only the requester or admin can submit settlement.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
@@ -949,7 +949,7 @@ class FundRequisitionController extends Controller {
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
         }
-        if ($req['requested_by'] != $userId && !in_array($roleId, [1, 3])) {
+        if ($req['requested_by'] != $userId && !in_array($roleId, [1, 3, 33])) {
             setError('Unauthorized.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;

@@ -44,7 +44,7 @@ class LandAcquisitionController extends Controller {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $where = "1=1";
-        if (!in_array($roleId, [1, 3, 6, 30])) {
+        if (!in_array($roleId, [1, 3, 33, 6, 30])) {
             $where = "(p.landman_id = $userId OR la.created_by = $userId)";
         }
 
@@ -59,7 +59,7 @@ class LandAcquisitionController extends Controller {
         $acquisitions = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
         // For modals / forms
-        $projectFilter = in_array($roleId, [1, 3, 6, 30]) ? "landman_id IS NOT NULL" : "landman_id = $userId";
+        $projectFilter = in_array($roleId, [1, 3, 33, 6, 30]) ? "landman_id IS NOT NULL" : "landman_id = $userId";
         $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND $projectFilter ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/land_acquisition/index', [
@@ -74,7 +74,7 @@ class LandAcquisitionController extends Controller {
     public function create() {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $projectFilter = in_array($roleId, [1, 3, 6, 30]) ? "landman_id IS NOT NULL" : "landman_id = $userId";
+        $projectFilter = in_array($roleId, [1, 3, 33, 6, 30]) ? "landman_id IS NOT NULL" : "landman_id = $userId";
         $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND $projectFilter ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
         $this->view('phase2/land_acquisition/create', [
             'current_route' => 'con-land-acquisitions',
@@ -85,7 +85,7 @@ class LandAcquisitionController extends Controller {
 
     public function store() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 3, 14])) {
+        if (!in_array($roleId, [1, 3, 33, 14])) {
             setError('Unauthorized. Only Land Officers or Admin can add land acquisitions.');
             header("Location: " . $GLOBALS['base_url'] . "/con-land-acquisitions");
             exit;
@@ -153,7 +153,7 @@ class LandAcquisitionController extends Controller {
 
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $projectFilter = in_array($roleId, [1, 3, 6, 30]) ? "landman_id IS NOT NULL" : "landman_id = $userId";
+        $projectFilter = in_array($roleId, [1, 3, 33, 6, 30]) ? "landman_id IS NOT NULL" : "landman_id = $userId";
         $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND $projectFilter ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
 
         // Calculate total bayana budget approved by accounts (Paid requisitions of type Bayana)
@@ -187,7 +187,7 @@ class LandAcquisitionController extends Controller {
 
     public function update() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 3, 14])) {
+        if (!in_array($roleId, [1, 3, 33, 14])) {
             setError('Unauthorized.');
             header("Location: " . $GLOBALS['base_url'] . "/con-land-acquisitions");
             exit;
@@ -293,7 +293,7 @@ class LandAcquisitionController extends Controller {
 
     public function delete() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 3])) {
+        if (!in_array($roleId, [1, 3, 33])) {
             setError('Unauthorized. Only Management or Super Admin can delete records.');
             header("Location: " . $GLOBALS['base_url'] . "/con-land-acquisitions");
             exit;
@@ -315,7 +315,7 @@ class LandAcquisitionController extends Controller {
 
     public function downloadSampleCsv() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 3, 14])) {
+        if (!in_array($roleId, [1, 3, 33, 14])) {
             setError('Unauthorized.');
             header("Location: " . $GLOBALS['base_url'] . "/con-land-acquisitions");
             exit;
@@ -391,7 +391,7 @@ class LandAcquisitionController extends Controller {
 
     public function executeImport() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 3, 14])) {
+        if (!in_array($roleId, [1, 3, 33, 14])) {
             setError('Unauthorized.');
             header("Location: " . $GLOBALS['base_url'] . "/con-land-acquisitions");
             exit;

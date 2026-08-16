@@ -24,7 +24,7 @@ class LandRequisitionController extends Controller {
         // Accounts (role 6) see approved and paid ones
         // Land Officers (role 14) see their own or all
         $where = "1=1";
-        if (!in_array($roleId, [1, 2, 3, 6])) {
+        if (!in_array($roleId, [1, 2, 3, 33, 6])) {
             $where = "lfr.requested_by = $userId";
         }
 
@@ -48,7 +48,7 @@ class LandRequisitionController extends Controller {
         $requisitions = $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
 
         // Fetch land acquisitions for dropdown
-        $projectFilter = in_array($roleId, [1, 3, 6, 30]) ? "1=1" : "(p.landman_id = $userId OR la.created_by = $userId)";
+        $projectFilter = in_array($roleId, [1, 3, 33, 6, 30]) ? "1=1" : "(p.landman_id = $userId OR la.created_by = $userId)";
         $acquisitions = $this->db->query("
             SELECT la.id, la.land_owner_name, p.name as project_name
             FROM land_acquisitions la
@@ -69,7 +69,7 @@ class LandRequisitionController extends Controller {
     public function create() {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $projectFilter = in_array($roleId, [1, 3, 6, 30]) ? "1=1" : "(p.landman_id = $userId OR la.created_by = $userId)";
+        $projectFilter = in_array($roleId, [1, 3, 33, 6, 30]) ? "1=1" : "(p.landman_id = $userId OR la.created_by = $userId)";
         $acquisitions = $this->db->query("
             SELECT la.id, la.land_owner_name, p.name as project_name
             FROM land_acquisitions la
@@ -167,7 +167,7 @@ class LandRequisitionController extends Controller {
 
     public function approve() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 3])) {
+        if (!in_array($roleId, [1, 3, 33])) {
             setError('Only Management can approve requisitions.');
             header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
             exit;
@@ -270,7 +270,7 @@ class LandRequisitionController extends Controller {
 
     public function delete() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 3])) {
+        if (!in_array($roleId, [1, 3, 33])) {
             setError('Unauthorized.');
             header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
             exit;

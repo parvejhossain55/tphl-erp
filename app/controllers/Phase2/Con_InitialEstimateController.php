@@ -46,7 +46,7 @@ class Con_InitialEstimateController extends Controller
         $spentMap = $this->model->getSpentTotalsGroupedByProject();
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 22])) {
+        if (!in_array($roleId, [1, 3, 33, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -68,7 +68,7 @@ class Con_InitialEstimateController extends Controller
 
     public function create()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -79,7 +79,7 @@ class Con_InitialEstimateController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         $filter = "1=1";
-        if (!in_array($roleId, [1, 3, 22])) {
+        if (!in_array($roleId, [1, 3, 33, 22])) {
             $filter = "(pm_id = $userId OR site_engineer_id = $userId OR landman_id = $userId OR struct_engineer_id = $userId OR draftsman_id = $userId OR architect_id = $userId OR estimator_id = $userId OR qc_id = $userId OR operator_id = $userId OR created_by = $userId)";
         }
 
@@ -110,7 +110,7 @@ class Con_InitialEstimateController extends Controller
 
     public function store()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -322,7 +322,7 @@ class Con_InitialEstimateController extends Controller
 
         // ── Approval permission ──────────────────────────────────────────────
         // Roles 1 (MD), 3 (Director), 15 (PM), 22 (PM Head) can approve
-        $approverRoles = [1, 3, 15, 22];
+        $approverRoles = [1, 3, 33, 15, 22];
         $createdBy     = (int)($budget['created_by'] ?? 0);
         $canApprove    = in_array($currentRoleId, $approverRoles);
 
@@ -386,7 +386,7 @@ class Con_InitialEstimateController extends Controller
 
     public function edit($id)
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -503,7 +503,7 @@ class Con_InitialEstimateController extends Controller
 
     public function update($id)
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -657,7 +657,7 @@ class Con_InitialEstimateController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // Only PM (15,22) and Management (1,3) can approve
-        if (!in_array($roleId, [1, 3, 15, 22])) {
+        if (!in_array($roleId, [1, 3, 33, 15, 22])) {
             setError('You do not have permission to approve estimates.');
             header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
             exit;
@@ -687,7 +687,7 @@ class Con_InitialEstimateController extends Controller
 
         // ── Management Final Approval: pm_approved → approved ───────────
         } elseif ($status === 'pm_approved') {
-            if (!in_array($roleId, [1, 3])) {
+            if (!in_array($roleId, [1, 3, 33])) {
                 setError('শুধুমাত্র Management (role 1/3) Final Approve করতে পারবেন।');
                 header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
                 exit;
@@ -718,7 +718,7 @@ class Con_InitialEstimateController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // Role guard: only 1, 3, 15, 22 can reject
-        if (!in_array($roleId, [1, 3, 15, 22])) {
+        if (!in_array($roleId, [1, 3, 33, 15, 22])) {
             setError('You do not have permission to reject budgets.');
             header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
             exit;
@@ -726,7 +726,7 @@ class Con_InitialEstimateController extends Controller
 
         // Creator cannot reject their own submission (except PM / PM Head / Management)
         $budget = $this->model->find($id);
-        if ($budget && (int)($budget['created_by'] ?? 0) === $userId && !in_array($roleId, [1, 3, 15, 22])) {
+        if ($budget && (int)($budget['created_by'] ?? 0) === $userId && !in_array($roleId, [1, 3, 33, 15, 22])) {
             setError('You cannot reject a budget that you created.');
             header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
             exit;

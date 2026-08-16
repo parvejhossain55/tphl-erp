@@ -21,7 +21,7 @@ class Con_MaterialReturnController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         
         // Site Engineer (Construction Management) or Management
-        if (!in_array($roleId, [1, 3, 11])) { 
+        if (!in_array($roleId, [1, 3, 33, 11])) { 
             // 11 is Construction Management / Site Engineer usually
             // Wait, what role is Site Engineer? Usually Construction Management.
         }

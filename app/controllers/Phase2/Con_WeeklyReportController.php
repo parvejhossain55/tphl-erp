@@ -26,7 +26,7 @@ class Con_WeeklyReportController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // Role-based project filter
-        if (in_array($roleId, [1, 3, 22])) {
+        if (in_array($roleId, [1, 3, 33, 22])) {
             $filter = "p.deleted_at IS NULL";
         } else {
             $filter = "p.deleted_at IS NULL AND (

@@ -22,7 +22,7 @@ class Con_PhaseItemController extends Controller {
             exit;
         }
 
-        if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
+        if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 15, 22])) {
             setError("You do not have permission.");
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;

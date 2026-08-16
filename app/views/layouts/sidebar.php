@@ -271,7 +271,7 @@
                 }
                 ?>
                 
-                <?php if ($hasErpAccess): ?>
+                <?php if (false && $hasErpAccess): ?>
                 <!-- ERP Tracker -->
                 <li class="slide <?= isActive('erp-tracker', $current_route) ?>">
                     <a href="<?= $base_url ?>/erp-tracker" class="sidebar__menu-item <?= isActive('erp-tracker', $current_route) ?>">

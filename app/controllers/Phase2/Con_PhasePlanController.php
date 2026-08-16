@@ -26,7 +26,7 @@ class Con_PhasePlanController extends Controller {
         }
 
         // Role gate: only 1 (Admin), 3 (Director), 15 (PM), 22 (PM Head)
-        if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
+        if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 15, 22])) {
             setError("You do not have permission to access Phase Plan.");
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
