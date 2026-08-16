@@ -12,9 +12,10 @@ class ProjectCategory
     /* ── All Categories ─────────────────────────────────── */
     public function getAll(): array
     {
-        $sql = "SELECT pc.*, u.full_name AS created_by_name
+        $sql = "SELECT pc.*, u.full_name AS created_by_name, l.name AS location_name
                 FROM project_categories pc
                 LEFT JOIN users u ON pc.created_by = u.id
+                LEFT JOIN locations l ON pc.location_id = l.id
                 ORDER BY pc.name ASC";
         $result = $this->db->query($sql);
         if (!$result) return [];
@@ -43,13 +44,15 @@ class ProjectCategory
     public function create(array $data): bool
     {
         $stmt = $this->db->prepare(
-            "INSERT INTO project_categories (name, incentive_percentage, created_by)
-             VALUES (?, ?, ?)"
+            "INSERT INTO project_categories (name, main_category, location_id, incentive_percentage, created_by)
+             VALUES (?, ?, ?, ?, ?)"
         );
         if (!$stmt) return false;
         $stmt->bind_param(
-            'sdi',
+            'ssidi',
             $data['name'],
+            $data['main_category'],
+            $data['location_id'],
             $data['incentive_percentage'],
             $data['created_by']
         );
@@ -63,13 +66,15 @@ class ProjectCategory
     {
         $stmt = $this->db->prepare(
             "UPDATE project_categories
-             SET name = ?, incentive_percentage = ?
+             SET name = ?, main_category = ?, location_id = ?, incentive_percentage = ?
              WHERE id = ?"
         );
         if (!$stmt) return false;
         $stmt->bind_param(
-            'sdi',
+            'ssidi',
             $data['name'],
+            $data['main_category'],
+            $data['location_id'],
             $data['incentive_percentage'],
             $id
         );

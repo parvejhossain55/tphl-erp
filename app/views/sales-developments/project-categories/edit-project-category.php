@@ -26,6 +26,16 @@
         <div class="card-body p-4">
             <form action="<?= $GLOBALS['base_url'] ?>/update-project-category/<?= (int)$category['id'] ?>" method="POST">
 
+                <!-- Main Category -->
+                <div class="mb-4">
+                    <label class="form-label" for="main_category">
+                        Main Category <span class="text-muted">(Optional)</span>
+                    </label>
+                    <input type="text" id="main_category" name="main_category"
+                           class="form-control" placeholder="e.g. Condominium, Regular..."
+                           value="<?= htmlspecialchars($category['main_category'] ?? '') ?>">
+                </div>
+
                 <!-- Category Name -->
                 <div class="mb-4">
                     <label class="form-label" for="cat_name">
@@ -34,6 +44,21 @@
                     <input type="text" id="cat_name" name="name"
                            class="form-control"
                            value="<?= htmlspecialchars($category['name']) ?>" required>
+                </div>
+
+                <!-- Location -->
+                <div class="mb-4">
+                    <label class="form-label" for="location_id">
+                        Location <span class="text-muted">(Optional)</span>
+                    </label>
+                    <select id="location_id" name="location_id" class="form-select">
+                        <option value="">-- Select Location --</option>
+                        <?php if(!empty($locations)): foreach($locations as $loc): ?>
+                            <option value="<?= $loc['id'] ?>" <?= ($category['location_id'] == $loc['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($loc['name']) ?>
+                            </option>
+                        <?php endforeach; endif; ?>
+                    </select>
                 </div>
 
                 <!-- Incentive Percentage -->
