@@ -33,6 +33,8 @@
                     <tr>
                         <th class="ps-4" style="width:50px;">#</th>
                         <th>Category Name</th>
+                        <th>Main Category</th>
+                        <th>Location</th>
                         <th>Incentive %</th>
                         <th>Created By</th>
                         <th>Created At</th>
@@ -42,7 +44,7 @@
                 <tbody>
                 <?php if (empty($categories)): ?>
                     <tr>
-                        <td colspan="6" class="text-center py-5 text-muted">
+                        <td colspan="8" class="text-center py-5 text-muted">
                             <i class="bi bi-tags fs-2 d-block mb-2"></i>
                             No categories yet. <a href="<?= $GLOBALS['base_url'] ?>/create-project-category">Add one</a>.
                         </td>
@@ -52,6 +54,8 @@
                     <tr>
                         <td class="ps-4 text-muted"><?= $i + 1 ?></td>
                         <td class="fw-semibold"><?= htmlspecialchars($cat['name']) ?></td>
+                        <td class="text-muted"><?= htmlspecialchars($cat['main_category'] ?? '—') ?></td>
+                        <td class="text-muted"><?= htmlspecialchars($cat['location_name'] ?? '—') ?></td>
                         <td>
                             <span class="incentive-pill">
                                 <i class="bi bi-percent" style="font-size:.7rem;"></i>

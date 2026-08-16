@@ -30,9 +30,13 @@ class ProjectCategoryController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        require_once __DIR__ . '/../models/Location.php';
+        $locations = (new Location($this->db))->getAll();
+
         $this->view('sales-developments/project-categories/create-project-category', [
             'page_title'    => 'Add Project Category',
             'current_route' => 'create-project-category',
+            'locations'     => $locations
         ]);
     }
 
@@ -42,6 +46,8 @@ class ProjectCategoryController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $name       = trim($_POST['name'] ?? '');
+        $mainCat    = trim($_POST['main_category'] ?? '');
+        $locationId = !empty($_POST['location_id']) ? (int)$_POST['location_id'] : null;
         $incentive  = (float)($_POST['incentive_percentage'] ?? 0);
         $createdBy  = $_SESSION['user']['id'] ?? null;
 
@@ -53,6 +59,8 @@ class ProjectCategoryController extends Controller
 
         $ok = $this->categoryModel->create([
             'name'                 => $name,
+            'main_category'        => $mainCat ?: null,
+            'location_id'          => $locationId,
             'incentive_percentage' => $incentive,
             'created_by'           => $createdBy,
         ]);
@@ -79,10 +87,14 @@ class ProjectCategoryController extends Controller
             exit;
         }
 
+        require_once __DIR__ . '/../models/Location.php';
+        $locations = (new Location($this->db))->getAll();
+
         $this->view('sales-developments/project-categories/edit-project-category', [
             'page_title'    => 'Edit Project Category',
             'current_route' => 'project-category-lists',
             'category'      => $category,
+            'locations'     => $locations
         ]);
     }
 
@@ -92,6 +104,8 @@ class ProjectCategoryController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
 
         $name      = trim($_POST['name'] ?? '');
+        $mainCat   = trim($_POST['main_category'] ?? '');
+        $locationId = !empty($_POST['location_id']) ? (int)$_POST['location_id'] : null;
         $incentive = (float)($_POST['incentive_percentage'] ?? 0);
 
         if (empty($name)) {
@@ -102,6 +116,8 @@ class ProjectCategoryController extends Controller
 
         $ok = $this->categoryModel->update((int)$id, [
             'name'                 => $name,
+            'main_category'        => $mainCat ?: null,
+            'location_id'          => $locationId,
             'incentive_percentage' => $incentive,
         ]);
 
