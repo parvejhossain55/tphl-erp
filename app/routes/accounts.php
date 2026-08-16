@@ -51,6 +51,8 @@ return [
     'csv-import-execute' => ['controller' => 'AccountClientController', 'method' => 'executeCSVImport'],
     'csv-import-template' => ['controller' => 'AccountClientController', 'method' => 'downloadCSVTemplate'],
     'ced-dashboard' => ['controller' => 'AccountClientController', 'method' => 'CedView'],
+    'ced-report' => ['controller' => 'CedReportController', 'method' => 'index'],
+
     'payment-invoice' => ['controller' => 'AccountClientController', 'method' => 'viewPaymentInvoice'],
     'booking-invoice' => ['controller' => 'AccountClientController', 'method' => 'viewBookingInvoice'],
     'booking-invoice/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'viewBookingInvoice'],

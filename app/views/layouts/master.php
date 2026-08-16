@@ -39,6 +39,16 @@ if (!empty($show_breadcrumb) && $show_breadcrumb === true) {
 }
 ?>
 
+<?php
+// Fetch site settings for global use if not already fetched
+global $db;
+if (!isset($siteSettings) && isset($db)) {
+    $siteSettings = $db->query("SELECT * FROM site_settings LIMIT 1")->fetch_assoc();
+}
+// Include Universal Print Pad
+require __DIR__ . "/print-pad.php";
+?>
+
 <div class="app__slide-wrapper">
     <?= $content ?>
 </div>

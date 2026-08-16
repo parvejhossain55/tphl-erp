@@ -255,7 +255,12 @@ class HomeController extends Controller
             $pendingManpowerCount = (int)($resManpower->fetch_assoc()['total'] ?? 0);
         }
 
-        $pendingRequests = $this->approvalModel->getPendingForRole($roles, 10);
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        if ($userRoleId === 33) {
+            $pendingRequests = [];
+        } else {
+            $pendingRequests = $this->approvalModel->getPendingForRole($roles, 10);
+        }
 
         // Get Collection Summary & Project Breakdown for Home Dashboard
         $accountClientModel = new AccountClient($this->db);

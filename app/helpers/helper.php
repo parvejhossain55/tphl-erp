@@ -178,10 +178,12 @@ function redirectByRole()
     }
 
     $role = (int) $_SESSION['user']['role_id'];
+    $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
     switch ($role) {
         case 1: // Super Admin
         case 3: // Admin
+        case 33: // Chief Officer
             $url = "{$GLOBALS['base_url']}/home";
             break;
 
@@ -202,13 +204,13 @@ function redirectByRole()
             break;
 
 
-        case 7: // Client Cash In
+        case 7: // Clients Experiment
             $url = "{$GLOBALS['base_url']}/ced-dashboard";
             break;
         case 8: // sales executive
             $url = "{$GLOBALS['base_url']}/my-dashboard";
             break;
-        case 9: // sales team header 
+        case 9: //sales team header 
             $url = "{$GLOBALS['base_url']}/sales-team-head-dashboard";
             break;
             // case 11: // whatsapp

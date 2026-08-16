@@ -770,4 +770,22 @@ public function getSalesTeams($roleId = null, $teamId = null, $userId = null)
 
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
+
+    // Get all CED Employees
+    public function getCedEmployees()
+    {
+        $sql = "SELECT u.id, u.full_name, u.phone, u.email, r.name AS role_name 
+                FROM users u
+                LEFT JOIN roles r ON u.role_id = r.id
+                LEFT JOIN employees e ON e.user_id = u.id
+                WHERE (r.name LIKE '%ced%' OR r.name LIKE '%client cash in%' OR u.role_id = 7)
+                  AND (e.employee_status IS NULL OR e.employee_status NOT IN ('resigned', 'terminated', 'inactive'))
+                ORDER BY u.full_name ASC";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            die("Query failed: " . $this->db->error . " | SQL: " . $sql);
+        }
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
 }

@@ -16,11 +16,11 @@
     // Roles 3 (Director) and 22 (PM Head) are APPROVERS — they need to see Action columns
     $conReadOnlyRoles = []; // Currently no role is fully restricted — footer.php handles role 20
     
-    // Check if the current user belongs to Management (Admin or Super Admin)
-    $isManagement = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3]);
+    // Check if the current user belongs to Management (Admin or Super Admin or Chief Officer)
+    $isManagement = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33]);
 
     // Check if the current user belongs to Management (Admin or Super Admin)
-    $isManagement = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3]);
+    $isManagement = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33]);
 
     // Calculate pending verifications
     $pendingVerificationsCount = 0;
@@ -294,14 +294,14 @@
 
                 $upcomingCount = getFollowUpCount($userId, 'upcoming');
                 ?>
-                <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [15, 22, 9])): ?>
+                <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [15, 22, 9, 33])): ?>
 
                     <!--Sales CATEGORY -->
                     <li class="sidebar__menu-category">
                         <span class="category-name">Sales & Business</span>
                     </li>
 
-                    <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [9])): ?>
+                    <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [9, 33])): ?>
                         <?php if (($_SESSION['user']['role_id'] ?? 0) != 9): ?>
                             <!-- sales Dashboard -->
                             <li class="slide ">
@@ -479,7 +479,7 @@
                         </ul>
                     </li>
 
-                    <?php if (hasPermission("sales & business") && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
+                    <?php if ((hasPermission("sales & business") || ($_SESSION['user']['role_id'] ?? 0) == 33) && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
                         <!-- Flats Manage -->
                         <li
                             class="slide has-sub <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'active' : '' ?>">
@@ -1356,6 +1356,13 @@
                             class="sidebar__menu-item <?= isActive('ced-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">CED Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/ced-report"
+                            class="sidebar__menu-item <?= isActive('ced-report', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-file-earmark-bar-graph"></i></div>
+                            <span class="sidebar__menu-label">CED Report</span>
                         </a>
                     </li>
 

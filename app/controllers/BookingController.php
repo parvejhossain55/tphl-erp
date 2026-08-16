@@ -237,18 +237,17 @@ class BookingController extends Controller
 
                 $data      = $partialData;
                 
-                // Clean commas from numeric fields to ensure valid float/decimal parsing
-                if (isset($data['agreement_value'])) {
-                    $data['agreement_value'] = str_replace(',', '', trim($data['agreement_value']));
-                }
-                if (isset($data['discount_amount'])) {
-                    $data['discount_amount'] = str_replace(',', '', trim($data['discount_amount']));
-                }
-                if (isset($data['approved_amount'])) {
-                    $data['approved_amount'] = str_replace(',', '', trim($data['approved_amount']));
-                }
-                if (isset($data['service_fee_balance'])) {
-                    $data['service_fee_balance'] = str_replace(',', '', trim($data['service_fee_balance']));
+                // Clean commas and invalid chars from numeric fields to ensure valid float/decimal parsing
+                $numericFields = ['agreement_value', 'discount_amount', 'approved_amount', 'service_fee_balance'];
+                foreach ($numericFields as $field) {
+                    if (isset($data[$field])) {
+                        $val = str_replace(',', '', trim($data[$field]));
+                        // If it's not numeric after removing commas, clear it to prevent truncation errors
+                        if ($val !== '' && !is_numeric($val)) {
+                            $val = preg_replace('/[^0-9.-]/', '', $val);
+                        }
+                        $data[$field] = $val === '' ? null : $val;
+                    }
                 }
 
                 $rowIssues = [];
@@ -497,18 +496,16 @@ class BookingController extends Controller
 
                 $data = array_combine($header, $row);
                 
-                // Clean commas from numeric fields to ensure valid float/decimal parsing
-                if (isset($data['agreement_value'])) {
-                    $data['agreement_value'] = str_replace(',', '', trim($data['agreement_value']));
-                }
-                if (isset($data['discount_amount'])) {
-                    $data['discount_amount'] = str_replace(',', '', trim($data['discount_amount']));
-                }
-                if (isset($data['approved_amount'])) {
-                    $data['approved_amount'] = str_replace(',', '', trim($data['approved_amount']));
-                }
-                if (isset($data['service_fee_balance'])) {
-                    $data['service_fee_balance'] = str_replace(',', '', trim($data['service_fee_balance']));
+                // Clean commas and invalid chars from numeric fields to ensure valid float/decimal parsing
+                $numericFields = ['agreement_value', 'discount_amount', 'approved_amount', 'service_fee_balance'];
+                foreach ($numericFields as $field) {
+                    if (isset($data[$field])) {
+                        $val = str_replace(',', '', trim($data[$field]));
+                        if ($val !== '' && !is_numeric($val)) {
+                            $val = preg_replace('/[^0-9.-]/', '', $val);
+                        }
+                        $data[$field] = $val === '' ? null : $val;
+                    }
                 }
 
                 $rowIssues = [];
