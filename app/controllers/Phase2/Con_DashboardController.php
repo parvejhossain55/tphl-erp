@@ -79,7 +79,7 @@ class Con_DashboardController extends Controller
         $recentFunds = $this->db->query($recentFundsQuery)->fetch_all(MYSQLI_ASSOC);
 
         $statusFilter = "b.status = 'pending'";
-        if (in_array($userRole, [1, 3])) {
+        if (in_array($userRole, [1, 3, 33])) {
             $statusFilter = "b.status = 'pm_approved'";
         }
 
@@ -322,7 +322,7 @@ class Con_DashboardController extends Controller
         $pendingReturns = $rPendingReturns ? $rPendingReturns->fetch_all(MYSQLI_ASSOC) : [];
 
         $pendingWorkOrders = [];
-        if (in_array($userRole, [1, 3, 12, 15, 20, 22])) {
+        if (in_array($userRole, [1, 3, 33, 12, 15, 20, 22])) {
             $projFilterPart = $selectedProjectId ? " AND wo.project_id = $selectedProjectId " : "";
             if ($userRole == 12 || $userRole == 20) {
                 $moRoleId = ($userRole == 20) ? 20 : 12;
@@ -388,7 +388,7 @@ class Con_DashboardController extends Controller
 
         // ── Pending Budget Extensions ──────────────────────────────
         $pendingBudgetExtends = [];
-        if (in_array($userRole, [1, 3, 15, 22])) {
+        if (in_array($userRole, [1, 3, 33, 15, 22])) {
             $projFilterPart = $selectedProjectId ? " AND r.project_id = $selectedProjectId " : "";
             $rBE = $this->db->query("
                 SELECT r.id, r.amount, r.title, r.reason, r.created_at,
@@ -451,7 +451,7 @@ class Con_DashboardController extends Controller
         // Fetch pending Land requisitions and Petty Cash requests for Management / Admin
         $pendingLandRequisitions = [];
         $pendingPettyCash = [];
-        if (in_array($userRole, [1, 3])) {
+        if (in_array($userRole, [1, 3, 33])) {
             $landProjFilter = $selectedProjectId ? " AND la.project_id = $selectedProjectId " : "";
             $rLandReq = $this->db->query("
                 SELECT lfr.*, la.land_owner_name, p.name as project_name, u.full_name as requester_name
@@ -480,7 +480,7 @@ class Con_DashboardController extends Controller
         }
 
         $pendingContractorBills = [];
-        if (in_array($userRole, [1, 3, 22])) {
+        if (in_array($userRole, [1, 3, 33, 22])) {
             $cbProjFilter = $selectedProjectId ? " AND cbr.project_id = $selectedProjectId " : "";
             $rCB = $this->db->query("
                 SELECT cbr.*, p.name AS project_name, oo.name AS contractor_name, u.full_name AS creator_name
@@ -611,7 +611,7 @@ class Con_DashboardController extends Controller
         $userId = $_SESSION['user']['id'] ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
         $baseFilter = "{$alias}.under_construction = 1";
-        if (in_array($roleId, [1, 3, 20, 22, 32])) return $baseFilter;
+        if (in_array($roleId, [1, 3, 33, 20, 22, 32])) return $baseFilter;
         return "{$baseFilter} AND ({$alias}.pm_id = {$userId} OR {$alias}.site_engineer_id = {$userId} OR {$alias}.landman_id = {$userId} OR {$alias}.struct_engineer_id = {$userId} OR {$alias}.operation_head_id = {$userId} OR {$alias}.draftsman_id = {$userId} OR {$alias}.architect_id = {$userId} OR {$alias}.estimator_id = {$userId} OR {$alias}.qc_id = {$userId} OR {$alias}.operator_id = {$userId} OR {$alias}.created_by = {$userId})";
     }
 
@@ -1729,7 +1729,7 @@ $project = $stmt->get_result()->fetch_assoc();
         if (session_status() === PHP_SESSION_NONE) session_start();
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $isAdmin = in_array($roleId, [1, 3, 15, 22]);
+        $isAdmin = in_array($roleId, [1, 3, 33, 15, 22]);
 
         $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
 
@@ -2462,7 +2462,7 @@ $project = $stmt->get_result()->fetch_assoc();
         // ── WORKFLOW GATE: Projects assigned to this draftsman but AE NOT yet 'fully' ──
         // Only relevant for actual draftsman role; admins/PM/QC skip this
         $projectsWaitingForAE = [];
-        if (!in_array($roleId, [1, 2, 3, 13, 15, 22])) {
+        if (!in_array($roleId, [1, 2, 3, 33, 13, 15, 22])) {
             $stmtWait = $this->db->prepare("
                 SELECT p.id, p.name,
                        COALESCE(u.full_name, 'N/A') AS architect_name,
@@ -2561,7 +2561,7 @@ $project = $stmt->get_result()->fetch_assoc();
 
         $userId = (int)($_SESSION['user']['id']  ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $isAdmin = in_array($roleId, [1, 2, 3, 13, 15, 22]);
+        $isAdmin = in_array($roleId, [1, 2, 3, 33, 13, 15, 22]);
 
         // ── KPI 1: Total A&E records ──────────────────────────────────────────
         $r1 = $this->db->query("SELECT COUNT(*) AS c FROM architect_engineering");
@@ -2764,7 +2764,7 @@ $project = $stmt->get_result()->fetch_assoc();
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // Admins / PM / QC see all; otherwise filter by struct_engineer_id
-        $isAdmin = in_array($roleId, [1, 2, 3, 13, 15, 22]);
+        $isAdmin = in_array($roleId, [1, 2, 3, 33, 13, 15, 22]);
 
         // ── KPI 1: Projects assigned to this structural engineer ──────────────
         if ($isAdmin) {

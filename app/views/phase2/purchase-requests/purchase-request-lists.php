@@ -26,7 +26,6 @@
                             <th>Project</th>
                             <th>Type</th>
                             <th class="text-center">Items</th>
-                            <th class="text-end">Est. Total</th>
                             <th>Status</th>
                             <th>Assigned To</th>
                             <th>Created By</th>
@@ -55,7 +54,6 @@
                                     <td class="text-center">
                                         <span class="badge bg-light text-dark border"><?= $r['item_count'] ?> items</span>
                                     </td>
-                                    <td class="text-end">৳ <?= number_format($r['estimated_total'] ?? 0, 2) ?></td>
                                     <td>
                                         <?php
                                         $badge = match ($r['status']) {
@@ -67,6 +65,11 @@
                                         };
                                         ?>
                                         <span class="badge <?= $badge ?>"><?= $r['status'] ?></span>
+                                        <?php if ($r['status'] === 'Submitted'): ?>
+                                            <div class="mt-1 text-danger" style="font-size: 11px; font-weight: 600;">
+                                                <i class="bi bi-hourglass-split"></i> Pending: Project Manager
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <?php if ($r['status'] === 'Approved' && in_array($userRole, [1, 3, 17, 22, 31])): ?>

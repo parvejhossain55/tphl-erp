@@ -50,7 +50,7 @@ class Con_VendorPaymentRequestController extends Controller
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         return (
-            in_array($this->userRole, [1, 3]) 
+            in_array($this->userRole, [1, 3, 33]) 
             || strpos($roleName, 'admin') !== false 
             || strpos($roleName, 'management') !== false
         );
@@ -104,7 +104,7 @@ class Con_VendorPaymentRequestController extends Controller
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         return (
-            in_array($this->userRole, [1, 3, 6, 30]) 
+            in_array($this->userRole, [1, 3, 33, 6, 30]) 
             || strpos($roleName, 'admin') !== false 
             || strpos($roleName, 'management') !== false 
             || strpos($roleName, 'accounts') !== false
@@ -121,7 +121,7 @@ class Con_VendorPaymentRequestController extends Controller
         // Other roles only see their own requests OR requests for projects they are assigned to
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         $isPrivileged = (
-            in_array($this->userRole, [1, 3, 6, 22, 17, 31])
+            in_array($this->userRole, [1, 3, 33, 6, 22, 17, 31])
             || strpos($roleName, 'admin') !== false
             || strpos($roleName, 'management') !== false
             || strpos($roleName, 'accounts') !== false

@@ -22,7 +22,7 @@ class Con_MonthlyTargetController extends Controller {
         }
         $roleId = $_SESSION['user']['role_id'] ?? 0;
         // Allow: admin(1), director(3), PM head(15), PM(22), site engineer, estimator
-        $allowedRoles = [1, 3, 15, 22];
+        $allowedRoles = [1, 3, 33, 15, 22];
         $hasSiteEngPerm = function_exists('hasPermission') && hasPermission('site engineer dashboard');
         if (!in_array($roleId, $allowedRoles) && !$hasSiteEngPerm) {
             setError("Access denied."); header("Location: " . $GLOBALS['base_url'] . "/con-dashboard"); exit;
@@ -138,7 +138,7 @@ class Con_MonthlyTargetController extends Controller {
 
         // Site engineer → read-only view (no edit/add/delete)
         $viewerRole = (int)($_SESSION['user']['role_id'] ?? 0);
-        $isSiteEngineer = !in_array($viewerRole, [1, 3, 15, 22]) || isset($_GET['read_only']) || isset($_GET['view_only']);
+        $isSiteEngineer = !in_array($viewerRole, [1, 3, 33, 15, 22]) || isset($_GET['read_only']) || isset($_GET['view_only']);
 
         // Get project floors
         $stmtFl = $this->db->prepare("SELECT id, floor_no, floor_type, slab_area_sqft FROM project_floors WHERE project_id = ? ORDER BY floor_no ASC");
@@ -469,7 +469,7 @@ class Con_MonthlyTargetController extends Controller {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // If admin/PM/director/operations → show ALL projects
-        if (in_array($roleId, [1, 3, 20, 22, 32])) {
+        if (in_array($roleId, [1, 3, 33, 20, 22, 32])) {
             $res = $this->db->query("SELECT id AS project_id, name AS project_name FROM projects ORDER BY name ASC");
             $assignedProjects = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
         } else {
@@ -689,7 +689,7 @@ class Con_MonthlyTargetController extends Controller {
 
     private function checkWritePermission(bool $isAjax = false) {
         $viewerRole = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($viewerRole, [1, 3, 15, 22])) {
+        if (!in_array($viewerRole, [1, 3, 33, 15, 22])) {
             if ($isAjax) {
                 $this->jsonError("Access denied. You do not have permission to modify targets.");
             } else {

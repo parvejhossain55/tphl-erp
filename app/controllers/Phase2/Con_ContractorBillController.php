@@ -52,7 +52,7 @@ class Con_ContractorBillController extends Controller
     /** Roles 1 (Admin), 3 (Super Admin), 22 (PM Head) can approve */
     private function canApprove()
     {
-        return in_array($this->userRole, [1, 3, 22]);
+        return in_array($this->userRole, [1, 3, 33, 22]);
     }
 
     /** QC & Internal Audit role or specific permission check */
@@ -67,7 +67,7 @@ class Con_ContractorBillController extends Controller
     /** Roles 1, 3, 6 (Accounts) can process payments */
     private function canProcessPayment()
     {
-        return in_array($this->userRole, [1, 3, 6, 30]);
+        return in_array($this->userRole, [1, 3, 33, 6, 30]);
     }
 
     // =========================================================================
@@ -79,7 +79,7 @@ class Con_ContractorBillController extends Controller
         $filterUserId = null;
         $filterProjectIds = [];
 
-        if (!in_array($this->userRole, [1, 3, 6, 22])) {
+        if (!in_array($this->userRole, [1, 3, 33, 6, 22])) {
             // Restricted role: show only bills they created
             $filterUserId = $this->userId;
 
@@ -119,7 +119,7 @@ class Con_ContractorBillController extends Controller
 
     public function create()
     {
-        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3])) {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33])) {
             setError('You do not have permission to create contractor bills.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
             exit;
@@ -145,7 +145,7 @@ class Con_ContractorBillController extends Controller
 
     public function store()
     {
-        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3])) {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33])) {
             setError('You do not have permission to create contractor bills.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
             exit;
@@ -694,7 +694,7 @@ class Con_ContractorBillController extends Controller
         $rid = $this->userRole;
 
         // Admin, Director, PM Head → see ALL projects
-        if (in_array($rid, [1, 3, 22])) {
+        if (in_array($rid, [1, 3, 33, 22])) {
             $filter = "1=1";
         } else {
             // All other roles → only their assigned projects

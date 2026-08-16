@@ -81,7 +81,7 @@ class Con_ProjectTimelineController extends Controller {
         }
 
         // Permissions check
-        if (!hasPermission('Construction Management') && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
+        if (!hasPermission('Construction Management') && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 15, 22])) {
             setError("You do not have permission to manage timelines.");
             header("Location: " . $GLOBALS['base_url'] . "/con-project/" . $project_id);
             exit;
@@ -161,7 +161,7 @@ class Con_ProjectTimelineController extends Controller {
         }
 
         // Permissions check
-        if (!hasPermission('Construction Management') && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
+        if (!hasPermission('Construction Management') && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 15, 22])) {
             setError("You do not have permission to manage timelines.");
             header("Location: " . $GLOBALS['base_url'] . "/con-project/" . $project_id);
             exit;
@@ -201,7 +201,7 @@ class Con_ProjectTimelineController extends Controller {
         $project_id = $timeline['project_id'];
 
         // Permissions check
-        if (!hasPermission('Construction Management') && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
+        if (!hasPermission('Construction Management') && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 15, 22])) {
             setError("You do not have permission to manage timelines.");
             header("Location: " . $GLOBALS['base_url'] . "/con-project/" . $project_id);
             exit;
@@ -313,7 +313,7 @@ class Con_ProjectTimelineController extends Controller {
         }
 
         // Permissions check
-        if (!hasPermission('Construction Management') && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
+        if (!hasPermission('Construction Management') && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 15, 22])) {
             setError("You do not have permission to manage project floors.");
             header("Location: " . $GLOBALS['base_url'] . "/con-floor-setup/" . $project_id);
             exit;

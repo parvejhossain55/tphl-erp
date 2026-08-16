@@ -13,7 +13,7 @@ class Con_RecoveryPlanController extends Controller {
         if (!isset($_SESSION['user'])) {
             header("Location: " . $GLOBALS['base_url'] . "/login"); exit;
         }
-        if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])) {
+        if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 15, 22])) {
             setError("Access denied.");
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard"); exit;
         }
