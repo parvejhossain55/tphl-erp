@@ -31,8 +31,8 @@ class ErpTrackerController extends Controller
         $user_id = $_SESSION['user']['id'];
         $role_id = $_SESSION['user']['role_id'];
         
-        // 1 = Super Admin, 3 = Management/Admin
-        $isManagement = in_array($role_id, [1, 3]);
+        // 1 = Super Admin, 3 = Management/Admin, 33 = Chief Officer
+        $isManagement = in_array($role_id, [1, 3, 33]);
 
         if ($requireManagement && !$isManagement) {
             die("Access Denied. Management only.");
@@ -57,7 +57,7 @@ class ErpTrackerController extends Controller
         
         $it_role = $this->getRoleId('IT Team');
         
-        $hasAccess = in_array($role_id, [1, 3, $it_role]);
+        $hasAccess = in_array($role_id, [1, 3, 33, $it_role]);
 
         if (isset($_GET['session_id'])) {
             $activeSession = $this->tracker->getSession($_GET['session_id']);
