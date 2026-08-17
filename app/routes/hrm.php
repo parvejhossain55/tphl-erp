@@ -268,4 +268,8 @@ return [
     // Salary Hold
     'payroll-salary-hold' => ['controller' => 'PayrollController', 'method' => 'salaryHold'],
     'payroll-salary-hold-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSalaryHoldPDF'],
+
+    // Payroll Attendance Report
+    'payroll-attendance-report' => ['controller' => 'PayrollController', 'method' => 'attendanceReport'],
+    'payroll-attendance-pdf' => ['controller' => 'PayrollController', 'method' => 'exportAttendancePDF'],
 ];

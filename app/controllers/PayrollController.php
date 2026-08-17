@@ -1415,4 +1415,327 @@ class PayrollController extends Controller
         $pdf->Output('Payroll_Workspace_Report_' . $monthName . '_' . $selectedYear . '.pdf', 'D');
         exit;
     }
+
+    public function attendanceReport()
+    {
+        $this->view("payrolls/payslips/attendance-report", [
+            "current_route" => "payroll-attendance-report",
+            "page_title" => "Payroll Attendance Report"
+        ]);
+    }
+
+    public function exportAttendancePDF()
+    {
+        // Require Tipsoi External API logic if not already loaded
+        if (!class_exists('ExternalApiService')) {
+            require_once __DIR__ . '/../services/ExternalApiService.php';
+        }
+        $apiService = new ExternalApiService($this->db);
+
+        $fromDateStr = $_GET['from_date'] ?? date('Y-m-d');
+        $toDateStr = $_GET['to_date'] ?? date('Y-m-d');
+
+        // Force UTC or Dhaka boundaries
+        $oldTimezone = date_default_timezone_get();
+        date_default_timezone_set('Asia/Dhaka');
+
+        $fromTime = strtotime($fromDateStr . ' 00:00:00') * 1000;
+        $toTime = strtotime($toDateStr . ' 23:59:59') * 1000;
+
+        date_default_timezone_set($oldTimezone);
+
+        $token = $apiService->getBearerToken();
+        if (!$token) {
+            die("Failed to authenticate with Tipsoi API.");
+        }
+
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/attendance?" . http_build_query([
+            'officeId' => 4699,
+            'order' => 'asc',
+            'pageNumber' => 0,
+            'perPage' => 2000,
+            'reportType' => 'department',
+            'sortKey' => 'reportPosition',
+            'status' => 1,
+            'from' => $fromTime,
+            'to' => $toTime
+        ]);
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $token,
+            'Accept: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $data = json_decode($response, true);
+        if ($httpCode !== 200 || !isset($data['attendance'])) {
+            die("Failed to retrieve attendance logs from Tipsoi API.");
+        }
+
+        // Fetch local employees for name/ID checks
+        $localQuery = $this->db->query("SELECT employee_id, email, full_name FROM employees");
+        $localEmployees = [];
+        if ($localQuery) {
+            while ($row = $localQuery->fetch_assoc()) {
+                $localEmployees[] = [
+                    'employee_id' => trim($row['employee_id'] ?? ''),
+                    'email' => strtolower(trim($row['email'] ?? '')),
+                    'full_name' => strtolower(trim($row['full_name'] ?? ''))
+                ];
+            }
+        }
+
+        // Aggregate Data
+        $aggregatedData = [];
+        $index = 1;
+        foreach ($data['attendance'] as $emp) {
+            $officeId = trim($emp['employeeOfficeId'] ?? $emp['employeeId']);
+            $officeIdNorm = preg_match('/^\d+$/', $officeId) ? (string) (int) $officeId : $officeId;
+            $nameNorm = strtolower(trim($emp['employeeName'] ?? ''));
+
+            $isLocal = false;
+            foreach ($localEmployees as $le) {
+                $leIdNorm = preg_match('/^\d+$/', $le['employee_id']) ? (string) (int) $le['employee_id'] : $le['employee_id'];
+                if (($officeIdNorm !== '' && $leIdNorm === $officeIdNorm) || ($nameNorm !== '' && $le['full_name'] === $nameNorm)) {
+                    $isLocal = true;
+                    break;
+                }
+            }
+
+            $workingDays = 0;
+            $present = 0;
+            $absent = 0;
+            $leave = 0;
+            $dayOff = 0;
+            $late = 0;
+
+            $shiftStartStr = $emp['shiftStartTime'] ?? '';
+            $shiftStartMin = null;
+            if (preg_match('/^(\d+):(\d+)\s*(AM|PM)$/i', trim($shiftStartStr), $m)) {
+                $h = (int) $m[1];
+                $min = (int) $m[2];
+                $ampm = strtoupper($m[3]);
+                if ($ampm === 'PM' && $h !== 12)
+                    $h += 12;
+                elseif ($ampm === 'AM' && $h === 12)
+                    $h = 0;
+                $shiftStartMin = $h * 60 + $min;
+            } else {
+                $shiftStartMin = 570; // 09:30 AM default
+            }
+            $lateThreshold = $shiftStartMin + 10;
+
+            $attMap = $emp['attendance'] ?? [];
+            foreach ($attMap as $ts => $dayAtt) {
+                $workingDays++;
+
+                $isLateOverride = false;
+                if (!empty($dayAtt['isPresent']) && !empty($dayAtt['firstLoggedTime']) && $dayAtt['firstLoggedTime'] !== '-' && $dayAtt['firstLoggedTime'] !== ' ') {
+                    if (preg_match('/^(\d+):(\d+)\s*(AM|PM)$/i', trim($dayAtt['firstLoggedTime']), $zm)) {
+                        $zh = (int) $zm[1];
+                        $zmin = (int) $zm[2];
+                        $zampm = strtoupper($zm[3]);
+                        if ($zampm === 'PM' && $zh !== 12)
+                            $zh += 12;
+                        elseif ($zampm === 'AM' && $zh === 12)
+                            $zh = 0;
+                        $checkInMin = $zh * 60 + $zmin;
+                        if ($checkInMin > $lateThreshold)
+                            $isLateOverride = true;
+                    }
+                }
+
+                if (!empty($dayAtt['isLeave'])) {
+                    $leave++;
+                } else if (!empty($dayAtt['isPresent'])) {
+                    $present++;
+                    if ($isLateOverride)
+                        $late++;
+                } else if (!empty($dayAtt['isOffday']) || !empty($dayAtt['isHoliday'])) {
+                    $dayOff++;
+                    $workingDays--;
+                } else {
+                    $absent++;
+                }
+            }
+
+            $aggregatedData[] = [
+                'sl' => $index++,
+                'name' => $emp['employeeName'] ?? '-',
+                'id' => $emp['employeeOfficeId'] ?? '-',
+                'designation' => $emp['designationName'] ?? '-',
+                'department' => $emp['departmentName'] ?? '-',
+                'workplace' => $emp['workplaceName'] ?? '-',
+                'empType' => 'Regular',
+                'workingDays' => $workingDays,
+                'present' => $present,
+                'absent' => $absent,
+                'leave' => $leave,
+                'dayOff' => $dayOff,
+                'late' => $late,
+                'approvedLates' => 0,
+                'finalLate' => $late,
+                'deduction' => 0,
+                'lateUnpaidAbsentDays' => $absent,
+                'idCheck' => $isLocal ? 'OK' : 'Mismatch',
+                'nameCheck' => $isLocal ? 'OK' : 'Mismatch'
+            ];
+        }
+
+        // Generate TCPDF (Landscape A2 for 23 columns)
+        // Adjust column sizes precisely so they do not overlap
+        $pdf = new TCPDF('L', PDF_UNIT, 'A2', true, 'UTF-8', false);
+        $pdf->SetCreator('HRM System');
+        $pdf->SetTitle("Payroll Attendance Report - $fromDateStr to $toDateStr");
+
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        $pdf->SetMargins(10, 10, 10);
+        $pdf->SetAutoPageBreak(TRUE, 15);
+        $pdf->AddPage();
+
+        $pdf->SetFont('helvetica', 'B', 20);
+        $pdf->SetFillColor(7, 129, 52); // Theme Green header
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->Cell(0, 15, 'The Premium Homes Ltd.', 0, 1, 'C', true);
+
+        $pdf->SetFont('helvetica', 'B', 14);
+        $pdf->SetFillColor(255, 255, 255); // Reset
+        $pdf->SetTextColor(0, 0, 0);
+        $pdf->Cell(0, 10, "Payroll Attendance Report: " . date('F d, Y', strtotime($fromDateStr)) . " to " . date('F d, Y', strtotime($toDateStr)), 0, 1, 'C', true);
+        $pdf->Ln(); // no space before headings
+
+        $pdf->SetFont('helvetica', 'B', 9);
+        $pdf->SetFillColor(7, 129, 52); // table header color
+        $pdf->SetTextColor(255, 255, 255);
+
+        // A2 landscape width is ~574mm left after 20mm margins.
+        $widths = [
+            10, // SL
+            45, // Name
+            18, // ID
+            40, // Designation
+            35, // Department
+            35, // Workplace
+            25, // Type
+            18, // Work Days
+            16, // Present
+            16, // Absent
+            15, // Leave
+            18, // Day Off
+            12, // Late
+            20, // App Lates
+            20, // Final Late
+            20, // Deduct
+            22, // Unpaid
+            20, // Join
+            22, // Resign
+            22, // Effect
+            35, // Remarks
+            20, // ID Check
+            25  // Name Check
+        ];
+
+        $headers = [
+            'SL',
+            'Employee Name',
+            'ID',
+            'Designation',
+            'Department',
+            'Workplace',
+            'Type',
+            'Work Days',
+            'Present',
+            'Absent',
+            'Leave',
+            'Day Off',
+            'Late',
+            'App Lates',
+            'Final Late',
+            'Deduct',
+            'Unpaid',
+            'Join Date',
+            'Resign Date',
+            'Effect Date',
+            'Remarks',
+            'ID Check',
+            'Name Check'
+        ];
+
+        // Draw Headers
+        foreach ($headers as $index => $h) {
+            $pdf->Cell($widths[$index], 10, $h, 1, 0, 'C', true);
+        }
+        $pdf->Ln();
+
+        $pdf->SetFont('helvetica', '', 9);
+        $fill = false;
+        foreach ($aggregatedData as $row) {
+            if ($fill)
+                $pdf->SetFillColor(245, 245, 245);
+            else
+                $pdf->SetFillColor(255, 255, 255);
+
+            $pdf->Cell($widths[0], 8, $row['sl'], 1, 0, 'C', $fill);
+            // Limit characters to avoid breaking row height
+            $pdf->Cell($widths[1], 8, mb_substr($row['name'], 0, 23), 1, 0, 'L', $fill);
+            $pdf->Cell($widths[2], 8, $row['id'], 1, 0, 'C', $fill);
+            $pdf->Cell($widths[3], 8, mb_substr($row['designation'], 0, 23), 1, 0, 'L', $fill);
+            $pdf->Cell($widths[4], 8, mb_substr($row['department'], 0, 18), 1, 0, 'L', $fill);
+            $pdf->Cell($widths[5], 8, mb_substr($row['workplace'], 0, 18), 1, 0, 'L', $fill);
+            $pdf->Cell($widths[6], 8, $row['empType'], 1, 0, 'C', $fill);
+            $pdf->Cell($widths[7], 8, $row['workingDays'], 1, 0, 'C', $fill);
+
+            $pdf->SetTextColor(0, 128, 0);
+            $pdf->Cell($widths[8], 8, $row['present'], 1, 0, 'C', $fill);
+            $pdf->SetTextColor(0, 0, 0);
+
+            $pdf->SetTextColor(255, 0, 0);
+            $pdf->Cell($widths[9], 8, $row['absent'], 1, 0, 'C', $fill);
+            $pdf->SetTextColor(0, 0, 0);
+
+            $pdf->Cell($widths[10], 8, $row['leave'], 1, 0, 'C', $fill);
+            $pdf->Cell($widths[11], 8, $row['dayOff'], 1, 0, 'C', $fill);
+
+            $pdf->SetTextColor(255, 140, 0);
+            $pdf->Cell($widths[12], 8, $row['late'], 1, 0, 'C', $fill);
+            $pdf->SetTextColor(0, 0, 0);
+
+            $pdf->Cell($widths[13], 8, '-', 1, 0, 'C', $fill);
+            $pdf->Cell($widths[14], 8, $row['finalLate'], 1, 0, 'C', $fill);
+            $pdf->Cell($widths[15], 8, '-', 1, 0, 'C', $fill);
+            $pdf->Cell($widths[16], 8, $row['lateUnpaidAbsentDays'], 1, 0, 'C', $fill);
+
+            $pdf->Cell($widths[17], 8, '-', 1, 0, 'C', $fill); // Join
+            $pdf->Cell($widths[18], 8, '-', 1, 0, 'C', $fill); // Resign
+            $pdf->Cell($widths[19], 8, '-', 1, 0, 'C', $fill); // Effect
+            $pdf->Cell($widths[20], 8, '-', 1, 0, 'C', $fill); // Remarks
+
+            if ($row['idCheck'] === 'OK')
+                $pdf->SetTextColor(0, 128, 0);
+            else
+                $pdf->SetTextColor(255, 0, 0);
+            $pdf->Cell($widths[21], 8, $row['idCheck'], 1, 0, 'C', $fill);
+
+            if ($row['nameCheck'] === 'OK')
+                $pdf->SetTextColor(0, 128, 0);
+            else
+                $pdf->SetTextColor(255, 0, 0);
+            $pdf->Cell($widths[22], 8, $row['nameCheck'], 1, 0, 'C', $fill);
+            $pdf->SetTextColor(0, 0, 0);
+
+            $pdf->Ln();
+
+            $fill = !$fill;
+        }
+
+        $pdf->Output("payroll_attendance_{$fromDateStr}_to_{$toDateStr}.pdf", 'D');
+        exit;
+    }
 }

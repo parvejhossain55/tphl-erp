@@ -1258,9 +1258,9 @@
 
                     <!-- Payroll & Report -->
                     <li
-                        class="slide has-sub <?= isActive(['payroll-workspace', 'payroll-salary-hold'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['payroll-workspace', 'payroll-salary-hold'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-regular fa-file-excel"></i></div>
                             <span class="sidebar__menu-label">Payroll & Report</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -1275,6 +1275,11 @@
                                 <a href="<?= $base_url ?>/payroll-salary-hold"
                                     class="sidebar__menu-item <?= isActive('payroll-salary-hold', $current_route) ?>">Salary
                                     Hold</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/payroll-attendance-report"
+                                    class="sidebar__menu-item <?= isActive('payroll-attendance-report', $current_route) ?>">Attendance
+                                    Report</a>
                             </li>
                         </ul>
                     </li>
