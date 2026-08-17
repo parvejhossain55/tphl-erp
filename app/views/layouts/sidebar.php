@@ -475,11 +475,41 @@
                                     class="sidebar__menu-item <?= isActive('project-lists', $current_route) ?>">Project
                                     List</a>
                             </li>
-
                         </ul>
                     </li>
 
-                    <?php if ((hasPermission("sales & business") || ($_SESSION['user']['role_id'] ?? 0) == 33) && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
+                    <?php if ((hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [5, 9, 15, 33]))): ?>
+                        
+                        <!-- Incentives Module -->
+                        <li class="slide has-sub <?= isActive(['my-incentives', 'incentive-management', 'incentive-config'], $current_route) ? 'active' : '' ?>">
+                            <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['my-incentives', 'incentive-management', 'incentive-config'], $current_route) ? 'menu-open active' : '' ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                                <span class="sidebar__menu-label">Incentives</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <li class="slide child2">
+                                    <a href="<?= $base_url ?>/my-incentives" class="sidebar__menu-item <?= isActive('my-incentives', $current_route) ?>">My Incentives</a>
+                                </li>
+                                <!-- Visible to Management (1,3,33), Chief Officer (2), Sales Head (6), Sales Manager (5), Sales Team Head (9, 15) -->
+                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 9, 15, 33])): ?>
+                                    <li class="slide child2">
+                                        <a href="<?= $base_url ?>/incentive-management" class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">My Team Incentives</a>
+                                    </li>
+                                    <li class="slide child2">
+                                        <a href="<?= $base_url ?>/team-targets" class="sidebar__menu-item <?= isActive('team-targets', $current_route) ?>">My Team Targets</a>
+                                    </li>
+                                <?php endif; ?>
+                                
+                                <!-- Settings only for Top Management -->
+                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 6, 33])): ?>
+                                    <li class="slide child2">
+                                        <a href="<?= $base_url ?>/incentive-config" class="sidebar__menu-item <?= isActive('incentive-config', $current_route) ?>">Settings</a>
+                                    </li>
+                                <?php endif; ?>
+                            </ul>
+                        </li>
+
                         <!-- Flats Manage -->
                         <li
                             class="slide has-sub <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'active' : '' ?>">
@@ -521,8 +551,6 @@
                                     <span class="sidebar__menu-label">Sales Executive Team</span>
                                 </a>
                             </li>
-
-
 
                             <li class="slide ">
                                 <a href="<?= $base_url ?>/contact-lists"
@@ -1568,6 +1596,12 @@
                                             <?= $pendingVerificationsCount ?> Pending
                                         </span>
                                     <?php endif; ?>
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('trash-client-payment-list', $current_route) ?>">
+                                <a href="<?= $base_url ?>/trash-client-payment-list"
+                                    class="sidebar__menu-item <?= isActive('trash-client-payment-list', $current_route) ?>" style="display:flex; justify-content:space-between; align-items:center; padding-right:12px;">
+                                    <span class="text-truncate" style="color: #ff9800;"><i class="fa-regular fa-trash-can-arrow-up me-2"></i> Trash List</span>
                                 </a>
                             </li>
                             <li class="slide <?= isActive('management-cash-in', $current_route) ?>">

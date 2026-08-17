@@ -28,6 +28,28 @@ $show_breadcrumb = true;
                             value="<?= isset($target['month']) ? date('Y-m', strtotime($target['month'])) : date('Y-m') ?>">
                     </div>
 
+                    <!-- Category -->
+                    <div class="col-lg-6 mb-3">
+                        <label>Assigned Category (Optional)</label>
+                        <select name="category_id" id="category_select" class="form-control">
+                            <option value="">-- Select Category --</option>
+                            <?php foreach ($categories as $cat): ?>
+                                <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['category_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <!-- Project -->
+                    <div class="col-lg-6 mb-3">
+                        <label>Assigned Project(s) (Optional)</label>
+                        <select name="project_ids[]" id="project_select" class="form-control" multiple size="4">
+                            <?php foreach ($projects as $proj): ?>
+                                <option value="<?= $proj['id'] ?>" data-category="<?= $proj['category_id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</small>
+                    </div>
+
                     <!-- Site Visit Target -->
                     <div class="col-lg-6 mb-3">
                         <label>Site Visit Target</label>
@@ -89,6 +111,8 @@ $show_breadcrumb = true;
                     <tr class="table__title">
                         <th>S/L</th>
                         <th>Month</th>
+                        <th>Category</th>
+                        <th>Project(s)</th>
                         <th>Site Visit Target</th>
                         <th>Booking Target</th>
                         <th>Booking Value Target</th>
@@ -101,6 +125,17 @@ $show_breadcrumb = true;
                             <tr>
                                 <td><?= $index + 1 ?></td>
                                 <td><?= date('F Y', strtotime($row['month'])) ?></td>
+                                <td><?= htmlspecialchars($row['category_name'] ?? 'All') ?></td>
+                                <td>
+                                    <?php 
+                                        if (!empty($row['project_ids'])) {
+                                            $pIds = json_decode($row['project_ids'], true);
+                                            echo "Selected " . count($pIds) . " project(s)";
+                                        } else {
+                                            echo "All/None";
+                                        }
+                                    ?>
+                                </td>
                                 <td><?= $row['site_visit_target'] ?></td>
                                 <td><?= $row['booking_target'] ?></td>
                                 <td><?= number_format($row['booking_value_target'], 2) ?></td>
@@ -111,6 +146,8 @@ $show_breadcrumb = true;
                                         data-bs-target="#editSalesTarget"
                                         data-id="<?= $row['id'] ?>"
                                         data-month="<?= $row['month'] ?>"
+                                        data-category="<?= $row['category_id'] ?>"
+                                        data-projects="<?= htmlspecialchars($row['project_ids']) ?>"
                                         data-site_visit="<?= $row['site_visit_target'] ?>"
                                         data-booking="<?= $row['booking_target'] ?>"
                                         data-booking_value="<?= $row['booking_value_target'] ?>">
@@ -156,6 +193,28 @@ $show_breadcrumb = true;
                             <div class="col-lg-6 mb-3">
                                 <label>Month <span>*</span></label>
                                 <input type="month" name="month" id="edit_target_month" class="form-control" required>
+                            </div>
+
+                            <!-- Category -->
+                            <div class="col-lg-6 mb-3">
+                                <label>Assigned Category (Optional)</label>
+                                <select name="category_id" id="edit_target_category" class="form-control">
+                                    <option value="">-- Select Category --</option>
+                                    <?php foreach ($categories as $cat): ?>
+                                        <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['category_name']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <!-- Project -->
+                            <div class="col-lg-6 mb-3">
+                                <label>Assigned Project(s) (Optional)</label>
+                                <select name="project_ids[]" id="edit_target_project" class="form-control" multiple size="4">
+                                    <?php foreach ($projects as $proj): ?>
+                                        <option value="<?= $proj['id'] ?>" data-category="<?= $proj['category_id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small class="text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</small>
                             </div>
 
                             <!-- Site Visit Target -->
@@ -204,14 +263,50 @@ $show_breadcrumb = true;
 
         const id = button.getAttribute('data-id');
         const month = button.getAttribute('data-month');
+        const category = button.getAttribute('data-category');
+        let projects = [];
+        try { projects = JSON.parse(button.getAttribute('data-projects') || "[]"); } catch(e){}
         const siteVisit = button.getAttribute('data-site_visit');
         const booking = button.getAttribute('data-booking');
         const bookingValue = button.getAttribute('data-booking_value');
 
         document.getElementById('edit_target_id').value = id;
         document.getElementById('edit_target_month').value = month ? month.substring(0, 7) : '';
+        document.getElementById('edit_target_category').value = category || '';
         document.getElementById('edit_target_site_visit').value = siteVisit ?? 0;
         document.getElementById('edit_target_booking').value = booking ?? 0;
         document.getElementById('edit_target_booking_value').value = bookingValue ?? 0;
+
+        const projSelect = document.getElementById('edit_target_project');
+        for (let i = 0; i < projSelect.options.length; i++) {
+            projSelect.options[i].selected = projects.includes(projSelect.options[i].value);
+        }
+    });
+
+    // Filter projects by category
+    document.getElementById('category_select').addEventListener('change', function() {
+        const catId = this.value;
+        const projs = document.getElementById('project_select').options;
+        for (let i = 0; i < projs.length; i++) {
+            if (!catId || projs[i].getAttribute('data-category') == catId) {
+                projs[i].style.display = 'block';
+            } else {
+                projs[i].style.display = 'none';
+                projs[i].selected = false;
+            }
+        }
+    });
+    
+    document.getElementById('edit_target_category').addEventListener('change', function() {
+        const catId = this.value;
+        const projs = document.getElementById('edit_target_project').options;
+        for (let i = 0; i < projs.length; i++) {
+            if (!catId || projs[i].getAttribute('data-category') == catId) {
+                projs[i].style.display = 'block';
+            } else {
+                projs[i].style.display = 'none';
+                projs[i].selected = false;
+            }
+        }
     });
 </script>
