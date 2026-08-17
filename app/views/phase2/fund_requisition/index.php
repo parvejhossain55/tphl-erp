@@ -1431,9 +1431,15 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
     } elseif ($req['status'] === 'approved') {
         $statusClass = 'bg-primary-transparent text-primary border border-primary';
         $statusText = 'Approved';
+    } elseif ($req['status'] === 'partially_approved') {
+        $statusClass = 'bg-primary-transparent text-primary border border-primary';
+        $statusText = 'Partially Approved (BDT ' . number_format($req['approved_amount'] ?? 0, 2) . ')';
     } elseif ($req['status'] === 'paid') {
         $statusClass = 'bg-success-transparent text-success border border-success';
         $statusText = 'Paid';
+    } elseif ($req['status'] === 'partially_paid') {
+        $statusClass = 'bg-success-transparent text-success border border-success';
+        $statusText = 'Partially Paid (BDT ' . number_format($req['paid_amount'] ?? 0, 2) . ')';
     } elseif ($req['status'] === 'rejected') {
         $statusClass = 'bg-danger-transparent text-danger border border-danger';
         $statusText = 'Rejected';
@@ -1525,6 +1531,10 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
                 <div class="fs-9 text-muted mt-1">
                     Pending: <?= htmlspecialchars(($req['reporting_boss_name'] ?? 'Dept Head') . (!empty($req['reporting_boss_designation_name']) ? ' (' . $req['reporting_boss_designation_name'] . ')' : '')) ?>
                 </div>
+            <?php elseif (in_array($req['status'], ['partially_approved', 'partially_paid'])): ?>
+                <div class="fs-9 text-muted mt-1">
+                    Pending: for remaining amount
+                </div>
             <?php elseif ($req['status'] === 'pending'): ?>
                 <div class="fs-9 text-muted mt-1">
                     Pending: Management or Operation
@@ -1568,18 +1578,18 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
                 <?php endif; ?>
 
                 <!-- Management Approval button (role 1, 3, 20 for pending requisitions) -->
-                <?php if ($req['status'] === 'pending' && in_array($roleId, [1, 3, 20])): ?>
+                <?php if (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) && in_array($roleId, [1, 3, 20])): ?>
                     <button type="button" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1" 
-                            onclick="openApproveModal(<?= $req['id'] ?>, '<?= addslashes($req['requester_name']) ?>', '<?= addslashes($req['department_name']) ?>', '<?= $req['requisition_type'] ?>', <?= $req['amount'] ?>)">
-                        <i class="fa-solid fa-stamp"></i> Approve
+                            onclick="window.location.href='<?= $GLOBALS['base_url'] ?>/fund-requisitions/view/<?= $req['id'] ?>'">
+                        <i class="fa-solid fa-stamp"></i> <?= $req['status'] === 'pending' ? 'Approve' : 'Approve Remaining' ?>
                     </button>
                 <?php endif; ?>
 
                 <!-- Accounts Payment button (role 1, 6 for approved requisitions) -->
-                <?php if ($req['status'] === 'approved' && in_array($roleId, [1, 6])): ?>
+                <?php if (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid']) && in_array($roleId, [1, 6])): ?>
                     <button type="button" class="btn btn-sm btn-success d-inline-flex align-items-center gap-1" 
-                            onclick="openPayModal(<?= $req['id'] ?>, '<?= addslashes($req['requester_name']) ?>', '<?= addslashes($req['department_name']) ?>', '<?= $req['requisition_type'] ?>', <?= $req['amount'] ?>)">
-                        <i class="fa-solid fa-file-invoice-dollar"></i> Pay
+                            onclick="window.location.href='<?= $GLOBALS['base_url'] ?>/fund-requisitions/view/<?= $req['id'] ?>'">
+                        <i class="fa-solid fa-file-invoice-dollar"></i> <?= $req['status'] === 'approved' ? 'Pay' : 'Pay Remaining' ?>
                     </button>
                 <?php endif; ?>
                 

@@ -140,8 +140,9 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
             <div class="card border-0 shadow-sm h-100 rounded-3">
                 <div class="card-body p-3 d-flex align-items-center justify-content-between">
                     <div>
-                        <span class="text-muted fs-11 text-uppercase fw-bold d-block">Amount Requested</span>
-                        <h4 class="fw-extrabold text-primary mb-0 mt-1">&#2547; <?php echo number_format($req['amount'], 2); ?></h4>
+                        <span class="text-muted fs-11 text-uppercase fw-bold d-block">Req / Approved</span>
+                        <div class="fw-extrabold text-primary mt-1 fs-15">&#2547; <?php echo number_format($req['amount'], 2); ?></div>
+                        <div class="fs-12 text-muted mt-1 fw-medium">App: &#2547; <?php echo number_format($req['approved_amount'] ?? (in_array($req['status'], ['approved','paid']) ? $req['amount'] : 0), 2); ?></div>
                     </div>
                     <div class="avatar avatar-md bg-primary-transparent rounded-circle fs-18">
                         <i class="fa-solid fa-wallet text-primary"></i>
@@ -154,11 +155,12 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
             <div class="card border-0 shadow-sm h-100 rounded-3">
                 <div class="card-body p-3 d-flex align-items-center justify-content-between">
                     <div>
-                        <span class="text-muted fs-11 text-uppercase fw-bold d-block">Total Spent</span>
-                        <h4 class="fw-extrabold text-info mb-0 mt-1">&#2547; <?php echo number_format($totalSpent, 2); ?></h4>
+                        <span class="text-muted fs-11 text-uppercase fw-bold d-block">Paid / Spent</span>
+                        <div class="fw-extrabold text-success mt-1 fs-15">&#2547; <?php echo number_format($req['paid_amount'] ?? ($req['status'] === 'paid' ? ($req['approved_amount'] ?? $req['amount']) : 0), 2); ?></div>
+                        <div class="fs-12 text-muted mt-1 fw-medium">Spent: &#2547; <?php echo number_format($totalSpent, 2); ?></div>
                     </div>
-                    <div class="avatar avatar-md bg-info-transparent rounded-circle fs-18">
-                        <i class="fa-solid fa-receipt text-info"></i>
+                    <div class="avatar avatar-md bg-success-transparent rounded-circle fs-18">
+                        <i class="fa-solid fa-receipt text-success"></i>
                     </div>
                 </div>
             </div>
@@ -171,8 +173,8 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                         <span class="text-muted fs-11 text-uppercase fw-bold d-block">Balance Remaining</span>
                         <h4 class="fw-extrabold mb-0 mt-1 <?php echo $balance > 0 ? 'text-success' : 'text-muted'; ?>">&#2547; <?php echo number_format($balance, 2); ?></h4>
                     </div>
-                    <div class="avatar avatar-md bg-success-transparent rounded-circle fs-18">
-                        <i class="fa-solid fa-coins text-success"></i>
+                    <div class="avatar avatar-md bg-warning-transparent rounded-circle fs-18">
+                        <i class="fa-solid fa-coins text-warning"></i>
                     </div>
                 </div>
             </div>
@@ -184,11 +186,11 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                     <div>
                         <span class="text-muted fs-11 text-uppercase fw-bold d-block">Requisition Status</span>
                         <div class="mt-1">
-                            <span class="badge <?php echo $statusClass; ?> px-3 py-1 fs-12 text-capitalize"><?php echo ucfirst($req['status']); ?></span>
+                            <span class="badge <?php echo $statusClass; ?> px-3 py-1 fs-12 text-capitalize"><?php echo ucfirst(str_replace('_', ' ', $req['status'])); ?></span>
                         </div>
                     </div>
-                    <div class="avatar avatar-md bg-warning-transparent rounded-circle fs-18">
-                        <i class="fa-solid fa-circle-nodes text-warning"></i>
+                    <div class="avatar avatar-md bg-secondary-transparent rounded-circle fs-18">
+                        <i class="fa-solid fa-circle-nodes text-secondary"></i>
                     </div>
                 </div>
             </div>
@@ -434,14 +436,25 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                                         <p class="fs-12 text-muted mb-0 mt-1 bg-light p-2 rounded border"><?php echo htmlspecialchars($req['approval_note']); ?></p>
                                     <?php endif; ?>
                                 </div>
-                            <?php elseif ($req['status'] === 'pending'): ?>
+                            <?php elseif (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid'])): ?>
                                 <div class="avatar avatar-sm bg-warning text-dark rounded-circle flex-shrink-0 z-1 fs-12">
                                     <i class="fa-solid fa-clock"></i>
                                 </div>
                                 <div>
-                                    <h6 class="fw-bold fs-13 mb-0 text-dark">Pending Management Approval</h6>
-                                    <p class="fs-12 text-muted mb-0 mt-1">Awaiting approval from Management / Operations</p>
-                                    <?php if ($canApprove): ?>
+                                    <h6 class="fw-bold fs-13 mb-0 text-dark">
+                                        <?php echo $req['status'] === 'pending' ? 'Pending Management Approval' : 'Partially Approved'; ?>
+                                    </h6>
+                                    <p class="fs-12 text-muted mb-0 mt-1">
+                                        <?php echo $req['status'] === 'pending' ? 'Awaiting approval from Management / Operations' : 'Awaiting approval for the remaining balance'; ?>
+                                    </p>
+                                    
+                                    <?php if ($req['status'] !== 'pending'): ?>
+                                        <div class="bg-light p-2 rounded fs-12 mt-2 text-dark border">
+                                            <strong>Partially Approved So Far:</strong> &#2547; <?php echo number_format($req['approved_amount'] ?? 0, 2); ?>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if ($canApprove && ($req['amount'] - ($req['approved_amount'] ?? 0)) > 0): ?>
                                         <button class="btn btn-sm btn-primary mt-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#approveModal">
                                             <i class="fa-solid fa-stamp me-1"></i> Management Approve / Reject
                                         </button>
@@ -488,16 +501,25 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                                         </a>
                                     <?php endif; ?>
                                 </div>
-                            <?php elseif ($req['status'] === 'approved' && $isAccounts): ?>
+                            <?php elseif (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'])): ?>
                                 <div class="avatar avatar-sm bg-info text-white rounded-circle flex-shrink-0 z-1 fs-12">
                                     <i class="fa-solid fa-hand-holding-dollar"></i>
                                 </div>
                                 <div>
                                     <h6 class="fw-bold fs-13 mb-0 text-dark">Ready for Accounts Disbursement</h6>
-                                    <p class="fs-12 text-muted mb-0 mt-1">Requisition is approved. Accounts team can process payout.</p>
+                                    <p class="fs-12 text-muted mb-0 mt-1">Accounts team can process payout for the approved amount.</p>
+                                    
+                                    <?php if ($req['status'] === 'partially_paid'): ?>
+                                        <div class="bg-light p-2 rounded fs-12 mt-2 text-dark border">
+                                            <strong>Partially Paid So Far:</strong> &#2547; <?php echo number_format($req['paid_amount'] ?? 0, 2); ?>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if ($isAccounts && (($req['approved_amount'] ?? $req['amount']) - ($req['paid_amount'] ?? 0)) > 0): ?>
                                     <button class="btn btn-sm btn-success mt-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#payModal">
                                         <i class="fa-solid fa-file-invoice-dollar me-1"></i> Process Payment Now
                                     </button>
+                                    <?php endif; ?>
                                 </div>
                             <?php else: ?>
                                 <div class="avatar avatar-sm bg-light text-muted rounded-circle flex-shrink-0 z-1 fs-12 border">
@@ -648,15 +670,29 @@ if ($req['status'] === 'pending_dept' && $canApproveDept):
 </div>
 <?php endif; ?>
 
-<?php if ($req['status'] === 'pending' && $canApprove): ?>
+<?php 
+$dueToApprove = $req['amount'] - ($req['approved_amount'] ?? 0);
+if (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) && $canApprove && $dueToApprove > 0): ?>
 <div class="modal fade" id="approveModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve" method="POST">
         <div class="modal-content">
             <div class="modal-header"><h5 class="modal-title">Approve / Reject Requisition</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <div class="mb-2 p-3 bg-light rounded border">
+                    <div class="fs-15 text-dark fw-bold mt-1">Due to Approve: &#2547; <?php echo number_format($dueToApprove, 2); ?></div>
+                </div>
                 <div class="mb-3"><label class="form-label">Action</label>
-                    <select name="status" class="form-select" required><option value="approved">Approve</option><option value="rejected">Reject</option></select></div>
+                    <select name="status" id="approve_action_select" class="form-select" required>
+                        <option value="approved">Approve (Full Due Amount)</option>
+                        <option value="partially_approved">Partially Approve</option>
+                        <option value="rejected">Reject</option>
+                    </select>
+                </div>
+                <div class="mb-3 d-none" id="partial_amount_div">
+                    <label class="form-label">Approved Amount (&#2547;)</label>
+                    <input type="number" name="approved_amount" class="form-control" step="0.01" max="<?php echo $dueToApprove; ?>" placeholder="0.00">
+                </div>
                 <div class="mb-3"><label class="form-label">Remarks</label>
                     <textarea name="approval_note" class="form-control" rows="3"></textarea></div>
             </div>
@@ -666,7 +702,9 @@ if ($req['status'] === 'pending_dept' && $canApproveDept):
 </div>
 <?php endif; ?>
 
-<?php if ($req['status'] === 'approved' && $isAccounts): ?>
+<?php 
+$dueToPay = ($req['approved_amount'] ?? $req['amount']) - ($req['paid_amount'] ?? 0);
+if (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid']) && $isAccounts && $dueToPay > 0): ?>
 <div class="modal fade" id="payModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/pay" method="POST" enctype="multipart/form-data">
         <div class="modal-content">
@@ -675,7 +713,17 @@ if ($req['status'] === 'pending_dept' && $canApproveDept):
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
                 <div class="mb-2 p-3 bg-light rounded border">
                     <strong><?php echo htmlspecialchars($req['requester_name']??'---'); ?></strong> &mdash; <?php echo htmlspecialchars($req['department_name']??''); ?>
-                    <div class="fs-18 text-success fw-bold mt-1">&#2547; <?php echo number_format($req['amount'],2); ?></div>
+                    <div class="fs-18 text-success fw-bold mt-1">Due to Pay: &#2547; <?php echo number_format($dueToPay, 2); ?></div>
+                </div>
+                <div class="mb-3"><label class="form-label">Action</label>
+                    <select name="status" id="pay_action_select" class="form-select" required>
+                        <option value="paid">Pay (Full Due Amount)</option>
+                        <option value="partially_paid">Partially Pay</option>
+                    </select>
+                </div>
+                <div class="mb-3 d-none" id="pay_amount_div">
+                    <label class="form-label">Paid Amount (&#2547;)</label>
+                    <input type="number" name="paid_amount" class="form-control" step="0.01" max="<?php echo $dueToPay; ?>" placeholder="0.00">
                 </div>
                 <div class="mb-3"><label class="form-label">Payment Method</label>
                     <select name="payment_method" class="form-select"><option value="Cash" selected>Cash</option><option value="Bank Transfer">Bank Transfer</option><option value="Cheque">Cheque</option><option value="bKash">bKash</option><option value="Nagad">Nagad</option></select></div>
@@ -827,5 +875,34 @@ if ($req['status'] === 'pending_dept' && $canApproveDept):
     }
     window.onbeforeprint = setPrintDate;
     document.addEventListener('DOMContentLoaded', setPrintDate);
+
+    // Toggle partial approve/pay fields
+    var approveSelect = document.getElementById('approve_action_select');
+    var approveDiv = document.getElementById('partial_amount_div');
+    if (approveSelect && approveDiv) {
+        approveSelect.addEventListener('change', function() {
+            if (this.value === 'partially_approved') {
+                approveDiv.classList.remove('d-none');
+                approveDiv.querySelector('input').setAttribute('required', 'required');
+            } else {
+                approveDiv.classList.add('d-none');
+                approveDiv.querySelector('input').removeAttribute('required');
+            }
+        });
+    }
+
+    var paySelect = document.getElementById('pay_action_select');
+    var payDiv = document.getElementById('pay_amount_div');
+    if (paySelect && payDiv) {
+        paySelect.addEventListener('change', function() {
+            if (this.value === 'partially_paid') {
+                payDiv.classList.remove('d-none');
+                payDiv.querySelector('input').setAttribute('required', 'required');
+            } else {
+                payDiv.classList.add('d-none');
+                payDiv.querySelector('input').removeAttribute('required');
+            }
+        });
+    }
 })();
 </script>

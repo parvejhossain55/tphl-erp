@@ -241,7 +241,7 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if (false && ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [6]))): ?>
+                <?php if ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [6])): ?>
                     <!-- All Approval Requests for Management & Accounts -->
                     <li class="slide <?= isActive('all-approval-requests', $current_route) ?>">
                         <a href="<?= $base_url ?>/all-approval-requests" class="sidebar__menu-item <?= isActive('all-approval-requests', $current_route) ?>">

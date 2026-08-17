@@ -5,7 +5,7 @@
 // 3 = Production Server
 
 
-$current_server = 3; 
+$current_server = 1; 
 // Local Development Server
 if ($current_server == 1) {
     return [
@@ -110,7 +110,7 @@ if ($current_server == 3) {
 
 
 // -- ধাপ ১: EMI শিডিউল ডিলিট করা
-// DELETE FROM emi_schedules 
+// DELETE FROM emi_schedules  
 // WHERE lead_payment_id IN (
 //     SELECT lp.id 
 //     FROM lead_payments lp
