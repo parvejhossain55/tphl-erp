@@ -196,6 +196,10 @@ return [
     'incentives/approve' => ['controller' => 'IncentiveController', 'method' => 'approveClaim'],
     'incentives/reject' => ['controller' => 'IncentiveController', 'method' => 'rejectClaim'],
     'incentives/disburse' => ['controller' => 'IncentiveController', 'method' => 'disbursePayment'],
+    'incentive-config' => ['controller' => 'IncentiveController', 'method' => 'configSettings'],
+    'incentives/save-settings' => ['controller' => 'IncentiveController', 'method' => 'saveSettings'],
+    'incentives/save-slab' => ['controller' => 'IncentiveController', 'method' => 'saveSlab'],
+    'incentives/save-hierarchy' => ['controller' => 'IncentiveController', 'method' => 'saveHierarchy'],
 
     // =========================================================================
     // Controller: ApprovalRequestController (All Approval Requests Dashboard)

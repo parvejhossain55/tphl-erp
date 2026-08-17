@@ -268,4 +268,8 @@ return [
     // Controller: VoucherController
     // =========================================================================
     'print-debit-voucher' => ['controller' => 'VoucherController', 'method' => 'printDebitVoucher'],
+    'trash-client-payment' => ['controller' => 'AccountClientController', 'method' => 'trashTransaction'],
+    'trash-client-payment-list' => ['controller' => 'AccountClientController', 'method' => 'trashList'],
+    'restore-client-payment' => ['controller' => 'AccountClientController', 'method' => 'restoreTransaction'],
+
 ];

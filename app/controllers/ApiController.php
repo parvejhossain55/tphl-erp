@@ -219,11 +219,8 @@ class ApiController extends Controller
                 }
             }
 
-            // ==========================================
             // Updated Price Logic: Use Flats table price
-            // ==========================================
             $flatPrice = $flat ? (float)$flat['price_value'] : 0;
-            // Fallback to agreement value if flat price is zero/empty
             if ($flatPrice <= 0) {
                 $flatPrice = (float)$booking['agreement_value'];
             }
@@ -246,13 +243,42 @@ class ApiController extends Controller
             $penaltyPaid = 0;
             $penaltyWaived = 0;
 
-            $pRes = $this->db->query("SELECT * FROM lead_payments WHERE booking_id = $bookingId AND payment_status IN ('paid', 'partially_paid')");
+            // Arrays for breakdowns
+            $landShareHistory = [];
+            $devChargeHistory = [];
+
+            // Query updated to order by date for correct history timeline
+            $pRes = $this->db->query("SELECT * FROM lead_payments WHERE booking_id = $bookingId AND payment_status IN ('paid', 'partially_paid') ORDER BY payment_date ASC, id ASC");
             if ($pRes) {
                 while ($p = $pRes->fetch_assoc()) {
-                    if ($p['verification_status'] === 'verified') {
-                        $amt = (float)$p['amount'];
+                    $amt = (float)$p['amount'];
+                    $ptype = $p['payment_type'];
+                    $vStatus = $p['verification_status'];
+
+                    // Capture Land Share and Registration History
+                    if (in_array($ptype, ['booking_money', 'registration', 'mutation_cost', 'land_share'])) {
+                        $landShareHistory[] = [
+                            "payment_id" => $p['id'],
+                            "payment_type" => $ptype,
+                            "amount_paid" => $amt,
+                            "payment_date" => $p['payment_date'] ?: 'N/A',
+                            "verification_status" => $vStatus
+                        ];
+                    }
+
+                    // Capture Development Charge History
+                    if ($ptype === 'development_charge') {
+                        $devChargeHistory[] = [
+                            "payment_id" => $p['id'],
+                            "payment_type" => $ptype,
+                            "amount_paid" => $amt,
+                            "payment_date" => $p['payment_date'] ?: 'N/A',
+                            "verification_status" => $vStatus
+                        ];
+                    }
+
+                    if ($vStatus === 'verified') {
                         $totalPaid += $amt;
-                        $ptype = $p['payment_type'];
 
                         if ($ptype === 'booking_money') $bookingMoneyPaid += $amt;
                         else if ($ptype === 'registration') $registrationPaid += $amt;
@@ -268,8 +294,6 @@ class ApiController extends Controller
                         $bulkEmiDiscount += (float)$p['bulk_emi_discount'];
                         $penaltyCharged += (float)$p['penalty_amount'];
                     } else {
-                        $amt = (float)$p['amount'];
-                        $ptype = $p['payment_type'];
                         if (in_array($ptype, ['emi', 'emi_due_settlement'])) {
                             $unverifiedEmiPaid += $amt;
                         }
@@ -306,6 +330,47 @@ class ApiController extends Controller
             if ($unverifiedEmiRes && $unverifiedEmiRes->num_rows > 0) {
                 $unverifiedEmiCount = (int)$unverifiedEmiRes->fetch_assoc()['cnt'];
             }
+            
+            // EMI History Breakdown Query
+            $emiHistory = [];
+            $emiQuery = $this->db->query("
+                SELECT lp.id, lp.amount, lp.payment_date, lp.payment_type, lp.verification_status, 
+                       es.emi_no, es.due_date, es.emi_amount as target_amount
+                FROM lead_payments lp 
+                LEFT JOIN emi_schedules es ON lp.id = es.lead_payment_id 
+                WHERE lp.booking_id = $bookingId 
+                  AND lp.payment_type IN ('emi', 'emi_due_settlement')
+                  AND lp.payment_status IN ('paid', 'partially_paid')
+                ORDER BY lp.payment_date ASC, lp.id ASC
+            ");
+            
+            if ($emiQuery) {
+                while ($row = $emiQuery->fetch_assoc()) {
+                    $paid = (float)$row['amount'];
+                    $target = (float)$row['target_amount'];
+                    
+                    if ($row['emi_no'] && $target <= 0) {
+                        $target = $perEmiAmount;
+                    }
+                    
+                    $due_for_this_emi = 0;
+                    if ($row['emi_no']) {
+                        $due_for_this_emi = max(0, $target - $paid);
+                    }
+
+                    $emiHistory[] = [
+                        "payment_id" => $row['id'],
+                        "payment_type" => $row['payment_type'], 
+                        "target_amount" => $row['emi_no'] ? $target : 0, 
+                        "amount_paid" => $paid, 
+                        "due_amount" => $due_for_this_emi, 
+                        "payment_date" => $row['payment_date'] ?: 'N/A',
+                        "emi_number" => $row['emi_no'] ? (int)$row['emi_no'] : null,
+                        "due_date" => $row['due_date'] ?: 'N/A',
+                        "verification_status" => $row['verification_status']
+                    ];
+                }
+            }
 
             $responseData['bookings'][] = [
                 "booking_id" => $bookingId,
@@ -327,29 +392,38 @@ class ApiController extends Controller
                         "booking_money_paid" => $bookingMoneyPaid,
                         "registration_money_paid" => $registrationPaid,
                         "total_land_share_paid" => ($bookingMoneyPaid + $registrationPaid),
-                        "land_share_due" => max(0, $landShareTarget - ($bookingMoneyPaid + $registrationPaid))
+                        "land_share_due" => max(0, $landShareTarget - ($bookingMoneyPaid + $registrationPaid)),
+                        // Land Share Breakdown
+                        "land_share_history" => $landShareHistory
                     ],
                     "development_charge_info" => [
                         "total_development_charge_target" => $devChargeTarget,
                         "development_charge_paid" => $devChargePaid,
-                        "development_charge_due" => max(0, $devChargeTarget - $devChargePaid)
+                        "development_charge_due" => max(0, $devChargeTarget - $devChargePaid),
+                        // Development Charge Breakdown
+                        "development_charge_history" => $devChargeHistory
                     ],
                     "emi_info" => [
-                        "total_verified_emi" => $completedEmiCount,
-                        "total_unverified_emi" => $unverifiedEmiCount,
-                        "total_emi_paid" => ($emiPaid + $unverifiedEmiPaid),
-                        
+                        "number_of_emis_paid" => ($completedEmiCount + $unverifiedEmiCount),
+                        "per_emi_amount" => $perEmiAmount,
+                        "current_running_emi_number" => ($completedEmiCount + $unverifiedEmiCount) + 1,
+                        "total_emi_amount_paid" => ($emiPaid + $unverifiedEmiPaid),
+
+                        "total_verified_emi_count" => $completedEmiCount,
+                        "total_unverified_emi_count" => $unverifiedEmiCount,
                         "verified_emi_amount_paid" => $emiPaid,
                         "unverified_emi_amount_paid" => $unverifiedEmiPaid,
-                        "per_emi_amount" => $perEmiAmount,
                         "due_emi_amount" => $totalDueEmi,
                         "total_service_fee_paid" => $totalServiceFee,
+                        
                         "penalty_info" => [
                             "total_penalty_charged" => $penaltyCharged,
                             "total_penalty_paid" => $penaltyPaid,
                             "total_penalty_waived" => $penaltyWaived,
                             "has_unpaid_penalty" => ($penaltyCharged > ($penaltyPaid + $penaltyWaived))
-                        ]
+                        ],
+                        
+                        "emi_history" => $emiHistory
                     ]
                 ]
             ];
@@ -362,5 +436,6 @@ class ApiController extends Controller
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         exit;
     }
+
 
 }

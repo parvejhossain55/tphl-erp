@@ -733,6 +733,7 @@ $show_breadcrumb = true;
                                                     $isAccountsHead = function_exists('isAccountsHead') ? isAccountsHead() : (($_SESSION['user']['role_id'] ?? 0) == 30);
                                                     $canEdit = (!$isVerified && $transaction['payment_type'] !== 'booking_money') || $isAccountsHead;
                                                     $canDelete = !$isVerified; // Keep delete logic standard
+                                                    $canTrash = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 30]);
                                                 ?>
                                                 <!-- EDIT BUTTON -->
                                                 <?php if ($canEdit): ?>
@@ -753,17 +754,23 @@ $show_breadcrumb = true;
                                                     <?php endif; ?>
                                                 <?php endif; ?>
 
-                                                <!-- DELETE BUTTON -->
-                                                <?php if ($canDelete): ?>
-                                                <a href="#" class="removeBtn table__icon delete"
+                                                <!-- TRASH / DELETE BUTTON -->
+                                                <?php if ($canTrash): ?>
+                                                <a href="#" class="delete-btn-custom table__icon delete"
+                                                    onclick="trashTransaction(<?= $transaction['id'] ?>, <?= $clientDetails['booking_id'] ?? 'null' ?>); return false;"
+                                                    title="Move to Trash">
+                                                    <i class="fa-regular fa-trash"></i>
+                                                </a>
+                                                <?php elseif ($canDelete): ?>
+                                                <a href="#" class="delete-btn-custom table__icon delete"
                                                     onclick="deleteTransaction(<?= $transaction['id'] ?>); return false;"
-                                                    title="Delete">
+                                                    title="Permanently Delete">
                                                     <i class="fa-regular fa-trash"></i>
                                                 </a>
                                                 <?php else: ?>
-                                                <span class="table__icon disabled" title="Verified — cannot delete" style="background-color: #d4edda; color: #155724;">
-                                                    <i class="fa-regular fa-lock"></i>
-                                                </span>
+                                                    <span class="table__icon disabled" title="Verified — cannot delete" style="background-color: #d4edda; color: #155724;">
+                                                        <i class="fa-regular fa-lock"></i>
+                                                    </span>
                                                 <?php endif; ?>
                                             <?php else: ?>
                                                 <span class="table__icon disabled" title="System Generated">
@@ -1565,6 +1572,23 @@ $show_breadcrumb = true;
                     title: 'Server Error',
                     text: 'Please try again later.'
                 });
+            }
+        });
+    }
+
+
+    function trashTransaction(paymentId, bookingId) {
+        Swal.fire({
+            title: 'Are you sure to move in trash?',
+            text: "You can revert this later because it is going to the trash.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ff9800',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, move to trash!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = `<?= $GLOBALS['base_url'] ?>/trash-client-payment?payment_id=${paymentId}&booking_id=${bookingId}`;
             }
         });
     }

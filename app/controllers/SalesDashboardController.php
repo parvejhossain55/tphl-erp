@@ -301,9 +301,6 @@ class SalesDashboardController extends Controller
             }
         }
 
-
-
-
         // Pass variables to view
         $this->view("sales-developments/sales-dashboard", [
             "current_route" => "sales-dashboard",
@@ -384,11 +381,15 @@ class SalesDashboardController extends Controller
     {
         $user = $this->userModel->find($id);
         $targets = $this->salesTargetModel->getAllTargets($id);
+        $projects = $this->db->query("SELECT id, name, category_id FROM projects WHERE deleted_at IS NULL")->fetch_all(MYSQLI_ASSOC);
+        $categories = $this->db->query("SELECT id, name AS category_name FROM project_categories")->fetch_all(MYSQLI_ASSOC);
 
         $this->view("sales-developments/set-sales-target", [
             "current_route" => "sales-executive-teams",
             'user' => $user,
-            'targets' => $targets
+            'targets' => $targets,
+            'projects' => $projects,
+            'categories' => $categories
         ]);
     }
 
@@ -398,6 +399,8 @@ class SalesDashboardController extends Controller
         $monthInput = $_POST['month']; // e.g. 2026-02
         $month = date('Y-m-01', strtotime($monthInput));
 
+        $categoryId = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
+        $projectIds = !empty($_POST['project_ids']) ? json_encode($_POST['project_ids']) : null;
         $siteVisit = $_POST['site_visit_target'] ?? 0;
         $bookingTarget = $_POST['booking_target'] ?? 0;
         $bookingValue = $_POST['booking_value_target'] ?? 0;
@@ -407,7 +410,9 @@ class SalesDashboardController extends Controller
             $month,
             $siteVisit,
             $bookingTarget,
-            $bookingValue
+            $bookingValue,
+            $categoryId,
+            $projectIds
         );
 
         if ($saved) {
@@ -424,21 +429,30 @@ class SalesDashboardController extends Controller
     {
         $id = $_POST['id']; // hidden input
         $monthInput = $_POST['month'];
+
         $month = date('Y-m-01', strtotime($monthInput));
+        
+        $categoryId = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
+        $projectIds = !empty($_POST['project_ids']) ? json_encode($_POST['project_ids']) : null;
+
         $siteVisit = $_POST['site_visit_target'] ?? 0;
         $booking = $_POST['booking_target'] ?? 0;
         $bookingValue = $_POST['booking_value_target'] ?? 0;
+        
+        $userId = $_POST['user_id'];
 
         $sql = "
         UPDATE sales_targets 
         SET month = ?, 
             site_visit_target = ?, 
             booking_target = ?, 
-            booking_value_target = ?
+            booking_value_target = ?,
+            category_id = ?,
+            project_ids = ?
         WHERE id = ?
     ";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("siiii", $month, $siteVisit, $booking, $bookingValue, $id);
+        $stmt->bind_param("siidisi", $month, $siteVisit, $booking, $bookingValue, $categoryId, $projectIds, $id);
         $stmt->execute();
 
         $_SESSION['success'] = "Target updated successfully!";
