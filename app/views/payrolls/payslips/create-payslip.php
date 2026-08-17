@@ -144,7 +144,7 @@
                                             <div class="col-12 mb-2">
                                                 <label class="form-label"><?= $item['name'] ?></label>
                                                 <input type="number" name="earning[<?= $item['id'] ?>]"
-                                                    class="form-control earning" 
+                                                    class="form-control earning"
                                                     data-item-name="<?= htmlspecialchars(strtolower(trim($item['name']))) ?>"
                                                     value="0">
                                             </div>
@@ -167,7 +167,7 @@
                                             <div class="col-12 mb-2">
                                                 <label class="form-label"><?= $item['name'] ?></label>
                                                 <input type="number" name="deduction[<?= $item['id'] ?>]"
-                                                    class="form-control deduction" 
+                                                    class="form-control deduction"
                                                     data-item-name="<?= htmlspecialchars(strtolower(trim($item['name']))) ?>"
                                                     value="0">
                                             </div>
@@ -266,21 +266,27 @@
             document.getElementById('mealCount').value = 0;
             document.getElementById('totalSubsidiaryLunch').value = 0;
             document.getElementById('perMealAmount').value = selected.getAttribute('data-per-meal-amount') || 0;
-            
+
             // Advance salary
             const advanceSalInput = document.querySelector('input[data-item-name="advance salary"]');
             if (advanceSalInput) advanceSalInput.value = selected.getAttribute('data-advance-salary') || 0;
 
             const rawJoining = selected.getAttribute('data-joining-date');
-            if (rawJoining) {
-                const jd = new Date(rawJoining);
-                if (!isNaN(jd.getTime())) {
-                    document.getElementById('joiningDate').value = jd.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-                } else {
-                    document.getElementById('joiningDate').value = rawJoining;
+            let formattedDate = rawJoining || '';
+            if (rawJoining && rawJoining.includes('-')) {
+                const parts = rawJoining.split('-');
+                if (parts.length === 3) {
+                    formattedDate = parts[2] + '-' + parts[1] + '-' + parts[0];
                 }
-            } else {
-                document.getElementById('joiningDate').value = '';
+            }
+
+            const jdInput = document.getElementById('joiningDate');
+            if (jdInput) {
+                jdInput.value = formattedDate;
+                jdInput.setAttribute('value', formattedDate);
+                if (typeof $ !== 'undefined') {
+                    $('#joiningDate').val(formattedDate).trigger('change');
+                }
             }
 
             calculateNetSalary();
