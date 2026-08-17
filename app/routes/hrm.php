@@ -260,4 +260,8 @@ return [
     'api/payroll/department-attendance' => ['controller' => 'PayrollController', 'method' => 'getDepartmentAttendance'],
     'store-bulk-payslips' => ['controller' => 'PayrollController', 'method' => 'storeBulkPayslips'],
     'disburse-batch-payslips' => ['controller' => 'PayrollController', 'method' => 'disburseBatch'],
+
+    // Payroll Workspace
+    'payroll-workspace' => ['controller' => 'PayrollController', 'method' => 'workspace'],
+    'payroll-workspace-pdf' => ['controller' => 'PayrollController', 'method' => 'exportWorkspacePDF'],
 ];

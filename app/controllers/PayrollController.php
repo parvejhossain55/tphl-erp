@@ -988,4 +988,308 @@ class PayrollController extends Controller
             exit;
         }
     }
+
+    public function workspace()
+    {
+        // Current month/year
+        $currentYear = date('Y');
+        $currentMonth = date('m');
+
+        // GET param use, fallback to current month/year
+        $selectedYear = isset($_GET['year']) ? $_GET['year'] : $currentYear;
+        $selectedMonth = isset($_GET['month']) ? $_GET['month'] : $currentMonth;
+
+        // Fetch dynamic payslip items
+        $items = $this->payslipItemModel->getAll(); // returns id, name, type etc.
+
+        // Build an exhaustive query joining payslips, employees, departments, designations
+        $query = "
+            SELECT p.*, 
+                   e.full_name, e.employee_id as emp_id, e.email, e.workplace, 
+                   e.joining_date, e.account_holder_name, e.account_number, e.bank_name,
+                   e.gross_salary as emp_gross, e.basic_salary as emp_basic,
+                   e.deleted_at,
+                   e.per_meal_amount,
+                   dept.name as department_name, desg.name as designation_name
+            FROM payslips p
+            LEFT JOIN employees e ON p.employee_id = e.id
+            LEFT JOIN departments dept ON e.department_id = dept.id
+            LEFT JOIN designations desg ON e.designation_id = desg.id
+            WHERE YEAR(p.payslip_month) = '$selectedYear' AND MONTH(p.payslip_month) = '$selectedMonth'
+            ORDER BY e.employee_id ASC
+        ";
+
+        $res = $this->db->query($query);
+        $payslips = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                // Fetch dynamic details for this payslip
+                $pid = (int) $row['id'];
+                $detQuery = "
+                    SELECT payslip_item_id, amount 
+                    FROM payslip_details 
+                    WHERE payslip_id = $pid
+                ";
+                $detRes = $this->db->query($detQuery);
+                $details = [];
+                if ($detRes) {
+                    while ($drow = $detRes->fetch_assoc()) {
+                        $details[$drow['payslip_item_id']] = (float) $drow['amount'];
+                    }
+                }
+                $row['dynamic_details'] = $details;
+                $payslips[] = $row;
+            }
+        }
+
+        $this->view("payrolls/payslips/workspace", [
+            "current_route" => "payroll-workspace",
+            "page_title" => "Payroll Workplace",
+            "payslips" => $payslips,
+            "items" => $items,
+            "selectedYear" => $selectedYear,
+            "selectedMonth" => $selectedMonth
+        ]);
+    }
+
+    public function exportWorkspacePDF()
+    {
+        $currentYear = date('Y');
+        $currentMonth = date('m');
+
+        $selectedYear = (!empty($_GET['year'])) ? $_GET['year'] : $currentYear;
+        $selectedMonth = (!empty($_GET['month'])) ? $_GET['month'] : $currentMonth;
+
+        $items = $this->payslipItemModel->getAll();
+
+        $query = "
+            SELECT p.*, 
+                   e.full_name, e.employee_id as emp_id, e.email, e.workplace, 
+                   e.joining_date, e.account_holder_name, e.account_number, e.bank_name,
+                   e.gross_salary as emp_gross, e.basic_salary as emp_basic,
+                   e.deleted_at,
+                   e.per_meal_amount,
+                   dept.name as department_name, desg.name as designation_name
+            FROM payslips p
+            LEFT JOIN employees e ON p.employee_id = e.id
+            LEFT JOIN departments dept ON e.department_id = dept.id
+            LEFT JOIN designations desg ON e.designation_id = desg.id
+            WHERE YEAR(p.payslip_month) = '$selectedYear' AND MONTH(p.payslip_month) = '$selectedMonth'
+            ORDER BY e.employee_id ASC
+        ";
+
+        $res = $this->db->query($query);
+        $payslips = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $pid = (int) $row['id'];
+                $detQuery = "SELECT payslip_item_id, amount FROM payslip_details WHERE payslip_id = $pid";
+                $detRes = $this->db->query($detQuery);
+                $details = [];
+                if ($detRes) {
+                    while ($drow = $detRes->fetch_assoc()) {
+                        $details[$drow['payslip_item_id']] = (float) $drow['amount'];
+                    }
+                }
+                $row['dynamic_details'] = $details;
+                $payslips[] = $row;
+            }
+        }
+
+        // Use A2 size landscape to comfortably fit 30+ columns
+        $pdf = new \TCPDF('L', 'mm', 'A2');
+        $pdf->SetCreator('TPHL ERP');
+        $pdf->SetAuthor('Admin');
+        $pdf->SetTitle('Payroll Workplace Report');
+        $pdf->SetMargins(10, 10, 10);
+        $pdf->SetAutoPageBreak(TRUE, 10);
+        $pdf->AddPage();
+
+        $pdf->SetFont('helvetica', '', 7);
+
+        $monthName = date('F', mktime(0, 0, 0, $selectedMonth, 1));
+
+        $html = '
+        <div style="text-align:center;">
+            <h1 style="color:#078134;">The Premium Homes Ltd</h1>
+            <h3 style="color:#28B463;">Payroll Workplace Report (' . $monthName . ' ' . $selectedYear . ')</h3>
+            <p style="font-size:14px;"><b>Total Employees: </b> ' . count($payslips) . '</p>
+        </div>
+        <br>
+        <table border="1" cellpadding="3" width="100%">
+            <thead>
+                <tr style="background-color:#078134; color:#ffffff; text-align:center; font-weight:bold;">
+                    <th>SL</th>
+                    <th>Department</th>
+                    <th>Name</th>
+                    <th>ID</th>
+                    <th>Workplace</th>
+                    <th>Designation</th>
+                    <th>Basic Salary</th>';
+
+        foreach ($items as $item) {
+            if ($item['type'] === 'earning') {
+                $html .= '<th>' . htmlspecialchars($item['name']) . '</th>';
+            }
+        }
+
+        $html .= '
+                    <th>Gross</th>
+                    <th>Daily Salary</th>
+                    <th>Advance Salary</th>
+                    <th>Meal Count</th>
+                    <th>Sub Lunch</th>
+                    <th>L/U/A (Days)</th>
+                    <th>L/U/A (Amt)</th>';
+
+        foreach ($items as $item) {
+            if ($item['type'] === 'deduction') {
+                $lname = strtolower($item['name']);
+                if (strpos($lname, 'advance') === false && strpos($lname, 'lunch') === false && strpos($lname, 'absent') === false) {
+                    $html .= '<th>' . htmlspecialchars($item['name']) . '</th>';
+                }
+            }
+        }
+
+        $html .= '
+                    <th>Punctuality Bonus</th>
+                    <th>Overtime</th>
+                    <th>Arrear</th>
+                    <th>Other Allow</th>
+                    <th>Joining Date</th>
+                    <th>Resign Date</th>
+                    <th>Eff. Days</th>
+                    <th>Net Salary</th>
+                    <th>Tax</th>
+                    <th>Net Payable</th>
+                    <th>Bank</th>
+                    <th>Cash</th>
+                    <th>A/C Name</th>
+                    <th>A/C No</th>
+                    <th>Amount</th>
+                    <th>ID Check</th>
+                </tr>
+            </thead>
+            <tbody>';
+
+        $sl = 1;
+        if (empty($payslips)) {
+            $html .= '<tr><td colspan="30" style="text-align:center;"><b>No payslips found for this period.</b></td></tr>';
+        }
+        foreach ($payslips as $p) {
+            $gross = (float) $p['emp_gross'];
+            $basic = (float) $p['emp_basic'];
+            $daily = $gross / 30;
+            $netSalary = (float) $p['net_salary'];
+            $paymentMethod = strtolower($p['payment_method']);
+            $bank = ($paymentMethod == 'bank' || $paymentMethod == 'bank transfer') ? $netSalary : 0;
+            $cash = ($paymentMethod == 'cash') ? $netSalary : 0;
+
+            $advanceSalary = 0;
+            $mealCount = 0;
+            $subsidizeLunch = 0;
+            $unpaidAbsents = 0;
+            $punctBonus = 0;
+            $overtime = 0;
+            $arrear = 0;
+            $tax = 0;
+            $otherAllow = 0;
+
+            foreach ($items as $i) {
+                $amt = isset($p['dynamic_details'][$i['id']]) ? (float) $p['dynamic_details'][$i['id']] : 0;
+                $lname = strtolower($i['name']);
+                if (strpos($lname, 'advance') !== false) {
+                    $advanceSalary += $amt;
+                }
+                if (strpos($lname, 'lunch') !== false || strpos($lname, 'meal') !== false) {
+                    $subsidizeLunch += $amt;
+                    $perMeal = (float) ($p['per_meal_amount'] ?? 0);
+                    if ($perMeal > 0 && $amt > 0) {
+                        $mealCount = $amt / $perMeal;
+                    }
+                }
+                if (strpos($lname, 'lwp') !== false || strpos($lname, 'absent') !== false) {
+                    $unpaidAbsents += $amt;
+                }
+                if (strpos($lname, 'punctuality') !== false) {
+                    $punctBonus += $amt;
+                }
+                if (strpos($lname, 'overtime') !== false) {
+                    $overtime += $amt;
+                }
+                if (strpos($lname, 'arrear') !== false) {
+                    $arrear += $amt;
+                }
+                if (strpos($lname, 'tax') !== false) {
+                    $tax += $amt;
+                }
+                if (strpos($lname, 'duty') !== false || strpos($lname, 'food') !== false || strpos($lname, 'car') !== false) {
+                    $otherAllow += $amt;
+                }
+            }
+
+            $html .= '<tr style="text-align:center;">
+                <td>' . $sl++ . '</td>
+                <td>' . htmlspecialchars($p['department_name'] ?? 'N/A') . '</td>
+                <td>' . htmlspecialchars($p['full_name']) . '</td>
+                <td>' . htmlspecialchars($p['emp_id']) . '</td>
+                <td>' . htmlspecialchars($p['workplace'] ?? 'N/A') . '</td>
+                <td>' . htmlspecialchars($p['designation_name'] ?? 'N/A') . '</td>
+                <td>' . number_format($basic, 2) . '</td>';
+
+            foreach ($items as $item) {
+                if ($item['type'] === 'earning') {
+                    $html .= '<td>' . number_format($p['dynamic_details'][$item['id']] ?? 0, 2) . '</td>';
+                }
+            }
+
+            $html .= '
+                <td>' . number_format($gross, 2) . '</td>
+                <td>' . number_format($daily, 2) . '</td>
+                <td>' . number_format($advanceSalary, 2) . '</td>
+                <td>' . $mealCount . '</td>
+                <td>' . number_format($subsidizeLunch, 2) . '</td>
+                <td>0</td>
+                <td>' . number_format($unpaidAbsents, 2) . '</td>';
+
+            foreach ($items as $item) {
+                if ($item['type'] === 'deduction') {
+                    $lname = strtolower($item['name']);
+                    if (strpos($lname, 'advance') === false && strpos($lname, 'lunch') === false && strpos($lname, 'absent') === false) {
+                        $html .= '<td>' . number_format($p['dynamic_details'][$item['id']] ?? 0, 2) . '</td>';
+                    }
+                }
+            }
+
+            $joinDate = !empty($p['joining_date']) ? date('d-M-y', strtotime($p['joining_date'])) : '';
+            $resignDate = !empty($p['deleted_at']) ? date('d-M-y', strtotime($p['deleted_at'])) : '';
+
+            $html .= '
+                <td>' . ($punctBonus > 0 ? number_format($punctBonus, 2) : '0.00') . '</td>
+                <td>' . ($overtime > 0 ? number_format($overtime, 2) : '0.00') . '</td>
+                <td>' . ($arrear > 0 ? number_format($arrear, 2) : '0.00') . '</td>
+                <td>' . ($otherAllow > 0 ? number_format($otherAllow, 2) : '0.00') . '</td>
+                <td>' . ($joinDate ?: '&nbsp;') . '</td>
+                <td>' . ($resignDate ?: '&nbsp;') . '</td>
+                <td>30</td>
+                <td>' . number_format($netSalary, 2) . '</td>
+                <td>' . number_format($tax, 2) . '</td>
+                <td>' . number_format($netSalary, 2) . '</td>
+                <td>' . number_format($bank, 2) . '</td>
+                <td>' . number_format($cash, 2) . '</td>
+                <td>' . (!empty($p['account_holder_name']) ? htmlspecialchars($p['account_holder_name']) : '&nbsp;') . '</td>
+                <td>' . (!empty($p['account_number']) ? htmlspecialchars($p['account_number']) : '&nbsp;') . '</td>
+                <td>' . number_format($bank, 2) . '</td>
+                <td>&nbsp;</td>
+            </tr>';
+        }
+
+        $html .= '</tbody></table>';
+
+        $pdf->writeHTML($html, true, false, true, false, '');
+
+        ob_end_clean();
+        $pdf->Output('Payroll_Workspace_Report_' . $monthName . '_' . $selectedYear . '.pdf', 'D');
+        exit;
+    }
 }
