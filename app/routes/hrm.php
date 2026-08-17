@@ -272,4 +272,8 @@ return [
     // Payroll Attendance Report
     'payroll-attendance-report' => ['controller' => 'PayrollController', 'method' => 'attendanceReport'],
     'payroll-attendance-pdf' => ['controller' => 'PayrollController', 'method' => 'exportAttendancePDF'],
+
+    // Joining List
+    'payroll-joining-list' => ['controller' => 'PayrollController', 'method' => 'joiningList'],
+    'payroll-joining-list-pdf' => ['controller' => 'PayrollController', 'method' => 'exportJoiningListPDF'],
 ];
