@@ -87,6 +87,7 @@
                                             data-basic-salary="<?= $emp['basic_salary'] ?>"
                                             data-gross-salary="<?= $emp['gross_salary'] ?>"
                                             data-per-meal-amount="<?= $emp['per_meal_amount'] ?? 0 ?>"
+                                            data-advance-salary="<?= $emp['advance_salary'] ?? 0 ?>"
                                             data-joining-date="<?= $emp['joining_date'] ?>">
                                             <?= htmlspecialchars($emp['full_name']) ?> - <?= $emp['employee_id'] ?>
                                         </option>
@@ -143,7 +144,9 @@
                                             <div class="col-12 mb-2">
                                                 <label class="form-label"><?= $item['name'] ?></label>
                                                 <input type="number" name="earning[<?= $item['id'] ?>]"
-                                                    class="form-control earning" value="0">
+                                                    class="form-control earning" 
+                                                    data-item-name="<?= htmlspecialchars(strtolower(trim($item['name']))) ?>"
+                                                    value="0">
                                             </div>
                                         <?php endif; ?>
                                     <?php endforeach; ?>
@@ -164,7 +167,9 @@
                                             <div class="col-12 mb-2">
                                                 <label class="form-label"><?= $item['name'] ?></label>
                                                 <input type="number" name="deduction[<?= $item['id'] ?>]"
-                                                    class="form-control deduction" value="0">
+                                                    class="form-control deduction" 
+                                                    data-item-name="<?= htmlspecialchars(strtolower(trim($item['name']))) ?>"
+                                                    value="0">
                                             </div>
                                         <?php endif; ?>
                                     <?php endforeach; ?>
@@ -258,7 +263,14 @@
             const grossSal = selected.getAttribute('data-gross-salary') || 0;
             document.getElementById('grossSalary').value = grossSal;
             document.getElementById('perDaySalary').value = (parseFloat(grossSal) / 30).toFixed(2);
+            document.getElementById('mealCount').value = 0;
+            document.getElementById('totalSubsidiaryLunch').value = 0;
             document.getElementById('perMealAmount').value = selected.getAttribute('data-per-meal-amount') || 0;
+            
+            // Advance salary
+            const advanceSalInput = document.querySelector('input[data-item-name="advance salary"]');
+            if (advanceSalInput) advanceSalInput.value = selected.getAttribute('data-advance-salary') || 0;
+
             const rawJoining = selected.getAttribute('data-joining-date');
             if (rawJoining) {
                 const jd = new Date(rawJoining);

@@ -77,6 +77,16 @@ class PayrollController extends Controller
     {
         $employees = $this->employeeModel->getAllWithDesignation();
         $items = $this->payslipItemModel->getAll();
+
+        if (!class_exists('AdvanceSalary')) {
+            require_once __DIR__ . '/../models/AdvanceSalary.php';
+        }
+        $advanceSalaryModel = new AdvanceSalary($this->db);
+        foreach ($employees as &$emp) {
+            $emp['advance_salary'] = $advanceSalaryModel->getUnadjustedPaidAdvance($emp['id']);
+        }
+        unset($emp);
+
         $this->view("payrolls/payslips/create-payslip", [
             "current_route" => "create-payslip",
             "page_title" => "Create Payslip",
