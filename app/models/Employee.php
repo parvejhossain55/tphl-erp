@@ -111,7 +111,7 @@ class Employee extends Model
         $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM employees");
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
-        return (int)$result['total'];
+        return (int) $result['total'];
     }
 
     public function getTotalCountByPeriod($period)
@@ -135,7 +135,7 @@ class Employee extends Model
 
         $sql = "SELECT COUNT(*) AS total FROM employees WHERE $where";
         $result = $this->db->query($sql);
-        return (int)$result->fetch_assoc()['total'];
+        return (int) $result->fetch_assoc()['total'];
     }
 
 
@@ -199,7 +199,7 @@ class Employee extends Model
 
         $stmt = $this->db->prepare("
         INSERT INTO employees (
-            employee_id, full_name, gross_salary, basic_salary, username, email,
+            employee_id, full_name, gross_salary, basic_salary, per_meal_amount, username, email,
             father_name, phone, emergency_contact, qualification,
             experience, address, pass_num, nid,
             department_id, designation_id, dob, joining_date,
@@ -208,7 +208,7 @@ class Employee extends Model
             photo, make_user, password, created_by,
             employee_type, employee_status, workplace, office_branch_id, responsibilities, team_id, is_sales_co_leader,
             is_dept_head, reporting_user_id
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
         $dob = !empty($data['dob']) ? $data['dob'] : null;
@@ -218,17 +218,18 @@ class Employee extends Model
             ? password_hash($data['password'], PASSWORD_DEFAULT)
             : '';
 
-        $is_dept_head = (int)($data['is_dept_head'] ?? 0);
-        $reporting_user_id = ($is_dept_head == 1) ? null : (!empty($data['reporting_user_id']) ? (int)$data['reporting_user_id'] : null);
+        $is_dept_head = (int) ($data['is_dept_head'] ?? 0);
+        $reporting_user_id = ($is_dept_head == 1) ? null : (!empty($data['reporting_user_id']) ? (int) $data['reporting_user_id'] : null);
         $workplace = !empty($data['workplace']) ? $data['workplace'] : null;
-        $office_branch_id = !empty($data['office_branch_id']) ? (int)$data['office_branch_id'] : 2;
+        $office_branch_id = !empty($data['office_branch_id']) ? (int) $data['office_branch_id'] : 2;
 
         $stmt->bind_param(
-            "ssddssssssssssiissssssssssssisssisiiii",
+            "ssdddssssssssssiissssssssssssisssisiiii",
             $data['employee_id'],
             $data['full_name'],
             $data['gross_salary'],
             $data['basic_salary'],
+            $data['per_meal_amount'],
             $data['username'],
             $data['email'],
             $data['father_name'],
@@ -285,6 +286,7 @@ class Employee extends Model
             e.email,
             e.gross_salary,
             e.basic_salary,
+            e.per_meal_amount,
             e.employee_id,
             e.joining_date,
             e.designation_id,         
@@ -368,6 +370,7 @@ WHERE e.id = ?
         full_name = ?, 
         gross_salary = ?,
         basic_salary = ?, 
+        per_meal_amount = ?,
         username = ?, 
         email = ?, 
         father_name = ?, 
@@ -410,17 +413,18 @@ WHERE e.id = ?
             return false;
         }
 
-        $is_dept_head = (int)($data['is_dept_head'] ?? 0);
-        $reporting_user_id = ($is_dept_head == 1) ? null : (!empty($data['reporting_user_id']) ? (int)$data['reporting_user_id'] : null);
+        $is_dept_head = (int) ($data['is_dept_head'] ?? 0);
+        $reporting_user_id = ($is_dept_head == 1) ? null : (!empty($data['reporting_user_id']) ? (int) $data['reporting_user_id'] : null);
         $workplace = !empty($data['workplace']) ? $data['workplace'] : null;
-        $office_branch_id = !empty($data['office_branch_id']) ? (int)$data['office_branch_id'] : 2;
+        $office_branch_id = !empty($data['office_branch_id']) ? (int) $data['office_branch_id'] : 2;
 
         $stmt->bind_param(
-            "ssddsssssssssiissssssssssssisssisiiiii",
+            "ssdddsssssssssiissssssssssssisssisiiiii",
             $data['employee_id'],         // s  1
             $data['full_name'],           // s  2
             $data['gross_salary'],        // d  3
             $data['basic_salary'],        // d  4
+            $data['per_meal_amount'],     // d
             $data['username'],            // s  5
             $data['email'],               // s  6
             $data['father_name'],         // s  7
@@ -506,7 +510,8 @@ WHERE e.id = ?
         }
 
         $loggedUserId = $_SESSION['user']['id'] ?? null;
-        if (!$loggedUserId) return [];
+        if (!$loggedUserId)
+            return [];
 
         //  Get employee ID
         $stmt = $this->db->prepare("SELECT id FROM employees WHERE user_id = ? LIMIT 1");
@@ -514,7 +519,8 @@ WHERE e.id = ?
 
         $stmt->execute();
         $emp = $stmt->get_result()->fetch_assoc();
-        if (!$emp) return [];
+        if (!$emp)
+            return [];
 
         $employeeId = (int) $emp['id'];
 

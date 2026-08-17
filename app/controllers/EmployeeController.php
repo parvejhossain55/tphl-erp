@@ -30,18 +30,18 @@ class EmployeeController extends Controller
     // Employee List Page
     public function index()
     {
-        $searchTerm       = $_GET['q'] ?? '';
+        $searchTerm = $_GET['q'] ?? '';
         $departmentFilter = $_GET['department_id'] ?? '';
-        $teamFilter       = $_GET['team_id'] ?? '';
-        $workplaceFilter  = $_GET['workplace'] ?? '';
+        $teamFilter = $_GET['team_id'] ?? '';
+        $workplaceFilter = $_GET['workplace'] ?? '';
 
         $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
-        $perPage     = 10;
-        $offset      = ($currentPage - 1) * $perPage;
+        $perPage = 10;
+        $offset = ($currentPage - 1) * $perPage;
 
         // Total employee count with filters
         $totalEmployees = $this->employeeModel->countAll($searchTerm, $departmentFilter, $teamFilter, $workplaceFilter);
-        $totalPages     = ceil($totalEmployees / $perPage);
+        $totalPages = ceil($totalEmployees / $perPage);
 
         // Get paginated employees with search & department filter
         $employees = $this->employeeModel->getPaginated($perPage, $offset, $searchTerm, $departmentFilter, $teamFilter, $workplaceFilter);
@@ -56,20 +56,20 @@ class EmployeeController extends Controller
         $workplaces = $this->employeeModel->getUniqueWorkplaces();
 
         $this->view("hrm/employees/employees", [
-            "current_route"      => "employee-lists",
-            "page_title"         => "Employee List",
-            "currentPage"        => $currentPage,
-            "totalPages"         => $totalPages,
-            "totalEmployees"     => $totalEmployees,
-            "perPage"            => $perPage,
-            "employees"          => $employees,
-            "departments"        => $departments,
-            "teams"              => $teams,
-            "workplaces"         => $workplaces,
-            "searchTerm"         => $searchTerm,
+            "current_route" => "employee-lists",
+            "page_title" => "Employee List",
+            "currentPage" => $currentPage,
+            "totalPages" => $totalPages,
+            "totalEmployees" => $totalEmployees,
+            "perPage" => $perPage,
+            "employees" => $employees,
+            "departments" => $departments,
+            "teams" => $teams,
+            "workplaces" => $workplaces,
+            "searchTerm" => $searchTerm,
             "selectedDepartment" => $departmentFilter,
-            "selectedTeam"       => $teamFilter,
-            "selectedWorkplace"  => $workplaceFilter
+            "selectedTeam" => $teamFilter,
+            "selectedWorkplace" => $workplaceFilter
         ]);
     }
 
@@ -82,22 +82,22 @@ class EmployeeController extends Controller
         $designations = $this->designationModel->getAll();
         $teams = $this->teamsModel->getAll();
         $reportingBosses = $this->userModel->getPotentialReportingBosses();
-        
+
         $payslipItemModel = new PayslipItem($this->db);
         $payslipItems = $payslipItemModel->getAll();
 
         $this->view("hrm/employees/create-employee", [
-            "current_route"   => "create-employee",
-            "active"          => "create-employee",
-            "page_title"      => "Add Employee",
+            "current_route" => "create-employee",
+            "active" => "create-employee",
+            "page_title" => "Add Employee",
             "show_breadcrumb" => true,
-            "departments"     => $departments,
-            "designations"    => $designations,
-            "roles"           => $roles,
-            "teams"           => $teams,
+            "departments" => $departments,
+            "designations" => $designations,
+            "roles" => $roles,
+            "teams" => $teams,
             "reportingBosses" => $reportingBosses,
-            "payslipItems"    => $payslipItems,
-            "branches"        => $this->getOfficeBranches()
+            "payslipItems" => $payslipItems,
+            "branches" => $this->getOfficeBranches()
         ]);
     }
 
@@ -124,47 +124,48 @@ class EmployeeController extends Controller
                 : '';
 
             // Employee data
-            $grossSalary = !empty($_POST['gross_salary']) ? (float)$_POST['gross_salary'] : 0;
-            $basicSalary = $grossSalary > 0 ? ($grossSalary * 0.50) : (!empty($_POST['basic_salary']) ? (float)$_POST['basic_salary'] : 0);
+            $grossSalary = !empty($_POST['gross_salary']) ? (float) $_POST['gross_salary'] : 0;
+            $basicSalary = $grossSalary > 0 ? ($grossSalary * 0.50) : (!empty($_POST['basic_salary']) ? (float) $_POST['basic_salary'] : 0);
 
             $employeeData = [
-                'employee_id'     => trim($_POST['employee_id'] ?? ''),
-                'full_name'       => trim($_POST['full_name'] ?? ''),
-                'username'        => trim($_POST['username'] ?? ''),
-                'email'           => trim($_POST['email'] ?? ''),
-                'father_name'     => trim($_POST['father_name'] ?? ''),
-                'phone'           => trim($_POST['phone'] ?? ''),
+                'employee_id' => trim($_POST['employee_id'] ?? ''),
+                'full_name' => trim($_POST['full_name'] ?? ''),
+                'username' => trim($_POST['username'] ?? ''),
+                'email' => trim($_POST['email'] ?? ''),
+                'father_name' => trim($_POST['father_name'] ?? ''),
+                'phone' => trim($_POST['phone'] ?? ''),
                 'emergency_contact' => trim($_POST['emergency_contact'] ?? ''),
-                'qualification'   => trim($_POST['qualification'] ?? ''),
-                'gross_salary'    => $grossSalary,
-                'basic_salary'    => $basicSalary,
-                'experience'      => trim($_POST['experience'] ?? ''),
-                'workplace'       => trim($_POST['workplace'] ?? ''),
-                'office_branch_id' => !empty($_POST['office_branch_id']) ? (int)$_POST['office_branch_id'] : 2,
-                'nid'             => trim($_POST['nid'] ?? ''),
-                'address'         => trim($_POST['address'] ?? ''),
-                'pass_num'        => trim($_POST['pass_num'] ?? ''),
-                'department_id'   => (int)($_POST['department_id'] ?? 0),
-                'designation_id'  => (int)($_POST['designation_id'] ?? 0),
-                'dob'             => !empty($_POST['dob']) ? $_POST['dob'] : null,
-                'joining_date'    => !empty($_POST['joining_date']) ? $_POST['joining_date'] : null,
+                'qualification' => trim($_POST['qualification'] ?? ''),
+                'gross_salary' => $grossSalary,
+                'basic_salary' => $basicSalary,
+                'per_meal_amount' => !empty($_POST['per_meal_amount']) ? (float) $_POST['per_meal_amount'] : 0.00,
+                'experience' => trim($_POST['experience'] ?? ''),
+                'workplace' => trim($_POST['workplace'] ?? ''),
+                'office_branch_id' => !empty($_POST['office_branch_id']) ? (int) $_POST['office_branch_id'] : 2,
+                'nid' => trim($_POST['nid'] ?? ''),
+                'address' => trim($_POST['address'] ?? ''),
+                'pass_num' => trim($_POST['pass_num'] ?? ''),
+                'department_id' => (int) ($_POST['department_id'] ?? 0),
+                'designation_id' => (int) ($_POST['designation_id'] ?? 0),
+                'dob' => !empty($_POST['dob']) ? $_POST['dob'] : null,
+                'joining_date' => !empty($_POST['joining_date']) ? $_POST['joining_date'] : null,
                 'account_holder_name' => trim($_POST['account_holder_name'] ?? ''),
-                'account_number'  => trim($_POST['account_number'] ?? ''),
-                'bank_name'       => trim($_POST['bank_name'] ?? ''),
-                'branch_name'     => trim($_POST['branch_name'] ?? ''),
-                'social_media1'   => trim($_POST['social_media1'] ?? ''),
-                'social_media2'   => trim($_POST['social_media2'] ?? ''),
-                'social_media3'   => trim($_POST['social_media3'] ?? ''),
-                'make_user'       => $makeUser,
-                'password'        => $hashedPassword,
-                'created_by'      => $_SESSION['user']['id'] ?? null,
-                'employee_type'   => $_POST['employee_type'],
+                'account_number' => trim($_POST['account_number'] ?? ''),
+                'bank_name' => trim($_POST['bank_name'] ?? ''),
+                'branch_name' => trim($_POST['branch_name'] ?? ''),
+                'social_media1' => trim($_POST['social_media1'] ?? ''),
+                'social_media2' => trim($_POST['social_media2'] ?? ''),
+                'social_media3' => trim($_POST['social_media3'] ?? ''),
+                'make_user' => $makeUser,
+                'password' => $hashedPassword,
+                'created_by' => $_SESSION['user']['id'] ?? null,
+                'employee_type' => $_POST['employee_type'],
                 'employee_status' => $_POST['employee_status'],
                 'responsibilities' => $_POST['responsibilities'],
-                'team_id' => (int)($_POST['team_id'] ?? 0),
-                'is_sales_co_leader' => (int)($_POST['is_sales_co_leader'] ?? 0),
-                'is_dept_head' => (int)($_POST['is_dept_head'] ?? 0),
-                'reporting_user_id' => ((int)($_POST['is_dept_head'] ?? 0) == 1) ? null : (!empty($_POST['reporting_user_id']) ? (int)$_POST['reporting_user_id'] : null),
+                'team_id' => (int) ($_POST['team_id'] ?? 0),
+                'is_sales_co_leader' => (int) ($_POST['is_sales_co_leader'] ?? 0),
+                'is_dept_head' => (int) ($_POST['is_dept_head'] ?? 0),
+                'reporting_user_id' => ((int) ($_POST['is_dept_head'] ?? 0) == 1) ? null : (!empty($_POST['reporting_user_id']) ? (int) $_POST['reporting_user_id'] : null),
             ];
 
             $photoInputName = 'photo';
@@ -182,7 +183,7 @@ class EmployeeController extends Controller
                     "INSERT INTO employee_salary_items (employee_id, payslip_item_id, amount) VALUES (?, ?, ?)"
                 );
                 foreach ($_POST['salary_items'] as $itemId => $amount) {
-                    $amt = (float)$amount;
+                    $amt = (float) $amount;
                     if ($amt >= 0) {
                         $stmtSalaryItem->bind_param("iid", $employee_id, $itemId, $amt);
                         $stmtSalaryItem->execute();
@@ -225,18 +226,18 @@ class EmployeeController extends Controller
 
                 $userData = prepareUserData($_POST, true);
 
-                $userData['full_name']      = $employeeData['full_name'];
-                $userData['user_name']      = $employeeData['username'];
-                $userData['phone']          = $employeeData['phone'];
-                $userData['email']          = $employeeData['email'];
-                $userData['nid']            = $employeeData['nid'];
+                $userData['full_name'] = $employeeData['full_name'];
+                $userData['user_name'] = $employeeData['username'];
+                $userData['phone'] = $employeeData['phone'];
+                $userData['email'] = $employeeData['email'];
+                $userData['nid'] = $employeeData['nid'];
                 $userData['designation_id'] = $employeeData['designation_id'];
-                $userData['address']        = $employeeData['address'];
-                $userData['password']       = $hashedPassword;
-                $userData['role_id']        = $_POST['role_id'] ?? null;
+                $userData['address'] = $employeeData['address'];
+                $userData['password'] = $hashedPassword;
+                $userData['role_id'] = $_POST['role_id'] ?? null;
                 $userData['secondary_role_id'] = $_POST['secondary_role_id'] ?? null;
-                $userData['employee_id']    = $employee_id;
-                $userData['team_id']        = $employeeData['team_id'];
+                $userData['employee_id'] = $employee_id;
+                $userData['team_id'] = $employeeData['team_id'];
 
                 $user_id = $this->userModel->create($userData);
 
@@ -286,18 +287,18 @@ class EmployeeController extends Controller
         $stmt->close();
 
         $this->view("hrm/employees/edit-employee", [
-            "current_route"   => "edit-employee",
-            "page_title"      => "Edit Employee",
+            "current_route" => "edit-employee",
+            "page_title" => "Edit Employee",
             "show_breadcrumb" => true,
-            "employee"        => $employee,
-            "departments"     => $departments,
-            "designations"    => $designations,
-            "roles"           => $roles,
-            "teams"           => $teams,
+            "employee" => $employee,
+            "departments" => $departments,
+            "designations" => $designations,
+            "roles" => $roles,
+            "teams" => $teams,
             "reportingBosses" => $reportingBosses,
-            "payslipItems"    => $payslipItems,
+            "payslipItems" => $payslipItems,
             "employeeSalaryItems" => $employeeSalaryItems,
-            "branches"        => $this->getOfficeBranches()
+            "branches" => $this->getOfficeBranches()
         ]);
     }
 
@@ -336,7 +337,7 @@ class EmployeeController extends Controller
         if ($submittedEmail) {
             $matchedUserByEmail = $this->userModel->getByEmail($submittedEmail);
             if ($matchedUserByEmail && $matchedUserByEmail['id'] != $existingUserId) {
-                $existingUserId = (int)$matchedUserByEmail['id'];
+                $existingUserId = (int) $matchedUserByEmail['id'];
                 $this->db->query("UPDATE employees SET user_id = $existingUserId WHERE id = $id");
                 $this->db->query("UPDATE users SET employee_id = $id WHERE id = $existingUserId");
             }
@@ -347,7 +348,7 @@ class EmployeeController extends Controller
             $userByEmpResult = $this->db->query("SELECT id FROM users WHERE employee_id = $id LIMIT 1");
             if ($userByEmpResult && $userByEmpResult->num_rows > 0) {
                 $userRow = $userByEmpResult->fetch_assoc();
-                $existingUserId = (int)$userRow['id'];
+                $existingUserId = (int) $userRow['id'];
                 $this->db->query("UPDATE employees SET user_id = $existingUserId WHERE id = $id");
             }
         }
@@ -364,50 +365,51 @@ class EmployeeController extends Controller
             $hashedPassword = password_hash($plainPassword, PASSWORD_DEFAULT);
         }
 
-        $grossSalary = !empty($_POST['gross_salary']) ? (float)$_POST['gross_salary'] : 0;
-        $basicSalary = $grossSalary > 0 ? ($grossSalary * 0.50) : (!empty($_POST['basic_salary']) ? (float)$_POST['basic_salary'] : 0);
+        $grossSalary = !empty($_POST['gross_salary']) ? (float) $_POST['gross_salary'] : 0;
+        $basicSalary = $grossSalary > 0 ? ($grossSalary * 0.50) : (!empty($_POST['basic_salary']) ? (float) $_POST['basic_salary'] : 0);
 
         // Employee data
         $employeeData = [
-            'employee_id'          => trim($_POST['employee_id'] ?? ''),
-            'full_name'            => trim($_POST['full_name'] ?? ''),
-            'username'             => trim($_POST['username'] ?? ''),
-            'email'                => trim($_POST['email'] ?? ''),
-            'father_name'          => trim($_POST['father_name'] ?? ''),
-            'phone'                => trim($_POST['phone'] ?? ''),
-            'emergency_contact'    => trim($_POST['emergency_contact'] ?? ''),
-            'qualification'        => trim($_POST['qualification'] ?? ''),
-            'gross_salary'         => $grossSalary,
-            'basic_salary'         => $basicSalary,
-            'experience'           => trim($_POST['experience'] ?? ''),
-            'nid'                  => trim($_POST['nid'] ?? ''),
+            'employee_id' => trim($_POST['employee_id'] ?? ''),
+            'full_name' => trim($_POST['full_name'] ?? ''),
+            'username' => trim($_POST['username'] ?? ''),
+            'email' => trim($_POST['email'] ?? ''),
+            'father_name' => trim($_POST['father_name'] ?? ''),
+            'phone' => trim($_POST['phone'] ?? ''),
+            'emergency_contact' => trim($_POST['emergency_contact'] ?? ''),
+            'qualification' => trim($_POST['qualification'] ?? ''),
+            'gross_salary' => $grossSalary,
+            'basic_salary' => $basicSalary,
+            'per_meal_amount' => !empty($_POST['per_meal_amount']) ? (float) $_POST['per_meal_amount'] : 0.00,
+            'experience' => trim($_POST['experience'] ?? ''),
+            'nid' => trim($_POST['nid'] ?? ''),
             'address' => !empty($_POST['address'])
                 ? trim($_POST['address'])
                 : 'N/A',
-            'pass_num'             => trim($_POST['pass_num'] ?? ''),
-            'department_id'        => (int)($_POST['department_id'] ?? 0),
-            'designation_id'       => (int)($_POST['designation_id'] ?? 0),
-            'dob'                  => !empty($_POST['dob']) ? $_POST['dob'] : null,
-            'joining_date'         => !empty($_POST['joining_date']) ? $_POST['joining_date'] : null,
-            'account_holder_name'  => trim($_POST['account_holder_name'] ?? ''),
-            'account_number'       => trim($_POST['account_number'] ?? ''),
-            'bank_name'            => trim($_POST['bank_name'] ?? ''),
-            'branch_name'          => trim($_POST['branch_name'] ?? ''),
-            'social_media1'        => trim($_POST['social_media1'] ?? ''),
-            'social_media2'        => trim($_POST['social_media2'] ?? ''),
-            'social_media3'        => trim($_POST['social_media3'] ?? ''),
-            'created_by'           => $_SESSION['user']['id'] ?? null,
-            'employee_type'        => $_POST['employee_type'],
-            'employee_status'      => $_POST['employee_status'],
-            'responsibilities'     => $_POST['responsibilities'],
-            'team_id'              => (int)($_POST['team_id'] ?? 0),
-            'workplace'            => trim($_POST['workplace'] ?? ''),
-            'office_branch_id'     => !empty($_POST['office_branch_id']) ? (int)$_POST['office_branch_id'] : 2,
-            'is_sales_co_leader'   => (int)($_POST['is_sales_co_leader'] ?? 0),
-            'is_dept_head'         => (int)($_POST['is_dept_head'] ?? 0),
-            'reporting_user_id'    => ((int)($_POST['is_dept_head'] ?? 0) == 1) ? null : (!empty($_POST['reporting_user_id']) ? (int)$_POST['reporting_user_id'] : null),
-            'make_user'            => $makeUser,
-            'password'             => $hashedPassword
+            'pass_num' => trim($_POST['pass_num'] ?? ''),
+            'department_id' => (int) ($_POST['department_id'] ?? 0),
+            'designation_id' => (int) ($_POST['designation_id'] ?? 0),
+            'dob' => !empty($_POST['dob']) ? $_POST['dob'] : null,
+            'joining_date' => !empty($_POST['joining_date']) ? $_POST['joining_date'] : null,
+            'account_holder_name' => trim($_POST['account_holder_name'] ?? ''),
+            'account_number' => trim($_POST['account_number'] ?? ''),
+            'bank_name' => trim($_POST['bank_name'] ?? ''),
+            'branch_name' => trim($_POST['branch_name'] ?? ''),
+            'social_media1' => trim($_POST['social_media1'] ?? ''),
+            'social_media2' => trim($_POST['social_media2'] ?? ''),
+            'social_media3' => trim($_POST['social_media3'] ?? ''),
+            'created_by' => $_SESSION['user']['id'] ?? null,
+            'employee_type' => $_POST['employee_type'],
+            'employee_status' => $_POST['employee_status'],
+            'responsibilities' => $_POST['responsibilities'],
+            'team_id' => (int) ($_POST['team_id'] ?? 0),
+            'workplace' => trim($_POST['workplace'] ?? ''),
+            'office_branch_id' => !empty($_POST['office_branch_id']) ? (int) $_POST['office_branch_id'] : 2,
+            'is_sales_co_leader' => (int) ($_POST['is_sales_co_leader'] ?? 0),
+            'is_dept_head' => (int) ($_POST['is_dept_head'] ?? 0),
+            'reporting_user_id' => ((int) ($_POST['is_dept_head'] ?? 0) == 1) ? null : (!empty($_POST['reporting_user_id']) ? (int) $_POST['reporting_user_id'] : null),
+            'make_user' => $makeUser,
+            'password' => $hashedPassword
         ];
 
         if (!$this->employeeModel->update($id, $employeeData, 'photo')) {
@@ -417,13 +419,13 @@ class EmployeeController extends Controller
         }
 
         // Update employee salary items configuration
-        $this->db->query("DELETE FROM employee_salary_items WHERE employee_id = " . (int)$id);
+        $this->db->query("DELETE FROM employee_salary_items WHERE employee_id = " . (int) $id);
         if (!empty($_POST['salary_items']) && is_array($_POST['salary_items'])) {
             $stmtSalaryItem = $this->db->prepare(
                 "INSERT INTO employee_salary_items (employee_id, payslip_item_id, amount) VALUES (?, ?, ?)"
             );
             foreach ($_POST['salary_items'] as $itemId => $amount) {
-                $amt = (float)$amount;
+                $amt = (float) $amount;
                 if ($amt >= 0) {
                     $stmtSalaryItem->bind_param("iid", $id, $itemId, $amt);
                     $stmtSalaryItem->execute();
@@ -437,17 +439,17 @@ class EmployeeController extends Controller
 
         if ($existingUserId) {
             $userData = [
-                'full_name'      => $employeeData['full_name'],
-                'user_name'      => $employeeData['username'],
-                'phone'          => $employeeData['phone'],
-                'email'          => $employeeData['email'],
-                'nid'            => $employeeData['nid'],
+                'full_name' => $employeeData['full_name'],
+                'user_name' => $employeeData['username'],
+                'phone' => $employeeData['phone'],
+                'email' => $employeeData['email'],
+                'nid' => $employeeData['nid'],
                 'designation_id' => $employeeData['designation_id'],
-                'address'        => $employeeData['address'],
-                'team_id'        => $employeeData['team_id'],
-                'role_id'        => (int)($_POST['role_id'] ?? 0),
-                'secondary_role_id' => !empty($_POST['secondary_role_id']) ? (int)$_POST['secondary_role_id'] : null,
-                'employee_id'    => $id,
+                'address' => $employeeData['address'],
+                'team_id' => $employeeData['team_id'],
+                'role_id' => (int) ($_POST['role_id'] ?? 0),
+                'secondary_role_id' => !empty($_POST['secondary_role_id']) ? (int) $_POST['secondary_role_id'] : null,
+                'employee_id' => $id,
             ];
 
             if (!empty($plainPassword)) {
@@ -457,18 +459,18 @@ class EmployeeController extends Controller
             $this->userModel->update($userData, $existingUserId);
         } elseif ($makeUser == 1) {
             $userData = [
-                'full_name'      => $employeeData['full_name'],
-                'user_name'      => $employeeData['username'],
-                'phone'          => $employeeData['phone'],
-                'email'          => $employeeData['email'],
-                'nid'            => $employeeData['nid'],
+                'full_name' => $employeeData['full_name'],
+                'user_name' => $employeeData['username'],
+                'phone' => $employeeData['phone'],
+                'email' => $employeeData['email'],
+                'nid' => $employeeData['nid'],
                 'designation_id' => $employeeData['designation_id'],
-                'address'        => $employeeData['address'],
-                'role_id'        => (int)($_POST['role_id'] ?? 0),
-                'secondary_role_id' => !empty($_POST['secondary_role_id']) ? (int)$_POST['secondary_role_id'] : null,
-                'employee_id'    => $id,
-                'team_id'        => $employeeData['team_id'],
-                'password'       => $plainPassword,
+                'address' => $employeeData['address'],
+                'role_id' => (int) ($_POST['role_id'] ?? 0),
+                'secondary_role_id' => !empty($_POST['secondary_role_id']) ? (int) $_POST['secondary_role_id'] : null,
+                'employee_id' => $id,
+                'team_id' => $employeeData['team_id'],
+                'password' => $plainPassword,
             ];
 
             $user_id = $this->userModel->create($userData);
@@ -623,7 +625,7 @@ class EmployeeController extends Controller
     {
         $this->view("hrm/employees/external-employees", [
             "current_route" => "hrm-external-employees",
-            "page_title"    => "Tipsoi Employees"
+            "page_title" => "Tipsoi Employees"
         ]);
     }
 }

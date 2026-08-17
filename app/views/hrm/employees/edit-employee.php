@@ -144,6 +144,7 @@
                  </div>
                  <!-- Designation -->
                  <div class="col-lg-6"><label>Gross Salary <span>*</span></label><input class="form-control" name="gross_salary" id="gross_salary" type="number" value="<?= $employee['gross_salary'] ?>"></div>
+                 <div class="col-lg-6"><label>Per Meal Amount</label><input class="form-control" name="per_meal_amount" id="per_meal_amount" type="number" step="0.01" value="<?= $employee['per_meal_amount'] ?? '' ?>"></div>
                  <div class="col-lg-6"><label>Basic Salary <span>*</span></label>
                      <input class="form-control" name="basic_salary" id="basic_salary" type="number"
                          value="<?= $employee['basic_salary'] ?>">

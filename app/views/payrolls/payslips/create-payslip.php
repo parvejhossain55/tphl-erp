@@ -86,6 +86,7 @@
                                             data-empid="<?= $emp['employee_id'] ?>" data-email="<?= $emp['email'] ?>"
                                             data-basic-salary="<?= $emp['basic_salary'] ?>"
                                             data-gross-salary="<?= $emp['gross_salary'] ?>"
+                                            data-per-meal-amount="<?= $emp['per_meal_amount'] ?? 0 ?>"
                                             data-joining-date="<?= $emp['joining_date'] ?>">
                                             <?= htmlspecialchars($emp['full_name']) ?> - <?= $emp['employee_id'] ?>
                                         </option>
@@ -169,15 +170,16 @@
                                     <?php endforeach; ?>
                                     <div class="col-12 mb-2">
                                         <label class="form-label">Meal Count</label>
-                                        <input type="number" class="form-control" value="0">
+                                        <input id="mealCount" type="number" class="form-control" value="0">
                                     </div>
                                     <div class="col-12 mb-2">
                                         <label class="form-label">Per Meal Amount</label>
-                                        <input type="number" class="form-control" value="0">
+                                        <input id="perMealAmount" type="number" class="form-control" value="0">
                                     </div>
                                     <div class="col-12 mb-2">
                                         <label class="form-label">Total subsidiary lunch</label>
-                                        <input type="number" class="form-control totalSubsidiaryLunch" value="0">
+                                        <input id="totalSubsidiaryLunch" type="number"
+                                            class="form-control totalSubsidiaryLunch" value="0" readonly>
                                     </div>
                                     <div class="col-12 mt-3">
                                         <label class="form-label">Total Deductions</label>
@@ -256,6 +258,7 @@
             const grossSal = selected.getAttribute('data-gross-salary') || 0;
             document.getElementById('grossSalary').value = grossSal;
             document.getElementById('perDaySalary').value = (parseFloat(grossSal) / 30).toFixed(2);
+            document.getElementById('perMealAmount').value = selected.getAttribute('data-per-meal-amount') || 0;
             const rawJoining = selected.getAttribute('data-joining-date');
             if (rawJoining) {
                 const jd = new Date(rawJoining);
@@ -290,8 +293,16 @@
             let totalEarning = 0;
             let totalDeduction = 0;
 
+            const mealCount = parseFloat(document.getElementById('mealCount').value || 0);
+            const perMealAmount = parseFloat(document.getElementById('perMealAmount').value || 0);
+            const subsidiaryLunch = mealCount * perMealAmount;
+
+            document.getElementById('totalSubsidiaryLunch').value = subsidiaryLunch.toFixed(2);
+
             document.querySelectorAll('.earning').forEach(inp => totalEarning += Number(inp.value || 0));
             document.querySelectorAll('.deduction').forEach(inp => totalDeduction += Number(inp.value || 0));
+
+            totalDeduction += subsidiaryLunch;
 
             document.getElementById('totalEarningInput').value = totalEarning.toFixed(2);
             document.getElementById('totalDeductionInput').value = totalDeduction.toFixed(2);
@@ -397,6 +408,8 @@
         document.querySelectorAll('.earning, .deduction').forEach(inp => {
             inp.addEventListener('input', calculateNetSalary);
         });
+        document.getElementById('mealCount').addEventListener('input', calculateNetSalary);
+        document.getElementById('perMealAmount').addEventListener('input', calculateNetSalary);
 
         // ── Paydate change ───────────────────────────────────────────────────────
         document.getElementById('paydate').addEventListener('change', collectPayslipData);
