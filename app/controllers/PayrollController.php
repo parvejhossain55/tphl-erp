@@ -113,7 +113,13 @@ class PayrollController extends Controller
         $isDraft = (!empty($payload['is_draft']) && $payload['is_draft'] == 1)
             || (!empty($_POST['is_draft']) && $_POST['is_draft'] == 1)
             || (!empty($_POST['submit_action']) && $_POST['submit_action'] === 'draft');
-        $status = $isDraft ? 'draft' : 'pending';
+
+        $status = 'pending';
+        if (!empty($_POST['submit_action']) && $_POST['submit_action'] === 'on_hold') {
+            $status = 'on_hold';
+        } elseif ($isDraft) {
+            $status = 'draft';
+        }
 
         $payslipId = $payslipModel->create([
             'employee_id' => $payload['employee_id'],
@@ -139,8 +145,8 @@ class PayrollController extends Controller
             }
         }
 
-        // CREATE APPROVAL REQUEST ONLY IF NOT DRAFT
-        if (!$isDraft) {
+        // CREATE APPROVAL REQUEST ONLY IF NOT DRAFT OR ON_HOLD
+        if ($status !== 'draft' && $status !== 'on_hold') {
             $approvalModel->create([
                 'department' => 'HR',
                 'request_type' => 'salary',
@@ -1050,6 +1056,123 @@ class PayrollController extends Controller
             "selectedYear" => $selectedYear,
             "selectedMonth" => $selectedMonth
         ]);
+    }
+
+    public function salaryHold()
+    {
+        $currentYear = date('Y');
+        $currentMonth = date('m');
+
+        $selectedYear = (!empty($_GET['year'])) ? $_GET['year'] : $currentYear;
+        $selectedMonth = (!empty($_GET['month'])) ? $_GET['month'] : $currentMonth;
+
+        $query = "
+            SELECT p.id, p.payslip_month, p.net_salary, p.status,
+                   e.full_name, e.employee_id as emp_id
+            FROM payslips p
+            LEFT JOIN employees e ON p.employee_id = e.id
+            WHERE YEAR(p.payslip_month) = '$selectedYear' 
+              AND MONTH(p.payslip_month) = '$selectedMonth'
+              AND p.status = 'on_hold'
+            ORDER BY e.employee_id ASC
+        ";
+
+        $res = $this->db->query($query);
+        $holds = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $holds[] = $row;
+            }
+        }
+
+        $this->view("payrolls/payslips/salary-hold", [
+            "current_route" => "payroll-salary-hold",
+            "page_title" => "Salary Hold",
+            "holds" => $holds,
+            "selectedYear" => $selectedYear,
+            "selectedMonth" => $selectedMonth
+        ]);
+    }
+
+    public function exportSalaryHoldPDF()
+    {
+        $currentYear = date('Y');
+        $currentMonth = date('m');
+
+        $selectedYear = (!empty($_GET['year'])) ? $_GET['year'] : $currentYear;
+        $selectedMonth = (!empty($_GET['month'])) ? $_GET['month'] : $currentMonth;
+
+        $query = "
+            SELECT p.id, p.payslip_month, p.net_salary, p.status,
+                   e.full_name, e.employee_id as emp_id
+            FROM payslips p
+            LEFT JOIN employees e ON p.employee_id = e.id
+            WHERE YEAR(p.payslip_month) = '$selectedYear' 
+              AND MONTH(p.payslip_month) = '$selectedMonth'
+              AND p.status = 'on_hold'
+            ORDER BY e.employee_id ASC
+        ";
+
+        $res = $this->db->query($query);
+        $holds = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $holds[] = $row;
+            }
+        }
+
+        $pdf = new \TCPDF('L', 'mm', 'A4');
+        $pdf->SetCreator('TPHL ERP');
+        $pdf->SetAuthor('Admin');
+        $pdf->SetTitle('Salary Hold Report');
+        $pdf->SetMargins(15, 15, 15);
+        $pdf->SetAutoPageBreak(TRUE, 15);
+        $pdf->AddPage();
+
+        $pdf->SetFont('helvetica', '', 10);
+
+        $monthName = date('F', mktime(0, 0, 0, $selectedMonth, 1));
+
+        $html = '
+        <div style="text-align:center;">
+            <h1 style="color:#078134;">The Premium Homes Ltd</h1>
+            <h3 style="color:#28B463;">Salary Hold Report (' . $monthName . ' ' . $selectedYear . ')</h3>
+            <p><b>Total Held: </b> ' . count($holds) . '</p>
+        </div>
+        <br>
+        <table border="1" cellpadding="5" width="100%">
+            <thead>
+                <tr style="background-color:#078134; color:#ffffff; text-align:center; font-weight:bold;">
+                    <th>Serial</th>
+                    <th>Name</th>
+                    <th>Employee ID</th>
+                    <th>Amount</th>
+                    <th>Remark</th>
+                </tr>
+            </thead>
+            <tbody>';
+
+        $sl = 1;
+        if (empty($holds)) {
+            $html .= '<tr><td colspan="5" style="text-align:center;"><b>No salary holds found for this period.</b></td></tr>';
+        }
+        foreach ($holds as $hold) {
+            $html .= '<tr style="text-align:center;">
+                <td>' . $sl++ . '</td>
+                <td>' . htmlspecialchars($hold['full_name'] ?? '') . '</td>
+                <td>' . htmlspecialchars($hold['emp_id'] ?? '') . '</td>
+                <td>' . number_format($hold['net_salary'] ?? 0, 2) . '</td>
+                <td>' . htmlspecialchars($hold['remarks'] ?? '') . '</td>
+            </tr>';
+        }
+
+        $html .= '</tbody></table>';
+
+        $pdf->writeHTML($html, true, false, true, false, '');
+
+        ob_end_clean();
+        $pdf->Output('Salary_Hold_Report_' . $monthName . '_' . $selectedYear . '.pdf', 'D');
+        exit;
     }
 
     public function exportWorkspacePDF()

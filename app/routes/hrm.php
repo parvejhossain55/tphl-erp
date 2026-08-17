@@ -264,4 +264,8 @@ return [
     // Payroll Workspace
     'payroll-workspace' => ['controller' => 'PayrollController', 'method' => 'workspace'],
     'payroll-workspace-pdf' => ['controller' => 'PayrollController', 'method' => 'exportWorkspacePDF'],
+
+    // Salary Hold
+    'payroll-salary-hold' => ['controller' => 'PayrollController', 'method' => 'salaryHold'],
+    'payroll-salary-hold-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSalaryHoldPDF'],
 ];

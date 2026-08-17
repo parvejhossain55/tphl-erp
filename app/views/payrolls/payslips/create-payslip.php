@@ -217,6 +217,10 @@
                             class="btn btn-outline-secondary px-4" onclick="setDraftMode(true);">
                             <i class="fa-light fa-file-lines me-1"></i> Save as Draft (Salary Certificate)
                         </button>
+                        <button type="submit" name="submit_action" value="on_hold" id="saveOnHoldBtn"
+                            class="btn btn-warning px-4" onclick="setDraftMode(false);">
+                            <i class="fa-light fa-hand me-1"></i> Save as On Hold
+                        </button>
                     </div>
                 </form>
             </div>
