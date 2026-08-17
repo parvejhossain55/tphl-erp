@@ -693,6 +693,7 @@ $hasTransactions = !empty($recentTransactions);
 
                 </div>
             </div>
+        </div>
         <?php endif; ?>
 
         <!-- Recent Bookings (All Bookings) -->
