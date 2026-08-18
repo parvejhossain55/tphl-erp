@@ -2520,15 +2520,18 @@ public function discountStatement($bookingId = null)
         $bookingId = (int)($_POST['booking_id'] ?? 0);
         $emiNo = isset($_POST['emi_no']) ? (int)$_POST['emi_no'] : 0;
         $note = trim($_POST['note'] ?? '');
+        $activityDate = trim($_POST['activity_date'] ?? '');
+        $activityMode = trim($_POST['activity_mode'] ?? '');
+        $activityReason = trim($_POST['activity_reason'] ?? '');
         $userId = $_SESSION['user']['id'] ?? 0;
 
-        if (!$bookingId || empty($note)) {
+        if (!$bookingId || empty($note) || empty($activityDate) || empty($activityMode) || empty($activityReason)) {
             echo json_encode(['success' => false, 'message' => 'Missing required fields']);
             exit;
         }
 
-        $stmt = $this->db->prepare("INSERT INTO emi_followups (booking_id, emi_no, note, added_by) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("iisi", $bookingId, $emiNo, $note, $userId);
+        $stmt = $this->db->prepare("INSERT INTO emi_followups (booking_id, emi_no, note, activity_date, activity_mode, activity_reason, added_by) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("iissssi", $bookingId, $emiNo, $note, $activityDate, $activityMode, $activityReason, $userId);
         
         if ($stmt->execute()) {
             echo json_encode(['success' => true]);

@@ -903,7 +903,38 @@ $show_breadcrumb = true;
                         <input type="hidden" id="followupBookingId">
                         <input type="hidden" id="followupEmiNo">
                         <div class="mb-3">
-                            <textarea id="followupNoteInput" class="form-control" rows="4" placeholder="Type your follow up note here..."></textarea>
+                            <label class="form-label fs-13 font-semibold text-muted">Date of Activity <span class="text-danger">*</span></label>
+                            <input type="date" id="followupActivityDate" class="form-control form-control-sm" value="<?= date('Y-m-d') ?>">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fs-13 font-semibold text-muted">Mode of Activity <span class="text-danger">*</span></label>
+                            <select id="followupActivityMode" class="form-select form-select-sm">
+                                <option value="">Select Mode</option>
+                                <option value="Phone Call">Phone Call</option>
+                                <option value="WhatsApp">WhatsApp</option>
+                                <option value="SMS">SMS</option>
+                                <option value="Email">Email</option>
+                                <option value="Meeting">Meeting</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fs-13 font-semibold text-muted">Reason for Activity <span class="text-danger">*</span></label>
+                            <select id="followupActivityReason" class="form-select form-select-sm">
+                                <option value="">Select Reason</option>
+                                <option value="EMI Payment Follow-up">EMI Payment Follow-up</option>
+                                <option value="Payment Reminder (General)">Payment Reminder (General)</option>
+                                <option value="Development Charge Follow-up">Development Charge Follow-up</option>
+                                <option value="Overdue Payment Follow-up">Overdue Payment Follow-up</option>
+                                <option value="Handover / Registration Discussion">Handover / Registration Discussion</option>
+                                <option value="Document Collection">Document Collection</option>
+                                <option value="Client Query / Issue Resolution">Client Query / Issue Resolution</option>
+                                <option value="Commitment Date Extension">Commitment Date Extension</option>
+                                <option value="Others">Others</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fs-13 font-semibold text-muted">Note <span class="text-danger">*</span></label>
+                            <textarea id="followupNoteInput" class="form-control" rows="3" placeholder="Type your follow up note here..."></textarea>
                         </div>
                         <button type="button" class="btn btn-primary w-100" onclick="saveEmiFollowup()">Save Note</button>
                     </div>
@@ -1510,10 +1541,15 @@ $show_breadcrumb = true;
                         response.data.forEach(function(note) {
                             html += '<div class="card mb-2 shadow-sm border-0 bg-light">';
                             html += '<div class="card-body p-3">';
-                            html += '<p class="mb-2" style="font-size: 14px;">' + note.note + '</p>';
+                            html += '<div class="mb-2" style="font-size:12px; color:#475569;">';
+                            if (note.activity_date) html += '<span><i class="fa-light fa-calendar me-1"></i>' + note.activity_date + '</span>';
+                            if (note.activity_mode) html += '<span class="ms-3"><i class="fa-light fa-phone-volume me-1"></i>' + note.activity_mode + '</span>';
+                            if (note.activity_reason) html += '<span class="ms-3"><i class="fa-light fa-bullseye me-1"></i>' + note.activity_reason + '</span>';
+                            html += '</div>';
+                            html += '<p class="mb-2" style="font-size: 14px;">' + (note.note || '') + '</p>';
                             html += '<div class="d-flex justify-content-between text-muted" style="font-size: 12px;">';
-                            html += '<span><i class="fa-light fa-user me-1"></i> ' + note.author_name + '</span>';
-                            html += '<span><i class="fa-light fa-clock me-1"></i> ' + note.created_at_formatted + '</span>';
+                            html += '<span><i class="fa-light fa-user me-1"></i> ' + (note.author_name || 'System') + '</span>';
+                            html += '<span><i class="fa-light fa-clock me-1"></i> ' + (note.created_at_formatted || '') + '</span>';
                             html += '</div></div></div>';
                         });
                     }
@@ -1532,12 +1568,15 @@ $show_breadcrumb = true;
         var bookingId = $('#followupBookingId').val();
         var emiNo = $('#followupEmiNo').val();
         var note = $('#followupNoteInput').val().trim();
+        var activityDate = $('#followupActivityDate').val();
+        var activityMode = $('#followupActivityMode').val();
+        var activityReason = $('#followupActivityReason').val();
         
-        if (!note) {
+        if (!note || !activityDate || !activityMode || !activityReason) {
             Swal.fire({
                 icon: 'error',
-                title: 'Oops...',
-                text: 'Please enter a note.',
+                title: 'Fields Required',
+                text: 'Please fill in all the required fields (*).',
             });
             return;
         }
@@ -1545,7 +1584,14 @@ $show_breadcrumb = true;
         $.ajax({
             url: '<?= $GLOBALS['base_url'] ?>/account-client/saveEmiFollowup',
             type: 'POST',
-            data: { booking_id: bookingId, emi_no: emiNo, note: note },
+            data: { 
+                booking_id: bookingId, 
+                emi_no: emiNo, 
+                note: note,
+                activity_date: activityDate,
+                activity_mode: activityMode,
+                activity_reason: activityReason
+            },
             dataType: 'json',
             success: function(response) {
                 if (response.success) {

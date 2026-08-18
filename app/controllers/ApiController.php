@@ -381,8 +381,15 @@ class ApiController extends Controller
                     "flat_id" => $flat ? $flat['id'] : null,
                     "flat_name" => $flat ? $flat['flat_name'] : 'N/A',
                     "floor_no" => $flat ? $flat['floor_no'] : 'N/A',
-                    "sqft" => $flat ? $flat['sqft'] : 0
+                    "sqft" => $flat ? $flat['sqft'] : 0,
+                    
+                    // আপডেট করা কলামগুলো (total_share এখন project থেকে নিবে)
+                    "building_type" => $project ? ($project['building_type'] ?? 'N/A') : 'N/A',
+                    "unit_per_floor" => $project ? ($project['unit_per_floor'] ?? 'N/A') : 'N/A',
+                    "total_share" => $project ? ($project['total_share'] ?? 'N/A') : 'N/A'
                 ],
+
+
                 "payment_info" => [
                     "total_price" => $totalPayable,
                     "total_paid" => $totalPaid,
