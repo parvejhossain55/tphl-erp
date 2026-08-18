@@ -738,7 +738,7 @@ class ApprovalRequest extends Model
                     }
                 }
             } else if ($sourceTable === 'fund_requisitions') {
-                $frSql = "SELECT status, amount, paid_at, paid_by FROM fund_requisitions WHERE id = ? LIMIT 1";
+                $frSql = "SELECT status, amount, paid_amount, paid_at, paid_by FROM fund_requisitions WHERE id = ? LIMIT 1";
                 $frStmt = $this->db->prepare($frSql);
                 if ($frStmt) {
                     $frStmt->bind_param("i", $sourceId);
@@ -746,11 +746,11 @@ class ApprovalRequest extends Model
                     $frRow = $frStmt->get_result()->fetch_assoc();
                     $frStmt->close();
                     if ($frRow) {
-                        if ($frRow['status'] === 'paid' || !empty($frRow['paid_by'])) {
-                            $payoutStatus = 'Paid & Settled';
-                            $payoutAmount = (float) $frRow['amount'];
+                        if ($frRow['status'] === 'paid' || $frRow['status'] === 'partially_paid' || !empty($frRow['paid_by'])) {
+                            $payoutStatus = ($frRow['status'] === 'partially_paid') ? 'Partially Paid' : 'Paid & Settled';
+                            $payoutAmount = !empty($frRow['paid_amount']) ? (float)$frRow['paid_amount'] : (float)$frRow['amount'];
                             $payoutDate = $frRow['paid_at'];
-                        } else if ($frRow['status'] === 'approved' || $row['status'] === 'approved') {
+                        } else if ($frRow['status'] === 'approved' || $frRow['status'] === 'partially_approved' || $row['status'] === 'approved' || $row['status'] === 'partial') {
                             $payoutStatus = 'Pending Accounts Payout';
                         }
                     }

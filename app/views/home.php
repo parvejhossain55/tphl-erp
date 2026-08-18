@@ -554,6 +554,7 @@ $hasTransactions = !empty($recentTransactions);
     <!-- Payment Methods & Recent Bookings -->
     <div class="row ">
 
+        <?php if ((int)($_SESSION['user']['role_id'] ?? 0) !== 33): ?>
         <div class="col-xl-6 col-lg-6 col-md-12 col-12 mt-2">
             <div class="card__wrapper h-100">
                 <div class="card-header_title pt-3 border-bottom-0">
@@ -693,9 +694,10 @@ $hasTransactions = !empty($recentTransactions);
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
         <!-- Recent Bookings (All Bookings) -->
-        <div class="col-xl-6 col-lg-6 col-md-12 col-12 mt-2">
+        <div class="<?= ((int)($_SESSION['user']['role_id'] ?? 0) === 33) ? 'col-12' : 'col-xl-6 col-lg-6 col-md-12 col-12' ?> mt-2">
             <div class="card__wrapper h-100 ">
                 <div class="card-header pt-3 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
                     <h6 class="mb-2 mb-md-0">All Bookings</h6>

@@ -62,6 +62,23 @@
                                      };
                                      ?>
                                      <span class="badge <?= $badge ?>"><?= $po['status'] ?></span>
+                                     <?php
+                                     $creatorRole = (int)($po['creator_role_id'] ?? 0);
+                                     $phNeeded = in_array($creatorRole, [23, 31]);
+                                     
+                                     if ($po['status'] === 'Issued'): ?>
+                                         <div class="mt-1 text-danger" style="font-size: 11px; font-weight: 600;">
+                                             <i class="bi bi-hourglass-split"></i> Pending: <?= $phNeeded ? 'Purchase Head' : 'QC & Internal Audit' ?>
+                                         </div>
+                                     <?php elseif ($po['status'] === 'Purchase Head Approved'): ?>
+                                         <div class="mt-1 text-danger" style="font-size: 11px; font-weight: 600;">
+                                             <i class="bi bi-hourglass-split"></i> Pending: QC & Internal Audit
+                                         </div>
+                                     <?php elseif ($po['status'] === 'QC Approved'): ?>
+                                         <div class="mt-1 text-danger" style="font-size: 11px; font-weight: 600;">
+                                             <i class="bi bi-hourglass-split"></i> Pending: Operation Head
+                                         </div>
+                                     <?php endif; ?>
                                 </td>
                                 <td class="text-center">
                                      <?php

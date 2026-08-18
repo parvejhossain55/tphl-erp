@@ -145,14 +145,14 @@ class AccountClient extends Model
             COALESCE(
                 (SELECT SUM(lp.amount)
                  FROM lead_payments lp
-                 WHERE lp.booking_id = lb.id
+                 WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id
                  AND lp.payment_status IN ('paid','partially_paid')),
                 0
             ) AS total_paid,
             (
                 SELECT MAX(lp.payment_date)
                 FROM lead_payments lp
-                WHERE lp.booking_id = lb.id
+                WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id
                 AND lp.payment_status IN ('paid','partially_paid')
             ) AS last_payment_date
         FROM leads l
@@ -213,28 +213,28 @@ class AccountClient extends Model
             COALESCE(
                 (SELECT SUM(lp.amount) 
                  FROM lead_payments lp 
-                 WHERE lp.booking_id = lb.id 
+                 WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                  AND lp.payment_status IN ('paid','partially_paid')), 
                 0
             ) as total_paid,
             COALESCE(
                 (SELECT SUM(lp.land_share_amount) 
                  FROM lead_payments lp 
-                 WHERE lp.booking_id = lb.id 
+                 WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                  AND lp.payment_status IN ('paid','partially_paid')), 
                 0
             ) as total_land_share_paid,
             COALESCE(
                 (SELECT SUM(lp.service_fee) 
                  FROM lead_payments lp 
-                 WHERE lp.booking_id = lb.id 
+                 WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                  AND lp.payment_status IN ('paid','partially_paid')), 
                 0
             ) as total_service_fee,
             COALESCE(
                 (SELECT MAX(lp.payment_date) 
                  FROM lead_payments lp 
-                 WHERE lp.booking_id = lb.id 
+                 WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                  AND lp.payment_status IN ('paid','partially_paid')), 
                 NULL
             ) as last_payment_date
@@ -274,7 +274,7 @@ ORDER BY lb.booking_date DESC
                 COUNT(DISTINCT CASE 
                     WHEN (SELECT SUM(lp.amount) 
                           FROM lead_payments lp 
-                          WHERE lp.booking_id = lb.id 
+                          WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                           AND lp.payment_status IN ('paid','partially_paid')) >= lb.agreement_value 
                     THEN lb.id 
                 END) as full_payment_completed,
@@ -443,7 +443,7 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN projects p ON p.id = lb.project_id
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN users u ON u.id = lp.created_by
-            WHERE lp.booking_id = ? 
+            WHERE lp.is_trashed = 0 AND lp.booking_id = ? 
             AND lp.payment_type = 'booking_money'
             ORDER BY lp.payment_date ASC
             LIMIT 1
@@ -478,7 +478,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                  (SELECT SUM(lp.amount) 
                  FROM lead_payments lp 
-                WHERE lp.booking_id = lb.id 
+                WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                  AND lp.payment_type = 'booking_money'
                  AND lp.verification_status != 'rejected'), 
                  0) AS booking_money_total,
@@ -486,7 +486,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                  (SELECT SUM(lp.amount) 
                  FROM lead_payments lp 
-                WHERE lp.booking_id = lb.id 
+                WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                  AND lp.payment_type = 'booking_money'
                  AND lp.verification_status = 'verified'), 
                  0) AS booking_money,
@@ -519,7 +519,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'), 
                     0
@@ -527,7 +527,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                     (SELECT SUM(lp.land_share_amount) 
                      FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'), 
                     0
@@ -536,7 +536,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                     (SELECT SUM(lp.service_fee) 
                      FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                      AND lp.payment_type IN ('emi', 'emi_due_settlement')
                      AND lp.verification_status = 'verified'), 
                     0
@@ -544,7 +544,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'
                      AND lp.payment_type = 'registration'), 
@@ -553,7 +553,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'
                      AND lp.payment_type = 'mutation_cost'), 
@@ -562,7 +562,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                      AND lp.payment_type = 'booking_money'
                      AND lp.verification_status = 'verified'), 
                     0
@@ -570,7 +570,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'
                      AND lp.payment_type IN ('emi', 'emi_due_settlement')), 
@@ -579,7 +579,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status != 'rejected'
                      AND lp.payment_type IN ('emi', 'emi_due_settlement')), 
@@ -588,7 +588,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'
                      AND lp.payment_type = 'development_charge'), 
@@ -597,7 +597,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status != 'rejected'
                      AND lp.payment_type = 'development_charge'), 
@@ -606,7 +606,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                     (SELECT SUM(lp.due_emi_amount)
                      FROM lead_payments lp
-                     WHERE lp.booking_id = lb.id
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id
                      AND lp.payment_type = 'emi'
                      AND lp.due_emi_amount > 0
                      AND lp.verification_status = 'verified'
@@ -622,7 +622,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                     (SELECT SUM(lp.bulk_emi_discount)
                      FROM lead_payments lp
-                     WHERE lp.booking_id = lb.id
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id
                      AND lp.verification_status = 'verified'
                      AND lp.bulk_emi_discount > 0),
                     0
@@ -630,7 +630,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                     (SELECT MAX(lp.payment_date) 
                      FROM lead_payments lp 
-                     WHERE lp.booking_id = lb.id 
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'), 
                     NULL
@@ -803,7 +803,7 @@ ORDER BY lb.booking_date DESC
             SELECT es.emi_no
             FROM emi_schedules es
             INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
-            WHERE lp.booking_id = ? 
+            WHERE lp.is_trashed = 0 AND lp.booking_id = ? 
             AND lp.payment_status IN ('paid','partially_paid')
             AND lp.verification_status = 'verified'
             ORDER BY es.emi_no
@@ -827,7 +827,7 @@ ORDER BY lb.booking_date DESC
             SELECT DISTINCT es.emi_no, lp.amount
             FROM emi_schedules es
             INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
-            WHERE lp.booking_id = ? 
+            WHERE lp.is_trashed = 0 AND lp.booking_id = ? 
             AND lp.payment_status IN ('paid','partially_paid')
             AND lp.verification_status IN ('pending', 'unverified')
             ORDER BY es.emi_no
@@ -899,7 +899,7 @@ ORDER BY lb.booking_date DESC
             SELECT es.emi_no, es.emi_amount, es.due_emi_amount, es.due_date, es.status, lp.payment_date, lp.payment_status
             FROM emi_schedules es
             INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
-            WHERE lp.booking_id = ? 
+            WHERE lp.is_trashed = 0 AND lp.booking_id = ? 
             AND lp.payment_status IN ('paid','partially_paid')
             AND lp.verification_status = 'verified'
             ORDER BY es.emi_no ASC
@@ -1702,7 +1702,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(es.emi_no, 0) AS emi_no
             FROM lead_payments lp
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
-            WHERE lp.booking_id = ?
+            WHERE lp.is_trashed = 0 AND lp.booking_id = ?
               AND lp.payment_type = 'emi'
               AND lp.due_emi_amount > 0
               AND lp.verification_status = 'verified'
@@ -1827,7 +1827,7 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
             LEFT JOIN banks b ON b.id = lp.bank_id
             LEFT JOIN users uh ON uh.id = lp.handover_to
-            WHERE lp.booking_id = ?
+            WHERE lp.is_trashed = 0 AND lp.booking_id = ?
             ORDER BY lp.created_at DESC, lp.id DESC
         ");
 
@@ -1951,7 +1951,7 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN users u ON u.id = lp.created_by
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
             LEFT JOIN banks b ON b.id = lp.bank_id
-            WHERE lp.booking_id = ?
+            WHERE lp.is_trashed = 0 AND lp.booking_id = ?
         ";
 
         $params = [$bookingId];
@@ -3127,7 +3127,7 @@ ORDER BY lb.booking_date DESC
                 COALESCE(
                     (SELECT SUM(lp.amount)
                      FROM lead_payments lp
-                     WHERE lp.booking_id = lb.id
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id
                      AND lp.payment_status IN ('paid','partially_paid')), 0
                 ) as total_paid,
                 (SELECT GROUP_CONCAT(DISTINCT u_agent.full_name SEPARATOR ', ')
@@ -3321,8 +3321,11 @@ ORDER BY lb.booking_date DESC
         }
         $phoneLike = '%' . $shortPhone;
 
+        // Sanitize project name to remove NBSP, tabs, and carriage returns
+        $projectName = trim(str_replace(["\xC2\xA0", "\xA0", "\r", "\n", "\t"], ' ', $projectName));
+
         // Normalize flat name: strip floor suffix like " - FLOOR 6", " - Floor 6"
-        $cleanFlatName = trim($flatName);
+        $cleanFlatName = trim(str_replace(["\xC2\xA0", "\xA0", "\r", "\n", "\t"], ' ', $flatName));
         $flatNameBase = $cleanFlatName;
         if (preg_match('/^(.+?)\s*[-–]\s*(FLOOR|Floor|floor)\s*\d+/i', $cleanFlatName, $fMatch)) {
             $flatNameBase = trim($fMatch[1]);
@@ -3356,14 +3359,14 @@ ORDER BY lb.booking_date DESC
                 INNER JOIN flats f ON f.id = lb.flat_id
                 WHERE lb.deleted_at IS NULL
                   AND l.deleted_at IS NULL
-                  AND LOWER(TRIM(p.name)) = LOWER(TRIM(?))
+                  AND LOWER(REPLACE(p.name, ' ', '')) = LOWER(REPLACE(?, ' ', ''))
                   AND (
-                      LOWER(TRIM(f.flat_name)) = LOWER(TRIM(?))
-                      OR REPLACE(REPLACE(LOWER(TRIM(f.flat_name)), ' ', ''), '-', '') = ?
+                      LOWER(REPLACE(f.flat_name, ' ', '')) = LOWER(REPLACE(?, ' ', ''))
+                      OR REPLACE(REPLACE(LOWER(REPLACE(f.flat_name, ' ', '')), ' ', ''), '-', '') = ?
                   )
                   AND (
-                      REPLACE(REPLACE(REPLACE(COALESCE(l.phone,''), ' ', ''), '-', ''), '+', '') LIKE ?
-                      OR REPLACE(REPLACE(REPLACE(COALESCE(l.phone_number,''), ' ', ''), '-', ''), '+', '') LIKE ?
+                      REGEXP_REPLACE(COALESCE(l.phone,''), '[^0-9]', '') LIKE ?
+                      OR REGEXP_REPLACE(COALESCE(l.phone_number,''), '[^0-9]', '') LIKE ?
                   )
                 ORDER BY lb.created_at DESC
                 LIMIT 1
@@ -3406,22 +3409,23 @@ ORDER BY lb.booking_date DESC
         if (str_starts_with($shortPhone, '0')) $shortPhone = substr($shortPhone, 1);
         if (strlen($shortPhone) > 10) $shortPhone = substr($shortPhone, -10);
         $phoneLike = '%' . $shortPhone;
-        
+        // Sanitize project name to remove NBSP, tabs, and carriage returns
+        $projectName = trim(str_replace(["\xC2\xA0", "\xA0", "\r", "\n", "\t"], ' ', $projectName));
+
         // Normalize flat name
-        $cleanFlatName = trim($flatName);
+        $cleanFlatName = trim(str_replace(["\xC2\xA0", "\xA0", "\r", "\n", "\t"], ' ', $flatName));
         $flatNameBase = $cleanFlatName;
         if (preg_match('/^(.+?)\s*[-–]\s*(FLOOR|Floor|floor)\s*\d+/i', $cleanFlatName, $fMatch)) {
             $flatNameBase = trim($fMatch[1]);
         }
-        
         // 1. Check if client exists by phone
         $stmt = $this->db->prepare("
             SELECT id, full_name, phone, phone_number 
             FROM leads 
             WHERE deleted_at IS NULL 
               AND (
-                  REPLACE(REPLACE(REPLACE(COALESCE(phone,''), ' ', ''), '-', ''), '+', '') LIKE ?
-                  OR REPLACE(REPLACE(REPLACE(COALESCE(phone_number,''), ' ', ''), '-', ''), '+', '') LIKE ?
+                  REGEXP_REPLACE(COALESCE(phone,''), '[^0-9]', '') LIKE ?
+                  OR REGEXP_REPLACE(COALESCE(phone_number,''), '[^0-9]', '') LIKE ?
               )
             LIMIT 1
         ");
@@ -3460,8 +3464,8 @@ ORDER BY lb.booking_date DESC
             SELECT f.id, p.id as project_id
             FROM flats f
             INNER JOIN projects p ON p.id = f.project_id
-            WHERE LOWER(TRIM(p.name)) = LOWER(TRIM(?))
-              AND (LOWER(TRIM(f.flat_name)) = LOWER(TRIM(?)) OR LOWER(TRIM(f.flat_name)) = LOWER(TRIM(?)))
+            WHERE LOWER(REPLACE(p.name, ' ', '')) = LOWER(REPLACE(?, ' ', ''))
+              AND (LOWER(REPLACE(f.flat_name, ' ', '')) = LOWER(REPLACE(?, ' ', '')) OR LOWER(REPLACE(f.flat_name, ' ', '')) = LOWER(REPLACE(?, ' ', '')))
             LIMIT 1
         ");
         if ($stmt) {
@@ -3475,7 +3479,7 @@ ORDER BY lb.booking_date DESC
             } else {
                 // Flat exists. Check if it's booked
                 $stmt = $this->db->prepare("
-                    SELECT l.full_name, COALESCE(l.phone, l.phone_number) AS phone
+                    SELECT l.id AS lead_id, l.full_name, COALESCE(l.phone, l.phone_number) AS phone
                     FROM lead_bookings lb
                     INNER JOIN leads l ON l.id = lb.lead_id
                     WHERE lb.flat_id = ? AND lb.deleted_at IS NULL AND l.deleted_at IS NULL
@@ -3488,7 +3492,11 @@ ORDER BY lb.booking_date DESC
                     $stmt->close();
                     
                     if ($bookingResult) {
-                        $errors[] = "Associated flat '{$flatName}' in project '{$projectName}' is booked by another client ('{$bookingResult['full_name']}', phone: '{$bookingResult['phone']}')";
+                        if (isset($leadResult['id']) && $bookingResult['lead_id'] == $leadResult['id']) {
+                            // Valid booking for this client, no error.
+                        } else {
+                            $errors[] = "Associated flat '{$flatName}' in project '{$projectName}' is booked by another client ('{$bookingResult['full_name']}', phone: '{$bookingResult['phone']}')";
+                        }
                     } else {
                         $errors[] = "Associated flat '{$flatName}' in project '{$projectName}' is not currently booked by any client";
                     }
@@ -3897,7 +3905,7 @@ ORDER BY lb.booking_date DESC
                         SELECT lp.id, lp.due_emi_amount, es.emi_no
                         FROM lead_payments lp
                         INNER JOIN emi_schedules es ON es.lead_payment_id = lp.id
-                        WHERE lp.booking_id = ? AND lp.payment_type = 'emi'
+                        WHERE lp.is_trashed = 0 AND lp.booking_id = ? AND lp.payment_type = 'emi'
                           AND lp.due_emi_amount > 0 AND es.emi_no = ?
                           AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement')
                         LIMIT 1
@@ -3915,7 +3923,7 @@ ORDER BY lb.booking_date DESC
                         SELECT lp.id, lp.due_emi_amount, COALESCE(es.emi_no, 0) AS emi_no
                         FROM lead_payments lp
                         LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
-                        WHERE lp.booking_id = ? AND lp.payment_type = 'emi'
+                        WHERE lp.is_trashed = 0 AND lp.booking_id = ? AND lp.payment_type = 'emi'
                           AND lp.due_emi_amount > 0
                           AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement')
                         ORDER BY lp.payment_date ASC
@@ -4272,5 +4280,70 @@ ORDER BY lb.booking_date DESC
             $this->db->rollback();
             return ['success' => false, 'message' => $e->getMessage()];
         }
+    }
+
+    /**
+     * Move a transaction to trash
+     */
+    public function trashTransaction($paymentId, $bookingId, $userId)
+    {
+        $stmt = $this->db->prepare("UPDATE lead_payments SET is_trashed = 1, trashed_by = ?, trashed_at = NOW() WHERE id = ? AND booking_id = ?");
+        if (!$stmt) {
+            return ['success' => false, 'message' => 'Prepare failed: ' . $this->db->error];
+        }
+        $stmt->bind_param("iii", $userId, $paymentId, $bookingId);
+        if ($stmt->execute()) {
+            if ($stmt->affected_rows > 0) {
+                return ['success' => true, 'message' => 'Transaction moved to trash successfully.'];
+            }
+            return ['success' => false, 'message' => 'Transaction not found or already trashed.'];
+        }
+        return ['success' => false, 'message' => 'Failed to trash transaction: ' . $stmt->error];
+    }
+
+    /**
+     * Restore a transaction from trash
+     */
+    public function restoreTransaction($paymentId, $bookingId)
+    {
+        $stmt = $this->db->prepare("UPDATE lead_payments SET is_trashed = 0, trashed_by = NULL, trashed_at = NULL WHERE id = ? AND booking_id = ?");
+        if (!$stmt) {
+            return ['success' => false, 'message' => 'Prepare failed: ' . $this->db->error];
+        }
+        $stmt->bind_param("ii", $paymentId, $bookingId);
+        if ($stmt->execute()) {
+            if ($stmt->affected_rows > 0) {
+                return ['success' => true, 'message' => 'Transaction restored successfully.'];
+            }
+            return ['success' => false, 'message' => 'Transaction not found or not trashed.'];
+        }
+        return ['success' => false, 'message' => 'Failed to restore transaction: ' . $stmt->error];
+    }
+
+    /**
+     * Get all trashed transactions
+     */
+    public function getTrashedTransactions()
+    {
+        $sql = "
+            SELECT 
+                lp.*,
+                lb.id as booking_id,
+                l.full_name as client_name,
+                p.name as project_name,
+                f.flat_name as unit_name,
+                u.full_name as trashed_by_name
+            FROM lead_payments lp
+            JOIN lead_bookings lb ON lp.booking_id = lb.id
+            JOIN leads l ON lb.lead_id = l.id
+            JOIN projects p ON lb.project_id = p.id
+            JOIN flats f ON lb.flat_id = f.id
+            LEFT JOIN users u ON lp.trashed_by = u.id
+            WHERE lp.is_trashed = 1
+            ORDER BY lp.trashed_at DESC
+        ";
+        $result = $this->db->query($sql);
+        if (!$result) return [];
+        return $result->fetch_all(MYSQLI_ASSOC);
     }
 }

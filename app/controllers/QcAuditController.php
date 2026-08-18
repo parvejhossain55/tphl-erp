@@ -19,7 +19,7 @@ class QcAuditController extends Controller
         $this->roleName = strtolower($_SESSION['user']['role_name'] ?? '');
 
         // Usually we check permission here, e.g. hasPermission('QC & Internal Audit') or role check
-        if (!hasPermission('QC & Internal Audit') && !str_contains($this->roleName, 'qc & internal audit') && !in_array($this->userRole, [1, 3, 24, 25])) {
+        if (!hasPermission('QC & Internal Audit') && !str_contains($this->roleName, 'qc & internal audit') && !in_array($this->userRole, [1, 3, 33, 24, 25])) {
             // allow admins (1, 3) or QC & Internal Audit roles
             setError("Unauthorized access.");
             header("Location: {$GLOBALS['base_url']}/home");

@@ -41,7 +41,7 @@ class QCController extends Controller
         $userId = $_SESSION['user']['id'] ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
         $baseFilter = "{$alias}.under_construction = 1";
-        if (in_array($roleId, [1, 3, 13, 20, 22, 24, 25])) return $baseFilter;
+        if (in_array($roleId, [1, 3, 33, 13, 20, 22, 24, 25])) return $baseFilter;
         return "{$baseFilter} AND ({$alias}.pm_id = {$userId} OR {$alias}.site_engineer_id = {$userId} OR {$alias}.landman_id = {$userId} OR {$alias}.struct_engineer_id = {$userId} OR {$alias}.operation_head_id = {$userId} OR {$alias}.draftsman_id = {$userId} OR {$alias}.architect_id = {$userId} OR {$alias}.estimator_id = {$userId} OR {$alias}.qc_id = {$userId} OR {$alias}.operator_id = {$userId} OR {$alias}.created_by = {$userId})";
     }
 
@@ -82,7 +82,7 @@ class QCController extends Controller
         $siteWorkTests = $rSiteTests ? $rSiteTests->fetch_all(MYSQLI_ASSOC) : [];
 
         // ── KPI 1: Assigned Projects (only QC-assigned under construction) ──────────────────
-        if (in_array($roleId, [1, 3, 15, 22])) {
+        if (in_array($roleId, [1, 3, 33, 15, 22])) {
             $rAssigned = $this->db->query("SELECT COUNT(*) AS c FROM projects WHERE deleted_at IS NULL AND under_construction = 1");
         } else {
             $stmt = $this->db->prepare("SELECT COUNT(*) AS c FROM projects WHERE qc_id = ? AND deleted_at IS NULL AND under_construction = 1");
@@ -446,7 +446,7 @@ class QCController extends Controller
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        if (in_array($roleId, [1, 3])) {
+        if (in_array($roleId, [1, 3, 33])) {
             $projects = $this->projectModel->getAll();
         } else {
             $projects = $this->db->query("SELECT id, name FROM projects WHERE qc_id = $userId AND deleted_at IS NULL ORDER BY name")->fetch_all(MYSQLI_ASSOC);
@@ -544,7 +544,7 @@ class QCController extends Controller
         // Fetch all material receivings (all statuses, for challan dropdown)
         $receivings = $this->materialReceivingModel->getAll();
 
-        if (in_array($roleId, [1, 3, 15, 22, 13, 24, 25])) {
+        if (in_array($roleId, [1, 3, 33, 15, 22, 13, 24, 25])) {
             $projectsQuery = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name");
         } else {
             // For QC role: show projects assigned to this user as qc_id

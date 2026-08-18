@@ -9,9 +9,11 @@ class SalesTarget extends Model
     }
     public function getAllTargets($userId)
     {
-        $sql = "SELECT * FROM sales_targets 
-            WHERE sales_user_id = ?
-            ORDER BY month ASC";
+        $sql = "SELECT st.*, c.name as category_name 
+            FROM sales_targets st
+            LEFT JOIN project_categories c ON st.category_id = c.id
+            WHERE st.sales_user_id = ?
+            ORDER BY st.month ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param("i", $userId);
         $stmt->execute();
@@ -23,25 +25,29 @@ class SalesTarget extends Model
     /**
      * Insert or update target
      */
-    public function saveTarget($userId, $month, $siteVisit, $bookingTarget, $bookingValue)
+    public function saveTarget($userId, $month, $siteVisit, $bookingTarget, $bookingValue, $categoryId = null, $projectIds = null)
     {
         $sql = "
             INSERT INTO sales_targets
-            (sales_user_id, month, site_visit_target, booking_target, booking_value_target)
-            VALUES (?, ?, ?, ?, ?)
+            (sales_user_id, month, site_visit_target, booking_target, booking_value_target, category_id, project_ids)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 site_visit_target = VALUES(site_visit_target),
                 booking_target = VALUES(booking_target),
-                booking_value_target = VALUES(booking_value_target)
+                booking_value_target = VALUES(booking_value_target),
+                category_id = VALUES(category_id),
+                project_ids = VALUES(project_ids)
         ";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            "isiii",
+            "isiidis",
             $userId,
             $month,
             $siteVisit,
             $bookingTarget,
-            $bookingValue
+            $bookingValue,
+            $categoryId,
+            $projectIds
         );
         return $stmt->execute();
     }

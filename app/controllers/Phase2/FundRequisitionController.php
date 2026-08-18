@@ -21,7 +21,7 @@ class FundRequisitionController extends Controller {
 
         // Management (role 3), Admin (role 1), Accounts (role 6, 30), Operations (role 20, 12, 19, 23, 32) see everything
         $where = "1=1";
-        if (!in_array($roleId, [1, 3, 6, 12, 19, 20, 23, 30, 32])) {
+        if (!in_array($roleId, [1, 3, 33, 6, 12, 19, 20, 23, 30, 32])) {
             // Start with: own requisitions
             $conditions = ["fr.requested_by = $userId"];
 
@@ -158,7 +158,7 @@ class FundRequisitionController extends Controller {
 
         // Projects for create form — restrict to assigned projects for site engineers
         $assignedIds = isset($assignedIds) ? $assignedIds : $this->getAssignedProjectIds($userId);
-        if (!in_array($roleId, [1, 3, 6, 30]) && !empty($assignedIds)) {
+        if (!in_array($roleId, [1, 3, 33, 6, 30]) && !empty($assignedIds)) {
             $idList = implode(',', $assignedIds);
             $pRes = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND id IN ($idList) ORDER BY name ASC");
             $projects = $pRes ? $pRes->fetch_all(MYSQLI_ASSOC) : [];
@@ -280,7 +280,7 @@ class FundRequisitionController extends Controller {
         $balance    = max(0, (float)$req['amount'] - $totalSpent);
 
         // Projects dropdown — restrict for restricted roles
-        if (!in_array($sessionRoleId, [1, 3, 6, 30])) {
+        if (!in_array($sessionRoleId, [1, 3, 33, 6, 30])) {
             $assignedIds = $this->getAssignedProjectIds($sessionUserId);
             if (!empty($assignedIds)) {
                 $idList   = implode(',', $assignedIds);
@@ -424,7 +424,7 @@ class FundRequisitionController extends Controller {
         }
 
         $reportingBossId = (int)($req['reporting_user_id'] ?? 0);
-        $isAllowed = ($sessionUserId === $reportingBossId || in_array($roleId, [1, 3]));
+        $isAllowed = ($sessionUserId === $reportingBossId || in_array($roleId, [1, 3, 33]));
 
         if (!$isAllowed) {
             setError('Only the designated Reporting Boss or Admin can approve this stage.');
@@ -460,55 +460,81 @@ class FundRequisitionController extends Controller {
 
     public function approve() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 3, 20])) {
+        if (!in_array($roleId, [1, 3, 33, 20])) {
             setError('Only Management, Admins, or Operation can approve requisitions.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
         }
 
         $id = (int)($_POST['id'] ?? 0);
-        $status = $_POST['status'] ?? 'approved'; // 'approved' or 'rejected'
+        $status = $_POST['status'] ?? 'approved'; // 'approved', 'partially_approved', or 'rejected'
         $approval_note = $_POST['approval_note'] ?? '';
         $approved_by = (int)$_SESSION['user']['id'];
+        $new_approved_amount = isset($_POST['approved_amount']) ? (float)$_POST['approved_amount'] : null;
 
-        if (!in_array($status, ['approved', 'rejected'])) {
+        if (!in_array($status, ['approved', 'partially_approved', 'rejected'])) {
             setError('Invalid status.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
         }
 
+        $frData = $this->db->query("SELECT * FROM fund_requisitions WHERE id = {$id}")->fetch_assoc();
+        if (!$frData) {
+            setError('Requisition not found.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        $cumulative_approved_amount = (float)($frData['approved_amount'] ?? 0);
+        $posted_amount = 0;
+
+        if ($status === 'approved') {
+            $posted_amount = $frData['amount'] - $cumulative_approved_amount; 
+            $cumulative_approved_amount = $frData['amount'];
+        } elseif ($status === 'partially_approved') {
+            if ($new_approved_amount <= 0 || ($cumulative_approved_amount + $new_approved_amount) > $frData['amount']) {
+                setError('Invalid approved amount.');
+                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+                exit;
+            }
+            $cumulative_approved_amount += $new_approved_amount;
+            $posted_amount = $new_approved_amount;
+            if ($cumulative_approved_amount >= $frData['amount']) {
+                $status = 'approved';
+            }
+        } elseif ($status === 'rejected') {
+            // No change to approved_amount
+        }
+
         $stmt = $this->db->prepare("
             UPDATE fund_requisitions 
-            SET status = ?, approved_by = ?, approval_note = ?, approved_at = CURRENT_TIMESTAMP
+            SET status = ?, approved_by = ?, approval_note = ?, approved_at = CURRENT_TIMESTAMP, approved_amount = ?
             WHERE id = ?
         ");
-        $stmt->bind_param("sisi", $status, $approved_by, $approval_note, $id);
+        $stmt->bind_param("sisdi", $status, $approved_by, $approval_note, $cumulative_approved_amount, $id);
 
         if ($stmt->execute()) {
             $this->syncApprovalRequest($id);
 
             // ====== AUTO POSTING JOURNAL ENTRY (Batch 2/3) ======
-            if ($status === 'approved') {
+            if (in_array($status, ['approved', 'partially_approved']) && $posted_amount > 0) {
                 try {
                     require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
                     $autoService = new \AutoPostingService($this->db);
                     $officeExpenseAccId = $autoService->getAccountIdByCode('5220');
                     $salaryPayableAccId = $autoService->getAccountIdByCode('2130');
-                    $frData = $this->db->query("SELECT * FROM fund_requisitions WHERE id = {$id}")->fetch_assoc();
-                    if ($frData && (float)$frData['amount'] > 0) {
-                        $autoService->postAccrualEntry(
-                            'fund_requisition',
-                            $id,
-                            $officeExpenseAccId,
-                            $salaryPayableAccId,
-                            $frData['amount'],
-                            "Fund Requisition (FR-{$id}): " . ($frData['purpose'] ?: 'Operational Expense'),
-                            $frData['project_id'],
-                            'employee',
-                            $frData['requested_by'],
-                            $approved_by
-                        );
-                    }
+                    $autoService->postAccrualEntry(
+                        'fund_requisition',
+                        $id,
+                        $officeExpenseAccId,
+                        $salaryPayableAccId,
+                        $posted_amount,
+                        "Fund Requisition (FR-{$id}): " . ($frData['purpose'] ?: 'Operational Expense'),
+                        $frData['project_id'],
+                        'employee',
+                        $frData['requested_by'],
+                        $approved_by
+                    );
                 } catch (\Exception $e) {
                     error_log("AutoPosting Exception (Fund Requisition Approve): " . $e->getMessage());
                 }
@@ -533,15 +559,45 @@ class FundRequisitionController extends Controller {
         }
 
         $id = (int)($_POST['id'] ?? 0);
-        $status = $_POST['status'] ?? 'paid'; // 'paid' or 'rejected'
+        $status = $_POST['status'] ?? 'paid'; // 'paid', 'partially_paid', 'rejected'
         $payment_method = $_POST['payment_method'] ?? 'Cash';
         $accounts_note = $_POST['accounts_note'] ?? '';
         $paid_by = (int)$_SESSION['user']['id'];
+        $new_paid_amount = isset($_POST['paid_amount']) ? (float)$_POST['paid_amount'] : null;
 
-        if (!in_array($status, ['paid', 'rejected'])) {
+        if (!in_array($status, ['paid', 'partially_paid', 'rejected'])) {
             setError('Invalid status.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
+        }
+
+        $frData = $this->db->query("SELECT * FROM fund_requisitions WHERE id = {$id}")->fetch_assoc();
+        if (!$frData) {
+            setError('Requisition not found.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        $cumulative_paid_amount = (float)($frData['paid_amount'] ?? 0);
+        $posted_amount = 0;
+
+        if ($status === 'paid') {
+            $posted_amount = $frData['approved_amount'] - $cumulative_paid_amount;
+            $cumulative_paid_amount = $frData['approved_amount'];
+            if ($cumulative_paid_amount < $frData['amount']) {
+                $status = 'partially_paid';
+            }
+        } elseif ($status === 'partially_paid') {
+            if ($new_paid_amount <= 0 || ($cumulative_paid_amount + $new_paid_amount) > $frData['approved_amount']) {
+                setError('Invalid paid amount.');
+                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+                exit;
+            }
+            $cumulative_paid_amount += $new_paid_amount;
+            $posted_amount = $new_paid_amount;
+            if ($cumulative_paid_amount >= $frData['amount']) {
+                $status = 'paid';
+            }
         }
 
         // Handle payment attachment upload
@@ -558,39 +614,45 @@ class FundRequisitionController extends Controller {
             }
         }
 
-        $stmt = $this->db->prepare("
-            UPDATE fund_requisitions 
-            SET status = ?, paid_by = ?, payment_method = ?, accounts_note = ?, payment_attachment_path = ?, paid_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        ");
-        $stmt->bind_param("sisssi", $status, $paid_by, $payment_method, $accounts_note, $payment_attachment_path, $id);
+        if ($payment_attachment_path) {
+            $stmt = $this->db->prepare("
+                UPDATE fund_requisitions 
+                SET status = ?, paid_by = ?, payment_method = ?, accounts_note = ?, payment_attachment_path = ?, paid_at = CURRENT_TIMESTAMP, paid_amount = ?
+                WHERE id = ?
+            ");
+            $stmt->bind_param("sisssdi", $status, $paid_by, $payment_method, $accounts_note, $payment_attachment_path, $cumulative_paid_amount, $id);
+        } else {
+            $stmt = $this->db->prepare("
+                UPDATE fund_requisitions 
+                SET status = ?, paid_by = ?, payment_method = ?, accounts_note = ?, paid_at = CURRENT_TIMESTAMP, paid_amount = ?
+                WHERE id = ?
+            ");
+            $stmt->bind_param("sissdi", $status, $paid_by, $payment_method, $accounts_note, $cumulative_paid_amount, $id);
+        }
 
         if ($stmt->execute()) {
             $this->syncApprovalRequest($id);
 
             // ====== AUTO POSTING DISBURSEMENT VOUCHER (Batch 2/3) ======
-            if ($status === 'paid') {
+            if (in_array($status, ['paid', 'partially_paid']) && $posted_amount > 0) {
                 try {
                     require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
                     $autoService = new \AutoPostingService($this->db);
                     
                     $bankAccId = $autoService->getBankOrCashAccountId($payment_method);
                     $advanceAccId = $autoService->getAccountIdByCode('110002'); // Advance to Employees against works/ Others
-                    $frData = $this->db->query("SELECT * FROM fund_requisitions WHERE id = {$id}")->fetch_assoc();
-                    if ($frData && (float)$frData['amount'] > 0) {
-                        $autoService->postDisbursementEntry(
-                            'fund_requisition',
-                            $id,
-                            $advanceAccId,
-                            $bankAccId,
-                            $frData['amount'],
-                            "Payment Disbursement for Fund Requisition (FR-{$id})",
-                            $frData['project_id'],
-                            'employee',
-                            $frData['requested_by'],
-                            $paid_by
-                        );
-                    }
+                    $autoService->postDisbursementEntry(
+                        'fund_requisition',
+                        $id,
+                        $advanceAccId,
+                        $bankAccId,
+                        $posted_amount,
+                        "Payment Disbursement for Fund Requisition (FR-{$id})",
+                        $frData['project_id'],
+                        'employee',
+                        $frData['requested_by'],
+                        $paid_by
+                    );
                 } catch (\Exception $e) {
                     error_log("AutoPosting Exception (Fund Requisition Pay): " . $e->getMessage());
                 }
@@ -641,7 +703,7 @@ class FundRequisitionController extends Controller {
         }
 
         // Only creator or Admin/Super Admin can delete before approval
-        $allow = ($req['requested_by'] == $userId || in_array($roleId, [1, 3]));
+        $allow = ($req['requested_by'] == $userId || in_array($roleId, [1, 3, 33]));
 
         if ($allow) {
             $this->db->query("DELETE FROM fund_requisitions WHERE id = $id");
@@ -737,7 +799,7 @@ class FundRequisitionController extends Controller {
         // For restricted roles, only show their assigned projects in the dropdown
         $sessionUserId  = (int)$_SESSION['user']['id'];
         $sessionRoleId  = (int)$_SESSION['user']['role_id'];
-        if (!in_array($sessionRoleId, [1, 3, 6, 30])) {
+        if (!in_array($sessionRoleId, [1, 3, 33, 6, 30])) {
             $assignedIds = $this->getAssignedProjectIds($sessionUserId);
             if (!empty($assignedIds)) {
                 $idList   = implode(',', $assignedIds);
@@ -878,7 +940,7 @@ class FundRequisitionController extends Controller {
         $isReqOwner = $req && $req['requested_by'] == $userId;
 
         // Only owner of expense, owner of requisition, or Admin/Management can delete
-        if ($expense['created_by'] === $userId || $isReqOwner || in_array($roleId, [1, 3])) {
+        if ($expense['created_by'] === $userId || $isReqOwner || in_array($roleId, [1, 3, 33])) {
             // Delete file if exists
             if (!empty($expense['attachment_path'])) {
                 $file = dirname(dirname(dirname(__DIR__))) . '/public/' . $expense['attachment_path'];
@@ -914,7 +976,7 @@ class FundRequisitionController extends Controller {
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
         }
-        if ($req['requested_by'] != $userId && !in_array($roleId, [1, 3])) {
+        if ($req['requested_by'] != $userId && !in_array($roleId, [1, 3, 33])) {
             setError('Only the requester or admin can submit settlement.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
@@ -949,7 +1011,7 @@ class FundRequisitionController extends Controller {
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
         }
-        if ($req['requested_by'] != $userId && !in_array($roleId, [1, 3])) {
+        if ($req['requested_by'] != $userId && !in_array($roleId, [1, 3, 33])) {
             setError('Unauthorized.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
@@ -1084,6 +1146,10 @@ class FundRequisitionController extends Controller {
         $requestType = $row['requisition_type'];
         $title = "Fund Requisition: " . (mb_strlen($row['purpose']) > 80 ? mb_substr($row['purpose'], 0, 80) . '...' : $row['purpose']);
         $amount = (float)$row['amount'];
+        $approvedAmount = !empty($row['approved_amount']) ? (float)$row['approved_amount'] : (in_array($row['status'], ['approved', 'paid']) ? $amount : 0);
+        if ($approvedAmount == 0 && $row['status'] === 'pending_dept') {
+            $approvedAmount = $amount;
+        }
         $requestedBy = (int)$row['requested_by'];
         $status = ($row['status'] === 'pending_dept') ? 'pending' : $row['status'];
         $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
@@ -1099,7 +1165,7 @@ class FundRequisitionController extends Controller {
                 VALUES (?, ?, ?, 'fund_requisitions', ?, ?, ?, ?, 'management', ?, ?, ?, ?, ?, ?)
             ");
             if ($stmt) {
-                $stmt->bind_param("sssiddisissss", $deptName, $requestType, $title, $fundReqId, $amount, $amount, $requestedBy, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                $stmt->bind_param("sssiddisissss", $deptName, $requestType, $title, $fundReqId, $amount, $approvedAmount, $requestedBy, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
                 $stmt->execute();
                 $stmt->close();
             }
@@ -1110,7 +1176,7 @@ class FundRequisitionController extends Controller {
                 WHERE source_table = 'fund_requisitions' AND source_id = ?
             ");
             if ($stmt) {
-                $stmt->bind_param("sssddsissi", $deptName, $requestType, $title, $amount, $amount, $status, $approvedBy, $approvedAt, $approvalNote, $fundReqId);
+                $stmt->bind_param("sssddsissi", $deptName, $requestType, $title, $amount, $approvedAmount, $status, $approvedBy, $approvedAt, $approvalNote, $fundReqId);
                 $stmt->execute();
                 $stmt->close();
             }

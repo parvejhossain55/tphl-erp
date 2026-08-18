@@ -39,13 +39,13 @@ class Con_FundRequestController extends Controller
     /** Roles 1 (Admin), 3 (Super Admin), 20 (Site Operator) can approve */
     private function canApprove()
     {
-        return in_array($this->userRole, [1, 3, 20]);
+        return in_array($this->userRole, [1, 3, 33, 20]);
     }
 
     /** Roles 1, 3, 6 (Accounts) can process payments */
     private function canProcessPayment()
     {
-        return in_array($this->userRole, [1, 3, 6, 30]);
+        return in_array($this->userRole, [1, 3, 33, 6, 30]);
     }
 
     /* =====================
@@ -56,7 +56,7 @@ class Con_FundRequestController extends Controller
         // Roles 1 (Admin), 3 (Super Admin), 6 (Accounts) see ALL requests
         // Other roles only see their own requests
         $filterUserId = null;
-        if (!in_array($this->userRole, [1, 3, 6, 22])) {
+        if (!in_array($this->userRole, [1, 3, 33, 6, 22])) {
             $filterUserId = $this->userId;
         }
 

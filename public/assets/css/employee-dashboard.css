@@ -132,11 +132,11 @@
     }
 
     /* ── MAIN ── */
-    .main-content {
+    /* .main-content {
         margin-left: 230px;
         min-height: 100vh;
         padding: 0;
-    }
+    } */
 
     .topbar {
         background: var(--surface);

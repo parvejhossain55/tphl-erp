@@ -80,7 +80,7 @@ class Con_MaterialReceivingController extends Controller
 
     public function store()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -294,7 +294,7 @@ class Con_MaterialReceivingController extends Controller
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        if (!in_array($roleId, [1, 3, 15, 20, 22, 23])) {
+        if (!in_array($roleId, [1, 3, 33, 15, 20, 22, 23])) {
             setError('You do not have permission to approve GRNs.');
             header("Location: {$GLOBALS['base_url']}/con-material-receiving-qc/{$id}");
             exit;

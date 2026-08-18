@@ -24,7 +24,7 @@ class Con_BudgetExtendController extends Controller
         // Fetch budget extension requests
         // PM (15,22) and Management (1,3) see all, others see their own
         $filter = "1=1";
-        if (!in_array($userRole, [1, 3, 15, 22])) {
+        if (!in_array($userRole, [1, 3, 33, 15, 22])) {
             $filter = "r.requested_by = " . $userId;
         }
 
@@ -137,7 +137,7 @@ class Con_BudgetExtendController extends Controller
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // Only Management (1, 3) and PM (15, 22) can approve
-        if (!in_array($userRole, [1, 3, 15, 22])) {
+        if (!in_array($userRole, [1, 3, 33, 15, 22])) {
             setError('You do not have permission to approve budget adjustments.');
             header("Location: " . $_SERVER['HTTP_REFERER']);
             exit;
@@ -203,7 +203,7 @@ class Con_BudgetExtendController extends Controller
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // Only Management (1, 3) and PM (15, 22) can reject
-        if (!in_array($userRole, [1, 3, 15, 22])) {
+        if (!in_array($userRole, [1, 3, 33, 15, 22])) {
             setError('You do not have permission to reject budget adjustments.');
             header("Location: " . $_SERVER['HTTP_REFERER']);
             exit;

@@ -39,7 +39,7 @@ class Con_PurchaseRequestController extends Controller
         $userId   = (int)($_SESSION['user']['id'] ?? 0);
 
         // Approver & Procurement roles see ALL PRs; regular creators only see their own PRs
-        $approverRoles = [1, 2, 3, 6, 13, 15, 17, 20, 22, 23, 24, 25, 30, 31, 32];
+        $approverRoles = [1, 2, 3, 33, 6, 13, 15, 17, 20, 22, 23, 24, 25, 30, 31, 32];
         $isApprover    = in_array($userRole, $approverRoles);
         $createdBy     = !$isApprover ? $userId : null;
 
@@ -47,7 +47,7 @@ class Con_PurchaseRequestController extends Controller
 
         // Fetch Purchase Executives (Role ID 23) and Senior Purchase Executives (Role ID 31) for assignment dropdown
         $executives = [];
-        if (in_array($userRole, [1, 3, 17, 22, 31])) { // Admin, Management, Purchase Head, Senior Purchase Executive
+        if (in_array($userRole, [1, 3, 33, 33, 17, 22, 31])) { // Admin, Management, Purchase Head, Senior Purchase Executive
             $stmt = $this->db->prepare("SELECT id, full_name FROM users WHERE role_id IN (23, 31) ORDER BY full_name");
             $stmt->execute();
             $executives = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -73,14 +73,14 @@ class Con_PurchaseRequestController extends Controller
         $userId   = (int)($_SESSION['user']['id'] ?? 0);
 
         // Block management and approver roles from creating PRs
-        if (in_array($userRole, [1, 3, 15, 20, 22, 32])) {
+        if (in_array($userRole, [1, 3, 33, 33, 15, 20, 22, 32])) {
             setError('You do not have permission to create Purchase Requests. You can only approve them.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
         }
 
         // ── Project list based on role ────────────────────────────────────────
-        if (in_array($userRole, [1, 3, 17, 22, 23, 31])) {
+        if (in_array($userRole, [1, 3, 33, 33, 17, 22, 23, 31])) {
             // Admin / Super Admin / Purchase Team Leader / PM Head / Purchase Executive / Sr Purchase Executive → all projects
             $pResult  = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name ASC");
             $projects = $pResult ? $pResult->fetch_all(MYSQLI_ASSOC) : [];
@@ -179,7 +179,7 @@ class Con_PurchaseRequestController extends Controller
 
     public function store()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22, 32])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 33, 15, 20, 22, 32])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -517,7 +517,7 @@ class Con_PurchaseRequestController extends Controller
         $successMsg = '';
 
         if ($status === 'Rejected') {
-            if (!in_array($userRole, [1, 3, 15, 22])) {
+            if (!in_array($userRole, [1, 3, 33, 33, 15, 22])) {
                 setError('You do not have permission to reject this request.');
                 header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
                 exit;
@@ -536,7 +536,7 @@ class Con_PurchaseRequestController extends Controller
                 $stmtProject->close();
             }
 
-            if (!in_array($userRole, [1, 3, 22]) && ($userRole === 15 && !empty($assignedPmId) && $userId !== $assignedPmId)) {
+            if (!in_array($userRole, [1, 3, 33, 33, 22]) && ($userRole === 15 && !empty($assignedPmId) && $userId !== $assignedPmId)) {
                 setError('You do not have permission to reject this request. Only the assigned Project Manager for this project can reject.');
                 header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
                 exit;
@@ -548,7 +548,7 @@ class Con_PurchaseRequestController extends Controller
             $stmt->bind_param('isi', $userId, $note, $id);
             $successMsg = "Purchase Request rejected.";
         } else { // status === 'Approved'
-            if (!in_array($userRole, [1, 3, 15, 22])) {
+            if (!in_array($userRole, [1, 3, 33, 33, 15, 22])) {
                 setError('You do not have permission to approve this request.');
                 header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
                 exit;
@@ -567,7 +567,7 @@ class Con_PurchaseRequestController extends Controller
                 $stmtProject->close();
             }
 
-            if (!in_array($userRole, [1, 3, 22]) && ($userRole === 15 && !empty($assignedPmId) && $userId !== $assignedPmId)) {
+            if (!in_array($userRole, [1, 3, 33, 33, 22]) && ($userRole === 15 && !empty($assignedPmId) && $userId !== $assignedPmId)) {
                 setError('You do not have permission to perform PM Approval. Only the assigned Project Manager for this project can approve.');
                 header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
                 exit;
@@ -619,7 +619,7 @@ class Con_PurchaseRequestController extends Controller
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // Only Admin, Management, Purchase Head, or Senior Purchase Executive can assign
-        if (!in_array($userRole, [1, 3, 17, 22, 31])) {
+        if (!in_array($userRole, [1, 3, 33, 33, 17, 22, 31])) {
             setError('You do not have permission to assign an executive.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
             exit;
@@ -900,7 +900,7 @@ class Con_PurchaseRequestController extends Controller
         }
 
         $isCreator = (int)($pr['created_by'] ?? 0) === $userId;
-        $isAdmin = in_array($userRole, [1, 3]);
+        $isAdmin = in_array($userRole, [1, 3, 33, 33]);
 
         if (!$isCreator && !$isAdmin) {
             setError('You do not have permission to delete this purchase request.');
@@ -939,7 +939,7 @@ class Con_PurchaseRequestController extends Controller
         }
 
         $isCreator = (int)($pr['created_by'] ?? 0) === $userId;
-        $isAdmin = in_array($userRole, [1, 3]);
+        $isAdmin = in_array($userRole, [1, 3, 33, 33]);
 
         if (!$isCreator && !$isAdmin) {
             setError('You do not have permission to edit this Purchase Request.');
@@ -992,7 +992,7 @@ class Con_PurchaseRequestController extends Controller
         }
 
         $isCreator = (int)($pr['created_by'] ?? 0) === $userId;
-        $isAdmin = in_array($userRole, [1, 3]);
+        $isAdmin = in_array($userRole, [1, 3, 33, 33]);
 
         if (!$isCreator && !$isAdmin) {
             setError('You do not have permission to edit this Purchase Request.');

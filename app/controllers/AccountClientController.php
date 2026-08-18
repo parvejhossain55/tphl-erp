@@ -2520,15 +2520,18 @@ public function discountStatement($bookingId = null)
         $bookingId = (int)($_POST['booking_id'] ?? 0);
         $emiNo = isset($_POST['emi_no']) ? (int)$_POST['emi_no'] : 0;
         $note = trim($_POST['note'] ?? '');
+        $activityDate = trim($_POST['activity_date'] ?? '');
+        $activityMode = trim($_POST['activity_mode'] ?? '');
+        $activityReason = trim($_POST['activity_reason'] ?? '');
         $userId = $_SESSION['user']['id'] ?? 0;
 
-        if (!$bookingId || empty($note)) {
+        if (!$bookingId || empty($note) || empty($activityDate) || empty($activityMode) || empty($activityReason)) {
             echo json_encode(['success' => false, 'message' => 'Missing required fields']);
             exit;
         }
 
-        $stmt = $this->db->prepare("INSERT INTO emi_followups (booking_id, emi_no, note, added_by) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("iisi", $bookingId, $emiNo, $note, $userId);
+        $stmt = $this->db->prepare("INSERT INTO emi_followups (booking_id, emi_no, note, activity_date, activity_mode, activity_reason, added_by) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("iissssi", $bookingId, $emiNo, $note, $activityDate, $activityMode, $activityReason, $userId);
         
         if ($stmt->execute()) {
             echo json_encode(['success' => true]);
@@ -2579,5 +2582,105 @@ public function discountStatement($bookingId = null)
         echo json_encode(['success' => true, 'data' => $data]);
         exit;
     }
-}
 
+    /**
+     * Trash a transaction
+     */
+    public function trashTransaction()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $paymentId = isset($_GET['payment_id']) ? (int) $_GET['payment_id'] : 0;
+        $bookingId = isset($_GET['booking_id']) ? (int) $_GET['booking_id'] : 0;
+
+        if (!$paymentId || !$bookingId) {
+            setError("Invalid request: missing payment or booking ID.");
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+            exit;
+        }
+
+        $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+        $isAccounts = in_array($roleId, [1, 3, 6, 30]);
+        $redirectUrl = "{$GLOBALS['base_url']}/clients-cash-in-history/{$bookingId}";
+
+        if (!$isAccounts) {
+            setError("You do not have permission to trash transactions.");
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+
+        $userId = (int) ($_SESSION['user']['id'] ?? 0);
+        $result = $this->clientModel->trashTransaction($paymentId, $bookingId, $userId);
+
+        if ($result['success']) {
+            setSuccess($result['message']);
+        } else {
+            setError($result['message']);
+        }
+
+        header("Location: {$redirectUrl}");
+        exit;
+    }
+
+    /**
+     * Restore a trashed transaction
+     */
+    public function restoreTransaction()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $paymentId = isset($_GET['payment_id']) ? (int) $_GET['payment_id'] : 0;
+        $bookingId = isset($_GET['booking_id']) ? (int) $_GET['booking_id'] : 0;
+
+        if (!$paymentId || !$bookingId) {
+            setError("Invalid request: missing payment or booking ID.");
+            header("Location: {$GLOBALS['base_url']}/trash-client-payment-list");
+            exit;
+        }
+
+        $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+        $isAccounts = in_array($roleId, [1, 3, 6, 30]);
+
+        if (!$isAccounts) {
+            setError("You do not have permission to restore transactions.");
+            header("Location: {$GLOBALS['base_url']}/trash-client-payment-list");
+            exit;
+        }
+
+        $result = $this->clientModel->restoreTransaction($paymentId, $bookingId);
+
+        if ($result['success']) {
+            setSuccess($result['message']);
+        } else {
+            setError($result['message']);
+        }
+
+        header("Location: {$GLOBALS['base_url']}/trash-client-payment-list");
+        exit;
+    }
+
+    /**
+     * View trashed client payments list
+     */
+    public function trashList()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+        $isAccounts = in_array($roleId, [1, 3, 6, 30]);
+
+        if (!$isAccounts) {
+            setError("You do not have permission to view trash.");
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in");
+            exit;
+        }
+
+        $trashedTransactions = $this->clientModel->getTrashedTransactions();
+
+        $this->view("accounts/cashIn/trash-client-payment-list", [
+            "current_route" => "trash-client-payment-list",
+            "page_title" => "Trash Client Payment",
+            "trashedTransactions" => $trashedTransactions
+        ]);
+    }
+}

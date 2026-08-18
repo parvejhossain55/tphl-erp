@@ -18,7 +18,7 @@ class LandReportController extends Controller {
     public function index() {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $projectFilter = in_array($roleId, [1, 3, 6, 30]) ? "p.landman_id IS NOT NULL" : "p.landman_id = $userId";
+        $projectFilter = in_array($roleId, [1, 3, 33, 6, 30]) ? "p.landman_id IS NOT NULL" : "p.landman_id = $userId";
         
         $from_date = $_GET['from_date'] ?? date('Y-m-01');
         $to_date = $_GET['to_date'] ?? date('Y-m-t');
@@ -122,13 +122,13 @@ class LandReportController extends Controller {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
         // Role guard: Only Land Officer (14), Accounts (6), Management (3), Admin (1)
-        if (!in_array($roleId, [1, 3, 6, 14])) {
+        if (!in_array($roleId, [1, 3, 33, 6, 14])) {
             setError('Unauthorized access.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
         }
 
-        $projectFilter = in_array($roleId, [1, 3, 6, 30]) ? "p.landman_id IS NOT NULL" : "p.landman_id = $userId";
+        $projectFilter = in_array($roleId, [1, 3, 33, 6, 30]) ? "p.landman_id IS NOT NULL" : "p.landman_id = $userId";
 
         $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
         $selectedAcqId = isset($_GET['land_acquisition_id']) && $_GET['land_acquisition_id'] !== '' ? (int)$_GET['land_acquisition_id'] : null;
@@ -225,7 +225,7 @@ class LandReportController extends Controller {
                 if ($selectedProjectId) {
                     $genReqQuery .= " AND fr.project_id = $selectedProjectId";
                 }
-                if (!in_array($roleId, [1, 3, 6, 30])) {
+                if (!in_array($roleId, [1, 3, 33, 6, 30])) {
                     $genReqQuery .= " AND (fr.requested_by = $userId OR (fr.project_id IS NOT NULL AND fr.project_id IN (SELECT id FROM projects WHERE landman_id = $userId)))";
                 }
                 $genReqQuery .= " ORDER BY fr.created_at ASC";
@@ -244,7 +244,7 @@ class LandReportController extends Controller {
                 if ($selectedProjectId) {
                     $genExpQuery .= " AND fre.project_id = $selectedProjectId";
                 }
-                if (!in_array($roleId, [1, 3, 6, 30])) {
+                if (!in_array($roleId, [1, 3, 33, 6, 30])) {
                     $genExpQuery .= " AND (fre.created_by = $userId OR (fre.project_id IS NOT NULL AND fre.project_id IN (SELECT id FROM projects WHERE landman_id = $userId)))";
                 }
                 $genExpQuery .= " ORDER BY fre.created_at ASC";

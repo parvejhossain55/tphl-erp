@@ -30,7 +30,7 @@ class ProjectDrawingController extends Controller {
         // Filter by project_id if passed (e.g. from estimator dashboard)
         $filterProjectId = (int)($_GET['project_id'] ?? 0);
 
-        if (in_array($roleId, [1, 2, 3, 13, 15, 22])) {
+        if (in_array($roleId, [1, 2, 3, 33, 13, 15, 22])) {
             // Admins / PM / QC — see all (or filtered)
             if ($filterProjectId > 0) {
                 $stmt = $this->db->prepare("
@@ -343,7 +343,7 @@ class ProjectDrawingController extends Controller {
 
     private function getMyAssignedProjects(int $userId, int $roleId, string $roleCol): array
     {
-        if (in_array($roleId, [1, 2, 3, 13, 15, 20, 22])) {
+        if (in_array($roleId, [1, 2, 3, 33, 13, 15, 20, 22])) {
             return $this->db->query(
                 "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name ASC"
             )->fetch_all(MYSQLI_ASSOC);
@@ -367,7 +367,7 @@ class ProjectDrawingController extends Controller {
      */
     private function getProjectsForDraftsman(int $userId, int $roleId): array
     {
-        if (in_array($roleId, [1, 2, 3, 13, 15, 22])) {
+        if (in_array($roleId, [1, 2, 3, 33, 13, 15, 22])) {
             // Admins/PM/QC see ALL projects
             return $this->db->query("
                 SELECT id, name
@@ -396,7 +396,7 @@ class ProjectDrawingController extends Controller {
     private function getBlockedProjectsForDraftsman(int $userId, int $roleId): array
     {
         // Admins can create for any project regardless; no blocked state for them
-        if (in_array($roleId, [1, 2, 3, 13, 15, 22])) {
+        if (in_array($roleId, [1, 2, 3, 33, 13, 15, 22])) {
             return [];
         }
         $stmt = $this->db->prepare("

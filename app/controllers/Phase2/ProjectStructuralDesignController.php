@@ -24,7 +24,7 @@ class ProjectStructuralDesignController extends Controller {
         $userId = $_SESSION['user']['id']  ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
 
-        if (in_array($roleId, [1, 2, 3, 13, 15, 22])) {
+        if (in_array($roleId, [1, 2, 3, 33, 13, 15, 22])) {
             $records = $this->model->getAll();
         } elseif ($roleId == 12) {
             $stmt = $this->db->prepare("
@@ -231,7 +231,7 @@ class ProjectStructuralDesignController extends Controller {
 
     private function getMyAssignedProjects(int $userId, int $roleId, string $roleCol): array
     {
-        if (in_array($roleId, [1, 2, 3, 13, 15, 20, 22])) {
+        if (in_array($roleId, [1, 2, 3, 33, 13, 15, 20, 22])) {
             return $this->db->query(
                 "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name ASC"
             )->fetch_all(MYSQLI_ASSOC);

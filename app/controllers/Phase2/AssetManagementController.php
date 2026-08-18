@@ -33,7 +33,7 @@ class AssetManagementController extends Controller
                 return true;
             }
         }
-        return in_array($roleId, [1, 3, 6, 17, 20, 22, 23, 24, 25, 30, 31, 32]);
+        return in_array($roleId, [1, 3, 33, 6, 17, 20, 22, 23, 24, 25, 30, 31, 32]);
     }
 
     public function index()
@@ -399,13 +399,13 @@ class AssetManagementController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userId = (int)($_SESSION['user']['id'] ?? 0);
 
-        $isSuperAdmin   = in_array($roleId, [1, 3]); // Admin (1) and super Admin (3) ONLY. Role 2 is Employee!
+        $isSuperAdmin   = in_array($roleId, [1, 3, 33]); // Admin (1) and super Admin (3) ONLY. Role 2 is Employee!
         $isOperations   = $isSuperAdmin || in_array($roleId, [20, 22, 30, 32]);
         $isPurchaseHead = $isSuperAdmin || in_array($roleId, [17, 23, 31]);
         $isQcAudit      = $isSuperAdmin || in_array($roleId, [24, 25]);
         $isManagement   = $isSuperAdmin;
         $isAccounts     = $isSuperAdmin || in_array($roleId, [6, 30]);
-        $isGlobalViewer = in_array($roleId, [1, 3, 6, 17, 20, 22, 23, 24, 25, 30, 31, 32]);
+        $isGlobalViewer = in_array($roleId, [1, 3, 33, 6, 17, 20, 22, 23, 24, 25, 30, 31, 32]);
         $isApprover     = $isGlobalViewer;
 
         $activeTab  = $_GET['tab'] ?? ($isApprover ? 'all_requests' : 'my_requests');
@@ -539,7 +539,7 @@ class AssetManagementController extends Controller
 
             // Role permission validation for step approval
             $canApproveStep = false;
-            if (in_array($roleId, [1, 3])) {
+            if (in_array($roleId, [1, 3, 33])) {
                 $canApproveStep = true;
             } else {
                 if ($step === 'operations') {
@@ -557,7 +557,7 @@ class AssetManagementController extends Controller
                         $canApproveStep = true;
                     }
                 } elseif ($step === 'mgmt') {
-                    if (in_array($roleId, [1, 3])) {
+                    if (in_array($roleId, [1, 3, 33])) {
                         $canApproveStep = true;
                     }
                 }
@@ -774,7 +774,7 @@ class AssetManagementController extends Controller
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = (int)($_SESSION['user']['id'] ?? 0);
             $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-            $isAdmin = in_array($roleId, [1, 2, 3]);
+            $isAdmin = in_array($roleId, [1, 2, 3, 33]);
 
             if ($this->model->deleteExtraPurchase($id, $userId, $isAdmin)) {
                 setSuccess("Purchase request #{$id} deleted successfully.");

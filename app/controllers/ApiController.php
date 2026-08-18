@@ -219,9 +219,14 @@ class ApiController extends Controller
                 }
             }
 
-            $agreementValue = (float)$booking['agreement_value'];
+            // Updated Price Logic: Use Flats table price
+            $flatPrice = $flat ? (float)$flat['price_value'] : 0;
+            if ($flatPrice <= 0) {
+                $flatPrice = (float)$booking['agreement_value'];
+            }
+            
             $discountAmount = (float)$booking['discount_amount'];
-            $totalPayable = $agreementValue - $discountAmount;
+            $totalPayable = $flatPrice - $discountAmount;
 
             $totalPaid = 0;
             $bookingMoneyPaid = 0;
@@ -229,6 +234,7 @@ class ApiController extends Controller
             $mutationCostPaid = 0;
             $devChargePaid = 0;
             $emiPaid = 0;
+            $unverifiedEmiPaid = 0; 
             $totalDueEmi = 0;
             $totalServiceFee = 0;
             $additionalLandSharePaid = 0;
@@ -237,13 +243,42 @@ class ApiController extends Controller
             $penaltyPaid = 0;
             $penaltyWaived = 0;
 
-            $pRes = $this->db->query("SELECT * FROM lead_payments WHERE booking_id = $bookingId AND payment_status IN ('paid', 'partially_paid')");
+            // Arrays for breakdowns
+            $landShareHistory = [];
+            $devChargeHistory = [];
+
+            // Query updated to order by date for correct history timeline
+            $pRes = $this->db->query("SELECT * FROM lead_payments WHERE booking_id = $bookingId AND payment_status IN ('paid', 'partially_paid') ORDER BY payment_date ASC, id ASC");
             if ($pRes) {
                 while ($p = $pRes->fetch_assoc()) {
-                    if ($p['verification_status'] === 'verified') {
-                        $amt = (float)$p['amount'];
+                    $amt = (float)$p['amount'];
+                    $ptype = $p['payment_type'];
+                    $vStatus = $p['verification_status'];
+
+                    // Capture Land Share and Registration History
+                    if (in_array($ptype, ['booking_money', 'registration', 'mutation_cost', 'land_share'])) {
+                        $landShareHistory[] = [
+                            "payment_id" => $p['id'],
+                            "payment_type" => $ptype,
+                            "amount_paid" => $amt,
+                            "payment_date" => $p['payment_date'] ?: 'N/A',
+                            "verification_status" => $vStatus
+                        ];
+                    }
+
+                    // Capture Development Charge History
+                    if ($ptype === 'development_charge') {
+                        $devChargeHistory[] = [
+                            "payment_id" => $p['id'],
+                            "payment_type" => $ptype,
+                            "amount_paid" => $amt,
+                            "payment_date" => $p['payment_date'] ?: 'N/A',
+                            "verification_status" => $vStatus
+                        ];
+                    }
+
+                    if ($vStatus === 'verified') {
                         $totalPaid += $amt;
-                        $ptype = $p['payment_type'];
 
                         if ($ptype === 'booking_money') $bookingMoneyPaid += $amt;
                         else if ($ptype === 'registration') $registrationPaid += $amt;
@@ -258,6 +293,10 @@ class ApiController extends Controller
                         $totalDueEmi += (float)$p['due_emi_amount'];
                         $bulkEmiDiscount += (float)$p['bulk_emi_discount'];
                         $penaltyCharged += (float)$p['penalty_amount'];
+                    } else {
+                        if (in_array($ptype, ['emi', 'emi_due_settlement'])) {
+                            $unverifiedEmiPaid += $amt;
+                        }
                     }
                     $penaltyPaid += (float)$p['penalty_paid'];
                     $penaltyWaived += (float)$p['penalty_waived'];
@@ -270,8 +309,7 @@ class ApiController extends Controller
             $devChargeTarget = $flat ? (float)$flat['development_charges'] : 0;
             $totalLandSharePaid = $bookingMoneyPaid + $registrationPaid + $mutationCostPaid + $additionalLandSharePaid;
 
-            $totalPrice = $flat ? (float)$flat['price_value'] : 0;
-            $constructionFee = max(0, $totalPrice - ($landShareTarget + $devChargeTarget));
+            $constructionFee = max(0, $flatPrice - ($landShareTarget + $devChargeTarget));
 
             $emiStatsRes = $this->db->query("SELECT total_emi_no FROM lead_payments WHERE booking_id = $bookingId AND total_emi_no IS NOT NULL LIMIT 1");
             $totalEmiCount = 0;
@@ -287,6 +325,53 @@ class ApiController extends Controller
                 $completedEmiCount = (int)$completedEmiRes->fetch_assoc()['cnt'];
             }
 
+            $unverifiedEmiRes = $this->db->query("SELECT COUNT(*) as cnt FROM emi_schedules es JOIN lead_payments lp ON es.lead_payment_id = lp.id WHERE lp.booking_id = $bookingId AND lp.verification_status != 'verified'");
+            $unverifiedEmiCount = 0;
+            if ($unverifiedEmiRes && $unverifiedEmiRes->num_rows > 0) {
+                $unverifiedEmiCount = (int)$unverifiedEmiRes->fetch_assoc()['cnt'];
+            }
+            
+            // EMI History Breakdown Query
+            $emiHistory = [];
+            $emiQuery = $this->db->query("
+                SELECT lp.id, lp.amount, lp.payment_date, lp.payment_type, lp.verification_status, 
+                       es.emi_no, es.due_date, es.emi_amount as target_amount
+                FROM lead_payments lp 
+                LEFT JOIN emi_schedules es ON lp.id = es.lead_payment_id 
+                WHERE lp.booking_id = $bookingId 
+                  AND lp.payment_type IN ('emi', 'emi_due_settlement')
+                  AND lp.payment_status IN ('paid', 'partially_paid')
+                ORDER BY lp.payment_date ASC, lp.id ASC
+            ");
+            
+            if ($emiQuery) {
+                while ($row = $emiQuery->fetch_assoc()) {
+                    $paid = (float)$row['amount'];
+                    $target = (float)$row['target_amount'];
+                    
+                    if ($row['emi_no'] && $target <= 0) {
+                        $target = $perEmiAmount;
+                    }
+                    
+                    $due_for_this_emi = 0;
+                    if ($row['emi_no']) {
+                        $due_for_this_emi = max(0, $target - $paid);
+                    }
+
+                    $emiHistory[] = [
+                        "payment_id" => $row['id'],
+                        "payment_type" => $row['payment_type'], 
+                        "target_amount" => $row['emi_no'] ? $target : 0, 
+                        "amount_paid" => $paid, 
+                        "due_amount" => $due_for_this_emi, 
+                        "payment_date" => $row['payment_date'] ?: 'N/A',
+                        "emi_number" => $row['emi_no'] ? (int)$row['emi_no'] : null,
+                        "due_date" => $row['due_date'] ?: 'N/A',
+                        "verification_status" => $row['verification_status']
+                    ];
+                }
+            }
+
             $responseData['bookings'][] = [
                 "booking_id" => $bookingId,
                 "agent_info" => ["agent_name" => $agentName],
@@ -296,43 +381,56 @@ class ApiController extends Controller
                     "flat_id" => $flat ? $flat['id'] : null,
                     "flat_name" => $flat ? $flat['flat_name'] : 'N/A',
                     "floor_no" => $flat ? $flat['floor_no'] : 'N/A',
-                    "sqft" => $flat ? $flat['sqft'] : 0
+                    "sqft" => $flat ? $flat['sqft'] : 0,
+                    
+                    // আপডেট করা কলামগুলো (total_share এখন project থেকে নিবে)
+                    "building_type" => $project ? ($project['building_type'] ?? 'N/A') : 'N/A',
+                    "unit_per_floor" => $project ? ($project['unit_per_floor'] ?? 'N/A') : 'N/A',
+                    "total_share" => $project ? ($project['total_share'] ?? 'N/A') : 'N/A'
                 ],
+
+
                 "payment_info" => [
-                    "total_agreement_value" => $agreementValue,
-                    "approved_discount_amount" => $discountAmount,
-                    "total_payable" => $totalPayable,
+                    "total_price" => $totalPayable,
                     "total_paid" => $totalPaid,
                     "total_due" => $totalDue,
-                    "booking_and_registration" => [
+                    "land_share_info" => [
+                        "total_land_share_amount" => $landShareTarget,
                         "booking_money_paid" => $bookingMoneyPaid,
-                        "registration_paid" => $registrationPaid,
-                        "mutation_cost_paid" => $mutationCostPaid
+                        "registration_money_paid" => $registrationPaid,
+                        "total_land_share_paid" => ($bookingMoneyPaid + $registrationPaid),
+                        "land_share_due" => max(0, $landShareTarget - ($bookingMoneyPaid + $registrationPaid)),
+                        // Land Share Breakdown
+                        "land_share_history" => $landShareHistory
                     ],
-                    "land_share" => [
-                        "total_land_share_target" => $landShareTarget,
-                        "total_land_share_paid" => $totalLandSharePaid,
-                        "is_land_share_completed" => ($landShareTarget > 0) ? ($totalLandSharePaid >= $landShareTarget) : false
-                    ],
-                    "development_charge" => [
+                    "development_charge_info" => [
                         "total_development_charge_target" => $devChargeTarget,
                         "development_charge_paid" => $devChargePaid,
-                        "is_dev_charge_completed" => ($devChargeTarget > 0) ? ($devChargePaid >= $devChargeTarget) : false
+                        "development_charge_due" => max(0, $devChargeTarget - $devChargePaid),
+                        // Development Charge Breakdown
+                        "development_charge_history" => $devChargeHistory
                     ],
-                    "emi_data" => [
+                    "emi_info" => [
+                        "number_of_emis_paid" => ($completedEmiCount + $unverifiedEmiCount),
                         "per_emi_amount" => $perEmiAmount,
-                        "total_emi_paid" => $emiPaid,
-                        "total_service_fee_paid" => $totalServiceFee,
-                        "completed_emi_count" => $completedEmiCount,
+                        "current_running_emi_number" => ($completedEmiCount + $unverifiedEmiCount) + 1,
+                        "total_emi_amount_paid" => ($emiPaid + $unverifiedEmiPaid),
+
+                        "total_verified_emi_count" => $completedEmiCount,
+                        "total_unverified_emi_count" => $unverifiedEmiCount,
+                        "verified_emi_amount_paid" => $emiPaid,
+                        "unverified_emi_amount_paid" => $unverifiedEmiPaid,
                         "due_emi_amount" => $totalDueEmi,
-                        "has_due_emi" => ($totalDueEmi > 0),
-                        "bulk_emi_discount_received" => $bulkEmiDiscount,
+                        "total_service_fee_paid" => $totalServiceFee,
+                        
                         "penalty_info" => [
                             "total_penalty_charged" => $penaltyCharged,
                             "total_penalty_paid" => $penaltyPaid,
                             "total_penalty_waived" => $penaltyWaived,
                             "has_unpaid_penalty" => ($penaltyCharged > ($penaltyPaid + $penaltyWaived))
-                        ]
+                        ],
+                        
+                        "emi_history" => $emiHistory
                     ]
                 ]
             ];
@@ -345,4 +443,6 @@ class ApiController extends Controller
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         exit;
     }
+
+
 }

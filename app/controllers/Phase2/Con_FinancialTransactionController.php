@@ -31,19 +31,19 @@ class Con_FinancialTransactionController extends Controller
     /** Roles 1 (Admin), 3 (Super Admin) can approve vendor payments */
     private function canApprove()
     {
-        return in_array($this->userRole, [1, 3]);
+        return in_array($this->userRole, [1, 3, 33]);
     }
 
     /** Roles 1, 3, 6 (Accounts), 15 (Project Manager) can process payments */
     private function canProcessPayment()
     {
-        return in_array($this->userRole, [1, 3, 6, 15]);
+        return in_array($this->userRole, [1, 3, 33, 6, 15]);
     }
 
     /** Admin-level viewing: roles 1, 3, 6, 15 */
     private function isAdminUser()
     {
-        return in_array($this->userRole, [1, 3, 6, 15]);
+        return in_array($this->userRole, [1, 3, 33, 6, 15]);
     }
 
     /* =====================
@@ -181,7 +181,7 @@ class Con_FinancialTransactionController extends Controller
     ====================== */
     public function store()
     {
-        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 22])) {
+        if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 20, 22])) {
             setError('You do not have permission to add, edit, or delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;

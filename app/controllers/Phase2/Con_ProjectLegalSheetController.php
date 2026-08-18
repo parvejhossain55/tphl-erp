@@ -29,7 +29,7 @@ class Con_ProjectLegalSheetController extends Controller {
         $uid = (int)($_SESSION['user']['id'] ?? 0);
         $rid = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        if (in_array($rid, [1, 3, 22])) {
+        if (in_array($rid, [1, 3, 33, 22])) {
             $sheets = $this->sheetModel->getAll();
         } else {
             $sql = "SELECT pls.*, p.name as project_name, u.full_name as submitted_by_name 
@@ -77,7 +77,7 @@ class Con_ProjectLegalSheetController extends Controller {
         $uid = (int)($_SESSION['user']['id'] ?? 0);
         $rid = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        if (in_array($rid, [1, 3, 22])) {
+        if (in_array($rid, [1, 3, 33, 22])) {
             // Admin / super user — see all projects
             $sql    = "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name";
             $result = $this->db->query($sql);

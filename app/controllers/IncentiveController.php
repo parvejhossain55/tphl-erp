@@ -218,4 +218,94 @@ class IncentiveController extends Controller
         echo json_encode($result);
         exit;
     }
+
+    /**
+     * Settings / Config View (Slabs & Hierarchies)
+     */
+    public function configSettings()
+    {
+        if (!in_array($_SESSION['user']['role_id'], [1, 3, 33, 6, 2])) { // Adjust allowed roles as needed
+            header("Location: {$GLOBALS['base_url']}/home");
+            exit;
+        }
+
+        $slabs = $this->db->query("SELECT s.*, l.name as location_name, c.name as category_name 
+            FROM incentive_slabs s 
+            LEFT JOIN locations l ON s.location_id = l.id 
+            LEFT JOIN project_categories c ON s.category_id = c.id
+            ORDER BY l.name ASC, s.min_volume ASC")->fetch_all(MYSQLI_ASSOC);
+
+        $hierarchies = $this->db->query("SELECT * FROM hierarchy_commissions")->fetch_all(MYSQLI_ASSOC);
+        
+        $locations = $this->db->query("SELECT * FROM locations")->fetch_all(MYSQLI_ASSOC);
+        $categories = $this->db->query("SELECT id, name AS category_name FROM project_categories")->fetch_all(MYSQLI_ASSOC);
+        
+        $settingsRes = $this->db->query("SELECT * FROM incentive_settings")->fetch_all(MYSQLI_ASSOC);
+        $settings = [];
+        foreach($settingsRes as $row) {
+            $settings[$row['setting_key']] = $row['setting_value'];
+        }
+
+        $this->view("incentives/config-settings", [
+            "current_route" => "incentive-config",
+            "page_title" => "Incentive Configurations",
+            "slabs" => $slabs,
+            "hierarchies" => $hierarchies,
+            "locations" => $locations,
+            "categories" => $categories,
+            "settings" => $settings
+        ]);
+    }
+
+    public function saveSlab()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
+        $id = !empty($_POST['id']) ? (int)$_POST['id'] : null;
+        $location_id = !empty($_POST['location_id']) ? (int)$_POST['location_id'] : null;
+        $category_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
+        $min_volume = (float)$_POST['min_volume'];
+        $max_volume = !empty($_POST['max_volume']) ? (float)$_POST['max_volume'] : null;
+        $percentage = (float)$_POST['percentage'];
+
+        if ($id) {
+            $stmt = $this->db->prepare("UPDATE incentive_slabs SET location_id=?, category_id=?, min_volume=?, max_volume=?, percentage=? WHERE id=?");
+            $stmt->bind_param("iiddii", $location_id, $category_id, $min_volume, $max_volume, $percentage, $id);
+        } else {
+            $stmt = $this->db->prepare("INSERT INTO incentive_slabs (location_id, category_id, min_volume, max_volume, percentage) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("iiddi", $location_id, $category_id, $min_volume, $max_volume, $percentage);
+        }
+        $stmt->execute();
+        $_SESSION['success'] = "Slab saved successfully.";
+        header("Location: {$GLOBALS['base_url']}/incentive-config");
+        exit;
+    }
+
+    public function saveSettings()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
+        if (isset($_POST['settings']) && is_array($_POST['settings'])) {
+            foreach ($_POST['settings'] as $key => $value) {
+                $stmt = $this->db->prepare("UPDATE incentive_settings SET setting_value=? WHERE setting_key=?");
+                $stmt->bind_param("ss", $value, $key);
+                $stmt->execute();
+            }
+            $_SESSION['success'] = "Settings updated successfully.";
+        }
+        header("Location: {$GLOBALS['base_url']}/incentive-config");
+        exit;
+    }
+
+    public function saveHierarchy()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
+        foreach ($_POST['amounts'] as $id => $amount) {
+            $amt = (float)$amount;
+            $stmt = $this->db->prepare("UPDATE hierarchy_commissions SET amount_per_50_lakh=? WHERE id=?");
+            $stmt->bind_param("di", $amt, (int)$id);
+            $stmt->execute();
+        }
+        $_SESSION['success'] = "Hierarchy rates updated successfully.";
+        header("Location: {$GLOBALS['base_url']}/incentive-config");
+        exit;
+    }
 }
