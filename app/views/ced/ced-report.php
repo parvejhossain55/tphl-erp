@@ -154,7 +154,7 @@
                             <option value="">-- All Agents --</option>
                             <?php foreach ($cedEmployees as $emp): ?>
                                 <option value="<?= $emp['id'] ?>" <?= ($agentId == $emp['id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($emp['full_name']) ?> (<?= htmlspecialchars($emp['role_name']) ?>)
+                                    <?= htmlspecialchars($emp['full_name'] ?? '') ?> (<?= htmlspecialchars($emp['role_name'] ?? '') ?>)
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -194,11 +194,11 @@
                     <!-- Custom inputs -->
                     <div class="col-md-2 mode-input mode-custom d-none">
                         <label class="form-label text-muted fw-bold">Start Date</label>
-                        <input type="date" name="start_date" id="start_date" class="form-control shadow-sm" value="<?= htmlspecialchars($startDate) ?>">
+                        <input type="date" name="start_date" id="start_date" class="form-control shadow-sm" value="<?= htmlspecialchars($startDate ?? '') ?>">
                     </div>
                     <div class="col-md-2 mode-input mode-custom d-none">
                         <label class="form-label text-muted fw-bold">End Date</label>
-                        <input type="date" name="end_date" id="end_date" class="form-control shadow-sm" value="<?= htmlspecialchars($endDate) ?>">
+                        <input type="date" name="end_date" id="end_date" class="form-control shadow-sm" value="<?= htmlspecialchars($endDate ?? '') ?>">
                     </div>
 
                     <div class="col-md-4 d-flex gap-2">
@@ -251,7 +251,7 @@
                                 $totalBreakdown += $bRow['count'];
                             ?>
                             <tr>
-                                <td class="fw-bold text-dark"><?= htmlspecialchars($bRow['label']) ?></td>
+                                <td class="fw-bold text-dark"><?= htmlspecialchars($bRow['label'] ?? '') ?></td>
                                 <td>
                                     <span class="badge bg-success-transparent text-success px-3 py-2 rounded-pill fs-12">
                                         <?= $bRow['count'] ?>
@@ -271,7 +271,7 @@
         <?php endif; ?>
 
         <!-- Summary Section -->
-        <div class="card report-card print-summary-card mb-3" style="background: linear-gradient(135deg, #4e73df 0%, #224abe 100%) !important; border: none;">
+        <div class="card report-card print-summary-card mb-3" style="background: #0e5013; border: none;">
             <div class="card-body p-3">
                 <div class="row align-items-center">
                     <div class="col-6 border-end border-light border-opacity-25">
@@ -305,7 +305,7 @@
             <div class="card-header bg-transparent border-bottom-0 pt-4 pb-0">
                 <div class="card-title fw-bold text-dark fs-16">
                     <i class="bi bi-list-columns-reverse text-primary me-2"></i> 
-                    Activity Footprints (<?= htmlspecialchars($startDate) ?> to <?= htmlspecialchars($endDate) ?>)
+                    Activity Footprints (<?= htmlspecialchars($startDate ?? '') ?> to <?= htmlspecialchars($endDate ?? '') ?>)
                 </div>
             </div>
             <div class="card-body">
@@ -314,7 +314,7 @@
                         <thead>
                             <tr>
                                 <th style="width: 5%">#</th>
-                                <th style="width: 15%">Date & Time</th>
+                                <th style="width: 15%">Added Date & Time</th>
                                 <th style="width: 15%">Agent</th>
                                 <th style="width: 20%">Client Details</th>
                                 <th style="width: 20%">Project / Flat</th>
@@ -337,7 +337,7 @@
                                         <td class="fw-bold text-muted align-middle"><?= $i++ ?></td>
                                         <td class="align-middle">
                                             <div class="fw-bold text-dark"><?= date('d M Y', strtotime($row['follow_up_date'])) ?></div>
-                                            <div class="text-muted fs-12"><i class="bi bi-clock me-1"></i><?= htmlspecialchars($row['follow_up_time']) ?></div>
+                                            <div class="text-muted fs-12"><i class="bi bi-clock me-1"></i><?= htmlspecialchars($row['follow_up_time'] ?? '') ?></div>
                                         </td>
                                         <td class="align-middle">
                                             <span class="badge bg-light text-primary border border-primary-subtle p-2">
@@ -345,17 +345,35 @@
                                             </span>
                                         </td>
                                         <td class="align-middle">
-                                            <div class="fw-bold text-dark"><?= htmlspecialchars($row['client_name']) ?></div>
-                                            <div class="text-muted fs-12"><i class="bi bi-telephone me-1"></i><?= htmlspecialchars($row['client_phone']) ?></div>
+                                            <div class="fw-bold text-dark"><?= htmlspecialchars($row['client_name'] ?? '') ?></div>
+                                            <div class="text-muted fs-12"><i class="bi bi-telephone me-1"></i><?= htmlspecialchars($row['client_phone'] ?? '') ?></div>
                                         </td>
                                         <td class="align-middle">
-                                            <div class="fw-semibold text-dark"><?= htmlspecialchars($row['project_name']) ?></div>
-                                            <div class="text-muted fs-12"><?= htmlspecialchars($row['flat_name']) ?></div>
+                                            <div class="fw-semibold text-dark"><?= htmlspecialchars($row['project_name'] ?? '') ?></div>
+                                            <div class="text-muted fs-12"><?= htmlspecialchars($row['flat_name'] ?? '') ?></div>
                                         </td>
                                         <td class="align-middle">
+                                            <?php if (!empty($row['follow_up_type'])): ?>
+                                                <div class="mb-2">
+                                                    <span class="badge bg-success"><i class="bi bi-tag me-1"></i>Follow Up for: <?= htmlspecialchars($row['follow_up_type'] ?? '') ?></span>
+                                                </div>
+                                            <?php endif; ?>
                                             <div class="note-text p-2 bg-light rounded text-dark fs-13">
                                                 <?= nl2br(htmlspecialchars($row['discussion_note'] ?? 'No note provided')) ?>
                                             </div>
+                                            <?php if (!empty($row['activity_date']) || !empty($row['activity_mode']) || !empty($row['activity_reason'])): ?>
+                                                <div class="mt-2 p-2 bg-white border border-secondary-subtle rounded fs-12">
+                                                    <?php if (!empty($row['activity_date'])): ?>
+                                                        <div class="mb-1"><i class="bi bi-calendar-event me-1 text-muted"></i><span class="fw-semibold text-muted">Activity Date:</span> <?= date('d M Y', strtotime($row['activity_date'])) ?></div>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($row['activity_mode'])): ?>
+                                                        <div class="mb-1"><i class="bi bi-info-circle me-1 text-muted"></i><span class="fw-semibold text-muted">Mode:</span> <?= htmlspecialchars($row['activity_mode'] ?? '') ?></div>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($row['activity_reason'])): ?>
+                                                        <div><i class="bi bi-question-circle me-1 text-muted"></i><span class="fw-semibold text-muted">Reason:</span> <?= htmlspecialchars($row['activity_reason'] ?? '') ?></div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

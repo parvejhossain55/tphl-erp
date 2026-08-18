@@ -764,7 +764,7 @@ function bd_settings_append($x) {
 	// 	dateFormat: "Y-m-d",
 	// });
 
-    $("#joiningDate").flatpickr({
+    $("#joiningDate, #resignDate").flatpickr({
         altInput: true,
         altFormat: "F j, Y",
         dateFormat: "Y-m-d",

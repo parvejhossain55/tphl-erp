@@ -204,6 +204,15 @@ return [
     'download-sample-payslips-csv' => ['controller' => 'PayrollController', 'method' => 'downloadSampleCSV'],
 
     // =========================================================================
+    // Controller: AdvanceSalaryController
+    // =========================================================================
+    'advance-salary' => ['controller' => 'AdvanceSalaryController', 'method' => 'index'],
+    'store-advance-salary' => ['controller' => 'AdvanceSalaryController', 'method' => 'store'],
+    'approve-advance-salary/(\d+)' => ['controller' => 'AdvanceSalaryController', 'method' => 'approve'],
+    'pay-advance-salary/(\d+)' => ['controller' => 'AdvanceSalaryController', 'method' => 'pay'],
+    'pay-advance-salary' => ['controller' => 'AdvanceSalaryController', 'method' => 'payPost'],
+
+    // =========================================================================
     // Controller: PayslipItemController
     // =========================================================================
     'payslip-items' => ['controller' => 'PayslipItemController', 'method' => 'index'],
@@ -215,40 +224,68 @@ return [
     // Batch 1: Employee Views & REST API Routes
     // =========================================================================
 
-    'hrm-external-employees'     => ['controller' => 'EmployeeController', 'method' => 'externalEmployeesView'],
-    'api/hrm/employees'          => ['controller' => 'HrmApiController', 'method' => 'getErpEmployees'],
+    'hrm-external-employees' => ['controller' => 'EmployeeController', 'method' => 'externalEmployeesView'],
+    'api/hrm/employees' => ['controller' => 'HrmApiController', 'method' => 'getErpEmployees'],
     'api/hrm/external-employees' => ['controller' => 'HrmApiController', 'method' => 'getExternalEmployees'],
 
     // =========================================================================
     // Batch 2: Attendance & Absence Views & API Routes
     // =========================================================================
-    'hrm-attendance-dashboard'   => ['controller' => 'EmpAttendanceController', 'method' => 'attendanceDashboardView'],
-    'api/hrm/attendance'         => ['controller' => 'HrmApiController', 'method' => 'getAttendanceReport'],
+    'hrm-attendance-dashboard' => ['controller' => 'EmpAttendanceController', 'method' => 'attendanceDashboardView'],
+    'api/hrm/attendance' => ['controller' => 'HrmApiController', 'method' => 'getAttendanceReport'],
 
     // =========================================================================
     // Batch 3: Leave History & Requests Views & API Routes
     // =========================================================================
-    'hrm-leave-history'          => ['controller' => 'LeaveController', 'method' => 'leaveHistoryDashboardView'],
-    'api/hrm/leave-history'      => ['controller' => 'HrmApiController', 'method' => 'getLeaveHistory'],
+    'hrm-leave-history' => ['controller' => 'LeaveController', 'method' => 'leaveHistoryDashboardView'],
+    'api/hrm/leave-history' => ['controller' => 'HrmApiController', 'method' => 'getLeaveHistory'],
 
     // =========================================================================
     // Batch 4: Leave Balances & Analytics Views & API Routes
     // =========================================================================
-    'hrm-leave-balances'         => ['controller' => 'LeaveController', 'method' => 'leaveBalancesDashboardView'],
-    'api/hrm/leave-balances'     => ['controller' => 'HrmApiController', 'method' => 'getLeaveBalances'],
+    'hrm-leave-balances' => ['controller' => 'LeaveController', 'method' => 'leaveBalancesDashboardView'],
+    'api/hrm/leave-balances' => ['controller' => 'HrmApiController', 'method' => 'getLeaveBalances'],
 
     // =========================================================================
     // Batch 5: Tipsoi Pending Requests Views & API Routes
     // =========================================================================
-    'hrm-tipsoi-requests'        => ['controller' => 'LeaveController', 'method' => 'tipsoiRequestsDashboardView'],
-    'api/hrm/tipsoi-requests'    => ['controller' => 'HrmApiController', 'method' => 'getTipsoiRequests'],
-    'api/hrm/tipsoi-holidays'    => ['controller' => 'HrmApiController', 'method' => 'getTipsoiHolidays'],
+    'hrm-tipsoi-requests' => ['controller' => 'LeaveController', 'method' => 'tipsoiRequestsDashboardView'],
+    'api/hrm/tipsoi-requests' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiRequests'],
+    'api/hrm/tipsoi-holidays' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiHolidays'],
     'api/hrm/import-tipsoi-holiday' => ['controller' => 'HrmApiController', 'method' => 'importTipsoiHoliday'],
-    'hrm-monthly-lwp'            => ['controller' => 'LeaveController', 'method' => 'monthlyLwpDashboardView'],
+    'hrm-monthly-lwp' => ['controller' => 'LeaveController', 'method' => 'monthlyLwpDashboardView'],
 
     // Automated Payroll Routes
-    'auto-generate-payslip'              => ['controller' => 'PayrollController', 'method' => 'showAutoGenerateForm'],
-    'api/payroll/department-attendance'  => ['controller' => 'PayrollController', 'method' => 'getDepartmentAttendance'],
-    'store-bulk-payslips'                => ['controller' => 'PayrollController', 'method' => 'storeBulkPayslips'],
-    'disburse-batch-payslips'            => ['controller' => 'PayrollController', 'method' => 'disburseBatch'],
+    'auto-generate-payslip' => ['controller' => 'PayrollController', 'method' => 'showAutoGenerateForm'],
+    'api/payroll/department-attendance' => ['controller' => 'PayrollController', 'method' => 'getDepartmentAttendance'],
+    'store-bulk-payslips' => ['controller' => 'PayrollController', 'method' => 'storeBulkPayslips'],
+    'disburse-batch-payslips' => ['controller' => 'PayrollController', 'method' => 'disburseBatch'],
+
+    // Payroll Workspace
+    'payroll-workspace' => ['controller' => 'PayrollController', 'method' => 'workspace'],
+    'payroll-workspace-pdf' => ['controller' => 'PayrollController', 'method' => 'exportWorkspacePDF'],
+
+    // Salary Hold
+    'payroll-salary-hold' => ['controller' => 'PayrollController', 'method' => 'salaryHold'],
+    'payroll-salary-hold-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSalaryHoldPDF'],
+
+    // Payroll Attendance Report
+    'payroll-attendance-report' => ['controller' => 'PayrollController', 'method' => 'attendanceReport'],
+    'payroll-attendance-pdf' => ['controller' => 'PayrollController', 'method' => 'exportAttendancePDF'],
+
+    // Joining List
+    'payroll-joining-list' => ['controller' => 'PayrollController', 'method' => 'joiningList'],
+    'payroll-joining-list-pdf' => ['controller' => 'PayrollController', 'method' => 'exportJoiningListPDF'],
+
+    // Resign List
+    'payroll-resign-list' => ['controller' => 'PayrollController', 'method' => 'resignList'],
+    'payroll-resign-list-pdf' => ['controller' => 'PayrollController', 'method' => 'exportResignListPDF'],
+
+    // Detailed Summary
+    'payroll-detailed-summary' => ['controller' => 'PayrollController', 'method' => 'detailedSummary'],
+    'payroll-detailed-summary-pdf' => ['controller' => 'PayrollController', 'method' => 'exportDetailedSummaryPDF'],
+
+    // Payroll Summary Report
+    'payroll-summary-report' => ['controller' => 'PayrollController', 'method' => 'summaryReport'],
+    'payroll-summary-report-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSummaryReportPDF'],
 ];

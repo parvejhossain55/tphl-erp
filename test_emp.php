@@ -1,0 +1,1 @@
+<?php require 'app/core/Controller.php'; require 'app/core/Model.php'; require 'app/core/Database.php'; $config = require 'app/config/config.php'; require 'app/models/Employee.php'; $db = new Database($config); $e = new Employee($db->conn); foreach($e->getAllWithDesignation() as $emp) { if ($emp['id'] == 262) { print_r($emp); } }

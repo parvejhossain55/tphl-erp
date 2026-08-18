@@ -144,6 +144,7 @@
                  </div>
                  <!-- Designation -->
                  <div class="col-lg-6"><label>Gross Salary <span>*</span></label><input class="form-control" name="gross_salary" id="gross_salary" type="number" value="<?= $employee['gross_salary'] ?>"></div>
+                 <div class="col-lg-6"><label>Per Meal Amount</label><input class="form-control" name="per_meal_amount" id="per_meal_amount" type="number" step="0.01" value="<?= $employee['per_meal_amount'] ?? '' ?>"></div>
                  <div class="col-lg-6"><label>Basic Salary <span>*</span></label>
                      <input class="form-control" name="basic_salary" id="basic_salary" type="number"
                          value="<?= $employee['basic_salary'] ?>">
@@ -171,6 +172,13 @@
                      <label>Joining Date <span>*</span></label>
                      <input class="form-control" id="joiningDate" type="text" readonly name="joining_date"
                          value="<?= htmlspecialchars($joiningDateFormatted) ?>">
+                 </div>
+
+                 <!-- Resign Date -->
+                 <div class="col-lg-6">
+                     <label>Resign Date</label>
+                     <input class="form-control" id="resignDate" type="text" readonly name="resign_date"
+                         value="<?= htmlspecialchars($employee['resign_date'] ?? '') ?>">
                  </div>
 
                  <!-- Account Holder Name -->
@@ -530,5 +538,18 @@
       if (basicSalaryInput) {
           basicSalaryInput.addEventListener("input", calculateSalaryBreakdown);
           basicSalaryInput.addEventListener("change", calculateSalaryBreakdown);
+      }
+
+      // Fallback for flatpickr initialization in case main.js is cached by the browser
+      if (typeof $ !== 'undefined' && $.fn.flatpickr) {
+          setTimeout(function() {
+              if ($("#resignDate").length) {
+                  $("#resignDate").flatpickr({
+                      altInput: true,
+                      altFormat: "F j, Y",
+                      dateFormat: "Y-m-d",
+                  });
+              }
+          }, 500);
       }
   </script>
