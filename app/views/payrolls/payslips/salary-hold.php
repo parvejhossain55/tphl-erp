@@ -10,12 +10,13 @@ $show_breadcrumb = true;
             <form method="GET" action="<?= $base_url ?>/payroll-salary-hold" class="row gx-3 gy-2 align-items-center">
                 <div class="col-sm-3">
                     <label for="year">Year</label>
-                    <select class="form-select custom-select2" name="year" id="year">
+                    <select class="form-select" name="year" id="yearx">
                         <?php
-                        $startYear = date('Y') - 5;
-                        $endYear = date('Y') + 5;
+                        $startYear = 2025;
+                        $endYear = 2035;
+                        $sysYear = $selectedYear ?: date('Y');
                         for ($y = $startYear; $y <= $endYear; $y++): ?>
-                            <option value="<?= $y ?>" <?= $y == $selectedYear ? 'selected' : '' ?>>
+                            <option value="<?= $y ?>" <?= $y == $sysYear ? 'selected' : '' ?>>
                                 <?= $y ?>
                             </option>
                         <?php endfor; ?>
@@ -23,7 +24,7 @@ $show_breadcrumb = true;
                 </div>
                 <div class="col-sm-3">
                     <label for="month">Month</label>
-                    <select class="form-select custom-select2" name="month" id="month">
+                    <select class="form-select" name="month" id="month">
                         <?php for ($m = 1; $m <= 12; $m++):
                             $monthNum = str_pad($m, 2, "0", STR_PAD_LEFT);
                             $monthName = date('F', mktime(0, 0, 0, $m, 1));
@@ -45,7 +46,26 @@ $show_breadcrumb = true;
 <!-- Salary Hold Table -->
 <div class="row">
     <div class="col-xxl-12">
-        <div class="card__wrapper">
+
+        <div class="card__wrapper border-0">
+            <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+                <h4 class="fw-bold text-dark mb-0">
+                    <i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>Salary Hold
+                </h4>
+                <div>
+                    <button type="button" class="btn btn-success fw-semibold shadow-sm me-2"
+                        onclick="$('#salaryHoldTable').DataTable().button('.buttons-csv').trigger();">
+                        <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+                    </button>
+                    <button type="button" class="btn btn-danger fw-semibold shadow-sm" onclick="
+                        var year = document.getElementById('year') ? document.getElementById('year').value : '';
+                        var month = document.getElementById('month') ? document.getElementById('month').value : '';
+                        window.location.href = '<?= $base_url ?>/payroll-salary-hold-pdf?year=' + year + '&month=' + month;
+                    ">
+                        <i class="fa-solid fa-file-pdf me-1"></i> Export PDF
+                    </button>
+                </div>
+            </div>
             <div class="table__wrapper table-responsive">
                 <table id="salaryHoldTable" class="table no-border-table mb-20">
                     <thead>
@@ -96,19 +116,16 @@ $show_breadcrumb = true;
     document.addEventListener("DOMContentLoaded", function () {
         if (typeof $ !== 'undefined' && $.fn.DataTable) {
             $('#salaryHoldTable').DataTable({
-                dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"Bf>>' +
+                dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"f><"d-none"B>>' +
                     '<"row"<"col-sm-12"tr>>' +
                     '<"row align-items-center mt-3"<"col-sm-6 text-start"i><"col-sm-6 text-end"p>>',
                 buttons: [
                     {
-                        extend: 'csvHtml5',
-                        text: '<i class="fa-solid fa-file-csv me-1"></i> Export CSV',
-                        className: 'btn btn-success btn-sm me-2',
+                        extend: 'csvHtml5', text: 'CSV', className: 'buttons-csv',
                         title: 'Salary_Hold_Export'
                     },
                     {
-                        text: '<i class="fa-solid fa-file-pdf me-1"></i> Export PDF',
-                        className: 'btn btn-danger btn-sm me-3',
+                        text: 'PDF', className: 'buttons-pdf',
                         action: function (e, dt, node, config) {
                             var year = document.getElementById('year') ? document.getElementById('year').value : '';
                             var month = document.getElementById('month') ? document.getElementById('month').value : '';

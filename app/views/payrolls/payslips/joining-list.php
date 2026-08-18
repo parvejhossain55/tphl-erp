@@ -84,7 +84,21 @@ $defaultMonth = date('m');
 <!-- Joining List Table -->
 <div class="row">
     <div class="col-xxl-12">
-        <div class="card__wrapper">
+        
+        <div class="card__wrapper border-0">
+            <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+                <h4 class="fw-bold text-dark mb-0">
+                    <i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>Joining List
+                </h4>
+                <div>
+                    <button type="button" class="btn btn-success fw-semibold shadow-sm me-2" onclick="$('#joiningListTable').DataTable().button('.buttons-csv').trigger();">
+                        <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+                    </button>
+                    <button type="button" class="btn btn-danger fw-semibold shadow-sm" onclick="$('#joiningListTable').DataTable().button('.buttons-pdf').trigger();">
+                        <i class="fa-solid fa-file-pdf me-1"></i> Export PDF
+                    </button>
+                </div>
+            </div>
             <div class="table__wrapper table-responsive">
                 <table id="joiningListTable" class="table no-border-table mb-20">
                     <thead class="text-center text-nowrap align-middle">
@@ -167,19 +181,16 @@ $('#joiningListTable').DataTable().destroy();
 }
 
 $('#joiningListTable').DataTable({
-dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"Bf>>' +
+dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"f><"d-none"B>>' +
         '<"row"<"col-sm-12"tr>>' +
             '<"row align-items-center mt-3"<"col-sm-6 text-start"i><"col-sm-6 text-end"p>>',
                     buttons: [
                     {
-                    extend: 'csvHtml5',
-                    text: '<i class="fa-solid fa-file-csv me-1"></i> Export CSV',
-                    className: 'btn btn-success btn-sm me-2',
+                    extend: 'csvHtml5', text: 'CSV', className: 'buttons-csv',
                     title: 'Joining_List_' + '<?= $filter_type ?>' + '_report'
                     },
                     {
-                    text: '<i class="fa-solid fa-file-pdf me-1"></i> Export PDF',
-                    className: 'btn btn-danger btn-sm me-3',
+                    text: 'PDF', className: 'buttons-pdf',
                     action: function (e, dt, node, config) {
                     document.getElementById('pdfFilterType').value = $('#filterType').val();
                     document.getElementById('pdfMonth').value = $('#filterMonth').val();
